@@ -322,20 +322,12 @@ class ReleaseGateTest(unittest.TestCase):
         release = self.workflow[self.workflow.index("\n  release:"):]
         needs = re.search(r"needs: \[([^\]]*)\]", release)
         assert needs is not None, "the release job needs nothing, so it would publish over a red gate"
-        self.assertEqual(
-            sorted(name.strip() for name in needs.group(1).split(",")),
-            sorted(job for job in self.jobs if job not in ("snapshot", "release")),
-        )
+        self.assertEqual(sorted(n.strip() for n in needs.group(1).split(",")),
+                          sorted(j for j in self.jobs if j not in ("snapshot", "release")))
         self.assertIn("if: startsWith(github.ref, 'refs/tags/v')", release)
-        # The forge check moved from the job's `if:` into a step, gating every step after it: Gitea Actions
-        # has been seen to lose a job-level `if:`'s `github.*` context once dispatch is delayed behind this
-        # job's 8-job `needs:`.
         self.assertIn('if [ "${{ github.server_url }}" = "https://git.treyco.dev" ]', release)
-        self.assertEqual(
-            release.count("if: steps.instance.outputs.canonical == 'true'"),
-            release.count("      - ") - 1,
-            "a step was added to the release job without gating it on the canonical-instance check",
-        )
+        self.assertEqual(release.count("if: steps.instance.outputs.canonical == 'true'"),
+                          release.count("      - ") - 1, "a step is ungated on the instance check")
         self.assertIn("fetch-depth: 0", release)
         for step in ("make package-executable", "make publish-wheel", "scripts/publish-release.py",
                      '--tag "${{ github.ref_name }}"'):

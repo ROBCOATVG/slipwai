@@ -257,8 +257,10 @@ class FactoryRepositoryTest(FactoryTestCase):
             sorted(name.strip() for name in needs.group(1).split(",")),
             sorted(job for job in jobs if job not in ("snapshot", "release")),
         )
-        publishing = "github.server_url == 'https://git.treyco.dev' && github.event_name == 'push'"
-        self.assertIn(f"if: {publishing} && github.ref == 'refs/heads/main'", snapshot)
+        self.assertIn("if: github.event_name == 'push' && github.ref == 'refs/heads/main'", snapshot)
+        # The forge check moved from the job's `if:` into a step: Gitea Actions has been seen to lose a
+        # job-level `if:`'s `github.*` context once dispatch is delayed behind this job's 8-job `needs:`.
+        self.assertIn('if [ "${{ github.server_url }}" != "https://git.treyco.dev" ]', snapshot)
         self.assertIn("fetch-depth: 0", snapshot)
         for step in ("scripts/snapshot-version.py --write", "make package-executable", "make publish-wheel",
                      "scripts/publish-release.py", "--snapshot", "--commit"):

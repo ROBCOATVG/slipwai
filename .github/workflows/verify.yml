@@ -189,7 +189,7 @@ jobs:
   # the `release` job below publishes from the tag's own run. The whole history, because the snapshot number
   # is counted from the last tag.
   snapshot:
-    if: github.server_url == 'https://git.treyco.dev' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [checks, matrix, add-service, migration, adoption, aws, azure, auth0]
     runs-on: ubuntu-latest
     permissions:
@@ -204,8 +204,15 @@ jobs:
         id: snapshot
         # Exit 3 is "VERSION is a release": the commit `make release` tagged, which the tag's own workflows
         # publish. Nothing else here runs then, and the job is green rather than a failure to read.
+        # `github.server_url` is checked here rather than in the job's `if:` above — this job's `needs:`
+        # fan-in is 8 jobs deep, and Gitea Actions has been seen to lose a job-level `if:`'s `github.*`
+        # context once dispatch is delayed that long behind `needs:`. A step reads it fresh instead.
         run: |
           set +e
+          if [ "${{ github.server_url }}" != "https://git.treyco.dev" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           version=$(python3 scripts/snapshot-version.py --write)
           status=$?
           set -e
@@ -260,25 +267,41 @@ jobs:
   # `package.yml` and `publish-package.yml` still hold the same steps, dispatched by hand, for the retry a
   # spent version needs when the upload — not the gate — is what failed.
   release:
-    if: github.server_url == 'https://git.treyco.dev' && startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [checks, matrix, add-service, migration, adoption, aws, azure, auth0]
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
     steps:
+      # `github.server_url` is checked here rather than in the job's `if:` above — this job's `needs:`
+      # fan-in is 8 jobs deep, and Gitea Actions has been seen to lose a job-level `if:`'s `github.*`
+      # context once dispatch is delayed that long behind `needs:`. A step reads it fresh instead, and
+      # every step after gates on its output.
+      - name: Confirm this is the canonical instance
+        id: instance
+        run: |
+          if [ "${{ github.server_url }}" = "https://git.treyco.dev" ]; then
+            echo "canonical=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "canonical=false" >> "$GITHUB_OUTPUT"
+          fi
       # The whole history: `scripts/publish-release.py` reads the tag, and a shallow clone of a tag ref has
       # no earlier release to compare it against.
-      - uses: actions/checkout@v6
+      - if: steps.instance.outputs.canonical == 'true'
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/toolchains
+      - if: steps.instance.outputs.canonical == 'true'
+        uses: ./.github/actions/toolchains
       # The same three targets a laptop runs, and the same ones the snapshot job runs: build the executable
       # with the pinned PyInstaller, prove it scaffolds, package it.
-      - run: make package-executable
+      - if: steps.instance.outputs.canonical == 'true'
+        run: make package-executable
       # Uploaded before anything is published, so a release whose upload fails still leaves the archives
       # downloadable from this run — which is what `package.yml --tag` then finishes without rebuilding blind.
-      - uses: actions/upload-artifact@v4
+      - if: steps.instance.outputs.canonical == 'true'
+        uses: actions/upload-artifact@v4
         with:
           name: slipwai-${{ github.ref_name }}
           path: release/*
@@ -286,7 +309,8 @@ jobs:
       # Builds the wheel, installs it into a clean environment and scaffolds with it before uploading: a
       # wheel missing one bundled file installs fine and fails on the first project. The registry keeps a
       # name and version once, so this is the step the version is spent by.
-      - run: >
+      - if: steps.instance.outputs.canonical == 'true'
+        run: >
           make publish-wheel
           PYPI_URL="https://upload.pypi.org/legacy/"
           PYPI_INDEX="https://pypi.org/simple"
@@ -296,7 +320,8 @@ jobs:
       # Through the forge's own API rather than `gh`, which is not on this runner image and does not speak
       # Gitea. The job's token is enough for releases, which are `contents` — unlike the package registry,
       # which refuses it and is why the step above takes a secret.
-      - name: Attach the executables to the release
+      - if: steps.instance.outputs.canonical == 'true'
+        name: Attach the executables to the release
         env:
           GITEA_TOKEN: ${{ github.token }}
         run: >

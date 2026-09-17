@@ -184,8 +184,15 @@ class ExtensionsTest(FactoryTestCase):
             fake_bin.mkdir()
             (fake_bin / "specify").write_text(FAKE_SPECIFY)
             (fake_bin / "specify").chmod(0o755)
-            # No `codegraph` binary on this PATH at all.
-            environment = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
+            # No `codegraph` binary on this PATH at all — which has to be arranged, not assumed: the
+            # machine running the suite may well have the real CLI installed, and prepending a fake-bin
+            # without a stub would still find it further down.
+            without_codegraph = os.pathsep.join(
+                entry
+                for entry in os.environ["PATH"].split(os.pathsep)
+                if not os.access(Path(entry) / "codegraph", os.X_OK)
+            )
+            environment = os.environ | {"PATH": f"{fake_bin}:{without_codegraph}"}
 
             result = subprocess.run(
                 ["./init", "--integration", "codex", "--extension", "codegraph"],

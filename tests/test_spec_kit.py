@@ -41,6 +41,58 @@ class SpecKitTest(FactoryTestCase):
             self.assertTrue((repo / ".agents/skills/testing/SKILL.md").is_file())
             self.assertTrue((repo / ".agents/skills/drive/SKILL.md").is_file())
 
+    def test_a_rerun_that_forwards_nothing_leaves_spec_kit_alone(self) -> None:
+        """`./init --extension <key>` on an initialized project finishes without Spec Kit's source host.
+
+        Every flag the scan lifts out is answered locally (or at the forge), so rerunning the bootstrap was
+        the one step that needed the network — and the step that failed every rerun in an offline sandbox,
+        before the rest of `./init` had done any of what it was asked. Generation itself ships presets under
+        `.specify/`, so the evidence of a bootstrap is the integration record only `specify init` writes."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "rerun-product")
+            fake_bin = Path(directory) / "fake-bin"
+            fake_bin.mkdir()
+            log = Path(directory) / "specify-calls"
+            fake = fake_bin / "specify"
+            # Like real `specify init`, the fake records the installed integration — which is the mark the
+            # skip reads, and what the projection step resolves the harness from.
+            fake.write_text(
+                "#!/bin/sh\nprintf 'ran\\n' >> \"$SPECIFY_TEST_LOG\"\nmkdir -p .specify\n"
+                "printf '%s\\n' "
+                "'{\"installed_integrations\":[\"codex\"],\"default_integration\":\"codex\"}' "
+                "> .specify/integration.json\n"
+            )
+            fake.chmod(0o755)
+            (fake_bin / "codegraph").write_text("#!/bin/sh\nexit 0\n")
+            (fake_bin / "codegraph").chmod(0o755)
+            environment = os.environ | {
+                "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                "SPECIFY_TEST_LOG": str(log),
+            }
+
+            # A generated project has presets under `.specify/` but no integration record: the first
+            # `./init` must still bootstrap, whatever it was or was not passed.
+            subprocess.run(["./init", "--extension", "codegraph"], cwd=repo, check=True, env=environment)
+            self.assertEqual(log.read_text().splitlines(), ["ran"])
+
+            rerun = subprocess.run(
+                ["./init", "--extension", "codegraph"],
+                cwd=repo,
+                check=True,
+                env=environment,
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(log.read_text().splitlines(), ["ran"], "the rerun reinstalled Spec Kit")
+            self.assertIn("Spec Kit is already installed", rerun.stdout)
+            self.assertIn("<!-- extension:codegraph:begin -->", (repo / "AGENTS.md").read_text())
+            self.assertTrue((repo / ".agents/skills/testing/SKILL.md").is_file())
+
+            # Anything left to forward is Spec Kit's — a harness switch still delegates.
+            subprocess.run(["./init", "--integration", "claude"], cwd=repo, check=True, env=environment)
+            self.assertEqual(log.read_text().splitlines(), ["ran", "ran"])
+
     def test_init_exposes_project_skills_and_commands_to_cursor(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "cursor-product")

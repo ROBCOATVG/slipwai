@@ -30,6 +30,12 @@ already given) gets silence and no extensions, never a hang and never a silent d
 is specific to `codegraph`: the menu's options come from `catalog.json["extensions"]`, so a second entry
 appears in it automatically.
 
+Adopting an extension later is the same command again — `./init --extension <key>` — and such a rerun
+leaves Spec Kit alone: once `.specify/integration.json` records an installed integration, `./init` skips
+the bootstrap whenever the argument scan leaves nothing to forward to `specify`, so an extension add (or a
+re-answered axis, or a deferred `--repository` push) finishes without the network reach that installing
+Spec Kit needs.
+
 The menu itself is `assets/toolkit/scripts/extensions/menu.py` — standalone and dependency-free on purpose,
 since it ships *inside* a generated project rather than running from the factory's own package. It is the
 multi-select sibling of the single-select arrow-key menu `cli_prompts.py` asks `./slipwai generate`'s own

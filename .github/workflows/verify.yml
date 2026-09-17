@@ -74,6 +74,21 @@ env:
 # longest job plus however long it waited. `aws` last cost every run ten minutes it did not need to
 # spend, and `azure` beside it is the same shape of job on a second cloud's providers.
 jobs:
+  # TEMPORARY: debugging why the `snapshot`/`release` guard below evaluates false on pushes to `main` on
+  # this instance. Same literal `if:` as `snapshot`, no `needs:`, so it fires immediately. Remove once the
+  # actual value is known — tracked with the user, safe to leave in for now.
+  debug-snapshot-guard:
+    if: github.server_url == 'https://git.treyco.dev' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "debug-snapshot-guard ran: the exact snapshot if evaluated true"
+
+  debug-serverurl-nonempty:
+    if: github.server_url != ''
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "server_url=[${{ github.server_url }}]"
+
   # The production target: `tests/test_aws_stack.py` runs `tofu validate` over every generated stack
   # (downloading the pinned AWS provider once, into the plugin cache), and `tests/test_launcher.py` builds
   # the smallest image the pinned builder makes and proves the migrate task's entrypoint through it — once,

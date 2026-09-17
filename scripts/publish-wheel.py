@@ -123,6 +123,9 @@ def main() -> None:
     if not files:
         raise SystemExit(f"publish-wheel: nothing built for {VERSION} under dist/; run `make wheel` first")
 
+    # Stripped for everything derived from the endpoint — `<url>/simple`, the forge check, `retire()` — and
+    # never for the upload itself: PyPI's legacy endpoint answers 400 to the same URL without its trailing
+    # slash, so twine is given exactly what the caller asked for.
     url = args.url.rstrip("/")
     index = args.index_url.rstrip("/") if args.index_url else f"{url}/simple"
     gitea = "/api/packages/" in url
@@ -133,7 +136,7 @@ def main() -> None:
             print(f"already published: {path.name}")
     if missing:
         subprocess.run(
-            [sys.executable, "-m", "twine", "upload", "--non-interactive", "--repository-url", url,
+            [sys.executable, "-m", "twine", "upload", "--non-interactive", "--repository-url", args.url,
              "-u", args.user, "-p", token, *map(str, missing)],
             check=True,
         )

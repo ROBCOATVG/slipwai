@@ -81,7 +81,7 @@ jobs:
     if: github.server_url == 'https://git.treyco.dev' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - run: echo "debug-snapshot-guard ran: the exact snapshot if evaluated true"
+      - run: echo "debug-snapshot-guard ran - the exact snapshot if evaluated true"
 
   debug-serverurl-nonempty:
     if: github.server_url != ''

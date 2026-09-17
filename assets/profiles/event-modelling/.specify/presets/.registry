@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "presets": {
+    "event-modelling": {
+      "version": "1.0.0",
+      "priority": 10,
+      "enabled": true,
+      "description": "Event-sourced Decider + hexagonal + ATDD templates",
+      "source": "local"
+    }
+  }
+}

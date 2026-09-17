@@ -1,0 +1,42 @@
+name: publish package
+
+# The pip-installable factory, published to PyPI after the canonical forge's
+# complete gate passes. GitHub is a mirror and this job is guarded against
+# publishing there.
+#
+# This is a retry, not the release path. It used to fire on `v*`, which is the same atomic push that starts
+# `verify` on `main` — so it published beside the gate and would have published over a red one. Both
+# publishing steps now live in verify.yml's `release` job, `needs:`-gated on every job of the tag's own run.
+# What is left here is the case that gate cannot help with: the gate passed, the upload failed, and the
+# version is spent because a tag that has been fetched must never move ([AGENTS.md](../../AGENTS.md)). Then
+# this is dispatched by hand against the same tag, to retry the upload alone.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    if: github.server_url == 'https://git.treyco.dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-publish.txt
+      # Build, then install the wheel into a clean environment and scaffold with it before anything is
+      # uploaded: a wheel missing one bundled file installs fine and fails on the first project.
+      - run: make test-wheel
+      # PyPI API token, held only as a canonical-repository secret. A name and
+      # version can be uploaded once; the script skips files already present.
+      - run: >
+          make publish-wheel
+          PYPI_URL="https://upload.pypi.org/legacy/"
+          PYPI_INDEX="https://pypi.org/simple"
+          PYPI_USER="__token__"
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}

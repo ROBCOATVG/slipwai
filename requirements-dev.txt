@@ -1,0 +1,11 @@
+# The factory's own development tooling, pinned exactly as a generated project's is. Installed into
+# `.python-tools` by `scripts/verify`, which is what `make lint` and `make verify` run.
+#
+# Same ruff the generated Python project gets, deliberately: the factory should not be checked by a
+# looser tool than the one it hands its own output.
+ruff==0.16.3
+# The type checker. Nearly everything here is a string — an axis, a feature, a backend key, a language
+# family — and the distinction between two of them (`java-spring` the backend, `java` the family) is one
+# this package leans on everywhere. mypy is what catches a backend handed where a family was meant, and
+# an Optional read as though it were not; `compileall` catches neither.
+mypy==2.3.1

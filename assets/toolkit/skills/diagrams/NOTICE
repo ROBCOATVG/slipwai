@@ -1,0 +1,8 @@
+Current-tree rights status
+
+The current `SKILL.md`, this notice, and `references/source-notes.md` are an
+original rewrite covered by this repository's root MIT licence. No imported
+diagram reference or example text remains in the current bundle.
+
+`references/source-notes.md` records the historical source audit and why no
+expression from that source is present in this public tree.

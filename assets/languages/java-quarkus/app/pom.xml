@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The service's build. One module, no parent.
+
+  `./mvnw`, not `mvn`: the wrapper is committed at `apps/service/mvnw` so the Maven version is pinned the
+  way this ecosystem spells a pin. It is the script-only wrapper (`distributionType=only-script`), which is
+  the only shape the factory can carry — `assets/` is text or it is nothing, and the default wrapper needs a
+  `maven-wrapper.jar` beside the script. The wrapper, its properties and the three analyser configurations
+  under `config/` come from `assets/languages/java/build/`, shared with the Spring Boot backend: they are
+  the language family's files, not this framework's.
+
+  Quarkus owns startup here, and that is a decision with consequences worth stating once: the datasource,
+  its pool, the schema migrations, the readiness probe and the OIDC flow are all the framework's
+  first-party extensions rather than code in this repository. Each one sits *behind* a port the
+  application owns, which is what keeps the hexagon intact while the connection semantics, the migration
+  ledger and the token validation stay maintained by somebody else.
+
+  backing-service:quarkus-rest|postgres|sqlite|keycloak|users-keycloak:begin
+  Every block below between `backing-service:<name>:begin` and `:end` belongs to one selected option.
+  `scripts/backing-services.py` removes a block when that option is dropped, so a dependency and the
+  configuration that reads it disappear together.
+  backing-service:quarkus-rest|postgres|sqlite|keycloak|users-keycloak:end
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.example</groupId>
+  <artifactId>delivery-starter-service</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!--
+      Where the build writes, as an overridable property rather than the fixed `target/`.
+
+      `project.build.directory` is read-only, so `-Dproject.build.directory=...` is silently ignored and
+      this indirection is the only way to move the output. It exists for one reason: `make demo` mounts
+      this checkout into a container, and a container writing `target/` into a mounted tree creates it
+      owned by root — after which the next `mvn` on the host cannot write there and the build fails with a
+      permission error nowhere near its cause. Compose sets MAVEN_ARGS to point this somewhere outside the
+      mount, and the default below is what every ordinary invocation uses.
+
+      The name deliberately avoids `build.directory`, which Maven resolves as `project.build.directory`
+      and reports as an interpolation cycle.
+    -->
+    <service.build.dir>${project.basedir}/target</service.build.dir>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <!-- 25 is the current LTS, and the floor Quarkus 3.33's AOT cache generation needs. -->
+    <maven.compiler.release>25</maven.compiler.release>
+
+    <!-- Quarkus 3.33 is the LTS stream: supported to March 2027, with Java 25 fully supported. -->
+    <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+    <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
+    <quarkus.platform.version>3.33.3</quarkus.platform.version>
+
+    <!--
+      Every version is exact. A range or a `LATEST` would make two runs of the same commit resolve
+      different artifacts, which is the one thing a gate the constitution calls deterministic cannot do.
+    -->
+    <assertj.version>3.27.7</assertj.version>
+    <error-prone.version>2.50.0</error-prone.version>
+    <nullaway.version>0.14.0</nullaway.version>
+    <compiler-plugin.version>3.15.0</compiler-plugin.version>
+    <surefire-plugin.version>3.5.6</surefire-plugin.version>
+    <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
+    <checkstyle.version>14.0.0</checkstyle.version>
+    <pmd-plugin.version>3.28.0</pmd-plugin.version>
+    <pmd.version>7.26.0</pmd.version>
+    <spotbugs-plugin.version>4.10.4.0</spotbugs-plugin.version>
+    <exec-plugin.version>3.6.1</exec-plugin.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>${quarkus.platform.group-id}</groupId>
+        <artifactId>${quarkus.platform.artifact-id}</artifactId>
+        <version>${quarkus.platform.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- CDI, which is what "the framework owns the composition root" means in practice here. -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-arc</artifactId>
+    </dependency>
+    <!--
+      The scheduler, which is what maintains an `async` read model: where this project has scheduled
+      projections, they tick a catch-up pass with it. Quarkus' own, so nothing in this project starts a thread, keeps one
+      alive or remembers to stop it — and it is the simple in-process scheduler rather than Quartz, which
+      is the right size for "call this every second" and needs no store of its own.
+    -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-scheduler</artifactId>
+    </dependency>
+    <!--
+      JSpecify, which is what makes NullAway usable rather than merely enabled. NullAway treats every
+      reference in an annotated package as non-null unless it is marked, so a method that genuinely may
+      return nothing needs a way to say so; without one the only options are to weaken the check or to lie
+      to it. Provided scope: annotations with class retention are read by the compiler and are not needed
+      at run time. Version managed by the Quarkus BOM.
+    -->
+    <dependency>
+      <groupId>org.jspecify</groupId>
+      <artifactId>jspecify</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
+      The production image, built by the framework's own Jib integration when `make build` asks for it
+      (`-Dquarkus.container-image.build=true`) and inert otherwise: no Dockerfile to keep in step with the
+      layout. The base image is pinned in application.properties. Harmless in a project with no production
+      target, where nothing ever asks.
+    -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-container-image-jib</artifactId>
+    </dependency>
+
+    <!-- backing-service:quarkus-rest:begin -->
+    <!--
+      The transport. `quarkus-rest` is the framework's own HTTP layer and `quarkus-rest-jackson` is what
+      makes a record a JSON body; `quarkus-smallrye-health` serves the readiness probe, which is why no
+      `/health` route is written by hand anywhere in this project.
+    -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-rest</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-rest-jackson</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-smallrye-health</artifactId>
+    </dependency>
+    <!-- backing-service:quarkus-rest:end -->
+
+    <!-- backing-service:postgres:begin -->
+    <!--
+      The event store's real adapter. `quarkus-jdbc-postgresql` brings the driver, `quarkus-agroal` the
+      connection pool and its transactions — and Agroal registers a readiness health check for each
+      datasource on its own, so two axes are answered by one dependency. `quarkus-flyway` brings Flyway
+      and wires it to that datasource; the migrations under `src/main/resources/db/migration` are applied
+      by `make migrate` rather than at start-up, because writing to a database stays an explicit act.
+    -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jdbc-postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-agroal</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-flyway</artifactId>
+    </dependency>
+    <!--
+      Flyway's Postgres support, which since Flyway 10 is a module of its own rather than part of the core.
+      Declared explicitly because that is what the extension expects: without it, Flyway resolves no plugin
+      for a `jdbc:postgresql:` URL and refuses to run. Version managed by the Quarkus BOM.
+    -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
+    <!--
+      Jackson, for the event payload. `payload` is a JSONB column and the port carries it as a
+      `Map<String, Object>`, so something has to encode it — and it must be here rather than borrowed from
+      the transport, or an event store chosen with no transport would not compile.
+    -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jackson</artifactId>
+    </dependency>
+    <!-- backing-service:postgres:end -->
+
+    <!-- backing-service:sqlite:begin -->
+    <!--
+      The SQLite driver, taken straight from the ecosystem rather than through an extension, and that is a
+      deliberate exception to this project's "use the framework's integration" rule. Quarkus publishes no
+      first-party SQLite JDBC extension, and the Quarkiverse one tracks Quarkus 3.0 — thirty-odd minor
+      versions behind this LTS. Adopting it would pin the whole build to a two-year-old platform, so the
+      adapter opens its own `SQLiteDataSource` instead. It needs no pool: SQLite serialises writers, so
+      one connection is not a limitation but the correct configuration.
+    -->
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <version>3.53.2.1</version>
+    </dependency>
+    <!-- Jackson, for the event payload. See the note in the Postgres block. -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jackson</artifactId>
+    </dependency>
+    <!-- backing-service:sqlite:end -->
+
+    <!-- backing-service:keycloak|users-keycloak:begin -->
+    <!--
+      The OIDC client, serving both identity questions: staff (the default tenant) and the product's own
+      users (the named `customers` tenant), so it stays while either is answered with Keycloak. The
+      Authorization Code flow, PKCE, `state`, `nonce`, JWKS retrieval and full token validation are all this
+      extension's, and hand-rolling any of them would be a security defect rather than a style choice. What
+      this project still owes is in `adapters/driving/http/auth/` and `adapters/driving/http/users/`.
+    -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-oidc</artifactId>
+    </dependency>
+    <!-- backing-service:keycloak|users-keycloak:end -->
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!--
+      Coverage through Quarkus's own JaCoCo extension rather than the plain plugin: `@QuarkusTest` runs
+      the application under its own class loader, and the standalone agent under-reports everything
+      exercised that way.
+    -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jacoco</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- backing-service:quarkus-rest:begin -->
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- backing-service:quarkus-rest:end -->
+  </dependencies>
+
+  <build>
+    <directory>${service.build.dir}</directory>
+    <plugins>
+      <plugin>
+        <groupId>${quarkus.platform.group-id}</groupId>
+        <artifactId>quarkus-maven-plugin</artifactId>
+        <version>${quarkus.platform.version}</version>
+        <extensions>true</extensions>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build</goal>
+              <goal>generate-code</goal>
+              <goal>generate-code-tests</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!--
+        `javac` is Java's type checker, so `make typecheck` is this plugin — with two analysers riding
+        along inside the same compile rather than as a separate pass.
+
+        Error Prone augments javac's own checks; NullAway adds null-safety enforcement over the packages
+        named below, and only those, so third-party code is not held to an annotation convention it never
+        adopted. Both need the compiler forked with the `jdk.compiler` internals opened to them, which is
+        what the `add-exports` compiler flags below are for: since JDK 16 those packages are encapsulated, and
+        without the flags the plugin cannot load at all.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${compiler-plugin.version}</version>
+        <configuration>
+          <fork>true</fork>
+          <compilerArgs>
+            <arg>-XDcompilePolicy=simple</arg>
+            <arg>--should-stop=ifError=FLOW</arg>
+            <arg>-Xplugin:ErrorProne -XepOpt:NullAway:AnnotatedPackages=com.example.deliverystarter -Xep:NullAway:ERROR</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
+          </compilerArgs>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.errorprone</groupId>
+              <artifactId>error_prone_core</artifactId>
+              <version>${error-prone.version}</version>
+            </path>
+            <path>
+              <groupId>com.uber.nullaway</groupId>
+              <artifactId>nullaway</artifactId>
+              <version>${nullaway.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+
+      <!--
+        Surefire runs `*Test`; Failsafe runs `*IT`. That split is what keeps `make verify` free of
+        infrastructure — a test that needs a real database is named `*IT` and the gate never compiles it
+        into the run. `make test-integration` invokes Failsafe directly.
+
+        The log manager property is Quarkus's requirement rather than a preference: without it the JVM
+        installs the default one before Quarkus can, and every test logs a warning about it.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire-plugin.version}</version>
+        <configuration>
+          <systemPropertyVariables>
+            <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+            <maven.home>${maven.home}</maven.home>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${surefire-plugin.version}</version>
+        <configuration>
+          <systemPropertyVariables>
+            <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+            <maven.home>${maven.home}</maven.home>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+
+      <!--
+        `make lint` runs these three. Each reads a committed configuration under `config/`, so the rules
+        are this project's to tune rather than whatever the plugin's default happened to be on the day it
+        was generated. Both tool versions are pinned above the plugin's own bundled default, for the same
+        determinism reason every other version here is exact.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${checkstyle-plugin.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>${checkstyle.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <configLocation>config/checkstyle.xml</configLocation>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+          <consoleOutput>true</consoleOutput>
+          <failsOnError>true</failsOnError>
+          <violationSeverity>error</violationSeverity>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>${pmd-plugin.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>net.sourceforge.pmd</groupId>
+            <artifactId>pmd-core</artifactId>
+            <version>${pmd.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>net.sourceforge.pmd</groupId>
+            <artifactId>pmd-java</artifactId>
+            <version>${pmd.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <rulesets>
+            <ruleset>config/pmd-ruleset.xml</ruleset>
+          </rulesets>
+          <includeTests>true</includeTests>
+          <printFailingErrors>true</printFailingErrors>
+          <failOnViolation>true</failOnViolation>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <version>${spotbugs-plugin.version}</version>
+        <configuration>
+          <effort>Max</effort>
+          <threshold>Medium</threshold>
+          <excludeFilterFile>config/spotbugs-exclude.xml</excludeFilterFile>
+        </configuration>
+      </plugin>
+
+      <!-- backing-service:postgres:begin -->
+      <!--
+        `make migrate`. The main class it runs hands Flyway a datasource built from `DATABASE_URL` and
+        nothing else; Flyway itself does the ordering, the `flyway_schema_history` ledger and the
+        one-transaction-per-migration guarantee. Configured here rather than named in the Makefile because
+        the package carries this project's own name.
+      -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec-plugin.version}</version>
+        <configuration>
+          <mainClass>com.example.deliverystarter.migrations.MigrateMain</mainClass>
+          <classpathScope>runtime</classpathScope>
+        </configuration>
+      </plugin>
+      <!-- backing-service:postgres:end -->
+    </plugins>
+  </build>
+</project>

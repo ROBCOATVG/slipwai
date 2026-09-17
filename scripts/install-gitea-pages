@@ -1,0 +1,56 @@
+#!/bin/sh
+# Install gitea-pages as a launchd user agent, mirroring how Homebrew runs Gitea itself.
+#
+# Every GITEA_PAGES_* and GITEA_REPOS_DIR value set when this runs is written into the agent's environment.
+# launchd starts an agent with nothing from the login shell, so without this the daemon would honour the
+# overrides when run by hand and silently ignore them once installed — on 3301, reading Homebrew's default
+# repository path, whatever the shell said.
+set -eu
+
+PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
+LABEL="dev.gitea.pages"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+HOST="${GITEA_PAGES_HOST:-127.0.0.1}"
+PORT="${GITEA_PAGES_PORT:-3301}"
+
+install -m 0755 "$(dirname "$0")/gitea-pages.py" "$PREFIX/bin/gitea-pages"
+mkdir -p "${GITEA_PAGES_ROOT:-$PREFIX/var/gitea-pages}" "$PREFIX/var/log" "$(dirname "$PLIST")"
+
+# The plist is XML, so a value is escaped before it is written into one.
+xml_escape() {
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
+environment=""
+for name in GITEA_REPOS_DIR GITEA_PAGES_ROOT GITEA_PAGES_HOST GITEA_PAGES_PORT GITEA_PAGES_BRANCH GITEA_PAGES_POLL_SECONDS; do
+  eval "value=\${$name:-}"
+  if [ -n "$value" ]; then
+    environment="$environment
+    <key>$name</key><string>$(xml_escape "$value")</string>"
+  fi
+done
+
+cat > "$PLIST" <<PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$PREFIX/bin/gitea-pages</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>$environment
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>$PREFIX/var/log/gitea-pages.log</string>
+  <key>StandardErrorPath</key><string>$PREFIX/var/log/gitea-pages.log</string>
+</dict>
+</plist>
+PLIST_EOF
+
+launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+launchctl bootstrap "gui/$(id -u)" "$PLIST"
+echo "gitea-pages installed and started: http://$HOST:$PORT/"

@@ -1,0 +1,29 @@
+Slipwai
+Copyright (c) 2026 Volaris Group
+
+Slipwai is licensed under the MIT License in LICENSE, except where a nested
+LICENSE or NOTICE states otherwise. The generated project licence is chosen by
+that project's owner; Slipwai deliberately generates an all-rights-reserved
+placeholder instead of granting rights on the owner's behalf.
+
+The skill catalogue includes inherited or adapted material under these
+notices:
+
+- inherited skill-catalogue portions — MIT; copyright Paul Hammond
+- acceptance-review — MIT; copyright Adam Bulmer
+- api-design — MIT; copyright Addy Osmani
+- cli-design — CC BY-SA 4.0; Aanand Prasad, Ben Firshman, Carl Tashian,
+  and Eva Parish
+- codebase-design — MIT; copyright Matt Pocock
+- event-modeling — current adaptation under the root MIT licence; its NOTICE
+  records the CC0-1.0 starting point
+- find-skills — MIT; copyright Vercel, Inc.
+- improve-codebase-architecture — MIT; copyright Matt Pocock
+- reduce-system-complexity — MIT; copyright Adam Bulmer
+- technical-writing — MIT; copyright Adam Bulmer
+- wtf — MIT; copyright Adam Bulmer
+
+The applicable licence notice and exact provenance for each adaptation remain
+beside it under assets/toolkit/skills/. The diagrams skill is an original
+rewrite under Slipwai's root MIT licence; its NOTICE records the current-tree
+rights status.

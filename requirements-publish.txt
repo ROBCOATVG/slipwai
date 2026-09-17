@@ -1,0 +1,40 @@
+# Building and publishing the pip-installable package: `make wheel`, `make test-wheel`, and the publish
+# workflow. Pinned exactly, like requirements-build.txt; the keyring backends twine pulls in on Linux are
+# marked so the same file installs on a laptop of any platform.
+hatchling==1.32.0
+build==1.6.0
+twine==7.0.0
+# hatchling
+packaging==26.3
+pathspec==1.1.1
+pluggy==1.6.0
+trove-classifiers==2026.6.1.19
+# build
+pyproject_hooks==1.2.0
+# twine
+Pygments==2.21.0
+certifi==2026.7.22
+charset-normalizer==3.5.1
+docutils==0.23
+id==1.6.1
+idna==3.19
+jaraco.classes==3.4.0
+jaraco.context==6.1.2
+jaraco.functools==4.6.0
+keyring==25.7.0
+markdown-it-py==4.2.0
+mdurl==0.1.2
+more-itertools==11.1.0
+nh3==0.3.7
+readme_renderer==45.0
+requests==2.34.2
+requests-toolbelt==1.0.0
+rfc3986==2.0.0
+rich==15.0.0
+tomlkit==0.15.1
+urllib3==2.7.0
+SecretStorage==3.5.0; sys_platform == "linux"
+jeepney==0.9.0; sys_platform == "linux"
+cryptography==50.0.1; sys_platform == "linux"
+cffi==2.1.1; sys_platform == "linux"
+pycparser==3.0; sys_platform == "linux"

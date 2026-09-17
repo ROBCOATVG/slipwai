@@ -1,0 +1,3 @@
+# Present so //go:embed * always matches at least one file. cmd/migrate ignores everything that is
+# not *.sql, so an empty migration set (Minimum CD's first commit, before any schema) still builds
+# and exits 0. Do not put schema here.

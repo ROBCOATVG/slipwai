@@ -1,0 +1,11 @@
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: cd apps/shop && npm test
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./deploy.sh

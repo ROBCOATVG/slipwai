@@ -1,0 +1,79 @@
+# The Decider and Rehydration
+
+The Decider (Jérémie Chassaing, 2021) is the pure functional core of an event-sourced write model. It is the same pattern the `domain-driven-design` skill introduces in `resources/domain-events.md` — this resource goes deeper on the type, rehydration, the command-handler loop, and composition. Read the DDD version first.
+
+## The Decider Type
+
+A Decider bundles the pure functions and seed value for one aggregate. Adopt **one generic order and keep it repo-wide**; the dominant TypeScript convention (Emmett, delta-base) is `<State, Command, Event>`:
+
+{{example: event-sourcing/decider-type}}
+
+The elements Chassaing enumerates are Command, Event, State, `initialState`, `decide`, `evolve`, and the optional `isTerminal`. Each does exactly one job:
+
+| Element | Type | Responsibility |
+|---------|------|----------------|
+| `initialState` | `State` | The state of a stream with zero events. |
+| `decide` | `(command, state) => Decision<Event>` | **All business rules.** Accept (emit events) or reject (a reason). Pure. |
+| `evolve` | `(state, event) => State` | Apply one already-happened event to state. **No command rules; exhaustive for valid history.** |
+| `isTerminal` | `(state) => boolean` | Optional. True when the aggregate has reached an end state (closed account, finished saga) and accepts no more commands. |
+
+**Note on `initialState` as a value vs a factory.** A frozen immutable literal (`{ status: 'unopened' }`) is safe to share as a constant. If your initial state contains a **mutable container** (a `Map`, a `Set`, an array you spread into), use a factory `() => State` instead, so instances never share one mutable seed.
+
+## `decide` Returns a Decision, Not Just Events
+
+The classic decider signature is `decide: (command, state) => Event[]`, where an empty array means "nothing to do". That works, but it cannot say *why* a command was refused. When callers need the rejection reason, model expected business outcomes as **result types**, not exceptions or silent empties (see the DDD skill's error-modelling section and Scott Wlaschin's `Command → Result<Event list, Error>`). The examples therefore return a `Decision`:
+
+{{example: event-sourcing/decision-result-type}}
+
+The `R` type parameter carries the rejection reasons. `accept`/`reject` widen from `never`, so a `decide` annotated with a **union of literal reasons** keeps them for exhaustive handling — `reject('not-open')` is well-typed only if `'not-open'` is in `R`:
+
+{{example: event-sourcing/decide-withdraw-example}}
+
+(The `SKILL.md` example uses the `R = string` default to stay terse; annotate the reason union like this when you want the compiler to enforce that callers handle every rejection.)
+
+**When a rejection is itself a domain fact, model it as an event instead.** "A withdrawal was declined for insufficient funds" may be something the business wants to keep, analyse for fraud, or notify on. In that case `decide` *accepts* and emits a `WithdrawalDeclined` event rather than returning a rejection. The rule: if downstream needs a durable record of the refusal, it is an event; if the refusal is just this caller's problem right now, it is a `Decision` rejection.
+
+## Rehydration Is a Left Fold
+
+Because `evolve` has the exact shape of a reducer, rebuilding current state ("rehydration" / "replay") is a single fold. This is the identity that makes the whole pattern click — Greg Young's *"Current State is a Left Fold of previous behaviours"*:
+
+{{example: event-sourcing/generic-rehydrate-fold}}
+
+There is no stored current state to keep in sync — there is only the fold. That is why `evolve` must exhaustively handle every **valid persisted event**, including shapes written years ago and mapped forward by tolerant readers/upcasters. Do not re-run current command policy during replay. But a known event in an impossible lifecycle state is corrupt history: throw (or return a dedicated corruption result from the rehydrator) instead of silently returning unchanged state. A no-op is valid only for an event deliberately routed to a composed decider that does not own it.
+
+## The Command Handler Loop
+
+The command handler is the one impure seam that connects the decider to the event store. It is identical for every aggregate — load, fold, decide, append with optimistic concurrency:
+
+{{example: event-sourcing/command-handler-retry-loop}}
+
+**Why the loop re-decides rather than re-appending.** A conflict means another writer appended between your read and your append, so the state you decided against is stale. The loop reloads and re-runs `decide` against fresh state — which may now legitimately reject (e.g. the funds are gone). Never retry by blindly re-appending the events you already computed. The loop is bounded (3 attempts) so a hot stream cannot spin forever; after that it surfaces `concurrent-modification` to the caller. (The `SKILL.md` version omits the loop to show the bare load→decide→append shape; this is the production form.)
+
+## Keep `decide` Deterministic
+
+`decide` must be a pure function of `(command, state)` — no `Date.now()`, no random IDs, no I/O. Pass time and identifiers **in through the command** so tests are deterministic and replay is reproducible:
+
+{{example: event-sourcing/deposit-money-command-with-timestamp}}
+
+The application layer stamps `at`/ids when it builds the command; the domain stays pure. This is the same discipline the `functional` skill applies everywhere. (The DDD skill's `domain-events.md` threads `now` in as an explicit `decide` parameter instead — both keep the decider deterministic. Prefer the command-carried form in an event-sourced handler: the retry loop re-runs `decide` on a version conflict, and a timestamp carried by the command is structurally the same on every attempt.)
+
+## Composition (Advanced)
+
+Deciders compose — Chassaing showed they form a category. You rarely need this, but when one process must coordinate several aggregates it beats hand-rolled glue. Three combinators:
+
+- **`compose(a, b)`** — combine two deciders into one over the **product of their states** and the **sum of their commands/events** (`Either<A, B>`). Routes each message to the decider that owns it.
+- **`adapt(...)`** — retarget an existing decider onto a different command/event/state shape via mapping functions (a profunctor `dimap`). Lets you reuse a generic decider in a specific context.
+- **`many(decider)`** — lift a single-instance decider to a **keyed collection** (`Map<Id, State>`), routing `(id, command)` to the right instance. This is the functional analogue of an aggregate repository.
+
+A **process manager / reaction** then turns one decider's events into another's commands — the same pure `(state, event) => [newState, commands]` shape the DDD `domain-events.md` describes. Keep these as plain functions over data; do not reach for classes.
+
+## Checklist
+
+- [ ] One generic order chosen and used everywhere (`<State, Command, Event>` recommended)
+- [ ] `decide` is pure, holds all rules, returns `Decision` (accept-with-events or reject-with-reason)
+- [ ] Rejections that must be remembered are modelled as events, not `Decision` rejections
+- [ ] `evolve` applies every valid persisted event; deliberately irrelevant composed events may no-op, while impossible owned transitions surface corruption
+- [ ] Time and ids enter through the command; `decide` calls no clock, random, or I/O
+- [ ] Rehydration is `events.reduce(evolve, initialState)` — no separately stored current state
+- [ ] The command handler appends with `expectedVersion` and reload-re-decides on conflict
+- [ ] `isTerminal` used where an aggregate has a genuine end state

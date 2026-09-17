@@ -1,0 +1,12 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated and ignored build output"
+paths = [
+  '''(^|/)\.build-tools/''',
+  '''(^|/)\.python-tools/''',
+  '''(^|/)build/''',
+  '''(^|/)dist/''',
+  '''(^|/)release/''',
+]

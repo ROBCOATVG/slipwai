@@ -1,0 +1,19 @@
+{
+  "name": "delivery-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check --error-on-warnings",
+    "format": "biome format --write",
+    "test": "vitest run",
+    "verify": "npm run lint && npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "@types/node": "26.2.0",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  }
+}

@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The service's build. One module, no parent.
+
+  `./mvnw`, not `mvn`: the wrapper is committed at `apps/service/mvnw` so the Maven version is pinned the
+  way this ecosystem spells a pin. It is the script-only wrapper (`distributionType=only-script`), which is
+  the only shape the factory can carry — `assets/` is text or it is nothing, and the default wrapper needs a
+  `maven-wrapper.jar` beside the script. The wrapper, its properties and the three analyser configurations
+  under `config/` come from `assets/languages/java/build/`, shared with the Quarkus backend: they are the
+  language family's files, not this framework's.
+
+  `spring-boot-dependencies` is imported as a BOM rather than inherited as a parent, deliberately. The
+  parent would also bring plugin management this project overrides anyway, and it would take ownership of
+  `<build>` — which cannot happen here, because `service.build.dir` below has to stay settable. Every
+  dependency version still comes from the BOM; every plugin version is pinned in `properties`.
+
+  Spring Boot owns startup here, and that is a decision with consequences worth stating once: the
+  datasource and its pool, the schema migrations, the readiness probe and the OIDC token validation are all
+  Spring Boot's own starters rather than code in this repository. Each one sits *behind* a port the
+  application owns, which is what keeps the hexagon intact while the connection semantics, the migration
+  ledger and the signature checking stay maintained by somebody else.
+
+  backing-service:spring-web|postgres|sqlite|keycloak|users-keycloak:begin
+  Every block below between `backing-service:<name>:begin` and `:end` belongs to one selected option.
+  `scripts/backing-services.py` removes a block when that option is dropped, so a dependency and the
+  configuration that reads it disappear together.
+  backing-service:spring-web|postgres|sqlite|keycloak|users-keycloak:end
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.example</groupId>
+  <artifactId>delivery-starter-service</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!--
+      Where the build writes, as an overridable property rather than the fixed `target/`.
+
+      `project.build.directory` is read-only, so `-Dproject.build.directory=...` is silently ignored and
+      this indirection is the only way to move the output. It exists for one reason: `make demo` mounts
+      this checkout into a container, and a container writing `target/` into a mounted tree creates it
+      owned by root — after which the next `mvn` on the host cannot write there and the build fails with a
+      permission error nowhere near its cause. Compose sets MAVEN_ARGS to point this somewhere outside the
+      mount, and the default below is what every ordinary invocation uses.
+
+      The name deliberately avoids `build.directory`, which Maven resolves as `project.build.directory`
+      and reports as an interpolation cycle.
+    -->
+    <service.build.dir>${project.basedir}/target</service.build.dir>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <!-- 25 is the current LTS. Spring Boot 4.1 needs 17 at minimum and supports through 26. -->
+    <maven.compiler.release>25</maven.compiler.release>
+
+    <!-- Spring Boot 4.1, the current line. 4.0 is still maintained; new projects start on the newer one. -->
+    <spring-boot.version>4.1.1</spring-boot.version>
+
+    <!--
+      Every version is exact. A range or a `LATEST` would make two runs of the same commit resolve
+      different artifacts, which is the one thing a gate the constitution calls deterministic cannot do.
+    -->
+    <error-prone.version>2.50.0</error-prone.version>
+    <nullaway.version>0.14.0</nullaway.version>
+    <compiler-plugin.version>3.15.0</compiler-plugin.version>
+    <surefire-plugin.version>3.5.6</surefire-plugin.version>
+    <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
+    <checkstyle.version>14.0.0</checkstyle.version>
+    <pmd-plugin.version>3.28.0</pmd-plugin.version>
+    <pmd.version>7.26.0</pmd.version>
+    <spotbugs-plugin.version>4.10.4.0</spotbugs-plugin.version>
+    <jacoco-plugin.version>0.8.14</jacoco-plugin.version>
+    <exec-plugin.version>3.6.1</exec-plugin.version>
+    <pitest-plugin.version>1.25.9</pitest-plugin.version>
+    <pitest-junit5.version>1.2.3</pitest-junit5.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!--
+      The container, which is what "the framework owns the composition root" means in practice here. Not
+      `-web`: a project that answered `none` to the HTTP axis still has Spring Boot owning startup,
+      configuration binding and dependency injection, and the transport is added by its own block below.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter</artifactId>
+    </dependency>
+    <!--
+      JSpecify, which is what makes NullAway usable rather than merely enabled. NullAway treats every
+      reference in an annotated package as non-null unless it is marked, so a method that genuinely may
+      return nothing needs a way to say so; without one the only options are to weaken the check or to lie
+      to it. Spring Framework 7 declares its own APIs with these annotations and checks them with NullAway
+      in its own build, so this is the ecosystem's convention here rather than a local one. Provided scope:
+      annotations with class retention are read by the compiler and are not needed at run time. Version
+      managed by the Spring Boot BOM.
+    -->
+    <dependency>
+      <groupId>org.jspecify</groupId>
+      <artifactId>jspecify</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- backing-service:spring-web:begin -->
+    <!--
+      The transport. `spring-boot-starter-web` is Spring MVC on embedded Tomcat, and
+      `spring-boot-starter-actuator` serves the readiness probe — which is why no `/health` route is written
+      by hand anywhere in this project. Requests are handled on virtual threads
+      (`spring.threads.virtual.enabled` in `application.properties`), so blocking straight-line code in an
+      adapter is the correct style rather than a scalability problem.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <!--
+      The test half of that transport, and it is not optional. Spring Boot 4 ships a test starter per
+      regular starter, and `spring-boot-starter-test` carries none of them: without this,
+      `@AutoConfigureMockMvc` is not on the classpath at all. It is also what `@SpringBootTest` no longer
+      does by itself — MockMvc has to be asked for now — so the annotation and this dependency arrive
+      together or neither is any use.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- backing-service:spring-web:end -->
+
+    <!-- backing-service:postgres:begin -->
+    <!--
+      The event store's real adapter. `spring-boot-starter-jdbc` brings HikariCP and Spring's transaction
+      management, and the PostgreSQL driver is the JDBC half of it. `spring-boot-starter-flyway` brings
+      Flyway and wires it to that datasource; the migrations under `src/main/resources/db/migration` are
+      applied by `make migrate` rather than at start-up, because writing to a database stays an explicit
+      act. In Spring Boot 4 the starter is required rather than optional: auto-configuration moved into
+      per-technology modules, so `flyway-core` on its own configures nothing and fails silently.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
+    </dependency>
+    <!--
+      Flyway's Postgres support, which since Flyway 10 is a module of its own rather than part of the core.
+      Declared explicitly because that is what Flyway expects: without it, it resolves no plugin for a
+      `jdbc:postgresql:` URL and refuses to run. Version managed by the Spring Boot BOM.
+    -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
+    <!--
+      Jackson, for the event payload. `payload` is a JSONB column and the port carries it as a
+      `Map<String, Object>`, so something has to encode it — and it must be here rather than borrowed from
+      the transport, or an event store chosen with no transport would not compile.
+
+      Jackson 2 (`com.fasterxml.jackson`), not the Jackson 3 (`tools.jackson`) that Spring Boot 4 uses for
+      HTTP message conversion. That is a constraint rather than a preference, and it is worth knowing which:
+      the store adapters are shared verbatim with the Quarkus backend — one copy of the event-log encoding
+      for the whole Java family, because two copies of that drift and nothing here would notice — and the
+      Quarkus platform BOM does not manage `tools.jackson` at all. Its own extensions bring Jackson 2. So
+      writing the shared adapter against Jackson 3 would leave the Quarkus side hand-pinning a major version
+      outside any BOM *and* still carrying Jackson 2 underneath it: the same two-majors situation, moved
+      rather than removed.
+
+      Both BOMs pin the same Jackson 2 (2.21.5 today), so the shared adapter compiles against identical
+      bytes on both backends, and both Jackson lines are actively released — 2.x and 3.x shipped within days
+      of each other. The cost that remains is real but narrow: a project with both this store and the web
+      transport has two Jackson majors on its classpath, which coexist by design (different coordinates,
+      different packages).
+
+      Revisit this when the Quarkus platform manages Jackson 3 — at that point the two backends can move
+      together and the shared adapter can go with them. Until then, moving one alone means giving up the
+      sharing, which is the more expensive half of the trade.
+    -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <!-- backing-service:postgres:end -->
+
+    <!-- backing-service:sqlite:begin -->
+    <!--
+      The SQLite driver, taken straight from the ecosystem: Spring Boot has no SQLite starter and needs
+      none, because the adapter opens its own `SQLiteDataSource`. It needs no pool either — SQLite
+      serialises writers, so one connection is not a limitation but the correct configuration. Version
+      managed by the Spring Boot BOM, which knows this driver.
+    -->
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+    </dependency>
+    <!-- Jackson, for the event payload. See the note in the Postgres block. -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <!-- backing-service:sqlite:end -->
+
+    <!-- backing-service:keycloak|users-keycloak:begin -->
+    <!--
+      The OIDC client, serving both identity questions: staff (the `app` realm) and the product's own users
+      (the `customers` realm), so it stays while either is answered with Keycloak. JWKS retrieval and
+      rotation, signature verification, and the `iss`, `aud` and `exp` checks are all Spring Security's, and
+      hand-rolling any of them would be a security defect rather than a style choice. Resource server rather
+      than login client: this backend serves a JSON API, so it validates bearer tokens rather than driving a
+      browser flow. What this project still owes is in `adapters/driving/http/auth/` and
+      `adapters/driving/http/users/`.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <!-- backing-service:keycloak|users-keycloak:end -->
+
+    <!--
+      JUnit 5, AssertJ, MockMvc and Spring's own test context, in one starter. There is deliberately no
+      `spring-boot-docker-compose` and no Testcontainers here: Spring Boot's development-time services
+      would start a throwaway database for an unconfigured datasource, and `make verify` has to run with no
+      Docker at all. See the guard in `application.properties`.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <directory>${service.build.dir}</directory>
+    <plugins>
+      <!--
+        Repackages the jar into a runnable one and provides `spring-boot:run`, which is what `make dev`
+        invokes. `spring-boot:run` is also what makes an edit visible without a restart: it runs the
+        application from the exploded classes, so `./mvnw compile` in another terminal is picked up.
+      -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>${spring-boot.version}</version>
+        <!--
+          `spring-boot:build-image` is how `make build` makes the production image — the framework's own
+          buildpack build, no Dockerfile — and the builder is pinned so two builds of one commit agree.
+          Paketo's Noble Java tiny builder publishes amd64 and arm64, which is what lets a laptop run the
+          image it built while the pipeline builds for Fargate. Unused in a project with no production target.
+        -->
+        <configuration>
+          <image>
+            <builder>paketobuildpacks/builder-noble-java-tiny:0.0.176</builder>
+          </image>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!--
+        `javac` is Java's type checker, so `make typecheck` is this plugin — with two analysers riding
+        along inside the same compile rather than as a separate pass.
+
+        Error Prone augments javac's own checks; NullAway adds null-safety enforcement over the packages
+        named below, and only those, so third-party code is not held to an annotation convention it never
+        adopted. Both need the compiler forked with the `jdk.compiler` internals opened to them, which is
+        what the `add-exports` compiler flags below are for: since JDK 16 those packages are encapsulated, and
+        without the flags the plugin cannot load at all.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${compiler-plugin.version}</version>
+        <configuration>
+          <fork>true</fork>
+          <compilerArgs>
+            <arg>-XDcompilePolicy=simple</arg>
+            <arg>--should-stop=ifError=FLOW</arg>
+            <arg>-Xplugin:ErrorProne -XepOpt:NullAway:AnnotatedPackages=com.example.deliverystarter -Xep:NullAway:ERROR</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
+            <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
+          </compilerArgs>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.errorprone</groupId>
+              <artifactId>error_prone_core</artifactId>
+              <version>${error-prone.version}</version>
+            </path>
+            <path>
+              <groupId>com.uber.nullaway</groupId>
+              <artifactId>nullaway</artifactId>
+              <version>${nullaway.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+
+      <!--
+        Surefire runs `*Test`; Failsafe runs `*IT`. That split is what keeps `make verify` free of
+        infrastructure — a test that needs a real database is named `*IT` and the gate never compiles it
+        into the run. `make test-integration` invokes Failsafe directly.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire-plugin.version}</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${surefire-plugin.version}</version>
+      </plugin>
+
+      <!--
+        `make lint` runs these three. Each reads a committed configuration under `config/`, so the rules
+        are this project's to tune rather than whatever the plugin's default happened to be on the day it
+        was generated — and those files are the language family's, shared with the Quarkus backend, so a
+        rule tuned here is tuned for Java rather than for one framework. Both tool versions are pinned
+        above the plugin's own bundled default, for the same determinism reason every other version here is
+        exact.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${checkstyle-plugin.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>${checkstyle.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <configLocation>config/checkstyle.xml</configLocation>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+          <consoleOutput>true</consoleOutput>
+          <failsOnError>true</failsOnError>
+          <violationSeverity>error</violationSeverity>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>${pmd-plugin.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>net.sourceforge.pmd</groupId>
+            <artifactId>pmd-core</artifactId>
+            <version>${pmd.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>net.sourceforge.pmd</groupId>
+            <artifactId>pmd-java</artifactId>
+            <version>${pmd.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <rulesets>
+            <ruleset>config/pmd-ruleset.xml</ruleset>
+          </rulesets>
+          <includeTests>true</includeTests>
+          <printFailingErrors>true</printFailingErrors>
+          <failOnViolation>true</failOnViolation>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <version>${spotbugs-plugin.version}</version>
+        <configuration>
+          <effort>Max</effort>
+          <threshold>Medium</threshold>
+          <excludeFilterFile>config/spotbugs-exclude.xml</excludeFilterFile>
+        </configuration>
+      </plugin>
+
+      <!--
+        Coverage, through the plain JaCoCo agent. Spring's test context runs the application in the same
+        class loader as the test, so nothing here needs the framework-specific coverage integration the
+        Quarkus backend uses.
+      -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco-plugin.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!--
+        `make mutation`. Wired up rather than left as a placeholder, and scoped rather than pointed at
+        everything — both halves matter.
+
+        Wired up, because Spring Boot is the configuration PIT actually supports: pitest issue #1287,
+        which is why the Quarkus backend here ships a documented placeholder instead, reports the timeouts
+        as specific to `@QuarkusTest` and working under Spring. Nothing in this repository's gates runs
+        this target (docs/backend-obligations.md section 2), so a wired-up target that did not work would
+        commit green and stay green — which is exactly why it was run by hand before being committed.
+
+        Scoped, because a surviving mutant only means something where the tests are about behaviour. So:
+
+          1. targetClasses — the domain and the ports. Framework-free by construction, which is the whole
+             reason the hexagon puts them there.
+          2. targetTests — the plain JUnit tests over those packages. `*IT` is excluded, since PIT would
+             re-run a database suite once per mutant.
+          3. pitest-junit5-plugin as a dependency of *this plugin*, not of the project. Declared as a
+             project dependency, PIT reports "0 tests found" and does nothing, which is the most common way
+             a first PIT setup silently passes.
+
+        Widen `targetClasses` as use cases arrive; do not widen it to the adapters, whose tests are about
+        wiring rather than about rules.
+      -->
+      <plugin>
+        <groupId>org.pitest</groupId>
+        <artifactId>pitest-maven</artifactId>
+        <version>${pitest-plugin.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-junit5-plugin</artifactId>
+            <version>${pitest-junit5.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <targetClasses>
+            <param>com.example.deliverystarter.health.*</param>
+            <param>com.example.deliverystarter.application.ports.events.*</param>
+            <param>com.example.deliverystarter.application.ports.readmodels.*</param>
+            <param>com.example.deliverystarter.config.*</param>
+            <param>com.example.deliverystarter.adapters.driving.http.auth.*</param>
+            <param>com.example.deliverystarter.adapters.driving.http.users.*</param>
+          </targetClasses>
+          <targetTests>
+            <param>com.example.deliverystarter.*Test</param>
+          </targetTests>
+          <excludedTestClasses>
+            <param>com.example.deliverystarter.*IT</param>
+          </excludedTestClasses>
+          <!--
+            The framework-wiring classes that live in otherwise-in-scope packages. `KeycloakRoles`,
+            `CustomerIdentity` and `DatabaseUrl` are decisions and belong in the run; `SecurityConfig`,
+            `CustomerSecurityConfig` and the `EnvironmentPostProcessor` beside them are how those decisions
+            get plugged into Spring, and mutating a filter-chain builder or a property-source insertion
+            produces survivors nobody should act on — you would be writing a test that asserts Spring's own
+            wiring. Verified rather than assumed: with these in scope the first run reported 21 mutations
+            with no coverage, all of them here. Exclude a class when the honest test for it would be an
+            integration test; the trailing `*` on the customer chain takes its nested `CurrentCustomer`
+            with it, which reads Spring's security context and is wiring for the same reason.
+          -->
+          <excludedClasses>
+            <param>com.example.deliverystarter.adapters.driving.http.auth.SecurityConfig</param>
+            <param>com.example.deliverystarter.adapters.driving.http.users.CustomerSecurityConfig*</param>
+            <param>com.example.deliverystarter.config.DatabaseUrlEnvironmentPostProcessor</param>
+          </excludedClasses>
+          <outputFormats>
+            <param>HTML</param>
+            <param>XML</param>
+          </outputFormats>
+          <!--
+            Fail when PIT finds nothing to mutate, rather than passing. The default `false` is meant for a
+            module with no code yet, and it is the wrong answer here: `targetClasses` below always matches
+            classes, so "no mutations" can only mean the run was misconfigured — a wrong scope, or a flag
+            that made pitest skip the project. Since no gate runs this target, a silent pass is a mutation
+            score nobody has that reads like one everybody passed. This is the line that makes that noisy.
+
+            No mutation *threshold* though: a score nobody has looked at yet is not a gate. Read the
+            survivors in `target/pit-reports/`, then decide what to require.
+          -->
+          <failWhenNoMutations>true</failWhenNoMutations>
+        </configuration>
+      </plugin>
+
+      <!-- backing-service:postgres:begin -->
+      <!--
+        `make migrate`. The main class it runs hands Flyway a datasource built from `DATABASE_URL` and
+        nothing else; Flyway itself does the ordering, the `flyway_schema_history` ledger and the
+        one-transaction-per-migration guarantee. Configured here rather than named in the Makefile because
+        the package carries this project's own name.
+      -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec-plugin.version}</version>
+        <configuration>
+          <mainClass>com.example.deliverystarter.migrations.MigrateMain</mainClass>
+          <classpathScope>runtime</classpathScope>
+        </configuration>
+      </plugin>
+      <!-- backing-service:postgres:end -->
+    </plugins>
+  </build>
+</project>

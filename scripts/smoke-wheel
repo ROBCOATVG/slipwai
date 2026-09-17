@@ -1,0 +1,17 @@
+#!/bin/sh
+# Install the wheel in dist/ into a throwaway virtual environment and prove the `slipwai` it puts on the PATH
+# scaffolds a complete repository on its own — the same proof the frozen executable gets, through the same
+# script, because an installed package and a frozen one fail in the same place: a bundled file that did not
+# make it in.
+set -eu
+
+build_python=${BUILD_PYTHON:-python3}
+venv=.build-tools/wheel-venv
+wheel=$(ls dist/slipwai-*.whl)
+
+# `--without-pip` and the outer interpreter's pip pointed at the venv: the venv never needs `ensurepip`, which
+# a distribution's python is free to leave out (Debian's does).
+rm -rf "$venv"
+"$build_python" -m venv --without-pip "$venv"
+"$build_python" -m pip --python "$venv/bin/python" install --disable-pip-version-check --quiet "$wheel"
+"$build_python" scripts/smoke-executable.py "$venv/bin/slipwai"

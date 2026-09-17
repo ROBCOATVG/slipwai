@@ -1,0 +1,62 @@
+# The manifest that makes this directory a *managed* preset rather than three files that happen to sit
+# where the resolver looks.
+#
+# Why it matters: without it, `specify preset list` reports "⚠️ Corrupted preset — Templates: 0", and
+# `preset info`, `enable`, `disable`, and `set-priority` all fail to find the preset at all. Resolution
+# still limps along off `.specify/presets/.registry`, which is what makes the breakage easy to miss —
+# the templates apply, and only the management commands go dark.
+#
+# This layer is the whole upgrade strategy. Spec Kit owns `.specify/templates/` and hashes every file in
+# `.specify/integrations/*.manifest.json`; anything we change *there* is a merge conflict at every upgrade.
+# Overriding by name from here leaves the core files pristine, so `specify integration upgrade claude`
+# stays a no-argument operation. `make check-speckit` enforces that.
+schema_version: "1.0"
+
+preset:
+  id: "event-modelling"
+  name: "Event Modelling"
+  version: "1.0.0"
+  description: "Event-sourced Decider + hexagonal + ATDD templates"
+  # Maintained here, in the factory that scaffolded this repository: the templates are overlay material
+  # under `assets/profiles/event-modelling/`, and a fix belongs there rather than in this copy.
+  author: "Slipwai"
+  # Where the templates originate. Ported rather than tracked — a generated repository has no update
+  # relationship with either.
+  repository: "https://git.treyco.dev/ROBCOATVG/slipwai"
+  license: "MIT"
+
+requires:
+  # The version this preset has actually been resolved against. Presets predate 0.16, but nothing here
+  # has been verified on an older CLI, so the floor states what is known rather than what is guessed.
+  speckit_version: ">=0.16.0"
+
+# Three of the five core templates. `spec-template` and `checklist-template` are deliberately absent:
+# they carry no event-sourcing commitment, so they fall through to core and pick up upstream improvements
+# for free. Adding an entry here is a decision to maintain that template forever — do it only when the
+# core version would actively mislead.
+provides:
+  templates:
+    - type: "template"
+      name: "constitution-template"
+      file: "templates/constitution-template.md"
+      description: "Ratifiable principles for an event-sourced, hexagonal, ATDD project"
+      replaces: "constitution-template"
+
+    - type: "template"
+      name: "plan-template"
+      file: "templates/plan-template.md"
+      description: "Plan with a Constitution Check table bound to those principles"
+      replaces: "plan-template"
+
+    - type: "template"
+      name: "tasks-template"
+      file: "templates/tasks-template.md"
+      description: "Tasks phased as vertical slices, each with its own RED-GREEN-REFACTOR increment"
+      replaces: "tasks-template"
+
+tags:
+  - "event-sourcing"
+  - "event-modelling"
+  - "hexagonal"
+  - "atdd"
+  - "tdd"

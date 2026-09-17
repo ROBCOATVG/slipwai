@@ -1,0 +1,6 @@
+# The Maven wrapper is the one pair of files here whose line endings are load-bearing, so they are declared
+# rather than left to whatever `core.autocrlf` a contributor's Git happens to be set to. `mvnw` is a POSIX
+# shell script and CRLF would make it unrunnable; `mvnw.cmd` is a batch/PowerShell polyglot that re-reads
+# itself with `Get-Content -Raw`, so LF is not safe there either.
+mvnw text eol=lf
+mvnw.cmd text eol=crlf

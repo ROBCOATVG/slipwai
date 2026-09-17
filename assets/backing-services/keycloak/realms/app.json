@@ -1,0 +1,59 @@
+{
+  "realm": "app",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "clients": [
+    {
+      "clientId": "app-local",
+      "name": "Local application client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "local-only-not-a-real-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "groups": [
+    { "name": "app-admin", "path": "/app-admin" },
+    { "name": "app-operator", "path": "/app-operator" },
+    { "name": "app-viewer", "path": "/app-viewer" }
+  ],
+  "users": [
+    {
+      "username": "staff",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "staff@example.invalid",
+      "firstName": "Local",
+      "lastName": "Staff",
+      "credentials": [{ "type": "password", "value": "staff", "temporary": false }],
+      "groups": ["/app-admin"]
+    }
+  ]
+}

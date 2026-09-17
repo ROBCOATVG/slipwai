@@ -1,0 +1,75 @@
+/*
+ * This project's design tokens: the values every screen is built out of.
+ *
+ * A baseline to react to, not a design. It is deliberately generic — one neutral ramp, one accent, a type
+ * scale and a spacing scale — because a starter that shipped somebody's brand would be a starter every
+ * project has to undo. What it is NOT is browser defaults: a first slice demonstrated on an unstyled page
+ * gets feedback about the page, and the point of a walking skeleton is feedback about the slice.
+ *
+ * `docs/design.md` is where this project writes down what it decided these should be. Replace the values
+ * here with the brand's; every slice with a browser surface reads that page first.
+ *
+ * ── Why custom properties ─────────────────────────────────────────────────────────────────────────────
+ * One place per value, readable in the browser's inspector, changeable at run time, and no build step. A
+ * CSS framework would decide far more than colour for a project that has not yet decided anything, and
+ * would be the first dependency spent on something a stylesheet already does.
+ *
+ * ── Dark mode is the same tokens, not a second stylesheet ─────────────────────────────────────────────
+ * Only the colours are redefined under `prefers-color-scheme: dark`. Everything built on the semantic
+ * names below — surface, text, border — follows without a second rule anywhere, which is the whole reason
+ * the names are semantic rather than `--grey-200`.
+ */
+:root {
+  /* Colour, by role. The ramp is neutral on purpose; the accent is the only hue a screen carries. */
+  --colour-surface: #ffffff;
+  --colour-surface-sunken: #f5f6f7;
+  --colour-surface-raised: #ffffff;
+  --colour-text: #16191d;
+  --colour-text-muted: #5c646e;
+  --colour-border: #d9dde1;
+  --colour-accent: #2f5fd0;
+  --colour-accent-text: #ffffff;
+  --colour-positive: #1f7a44;
+  --colour-negative: #b3261e;
+
+  /* Type. One family stack, and a scale with four steps — a fifth is a decision, not a default. */
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --text-small: 0.875rem;
+  --text-body: 1rem;
+  --text-title: 1.25rem;
+  --text-display: 1.75rem;
+  --line-height: 1.55;
+
+  /* Space. A four-step scale, so a gap is chosen from a list rather than invented per component. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.5rem;
+
+  /* Shape. */
+  --radius: 6px;
+  --radius-large: 10px;
+  --border: 1px solid var(--colour-border);
+  --shadow: 0 1px 2px rgb(22 25 29 / 8%);
+
+  /* The reading column. Wider than this and prose stops being readable. */
+  --measure: 68ch;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --colour-surface: #16191d;
+    --colour-surface-sunken: #101317;
+    --colour-surface-raised: #1d2126;
+    --colour-text: #e9ecef;
+    --colour-text-muted: #9aa3ad;
+    --colour-border: #2f353c;
+    --colour-accent: #7ba3f5;
+    --colour-accent-text: #0e1116;
+    --colour-positive: #5fd08c;
+    --colour-negative: #f2837c;
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  }
+}

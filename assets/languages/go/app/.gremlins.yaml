@@ -1,0 +1,44 @@
+# Gremlins reads this from the module directory when `make mutation` runs (github.com/go-gremlins/gremlins).
+# The target runs it through `scripts/go-mutation.py`, which stages this module beside the workspace modules
+# it imports so Gremlins can build them, and reads the report back — the reasons are at the top of that file.
+#
+# The gate: a run with a surviving mutant fails. It is 99.99 and not 100 because Gremlins 0.6.0 fails a run
+# whose efficacy is at or below the threshold, so 100 fails a perfect run; 99.99 passes only when nothing
+# survived, for any suite under ten thousand tested mutants.
+#
+# It lives here and not on the Makefile line because in Gremlins 0.6.0 `--threshold-efficacy` and the
+# GREMLINS_* environment variables are read as strings and silently gate nothing. Values in this file are read
+# as numbers and gate.
+#
+# `integration` is Gremlins' word for the scope of a run, and it is on: the whole module's tests run against
+# every mutant, and coverage is gathered across packages (`coverpkg`), so a domain package that only an
+# adapter's tests reach counts as covered and is mutated. Off, Gremlins runs only the mutated package's own
+# tests and credits it only with those, and `events` here reads "not covered" on every line while the
+# store's tests exercise all of them. It has nothing to do with Go's `-tags=integration`: no run here sets
+# that tag, so a test behind it is `make test-integration`'s and never a mutant's.
+#
+# `timeout-coefficient`: a mutant's test run may take this many times the coverage run before it counts as
+# timed out. Gremlins' default of 3 marked half the skeleton's mutants timed out on the first run in this
+# scope, and Gremlins leaves a timed-out mutant out of the score altogether — the reason
+# `scripts/go-mutation.py` fails the target when any is: a slow suite is a red run here, not a quietly
+# smaller one. Raise this before lowering the threshold.
+#
+# Only mutants a test reaches are run: "not covered" is reported, never failed, so this fails on a weak test
+# and not on a missing one — `make test`'s coverage gate (`scripts/go-coverage.py`) is where the missing one
+# fails.
+#
+# A survivor is a test to write or an equivalent mutant. Gremlins excludes files, not mutants: `exclude-files`
+# takes regular expressions on the path within this module. The two below are the skeleton's own: `cmd/` is
+# wiring by construction, where a survivor is a test of the framework nobody should write; and
+# `eventstorecontract` is the suite every store adapter runs, shipped as a non-test package so an adapter's
+# tests can import it, where a survivor is a weakness in a test helper and not a rule nothing checks. Lower
+# the threshold only for an equivalent mutant you have named in the commit that lowers it.
+unleash:
+  integration: true
+  coverpkg: "./..."
+  timeout-coefficient: 10
+  threshold:
+    efficacy: 99.99
+  exclude-files:
+    - "cmd/.*"
+    - "eventstorecontract/.*"

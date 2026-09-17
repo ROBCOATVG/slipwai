@@ -1,0 +1,16 @@
+Event-modeling skill provenance
+
+This directory began from jwilger/agent-skills' event-modeling skill, released
+under CC0-1.0. CC0 permits copying, modification, redistribution, and
+relicensing without an attribution requirement.
+
+The current Slipwai adaptation changes the workflow, repository integration,
+model layout, and supporting guidance. It is distributed under Slipwai's
+repository-root MIT License. This provenance note is retained for transparency;
+it does not imply endorsement by the original author.
+
+Source:
+https://github.com/jwilger/agent-skills
+
+CC0-1.0 legal code:
+https://creativecommons.org/publicdomain/zero/1.0/legalcode

@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.DS_Store
+.factory-work/
+/.build-tools/
+/build/
+/dist/
+/release/
+.python-tools/
+.mypy_cache/
+.ruff_cache/
+/.claude/worktrees/
+/.claude/settings.local.json

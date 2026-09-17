@@ -1,0 +1,694 @@
+{
+  "schemaVersion": 8,
+  "default": {
+    "profile": "event-modelling",
+    "target": "none",
+    "backend": "typescript",
+    "framework": {
+      "java": "quarkus"
+    },
+    "frontend": "react-vite",
+    "event-store": "postgres",
+    "http": {
+      "typescript": "fastify",
+      "python": "fastapi",
+      "go": "net-http",
+      "java-quarkus": "quarkus-rest",
+      "java-spring": "spring-web"
+    },
+    "auth": "none",
+    "users": "none"
+  },
+  "targets": {
+    "none": {
+      "label": "Local only \u2014 nothing is deployed anywhere; `make verify` is the end of the road"
+    },
+    "aws": {
+      "label": "AWS \u2014 one ECS service per app deployed blue/green behind its own load balancer, RDS Postgres, Cognito and S3 + CloudFront, provisioned by OpenTofu and deployed by the trunk pipeline",
+      "requires": [
+        "http"
+      ],
+      "reserved": {
+        "anywhere": [
+          "amazon",
+          "aws",
+          "cognito"
+        ]
+      },
+      "managed": true
+    },
+    "azure": {
+      "label": "Azure \u2014 one Container App per app deployed by revision behind the environment's own ingress and managed certificate, PostgreSQL Flexible Server, Entra ID and Static Web Apps, provisioned by OpenTofu and deployed by the trunk pipeline",
+      "requires": [
+        "http"
+      ],
+      "reserved": {
+        "anywhere": [
+          "microsoft",
+          "windows"
+        ],
+        "word": [
+          "access",
+          "app_browsers",
+          "app_code",
+          "app_data",
+          "app_globalresources",
+          "app_localresources",
+          "app_themes",
+          "app_webreferences",
+          "azure",
+          "bing",
+          "bizspark",
+          "biztalk",
+          "cortana",
+          "directx",
+          "dotnet",
+          "dynamics",
+          "excel",
+          "exchange",
+          "forefront",
+          "groove",
+          "hololens",
+          "hyperv",
+          "kinect",
+          "lync",
+          "msdn",
+          "o365",
+          "office",
+          "office365",
+          "onedrive",
+          "onenote",
+          "outlook",
+          "powerpoint",
+          "sharepoint",
+          "skype",
+          "visio",
+          "visualstudio",
+          "web.config",
+          "xbox"
+        ],
+        "prefix": [
+          "login"
+        ]
+      },
+      "managed": true
+    },
+    "existing": {
+      "label": "Existing \u2014 this project deploys to infrastructure it does not own: whatever runs it is described in `docs/deployment.md` and provisioned by nobody here; `make verify` is the gate and nothing is deployed by the factory (experimental, with brownfield adoption)"
+    }
+  },
+  "backends": {
+    "typescript": {
+      "family": "typescript",
+      "label": "TypeScript \u2014 Node and npm workspaces, ESLint, `tsc`, Vitest",
+      "targets": [
+        "none",
+        "existing",
+        "aws",
+        "azure"
+      ]
+    },
+    "python": {
+      "family": "python",
+      "label": "Python \u2014 pip, Ruff, pytest",
+      "targets": [
+        "none",
+        "existing",
+        "aws",
+        "azure"
+      ]
+    },
+    "go": {
+      "family": "go",
+      "label": "Go \u2014 modules, gofmt, `go vet`, `go test`",
+      "targets": [
+        "none",
+        "existing",
+        "aws",
+        "azure"
+      ]
+    },
+    "java-quarkus": {
+      "family": "java",
+      "framework": "quarkus",
+      "label": "Java \u2014 Quarkus owns startup (Agroal, Flyway, SmallRye Health, OIDC); Maven, Checkstyle/PMD/SpotBugs, JUnit 5",
+      "targets": [
+        "none",
+        "existing",
+        "aws",
+        "azure"
+      ]
+    },
+    "java-spring": {
+      "family": "java",
+      "framework": "spring-boot",
+      "label": "Java \u2014 Spring Boot owns startup (HikariCP, Flyway, Actuator, Spring Security); Maven, Checkstyle/PMD/SpotBugs, JUnit 5",
+      "targets": [
+        "none",
+        "existing",
+        "aws",
+        "azure"
+      ]
+    }
+  },
+  "frontends": {
+    "none": {
+      "capabilities": []
+    },
+    "react-vite": {
+      "capabilities": [
+        "frontend",
+        "typescript",
+        "react",
+        "vite"
+      ]
+    }
+  },
+  "axes": {
+    "event-store": {
+      "prompt": "Event store",
+      "description": "Where events live. Every answer is an append-only log behind one port, and the in-memory adapter ships with all of them, so `make verify` needs no Docker whichever store is chosen",
+      "profiles": [
+        "event-modelling"
+      ],
+      "absent": "memory",
+      "always": [
+        "memory"
+      ],
+      "options": {
+        "memory": {
+          "capabilities": [
+            "event-store-memory"
+          ],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "In-memory \u2014 zero infrastructure, loses all truth on restart. The adapter the port's contract runs against in `make verify`",
+          "features": [],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ]
+        },
+        "sqlite": {
+          "capabilities": [
+            "event-store-sqlite"
+          ],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "SQLite \u2014 a real append-only log in one file, no container. Serialised writes, so it cannot prove concurrent behaviour",
+          "features": [
+            "sqlite"
+          ],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "none",
+            "existing"
+          ]
+        },
+        "postgres": {
+          "capabilities": [
+            "event-store-postgres"
+          ],
+          "containers": [
+            "postgres"
+          ],
+          "migrations": true,
+          "integration-suite": true,
+          "label": "Postgres \u2014 append-only table, unique (stream, version) as the concurrency control",
+          "features": [
+            "postgres"
+          ],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ],
+          "aws": {
+            "provisions": "rds"
+          },
+          "azure": {
+            "provisions": "flexible-server"
+          }
+        }
+      }
+    },
+    "http": {
+      "prompt": "HTTP transport",
+      "description": "What accepts inbound HTTP. One transport per backend, the ecosystem's own, or none for a library or worker",
+      "profiles": [
+        "standard",
+        "event-modelling"
+      ],
+      "absent": "none",
+      "options": {
+        "none": {
+          "capabilities": [],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "None \u2014 library or worker only, no inbound HTTP",
+          "features": [],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ]
+        },
+        "fastify": {
+          "capabilities": [
+            "http-fastify"
+          ],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Fastify \u2014 JSON API, schema-parsed at the edge",
+          "features": [
+            "fastify"
+          ],
+          "backends": [
+            "typescript"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ]
+        },
+        "fastapi": {
+          "capabilities": [
+            "http-fastapi"
+          ],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "FastAPI \u2014 JSON API on ASGI, schema-parsed at the edge",
+          "features": [
+            "fastapi"
+          ],
+          "backends": [
+            "python"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ]
+        },
+        "net-http": {
+          "capabilities": [
+            "http-net-http"
+          ],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "net/http \u2014 standard-library JSON API, no framework dependency",
+          "features": [
+            "net-http"
+          ],
+          "backends": [
+            "go"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ]
+        },
+        "quarkus-rest": {
+          "capabilities": [
+            "http-quarkus-rest"
+          ],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Quarkus REST \u2014 JSON API on the framework's own HTTP layer, with SmallRye Health serving the readiness probe",
+          "features": [
+            "quarkus-rest"
+          ],
+          "backends": [
+            "java-quarkus"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ]
+        },
+        "spring-web": {
+          "capabilities": [
+            "http-spring-web"
+          ],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Spring MVC \u2014 JSON API on Tomcat over virtual threads, with Actuator serving the readiness probe",
+          "features": [
+            "spring-web"
+          ],
+          "backends": [
+            "java-spring"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ]
+        }
+      },
+      "always": []
+    },
+    "auth": {
+      "prompt": "Staff authentication",
+      "description": "Who authenticates staff. Every provider on this axis is an OIDC issuer and OIDC is what the adapters speak, so the protocol is the one thing every answer has in common \u2014 which is why the axis is named for the role and not for it",
+      "profiles": [
+        "standard",
+        "event-modelling"
+      ],
+      "absent": "none",
+      "requires": [
+        "http"
+      ],
+      "options": {
+        "none": {
+          "capabilities": [],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "None \u2014 no staff identity yet",
+          "features": [],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ]
+        },
+        "keycloak": {
+          "capabilities": [
+            "auth-keycloak"
+          ],
+          "containers": [
+            "keycloak"
+          ],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Keycloak \u2014 self-hosted OIDC, container and group mapping scaffolded (the flow itself is NOT implemented)",
+          "features": [
+            "keycloak"
+          ],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "none",
+            "existing"
+          ]
+        },
+        "cognito": {
+          "capabilities": [
+            "auth-cognito"
+          ],
+          "containers": [
+            "keycloak"
+          ],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Cognito \u2014 a user pool with the staff groups, a hosted login and a confidential client, provisioned in AWS; Keycloak runs locally as the stand-in, with the same groups and OIDC_* keys (the flow itself is NOT implemented)",
+          "features": [
+            "keycloak"
+          ],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "aws"
+          ],
+          "aws": {
+            "provisions": "cognito"
+          }
+        },
+        "entra": {
+          "capabilities": [
+            "auth-entra"
+          ],
+          "containers": [
+            "keycloak"
+          ],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Entra ID \u2014 an app registration with the staff groups and a confidential client, provisioned in the subscription's own workforce tenant; Keycloak runs locally as the stand-in, with the same groups and OIDC_* keys (the flow itself is NOT implemented)",
+          "features": [
+            "keycloak"
+          ],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "azure"
+          ],
+          "azure": {
+            "provisions": "entra"
+          }
+        },
+        "auth0": {
+          "capabilities": [
+            "auth-auth0"
+          ],
+          "containers": [
+            "keycloak"
+          ],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Auth0 \u2014 an application, an API and the staff roles, provisioned through Auth0's own Management API rather than by the cloud, with a post-login action putting the roles in a namespaced claim; Keycloak runs locally as the stand-in, with the same groups and OIDC_* keys (the flow itself is NOT implemented)",
+          "features": [
+            "keycloak"
+          ],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "aws",
+            "azure"
+          ],
+          "aws": {
+            "provisions": "auth0"
+          },
+          "azure": {
+            "provisions": "auth0"
+          }
+        }
+      },
+      "always": []
+    },
+    "users": {
+      "prompt": "Customer authentication",
+      "description": "Who authenticates the product's own users \u2014 accounts anyone on the internet can create, with sign-up, verification, password reset and a login the browser app owns. Never the staff directory: a separate realm or tenant, even on the same vendor. Every answer is an OIDC issuer, so a service validates a customer's token the way it validates a staff one, against a different issuer",
+      "profiles": [
+        "standard",
+        "event-modelling"
+      ],
+      "absent": "none",
+      "requires": [
+        "http"
+      ],
+      "options": {
+        "none": {
+          "capabilities": [],
+          "containers": [],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "None \u2014 no customer accounts yet",
+          "features": [],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "none",
+            "existing",
+            "aws",
+            "azure"
+          ]
+        },
+        "keycloak": {
+          "capabilities": [
+            "users-keycloak"
+          ],
+          "containers": [
+            "keycloak"
+          ],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Keycloak \u2014 a customers realm beside the staff realm in the same container, self-registration and password reset on, a public PKCE client for the browser app; the browser login is real, and a service's token validation is the framework's where one owns startup and NOT implemented where none does",
+          "features": [
+            "users-keycloak"
+          ],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "none",
+            "existing"
+          ]
+        },
+        "cognito": {
+          "capabilities": [
+            "users-cognito"
+          ],
+          "containers": [
+            "keycloak"
+          ],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Cognito \u2014 a second user pool for the product's users with self-registration and a public PKCE client, provisioned in AWS; Keycloak's customers realm runs locally as the stand-in, and the browser login is real",
+          "features": [
+            "users-keycloak"
+          ],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "aws"
+          ],
+          "aws": {
+            "provisions": "cognito"
+          }
+        },
+        "auth0": {
+          "capabilities": [
+            "users-auth0"
+          ],
+          "containers": [
+            "keycloak"
+          ],
+          "migrations": false,
+          "integration-suite": false,
+          "label": "Auth0 \u2014 a database connection with self-registration and password reset, and a public PKCE client for the browser app, provisioned through Auth0's own Management API rather than by the cloud; Keycloak's customers realm is the local stand-in, and the browser login is real",
+          "features": [
+            "users-keycloak"
+          ],
+          "backends": [
+            "typescript",
+            "python",
+            "go",
+            "java-quarkus",
+            "java-spring"
+          ],
+          "targets": [
+            "aws",
+            "azure"
+          ],
+          "aws": {
+            "provisions": "auth0"
+          },
+          "azure": {
+            "provisions": "auth0"
+          }
+        }
+      },
+      "always": []
+    }
+  },
+  "extensions": {
+    "codegraph": {
+      "name": "CodeGraph",
+      "description": "Indexes the codebase into a local knowledge graph your coding agent can query over MCP, so it can trace callers, dependencies, and the blast radius of a change across files.",
+      "ignore": ".codegraph/\n"
+    }
+  },
+  "profiles": {
+    "standard": {
+      "tier": 1,
+      "label": "Standard \u2014 walking skeleton, executable test and the CD gate, over state-stored persistence. The cheaper start and the irreversible one: cost compounds as one aggregate accretes every new feature, and history you never recorded cannot be recovered. For a tool, a spike, an internal script \u2014 anything whose expected lifespan is short",
+      "capabilities": [
+        "continuous-delivery"
+      ]
+    },
+    "event-modelling": {
+      "tier": 2,
+      "label": "Event Modeling \u2014 everything above, plus events as the source of truth, built one stamped slice at a time. Cost per slice stays flat as the system grows, and folding the log back down into tables stays available. Recommended for a product a team will grow for years",
+      "extends": "standard",
+      "capabilities": [
+        "continuous-delivery",
+        "event-modelling",
+        "event-sourcing"
+      ],
+      "indivisible": [
+        "event-modelling",
+        "event-sourcing"
+      ]
+    }
+  }
+}

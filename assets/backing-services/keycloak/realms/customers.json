@@ -1,0 +1,83 @@
+{
+  "realm": "customers",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "verifyEmail": false,
+  "rememberMe": true,
+  "bruteForceProtected": true,
+  "clients": [
+    {
+      "clientId": "web",
+      "name": "The browser app",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:5173",
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email"
+      ],
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "api",
+      "name": "The service, as a resource server",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "customer@example.invalid",
+      "email": "customer@example.invalid",
+      "emailVerified": true,
+      "firstName": "Casey",
+      "lastName": "Customer",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "customer",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

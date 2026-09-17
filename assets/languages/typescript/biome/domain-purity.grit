@@ -1,0 +1,43 @@
+// The determinism the domain layer is held to, as a Biome plugin.
+//
+// A Decider is testable without freezing time only if it never reads the clock or a random source
+// itself: the instant, the identifier and the seed arrive as typed inputs, decided by an adapter and
+// passed in. No linter ships that rule, and it is not something dependency direction can express —
+// `Date` and `Math` are the language, not an import — so it is written here as a GritQL pattern and
+// applied by `biome.json` to the domain layer alone. Every other layer may read whatever it likes.
+//
+// `new Date()` is the zero-argument form only. `new Date(isoString)` merely parses, which the domain
+// legitimately does when it constructs an instant from a typed input.
+
+language js
+
+or {
+  `new Date()` as $clock where {
+    register_diagnostic(
+      span = $clock,
+      message = "The domain must not read the clock. Take the instant as a typed input.",
+      severity = "error"
+    )
+  },
+  `Date.now()` as $clock where {
+    register_diagnostic(
+      span = $clock,
+      message = "The domain must not read the clock. Take the instant as a typed input.",
+      severity = "error"
+    )
+  },
+  `Math.random()` as $entropy where {
+    register_diagnostic(
+      span = $entropy,
+      message = "The domain must be deterministic. Generate identifiers through a port and pass them in.",
+      severity = "error"
+    )
+  },
+  `crypto.randomUUID()` as $entropy where {
+    register_diagnostic(
+      span = $entropy,
+      message = "The domain must be deterministic. Generate identifiers through a port and pass them in.",
+      severity = "error"
+    )
+  }
+}

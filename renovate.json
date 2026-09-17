@@ -1,0 +1,57 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "How this factory's own pinned dependencies are kept current — its tooling, and the manifests under assets/ that every generated project starts from.",
+    "Nothing here runs by itself: this repository lives on a Gitea forge, so it needs a self-hosted Renovate run — a scheduled workflow on the forge's own runner, or a cron job — with a token that may open pull requests. On GitHub it would be the Renovate app instead. See docs/maintaining.md.",
+    "An npm bump under assets/ is only half a change. The committed locks in assets/languages/typescript/locks/ and assets/frontends/react-vite/locks/ have no package.json beside them — they are built per axis combination by `make locks` — so `make check-locks` goes red on the pull request until `make locks` has been run on it and the result committed. That is the intended workflow, not a defect: the lock and its manifest have to be produced together.",
+    "What Renovate cannot see here, stated rather than left to be discovered: the per-feature npm versions in src/slipwai/project/languages/typescript.py's PACKAGE_ADDITIONS (fastify, pg, node-pg-migrate and their types), the build-tool pins in src/slipwai/images.py (pack, ko, the Paketo builders, the Jib base), the toolchain versions in src/slipwai/backends.py, and .github/runner/versions.env. Those are Python source and an env file, not manifests; they are bumped by hand, and docs/backend-obligations.md section 4 says who owns each choice."
+  ],
+  "extends": ["config:recommended", ":dependencyDashboard"],
+  "timezone": "Etc/UTC",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "rangeStrategy": "pin",
+  "vulnerabilityAlerts": {
+    "schedule": ["at any time"],
+    "labels": ["security"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "pip_requirements": {
+    "description": "The factory's three requirement files, which the default pattern would miss: it matches a prefix before the word and not the suffix after it.",
+    "managerFilePatterns": ["/(^|/)requirements(-[\\w.]+)?\\.txt$/"]
+  },
+  "packageRules": [
+    {
+      "description": "The manifests a generated TypeScript service and browser app start from. A pull request here is finished when `make locks` has been run on it and the regenerated locks are in the same commit.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["assets/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "generated npm dependencies",
+      "addLabels": ["needs make locks"]
+    },
+    {
+      "description": "The Go modules a generated Go service starts from, with the checksums that come with them; `make locks` rebuilds these too.",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "generated Go modules",
+      "addLabels": ["needs make locks"]
+    },
+    {
+      "description": "The factory's own lint, type-check, build and publish tooling.",
+      "matchManagers": ["pip_requirements", "pep621"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "factory tooling"
+    },
+    {
+      "description": "The actions this repository's own workflows use.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "workflow actions"
+    },
+    {
+      "description": "A major is a piece of work here rather than a bump: an asset's dependency reaching a new major changes what every project generated afterwards is given, forever, and nobody is asked again. It waits on the dependency dashboard until somebody asks for it.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}

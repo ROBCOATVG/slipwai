@@ -1,0 +1,21 @@
+# `assets/` is read from the working tree and written into a generated project byte for byte — see
+# `asset_tree` in `src/slipwai/assets.py` — so Git must not renormalise the one asset pair whose
+# line endings are load-bearing. The generated project carries the same declaration for its own copies, in
+# `assets/languages/java/build/.gitattributes`.
+#
+# One pair, not one per Java backend: the wrapper belongs to the language family rather than to whichever
+# framework owns startup, so both backends read this same copy. That is also why these paths are worth
+# checking whenever the asset tree moves — a stale rule here does not fail anything, it just lets Git
+# renormalise `mvnw.cmd` on the next checkout and ship a script Windows cannot run.
+assets/languages/java/build/mvnw text eol=lf
+assets/languages/java/build/mvnw.cmd text eol=crlf
+# The Gradle Wrapper `slipwai adopt` writes into a Gradle repository that has none (`src/slipwai/wrappers.py`),
+# under the same rule and for the same reason.
+assets/adoption/wrappers/gradle/gradlew text eol=lf
+assets/adoption/wrappers/gradle/gradlew.bat text eol=crlf
+# `CHANGELOG.md` had `merge=union` here, for the entry in flight that every branch appended its paragraph to.
+# It worked and was not enough: a forge decides whether to *offer* a merge with `git merge-file` in a bare
+# repository, where no merge driver is consulted, so the pull request read as conflicted for a merge Git had
+# already settled. The entry in flight is `changelog.d/` now — a file per change, no shared line, nothing to
+# resolve in any tool — and this file has released prose only, appended to by `make release` alone. See
+# `changelog.d/README.md`.

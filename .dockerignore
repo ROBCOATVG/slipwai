@@ -1,0 +1,11 @@
+# The build context for `.github/runner/build.sh`, which is the only image built from this repository's
+# root. That build needs the three requirements files (it warms pip's wheel cache from them) and
+# `.github/runner/` itself, and nothing else — so everything is excluded and those are added back. Without
+# this the context would be the whole checkout, `.git` and `assets/` included, sent on every rebuild.
+#
+# A second image built from this root would need its own entries here; there is no other today.
+*
+!.github
+!requirements-dev.txt
+!requirements-build.txt
+!requirements-publish.txt

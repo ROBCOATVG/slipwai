@@ -1,0 +1,3 @@
+# How Spring Boot finds a post-processor that has to run before any bean exists — the framework's own
+# registration file, whose name is the interface's and so cannot be anything else. One class per line.
+com.example.deliverystarter.config.DatabaseUrlEnvironmentPostProcessor

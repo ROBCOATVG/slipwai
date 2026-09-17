@@ -1,0 +1,94 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "__SERVICE_NAME__",
+    "version": "0.1.0"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ready"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "reason"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "unready"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "eventStore"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

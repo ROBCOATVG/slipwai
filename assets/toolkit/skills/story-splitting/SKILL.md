@@ -1,0 +1,295 @@
+---
+name: story-splitting
+description: Turn broad requirements, large stories, epics, features, initiatives, or backlog items into small end-to-end child stories without turning them into technical component tasks. Use when refining a backlog, decomposing epics, planning an MVP or walking skeleton, looking for vertical slices, reducing story size, applying SPIDR/Hamburger/capability slicing, avoiding scatter-gather/component stories, or deciding the first valuable story before implementation planning.
+---
+
+# Story Splitting
+
+Split work so the team can deliver, test, learn, and change direction in small batches. A good split preserves a whole user-visible capability while reducing variation, uncertainty, scope, or quality level.
+
+The goal is not "make smaller tickets." The goal is **N% of the system 100% done and demonstrable**, not 100% of the system N% done.
+
+## Attribution
+
+This skill is based on Tim Ottinger's [Splitting Stories - A Resource Listicle](https://agileotter.blogspot.com/2022/03/splitting-stories-resource-list.html) and synthesizes the linked story-splitting writing by Tim Ottinger, Bill Wake, Joshua Kerievsky, Gojko Adzic, Neil Killick, George Dinwiddie, Mike Cohn, Richard Lawrence, Peter Green, J. B. Rainsberger, Rachel Davies, and others. Load `resources/source-notes.md` for source-by-source provenance.
+
+**Deep-dive resources** are in the `resources/` directory. Load them on demand:
+
+| Resource | Load when... |
+|----------|-------------|
+| `pattern-catalog.md` | You need more splitting prompts, SPIDR/Hamburger/Humanizing Work/Bill Wake pattern details, or examples for a stubborn story |
+| `source-notes.md` | You need source provenance, want to teach the concepts, or need to explain how the article/resource-list ideas shaped the skill |
+
+## How This Fits With Other Skills
+
+Use `story-splitting` **before** `planning` when the input is a large story, epic, feature idea, roadmap item, or backlog item. This skill discovers small valuable child stories. The `planning` skill then sequences one selected child story into implementation slices with evidence and delivery details.
+
+Keep story boundaries vertical regardless of the repository's implementation or pull-request workflow. Never turn database, API, UI, and tests into separate backlog outcomes.
+
+Use `find-gaps` **after** a split or plan exists when you need to tighten missing states, acceptance criteria, edge cases, or unverifiable language. If `find-gaps` discovers that the plan is still horizontal or too large, return here and split again.
+
+Use `grill-me` when installed for unresolved product or design decision-making rather than splitting mechanics. Otherwise use `specification` and ask one focused question at a time before or after this skill proposes slices.
+
+Use `storyboard` when the work spans multiple UX surfaces or mock states; the storyboard can reveal missing screens and flow gaps that become child stories. Use design skills such as `shape`, `critique`, and `polish` to improve the mocks themselves, not to replace product slicing.
+
+This skill stops at the product split. Defer implementation workflow, TDD, mutation timing, feature-flag policy, pre-PR gates, branch topology, and delivery mechanics to project instructions and the relevant installed skills. Story splitting neither requires nor prohibits a local mutation run or a feature flag. Use domain and architecture skills only when the selected story reaches implementation; do not split stories by those technical layers.
+
+## Requirement Refinement Pipeline
+
+Use the earliest skill that matches the uncertainty:
+
+| If the problem is... | Use... | Stop when you have... |
+|----------------------|--------|------------------------|
+| "We don't know which decision branch is right." | `grill-me` when installed; otherwise `specification` | A resolved decision tree or a named open decision |
+| "This requirement is too broad or solution-shaped." | `story-splitting` | Independently valuable child stories |
+| "This story/spec/plan/mock has holes." | `find-gaps` | Confirmed artifact updates with testable wording |
+| "We selected a child story and need to build it." | `planning` | Implementation slices with per-slice delivery shapes |
+| "A selected child story needs implementation sequencing." | The project's planning/delivery skills | A repository-compliant implementation and delivery plan |
+
+Do not use `story-splitting` to interrogate every product decision from scratch; use the optional `grill-me` skill or the `specification` fallback when the decision tree is the real work. Do not use `story-splitting` to produce implementation tasks; use `planning` after a child story is selected. Do not use `find-gaps` before there is an artifact to inspect; use it to harden a split, plan, AC set, or mock spec.
+
+## Core Principles
+
+### Stories Are Conversations, Not Requirements
+
+Treat a story as a placeholder for collaboration between people with the problem and people who can solve it. Do not optimize for perfect written requirements or a handoff from Product to Engineering.
+
+When a story seems too large, bring product, engineering, design, QA, and operations perspectives into the split. Product knows value and trade-offs. Engineers know where effort and uncertainty hide. Splitting without both viewpoints usually creates either low-value fragments or technical dependencies.
+
+### Slice Capabilities, Not Components
+
+Every child story should describe a change in behavior from a real user's or external system's point of view. If the "user" in the story is an internal component, layer, queue, database, API, or service, it is probably a task, not a story.
+
+Prefer:
+
+```text
+Buyer can pay one invoice by card and receive a confirmation.
+```
+
+Avoid:
+
+```text
+Backend exposes payment endpoint.
+Frontend calls payment endpoint.
+Database stores payment rows.
+```
+
+Tasks can exist inside a story. Do not relabel tasks as stories to make a plan look incremental.
+
+### Stay In The Problem Space First
+
+Ask:
+
+```text
+What are the simplest options for delivering value to the customer as soon as possible?
+```
+
+Do not start with:
+
+```text
+What is the simplest way to build this already-imagined solution?
+```
+
+The first question reveals customer-capability options. The second often jumps straight to portals, apps, services, vendors, and architecture before the team has chosen the narrow valuable capability.
+
+### Start With A Primitive Whole
+
+Prefer a tiny, end-to-end whole over a polished part. Useful first versions include an under-featured vertical slice, a structurally uncomposed path, an internal-only capability, or an explicitly labelled disposable tracer.
+
+This first slice should exercise the real behavior path as far as practical. State its release constraint honestly. Whether it uses a feature flag, another release mechanism, or no hiding mechanism at all is a project policy decision. Disposable work must be explicitly labelled as a spike or tracer experiment.
+
+### Hunt For Bargains
+
+A bargain is high value at a fraction of full cost. Look for slices where one-fourth of the imagined feature gives most of the value or learning. Treat the parent story as a draft idea; be willing to discover a cheaper or better version through conversation.
+
+## Child Story Quality Bar
+
+Use INVEST as a quality check, not a template:
+
+| Letter | Check |
+|--------|-------|
+| I | Independent enough to build, test, release, reorder, or drop without waiting for every sibling |
+| N | Negotiable in scope and quality level; not a fixed solution order |
+| V | Valuable to a real user, external system, business stakeholder, operator, or learning goal |
+| E | Estimable because the behavior, unknowns, and deferrals are visible |
+| S | Small enough to finish in the target planning horizon |
+| T | Testable through observable examples |
+
+Also apply the feedback triad: a good slice **works**, **delivers value**, and **can generate user feedback**. If it only makes internal progress, it is probably a task. If it works but produces no possible feedback or learning, ask whether a thinner or different slice would be more useful.
+
+## Workflow
+
+### 1. Reframe The Parent
+
+Before splitting, write the parent in plain language:
+
+- **Actor:** who receives value
+- **Need or capability:** what they can do or learn
+- **Outcome:** why it matters
+- **Current constraint:** why it is too large, risky, vague, or uncertain
+
+If the parent is a solution phrase like "build online banking portal," reframe it as capabilities like "customers can pay bills," "customers can transfer money," or "customers can view balances."
+
+If the parent is a technical task like "add payment database," find the user behavior it serves. If no behavior exists, keep it as a task and attach it to the first story that proves it matters.
+
+### 2. Surface Examples And Variations
+
+List concrete examples before inventing tickets:
+
+- happy-path examples
+- alternate paths and error paths
+- user roles or customer segments
+- data shapes, sizes, and edge cases
+- business rules and policy variants
+- interfaces, channels, devices, or integrations
+- quality attributes: performance, scale, reliability, security, accessibility, auditability
+- unknowns or assumptions that could invalidate the plan
+
+Acceptance examples are often natural splits. Group related examples into separate stories when each group is independently understandable and testable.
+
+### 3. Find Splitting Dimensions
+
+Use these dimensions as prompts, then choose the split that creates the most value and optionality:
+
+| Dimension | Useful question |
+|-----------|-----------------|
+| Capability | Which narrower customer capability still delivers value? |
+| Path | Which happy path, alternate path, workflow branch, or operation can stand alone? |
+| Interface | Which channel, consumer, UI level, device, browser, or integration can prove the behavior first? |
+| Data | Which data subset, file type, entity type, field subset, or quantity can we support first? |
+| Rules | Which business, validation, permission, compliance, or policy rules can be scoped safely? |
+| Quality | What is the simplest acceptable quality level: manual, batch, low fidelity, small scale, slower, generic UI? |
+| Risk | What spike, tracer bullet, or walking skeleton would answer a specific risky unknown? |
+
+Load `resources/pattern-catalog.md` when a story needs more prompts or when applying named methods such as SPIDR, Hamburger, Humanizing Work's patterns, or Bill Wake's twenty ways.
+
+### 4. Use The Hamburger Method When The Team Is Stuck
+
+If the team keeps drifting into technical decomposition, use the Hamburger Method from `resources/pattern-catalog.md`: list the technical layers, list simpler-to-richer options per layer, then take a first "bite" across every layer so the result is still end-to-end. The point is to avoid eating only one layer.
+
+### 5. Choose The First Slice
+
+Choose the first slice using these rules of thumb:
+
+- Prefer the split that lets the team deprioritize or delete at least one follow-up story.
+- Prefer the split that produces more similarly sized children, if value is comparable.
+- Prefer the slice with the highest value-to-cost ratio.
+- Prefer an end-to-end slice that burns down integration or architecture risk early.
+- **Prefer the slice that exercises the product's core, differentiating capability over generic infrastructure that merely feels foundational.** Auth, user management, admin, and settings are the classic trap: they feel like they "have to come first," but they aren't themselves the value the product exists to deliver. Stub them (a hardcoded user, a fake session, a single fixed role) until a real core-capability slice needs them to be real, then build that piece for real in its own slice.
+- In complex domains, pick one or two useful learning slices instead of pretending to enumerate the whole backlog up front.
+- If the first slice cannot be useful to anyone, make it useful for learning, ops, support, or validation, and state that explicitly.
+
+### 6. Write Child Stories
+
+For each child story, capture:
+
+- **Title:** actor + action + narrow scope
+- **Value:** who benefits and how
+- **Scope:** what is included
+- **Intentional deferrals:** what is not included yet and why
+- **Acceptance examples:** concrete precondition → trigger → observable-outcome examples (or equivalent testable examples)
+- **Release constraint:** shippable, internal-only, demo-only, disposable, or otherwise constrained according to project policy—and why
+- **Follow-ups:** stories that add paths, interfaces, data, rules, or quality
+
+Use the user's domain vocabulary. If they say "buyer," write "buyer," not "user."
+
+## Method Slices
+
+In a repository that adopted the delivery method around code that already existed — `project.json` records
+`"origin": "adopted"` and carries a `convergence` map, rendered as `docs/convergence.md` — the split holds a
+second kind of story beside the product slices: a **method slice**, one rung on one axis of that map. A
+quarantined test suite made green. A release script that CI now runs on every commit. A directory whose role is
+recorded and whose layout moves under `apps/`. The team is the actor; the observable outcome is a map row, a gate
+line or a ledger row that reads differently afterwards; and it travels the same path as any other slice —
+specify → plan → tasks → implement — to the same quality bar and the same demo stop, so agent change meets the
+same bar either way.
+
+What keeps a method slice honest:
+
+- **One rung per slice.** A slice that climbs two rungs is two slices. The rungs are the map's, never invented,
+  and a rung is claimed only from the fact that establishes it.
+- **The row says it is in flight.** The slice's name goes in the row's `planned` field before work starts;
+  `/drive`'s Convergence stage flips the row when the rung is reached, and never before.
+- **Placed among the product slices, not ahead of all of them.** The ordering question is which product slice is
+  blocked on which rung: the first slice that changes wrapped code needs its seam pinned by `/characterise`, a
+  slice that is meant to be releasable needs a known path to production. A method slice with no product slice
+  waiting on it is a bargain only if it is cheap.
+- **A decision is not a slice.** A row nobody can move without a person deciding — release path unknown,
+  change strategy open — is a question to ask, and the answer is written in `project.json`, not built.
+
+In the output below, a method slice sits in the same table as the product slices with its row and rung in
+*Includes* (`safety-net: tests-exist → tests-pass`), so the split reads as one ordered list.
+
+## Validation Checklist
+
+Before returning a split, check every child story:
+
+- Does it name a real actor or external system?
+- Does it have a trigger and observable outcome?
+- Does it run through the real production path needed for that behavior?
+- Could it be tested without waiting for every sibling story?
+- Could it generate feedback, learning, or a visible decision if shipped, demoed, or exercised?
+- If no later story happens, did this still deliver value or learning?
+- Are dependencies explicit and small enough to manage?
+- Does the **Slice graph** name genuine `depends_on` separately from apparent ones (synthetic-event seeding is not a build dependency)?
+- Could any pair of slices whose `depends_on` are already satisfied run in parallel (schema-only sharing, no shared mutable surface)?
+- Are deferred paths, data, rules, and qualities visible?
+- Is it safe to ship, or is the release constraint explicit?
+- Does it avoid prescribing unnecessary implementation details?
+- Is the eventual full capability still visible, so useful follow-up slices are not forgotten?
+
+Red flags:
+
+- child stories split by process activity: design, code, test, document, deploy
+- "As a database/API/frontend/service..."
+- "Build the backend" and "build the frontend" as separate stories
+- "Collect data" or "build integration" without a user-visible or feedback-generating outcome
+- every child must finish before any child can be tested
+- a spike for every story
+- the first (or an early) slice is infrastructure — auth, admin, user management — chosen because it "has to come first," not because the product's core capability depends on it being real yet
+- acceptance criteria that say "works" or "fast" without observable detail
+- slices that are so tiny they only specify a solution detail
+- all business rules forced into the first slice without discussion
+
+## Output Format
+
+When asked to split a story, return a compact artifact that can feed directly into `planning`:
+
+```markdown
+## Parent
+[Reframed parent capability]
+
+## Recommended First Slice
+[One sentence story]
+
+Why this first: [value, risk, learning, or bargain]
+
+## Split Candidates
+| Slice | Value | Includes | Defers | Acceptance Examples | Release Constraint |
+|---|---|---|---|---|---|
+| ... | ... | ... | ... | ... | ... |
+
+## Slice graph
+| Slice | depends_on | parallel_ok_with | Notes |
+|---|---|---|---|
+| ... | — or id list | sibling ids that share only a schema / synthetic seed | genuine build deps only; synthetic-event seeding is not a dependency |
+
+`/drive` and `/where-are-we` read this table (or, on the event profile, each slice's `depends_on` in
+`docs/event-model/model.yaml`) to compute the **ready** set: not yet done, every `depends_on` already done.
+Ready slices whose contract is settled run in parallel: one `/drive` session fans out over the unclaimed
+ones, one delegate per slice on a `slice/<id>` branch, and merges them back in split order; a session that
+cannot delegate takes the earliest ready slice in split order and names the rest.
+
+## Parking Lot
+[Explicit follow-ups, questions, or intentionally unsplit tasks]
+
+## Warnings
+[Component splits, unsafe deferrals, unclear ownership, missing examples, or artificial depends_on chains]
+
+## Next Step
+[Use the project's planning and delivery instructions for the selected first slice, run `find-gaps` on the split when available, or ask one decision question. Do not prescribe TDD, mutation timing, feature flags, or pre-PR gates here.]
+```
+
+If the user wants an interactive refinement session, ask one high-value question at a time rather than dumping a questionnaire. Start with the question that most changes the split: usually actor, outcome, release constraint, highest-value customer segment, or biggest risk.
+
+For source provenance and article-by-article concept mapping, load `resources/source-notes.md`.

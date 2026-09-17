@@ -1,0 +1,118 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "__SERVICE_NAME__",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Ready",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ready"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unready"
+                    }
+                  ],
+                  "title": "Response Ready Ready Get"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Unready"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "Health",
+        "description": "What ``/health`` answers.\n\nA model rather than a bare dict, so the probe's contract is validated on the way out and\npublished with every other route's."
+      },
+      "Ready": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ready",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "Ready",
+        "description": "What ``/ready`` answers when the driven ports answer: the service will take traffic."
+      },
+      "Unready": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "unready",
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "const": "eventStore",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "reason"
+        ],
+        "title": "Unready",
+        "description": "And what it answers when one does not.\n\n``reason`` is a *category* and never the driver's own message: a declared model is what keeps\nit that way, because the body is validated on the way out and a connection string a later edit\nreaches for cannot leave the process."
+      }
+    }
+  }
+}

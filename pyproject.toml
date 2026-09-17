@@ -1,0 +1,91 @@
+# The factory as a pip-installable package. `slipwai` is the one console command; the wheel carries `assets/`,
+# `catalog.json`, `VERSION`, `CHANGELOG.md` and `changelog.d/` beside the package as `slipwai/_bundle/`, which
+# is where `assets.py` looks when it finds no checkout around it. The version is the `VERSION` file, read
+# rather than repeated; the changelog and the fragments of the entry in flight are there because `migrate`
+# takes the catch-up notes out of them and writes them into the project, which an installed command has to be
+# able to do with no checkout anywhere near it.
+[build-system]
+requires = ["hatchling==1.32.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "slipwai"
+dynamic = ["version"]
+description = "One-shot scaffolder for product monorepos: a walking skeleton, a verify gate, a path to production, and a repository set up for coding agents."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = [
+    "LICENSE",
+    "NOTICE",
+    "assets/toolkit/skills/LICENSE",
+    "assets/toolkit/skills/**/LICENSE",
+    "assets/toolkit/skills/**/NOTICE",
+]
+authors = [{ name = "Volaris Group" }]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/ROBCOATVG/slipwai"
+Repository = "https://git.treyco.dev/ROBCOATVG/slipwai"
+Issues = "https://github.com/ROBCOATVG/slipwai/issues"
+Changelog = "https://github.com/ROBCOATVG/slipwai/blob/main/CHANGELOG.md"
+
+[project.scripts]
+slipwai = "slipwai.cli:main"
+
+[tool.hatch.version]
+path = "VERSION"
+pattern = '^(?P<version>\S+)\s*$'
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/slipwai"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"assets" = "slipwai/_bundle/assets"
+"catalog.json" = "slipwai/_bundle/catalog.json"
+"VERSION" = "slipwai/_bundle/VERSION"
+"CHANGELOG.md" = "slipwai/_bundle/CHANGELOG.md"
+"changelog.d" = "slipwai/_bundle/changelog.d"
+
+# The source distribution is what the wheel is built from, so it needs the same five and nothing of the
+# factory's own tests, docs or CI.
+[tool.hatch.build.targets.sdist]
+# Anchored to the root: unanchored, `VERSION` would also match a worktree's copy under .claude/.
+include = [
+    "/src/slipwai", "/assets", "/catalog.json", "/VERSION", "/CHANGELOG.md", "/changelog.d", "/README.md",
+    "/LICENSE", "/NOTICE", "/pyproject.toml",
+]
+exclude = ["**/__pycache__"]
+
+[tool.ruff]
+target-version = "py311"
+# Wider than the 100 a generated Python project gets, for one reason: this codebase's job is to hold the
+# text of other projects' files, and a line of somebody else's Makefile or YAML cannot be rewrapped to suit
+# this repository's margin without changing what gets generated.
+line-length = 120
+extend-exclude = [".python-tools", ".build-tools", "build", "dist", "assets"]
+
+[tool.ruff.lint]
+# The same rule set a generated Python project is held to.
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+# What `make typecheck` runs, over the same three trees ruff reads. `files` rather than arguments so the
+# gate and a bare `mypy` agree; `mypy_path` so a script or a test that imports `slipwai` resolves
+# it from `src/` the way `PYTHONPATH=src` does at run time. 3.11 because that is what the README promises.
+python_version = "3.11"
+files = ["src", "scripts", "tests"]
+mypy_path = "src"
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.ruff.lint.isort]
+known-first-party = ["slipwai"]
+
+[tool.ruff.lint.per-file-ignores]
+# Embedded file content: the strings in these modules are other projects' files, and a line inside one of
+# them is as long as that file needs it to be. Every other rule still applies here.
+"src/slipwai/project/*.py" = ["E501"]
+"src/slipwai/project/languages/*.py" = ["E501"]

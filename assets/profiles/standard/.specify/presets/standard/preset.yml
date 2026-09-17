@@ -1,0 +1,58 @@
+# The manifest that makes this directory a *managed* preset rather than one file that happens to sit
+# where the resolver looks.
+#
+# Why it matters: without it, `specify preset list` reports "⚠️ Corrupted preset — Templates: 0", and
+# `preset info`, `enable`, `disable`, and `set-priority` all fail to find the preset at all. Resolution
+# still limps along off `.specify/presets/.registry`, which is what makes the breakage easy to miss —
+# the templates apply, and only the management commands go dark.
+#
+# This layer is the whole upgrade strategy. Spec Kit owns `.specify/templates/` and hashes every file in
+# `.specify/integrations/*.manifest.json`; anything we change *there* is a merge conflict at every upgrade.
+# Overriding by name from here leaves the core files pristine, so `specify integration upgrade claude`
+# stays a no-argument operation. `make check-speckit` enforces that.
+schema_version: "1.0"
+
+preset:
+  id: "standard"
+  name: "Standard"
+  version: "1.0.0"
+  description: "Minimum-CD, hexagonal and ATDD constitution template"
+  # Maintained here, in the factory that scaffolded this repository: the template is overlay material
+  # under `assets/profiles/standard/`, and a fix belongs there rather than in this copy.
+  author: "Slipwai"
+  # Where the template originates. Ported rather than tracked — a generated repository has no update
+  # relationship with either.
+  repository: "https://git.treyco.dev/ROBCOATVG/slipwai"
+  license: "MIT"
+
+requires:
+  # The version this preset has actually been resolved against. Presets predate 0.16, but nothing here
+  # has been verified on an older CLI, so the floor states what is known rather than what is guessed.
+  speckit_version: ">=0.16.0"
+
+# One of the five core templates, and deliberately only one. Adding an entry here is a decision to
+# maintain that template forever, so it is taken only where the core version would actively mislead —
+# and the constitution is the one place it does. `make check-constitution` fails this repository's build
+# when `.specify/memory/constitution.md` stops carrying minimum CD or the practices the skills in
+# `skills/` teach, and the core template states no such floor. Drafting from it produces a document that
+# reads as ratified and fails the gate.
+#
+# `spec-template`, `plan-template`, `tasks-template` and `checklist-template` are absent for the opposite
+# reason: nothing in this profile's floor is expressible only in them, so they fall through to core and
+# pick up upstream improvements for free. The event-modelling profile *does* override plan and tasks,
+# because a slice on a global model is a shape the core templates have no place to record.
+provides:
+  templates:
+    - type: "template"
+      name: "constitution-template"
+      file: "templates/constitution-template.md"
+      description: "Ratifiable principles for a trunk-based, hexagonal, ATDD project"
+      replaces: "constitution-template"
+
+tags:
+  - "continuous-delivery"
+  - "minimum-cd"
+  - "trunk-based-development"
+  - "hexagonal"
+  - "atdd"
+  - "tdd"

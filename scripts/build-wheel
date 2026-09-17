@@ -1,0 +1,19 @@
+#!/bin/sh
+# Build the pip-installable package into dist/ with the exactly pinned tooling in requirements-publish.txt,
+# installed once into its own directory under the ignored .build-tools/ — beside the executable's, not inside
+# it: two `pip --target` trees sharing a directory cannot both be exact. `--no-isolation` so the build runs
+# against those pins rather than resolving hatchling afresh on every machine. The tools path is absolute
+# because `build` makes the wheel from the extracted sdist in a temporary directory, where a relative
+# PYTHONPATH would point at nothing.
+set -eu
+
+build_python=${BUILD_PYTHON:-python3}
+tools=$(pwd)/.build-tools/publish
+
+if ! PYTHONPATH="$tools${PYTHONPATH:+:$PYTHONPATH}" "$build_python" -c \
+  'import hatchling, build, twine; assert hatchling.__version__ == "1.32.0"' >/dev/null 2>&1; then
+  "$build_python" -m pip install --disable-pip-version-check --target "$tools" -r requirements-publish.txt
+fi
+
+rm -f dist/slipwai-*.whl dist/slipwai-*.tar.gz
+PYTHONPATH="$tools${PYTHONPATH:+:$PYTHONPATH}" "$build_python" -m build --no-isolation --outdir dist .

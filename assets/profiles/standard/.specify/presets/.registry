@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "presets": {
+    "standard": {
+      "version": "1.0.0",
+      "priority": 10,
+      "enabled": true,
+      "description": "Minimum-CD, hexagonal and ATDD constitution template",
+      "source": "local"
+    }
+  }
+}

@@ -1,0 +1,307 @@
+name: verify
+on:
+  # `push:` unfiltered fires on a PR branch as well, so every commit on an open PR ran this
+  # suite twice — once for the push, once for the pull_request — at the same second, on the
+  # same self-hosted runner, against the same Docker daemon. The two runs then fought over
+  # the one Compose project the Postgres test starts and both failed. A PR branch is covered
+  # by `pull_request`; `push` only has to cover the branch no PR reports on.
+  push:
+    branches:
+      - main
+    # And the release tag, because the tag is what publishes. `make release` pushes `main` and `v1.2.3`
+    # atomically, and `main`'s head is then the *Open* commit — the tagged `Release` commit is its parent,
+    # which a branch push never reports. So a run triggered by the branch proves the child of what ships.
+    # This trigger is what gives the released commit a gate of its own, and the `release` job below is
+    # `needs:`-gated on every job of that run. See `publishing.md`.
+    tags:
+      - 'v*'
+  pull_request:
+
+# A second push while the first is still running supersedes it: the older run is testing a
+# commit nobody is waiting on any more, and on a single runner it is what the new one queues
+# behind. `main` is excluded — every commit that lands there gets its own verdict — and so is
+# a tag, which publishes: a cancelled release run is a version half spent.
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+# How every `npm ci` in a run behaves — the generated projects' included, because the tests inherit this
+# environment and pass it on. The cache is the directory `.github/actions/toolchains` carries between runs.
+# `prefer-offline` is safe under `npm ci`: the lockfile already names every version and hash, so there is
+# nothing fresher to ask for, and the socket count and timeout cap what any one slow answer can cost.
+#
+# `audit: false` is what closes the 2026-09-04 hole, and it was never a lost connection. Every tarball
+# arrived; what npm blocked on at the end of each install was the single POST to the registry's bulk
+# advisories endpoint, which since 08:12 UTC that day has answered in minutes rather than milliseconds —
+# 88 s for three packages from this box, 170 s from a laptop on an unrelated network, against 0.12 s for an
+# ordinary packument GET, so the slowness is the registry's and not ours. npm waits out `fetch-timeout` on
+# it, then prints a summary with no audit in it and carries on: that is why the stall was silent, why the
+# install still passed, and why the logs of a good run say `added 256 packages, and audited 258 packages`
+# where a stalled one says only `added 256 packages`. The timeout below cut each hole from five minutes to
+# one; not asking at all removes it, and costs this gate no strictness, because `make verify` never reads
+# the audit. Run 135 spent 920 s of its wall time waiting on that endpoint and nothing else.
+env:
+  npm_config_cache: /tmp/npm-cache
+  npm_config_prefer_offline: 'true'
+  npm_config_maxsockets: '5'
+  npm_config_fetch_timeout: '60000'
+  npm_config_fetch_retries: '5'
+  npm_config_audit: 'false'
+
+# The gate is `make verify`; a laptop runs it whole. Here it runs as slices of the same targets in
+# parallel, because one of them — the matrix suite, which generates every variant and runs its native
+# `make verify` — took 250 of the old single job's 400 seconds, and the runner has capacity for several
+# jobs at once. `make test TESTS=… / SKIP=…` and `FACTORY_BACKENDS` are how a slice is named; between the
+# jobs every test runs exactly once. The daemon is shared: `checks` starts the Postgres contract test's
+# Compose project, each `matrix` job builds and starts its own backend's image, `aws` builds the launcher
+# probe — so everything a job puts on the daemon carries its backend or its process in the name, and no two
+# jobs ever name the same thing. Every job checks its toolchains through `.github/actions/toolchains`: a
+# generated project of any language may be gated in any of them, so the job image carries every toolchain
+# and that action only proves it does. A new backend is one word in the `matrix.backend` list below and one
+# pin in `.github/runner/versions.env`; `tests/test_factory_repository.py` holds the list to the catalog.
+#
+# Nothing here waits on a warm-up job any more. There used to be one — the runner's tool cache was a single
+# volume every job shared, and several jobs finding it cold would install the same Python into the same
+# directory at the same second and wreck each other's, so one job filled it alone while the rest queued
+# behind it. The toolchains live in the image now, read-only and already there, so there is nothing to fill
+# and no reason for any job to wait: all of them start at once.
+#
+# The jobs are written longest first, because that is the order the runners take them in: a queued job is
+# dispatched in the order it appears here, and with four runners and ten jobs the wall time of a run is the
+# longest job plus however long it waited. `aws` last cost every run ten minutes it did not need to
+# spend, and `azure` beside it is the same shape of job on a second cloud's providers.
+jobs:
+  # The production target: `tests/test_aws_stack.py` runs `tofu validate` over every generated stack
+  # (downloading the pinned AWS provider once, into the plugin cache), and `tests/test_launcher.py` builds
+  # the smallest image the pinned builder makes and proves the migrate task's entrypoint through it — once,
+  # because it is about the builder and not about any backend. Each backend's own image is proved in its
+  # `matrix` job, where the backend already is.
+  aws:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/toolchains
+      - run: make test TESTS="test_aws_target test_aws_stack test_launcher"
+        env:
+          TF_PLUGIN_CACHE_DIR: ${{ runner.temp }}/tofu-plugins
+
+  # The other production target, in a job of its own rather than a line in the one above: both download a
+  # provider set nothing else needs — azurerm, azapi and azuread here — and running them side by side costs
+  # a runner rather than the wall time of one after the other. No launcher build: that is about the image
+  # builder, which is cloud-neutral and already proved once.
+  azure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/toolchains
+      - run: make test TESTS="test_azure_target test_azure_stack"
+        env:
+          TF_PLUGIN_CACHE_DIR: ${{ runner.temp }}/tofu-plugins
+
+  # The one identity answer that belongs to neither cloud, so a job of its own rather than a line in either
+  # cloud's: it generates for both targets and validates nothing a cloud credential could have made.
+  auth0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/toolchains
+      - run: make test TESTS="test_auth0_identity"
+        env:
+          TF_PLUGIN_CACHE_DIR: ${{ runner.temp }}/tofu-plugins
+
+  # The matrix suite, one job per backend: every profile, frontend and store answer for that backend,
+  # each variant generated and held to its own `make verify` — and that backend's production image, built
+  # the way `make build` builds it and started the way a task starts it (`tests/test_images.py`, sliced by
+  # the same `FACTORY_BACKENDS`). Java variants take ten to thirty seconds each under Maven where the
+  # others take two; a job per backend keeps each verdict readable on its own. Every suite these jobs run
+  # reads its backends from `FACTORY_BACKENDS`; the shape of the scaffold across all of them at once is
+  # `tests/test_monorepos.py`, which needs no toolchain and runs once, in `checks`.
+  matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [typescript, python, go, java-quarkus, java-spring]
+    env:
+      FACTORY_BACKENDS: ${{ matrix.backend }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/toolchains
+      - run: make test TESTS="test_matrix test_images"
+
+  # Lint, typecheck, structure, and every suite that does not gate a whole generated project.
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      # The whole history, in this job alone: `test_changelog` holds every release this repository has ever
+      # tagged to having an entry, and a one-commit checkout — the default — has no tags to hold it against,
+      # so the check would skip itself here and pass.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/toolchains
+      - run: make lint
+      - run: make typecheck
+      - run: make check-structure
+      - run: make test SKIP="test_matrix test_add_service test_aws_target test_aws_stack test_azure_target test_azure_stack test_auth0_identity test_images test_launcher"
+
+  # A generated project that grows a second service in another language, then passes its own gate.
+  add-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/toolchains
+      - run: make test TESTS=test_add_service
+
+  # The upgrade path, end to end: a project generated by the newest release tag, given work of its own,
+  # replayed by this commit and merged — then held to being a fresh generation plus that work, and to its
+  # own `make verify`. The whole history, because the release tags are where it starts from.
+  migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/toolchains
+      - run: make test-migration
+
+  # Brownfield adoption, end to end (experimental): each fixture repository adopted, re-surveyed as a no-op,
+  # held to its own gate, migrated from a newer factory as one clean merge, and held to the gate again. The
+  # .NET fixture's own build is skipped where the machine has no `dotnet`, and the job says so.
+  adoption:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/toolchains
+      - run: make test-adoption
+
+  # The snapshot: what `main` is right now, packaged and made available — only when every job above is green.
+  # `VERSION` on main reads `1.3.0.dev0`; this counts the commits since the last release into it
+  # (`scripts/snapshot-version.py`, uncommitted, for this build alone) so the wheel and the executable both
+  # say `1.3.0.dev7`. The wheel goes to PyPI, where a `.dev` version is a
+  # pre-release every installer passes over unless asked; the executable replaces the rolling `snapshot`
+  # pre-release on the forge. It is a job here rather than a workflow of its own because the only trigger a
+  # Gitea Actions workflow can be certain of is its own `needs:` — a `workflow_run` that never fired would
+  # look exactly like a snapshot nobody pushed. Skipped on a pull request and on a `Release` commit, which
+  # the `release` job below publishes from the tag's own run. The whole history, because the snapshot number
+  # is counted from the last tag.
+  snapshot:
+    if: github.server_url == 'https://git.treyco.dev' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [checks, matrix, add-service, migration, adoption, aws, azure, auth0]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/toolchains
+      - name: Number this snapshot
+        id: snapshot
+        # Exit 3 is "VERSION is a release": the commit `make release` tagged, which the tag's own workflows
+        # publish. Nothing else here runs then, and the job is green rather than a failure to read.
+        run: |
+          set +e
+          version=$(python3 scripts/snapshot-version.py --write)
+          status=$?
+          set -e
+          if [ "$status" -eq 3 ]; then echo "publish=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          [ "$status" -eq 0 ] || exit "$status"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+      # Builds the executable with the pinned PyInstaller, proves it scaffolds, and packages it — the same
+      # three steps package.yml runs for a tag, through the targets a laptop runs. PyInstaller needs
+      # objdump and objcopy; the job image carries binutils, so this no longer apt-gets it first.
+      - if: steps.snapshot.outputs.publish == 'true'
+        run: make package-executable
+      # Uploaded before the pre-release is remade, so a publish that stops here still leaves the snapshot the
+      # forge already had, and the archives are downloadable from the run either way.
+      - if: steps.snapshot.outputs.publish == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: slipwai-snapshot-${{ steps.snapshot.outputs.version }}
+          path: release/*
+          if-no-files-found: error
+      # Builds the wheel, installs it into a clean environment and scaffolds with it before uploading. The
+      # PyPI keeps a name and version once, so every snapshot uses a new
+      # `.dev<N>` number. Older snapshots remain available.
+      - if: steps.snapshot.outputs.publish == 'true'
+        run: >
+          make publish-wheel
+          PYPI_URL="https://upload.pypi.org/legacy/"
+          PYPI_INDEX="https://pypi.org/simple"
+          PYPI_USER="__token__"
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      - if: steps.snapshot.outputs.publish == 'true'
+        name: Replace the snapshot pre-release
+        env:
+          GITEA_TOKEN: ${{ github.token }}
+        run: >
+          python3 scripts/publish-release.py
+          --api "${{ github.server_url }}/api/v1"
+          --repository "${{ github.repository }}"
+          --snapshot "${{ steps.snapshot.outputs.version }}"
+          --commit "${{ github.sha }}"
+          release/*
+
+  # The release: the tagged commit, packaged and published — only when every job above is green, judged
+  # against that commit and not its child. This is the job the tag push exists to reach. It lives here for
+  # the reason the snapshot job does, and for one more: `make release` pushes `main` and `v1.2.3` in one
+  # atomic push, so a workflow triggered by the tag alone starts at the same second as the gate and used to
+  # finish first — the wheel reached the registry and the executables were attached to the release while
+  # `verify` was still running, and would have been published over a red one. A version is spent the moment
+  # it is uploaded, so that is the one place in this repository where running beside the gate is unrecoverable.
+  # `needs:` is the whole fix: this cannot start until the six jobs above have passed on this commit.
+  # `package.yml` and `publish-package.yml` still hold the same steps, dispatched by hand, for the retry a
+  # spent version needs when the upload — not the gate — is what failed.
+  release:
+    if: github.server_url == 'https://git.treyco.dev' && startsWith(github.ref, 'refs/tags/v')
+    needs: [checks, matrix, add-service, migration, adoption, aws, azure, auth0]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      # The whole history: `scripts/publish-release.py` reads the tag, and a shallow clone of a tag ref has
+      # no earlier release to compare it against.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/toolchains
+      # The same three targets a laptop runs, and the same ones the snapshot job runs: build the executable
+      # with the pinned PyInstaller, prove it scaffolds, package it.
+      - run: make package-executable
+      # Uploaded before anything is published, so a release whose upload fails still leaves the archives
+      # downloadable from this run — which is what `package.yml --tag` then finishes without rebuilding blind.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slipwai-${{ github.ref_name }}
+          path: release/*
+          if-no-files-found: error
+      # Builds the wheel, installs it into a clean environment and scaffolds with it before uploading: a
+      # wheel missing one bundled file installs fine and fails on the first project. The registry keeps a
+      # name and version once, so this is the step the version is spent by.
+      - run: >
+          make publish-wheel
+          PYPI_URL="https://upload.pypi.org/legacy/"
+          PYPI_INDEX="https://pypi.org/simple"
+          PYPI_USER="__token__"
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      # Through the forge's own API rather than `gh`, which is not on this runner image and does not speak
+      # Gitea. The job's token is enough for releases, which are `contents` — unlike the package registry,
+      # which refuses it and is why the step above takes a secret.
+      - name: Attach the executables to the release
+        env:
+          GITEA_TOKEN: ${{ github.token }}
+        run: >
+          python3 scripts/publish-release.py
+          --api "${{ github.server_url }}/api/v1"
+          --repository "${{ github.repository }}"
+          --tag "${{ github.ref_name }}"
+          release/*

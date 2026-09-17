@@ -1,0 +1,140 @@
+# This service's API contract, published.
+#
+# Hand-written, and that is a decision rather than a gap. Every generator that would write this from the
+# code costs a dependency and a build step, and this backend's whole position is that net/http plus the
+# standard library is enough — so the contract is a file, and `TestEveryRouteIsInThePublishedDocument`
+# in adapters/driving/http is what stops it drifting: a route the mux serves and this file does not
+# describe fails `make verify`. The other direction — a path described here and served by nothing — is
+# deliberately not gated, because that is how a contract is agreed before it is built.
+#
+# A browser app builds its client from this, and a consumer reads it without reading Go.
+openapi: 3.0.3
+info:
+  title: service
+  version: 0.1.0
+  description: >-
+    The service's HTTP surface. Every path below is served by adapters/driving/http, and every request
+    body is decoded into the named type with unknown fields refused — so a field this document does not
+    name is a 400 and not a silently dropped value.
+paths:
+  /health:
+    get:
+      summary: Whether this process is up.
+      description: >-
+        Liveness, deliberately outside /api: it is not part of the product surface a browser calls. It
+        asks nothing of any dependency, because a liveness probe that fails when a database is
+        unreachable gets the process restarted when the only thing wrong is somewhere else.
+      responses:
+        "200":
+          description: The process is up and answering.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /ready:
+    get:
+      summary: Whether this service should be sent traffic.
+      description: >-
+        Readiness, which is a different question from liveness: it runs a trivial query through the
+        event-store port, so a service whose store has gone away is taken out of the pool rather than
+        left serving failures. This is what the Compose healthcheck, the load balancer and `make smoke`
+        wait on. A project with no event store answers ready with nothing to ask.
+      responses:
+        "200":
+          description: The driven ports answered; send traffic.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: Always `no-store`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ready"
+        "503":
+          description: >-
+            A driven port did not answer. The reason is a category and never the driver's own message,
+            which stays in the log — a connection string is exactly what must not leave this process.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unready"
+  /api/flags:
+    get:
+      summary: This environment's feature flags, for the browser app.
+      description: >-
+        Served only where this project has somewhere to declare a flag — BuildApp registers it when it is
+        given a flag source and not otherwise, so a project with no target has no route here rather than
+        one that always answers an empty object. Never cached: the answer is what the environment is set
+        to now.
+      responses:
+        "200":
+          description: Every flag this environment carries, by key.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: Always `no-store`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Flags"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+      additionalProperties: false
+    Ready:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+      additionalProperties: false
+    Unready:
+      type: object
+      required: [status, reason]
+      properties:
+        status:
+          type: string
+          enum: [unready]
+        reason:
+          type: string
+          enum: [eventStore]
+      additionalProperties: false
+    Flags:
+      type: object
+      additionalProperties:
+        type: string
+    SchemaFailure:
+      description: >-
+        The one 400 body. It names where the failure was and what the rule said, and never the value —
+        a validation error on a field holding a token or a password must not quote it back.
+      type: object
+      required: [error, field, message]
+      properties:
+        error:
+          type: string
+          enum: [schemaValidationFailed]
+        field:
+          type: string
+        message:
+          type: string
+      additionalProperties: false
+    NotFound:
+      description: >-
+        The 404 body, which says nothing the caller did not already know: no path, no method, and no hint
+        whether the route exists under a different verb.
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [notFound]
+      additionalProperties: false

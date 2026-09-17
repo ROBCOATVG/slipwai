@@ -1,0 +1,12 @@
+{
+  "name": "event-model-tooling",
+  "private": true,
+  "description": "Dependencies for the event-model render pipeline. Installed by `make model`; never a root concern, so a Python or Go service does not carry Node in its own toolchain.",
+  "dependencies": {
+    "yaml": "2.9.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "tsx": "4.23.12"
+  }
+}

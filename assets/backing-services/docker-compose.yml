@@ -1,0 +1,91 @@
+# Everything this project runs locally: the app itself, and the backing services behind it. `make demo`
+# brings the whole thing up, which is what makes a demo one command rather than a list of terminals.
+#
+# Local development only. Nothing here is a production configuration — the credentials are fixtures, the
+# containers are stand-ins — and a project with a production target deploys from `infra/`, never from this.
+#
+# The generated project's `./init` prunes this to the services the chosen options declare, so a project
+# carries only what it uses. Each service sits between a `backing-service:<name>:begin` / `:end` pair,
+# which is what `scripts/backing-services.py` removes; the markers themselves are stripped once a
+# selection is made.
+#
+# The app's own services are written by the factory in place of the `__APP_SERVICES__` line below, because
+# what runs them is language-specific and a marker cannot express "whichever backend this is". They run
+# the checkout rather than a built image — `make dev`, the same command you would run yourself, inside the
+# base image CI uses — so a demo can never be a stale copy of the code and there is no Dockerfile to keep
+# in step with the app's layout.
+#
+# No `container_name` anywhere, deliberately. Compose already names containers `<project>-<service>-1`,
+# where the project defaults to the directory name — so two checkouts get distinct containers for free.
+# Setting `container_name` overrides that with a machine-global name, and every project generated from this
+# factory would then claim the same one and fight over it. Nothing needs a fixed name: `make services-up` reaches
+# the database through the *service* name, `postgres`, which is stable regardless.
+#
+# Host ports are variables with the current values as defaults, for the same reason: a port is machine-global
+# too, so a second project on the same machine needs to move one without editing this file. Compose reads
+# `.env` from the project directory automatically, so `POSTGRES_PORT=5434` there is enough — but change
+# `DATABASE_URL` to match in the same edit, since the application reads that and nothing derives one from the
+# other.
+services:
+__APP_SERVICES__
+  # backing-service:postgres:begin
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      - '${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U app -d app']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  # backing-service:postgres:end
+
+  # backing-service:keycloak|users-keycloak:begin
+  # Present when Keycloak answers either identity question — staff (`--auth`), the product's users
+  # (`--users`), or both — and shared between them: one container, one realm per answer, so the marker names
+  # both features and the block stays while either does. Development mode with an in-memory store and every
+  # realm under `docker/keycloak/realms/` imported at start-up, so it is reproducible and disposable rather
+  # than stateful — there is no volume, and `docker compose down` loses nothing that matters. Do not carry
+  # this service into a real environment: `start-dev` disables HTTPS and the bootstrap admin below is a
+  # published credential.
+  #
+  # Each realm's names match the values in `.env.example` — `OIDC_*` for the staff realm `app`, `USERS_OIDC_*`
+  # and `VITE_USERS_*` for the customers realm — so `http://localhost:${KEYCLOAK_PORT}/realms/<realm>` resolves
+  # without further setup.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7
+    command: ['start-dev', '--import-realm']
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: '8080'
+      KC_HEALTH_ENABLED: 'true'
+    ports:
+      - '${KEYCLOAK_PORT:-8081}:8080'
+    volumes:
+      # The directory rather than each file, so pruning a realm is deleting its file and nothing here
+      # changes: Keycloak imports every realm it finds in this directory.
+      - ./docker/keycloak/realms:/opt/keycloak/data/import:ro
+    healthcheck:
+      # The image ships no curl, and Keycloak serves health on the management port (9000) rather than 8080.
+      # Bash's /dev/tcp is enough to know the management listener is up, which is the last thing to bind.
+      test: ['CMD-SHELL', 'exec 3<>/dev/tcp/127.0.0.1/9000']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  # backing-service:keycloak|users-keycloak:end
+
+# backing-service:postgres:begin
+# The `volumes:` header is inside the Postgres block on purpose. `postgres-data` is the only named volume,
+# so pruning Postgres while leaving the header behind produces `volumes:` with nothing under it, which
+# Compose rejects outright ("volumes must be a mapping") — an unusable file that no gate would notice,
+# because nothing runs Compose during `make verify`. Add a second volume by giving it its own marked block.
+volumes:
+  postgres-data:
+# backing-service:postgres:end

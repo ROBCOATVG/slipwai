@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+case ${1:-} in
+  *sername*) printf '%s\n' "${GITEA_USERNAME:?GITEA_USERNAME is required}" ;;
+  *assword*) printf '%s\n' "${GITEA_TOKEN:?GITEA_TOKEN is required}" ;;
+  *) exit 1 ;;
+esac

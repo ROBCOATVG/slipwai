@@ -1,0 +1,149 @@
+# Spec Kit extension hooks.
+#
+# Every `/speckit-*` command looks here for `hooks.before_<phase>` and `hooks.after_<phase>` before and
+# after it runs — ten phases, one per command: constitution, specify, clarify, plan, tasks, analyze,
+# checklist, implement, converge, taskstoissues. Finding no file at all, the commands are told to skip
+# silently; in practice they often narrate the skip instead, which is the noise this file replaces with
+# something worth reading.
+#
+# ── Two rules that decide whether a hook does anything ───────────────────────────────────────────────
+#
+# `optional: true` means the command *prints* the description and prompt and runs nothing. `optional:
+# false` makes it emit `EXECUTE_COMMAND:` and actually invoke the command, blocking until it finishes.
+# Prefer optional: a hook that runs a command for you is a second route through the workflow, and
+# Principle XI wants one.
+#
+# **Never set `condition:`.** The commands are explicitly instructed not to evaluate condition
+# expressions and to skip any hook that carries a non-empty one — so a condition here does not narrow
+# when the hook fires, it stops it firing at all.
+#
+# `command` is a slash command with the dots replaced by hyphens: `speckit.git.commit` → `/speckit-git-commit`.
+#
+# This file is NOT Spec Kit-managed — it appears in no manifest, so editing it is not the in-place edit
+# `make check-speckit` exists to catch. Add your own hooks here rather than in `.specify/templates/`.
+
+hooks:
+  before_constitution:
+    - extension: "required-coverage"
+      command: "constitution-coverage"
+      description: "Show the principles this project's constitution cannot ship without"
+      optional: true
+      enabled: true
+      prompt: >-
+        `/speckit-constitution` starts from a template, and a template is a starting position rather than a
+        floor. This project has a floor: `make check-constitution` fails the build when
+        `.specify/memory/constitution.md` stops carrying minimum-CD, the practices this repository's skills
+        teach, or — where `project.json` claims them — the Event Modeling and event-sourcing obligations.
+        Which set applies is read from `project.json`, not chosen here.
+
+
+        Run `/constitution-coverage --requirements` first and draft against that list. It prints the
+        normative text for every requirement, so the cheap path is to keep those obligations and spend the
+        session on the parts only this domain can supply: Principle I's invariant, the sensitive data
+        classes, the retention and rollback numbers, and every other `[PLACEHOLDER]`. An unfilled
+        placeholder is itself a finding — a constitution with placeholders is drafted, not ratified.
+
+
+        **Wording is free; the obligation is not.** The gate reads for the terms an obligation cannot be
+        written without, so rephrase for this domain freely and do not delete a principle to make the
+        document shorter. A principle removed here is a gate that silently stopped existing, and every
+        later phase — plan, tasks, implement, review — reads this file as the authority it claims to be.
+
+  # The one hook here that is deliberately not `optional`. The rule above — prefer optional, because a hook
+  # that runs a command is a second route through the workflow — is about routes to production, and this is
+  # not one: it adds no way to deliver a change, it re-checks an artifact the phase above just wrote. Left
+  # optional it would be a printed reminder about a gate that fails later anyway, which is the noise this
+  # file exists to remove.
+  after_constitution:
+    - extension: "required-coverage"
+      command: "constitution-coverage"
+      description: "Check the ratified constitution against this project's required coverage"
+      optional: false
+      enabled: true
+      prompt: >-
+        Check the file that was just written. This hook runs rather than suggests — the alternative is
+        discovering the gap at `make verify`, after the phase that could have fixed it in one edit has
+        ended, and with a plan already written against a constitution that was missing a principle.
+
+
+        Fix what it names by amending the constitution, never by loosening the gate. Where a finding needs
+        a decision this session cannot make — the domain invariant, a retention period, a compliance
+        scope — say which requirement is unmet and ask, rather than inventing an obligation the team never
+        agreed to. Inventing one is worse than leaving it open: it reads as ratified afterwards.
+
+  after_tasks:
+    - extension: "context-hygiene"
+      command: "compact"
+      description: "Compact the conversation now, at the cheapest point in the workflow"
+      optional: true
+      enabled: true
+      prompt: >-
+        tasks.md is written, and everything the next phase reads is now on disk — spec.md, plan.md,
+        contracts/, the slice's own artifacts, and the task list itself. So the conversation above has
+        just reached its longest and its least necessary at the same moment, which is what makes this
+        the cheapest compaction point in the workflow.
+
+
+        Compacting deliberately here beats being auto-compacted later: the summary gets taken at a
+        clean boundary with a committed artifact behind it, rather than halfway through a RED step
+        where the thing being dropped is the reason the test is failing. Principle XIV asks for one
+        scenario per session, which is easier to hold when the session starts near-empty.
+
+
+        Type it yourself if you want it. `/compact` is a host session command — Claude Code and Cursor
+        both spell it that way — not a project skill, so no agent can run it on your behalf. A harness
+        without that verb has nothing to type; skip it. Skip it if this session is still short. `/clear`
+        or a new chat is for when the scenario is done or the work has changed, not for this boundary.
+
+
+        **This hook is not a gate, and printing it does not hand the workflow back.** It suggests one thing
+        only the user can do; the continuation contract in `AGENTS.md` is unaffected, and implementation
+        continues to `/speckit-implement` whether or not the suggestion is taken.
+
+  # Optional, because the ladder in `commands/drive.md` already puts convergence between implementation and
+  # the demo — and a hook that runs a command is a second route through the workflow. What this one is for
+  # is the other entry: `AGENTS.md` says the loop starts when *any* per-slice command is invoked, so someone
+  # who typed `/speckit-implement` and never typed `/drive` has not read that ladder.
+  after_implement:
+    - extension: "convergence"
+      command: "speckit-converge"
+      description: "Check the codebase against the artifacts before anything is demonstrated"
+      optional: true
+      enabled: true
+      prompt: >-
+        The tasks are checked off, which is evidence about the task list rather than about the spec. Converge
+        is the phase that compares the codebase with spec.md, plan.md and tasks.md and appends whatever the
+        artifacts require and the code lacks.
+
+
+        It is append-only — its single write is new tasks, never spec, plan, existing tasks, or application
+        code — so running it costs a read and repeating it is safe. Implement whatever it appends and converge
+        again, until it reports converged.
+
+
+        Do this **before** the demo, not after. A demo is a feedback stage, and feedback about a path that
+        turns out to be half-built is feedback spent on the wrong question.
+
+  # Not optional, on the same grounds as `after_constitution` above: this adds no way to deliver a change, it
+  # re-checks the artifact the phase it follows just produced. The alternative is finding an unreachable
+  # promise at the demo, in front of the actor.
+  after_converge:
+    - extension: "promise-tracing"
+      command: "gaps"
+      description: "Trace each promise to an observable test and a reachable production path"
+      optional: false
+      enabled: true
+      prompt: >-
+        Converge answers "is everything the artifacts require built?" — a mechanical question with a
+        termination condition. It does not ask whether the artifacts promised the right observable behaviour,
+        or whether a promise is reachable at all. That is this pass, and running it here is the last point
+        before the demo where the answer is still cheap.
+
+
+        **If this converge run appended tasks, say so and stop.** The trace belongs to the converged verdict:
+        ahead of it, every unbuilt task reads as a gap and buries the findings that need judgement.
+        `commands/gaps.md` carries that rule too.
+
+
+        Read-only. A confirmed defect becomes a failing test at the level that owns the rule; a product
+        question goes to the user rather than into an artifact as an invented criterion.

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://biomejs.dev/schemas/__BIOME_VERSION__/schema.json",
+
+  // One configuration for every npm package in this repository — each service under `apps/`, each browser
+  // app, and anything shared under `packages/` — because a formatter with two opinions is a diff that
+  // moves back and forth depending on which directory somebody ran it from. `npm run lint` in any package
+  // is `biome check`, which finds this file by walking up, so the rules are the same wherever it is run.
+  //
+  // Biome rather than ESLint plus Prettier: typescript-eslint refuses TypeScript 7 and its peer range
+  // admits no newer compiler (typescript-eslint#10940), so the linter that was here parsed TypeScript with
+  // Babel, had no type-aware rules, and had to switch `no-unused-vars` off because a JavaScript rule
+  // reading a TypeScript AST reports every type-only import as unused. Biome parses TypeScript itself, is
+  // not tied to a compiler version, and brings the formatter and the import sorting with it — so the
+  // browser app, which had no linter at all, now has the same one as the services.
+  //
+  // What this does *not* own: dependency direction between layers, which is `make check-imports`, and
+  // unused locals, which is `tsc --noEmit`'s TS6133 — the check that understands a type-only import.
+
+  "files": {
+    "includes": [
+      "apps/**",
+      "packages/**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.build",
+      "!**/coverage",
+      "!**/reports",
+      "!**/.stryker-tmp",
+      // The published API document is written by `make openapi` and held to by `check-openapi`;
+      // a formatter with an opinion about its whitespace would make the two disagree.
+      "!**/openapi.json",
+      "!**/openapi-flags.json"
+    ]
+  },
+
+  "formatter": {
+    // Two spaces and a hundred columns: the same width this repository's Python side is held to, so one
+    // number governs the whole repository rather than one per language. Comments are left as written —
+    // Biome reflows code, never prose.
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+
+  "javascript": {
+    "formatter": {
+      // The quoting this project's TypeScript was already written in.
+      "quoteStyle": "single"
+    }
+  },
+
+  "linter": {
+    "rules": {
+      "preset": "recommended"
+    }
+  },
+
+  // Import order is part of `biome check`, so a merge never has to argue about it.
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+
+  "overrides": [
+    {
+      // `any` erases the types the domain and the application layer are made of, so it is an error
+      // there and a warning everywhere else — an adapter narrowing a third-party value is a different
+      // situation from a use case that gave up. Both globs match a layer at either depth: `src/domain/`
+      // is the single-context layout, `src/<context>/domain/` the same layer once a service holds more
+      // than one bounded context.
+      "includes": [
+        "**/src/domain/**",
+        "**/src/*/domain/**",
+        "**/src/application/**",
+        "**/src/*/application/**"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "error"
+          }
+        }
+      }
+    },
+    {
+      // The domain may not reach for the clock, for randomness, or for identifier generation: those
+      // arrive as typed inputs, which is what makes a Decider testable without freezing time. No linter
+      // ships that rule, so it is written as a plugin — see the file for what each pattern catches.
+      "includes": ["**/src/domain/**", "**/src/*/domain/**"],
+      "plugins": ["scripts/domain-purity.grit"]
+    }
+  ]
+}

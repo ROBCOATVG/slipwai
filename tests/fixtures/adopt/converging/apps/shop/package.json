@@ -1,0 +1,10 @@
+{
+  "name": "shop",
+  "private": true,
+  "scripts": {
+    "start": "node src/adapters/http.js",
+    "lint": "node -e \"process.exit(0)\"",
+    "typecheck": "node --check src/adapters/http.js && node --check src/domain/prices.js",
+    "test": "node --test"
+  }
+}

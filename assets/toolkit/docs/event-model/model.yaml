@@ -1,0 +1,69 @@
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+# The global event model. One file, for the life of the project.
+#
+# This is the source of truth for the diagram, not the diagram itself: `make model` generates
+# model.mmd, model.svg, one view per slice, and model.html from what is here. Never edit those.
+#
+# It ships empty on purpose. A slice named here is a permanent commitment — event schemas are never
+# rewritten and stream identity sets the concurrency ceiling — so the starter makes none. Your first
+# entry comes out of a modelling conversation (the `event-modeling` skill), not out of a guess.
+#
+# Read docs/event-model/README.md before your first entry. The five-minute version:
+#
+#   • Slice order in this file is timeline order. Order within `frames` is causal order.
+#   • Frame numbers are derived. Never write one.
+#   • Every slice is exactly one of four patterns, and `make check-model` holds you to its shape:
+#       state-change   ui|pcr → cmd → evt+          the only way state changes
+#       state-view     rmo → ui?                    plus `reads`: the events it folds
+#       automation     rmo → pcr → cmd → evt+       plus `reads`: what triggers it
+#       translation    evt(external) → pcr → cmd → evt+
+#   • optional `depends_on: [OtherSlice]` — genuine build deps only; needing another
+#     slice's events is solved with synthetic fixtures, not by waiting for it. Cycles and
+#     "depends_on equals the producers of my reads" fail `make check-model`
+#   • status walks proposed → modelled → planned → implemented, and each step commits to more:
+#       planned      a state-change slice must name what its append is guarded by — its `stream`, or a
+#                    `guard` drawn over tags; a state-view or automation slice must
+#                    name its `materialisation` — live, inline or async — and a `live` one the
+#                    `liveBudget` that bounds the fold it does on every query. An event may also name
+#                    its `attributes` here, marking which of them identify something (`identifies:
+#                    seat`), which is what a tagging function is transcribed from
+#       implemented  `gwt` and `code` must exist, and the events must appear in the source
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+
+version: 1
+
+render:
+  # What each band's swimlanes group by. A namespace is resolved per band, so these are independent —
+  # which is how the notation's own picture works: actors across the top, streams across the bottom.
+  #   ui      actor | context | none    the ui and pcr boxes; `actor` gives a processor its own lane too
+  #   data    context | none            the cmd and rmo boxes
+  #   events  stream | context | none   the evt boxes; `stream` names the lane after the slice's `stream`
+  #                                     with its placeholder removed, so order-{orderId} is the `order`
+  #                                     lane. A slice guarding with `guard` falls back to its `context`.
+  # `make model` patches mermaid-cli's copy of mermaid (mermaid-js/mermaid#7986) until it ships the fix
+  # for #7925; pasting model.mmd into mermaid.live duplicates lanes until then.
+  lanes:
+    ui: actor
+    data: none
+    events: stream
+  # How wide a README segment may get, in frames. The timeline grows sideways forever and the column it is
+  # read in does not, so the README embeds segments of whole slices rather than one image of everything.
+  # Six is about two slices, which renders at ~70–80% in a README column. Lower it to 3 for one slice per
+  # image; raise it if your readers always click through to full size. Only used while `page` is unset.
+  framesPerSegment: 6
+  # Where event-model.yml publishes the browsable page. Unset, because a template cannot know it and a
+  # README link that 404s is worse than no link — `https://<org>.github.io/<repo>/` is wrong for a custom
+  # domain and for every project that deleted the workflow's `deploy` job. Read it off that job's
+  # environment URL after the first successful run and set it here.
+  #
+  # Setting it makes the README's block a link rather than a strip of embedded SVGs. That is not a
+  # cosmetic preference: thirteen slices came out as nine segments, which is nine pictures of a timeline
+  # in a column too narrow to read any of them, stacked above a link to the page that showed all of it
+  # properly. The page has zoom, the slice register and a per-slice view; the column has none of those.
+  #
+  # Check the site's visibility before you publish the URL — the README is the part that leaks it. On a
+  # plan where publishing from a private repository would make the site public, delete the workflow's
+  # deploy job and leave this unset.
+  # page: https://your-org.github.io/your-repo/
+
+slices: []

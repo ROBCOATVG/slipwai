@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+build_python=${BUILD_PYTHON:-python3}
+tools=.build-tools
+
+if [ "$(uname -s)" = Linux ]; then
+  for command in objdump objcopy; do
+    if ! command -v "$command" >/dev/null 2>&1; then
+      printf '%s\n' 'PyInstaller requires objdump and objcopy on Linux. Install the binutils package, then rerun.' >&2
+      exit 2
+    fi
+  done
+fi
+
+if ! PYTHONPATH="$tools${PYTHONPATH:+:$PYTHONPATH}" "$build_python" -c \
+  'import PyInstaller; assert PyInstaller.__version__ == "6.22.2"' >/dev/null 2>&1; then
+  "$build_python" -m pip install --disable-pip-version-check --target "$tools" -r requirements-build.txt
+fi
+
+PYTHONPATH="$tools${PYTHONPATH:+:$PYTHONPATH}" "$build_python" -m PyInstaller \
+  --noconfirm \
+  --clean \
+  slipwai.spec

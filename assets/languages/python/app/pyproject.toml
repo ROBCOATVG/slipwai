@@ -1,0 +1,50 @@
+[project]
+name = "delivery-starter"
+version = "0.1.0"
+requires-python = ">=3.11"
+# What this service imports at run time — written from the answers this project was given, and taken away
+# again by `./init` when an answer is dropped, so the list is only ever as long as the adapters on disk.
+# `uv.lock` beside this file pins the whole tree, these and the development group together, and
+# `scripts/verify` installs from that lock and never from these lines.
+dependencies = []
+
+[dependency-groups]
+# The gate's own tools, and whatever a backing service's *tests* need that the service itself does not.
+# Apart from the runtime list because the production image is built from the runtime half of the lock
+# alone: a test client has no business in a running service.
+dev = []
+
+[tool.uv]
+# This service is not a package. Its code reaches the interpreter through `PYTHONPATH` — the way
+# `scripts/verify`, the Makefile and the Compose file all spell it — so `uv sync` builds an environment of
+# dependencies and never tries to build a wheel out of `src/`.
+package = false
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+testpaths = ["tests"]
+
+[tool.mypy]
+# What `make typecheck` runs, over the same two trees ruff reads. The gate passes the paths and the
+# search path itself (`scripts/verify`), because it runs from the repository root and this service is one
+# of possibly several; these are the settings, so a bare `mypy src tests` from this directory agrees with
+# it. `check_untyped_defs` is the one that matters in a young codebase: without it a function with no
+# annotations is not checked at all, which is most of what a first slice writes.
+python_version = "3.11"
+mypy_path = "src:tests"
+explicit_package_bases = true
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+# So the service's own modules sort as first-party instead of being grouped with the dependencies. Ruff
+# cannot infer this: the package lives under src/, which is not the directory ruff runs from.
+known-first-party = ["delivery_starter"]

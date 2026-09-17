@@ -1,0 +1,494 @@
+# [PROJECT_NAME] Constitution
+
+[ONE_PARAGRAPH: what this system does, who it serves, and what breaks if it is wrong. Be concrete —
+"moves other people's money", "controls physical access", "records clinical decisions". The rest of this
+document exists to protect whatever you write here.]
+
+The numbering below is for reference, not priority.
+
+Continuous delivery is how the rest of this document is enforced rather than merely asserted. Two
+questions govern every decision below: **why can we not deliver today's work to production today**, and
+**what would let us sleep tonight if we did**. Holding both at once is what makes them useful — optimising
+either alone produces a system that is fast and unsafe, or safe and irrelevant. Where a CD practice makes
+a problem visible, the practice is the diagnostic and the problem was already there; the obligation is to
+fix what it found, never to loosen the gate that found it.
+
+The delivery principles below follow [MinimumCD](https://minimumcd.org/minimumcd/) (CC BY-SA 4.0), the
+industry-agreed floor for calling a practice continuous delivery, restated for this domain and extended
+with the clause on agent-generated change. Rephrase them freely — `make check-constitution` reads for the
+obligation, not for this wording — but a principle deleted here is a gate that silently stopped existing.
+
+## Core Principles
+
+### I. [DOMAIN_CORRECTNESS_PRINCIPLE] (NON-NEGOTIABLE)
+
+[Replace with the one invariant your domain cannot violate, expressed as testable rules. Examples by
+domain: no unit of finite inventory held twice; no clinical record attributed to the wrong patient; no
+message delivered twice to a payment processor.]
+
+Where the domain involves money:
+
+- Monetary amounts MUST be integer minor units with an explicit currency code. Floating-point types
+  MUST NOT appear in any price, fee, tax, or balance.
+- Financial state MUST be derived by folding the event log, never read from a stored mutable total.
+- Corrections MUST be issued as new compensating events. Recorded events MUST NOT be updated or
+  deleted.
+
+Rationale: [why this specific failure is unrecoverable rather than merely embarrassing].
+
+### II. Idempotency and Replay Safety (NON-NEGOTIABLE)
+
+- Public write endpoints MUST accept a caller-supplied idempotency key and MUST return the original
+  result for a repeated key rather than performing the work again.
+- A command that needs to know whether something already happened MUST check the **event stream**, never
+  a read model. Read models are eventually consistent and MUST NOT guard a decision.
+- Inbound webhooks and queue consumers MUST be treated as at-least-once and MUST deduplicate on the
+  provider's event identifier.
+- A retry MUST NOT be able to duplicate a side effect. A test proving this MUST accompany each new write
+  path.
+
+Rationale: at-least-once delivery includes "more than once" and "zero times". Idempotency is the only
+defence that survives contact with production.
+
+### III. Event-Sourced Core with the Decider Pattern
+
+- **Events are the source of truth**: immutable, past-tense facts in business language. Append-only.
+- **State is a left fold**: `state = events.reduce(evolve, initialState)`. No stored current state for
+  the write model.
+- **The Decider is pure**: `decide(command, state)` returns accepted events **or** a rejection with a
+  business reason — never both, never partial. `evolve(state, event)` returns the next state. Both free
+  of I/O, clocks, identifier generation, randomness, and framework imports. Time and identifiers arrive
+  as typed inputs.
+- **Commands read user input and the event stream only.** A `ReadModel → Command` dependency MUST NOT
+  exist.
+- **The stream is the consistency boundary.** One aggregate instance maps to one stream. Cross-stream
+  work is a process manager, not a distributed transaction. **Stream identity MUST be documented
+  explicitly**, because it determines the concurrency ceiling.
+- **Read models are disposable derivations**, rebuildable from position zero. Snapshots are an
+  optimisation, never truth.
+- **Where each read model lives MUST be a written answer** — folded per query, written inline with the
+  append, or maintained by a catch-up subscription — for the same reason stream identity is written
+  down: it fixes what every query on that view costs. A per-query fold MUST carry the ceiling it holds
+  inside, and why that ceiling holds; an automation's todo list MUST be persisted, because losing it
+  loses work nothing else records.
+- **Every event MUST have a trigger** (command, automation, or translation) and **every read-model field
+  MUST trace to a source event**.
+
+**Scope boundary.** Event sourcing is the top of the complexity ladder, not a default. Contexts whose
+history is genuinely part of the domain MUST be event-sourced; peripheral CRUD contexts with no
+meaningful history MUST NOT be, merely for consistency. The rung chosen (explicit returns → in-process
+events → outbox → event sourcing) is a plan-time decision recorded with its reason.
+
+### IV. Hexagonal Architecture — Domain Isolated from Infrastructure
+
+- Domain code MUST NOT import a framework, transport, persistence implementation, clock, UUID generator,
+  vendor SDK, or UI concern.
+- **Driving adapters** parse untrusted input into typed commands and call use cases. They hold no
+  business rules.
+- **Driven adapters** implement ports owned by their innermost consumer, injected as parameters.
+- The event store is a driven port, not an ambient dependency.
+- Ports MUST be named for the business conversation, never the technology, and MUST survive an adapter
+  swap. No `I` prefix, no `Interface`/`Port`/`Impl` suffix, no vendor name in the port.
+- Ports MUST be role interfaces exposing only what the consumer needs.
+- **Every driven port MUST have a usable fake**, so domain and application layers are testable with no
+  infrastructure running. A fake that cannot simulate its port's failure modes leaves those failures
+  untested.
+- The dependency direction MUST be enforced by an automated check, not reviewer vigilance.
+
+### V. Acceptance-Driven Development from Given-When-Then
+
+- **Level.** Every slice MUST have at least one GWT scenario whose **When** enters through the
+  application's own driving port — **the use case** — and whose **Then** is observable there. A scenario
+  satisfiable by calling a Decider, a projection, or any other internal function is a unit specification,
+  NOT a slice acceptance criterion.
+- **Why the use case and not the delivery adapter.** The use case is the whole path a slice has to get
+  right: load, fold, decide, append with an expected version, re-decide on conflict. Binding acceptance
+  scenarios to an adapter couples every one of them to the thing IV exists to make replaceable, and a
+  project built with no HTTP adapter has no such boundary to bind to at all.
+- **The outside surface still has to be tested, and it has its own level.** A delivery adapter — HTTP
+  route, CLI command, queue consumer — MUST carry a test covering parse, delegate, and the mapping of
+  every outcome to a response. It lives in `tests/edge/` and MUST NOT be the level at which a business
+  rule is proved.
+- **Adversarial testing enters from outside, and this principle does not constrain it.** An attacker
+  stands at the external surface, so that is where the red-team pass reproduces (Principle V's evidence
+  gate, and the `adversarial-testing` skill). Where the rule was right and the *route* got past it, the
+  regression test belongs at the edge: a use-case test proves the rule holds and proves nothing about
+  whether the surface can be made to skip it.
+- **Command scenarios**: *Given* prior events; *When* one command with concrete data; *Then* events
+  produced **or** a business error with no events — never both.
+- **View scenarios**: *Given* projection state; *When* one event; *Then* resulting state. Views cannot
+  reject events, so they have no error cases.
+- **What is NOT a GWT scenario**: format and structure validation. That belongs in the type system,
+  which MUST make invalid states unrepresentable. If the compiler can reject it, do not write a scenario.
+- **Cycle**: RED-GREEN-REFACTOR. Tests written after the code they cover MUST be sent back.
+- **One increment at a time (NON-NEGOTIABLE).** One failing test, the smallest code that passes it,
+  refactor on green. The next test MUST NOT be written until the current one is green and refactored.
+  **Writing a slice's scenarios up front as a batch and then implementing against them is
+  prohibited**, however faithfully those scenarios were modelled — it is a planning artifact executed as
+  code, not a test-driven cycle.
+- At most **one** test may be failing at a time. Each cycle MUST leave the quickest relevant tests in its
+  file or area green. Commit each completed cycle locally; do not push those commits until the actor has
+  accepted the demo. The whole suite MUST be green immediately before that first implementation push,
+  which is what may land on trunk. A row of pending tests is not RED; it is an unintegrated batch of the
+  kind X exists to prevent.
+- A test MUST be observed failing, **and failing for the stated reason**, before the code that satisfies
+  it is written. A test that passes the moment it is written is evidence of nothing and MUST be treated as
+  a defect in the test.
+- REFACTOR is a step, not an option. It happens on green, before the next test, and it MUST NOT change
+  observable behaviour.
+
+Rationale for the increment rule: writing every scenario first looks like rigour and removes the thing
+that makes TDD work. Each test is supposed to be a design experiment whose result changes what you write
+next; a batch fixes the design before the first result arrives. It also destroys the attribution that
+makes a failure cheap — with one red test you know exactly which change broke it, and with nine you are
+debugging. The scenarios discovered during modelling are the *list* of increments to drive, not a body of
+code to author in one sitting.
+- **Behaviour, not structure.** Tests MUST NOT assert private functions, internal call ordering, or mock
+  invocation counts where an observable outcome exists. Renaming an internal function MUST NOT break a
+  test.
+- **Slice independence.** Slices sharing an event schema are independent: command slices assert on
+  produced events, view slices run on synthetic event fixtures. Artificial dependency chains MUST NOT be
+  introduced.
+- **One capability per slice, one observable outcome per criterion.** A slice or criterion joining two
+  capabilities — with "and", a comma between verbs, or "plus" — MUST be split before it is planned. The
+  word "and" in a deliverable's title is a split signal, not a description. Acceptance scenarios MUST be
+  checked for capability clusters: more than one cluster means the title under-reports what the slice
+  contains. A walking skeleton MAY span layers but MUST NOT span capabilities unless each additional one
+  introduces a **new architectural shape**.
+- **Evidence gate.** At the end-of-phase point, test effectiveness MUST be evidenced by mutation testing
+  where meaningful, otherwise by recorded reachability, contract, or operational evidence with mutation
+  marked N/A. A failing test MUST NOT be manufactured to make a behaviour-preserving change look RED.
+- Bug fixes MUST begin with a boundary-level scenario reproducing the reported behaviour.
+- Coverage percentage is not a gate.
+
+### VI. Contract-Bounded Integrations
+
+- Third-party systems MUST be reached only through a driven port this codebase owns.
+- Provider SDK types and vocabulary MUST NOT leak past the adapter boundary.
+- External data MUST be translated into domain events at an anti-corruption boundary.
+- **Every driven adapter to a third-party system MUST have integration tests against a stub of that
+  provider, pinned to a recorded or published contract.** What they cover is the adapter's own work:
+  request translation, response translation, status-to-domain-error mapping, retry, and timeout.
+- **The provider failure modes the adapter maps MUST be enumerated, and each one MUST have a test** —
+  at minimum the 4xx a caller can fix, credential rejection, rate limiting with its retry hint, 5xx, a
+  timeout, and a response the contract does not allow. A failure mode with no test is a code path that
+  first runs during an incident.
+- A retry MUST NOT be able to duplicate a non-idempotent effect. Where the provider offers an
+  idempotency mechanism, the adapter MUST use it and a test MUST prove the key reaches the provider.
+- **A stub is not a fake and is not held honest the same way.** A fake implements a port this codebase
+  owns and is validated by that port's contract suite. A stub impersonates a system nobody here owns, so
+  what validates it is the contract its responses are pinned to, plus a recording refreshed against the
+  live provider **outside the merge gate** — the obligation XIII already places on every test double.
+- **Automated test runs MUST NOT call live third-party endpoints**, which is a consequence of the above
+  rather than a separate discipline: an adapter reached through a stub has nowhere to call. A test that
+  needs a live endpoint to pass is reporting a missing stub, not a network policy.
+
+### VII. Observability and Auditability
+
+- Logs MUST be structured and carry a correlation identifier propagated across every hop, projection,
+  and background job.
+- The event log is the primary audit record. Every event MUST carry the actor that caused it plus
+  causation and correlation identifiers, both of them UUIDs, each in a type of its own so that one
+  cannot be written where the other belongs.
+- Audit records MUST be retained for [RETENTION_PERIOD] and MUST be queryable without restoring a
+  backup.
+- **A read model is not detection.** An endpoint is where someone looks once told; an alert is what tells
+  them. Where a criterion promises a problem is surfaced within a time bound, the alert satisfies it.
+- Background jobs MUST emit a heartbeat, and a missing heartbeat MUST itself be alertable — a silent job
+  and a healthy system otherwise look identical.
+- Personally identifying data MUST NOT be written to application logs.
+
+### VIII. Versioning and Breaking Changes
+
+- Published artifacts and APIs MUST be versioned MAJOR.MINOR.PATCH.
+- A breaking API change MUST ship as a new version and keep the prior version serving for
+  [DEPRECATION_WINDOW] after announcement.
+- **Event schemas are permanent contracts.** Changes MUST be additive; readers MUST tolerate unknown
+  fields. Removing or retyping a field requires a new schema version plus an upcaster that maps old
+  events forward on read. **A migration that rewrites stored events is prohibited.**
+- Migrations MUST be backward compatible with the previously deployed application version. Rebuilding a
+  projection is the preferred migration; altering one in place is the exception.
+- **If the deployment strategy runs two versions concurrently** (rolling deploy), the previous version
+  MUST also tolerate events the new version writes — forward compatibility, which is stricter than the
+  tolerant-reader rule above.
+
+### IX. Security, Privacy, and Compliance
+
+- [Sensitive data class, e.g. card numbers, credentials, clinical identifiers] MUST NOT enter, transit,
+  or be logged by this system. Capture MUST be delegated so that [COMPLIANCE_SCOPE] stays minimal.
+- Sensitive payloads MUST NOT be placed in a domain event. Events store references and outcomes.
+- **Personal data in the event log MUST be erasable without deleting or rewriting events** — by
+  reference-not-embed, or crypto-shredding behind a per-subject key. **This mechanism MUST be designed
+  before the first event carrying personal data is persisted.** Append-only storage and the right to
+  erasure only coexist if designed for up front.
+- Secrets MUST come from the environment or a secret manager. Committed secrets are a build-breaking
+  failure.
+- Authorisation MUST be enforced server-side on every request, **inside the application** rather than in
+  a driving adapter alone. Cross-tenant access MUST return not-found, not forbidden — existence is not
+  leaked.
+- Dependencies MUST be scanned in CI; a known-exploitable critical finding blocks release.
+
+### X. Continuous Integration on Trunk (NON-NEGOTIABLE)
+
+- Every engineer MUST integrate to trunk at least once per day. Work that has not reached trunk is
+  unintegrated no matter how often the build server ran against the branch it sits on.
+- Where branches are used they MUST be cut from trunk, MUST re-integrate to trunk, and MUST live less than
+  a day. Long-lived `develop`, `test`, integration, or per-feature branches MUST NOT exist.
+- Trunk MUST be releasable at every commit. Automated verification runs before the merge and again on
+  trunk after it.
+- **A red trunk stops the line.** While the build is failing the only permitted work is restoring it. New
+  feature work MUST NOT start on a red build, and a failure MUST NOT be carried into a later change.
+- A work item MUST be codeable, testable, reviewable, and integrable within **two days**. An item that is
+  not MUST be split before it is started — carrying it is how a two-day item becomes a two-week merge.
+- Fixes MUST travel forward through trunk. Cherry-picking a change onto a release branch MUST NOT be the
+  route to production.
+- **A stack of dependent pull requests is a symptom, not a technique.** Every branch in a stack is waiting
+  on the one below it, which means every branch in it is living longer than a day — the thing this
+  principle exists to prevent. A stack is evidence of exactly one of two defects: the work was never
+  decomposed into independently shippable slices, or review latency grew until building on unmerged work
+  looked cheaper than waiting for a merge. **The defect is the finding; the stack is the workaround.**
+  Where one is used anyway it MUST name which of the two it is compensating for, MUST be treated as
+  temporary, and MUST NOT become how the team normally ships.
+
+Rationale: batch size is the variable every other guarantee here depends on. A large change is not merely
+slower to review — it defeats bisection, hides the regression it introduced among unrelated edits, and
+makes rollback an all-or-nothing decision. Integration frequency is the cheapest available control on it.
+
+Rationale for treating stacks as a symptom: the technique works, which is the problem. It makes an
+undecomposed batch comfortable enough to keep, so the decomposition never happens and the review queue
+that caused it never gets fixed. A practice that relieves the pain of a constraint without removing the
+constraint will keep the constraint indefinitely.
+
+*Practice: `story-splitting` to find the vertical slice, `planning` to sequence it. Where a slice still
+looks too large to review, that is a decomposition result, not a branching problem — go back to
+`story-splitting` rather than reaching for `stack-pull-requests`.*
+
+### XI. One Path to Production, and the Pipeline Decides (NON-NEGOTIABLE)
+
+- Exactly **one** automated pipeline MUST deliver every change to every environment. Hotfixes, rollbacks,
+  configuration changes, schema migrations, and emergency work use it too. A second route, even one used
+  once, invalidates every claim the first route makes.
+- **The pipeline is the release authority.** If it passes, the artifact is deployable; if it fails, it is
+  not. A human MUST NOT be able to override the verdict, and a passing pipeline MUST NOT require a further
+  sign-off to proceed.
+- The Definition of Deployable MUST be automated in full and identical for every environment. Adding a
+  quality criterion means adding a gate, not adding a sentence to a review checklist. In this project the
+  definition is what `make ci` runs.
+- **Deterministic**: the same inputs MUST produce the same outputs and the same pass/fail verdict.
+  Everything the pipeline consumes MUST be in version control — source, pipeline definition,
+  infrastructure, migrations, alert and dashboard definitions, policies, test data, tool and runtime
+  versions, and a dependency lockfile. Floating versions (`latest`, open ranges, mutable tags) MUST NOT
+  appear anywhere the pipeline reads.
+- If a change can be made to a running environment without a commit, that thing is not managed. Bring it
+  into the repository or accept that it is undefined.
+- Every pipeline step MUST be runnable locally by the same command CI runs. A step only CI can perform is
+  a feedback loop an engineer cannot close.
+- **Flaky tests are defects, not weather.** A test that passes and fails on the same commit MUST be fixed,
+  quarantined, or deleted the day it is noticed. Re-running a build to obtain a pass is prohibited: it
+  trains the team to disbelieve the one signal that is supposed to be authoritative.
+
+*Practice: `ci-debugging` when the pipeline is the thing that is broken; `evaluate-existing-solutions`
+before a bespoke pipeline mechanism is written.*
+
+### XII. Build Once, Deploy Anywhere; Deploy Is Not Release
+
+- One artifact MUST be built once per commit and promoted unchanged through every environment. Rebuilding
+  per environment discards the evidence the pipeline produced and MUST NOT happen.
+- Artifact identity MUST be unique and immutable. Snapshot versions and mutable tags MUST NOT be deployed.
+- Configuration that varies between environments MUST come from the environment; configuration that does
+  not vary MUST ship inside the artifact and be tested with it. The two MUST NOT be conflated — see IX for
+  secrets, which are always environment-supplied.
+- **Deployment and release are separate decisions.** Incomplete work reaches production dark, behind a
+  flag. Holding a deployment back is not a release control; it is an integration debt accruing interest.
+- Every release flag MUST be created with an owner and a removal date, MUST have both paths covered by
+  tests, and MUST be removed once the rollout completes. A release flag older than [FLAG_MAX_LIFETIME,
+  e.g. 90 days] is a defect. Permanent operational switches (kill switches, circuit breakers) are a
+  different thing and MUST be named and governed as such.
+- **Rollback MUST be a single automated action completing within [ROLLBACK_TARGET, e.g. 5 minutes]**,
+  executable by anyone on the team without approval, and exercised on a routine schedule. A rollback path
+  first attempted during an incident is a hypothesis, not a capability.
+- Schema change MUST follow expand/contract across separate deployments: add, then write, then read, then
+  stop using, then remove. An additive and a destructive step MUST NOT ship in the same deployment. This
+  is the same forward-compatibility obligation as VIII, applied to storage rather than to events.
+- Rebuilding a projection from position zero is the preferred migration — it is the one migration an
+  event-sourced system can always perform and always verify.
+
+*Practice: `twelve-factor` for the config boundary and process model. `make check-migrations` is the gate on the
+expand/contract rule: a contracting migration names the expand it completes and lands in a later change.*
+
+### XIII. Fast Feedback, or It Is Not Feedback
+
+- Feedback budgets, each a gate on the suite rather than an aspiration: unit tests in watch **under one
+  second**; the pre-push deterministic set **under two minutes**; the full deterministic pre-merge suite
+  **under ten minutes**. Exceeding a budget is a defect in the suite — fix the suite. Extending the budget
+  or moving tests out of the gate to meet it is prohibited.
+- The deterministic suite MUST NOT depend on any system the team does not control: no live third-party
+  calls, no shared mutable environment, no ordering between tests, no wall-clock sleeps. This is the same
+  obligation as VI, stated as a property of the pipeline rather than of an adapter.
+- Test doubles used in the deterministic suite MUST be validated against the real system by contract tests
+  that run outside it, on a schedule or on demand. An unvalidated double is a second implementation of a
+  system nobody checked.
+- **Test changes MUST ship in the same commit as the code they cover.** Tests arriving in a later commit
+  are documentation, not a gate.
+- Non-deterministic checks — end-to-end smoke, load, resilience, exploratory testing — run after deploy.
+  They MUST NOT gate merge, and exploratory testing MUST NOT be a release gate.
+- Pre-production environments MUST be created from version control and destroyed after use. A long-lived,
+  hand-tuned environment MUST NOT be the reference for "it works" — it is the one machine nothing else
+  resembles.
+- A production problem MUST be detected by alerting within [DETECTION_TARGET, e.g. 5 minutes], not by a
+  customer. See VII: an endpoint is where someone looks once told; an alert is what tells them.
+
+*Practice: `testing` and `tdd` for the suite itself, `test-design-reviewer` when tests assert the wrong
+thing, `mutation-testing` at the end-of-phase evidence gate per V, `characterisation-tests` before changing
+code that has none, `production-parity-skill-builder` to catch environment drift, `observability` for
+detection.*
+
+### XIV. Agent-Generated Change Meets the Same Bar (NON-NEGOTIABLE)
+
+- An agent-generated change MUST clear the same pipeline and the same Definition of Deployable as a
+  human-generated one. There MUST NOT be a fast lane for agent output, and there MUST NOT be an extra
+  manual gate applied to it because of its origin.
+- **Humans own intent.** The specification, the acceptance criteria, the architectural constraints, and
+  this constitution are human-authored and human-amended. An agent MUST NOT edit them to make its own
+  change pass. Where they conflict with an implementation, they win.
+- Every change MUST carry its intent as versioned artifacts delivered in the same commit as the code: the
+  problem being solved, the observable behaviour as GWT scenarios, the constraints that bound the
+  implementation, and the acceptance criteria the pipeline enforces. These are pipeline inputs, not
+  documentation written afterwards.
+- **One scenario, one session, one commit.** An agent session MUST be scoped to a single acceptance
+  scenario and MUST end at a green commit. While the pipeline is red, the only permitted agent work is
+  restoring it — the same stop-the-line rule as X.
+- An agent MUST stop and ask when a decision falls outside its constraints — **an event name, an event
+  field, stream identity, a new dependency, or a change to a published contract**. Guessing to keep moving
+  is prohibited: per III and VIII those decisions are permanent, and an agent that invents one has made a
+  migration that cannot be migrated.
+- Review of agent-written code MUST examine intent alignment, architectural conformance, and complexity.
+  "The tests pass" is the pipeline's finding, not the reviewer's.
+- An automated reviewer MUST NOT replace a human check until it has run alongside that check for at least
+  [PARALLEL_REVIEW_CYCLES, e.g. 20] changes at an agreed accuracy. Removing the human first produces
+  confidence without evidence.
+
+Rationale: an agent cannot silently route around a vague specification, an unreliable suite, or a coupled
+architecture the way an experienced engineer does without noticing. Agentic delivery does not create these
+weaknesses; it removes the human compensation that was concealing them. Every failure it surfaces is a
+failure that was already being paid for somewhere less visible.
+
+*Practice: `specification` and `find-gaps` before an agent implements anything, `acceptance-review` to
+judge a change against its criteria rather than against itself, `event-modeling` for the conversation that
+names an event, `global-event-model` to record it.*
+
+### XV. Ubiquitous Language and Domain Types
+
+- The vocabulary is agreed with the people who own the domain, and **one term MUST have exactly one meaning**
+  inside a bounded context. Where the business renames something, the code is renamed with it — a translation
+  layer that exists only in people's heads is a defect, and it is paid for again at every handover.
+- Types, functions, modules, tests, event names, and user-facing copy MUST use that vocabulary. A technical
+  synonym for a domain term MUST NOT be introduced, and a name that says nothing about the domain — `data`,
+  `info`, `manager`, `helper` — MUST NOT survive review.
+- Where two contexts genuinely mean different things by one word, the boundary MUST be named and the term
+  translated at an adapter. Picking a winner and overloading the word MUST NOT be the resolution.
+- Domain concepts MUST be modelled as types rather than primitives: identifiers, quantities, and monetary
+  values are branded or wrapped so one cannot be passed where another is required.
+- **Constructors MUST make illegal states unrepresentable.** Untrusted input is parsed into a valid domain
+  type once, at the boundary; code past that point MUST NOT re-validate the same primitive. A rule validated
+  in two places is a rule with two versions, and they will disagree.
+- A term nobody can define without reaching for an example is not understood yet. Modelling it further is
+  cheaper than encoding the misunderstanding, because per III and VIII the name may be permanent.
+
+Rationale: every other principle here is written in domain words — an event name, an invariant, a stream
+identity. Those words become permanent contracts, so vocabulary drift does not produce a naming
+inconsistency, it produces a migration that cannot be migrated.
+
+*Practice: `ubiquitous-language` to agree the terms with the domain expert, `domain-driven-design` for the
+modelling, `functional` for the types that hold the result.*
+
+## Additional Constraints
+
+- All timestamps MUST be stored in UTC. Where a time has local meaning to a user, the IANA timezone MUST
+  be retained as a **domain field**, not treated as a formatting concern.
+- Domain time (`occurredAt`, injected) MUST be stored separately from storage time (`recordedAt`).
+  Conflating them makes clock problems unreconcilable.
+- Event data MUST record facts true on any machine. Runtime context — file paths, hostnames, process
+  ids, working directories — MUST NOT appear in event payloads.
+- Simplicity governs: the smallest design satisfying the spec wins. Additional services, caches, queues,
+  or abstraction layers MUST be justified in the plan against a named requirement. Not every interface is
+  a port; not every context is event-sourced.
+
+### Technology Stack
+
+- [LANGUAGE_AND_RUNTIME], pinned in the repository and identical across local, CI, and production. A pin
+  nobody can satisfy is worse than no pin — pin what the environments actually run, and change it by
+  upgrading environments rather than editing the pin.
+- Strict type checking MUST be enabled at its maximum practical setting from the first commit.
+  Retrofitting strictness is expensive; enabling it on an empty codebase is free.
+- Escape hatches (`any` and equivalents) MUST NOT appear in domain or application code. Untyped external
+  data enters as `unknown` and is narrowed by a runtime schema.
+- **Schema-first at trust boundaries.** Every crossing MUST be validated by a runtime schema: inbound
+  requests, third-party responses, and **events on both write and read from the store** — because stored
+  events outlive the code that wrote them.
+- Identifiers and monetary values MUST use branded types, so one identifier cannot be passed where
+  another is required.
+- **The event store product is a plan-time decision, not fixed here.** Whatever backs it, the port MUST
+  provide append-with-expected-version, ordered single-stream reads, and replay from position zero. A
+  store that cannot offer all three MUST NOT be adopted.
+
+## Development Workflow and Quality Gates
+
+- Event modelling precedes planning for any new workflow: slices, events, commands, read models, and GWT
+  scenarios modelled before tasks are generated.
+- **One global event model, kept current.** `docs/event-model/model.yaml` holds every slice on a single
+  timeline, and its status MUST track reality: `planned` before a plan is approved, `implemented` when the
+  slice ships. A pull request changing events, commands, read models, or stream identity MUST include the
+  regenerated diagram. Correctness here is a build gate (`make check-model`), not a convention — a model
+  that disagrees with the code is worse than no model, because people trust it before checking.
+- Every plan MUST include a Constitution Check naming which principles the feature touches, which
+  complexity rung it sits on per III, and how it complies.
+- Every pull request MUST pass: automated tests including at least one boundary-level scenario per slice,
+  linting, dependency vulnerability scan, the domain→infrastructure import check, and review by an
+  engineer who did not write the change.
+- A pull request MUST NOT be merged while the pipeline is red, and MUST NOT be merged by disabling a gate.
+- **Review is a flow constraint, not a queue.** A change MUST be reviewed within [REVIEW_SLA, e.g. two
+  working hours]; a pull request waiting longer than a working day MUST be escalated rather than
+  tolerated. Pair or ensemble programming satisfies the review obligation without a separate step.
+- A pull request SHOULD change fewer than 200 lines. Beyond roughly that size reviewer defect detection
+  falls off sharply, so a large diff does not buy more scrutiny — it buys less, more slowly.
+- Formatting and style MUST be enforced by tooling. A review comment about style is a missing lint rule.
+- Any change touching [HIGH_RISK_AREAS, e.g. money, inventory, event schemas, authentication] MUST be
+  reviewed by a second engineer.
+- Deviations from a principle MUST be recorded in the pull request under a "Complexity / Deviation"
+  heading, naming the principle and the reason. Silent deviation is a defect.
+- Where a slice is delivered with stubs, the stubs and their consequences MUST be recorded explicitly.
+  Stubs belong at the edges — anything expensive to retrofit MUST be real from the start.
+- **A decision that would cost a migration to reverse MUST be recorded as an ADR** in `docs/adr/`, using
+  Nygard's five sections (Title, Status, Context, Decision, Consequences). The test is reversal cost, not
+  importance: stored data must change shape, another team or customer must coordinate, a contract must be
+  versioned, or history would have to be rewritten. Event schemas, event names, and stream identity always
+  qualify — per III and VIII they are permanent. So do the complexity rung, the tenancy model, the
+  personal-data classification and its erasure mechanism, the identity and authorisation model, a new runtime
+  dependency, and any published contract.
+  **An accepted ADR MUST NOT be edited**; a decision is changed by a new ADR that supersedes it, with links
+  resolving in both directions. An ADR drafted by an agent MUST start at `Proposed` — accepting an
+  architecture decision is a human act.
+  A slice-scoped design decision stays in that slice's `research.md`; when one turns out to outlive its
+  slice, it MUST be promoted to an ADR. Recording something reversible as an ADR costs a page nobody needed;
+  failing to record something permanent loses the reasoning entirely, so the bias is deliberately towards
+  writing one.
+
+## Governance
+
+This constitution supersedes other development practices in this project. Where a style guide, template,
+skill, or prior decision conflicts with it, this document wins.
+
+**Amendment procedure.** Amendments MUST be proposed as a pull request modifying this file, MUST state
+the rationale and the version bump with its justification, and MUST be approved by the maintainers.
+Amendments invalidating existing code MUST include a migration plan.
+
+**Versioning policy.** MAJOR — a principle removed or redefined such that compliant work would now
+violate it. MINOR — a principle or section added, or guidance materially expanded. PATCH —
+clarification changing no obligation.
+
+**Compliance review.** Every review MUST verify compliance with the principles the change touches.
+Maintainers MUST review this constitution against actual practice at least quarterly; a principle
+routinely ignored MUST be enforced or amended away, never left as decoration.
+
+**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]

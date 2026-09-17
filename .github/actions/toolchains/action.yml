@@ -1,0 +1,44 @@
+name: toolchains
+# Every toolchain a factory test may need is already in the job image, so this installs nothing. The suite
+# generates a project of any catalog backend and runs its native `make verify`, so every job needs all of
+# them — which used to mean seven `actions/setup-*` steps per job, each re-downloading its toolchain into a
+# container that is thrown away when the job ends, and each asking api.github.com which version to fetch
+# until this host's unauthenticated rate limit ran out.
+#
+# `.github/runner/Dockerfile` carries them instead, and what is left here is the check that it really does:
+# `check-toolchains.sh` reads `.github/runner/versions.env` from *this checkout* and holds the running image
+# to it. So the versions CI uses are reviewed in this repository like any other change, and an image that
+# was never rebuilt for a pin that was bumped fails the first job by name rather than surfacing later as
+# something odd in a build. Adding a language is a pin in `versions.env` and a check in that script.
+#
+# The image is built and rolled out from `.github/runner/` — see its README.
+description: Check the job image provides every toolchain the factory's suite needs
+runs:
+  using: composite
+  steps:
+    # uv is the Python backend's toolchain, pinned in `src/slipwai/backends.py` (`UV_VERSION`) the same
+    # way a generated project's own workflow installs it. The job image was last tagged before that pin
+    # existed, so a job that generates a Python service and runs its native `make verify` (or `make
+    # build`) finds no `uv` on PATH. Installing the pin here is the same install that workflow does, and
+    # a no-op once the image is rebuilt with it. It is not a `setup-*` step and asks nothing of
+    # api.github.com.
+    - shell: bash
+      run: python3 -m pip install --disable-pip-version-check -q uv==0.9.26
+    - shell: bash
+      run: .github/runner/check-toolchains.sh
+    # The npm tarballs every generated project's `npm ci` fetches, carried between runs through the forge's
+    # cache server. Unrelated to toolchains and still needed: a run generates dozens of throwaway projects
+    # and each one installs from a cold cache, so one run pulled the same few hundred tarballs thirty-odd
+    # times from one address, four jobs at a time — and on 2026-09-04 the registry's edge stopped answering
+    # some of those mid-download, five minutes at a time. With the cache warm, `npm ci` verifies each tarball
+    # against the lockfile's integrity hash and fetches almost nothing. Nothing is trusted that the lockfile
+    # does not already pin. The primary key carries the run id so every job saves what it added, and the
+    # restore prefix finds the newest cache the same job saved before; the backend is in the key because the
+    # matrix jobs share a name and not a tree. `npm_config_cache` in verify.yml points npm at this directory.
+    - uses: actions/cache@v4
+      with:
+        path: /tmp/npm-cache
+        key: npm-${{ github.job }}-${{ env.FACTORY_BACKENDS }}-${{ hashFiles('assets/**/package-lock.json') }}-${{ github.run_id }}
+        restore-keys: |
+          npm-${{ github.job }}-${{ env.FACTORY_BACKENDS }}-${{ hashFiles('assets/**/package-lock.json') }}-
+          npm-${{ github.job }}-${{ env.FACTORY_BACKENDS }}-

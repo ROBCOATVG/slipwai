@@ -1,0 +1,88 @@
+name: package executables
+
+# The standalone executable, built and attached to a release. This is a retry, not the release path: it used
+# to fire on every `v*` tag, which is the same atomic push that starts `verify` on `main`, so it attached the
+# executables beside the gate and would have attached them over a red one. That build now runs in verify.yml's
+# `release` job, `needs:`-gated on every job of the tag's own run.
+#
+# What is left here is the one case a gate cannot help with: the gate passed, the upload failed, and the
+# version is spent because a tag that has been fetched must never move ([AGENTS.md](../../AGENTS.md)).
+# Dispatched with `tag: v1.2.3` this runs *this* workflow against *that* tag's source, so the fix to the
+# publishing step is picked up while the artifact is still built from the commit the release names.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Finish this already-pushed tag''s release (default: build only, attach nothing)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Linux only, because that is every runner this forge has. The matrix stays a matrix, and PyInstaller
+    # builds a binary for whichever machine runs it, so the macOS and Windows legs are two lines to restore
+    # once a runner labelled for them is registered — until then they queue for a runner that never comes
+    # and hold `release` on `needs: build` forever, which is a stuck release rather than a failed one.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            executable: dist/slipwai
+    runs-on: ${{ matrix.os }}
+    steps:
+      # The tag's own source when one was named, so a retried release attaches the executable that commit
+      # builds rather than whatever `main` has grown since.
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes binutils
+      - run: python -m pip install --disable-pip-version-check -r requirements-build.txt
+      - run: python -m PyInstaller --noconfirm --clean slipwai.spec
+      - run: python scripts/smoke-executable.py "${{ matrix.executable }}"
+      - run: python scripts/package-executable.py "${{ matrix.executable }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slipwai-${{ runner.os }}-${{ runner.arch }}
+          path: release/*
+          if-no-files-found: error
+
+  release:
+    if: github.server_url == 'https://git.treyco.dev' && (startsWith(github.ref, 'refs/tags/') || github.event.inputs.tag != '')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # This job's own ref, deliberately not the tag the build checked out: the archive has to be the one the
+      # released commit builds, but the code that publishes it has to be the one that works. They are the
+      # same commit for a tag push and different ones for a retry, which is the whole point of the retry.
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v5
+        with:
+          path: release
+          merge-multiple: true
+      # Through the forge's own API rather than `gh`, which is not on this runner image and does not speak
+      # Gitea. The job's token is enough: releases are `contents`, which this job is granted `write` on —
+      # unlike the package registry, which refuses it and is why `publish-package.yml` needs a secret.
+      - name: Publish release assets
+        env:
+          GITEA_TOKEN: ${{ github.token }}
+        run: >
+          python3 scripts/publish-release.py
+          --api "${{ github.server_url }}/api/v1"
+          --repository "${{ github.repository }}"
+          --tag "${{ github.event.inputs.tag || github.ref_name }}"
+          release/*

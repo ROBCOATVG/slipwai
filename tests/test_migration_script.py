@@ -34,6 +34,11 @@ class SourceRevisionTest(unittest.TestCase):
     def test_no_tags_is_a_mistake_not_a_skip(self) -> None:
         with self.assertRaises(ValueError):
             MODULE.source_revision([], "abc", "abc")
+        with self.assertRaises(ValueError):
+            MODULE.generate_from([], "abc", "abc", "1.0.1.dev0")
+
+    def test_the_first_public_snapshot_has_nothing_older_to_migrate_from(self) -> None:
+        self.assertIsNone(MODULE.generate_from([], "abc", "", "1.0.0.dev0"))
 
 
 if __name__ == "__main__":

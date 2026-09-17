@@ -34,7 +34,8 @@ an image that was not rebuilt fails the first job of the next run by name. Local
 `make test-migration` is the one gate beside `verify`: it generates a project with the factory as it was at
 the newest release tag, gives it work of its own, runs `slipwai migrate` from the factory as it is now, and
 requires that the result is byte-identical to a fresh generation outside the project's
-own files and green under its own `make verify`. It needs the release tags, so a shallow clone cannot run it;
+own files and green under its own `make verify`. Before the first public tag there is nothing to generate
+from, so the gate exits 0. After that it needs the release tags, so a shallow clone cannot run it;
 `MIGRATION_ARGS="--from v1.6.0"` starts from another revision, `--keep DIR` leaves the three trees to look
 at. [Bring a generated project forward](upgrading.md) is the recipe it proves.
 

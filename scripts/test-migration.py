@@ -14,6 +14,10 @@ the project's way. A conflict anywhere else, or a difference from the fresh proj
 gate failing, with the paths named. `make test-migration` runs it; CI runs it with the whole history checked
 out, because the release tags are what it starts from.
 
+The first public snapshot has no `v*` tag at all, the same way the first tagged release has no predecessor:
+there is nothing older to generate from, so the gate exits 0 and says so. After `v1.0.0` exists, an empty
+tag list is a shallow or unfetched checkout again.
+
 The project is put through `./init`'s projection step first, because a project that has not been through it
 is not the project anybody migrates. Every real repository has run `./init`, which copies `skills/` and
 `commands/` into the installed agent harness and commits the copies — and those copies are derived from
@@ -78,6 +82,22 @@ def source_revision(tags: list[str], head: str, newest_commit: str) -> str | Non
     return tags[0]
 
 
+FIRST_PUBLIC_SNAPSHOT = "1.0.0.dev0"
+
+
+def generate_from(tags: list[str], head: str, newest_commit: str, version: str) -> str | None:
+    """The revision to generate from, or `None` when this history has no older factory to migrate from.
+
+    Empty tags on the first public snapshot (`1.0.0.dev0`) are that history, not a missing fetch. After
+    the first tag exists, empty tags are still a mistake.
+    """
+    if not tags:
+        if version == FIRST_PUBLIC_SNAPSHOT:
+            return None
+        raise ValueError("no v* tag")
+    return source_revision(tags, head, newest_commit)
+
+
 def files_of(root: Path) -> dict[str, bytes]:
     return {
         path.relative_to(root).as_posix(): path.read_bytes()
@@ -121,16 +141,23 @@ def main() -> int:
         source = args.source
     else:
         tags = run("git", "tag", "--list", "v*", "--sort=-v:refname", cwd=FACTORY).split()
-        if not tags:
+        version = (FACTORY / "VERSION").read_text().strip()
+        head = run("git", "rev-parse", "HEAD", cwd=FACTORY)
+        newest_commit = (
+            run("git", "rev-parse", f"{tags[0]}^{{commit}}", cwd=FACTORY) if tags else ""
+        )
+        try:
+            source = generate_from(tags, head, newest_commit, version)
+        except ValueError:
             raise SystemExit(
                 "test-migration: no v* tag is reachable, so there is no release to generate from — "
                 "`git fetch --tags`, or name a revision with --from"
-            )
-        head = run("git", "rev-parse", "HEAD", cwd=FACTORY)
-        newest_commit = run("git", "rev-parse", f"{tags[0]}^{{commit}}", cwd=FACTORY)
-        source = source_revision(tags, head, newest_commit)
+            ) from None
         if source is None:
-            print("test-migration: HEAD is the first release; nothing older to migrate from")
+            if not tags:
+                print("test-migration: no public release yet; nothing older to migrate from")
+            else:
+                print("test-migration: HEAD is the first release; nothing older to migrate from")
             return 0
 
     with tempfile.TemporaryDirectory(prefix="migration-") as scratch:

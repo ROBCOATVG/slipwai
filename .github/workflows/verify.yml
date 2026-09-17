@@ -89,6 +89,14 @@ jobs:
     steps:
       - run: echo "server_url=[${{ github.server_url }}]"
 
+  # TEMPORARY: same needs fan-in as snapshot, minus `checks` (which our own tests will fail on account of
+  # these debug jobs existing). Isolates whether `needs: matrix` against a strategy-matrix job resolves.
+  debug-needs-fanin7:
+    needs: [matrix, add-service, migration, adoption, aws, azure, auth0]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "debug-needs-fanin7 ran - a 7-job needs fan-in including a matrixed job resolved"
+
   # The production target: `tests/test_aws_stack.py` runs `tofu validate` over every generated stack
   # (downloading the pinned AWS provider once, into the plugin cache), and `tests/test_launcher.py` builds
   # the smallest image the pinned builder makes and proves the migrate task's entrypoint through it — once,

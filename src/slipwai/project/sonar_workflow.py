@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 from ..layout import Layout
-from ..services import App, services_of, web_apps
-from .ci_workflows import toolchain_setup
+from ..services import App, families_of, services_of, web_apps
+from .ci_workflows import NODE_SETUP, toolchain_setup
 
 SONAR_ACTION = "SonarSource/sonarqube-scan-action@v8.2.2"
 ENABLED = "steps.sonar-config.outputs.enabled == 'true'"
@@ -29,7 +29,14 @@ def sonar_workflow(apps: list[App], layout: Layout) -> str:
         if app not in java
     ]
     checkout = when("      - uses: actions/checkout@v6\n", ENABLED)
-    java_setup = when(toolchain_setup("java", java), ADOPTED) if java else ""
+    services = services_of(apps)
+    families = families_of(apps)
+    setups = "".join(
+        when(toolchain_setup(family, [service for service in services if service.language == family]), ADOPTED)
+        for family in families
+    )
+    if web_apps(apps) and "typescript" not in families:
+        setups += when(NODE_SETUP, ADOPTED)
     java_scan = (
         "      - name: Analyze Java services with Maven\n"
         f"        if: {ADOPTED}\n"
@@ -37,14 +44,32 @@ def sonar_workflow(apps: list[App], layout: Layout) -> str:
         if java
         else ""
     )
-    exclusions = ""
+    scan_arguments: list[str] = []
     if java and generic:
         excluded = ",".join(f"{service.path}/**" for service in java)
-        exclusions = f"\n        with:\n          args: -Dsonar.exclusions={excluded}"
+        scan_arguments.append(f"-Dsonar.exclusions={excluded}")
+    reports = {
+        "typescript": ("sonar.javascript.lcov.reportPaths", "coverage/lcov.info"),
+        "python": ("sonar.python.coverage.reportPaths", "coverage.xml"),
+        "go": ("sonar.go.coverage.reportPaths", "sonar-coverage.out"),
+    }
+    for language, (property_name, report) in reports.items():
+        paths = [f"{app.path}/{report}" for app in generic if app.generated and app.language == language]
+        if paths:
+            scan_arguments.append(f"-D{property_name}={','.join(paths)}")
+    action_inputs = (
+        "\n        with:\n          args: >\n"
+        + "".join(f"            {argument}\n" for argument in scan_arguments).rstrip("\n")
+        if scan_arguments
+        else ""
+    )
     generic_scan = (
+        "      - name: Produce coverage reports\n"
+        f"        if: {ADOPTED}\n"
+        f"        run: python3 {layout.under('scripts/extensions/sonar/scan.py')} --coverage-only\n"
         "      - name: Analyze non-Java applications\n"
         f"        if: {ADOPTED}\n"
-        f"        uses: {SONAR_ACTION}{exclusions}\n"
+        f"        uses: {SONAR_ACTION}{action_inputs}\n"
         if generic
         else ""
     )
@@ -73,7 +98,7 @@ jobs:
           fi
 """
         + checkout
-        + java_setup
+        + setups
         + java_scan
         + generic_scan
     )

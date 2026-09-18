@@ -1,16 +1,34 @@
 """The Sonar extension's local adoption and scanner routes."""
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
+from typing import Any
+from unittest import mock
 
 from support import FactoryTestCase
 
 FAKE_SPECIFY = "#!/bin/sh\nexit 0\n"
 TOKEN = "never-put-this-in-an-argument"
+
+
+def scanner_module() -> Any:
+    path = Path(__file__).parents[1] / "assets/toolkit/scripts/extensions/sonar/scan.py"
+    specification = importlib.util.spec_from_file_location("sonar_scan", path)
+    assert specification is not None and specification.loader is not None
+    module = importlib.util.module_from_spec(specification)
+    previous = sys.dont_write_bytecode
+    try:
+        sys.dont_write_bytecode = True
+        specification.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
+    return module
 
 
 def fake_tools(directory: str, scanner: str = "#!/bin/sh\nexit 0\n") -> Path:
@@ -31,11 +49,50 @@ def sonar_environment(fake_bin: Path) -> dict[str, str]:
 
 
 class SonarExtensionTest(FactoryTestCase):
+    def test_python_and_go_coverage_commands_stay_on_the_sonar_path(self) -> None:
+        scanner = scanner_module()
+        with tempfile.TemporaryDirectory() as directory:
+            scanner.ROOT = Path(directory)
+            scanner.SCRIPTS = Path(directory) / "scripts"
+            commands: list[list[str]] = []
+
+            def record(command: list[str], cwd: Path, environment: dict[str, str] | None = None) -> int:
+                del cwd
+                del environment
+                commands.append(command)
+                return 0
+
+            scanner.run = record
+            applications = [
+                {"path": "apps/python", "language": "python"},
+                {"path": "apps/go", "language": "go"},
+            ]
+            with (
+                mock.patch.object(scanner.shutil, "which", return_value="/bin/tool"),
+                mock.patch.object(scanner.subprocess, "run"),
+            ):
+                self.assertEqual(scanner.generate_coverage(applications), 0)
+
+            rendered = [" ".join(command) for command in commands]
+            self.assertTrue(any("coverage==7.16.1 coverage run --source=src -m pytest" in line for line in rendered))
+            self.assertTrue(any("coverage==7.16.1 coverage xml -o coverage.xml" in line for line in rendered))
+            self.assertIn("go test -coverpkg=./... -coverprofile=coverage.out ./...", rendered)
+            self.assertTrue(any("--sonar-output sonar-coverage.out" in line for line in rendered))
+
     def test_adoption_writes_configuration_and_runs_the_standalone_scanner(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "sonar-product", profile="standard")
             log = Path(directory) / "sonar-args"
+            coverage_log = Path(directory) / "coverage-args"
             fake_bin = fake_tools(directory, f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {log}\n")
+            (fake_bin / "npm").write_text(
+                f"#!/bin/sh\nprintf '%s ' \"$@\" >> {coverage_log}; printf '\\n' >> {coverage_log}\n"
+                "if [ \"$1\" = '--workspace' ]; then\n"
+                "  mkdir -p \"$2/coverage\"\n"
+                "  printf 'TN:\\n' > \"$2/coverage/lcov.info\"\n"
+                "fi\n"
+            )
+            (fake_bin / "npm").chmod(0o755)
             environment = sonar_environment(fake_bin)
 
             subprocess.run(
@@ -44,9 +101,6 @@ class SonarExtensionTest(FactoryTestCase):
                 check=True,
                 env=environment,
             )
-            coverage = repo / "apps/service/coverage/lcov.info"
-            coverage.parent.mkdir(parents=True)
-            coverage.write_text("TN:\n")
             subprocess.run(["make", "sonar"], cwd=repo, check=True, env=environment)
 
             properties = (repo / "sonar-project.properties").read_text()
@@ -55,6 +109,9 @@ class SonarExtensionTest(FactoryTestCase):
             arguments = log.read_text()
             self.assertIn("-Dsonar.javascript.lcov.reportPaths=apps/service/coverage/lcov.info", arguments)
             self.assertNotIn(TOKEN, arguments)
+            coverage_arguments = coverage_log.read_text()
+            self.assertIn("@vitest/coverage-v8@4.1.11", coverage_arguments)
+            self.assertIn("--coverage.reporter=lcov", coverage_arguments)
             agents = (repo / "AGENTS.md").read_text()
             self.assertIn("<!-- extension:sonar:begin -->", agents)
             self.assertIn("make sonar", agents)
@@ -62,11 +119,15 @@ class SonarExtensionTest(FactoryTestCase):
                 json.loads((repo / ".slipwai/extensions.json").read_text()),
                 {"schemaVersion": 1, "extensions": ["sonar"]},
             )
-            self.assertIn(".scannerwork/", (repo / ".gitignore").read_text())
+            ignored = (repo / ".gitignore").read_text()
+            self.assertIn(".scannerwork/", ignored)
+            self.assertIn("sonar-coverage.out", ignored)
             workflow = (repo / ".github/workflows/sonar.yml").read_text()
             self.assertIn("SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}", workflow)
             self.assertIn("hashFiles('sonar-project.properties') != ''", workflow)
             self.assertIn("SonarSource/sonarqube-scan-action@v8.2.2", workflow)
+            self.assertIn("scripts/extensions/sonar/scan.py --coverage-only", workflow)
+            self.assertIn("-Dsonar.javascript.lcov.reportPaths=apps/service/coverage/lcov.info", workflow)
             self.assertNotIn("sonar", (repo / ".github/workflows/verify.yml").read_text())
 
     def test_missing_scanner_is_non_fatal(self) -> None:
@@ -130,7 +191,13 @@ class SonarExtensionTest(FactoryTestCase):
             fake_bin = fake_tools(directory)
             log = Path(directory) / "maven-args"
             wrapper = repo / "apps/service/mvnw"
-            wrapper.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {log}\n")
+            wrapper.write_text(
+                f"#!/bin/sh\nprintf '%s\\n' \"$@\" >> {log}\n"
+                "if [ \"$2\" = 'test' ]; then\n"
+                "  mkdir -p target/site/jacoco\n"
+                "  printf '<report/>\\n' > target/site/jacoco/jacoco.xml\n"
+                "fi\n"
+            )
             wrapper.chmod(0o755)
             environment = sonar_environment(fake_bin)
 
@@ -143,9 +210,12 @@ class SonarExtensionTest(FactoryTestCase):
             subprocess.run(["make", "sonar"], cwd=repo, check=True, env=environment)
 
             arguments = log.read_text()
+            self.assertIn("test", arguments)
             self.assertIn("sonar:sonar", arguments)
             self.assertIn("-Dsonar.projectKey=sonar-java", arguments)
+            self.assertIn("-Dsonar.coverage.jacoco.xmlReportPaths=", arguments)
             self.assertNotIn(TOKEN, arguments)
             workflow = (repo / ".github/workflows/sonar.yml").read_text()
             self.assertIn("scripts/extensions/sonar/scan.py --java-only", workflow)
             self.assertNotIn("SonarSource/sonarqube-scan-action", workflow)
+            self.assertNotIn("--coverage-only", workflow)

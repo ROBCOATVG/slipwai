@@ -104,6 +104,10 @@ class CoverageGateTest(unittest.TestCase):
         per_package, total, covered = self.gate.measure(profile, {"example.com/p/svc/cmd/serve": "entry point"})
         self.assertEqual(per_package, {"example.com/p/svc/events": (5, 2), "example.com/p/svc/health": (1, 1)})
         self.assertEqual((total, covered), (6, 3))
+        sonar = self.gate.sonar_profile(profile, {"example.com/p/svc/cmd/serve": "entry point"})
+        self.assertEqual(sonar.count("events.go:10.2,12.3"), 1)
+        self.assertNotIn("cmd/serve/main.go", sonar)
+        self.assertIn("events.go:10.2,12.3 2 1", sonar)
 
     def test_the_gate_fails_below_the_minimum_and_on_nothing_measured(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

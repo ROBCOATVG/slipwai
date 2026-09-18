@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
+
 
 def project_root(script: Path) -> Path:
     for candidate in script.parents:
@@ -19,8 +21,11 @@ def project_root(script: Path) -> Path:
 
 
 ROOT = project_root(Path(__file__).resolve())
+SCRIPTS = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "project.json"
 PROPERTIES = ROOT / "sonar-project.properties"
+COVERAGE = "coverage==7.16.1"
+VITEST = "4.1.11"
 
 
 def existing(paths: list[Path]) -> list[str]:
@@ -35,14 +40,77 @@ def scanner_arguments(generic: list[dict], java: list[dict]) -> list[str]:
         arguments.append(f"-Dsonar.exclusions={excluded}")
     javascript = existing([ROOT / app["path"] / "coverage/lcov.info" for app in generic])
     python = existing([ROOT / app["path"] / "coverage.xml" for app in generic])
+    go = existing([ROOT / app["path"] / "sonar-coverage.out" for app in generic])
     if javascript:
         arguments.append(f"-Dsonar.javascript.lcov.reportPaths={','.join(javascript)}")
     if python:
         arguments.append(f"-Dsonar.python.coverage.reportPaths={','.join(python)}")
+    if go:
+        arguments.append(f"-Dsonar.go.coverage.reportPaths={','.join(go)}")
     return arguments
 
 
-def run_generic(generic: list[dict], java: list[dict]) -> int:
+def run(command: list[str], cwd: Path, environment: dict[str, str] | None = None) -> int:
+    return subprocess.run(command, cwd=cwd, env=environment, check=False).returncode
+
+
+def generate_coverage(apps: list[dict]) -> int:
+    """Produce Sonar reports for generated non-Java applications, outside the native gate."""
+    generated = [app for app in apps if app.get("generated", True)]
+    if any(app.get("language") == "typescript" for app in generated):
+        if shutil.which("npm") is None:
+            print("npm is required to produce TypeScript coverage for Sonar.", file=sys.stderr)
+            return 2
+        if status := run(["npm", "ci"], ROOT):
+            return status
+        install = [
+            "npm", "install", "--no-save", "--ignore-scripts",
+            f"@vitest/coverage-v8@{VITEST}",
+        ]
+        if status := run(install, ROOT):
+            return status
+    for app in generated:
+        path = ROOT / app["path"]
+        language = app.get("language")
+        if language == "typescript":
+            command = [
+                "npm", "--workspace", app["path"], "exec", "--", "vitest", "run",
+                "--coverage.enabled", "--coverage.provider=v8", "--coverage.reporter=lcov",
+            ]
+            if status := run(command, ROOT):
+                return status
+        elif language == "python":
+            if shutil.which("uv") is None:
+                print("uv is required to produce Python coverage for Sonar.", file=sys.stderr)
+                return 2
+            prefix = ["uv", "run", "--project", ".", "--with", COVERAGE, "coverage"]
+            environment = os.environ | {"PYTHONPATH": "src"}
+            if status := run([*prefix, "run", "--source=src", "-m", "pytest"], path, environment):
+                return status
+            if status := run([*prefix, "xml", "-o", "coverage.xml"], path, environment):
+                return status
+        elif language == "go":
+            subprocess.run(
+                ["go", "tool", "covdata", "percent", "-i=."],
+                cwd=path,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+            if status := run(["go", "test", "-coverpkg=./...", "-coverprofile=coverage.out", "./..."], path):
+                return status
+            command = [
+                "python3", str(SCRIPTS / "go-coverage.py"), app["path"], "0",
+                "--sonar-output", "sonar-coverage.out",
+            ]
+            if status := run(command, ROOT):
+                return status
+    return 0
+
+
+def run_generic(generic: list[dict], java: list[dict], *, with_coverage: bool = True) -> int:
+    if with_coverage and (status := generate_coverage(generic)):
+        return status
     scanner = shutil.which("sonar-scanner")
     if scanner is None:
         print(
@@ -64,6 +132,8 @@ def run_java(document: dict, app: dict, only_deployable: bool) -> int:
     if not wrapper.is_file():
         print(f"{app['path']}: Maven wrapper not found; cannot run Sonar.", file=sys.stderr)
         return 2
+    if status := subprocess.run([str(wrapper), "-B", "test"], cwd=path, check=False).returncode:
+        return status
     name = document["name"]
     key = name if only_deployable else f"{name}-{app['name']}"
     project_name = name if only_deployable else f"{name} ({app['name']})"
@@ -90,6 +160,7 @@ def run_java(document: dict, app: dict, only_deployable: bool) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--java-only", action="store_true", help="scan only Java services (used by CI)")
+    parser.add_argument("--coverage-only", action="store_true", help="produce non-Java reports without scanning")
     arguments = parser.parse_args()
     missing = [name for name in ("SONAR_HOST_URL", "SONAR_TOKEN") if not os.environ.get(name)]
     if missing:
@@ -113,6 +184,8 @@ def main() -> int:
     ]
     generic = [app for app in deployables if app not in java]
 
+    if arguments.coverage_only:
+        return generate_coverage(generic)
     if generic and not arguments.java_only:
         status = run_generic(generic, java)
         if status:

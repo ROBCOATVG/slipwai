@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The coverage gate `make test` holds a Go service to: the share of its statements the suite reaches.
 
-    python3 scripts/go-coverage.py <service> <minimum>
+    python3 scripts/go-coverage.py <service> <minimum> [--sonar-output <path>]
 
 Reads `<service>/coverage.out`, which the line before this one in the Makefile writes with
 `go test -coverpkg=./... -coverprofile=coverage.out ./...`. `-coverpkg=./...` is the part that makes the
@@ -100,9 +100,20 @@ def percent(covered: int, total: int) -> float:
     return 100.0 * covered / total if total else 0.0
 
 
+def sonar_profile(profile: str, excluded: dict[str, str]) -> str:
+    """A de-duplicated Go profile containing exactly the scope this gate measures."""
+    lines = [profile.splitlines()[0]]
+    for (file, span), (statements, count) in sorted(blocks(profile).items()):
+        if file.rsplit("/", 1)[0] not in excluded:
+            lines.append(f"{file}:{span} {statements} {int(count > 0)}")
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str]) -> int:
-    if len(argv) != 3:
-        sys.stderr.write("usage: go-coverage.py <service> <minimum-percent>\n")
+    if len(argv) not in (3, 5) or (len(argv) == 5 and argv[3] != "--sonar-output"):
+        sys.stderr.write(
+            "usage: go-coverage.py <service> <minimum-percent> [--sonar-output <path>]\n"
+        )
         return 2
     service, minimum = Path(argv[1]), float(argv[2])
     profile_path = service / PROFILE
@@ -116,6 +127,8 @@ def main(argv: list[str]) -> int:
         for package in packages(service)
         if (reason := out_of_scope(package)) is not None
     }
+    if len(argv) == 5:
+        (service / argv[4]).write_text(sonar_profile(profile_path.read_text(), excluded))
     per_package, total, covered = measure(profile_path.read_text(), excluded)
     width = max((len(name) for name in [*per_package, *excluded]), default=0)
     for name, (statements, hit) in sorted(per_package.items()):

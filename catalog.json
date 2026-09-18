@@ -670,7 +670,7 @@
     "sonar": {
       "name": "Sonar",
       "description": "Adds an on-demand SonarQube or SonarCloud scan for centralized quality and coverage reporting without changing the local verification gate.",
-      "ignore": ".scannerwork/\n"
+      "ignore": ".scannerwork/\n.coverage\ncoverage.xml\nsonar-coverage.out\n"
     }
   },
   "profiles": {

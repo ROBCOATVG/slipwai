@@ -142,10 +142,13 @@ TypeScript, Python and Go use `sonar-scanner`. In a mixed-language monorepo, Jav
 Sonar projects (the repository name plus service name), and the remaining applications share the
 repository's non-Java project.
 
-`make sonar` uploads an LCOV report at `<app>/coverage/lcov.info`, Python XML at
-`<app>/coverage.xml`, or the framework's JaCoCo XML under `<app>/target/` when that report already exists.
-It does not produce coverage in this slice. A missing report still permits a valid analysis, and Go's
-scoped `coverage.out` is deliberately not uploaded raw because Sonar would misread its scope.
+`make sonar` runs each generated application's tests on this optional path and writes the report Sonar
+expects: LCOV from Vitest for TypeScript, coverage.py XML for Python, and JaCoCo XML for Java. Go first
+writes the same cross-package profile as `make test`, then translates it into a de-duplicated
+`sonar-coverage.out` with entry points and integration-only packages removed — uploading the raw profile
+would make Sonar count a different scope from the native gate. Existing compatible reports from wrapped
+applications are uploaded when present; a wrapped application with no report still receives valid
+analysis without coverage.
 
 Generated repositories also carry `.github/workflows/sonar.yml`, separate from `verify.yml` so a remote
 quality gate cannot change the deterministic gate's conclusion. Its scan steps are skipped unless

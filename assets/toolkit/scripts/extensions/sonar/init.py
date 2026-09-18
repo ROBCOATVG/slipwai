@@ -35,7 +35,7 @@ GUIDANCE = f"""
 ## Sonar
 This project can publish an on-demand analysis to SonarQube or SonarCloud with `make sonar`. Sonar is a
 remote dashboard and coverage sink; `make verify` and its native lint, typecheck and test tools remain the
-merge gate.
+merge gate. The Sonar target reruns tests to produce its own coverage reports, outside that gate.
 
 Before relying on Sonar, check that this environment has `SONAR_HOST_URL` and `SONAR_TOKEN`, plus
 `sonar-scanner` for TypeScript, Python or Go projects. Java projects use their Maven wrapper. A checkout

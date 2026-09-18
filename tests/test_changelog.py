@@ -19,7 +19,7 @@ import subprocess
 import unittest
 
 from slipwai.assets import ROOT, VERSION
-from slipwai.changelog import FRAGMENTS, LEVELS, fragments, implied, level
+from slipwai.changelog import FRAGMENTS, GUIDE, LEVELS, fragments, implied, level
 from slipwai.versions import base, is_release, is_snapshot
 
 CHANGELOG = ROOT / "CHANGELOG.md"
@@ -121,8 +121,12 @@ class ChangelogTest(unittest.TestCase):
         found = fragments()
         written = base(VERSION)
         if not found:
+            # The state a release leaves behind, until the first change of the next one lands. `README.md` is
+            # not a fragment and is what keeps the emptied directory in the repository at all, so it is the
+            # one file expected here — anything beside it is a fragment the release failed to consume.
+            self.assertTrue(FRAGMENTS.is_dir(), "changelog.d/ is gone; its README is what keeps it")
             self.assertEqual(
-                [], list(FRAGMENTS.glob("*.md") if FRAGMENTS.is_dir() else []),
+                [GUIDE], sorted(path.name for path in FRAGMENTS.glob("*.md")),
                 "changelog.d/ holds files that are not fragments",
             )
             return

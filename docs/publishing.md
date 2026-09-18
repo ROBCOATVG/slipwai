@@ -14,9 +14,15 @@ numbered development release such as `1.3.0.dev7`.
 
 ```text
 Release 1.3.0    VERSION 1.3.0.dev0 → 1.3.0; assemble changelog; tag v1.3.0
-Open 1.3.1       VERSION 1.3.0 → 1.3.1.dev0
+Open 1.3.1       VERSION 1.3.0 → 1.3.1.dev0, marked [skip ci]
 git push --atomic origin main v1.3.0
 ```
+
+The open commit is marked `[skip ci]` so the forge creates no run for it. It
+raises `VERSION` and touches nothing else, on a tree the tag's own gate has just
+passed; a second full run would prove the same thing and publish a `.dev1`
+snapshot of code identical to the release beside it. The next change to `main`
+is verified as itself.
 
 Inspect every check without changing anything:
 

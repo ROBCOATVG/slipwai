@@ -113,6 +113,9 @@ class ReleaseTest(unittest.TestCase):
         self.assertEqual(git(self.repo, "tag", "-l", "--format=%(contents:subject)"), "slipwai 1.2.3 — PATCH")
         self.assertEqual(git(self.repo, "log", "-1", "--format=%s", "v1.2.3"), "Release 1.2.3")
         self.assertEqual(git(self.repo, "log", "-1", "--format=%s"), "Open 1.2.4.dev0")
+        # Load-bearing: without it the forge runs the whole gate over a VERSION bump on a tree it has just
+        # passed at the tag, and publishes a snapshot of code identical to the release beside it.
+        self.assertIn("[skip ci]", git(self.repo, "log", "-1", "--format=%B"))
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
 
     def test_a_version_the_forge_already_has_is_spent(self) -> None:

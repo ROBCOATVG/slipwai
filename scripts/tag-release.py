@@ -5,7 +5,7 @@
 release is three commits' worth of work and one push:
 
     Release 1.3.0        VERSION 1.3.0.dev0 → 1.3.0, changelog.d/ assembled into the entry, tagged v1.3.0
-    Open 1.3.1.dev0      VERSION 1.3.0 → 1.3.1.dev0
+    Open 1.3.1.dev0      VERSION 1.3.0 → 1.3.1.dev0, marked `[skip ci]`
     git push --atomic <remote> main v1.3.0
 
 The tag is the trigger — `.github/workflows/package.yml` builds and attaches the Linux executable,
@@ -52,6 +52,11 @@ from slipwai.versions import base, is_release, is_snapshot, next_snapshot  # noq
 REMOTES = ("gitea", "origin")
 # `## 1.6.0 — MINOR`, the shape `tests/test_changelog.py` holds every entry to.
 ENTRY = re.compile(r"(?m)^## (\d+\.\d+\.\d+)(?: — (MAJOR|MINOR|PATCH))?$")
+# The forge creates no run for a push whose commit message holds this, and the `Open` commit is one to skip.
+# It raises `VERSION` and touches nothing else, on a tree `verify.yml` has just passed at the tag beneath it;
+# running the whole gate again would prove the same thing an hour more slowly and publish a `.dev1` snapshot
+# of code identical to the release beside it. The next change to `main` is verified as itself.
+SKIP_CI = "[skip ci]"
 
 
 class ReleaseError(RuntimeError):
@@ -355,7 +360,7 @@ def main() -> None:
         print(f"would commit: Release {release} (VERSION {written} → {release}) on {at}")
         print(f"would assemble: `## {heading}` in CHANGELOG.md from {assembled}")
         print(f"would tag: {tag} ({message}) at that commit")
-        print(f"would commit: Open {opened} (VERSION {release} → {opened})")
+        print(f"would commit: Open {opened} (VERSION {release} → {opened}, {SKIP_CI})")
         print(f"would push: main and {tag} to {remote} ({forge})")
         return
 
@@ -365,7 +370,8 @@ def main() -> None:
     git(repo, "tag", "--annotate", tag, "--message", message)
     print(f"tagged: {tag} ({message})")
     opened_at = commit_version(
-        repo, opened, f"Open {opened}\n\nThe next snapshot, after {release} was cut; changelog.d/ is empty again."
+        repo, opened,
+        f"Open {opened}\n\nThe next snapshot, after {release} was cut; changelog.d/ is empty again.\n\n{SKIP_CI}",
     )
     print(f"committed: Open {opened} ({opened_at})")
     # One push, all or nothing: a tag on the forge with main still at the `Release` commit is a main whose

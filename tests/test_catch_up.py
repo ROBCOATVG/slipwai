@@ -169,7 +169,10 @@ class NotesTest(FactoryTestCase):
         self.assertIn(f"both {release}", same)
         self.assertIn("not told apart", same)
         self.assertIn(f"## The one entry both versions belong to, {release}", same)
-        self.assertIn(shared(VERSION)[0][2], same, "the shared entry's headline is not shown")
+        # Between a release and the first fragment of the next one, the release `main` is a snapshot of has no
+        # entry in either place yet, and the page has to say the list is empty rather than imply nothing is owed.
+        entry = shared(VERSION)
+        self.assertIn(entry[0][2] if entry else "(nothing)", same, "the shared entry is not shown as it stands")
         unreadable = notes("odd", "snapshot")
         self.assertIn("`snapshot`, which is not a version this can read", unreadable)
         self.assertIn(f"## Every version above {FIRST}", unreadable)

@@ -171,6 +171,8 @@ entering at the first stage whose artifact is missing. See [The delivery loop](d
 Everything below is in a generated repository from its first commit.
 **[The full tour is here](docs/what-you-get.md)**; each row links to the page that covers it properly.
 
+[![The delivery loop: run once — principles, specify, gaps, model the events, split into slices — then once per slice: example map, gaps, plan, tasks, implement, converge, gaps, demo, adversary, mutation, next slice](docs/images/delivery-loop.svg)](docs/delivery-loop.md)
+
 | | |
 |---|---|
 | **[The delivery loop](docs/delivery-loop.md)** | `/drive`'s ten-stage ladder on top of Spec Kit, resumable because it reads artifacts rather than conversation memory; the thirteen workflow commands — eleven in `standard`; story splitting and example mapping as first-class stages with real heuristics behind them; and hooks that apply the method even to a session that never typed `/drive` |

@@ -1,0 +1,122 @@
+<svg viewBox="0 0 1200 740" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" role="img" aria-label="The slipwai delivery loop: principles, specify, gaps, model the events, split into slices — then once per slice: example map, gaps, plan, tasks, implement, converge, gaps, demo, adversary, mutation, next slice">
+  <defs>
+    <path id="ah-r" d="M -7 -5 L 7 0 L -7 5 Z"/>
+  </defs>
+
+  <rect width="1200" height="740" fill="#f5f8f7"/>
+
+  <!-- title -->
+  <text x="80" y="96" font-family="'Iowan Old Style', Palatino, Georgia, serif" font-size="46" fill="#182b30">The delivery loop</text>
+  <text x="82" y="130" font-size="15" fill="#6b8288" letter-spacing="0.12em">HOW A SLIPWAI PROJECT SHIPS — ONE SLICE AT A TIME</text>
+
+  <!-- ── run once ── -->
+  <text x="80" y="204" font-size="13" fill="#6b8288" letter-spacing="0.18em">RUN ONCE</text>
+
+  <g font-size="17" fill="#182b30" letter-spacing="0.06em">
+    <text x="80" y="234">PRINCIPLES</text>
+    <text x="230" y="234">SPECIFY</text>
+    <text x="350" y="234">GAPS</text>
+    <text x="439" y="234">MODEL THE EVENTS</text>
+    <text x="650" y="234">SPLIT INTO SLICES</text>
+  </g>
+  <g stroke="#9db3b0" stroke-width="1.5">
+    <line x1="192" y1="228" x2="214" y2="228"/>
+    <line x1="312" y1="228" x2="334" y2="228"/>
+    <line x1="401" y1="228" x2="423" y2="228"/>
+    <line x1="612" y1="228" x2="634" y2="228"/>
+  </g>
+  <g fill="#9db3b0">
+    <use href="#ah-r" transform="translate(218, 228) scale(0.8)"/>
+    <use href="#ah-r" transform="translate(338, 228) scale(0.8)"/>
+    <use href="#ah-r" transform="translate(427, 228) scale(0.8)"/>
+    <use href="#ah-r" transform="translate(638, 228) scale(0.8)"/>
+  </g>
+
+  <!-- entry elbow: split into slices → example map -->
+  <path d="M 736 250 V 288 H 153 V 316" fill="none" stroke="#9db3b0" stroke-width="1.5"/>
+  <use href="#ah-r" transform="translate(153, 320) rotate(90) scale(0.8)" fill="#9db3b0"/>
+
+  <!-- ── once per slice ── -->
+  <rect x="64" y="334" width="1072" height="260" rx="12" fill="none" stroke="#0f7b72" stroke-width="1.5"/>
+  <rect x="92" y="326" width="150" height="16" fill="#f5f8f7"/>
+  <text x="100" y="339" font-size="13" fill="#0f7b72" letter-spacing="0.18em">ONCE PER SLICE</text>
+
+  <!-- row A: example map → gaps → plan → tasks → implement → converge -->
+  <g font-size="16" fill="#182b30" letter-spacing="0.06em" text-anchor="middle">
+    <text x="153" y="404">EXAMPLE MAP</text>
+    <text x="332" y="404">GAPS</text>
+    <text x="511" y="404">PLAN</text>
+    <text x="689" y="404">TASKS</text>
+    <text x="868" y="404">IMPLEMENT</text>
+    <text x="1047" y="404">CONVERGE</text>
+  </g>
+  <g font-size="12" fill="#6b8288" text-anchor="middle">
+    <text x="153" y="428">rules → examples → tests</text>
+    <text x="332" y="428">tighten, on paper</text>
+    <text x="511" y="428">one slice</text>
+    <text x="689" y="428">the work list</text>
+    <text x="868" y="428"><tspan fill="#c2502f">red</tspan> · <tspan fill="#2b8a5e">green</tspan> · refactor</text>
+    <text x="1047" y="428">all artifacts built?</text>
+  </g>
+  <g stroke="#9db3b0" stroke-width="1.5">
+    <line x1="228" y1="398" x2="254" y2="398"/>
+    <line x1="406" y1="398" x2="432" y2="398"/>
+    <line x1="585" y1="398" x2="611" y2="398"/>
+    <line x1="764" y1="398" x2="790" y2="398"/>
+    <line x1="942" y1="398" x2="968" y2="398"/>
+  </g>
+  <g fill="#9db3b0">
+    <use href="#ah-r" transform="translate(258, 398) scale(0.8)"/>
+    <use href="#ah-r" transform="translate(436, 398) scale(0.8)"/>
+    <use href="#ah-r" transform="translate(615, 398) scale(0.8)"/>
+    <use href="#ah-r" transform="translate(794, 398) scale(0.8)"/>
+    <use href="#ah-r" transform="translate(972, 398) scale(0.8)"/>
+  </g>
+
+  <!-- converge appends tasks back to implement -->
+  <path d="M 1020 384 C 995 360, 920 360, 895 384" fill="none" stroke="#9db3b0" stroke-width="1.2" stroke-dasharray="2 6" stroke-linecap="round"/>
+  <use href="#ah-r" transform="translate(892, 387) rotate(140) scale(0.7)" fill="#9db3b0"/>
+  <text x="957" y="356" font-size="11" fill="#6b8288" text-anchor="middle" letter-spacing="0.1em">APPENDS TASKS</text>
+
+  <!-- converge down into row B -->
+  <line x1="1047" y1="442" x2="1047" y2="476" stroke="#9db3b0" stroke-width="1.5"/>
+  <use href="#ah-r" transform="translate(1047, 480) rotate(90) scale(0.8)" fill="#9db3b0"/>
+
+  <!-- row B (right to left): gaps → demo → adversary → mutation -->
+  <g font-size="16" letter-spacing="0.06em" text-anchor="middle">
+    <text x="1047" y="510" fill="#182b30">GAPS</text>
+    <text x="779" y="510" fill="#2b8a5e">DEMO</text>
+    <text x="511" y="510" fill="#182b30">ADVERSARY</text>
+    <text x="243" y="510" fill="#182b30">MUTATION</text>
+  </g>
+  <g font-size="12" fill="#6b8288" text-anchor="middle">
+    <text x="1047" y="534">promise → test → prod</text>
+    <text x="779" y="534">to a real actor</text>
+    <text x="511" y="534">only when the surface changed</text>
+    <text x="243" y="534">measure the suite</text>
+  </g>
+  <g stroke="#9db3b0" stroke-width="1.5">
+    <line x1="928" y1="504" x2="898" y2="504"/>
+    <line x1="660" y1="504" x2="630" y2="504"/>
+    <line x1="392" y1="504" x2="362" y2="504"/>
+  </g>
+  <g fill="#9db3b0">
+    <use href="#ah-r" transform="translate(894, 504) rotate(180) scale(0.8)"/>
+    <use href="#ah-r" transform="translate(626, 504) rotate(180) scale(0.8)"/>
+    <use href="#ah-r" transform="translate(358, 504) rotate(180) scale(0.8)"/>
+  </g>
+
+  <!-- next slice: mutation → example map -->
+  <path d="M 243 546 V 566 H 153 V 448" fill="none" stroke="#0f7b72" stroke-width="1.5"/>
+  <use href="#ah-r" transform="translate(153, 444) rotate(-90) scale(0.8)" fill="#0f7b72"/>
+  <text x="198" y="584" font-size="12" fill="#0f7b72" letter-spacing="0.1em" text-anchor="middle">NEXT SLICE</text>
+
+  <!-- feedback: demo → upstream -->
+  <path d="M 779 546 V 620 H 1162 V 166 H 520 V 204" fill="none" stroke="#9db3b0" stroke-width="1.5" stroke-dasharray="2 7" stroke-linecap="round"/>
+  <use href="#ah-r" transform="translate(520, 208) rotate(90) scale(0.8)" fill="#9db3b0"/>
+  <text x="1140" y="158" font-size="13" fill="#6b8288" letter-spacing="0.12em" text-anchor="end">FEEDBACK · behaviour, slice, model, or scope</text>
+
+  <!-- footer -->
+  <text x="80" y="692" font-size="15" fill="#6b8288" letter-spacing="0.04em"><tspan fill="#182b30">slipwai</tspan> · said slipway — the method installed from the first commit</text>
+  <text x="1120" y="692" font-size="15" fill="#6b8288" text-anchor="end" letter-spacing="0.04em">github.com/ROBCOATVG/slipwai</text>
+</svg>

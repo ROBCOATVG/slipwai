@@ -14,6 +14,8 @@ project adds is the **method around them**, and one command that drives it.
 
 ## The loop
 
+![The delivery loop at a glance: run once — principles, specify, gaps, model the events, split into slices — then once per slice: example map, gaps, plan, tasks, implement, converge, gaps, demo, adversary, mutation, next slice](images/delivery-loop.svg)
+
 This is the diagram every event-profile project ships as its own `docs/workflow.md`, drawn for the profile
 it was generated with. Solid edges are the path forward; dotted edges are where feedback sends you back.
 

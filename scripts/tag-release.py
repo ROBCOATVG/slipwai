@@ -56,6 +56,10 @@ ENTRY = re.compile(r"(?m)^## (\d+\.\d+\.\d+)(?: — (MAJOR|MINOR|PATCH))?$")
 # It raises `VERSION` and touches nothing else, on a tree `verify.yml` has just passed at the tag beneath it;
 # running the whole gate again would prove the same thing an hour more slowly and publish a `.dev1` snapshot
 # of code identical to the release beside it. The next change to `main` is verified as itself.
+#
+# Gitea matches it anywhere in the message rather than in the first lines as GitHub does, which is why it can
+# go in the body — and why a commit message that only *mentions* the marker skips its own run. `publishing.md`
+# says so where somebody writing one would read it.
 SKIP_CI = "[skip ci]"
 
 

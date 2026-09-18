@@ -24,6 +24,12 @@ passed; a second full run would prove the same thing and publish a `.dev1`
 snapshot of code identical to the release beside it. The next change to `main`
 is verified as itself.
 
+Gitea matches that marker **anywhere** in the commit message, subject and body
+alike — where GitHub reads only the first two lines. So a commit whose message
+merely mentions the marker in prose silently skips its own run, and the first
+sign of it is a green `main` with no run behind it. Call it "the skip-ci
+marker" when writing about it; spell it out only when you mean it.
+
 Inspect every check without changing anything:
 
 ```sh

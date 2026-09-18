@@ -147,6 +147,13 @@ repository's non-Java project.
 It does not produce coverage in this slice. A missing report still permits a valid analysis, and Go's
 scoped `coverage.out` is deliberately not uploaded raw because Sonar would misread its scope.
 
+Generated repositories also carry `.github/workflows/sonar.yml`, separate from `verify.yml` so a remote
+quality gate cannot change the deterministic gate's conclusion. Its scan steps are skipped unless
+`sonar-project.properties` exists and the repository has a `SONAR_TOKEN` secret. Set the non-secret
+`SONAR_HOST_URL` repository variable to the SonarQube or SonarCloud endpoint. Pull requests from forks,
+projects that never adopt the extension, and repositories with no token do no remote work. Java uses its
+Maven scanner in CI too; other languages use SonarSource's pinned scan action.
+
 ## Adding another extension
 
 1. Add its entry to `catalog.json["extensions"]`.

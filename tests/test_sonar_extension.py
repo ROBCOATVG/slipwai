@@ -63,6 +63,11 @@ class SonarExtensionTest(FactoryTestCase):
                 {"schemaVersion": 1, "extensions": ["sonar"]},
             )
             self.assertIn(".scannerwork/", (repo / ".gitignore").read_text())
+            workflow = (repo / ".github/workflows/sonar.yml").read_text()
+            self.assertIn("SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}", workflow)
+            self.assertIn("hashFiles('sonar-project.properties') != ''", workflow)
+            self.assertIn("SonarSource/sonarqube-scan-action@v8.2.2", workflow)
+            self.assertNotIn("sonar", (repo / ".github/workflows/verify.yml").read_text())
 
     def test_missing_scanner_is_non_fatal(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -141,3 +146,6 @@ class SonarExtensionTest(FactoryTestCase):
             self.assertIn("sonar:sonar", arguments)
             self.assertIn("-Dsonar.projectKey=sonar-java", arguments)
             self.assertNotIn(TOKEN, arguments)
+            workflow = (repo / ".github/workflows/sonar.yml").read_text()
+            self.assertIn("scripts/extensions/sonar/scan.py --java-only", workflow)
+            self.assertNotIn("SonarSource/sonarqube-scan-action", workflow)

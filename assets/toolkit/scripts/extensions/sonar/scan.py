@@ -2,6 +2,7 @@
 """Run the elected Sonar analysis without putting credentials on a command line."""
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -26,16 +27,12 @@ def existing(paths: list[Path]) -> list[str]:
     return [path.relative_to(ROOT).as_posix() for path in paths if path.is_file()]
 
 
-def scanner_arguments(document: dict, generic: list[dict], java: list[dict]) -> list[str]:
+def scanner_arguments(generic: list[dict], java: list[dict]) -> list[str]:
     """Arguments for the one non-Java analysis, including only reports already on disk."""
     arguments: list[str] = []
     if java:
         excluded = ",".join(f"{app['path']}/**" for app in java)
         arguments.append(f"-Dsonar.exclusions={excluded}")
-    if java and generic:
-        name = document["name"]
-        arguments.extend((f"-Dsonar.projectKey={name}-non-java", f"-Dsonar.projectName={name} (non-Java)"))
-
     javascript = existing([ROOT / app["path"] / "coverage/lcov.info" for app in generic])
     python = existing([ROOT / app["path"] / "coverage.xml" for app in generic])
     if javascript:
@@ -45,7 +42,7 @@ def scanner_arguments(document: dict, generic: list[dict], java: list[dict]) -> 
     return arguments
 
 
-def run_generic(document: dict, generic: list[dict], java: list[dict]) -> int:
+def run_generic(generic: list[dict], java: list[dict]) -> int:
     scanner = shutil.which("sonar-scanner")
     if scanner is None:
         print(
@@ -55,7 +52,7 @@ def run_generic(document: dict, generic: list[dict], java: list[dict]) -> int:
         )
         return 2
     return subprocess.run(
-        [scanner, *scanner_arguments(document, generic, java)],
+        [scanner, *scanner_arguments(generic, java)],
         cwd=ROOT,
         check=False,
     ).returncode
@@ -91,6 +88,9 @@ def run_java(document: dict, app: dict, only_deployable: bool) -> int:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--java-only", action="store_true", help="scan only Java services (used by CI)")
+    arguments = parser.parse_args()
     missing = [name for name in ("SONAR_HOST_URL", "SONAR_TOKEN") if not os.environ.get(name)]
     if missing:
         print(f"make sonar requires {', '.join(missing)} in the environment.", file=sys.stderr)
@@ -113,8 +113,8 @@ def main() -> int:
     ]
     generic = [app for app in deployables if app not in java]
 
-    if generic:
-        status = run_generic(document, generic, java)
+    if generic and not arguments.java_only:
+        status = run_generic(generic, java)
         if status:
             return status
     for app in java:

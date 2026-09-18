@@ -48,6 +48,10 @@ One `make` away, and none of them in the gate:
 | `make ci` | The extended gate | Under a production target it also builds every service's production image and runs it against its probe — the half of a deploy provable without an account |
 | `make format` | Each family's own formatter over this project's code — Biome over each npm package (a directory under `apps/` or `packages/` that has a `package.json`), `ruff format`, `gofmt` | `lint` already fails on formatting the project has not applied, and this is what applies it. Deliberately not a prerequisite of `verify`: a gate that rewrites the tree it is judging is a gate that always passes. A project whose languages have no formatter has no such target. Biome is not pointed at `.`: `packages/` also holds Go modules, and a formatter that rewrites JSON there is a digest change `make lint` never sees |
 
+The Sonar extension's optional `.github/workflows/sonar.yml` is separate from `verify.yml`. It skips its
+scan steps without a `SONAR_TOKEN` secret or an adopted `sonar-project.properties`, so remote availability
+cannot change the result deploy and branch protection read from the native gate.
+
 ## Why the split is where it is
 
 The gate is the thing you run dozens of times a day, so everything in it has to be fast, deterministic, and

@@ -46,6 +46,7 @@ from .project.renovate import renovate_config
 from .project.repository import repository_files
 from .project.run_skill import run_skill
 from .project.shared_packages import PACKAGES
+from .project.sonar_workflow import sonar_workflow
 from .project.stage_models import stage_models
 from .project.strangle_command import strangle_files
 from .services import App, prunable_features_of, services_of, web_apps, wrapped_of
@@ -104,6 +105,7 @@ def project_files(
         ".claude/settings.json": claude_settings(apps, target),
         ".specify/models.json": stage_models(),
         ".specify/drive.json": drive_config(),
+        ".github/workflows/sonar.yml": sonar_workflow(apps, layout),
         ".github/workflows/verify.yml": workflow(apps, layout),
         "docs/architecture.md": architecture(profile, apps),
         f"{PACKAGES}/.gitkeep": "",

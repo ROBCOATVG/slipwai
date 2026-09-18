@@ -59,7 +59,7 @@ class ExtensionsTest(FactoryTestCase):
             (fake_bin / "codegraph").chmod(0o755)
             environment = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
 
-            output = run_init_at_a_terminal(repo, ["--integration", "codex"], b"\rj\r", environment)
+            output = run_init_at_a_terminal(repo, ["--integration", "codex"], b"\rjj\r", environment)
 
             self.assertIn("CodeGraph", output)
             self.assertIn("Extensions: codegraph", output)
@@ -75,7 +75,7 @@ class ExtensionsTest(FactoryTestCase):
             (fake_bin / "specify").chmod(0o755)
             environment = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
 
-            output = run_init_at_a_terminal(repo, ["--integration", "codex"], b"j\r", environment)
+            output = run_init_at_a_terminal(repo, ["--integration", "codex"], b"jj\r", environment)
 
             self.assertIn("Extensions: none", output)
             self.assertNotIn("<!-- extension:codegraph:begin -->", (repo / "AGENTS.md").read_text())
@@ -260,6 +260,7 @@ class ExtensionsCatalogTest(FactoryTestCase):
     def test_the_shipped_extensions_are_valid(self) -> None:
         validate_extensions(CATALOG)
         self.assertIn("codegraph", known_extensions(CATALOG))
+        self.assertIn("sonar", known_extensions(CATALOG))
 
     def test_every_extension_exposes_replaceable_side_effect_free_guidance(self) -> None:
         for key in known_extensions(CATALOG):

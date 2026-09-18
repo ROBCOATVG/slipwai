@@ -4,7 +4,8 @@ An **extension** is an opt-in developer-tooling integration a generated project 
 --extension <key>` (repeatable, alongside `--integration <agent>`). It is not an axis: it never changes the
 generated skeleton's code, and it is answered later than generation — at `./init` time, the same moment a
 Spec Kit agent integration is chosen — rather than baked into `apps`/`Selection` when `./slipwai generate` runs.
-CodeGraph (a local MCP code-knowledge graph, https://github.com/colbymchenry/codegraph) is the first one.
+CodeGraph (a local MCP code-knowledge graph, https://github.com/colbymchenry/codegraph) and Sonar
+(on-demand SonarQube or SonarCloud analysis) are the extensions currently shipped.
 
 ## What ships where
 
@@ -124,7 +125,29 @@ stdout. See `prompt_extensions` in `src/slipwai/project/init_script.py` for the 
 Nothing else routes through this file's name specially: it reaches a generated project purely because
 `assets/toolkit/` is copied as a tree (see `assets/README.md`), the same way a new skill or script does.
 
-## Adding a second extension
+## Sonar
+
+Adopt Sonar with `./init --extension sonar`. The hook writes `sonar-project.properties` from
+`project.json` and adds its marker-fenced operating note to `AGENTS.md`. It supports SonarCloud and
+self-hosted SonarQube through the same environment contract:
+
+```sh
+export SONAR_HOST_URL=https://sonar.example.com
+export SONAR_TOKEN=...
+make sonar
+```
+
+The token is never written to the tree or passed on a command line. Java services use their Maven wrapper;
+TypeScript, Python and Go use `sonar-scanner`. In a mixed-language monorepo, Java services are separate
+Sonar projects (the repository name plus service name), and the remaining applications share the
+repository's non-Java project.
+
+`make sonar` uploads an LCOV report at `<app>/coverage/lcov.info`, Python XML at
+`<app>/coverage.xml`, or the framework's JaCoCo XML under `<app>/target/` when that report already exists.
+It does not produce coverage in this slice. A missing report still permits a valid analysis, and Go's
+scoped `coverage.out` is deliberately not uploaded raw because Sonar would misread its scope.
+
+## Adding another extension
 
 1. Add its entry to `catalog.json["extensions"]`.
 2. Add `assets/toolkit/scripts/extensions/<key>/init.py` meeting the obligations above, and the gate of

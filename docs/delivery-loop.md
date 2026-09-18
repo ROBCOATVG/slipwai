@@ -16,51 +16,12 @@ project adds is the **method around them**, and one command that drives it.
 
 ![The delivery loop at a glance: run once — principles, specify, gaps, model the events, split into slices — then once per slice: example map, gaps, plan, tasks, implement, converge, gaps, demo, adversary, mutation, next slice](images/delivery-loop.svg)
 
-This is the diagram every event-profile project ships as its own `docs/workflow.md`, drawn for the profile
-it was generated with. Solid edges are the path forward; dotted edges are where feedback sends you back.
+Solid edges are the path forward; dashed edges are feedback. Every event-profile project ships this loop
+as its own `docs/workflow.md`, drawn for the profile it was generated with and carrying the full detail
+the picture leaves out: the command behind each stage, and every feedback edge — which stage a gap, an
+unnameable event, or a demo's verdict sends you back to.
 
-```mermaid
-flowchart LR
-  C["/speckit-constitution · principles<br/>make check-constitution gates the coverage"]
-  S["/speckit-specify · whole product"]
-  G["/gaps · whole spec"]
-  EMOD(["event-modeling · events, commands, read models, actors"])
-  SS["/story-splitting · slices"]
-
-  subgraph loop["once per slice — /drive owns the loop, repeating until the split is exhausted"]
-    direction TB
-    EM["/example-map · rules → examples → GWT"]
-    EG["/gaps · tighten examples.md, on paper"]
-    P["/speckit-plan · one slice"]
-    T["/speckit-tasks · one slice"]
-    I["/speckit-implement · RED → GREEN → REFACTOR"]
-    CV{"/speckit-converge · is everything the artifacts require built?"}
-    DG["/gaps · promise → test → production path"]
-    D{"demo · actor-visible path"}
-    A["/adversary · only when the surface changed, or the split closed"]
-    M["/mutation · measure the suite"]
-    EM --> EG --> P --> T --> I --> CV
-    CV -->|"appends tasks"| I
-    CV -->|"converged"| DG --> D
-    D -->|"accepted · new attack surface"| A --> M
-    D -->|"accepted · surface already in the log"| M
-    D -.->|"feedback changes behaviour"| EM
-    D -.->|"feedback changes implementation"| I
-  end
-
-  C --> S --> G --> EMOD --> SS --> EM
-
-  G -.->|"gap found"| S
-  EM -.->|"map reveals more than one slice"| SS
-  P -.->|"title still says 'and'"| SS
-  M -.->|"next ready slice"| EM
-  EM -.->|"an event has no name"| EMOD
-  D -.->|"feedback changes slice"| SS
-  D -.->|"feedback changes event contract"| EMOD
-  D -.->|"feedback changes product scope"| S
-```
-
-A `standard` project gets the same diagram with the event-modeling and `/example-map` nodes removed: the
+A `standard` project gets the same loop with the event-modeling and example-map stages removed: the
 slice enters the loop at its own `/gaps` pass over the acceptance criteria instead.
 
 Three stages in it are deliberately not the shape they look like:

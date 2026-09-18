@@ -43,6 +43,31 @@ after every gate job passes does CI:
 2. attach it to the canonical Gitea release; and
 3. build, install, smoke-test, and upload the wheel to PyPI.
 
+## Cutting a release from the forge
+
+The same release, without a checkout: **Actions → release → Run workflow** on
+the canonical Gitea repository. It runs `scripts/tag-release.py` — the script
+above, unchanged — so every refusal a laptop meets holds there too.
+
+The form asks for two things:
+
+- **version** — the release you mean to cut, e.g. `1.0.1`. It is held against
+  what `main` carries, so a mis-click cannot spend a number nobody meant.
+- **mode** — `dry-run` (the default) runs every check and writes nothing;
+  `cut-the-release` commits, tags and pushes.
+
+Before the script runs, the workflow also refuses a commit that is not already
+green: the head of `main` must have a completed, successful `verify` run of its
+own. The tag starts a run of its own and nothing publishes behind a red one, but
+the tag would still be pushed — and a number is never reused.
+
+The push is made with a personal access token rather than the job's own, and
+that is not a preference. The release is published by the run the `v*` tag
+starts, and a forge that declines to start runs for its own token would leave
+the tag pushed with nothing built from it. `actions/checkout` runs with
+`persist-credentials: false` for the same reason: the token it would otherwise
+persist wins over the one the push is meant to use.
+
 The first public release is the one exception to bump arithmetic:
 `1.0.0.dev0` has no released predecessor. Its fragments describe the release,
 `make release` writes the first `## 1.0.0` entry without a bump label, and the
@@ -58,6 +83,11 @@ second release.
 Configure the canonical Gitea repository with:
 
 - `PYPI_TOKEN`: a PyPI API token able to publish `slipwai`;
+- `RELEASE_TOKEN`: a Gitea personal access token with write access to this
+  repository, used only by the `release` workflow above to push `main` and the
+  tag. Needed only if releases are cut from the forge rather than a checkout;
+- `RELEASE_USERNAME`: the login that token belongs to, if it is not the login
+  of whoever dispatches the workflow;
 - the normal Gitea Actions token permissions needed to attach release assets.
 
 PyPI versions are immutable. A retry may upload a missing file for the same

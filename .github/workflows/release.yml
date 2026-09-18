@@ -1,0 +1,148 @@
+name: release
+
+# `make release`, from the forge's own Actions tab. Nothing here decides anything: `scripts/tag-release.py`
+# is the same script a laptop runs, and every refusal in it holds unchanged — a version is spent the moment
+# it is pushed, and a runner is no more careful than a person. What this workflow supplies is the hands: a
+# checkout on `main`, an identity to commit with, and a token whose push is an ordinary user's.
+#
+# That last part is why this needs `RELEASE_TOKEN` rather than the job's own `github.token`. The release is
+# published by the run the `v*` tag starts, and a forge that declines to start runs for pushes made with its
+# own token would leave the tag pushed with nothing built from it — a spent version and no release, which is
+# the one state this repository cannot undo. A personal access token's push is indistinguishable from a
+# person's, so the tag triggers `verify.yml` exactly as it does from a laptop.
+#
+# Two guards this adds that a laptop does not need, because a click is cheaper than a command and a mis-click
+# spends a number: the release is typed out and held against what `main` actually carries, and the commit
+# about to be tagged must already have a green `verify` run of its own. Neither replaces the script's checks;
+# they run first so the expensive refusals are not the only ones.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The release to cut, e.g. 1.0.1 — must be the one main is a snapshot of'
+        required: true
+      mode:
+        description: 'dry-run writes nothing; cut-the-release spends the version and cannot be undone'
+        type: choice
+        required: true
+        default: dry-run
+        options:
+          - dry-run
+          - cut-the-release
+
+permissions:
+  contents: read
+
+# Never two at once, and never cancelled: a release half-made is worse than one that waited.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # In a step rather than this job's `if:`, for the reason verify.yml's snapshot job gives: this forge
+      # has been seen to drop `github.*` from a job-level condition. The mirror holds no `RELEASE_TOKEN`
+      # either, so this is the second of two locks rather than the only one.
+      - name: Confirm this is the canonical instance
+        id: instance
+        run: |
+          if [ "${{ github.server_url }}" = "https://git.treyco.dev" ]; then
+            echo "canonical=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "canonical=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v6
+        if: steps.instance.outputs.canonical == 'true'
+        with:
+          # A release is cut from `main` whatever branch the dispatch form was left on; the script refuses a
+          # detached HEAD, and `ref:` is what makes this a branch checkout rather than one.
+          ref: main
+          # The whole history and every tag: the script reads the last release out of them and refuses a tag
+          # this repository already has.
+          fetch-depth: 0
+          # So the push authenticates as `RELEASE_TOKEN` through `scripts/gitea-askpass`. Left persisted, the
+          # runner token actions/checkout writes into `http.<url>.extraheader` wins over askpass, and the
+          # push would be the forge's own again — see the note at the top.
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        if: steps.instance.outputs.canonical == 'true'
+        with:
+          python-version: '3.13'
+
+      - name: Confirm the number being spent is the one main carries
+        if: steps.instance.outputs.canonical == 'true'
+        env:
+          # Through the environment rather than interpolated into the script: a dispatch input is somebody's
+          # typing, and typing does not belong in a shell line.
+          ASKED: ${{ github.event.inputs.version }}
+        run: |
+          carried=$(python3 -c 'import sys; sys.path.insert(0, "src")
+          from slipwai.versions import base
+          print(base(open("VERSION").read().strip()) or "")')
+          if [ "$carried" != "$ASKED" ]; then
+            echo "::error::main carries VERSION $(cat VERSION), a snapshot of ${carried:-no release this can read}, and the dispatch asked for '$ASKED'. Cutting a release is spending a number, so the two have to agree: dispatch again with $carried, or raise what main carries first."
+            exit 1
+          fi
+          echo "main carries $(cat VERSION) — a snapshot of $carried, which is what was asked for."
+
+      - name: Confirm the commit about to be tagged is already green
+        if: steps.instance.outputs.canonical == 'true'
+        env:
+          RUNS: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}/actions/runs
+          TOKEN: ${{ github.token }}
+        run: |
+          # Into the runner's scratch rather than the workspace: the script refuses a checkout with
+          # anything uncommitted in it, and an untracked file dropped here is exactly that.
+          curl --silent --show-error --fail --header "Authorization: token $TOKEN" \
+            "$RUNS?limit=50" > "$RUNNER_TEMP/runs.json"
+          python3 - "$(git rev-parse HEAD)" "$RUNNER_TEMP/runs.json" <<'PY'
+          import json, sys
+          head, listing = sys.argv[1], sys.argv[2]
+          runs = [
+              run for run in json.load(open(listing))["workflow_runs"]
+              if run["head_sha"] == head and run["path"].split("@")[0] == "verify.yml"
+          ]
+          done = [run for run in runs if run["status"] == "completed"]
+          # The tag starts a run of its own and `release` publishes only behind it, so a red commit cannot
+          # publish — but the tag would be pushed and spent regardless, and a number is never reused. This is
+          # the cheap half of that: refuse before the push, where refusing still costs nothing.
+          if not done or done[0]["conclusion"] != "success":
+              state = done[0]["conclusion"] if done else ("still running" if runs else "no verify run at all")
+              print(f"::error::{head[:12]} is the head of main and has {state}. A release names a commit the "
+                    f"gate has passed; wait for the run, or fix main and release the commit that fixes it.")
+              raise SystemExit(1)
+          print(f"{head[:12]} passed verify in run {done[0]['id']}.")
+          PY
+
+      - name: Cut the release
+        if: steps.instance.outputs.canonical == 'true'
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          # `scripts/gitea-askpass` reads these two; `push_environment()` in the script puts it in GIT_ASKPASS.
+          GITEA_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          RELEASE_USERNAME: ${{ secrets.RELEASE_USERNAME }}
+          ACTOR: ${{ github.actor }}
+          # The commits the script makes are the dispatcher's, named as such. Nothing configures a git
+          # identity on a fresh runner, and `git commit` will not guess one.
+          GIT_AUTHOR_NAME: ${{ github.actor }}
+          GIT_COMMITTER_NAME: ${{ github.actor }}
+          GIT_AUTHOR_EMAIL: ${{ github.actor }}@noreply.git.treyco.dev
+          GIT_COMMITTER_EMAIL: ${{ github.actor }}@noreply.git.treyco.dev
+        run: |
+          export GITEA_USERNAME="${RELEASE_USERNAME:-$ACTOR}"
+          if [ -z "${GITEA_TOKEN:-}" ]; then
+            if [ "$MODE" = "cut-the-release" ]; then
+              echo "::error::No RELEASE_TOKEN secret, so nothing here could push. Add a personal access token with write access to this repository under Settings → Actions → Secrets, and RELEASE_USERNAME beside it if the token is not $ACTOR's."
+              exit 1
+            fi
+            echo "::warning::No RELEASE_TOKEN secret. The checks below still run, but a real release would stop at the push."
+          fi
+          if [ "$MODE" = "cut-the-release" ]; then
+            python3 scripts/tag-release.py
+          else
+            python3 scripts/tag-release.py --dry-run
+          fi

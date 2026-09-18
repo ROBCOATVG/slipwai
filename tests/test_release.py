@@ -301,5 +301,43 @@ class ReleaseTest(unittest.TestCase):
         )
 
 
+class DispatchTest(unittest.TestCase):
+    """`.github/workflows/release.yml`: the forge's manual trigger for the same script.
+
+    It supplies hands and no judgement — every refusal above is still the release's refusal. What has to
+    hold of the workflow itself is that a click cannot spend a number by accident, and that the push it
+    makes is a person's rather than the forge's, because a tag pushed by the forge's own token may start no
+    run, and a spent tag with nothing built from it is the one state this repository cannot undo.
+    """
+
+    def setUp(self) -> None:
+        self.workflow = (ROOT / ".github/workflows/release.yml").read_text()
+
+    def test_writing_is_the_branch_the_dispatch_has_to_ask_for(self) -> None:
+        self.assertIn("default: dry-run", self.workflow, "the form opens on the branch that writes")
+        self.assertIn('if [ "$MODE" = "cut-the-release" ]; then\n            python3 scripts/tag-release.py\n',
+                      self.workflow, "the script runs unguarded, or under a name the form cannot produce")
+        self.assertIn("python3 scripts/tag-release.py --dry-run", self.workflow)
+
+    def test_the_push_is_a_persons_rather_than_the_forges(self) -> None:
+        self.assertIn("persist-credentials: false", self.workflow,
+                      "actions/checkout's own token would win over the askpass RELEASE_TOKEN is read by")
+        self.assertIn("GITEA_TOKEN: ${{ secrets.RELEASE_TOKEN }}", self.workflow)
+        self.assertNotIn("GITEA_TOKEN: ${{ github.token }}", self.workflow)
+
+    def test_the_checkout_is_a_main_the_script_will_accept(self) -> None:
+        """A release is cut from `main`, at every tag the history has: a detached HEAD and a shallow clone
+        are both things the script refuses, and both are what actions/checkout does by default."""
+        self.assertIn("ref: main", self.workflow)
+        self.assertIn("fetch-depth: 0", self.workflow)
+
+    def test_both_guards_a_click_needs_are_there(self) -> None:
+        self.assertIn("$carried\" != \"$ASKED", self.workflow, "a mis-click could cut a number nobody meant")
+        self.assertIn('run["path"].split("@")[0] == "verify.yml"', self.workflow)
+        self.assertIn('done[0]["conclusion"] != "success"', self.workflow, "a red main could still be tagged")
+        # In the workspace it would be an untracked file, which is a dirty checkout, which is a refusal.
+        self.assertIn('"$RUNNER_TEMP/runs.json"', self.workflow)
+
+
 if __name__ == "__main__":
     unittest.main()

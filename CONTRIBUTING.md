@@ -9,9 +9,19 @@ The canonical repository is
 [GitHub](https://github.com/ROBCOATVG/slipwai) is its public mirror and the
 public issue and contribution front door.
 
-Open issues and pull requests on GitHub. Maintainers land accepted changes in
-the canonical repository, after which the mirror updates. Do not open a public
-issue for a vulnerability; follow [SECURITY.md](SECURITY.md).
+Open issues and pull requests on GitHub. The canonical instance is not open to
+the public, so the mirror is where the source is readable and where a change is
+proposed. Maintainers land accepted changes canonically and the mirror syncs
+from there; that sync force-updates every branch, so a branch pushed straight
+to GitHub is overwritten rather than reviewed. Work from a fork.
+
+Nothing will report a pass or a failure on your pull request. The gate lives on
+the canonical instance and Actions are disabled on the mirror, which is why
+running `make verify` yourself is not optional — a maintainer runs the same
+gate canonically before landing the change.
+
+Do not open a public issue for a vulnerability; follow
+[SECURITY.md](SECURITY.md).
 
 ## Before opening a pull request
 

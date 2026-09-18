@@ -75,10 +75,33 @@ open commit moves `main` to `1.0.1.dev0`.
 
 ## Release authority and the GitHub mirror
 
-The publish jobs are guarded to run only when `github.server_url` is
-`https://git.treyco.dev`. GitHub may run the same verification jobs after the
-mirror receives a commit or tag, but it does not upload the package or create a
-second release.
+[github.com/ROBCOATVG/slipwai](https://github.com/ROBCOATVG/slipwai) is a
+push-mirror of this repository and the public issue and pull request front
+door. It is not a second release authority and it verifies nothing: Actions are
+disabled on it, so a mirrored commit or tag runs no jobs there at all. The
+publish jobs are guarded to run only when `github.server_url` is
+`https://git.treyco.dev`, which is the second of the two locks rather than the
+only one.
+
+The canonical instance is sign-in only — an anonymous visitor is redirected to
+a login page and sees no code, no issues, and no run logs — so the mirror is
+also the only place the source is publicly readable. A signed-in user of the
+instance reads this repository in full, run logs included.
+
+Sync is a Gitea push mirror configured on the canonical repository under
+**Settings → Mirror Settings**, not anything under `.github/workflows/`. Two
+consequences are worth knowing before changing either side:
+
+- It pushes *every* ref, so the moving `snapshot` tag lands on GitHub beside
+  the `v*` tags, with no release attached to it there.
+- It force-updates, so a branch pushed straight to GitHub is overwritten at the
+  next sync. `main` carries no branch protection on the mirror for that reason:
+  protection would reject the mirror's own push and sync would stop silently.
+
+Mirror pushes authenticate with a GitHub personal access token holding write
+access to the mirror, entered in those mirror settings. It is a Gitea mirror
+credential rather than an Actions secret, so it is not in the list below and no
+workflow can read it.
 
 Configure the canonical Gitea repository with:
 

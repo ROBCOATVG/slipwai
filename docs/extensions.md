@@ -127,8 +127,11 @@ Nothing else routes through this file's name specially: it reaches a generated p
 
 ## Sonar
 
-Adopt Sonar with `./init --extension sonar`. The hook writes `sonar-project.properties` from
-`project.json` and adds its marker-fenced operating note to `AGENTS.md`. It supports SonarCloud and
+Adopt Sonar with `./init --extension sonar`. The hook writes the keys it derives from `project.json` into
+`sonar-project.properties` and adds its marker-fenced operating note to `AGENTS.md`. That file is **merged,
+never rewritten**: it owns `sonar.projectKey`, `sonar.projectName` and `sonar.sourceEncoding`, and every other
+line — `sonar.organization`, which SonarCloud requires and no manifest field supplies, exclusions, coverage
+paths — is kept verbatim on every rerun. It supports SonarCloud and
 self-hosted SonarQube through the same environment contract:
 
 ```sh

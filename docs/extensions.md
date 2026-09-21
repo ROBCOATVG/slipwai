@@ -4,7 +4,8 @@ An **extension** is an opt-in developer-tooling integration a generated project 
 --extension <key>` (repeatable, alongside `--integration <agent>`). It is not an axis: it never changes the
 generated skeleton's code, and it is answered later than generation — at `./init` time, the same moment a
 Spec Kit agent integration is chosen — rather than baked into `apps`/`Selection` when `./slipwai generate` runs.
-CodeGraph (a local MCP code-knowledge graph, https://github.com/colbymchenry/codegraph) is the first one.
+CodeGraph (a local MCP code-knowledge graph, https://github.com/colbymchenry/codegraph) and Sonar
+(on-demand SonarQube or SonarCloud analysis) are the extensions currently shipped.
 
 ## What ships where
 
@@ -124,7 +125,42 @@ stdout. See `prompt_extensions` in `src/slipwai/project/init_script.py` for the 
 Nothing else routes through this file's name specially: it reaches a generated project purely because
 `assets/toolkit/` is copied as a tree (see `assets/README.md`), the same way a new skill or script does.
 
-## Adding a second extension
+## Sonar
+
+Adopt Sonar with `./init --extension sonar`. The hook writes the keys it derives from `project.json` into
+`sonar-project.properties` and adds its marker-fenced operating note to `AGENTS.md`. That file is **merged,
+never rewritten**: it owns `sonar.projectKey`, `sonar.projectName` and `sonar.sourceEncoding`, and every other
+line — `sonar.organization`, which SonarCloud requires and no manifest field supplies, exclusions, coverage
+paths — is kept verbatim on every rerun. It supports SonarCloud and
+self-hosted SonarQube through the same environment contract:
+
+```sh
+export SONAR_HOST_URL=https://sonar.example.com
+export SONAR_TOKEN=...
+make sonar
+```
+
+The token is never written to the tree or passed on a command line. Java services use their Maven wrapper;
+TypeScript, Python and Go use `sonar-scanner`. In a mixed-language monorepo, Java services are separate
+Sonar projects (the repository name plus service name), and the remaining applications share the
+repository's non-Java project.
+
+`make sonar` runs each generated application's tests on this optional path and writes the report Sonar
+expects: LCOV from Vitest for TypeScript, coverage.py XML for Python, and JaCoCo XML for Java. Go first
+writes the same cross-package profile as `make test`, then translates it into a de-duplicated
+`sonar-coverage.out` with entry points and integration-only packages removed — uploading the raw profile
+would make Sonar count a different scope from the native gate. Existing compatible reports from wrapped
+applications are uploaded when present; a wrapped application with no report still receives valid
+analysis without coverage.
+
+Generated repositories also carry `.github/workflows/sonar.yml`, separate from `verify.yml` so a remote
+quality gate cannot change the deterministic gate's conclusion. Its scan steps are skipped unless
+`sonar-project.properties` exists and the repository has a `SONAR_TOKEN` secret. Set the non-secret
+`SONAR_HOST_URL` repository variable to the SonarQube or SonarCloud endpoint. Pull requests from forks,
+projects that never adopt the extension, and repositories with no token do no remote work. Java uses its
+Maven scanner in CI too; other languages use SonarSource's pinned scan action.
+
+## Adding another extension
 
 1. Add its entry to `catalog.json["extensions"]`.
 2. Add `assets/toolkit/scripts/extensions/<key>/init.py` meeting the obligations above, and the gate of

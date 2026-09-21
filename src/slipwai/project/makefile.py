@@ -1,6 +1,5 @@
-"""The `Makefile`: every local and CI entry point a generated project has.
-
-`make verify` is the gate, and it is the same command locally and in CI. The targets a selection adds —
+"""The `Makefile`: every local and CI entry point a generated project has. `make verify` is the gate, and
+it is the same command locally and in CI. The targets a selection adds —
 migrations, integration tests, the containers, the ways to run it — are marked regions, so a later
 `./init` can cut them back out. Every recipe is built per service and merged, so a project with several
 services — in one language or several — has one gate rather than one per service.
@@ -333,7 +332,7 @@ constitution-requirements: ## Print the normative text the constitution must cov
 \t@python3 scripts/check-constitution.py --requirements
 {model_targets}{api_document}
 {service_targets}
-.PHONY: test test-integration {phony_integration + ' ' if phony_integration else ''}adversarial mutation audit
+.PHONY: test test-integration {phony_integration + ' ' if phony_integration else ''}adversarial mutation audit sonar
 test: ## Run the complete native test suite
 \t{native['test']}
 {integration_targets(suites, per_suite)}adversarial: ## Re-run tests named or tagged adversarial
@@ -342,7 +341,8 @@ test: ## Run the complete native test suite
 \t{native['mutation']}
 audit: ## Run the ecosystem-native dependency vulnerability audit
 \t{native['audit']}
-
+sonar: ## Publish an optional remote SonarQube or SonarCloud analysis (outside verify)
+\tpython3 scripts/extensions/sonar/scan.py
 .PHONY: verify ci
 verify: {verify_dependencies} ## Full deterministic pre-commit gate
 \t@echo

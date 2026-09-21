@@ -148,7 +148,7 @@ Spec Kit is deliberately absent until you ask for it. From inside the generated 
 ```
 
 That installs Spec Kit and asks which coding agent to project `skills/`, `commands/` and `agents/` into —
-any of [36 harnesses](docs/spec-kit.md) — then offers optional extensions (CodeGraph is the first) as a
+any of [36 harnesses](docs/spec-kit.md) — then offers optional extensions (CodeGraph and Sonar) as a
 checkbox menu. `--integration <name>` and `--extension <key>` skip those questions; `--extension` also adds
 one later. [Extensions](docs/extensions.md).
 
@@ -179,13 +179,13 @@ Everything below is in a generated repository from its first commit.
 | **[Up to 49 skills](docs/skills.md)** | The part of the delivery catalogue this project can use, owned by the project — TDD, testing, hexagonal architecture, DDD, ubiquitous language, API and BFF design, observability, secure OAuth/OIDC, refactoring, debugging and more — with code examples rendered in the languages this project's services are actually written in |
 | **[The global event model](docs/event-model.md)** | *Event profile.* One cumulative model for the whole system in `model.yaml`; `make model` renders the timeline, per-segment diagrams and a self-contained browsable page; `make check-model` fails when the code and the model disagree |
 | **[The read side](docs/what-you-get.md#the-read-side)** | *Event profile.* The machinery a view is *maintained* with, finished in every backend rather than left as the greenfield half: a unit of work on the event store, a `CheckpointStore` port with memory, SQLite and Postgres adapters behind a contract suite of its own, a catch-up runner that advances the checkpoint inside the view's own transaction, a rebuild, whatever each framework already schedules a pass with, and a tag index derived from the log so a conditional append can hold a boundary one stream cannot |
-| **[Gates](docs/verification.md)** | `make verify` — native checks, tests, architecture direction, agent and Spec Kit drift, constitution coverage, event model — identical locally and in CI, and never needing Docker; with integration, adversarial, mutation and audit deliberately outside it |
+| **[Gates](docs/verification.md)** | `make verify` — native checks, tests, architecture direction, agent and Spec Kit drift, constitution coverage, event model — identical locally and in CI, and never needing Docker; with integration, adversarial, mutation, audit and optional Sonar analysis deliberately outside it |
 | **[Spec Kit, properly installed](docs/spec-kit.md)** | Obtained on demand rather than vendored; customised through a preset layer so it is never edited in place and `specify integration upgrade` stays automatic; and the constitution held to a floor from both directions |
 | **[36 agent harnesses](docs/what-you-get.md#one-canonical-source-36-agent-harnesses)** | One canonical `skills/`, `commands/` and `agents/`, projected into Claude Code, Cursor, Codex, Copilot, Gemini CLI, Zed and 30 more — with a named agent type per delegated stage, carrying its model and as much of its write scope as that harness can enforce, and a gate that fails when a projection drifts |
 | **[Generated documentation](docs/what-you-get.md#documentation-written-for-this-project)** | Thirteen pages written for this project's actual shape rather than copied, and an index built from the files that shipped |
 | **[Services and bounded contexts](docs/services.md)** | One list of applications, each with its own language, framework and answers; `add-service` and `add-frontend` to grow it; and contexts found rather than declared |
 | **[A path to production](docs/aws-target.md)** | `--target aws` or `--target azure`: `infra/` in OpenTofu, one deployable per application released blue/green, a pipeline from every push to `main` through staging to production, and a one-command rollback. The same promise on either cloud; [the Azure page](docs/azure-target.md) is where they are compared |
-| **[Extensions](docs/extensions.md)** | Optional dev tooling adopted with `./init --extension <key>` — CodeGraph is the first — none of which changes the generated skeleton's code |
+| **[Extensions](docs/extensions.md)** | Optional dev tooling adopted with `./init --extension <key>` — local CodeGraph indexing or on-demand Sonar analysis — none of which changes the generated application code |
 
 ---
 
@@ -204,7 +204,7 @@ Beyond the profile, each role is a separate question, answered independently:
 | HTTP transport | `--http` | `none`, `fastify`, `fastapi`, `net-http`, `quarkus-rest`, `spring-web` |
 | Staff authentication | `--auth` | `none`, `keycloak`, `cognito` |
 | Customer authentication | `--users` | `none`, `keycloak`, `cognito` |
-| Dev tooling | `--extension` | `codegraph` |
+| Dev tooling | `--extension` | `codegraph`, `sonar` |
 
 The default is `event-modelling/typescript` with the `react-vite` frontend, a Postgres event store, and the
 HTTP transport that backend has. Both identity questions default to `none`, and they are genuinely different
@@ -244,7 +244,7 @@ again later.
 | [Gates](docs/verification.md) | What `make verify` runs, what is deliberately outside it, and why the split falls where it does |
 | [Bootstrap Spec Kit](docs/spec-kit.md) | `./init`, the 36 agent integrations, how Spec Kit is obtained, and the constitution floor gated from both sides |
 | [Services](docs/services.md) | `project.json`'s one list of applications, everything that reads it, what a second service is in each language, `add-service`/`add-frontend` and their agent commands, and what a maintainer owes a new generated file that names an application |
-| [Extensions](docs/extensions.md) | `./init --extension <key>`, the contract every extension's `init.py` owes, and what makes a second one a catalog entry plus one file |
+| [Extensions](docs/extensions.md) | `./init --extension <key>`, the contract every extension's `init.py` owes, and what makes another one a catalog entry plus one file |
 | [The AWS target](docs/aws-target.md) | What `--target aws` gives — the stacks, the images, the pipeline, the rollback — what it costs, what the factory proves about it and what it cannot, and how the next cloud becomes a row |
 | [The Azure target](docs/azure-target.md) | The same for `--target azure`, held against that page line for line: what it costs against AWS and why the gap widens per service, the four places the promise is not quite the same, and what a third cloud would need |
 | [Auth0 on both identity axes](docs/auth0-identity.md) | `--auth auth0` and `--users auth0` under either cloud: what the stack creates, the human step no other row has, the three places it is not like-for-like, and why the provider is chosen at generation time rather than pruned |

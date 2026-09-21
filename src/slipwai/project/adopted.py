@@ -34,7 +34,7 @@ WRITTEN = ".written"
 OWN = (
     "README.md", "AGENTS.md", ".gitignore", ".claude/settings.json", f"{PACKAGES}/.gitkeep",
     ".editorconfig", ".nvmrc", ".python-version", "LICENSE", "SECURITY.md", "renovate.json",
-    ".github/PULL_REQUEST_TEMPLATE.md",
+    ".github/PULL_REQUEST_TEMPLATE.md", ".github/workflows/sonar.yml",
 )
 EXPERIMENTAL = (
     "> **Experimental.** Brownfield adoption is new and will change shape while real repositories teach it what "

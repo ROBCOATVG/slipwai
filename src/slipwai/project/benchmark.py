@@ -17,6 +17,8 @@ from ..layout import AT_ROOT, Layout
 SIGNALS: tuple[tuple[str, str], ...] = (
     ("gaps", "`gaps=N` — criteria or states added before the plan; findings traced after converge"),
     ("implement", "`verify_failures=N` — red `make verify` runs during the stage"),
+    ("implement", "`arm=…` — the boundary or experiment arm the stage ran under (*The implementation boundary*)"),
+    ("implement", "`split=N` — groups the delegate fanned out into; `0` where it did not"),
     ("adversary", "`findings=N` — findings the pass recorded in the log; a recorded skip is `0`"),
     ("adversary", "`seams=N` — delegates spawned; a recorded skip is `0`"),
     ("mutation", "`mutation_score=…` — copied from the tool's own line, in its own units"),

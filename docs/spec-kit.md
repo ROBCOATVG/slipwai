@@ -32,10 +32,18 @@ to AWS it finds the committed bootstrap state and leaves the account alone rathe
 ## How Spec Kit itself is obtained
 
 If `specify` is installed, `./init` uses it. Otherwise it uses `uvx` (or `uv tool run`) to run the official
-CLI from `github/spec-kit`. If neither is available, it installs the official CLI directly from the Spec Kit
-GitHub repository into the ignored project-local `.specify-tools/` directory using Python and pip;
-`python3-venv` is not required. Any extra arguments are passed directly to `specify init`.
-Use `SPECIFY_SOURCE` for a pinned `uvx` source or `SPECIFY_PACKAGE` for a pinned Python requirement.
+CLI from `github/spec-kit` **at the release the project records** — `speckitSource` in `project.json`, written
+at generation from the factory's pin. If neither is available, it installs that same source into the ignored
+project-local `.specify-tools/` directory using Python and pip; `python3-venv` is not required. Any extra
+arguments are passed directly to `specify init`. `SPECIFY_SOURCE` overrides the recorded source for one run,
+and `SPECIFY_PACKAGE` the pip requirement.
+
+The pin is what makes restoring the projections safe. `.claude/`, `commands/` and `agents/` projections are
+ignored by Git, so a fresh checkout has the Spec Kit manifests and none of them; `./init --integration <agent>`
+puts them back at the recorded version rather than at upstream HEAD — which, unpinned, moved a project three
+patch versions while it was only asking for its commands, and made `make check-speckit` read every projected
+skill as edited in place. To move Spec Kit forward, edit `speckitSource` and rerun; `slipwai migrate` brings a
+newer factory's pin the same way, as a diff the project decides.
 
 ## The constitution is gated from both sides
 

@@ -208,7 +208,8 @@ with a manifest of its own — and so is a task with no marker whose manifest sh
 marker is the tasks command's reading of production-code contention, and it under-reports: one slice's list
 marked one pair concurrent, said of the rest "none, by construction", and left two pairs that shared no file
 to run in sequence. The manifests are the artifact; read them, and let only an overlap with a running
-sibling's files, or what the section rules out, keep a task waiting. What the
+sibling's files, or what the section rules out, keep a task waiting. How many rules one delegate is handed
+— a task, a rule or a user story — is *The implementation boundary* below, and goes on the record. What the
 section rules out stays sequential whatever the markers seem to allow — a RED-GREEN-REFACTOR increment starts
 from a green, committed suite, and two of them at once is the batched-tests anti-pattern with a `[P]` on it.
 The siblings are `drive-implement` delegates, and that type is where the rule they cannot infer for

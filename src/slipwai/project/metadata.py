@@ -16,6 +16,7 @@ from ..layout import AT_ROOT, Layout
 from ..manifest import MANIFEST_SCHEMA
 from ..origin import Adoption
 from ..services import App, frontend_of
+from .pins import SPECKIT_SOURCE
 from .shared_packages import PACKAGES
 
 
@@ -33,6 +34,8 @@ def metadata(
     `generator` is provenance, not configuration — nothing generated reads it: `generatedWith` created this
     repository and never changes, `updatedWith` is the newest to have written a file here (`add-service`
     moves it forward), and against the factory's `CHANGELOG.md` the pair says what it has yet to hear.
+    `speckitSource` is the Spec Kit `./init` installs — a pinned release, so a rerun that restores the
+    gitignored projections reinstalls the same version; `slipwai migrate` moves it as a visible diff.
 
     `adoption` is how the repository came to have this material: None for a generated one; for one the method
     was installed around, `"origin": "adopted"` after the generator and its facts after the layout, with its
@@ -47,6 +50,7 @@ def metadata(
     document = {
         "schema": MANIFEST_SCHEMA,
         "generator": {"name": "slipwai", "generatedWith": VERSION, "updatedWith": VERSION},
+        "speckitSource": SPECKIT_SOURCE,
         **({"origin": "adopted"} if adoption else {}),
         "name": project_name,
         "profile": profile,

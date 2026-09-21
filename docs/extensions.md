@@ -112,6 +112,15 @@ stdout. See `prompt_extensions` in `src/slipwai/project/init_script.py` for the 
    `./init --extension <key>` again, after the tool is there. `scripts/extensions/codegraph/init.py` is the
    reference for both halves — it names the recovery in each of its two failure paths.
 
+6. **A file the user must hand-edit is a merge target, never a write target.** Where an extension generates a
+   file it cannot complete from `project.json` — a scanner's properties file whose organisation key only the
+   user knows — read the existing file, rewrite only the keys the extension owns, and leave every other line
+   as it was; where that cannot be done, own a fragment the user's file includes rather than the file. A
+   `write_text` over such a file deleted a required hand-added key silently, on every `./init`, only on
+   machines where the tool happened to be installed, and surfaced weeks later as a failed analysis somewhere
+   else. `./init` already declines to touch the shared Spec Kit paths it reports as not updated; an extension
+   follows the same pattern.
+
 Nothing else routes through this file's name specially: it reaches a generated project purely because
 `assets/toolkit/` is copied as a tree (see `assets/README.md`), the same way a new skill or script does.
 

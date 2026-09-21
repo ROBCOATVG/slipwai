@@ -13,6 +13,7 @@ from .converge_stage import convergence_stage
 from .demo_stop import demo_stop
 from .drive_adoption import adoption_ladder
 from .existing import release_stage
+from .experiments import experiment_section
 from .flags import PUSH_CHECK
 from .mutation import mutation_command
 from .parallel_slices import concurrent_slices, done_marker, ready_set_selection
@@ -169,10 +170,12 @@ decision is a stop.
 
 {who_runs_each_stage(layout)}
 {what_each_stage_costs(layout)}
+{experiment_section(layout)}
 ## Once inside the slice
 
 Start the slice from a green `make verify`. During implementation, take one RED-GREEN-REFACTOR increment per
-task, run only the quickest relevant tests in the same file or area, commit that increment locally, and keep
+task — one rule of the example map with its examples, where the map numbers its rules — run only the quickest
+relevant tests in the same file or area, commit that increment locally, and keep
 task checkboxes truthful. A local commit is not a push: it does not run the full gate and it does not start
 CI. Do not push increment commits until the actor has accepted the demo.
 

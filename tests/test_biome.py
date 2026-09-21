@@ -69,7 +69,8 @@ class BiomeTest(FactoryTestCase):
             self.assertIn('npm exec -- biome format --write "$${dir%/}"', makefile)
             self.assertIn('[ -f "$$dir/package.json" ] || continue', makefile)
             self.assertNotIn("biome format --write .", makefile)
-            self.assertIn("gofmt -w apps/service", makefile)
+            self.assertIn("gofmt -w $(GO_MODULES)", makefile)
+            self.assertIn("GO_MODULES := apps/service\n", makefile)
 
     def test_nothing_of_the_linter_it_replaced_is_left(self) -> None:
         """ESLint parsed TypeScript with Babel because typescript-eslint refuses TypeScript 7, which cost

@@ -14,7 +14,7 @@ test tasks, so without it the test tasks get invented here instead of derived fr
 
 **Tests**: **REQUIRED, not optional.** The constitution's Principle V mandates Given-When-Then acceptance
 criteria observed failing before implementation, binding at the application boundary. Within the slice
-phase this is enforced increment by increment: one failing test, the code that passes it, refactor,
+phase this is enforced increment by increment: one rule's examples failing, the code that passes them, refactor,
 commit — never a batch of tests followed by a batch of implementation. This overrides any template
 default that tests are optional.
 
@@ -116,18 +116,20 @@ concurrency ceiling and MUST be explicit, not incidental]
       `/example-map <id>`: the increments below drive its scenarios, and inventing them here instead means
       building against a guess
 
-### Increments for this slice — one RED-GREEN-REFACTOR at a time ⚠️
+### Increments for this slice — one rule per RED-GREEN-REFACTOR cycle ⚠️
 
-**Each task below is one full cycle, not a test to be batched with the others.** Write its single test,
-observe it failing *and failing for the stated reason*, write the smallest code that makes it pass,
-refactor on green, and run the quickest relevant tests in the same file or area. Then start the next one.
+**Each task below is one rule of `slices/<id>/examples.md` with the examples that belong to it — one full
+cycle, not a test to be batched with the others.** Stub whatever the rule's examples name so the suite
+builds, write its examples — together or one at a time, as the implementer judges — observe each failing
+*and failing for its own stated reason*, write the smallest code that makes them pass, refactor on green, and
+run the quickest relevant tests in the same file or area. Then start the next rule.
 
-**Do not write the next increment's test until the current increment is green and refactored** (Principle
+**Do not write the next rule's examples until the current rule is green and refactored** (Principle
 V). Commit each increment locally. Do not push those commits until the actor has accepted the demo; that is
 when the full suite runs. The history choice never permits writing this whole list as tests first and then
 implementing against them: that fixes the design before the first test result arrives and turns a one-line
-attribution into a debugging session. The modelled scenarios are the list of increments to drive — not a
-body of test code to author in one sitting.
+attribution into a debugging session. The map's rules are the list of increments to drive, their examples the
+tests inside each — not a body of test code to author in one sitting.
 
 The order is deliberate. The first increment pays the structural cost of reaching every layer; each later
 one adds a rule to code that already exists.
@@ -137,7 +139,9 @@ Decider, `VS-` for a view fold — and the test's own title carries that id. Two
 grep proves every agreed example has a test, and a test with no id is either a scenario missing from the map
 or behaviour being invented at the keyboard. If an increment has no scenario to cite, the map is incomplete —
 go back to `/example-map` rather than filling the gap here. Replace the generic increments below with one per
-scenario the map actually holds; the list is a checklist of *kinds*, not a quota to meet.
+rule the map actually holds, each citing its `R<n>`; the list is a checklist of *kinds*, not a quota to meet. A
+task whose GREEN would be empty — a proof over behaviour an earlier task built — is a rule cut too small, and
+folds into the task that produces the behaviour it guards.
 
 - [ ] T033 [US1] **Happy path.** RED: boundary acceptance for the happy path, entering through the use case, asserting on what is observable there. The route gets its own `tests/edge/` test for parse, delegate, and outcome-to-status — it is a translation, not where the rule is proved. GREEN: the minimum that satisfies it — the event schema(s) this one scenario needs, `initialState` and `evolve`, `decide` for the one command, the driving port returning discriminated outcomes, the use case (load, fold, decide, append with expected version), the route handler, and the composition wiring
 - [ ] T034 [US1] **The white box, in its main state.** *Delete these three tasks only if this slice has no `ui` frame — which for a `state-change` or `state-view` slice means the model is wrong, not that there is no screen.* RED: a test at the project's UI level drives the surface the way its actor does — type into the labelled fields, click the button — and asserts what the actor sees. GREEN: the screen. **If the `ui` frame has `mockups`, that state's mock is the build target**; open it and build to it. **If it has none, design it here** — then commit the wireframe under `docs/event-model/mockups/` and add its `mockups` entry to the frame in the same commit, because a screen whose states are recorded nowhere is a screen whose gaps nobody can see. An HTTP test through the route is **not** evidence about this task; load `front-end-testing` (and `react-testing` if the project is React) for the lightest harness that proves a browser-observable claim

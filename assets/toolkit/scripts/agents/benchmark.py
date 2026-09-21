@@ -10,6 +10,7 @@ slice loop, `specs/<feature>/benchmark.json`. `/drive` opens an entry before a s
     python3 scripts/agents/benchmark.py close specs/shop/slices/S1        # the shape, once the slice is archived
     python3 scripts/agents/benchmark.py                                   # the aggregate; `make benchmark`
     python3 scripts/agents/benchmark.py overview [shop]                   # writes specs/<feature>/benchmark.md; `/benchmark`
+    python3 scripts/agents/benchmark.py arms                              # per arm: slices run, the last, how long ago
     python3 scripts/agents/benchmark.py --json
 
 Everything that a transcript, `tasks.md`, git or the record itself can say is read from there, never asked:
@@ -21,7 +22,8 @@ with the reason where it does not; which model ran, from the same lines; the tas
 converge pass; how many times converge ran; a stage re-entered after implementation; files and lines from
 `git diff`. What nothing on disk can supply is passed to `end` as `key=value`: `gaps=N`, `findings=N`,
 `seams=N`, `mutation_score=…` copied from the tool's line, `verify_failures=N`, `outcome=accepted|behaviour|implementation`,
-and `model=` or `agent=` only where no transcript could say. A number that was not read is not written.
+`arm=<key>` for the implementation boundary or experiment arm an implement entry ran under with `split=N` for how
+many groups its delegate fanned out into, and `model=` or `agent=` only where no transcript could say. A number that was not read is not written.
 """
 
 from __future__ import annotations
@@ -60,8 +62,8 @@ OUTCOMES = ("accepted", "behaviour", "implementation")
 # Converge passes beyond which the overview says something: one pass to find work and one to confirm it
 # closed is the shape of a slice that converged, so the third is the first that is worth reading about.
 REPEATED = 3
-COUNTS = ("gaps", "findings", "seams", "verify_failures")
-WORDS = ("mutation_score", "outcome", "model", "agent", "note")
+COUNTS = ("gaps", "findings", "seams", "verify_failures", "split")
+WORDS = ("mutation_score", "outcome", "model", "agent", "note", "arm")
 COMMENT = (
     "What each stage of /drive cost this slice and how well it did, one entry per stage run, appended by "
     "scripts/agents/benchmark.py at the stage's start and end. Tokens come from the harness's own transcript or are "
@@ -535,6 +537,10 @@ def summarise(record: dict[str, Any]) -> dict[str, Any]:
         "findings": sum(entry["signals"].get("findings", 0) for entry in ended),
         "seams": sum(entry["signals"].get("seams", 0) for entry in ended),
         "verify_failures": sum(entry["signals"].get("verify_failures", 0) for entry in ended),
+        # The boundary or experiment arm each implement entry ran under: one is a comparable slice, two is a
+        # slice that ran as both and compares with neither (`commands/drive.md`, *Running an experiment*).
+        "arms": sorted({entry["signals"]["arm"] for entry in ended if "arm" in entry.get("signals", {})}),
+        "split": sum(entry["signals"].get("split", 0) for entry in ended),
         "rework": rework, "shape": record.get("shape"),
     }
 
@@ -544,7 +550,7 @@ def records() -> list[tuple[Path, dict[str, Any]]]:
     return [(path, json.loads(path.read_text())) for path in sorted(specs.rglob(RECORD))] if specs.is_dir() else []
 
 
-COLUMNS = ("slice", "wall", "in", "out", "models", "sessions", "converge", "+tasks", "gaps", "mutation",
+COLUMNS = ("slice", "arm", "wall", "in", "out", "models", "sessions", "converge", "+tasks", "gaps", "mutation",
            "adversary", "demo", "verify✗", "rework", "tasks", "files", "±lines")
 
 
@@ -553,7 +559,7 @@ def row(summary: dict[str, Any]) -> list[str]:
     shape = summary.get("shape") or {}
     unknown = f" (+{summary['usage_unknown']} unread)" if summary["usage_unknown"] else ""
     return [
-        summary["slice"] or "(feature)", summary_wall(summary),
+        summary["slice"] or "(feature)", ", ".join(summary["arms"]) or "—", summary_wall(summary),
         compact(tokens["input"] + tokens["cache_read"] + tokens["cache_creation"]) + unknown, compact(tokens["output"]),
         ", ".join(summary["models"]) or "—", str(summary["sessions"]) or "—",
         str(summary["converge_passes"]), str(summary["tasks_appended"]),
@@ -583,6 +589,51 @@ shows its measured wall as a floor with a trailing `+`. Host context grows throu
 slices spanning different numbers or lengths of sessions are not directly comparable on host tokens."""
 
 
+def arm_runs(summaries: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Per arm, the slices that ran under it, in record order — the order everything else here uses."""
+    runs: dict[str, list[str]] = {}
+    for summary in summaries:
+        if summary["slice"]:
+            for arm in summary["arms"]:
+                runs.setdefault(arm, []).append(summary["slice"])
+    return runs
+
+
+def slices_since(summaries: list[dict[str, Any]], slice_: str) -> int:
+    """How many slices that ran under some arm have run since `slice_`; a slice with no arm is outside the
+    experiment and is not a slice an arm missed."""
+    armed = [summary["slice"] for summary in summaries if summary["slice"] and summary["arms"]]
+    return len(armed) - 1 - armed.index(slice_)
+
+
+def stale_arms(summaries: list[dict[str, Any]]) -> list[str]:
+    """One line per arm that has gone unrun while another ran: an experiment whose default is one of its arms
+    closes by attrition, and the arm table never says so on its own (`commands/drive.md`, *Running an
+    experiment on the method*). Nothing to say while one arm is all there is."""
+    runs = arm_runs(summaries)
+    if len(runs) < 2:
+        return []
+    return [f"arm {arm} has not run since {ran[-1]}, {since} slice(s) ago"
+            for arm, ran in runs.items() if (since := slices_since(summaries, ran[-1]))]
+
+
+def arms() -> str:
+    """`benchmark.py arms`: what `/drive` reads before it asks which arm a slice runs."""
+    grouped = by_feature()
+    lines = []
+    for feature, entries in grouped.items():
+        summaries = [summarise(record) for _, record in entries]
+        runs = arm_runs(summaries)
+        for arm, ran in runs.items():
+            since = slices_since(summaries, ran[-1])
+            lines.append(f"{feature} · arm {arm}: {len(ran)} slice(s), last {ran[-1]}, "
+                         + ("the latest slice" if since == 0 else f"{since} slice(s) ago"))
+        unarmed = [summary["slice"] for summary in summaries if summary["slice"] and not summary["arms"]]
+        if unarmed:
+            lines.append(f"{feature} · no arm recorded: {', '.join(unarmed)}")
+    return "\n".join(lines) or "benchmark: no arm recorded yet — `end <dir> implement arm=<key>` records one"
+
+
 def by_feature() -> dict[str, list[tuple[Path, dict[str, Any]]]]:
     grouped: dict[str, list[tuple[Path, dict[str, Any]]]] = {}
     for path, record in records():
@@ -603,6 +654,9 @@ def notes(summaries: list[dict[str, Any]], records_: list[dict[str, Any]]) -> li
               for summary in summaries if summary["slice"] and summary["converge_passes"] >= REPEATED]
     lines += [f"{summary['slice']}: re-entered {', '.join(summary['rework'])} after implementation"
               for summary in summaries if summary["slice"] and summary["rework"]]
+    lines += [f"{summary['slice']}: ran as arms {' and '.join(summary['arms'])} — its wall compares with neither"
+              for summary in summaries if summary["slice"] and len(summary["arms"]) > 1]
+    lines += stale_arms(summaries)
     for record in records_:
         for entry in record.get("stages", []):
             usage = entry.get("usage")
@@ -708,13 +762,16 @@ def main() -> None:
             print(aggregate())
         return
     command, *rest = arguments
+    if command == "arms":
+        print(arms())
+        return
     if command == "overview":
         for page in overview(rest[0] if rest else None):
             print(f"benchmark: {page.relative_to(ROOT)} written")
         return
     if command not in ("start", "end", "close") or not rest:
         raise RuntimeError("usage: benchmark.py start|end <dir> <stage> [key=value ...] | close <dir> | overview "
-                           "[feature] | [--json]")
+                           "[feature] | arms | [--json]")
     directory = (ROOT / rest[0]).resolve()
     if ROOT not in directory.parents:
         raise RuntimeError(f"{rest[0]} is outside the repository")

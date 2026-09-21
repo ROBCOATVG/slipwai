@@ -57,7 +57,7 @@ the evidence that selected it, and runs from there.
 | 6 | **Slice gaps** | A recorded gaps review — otherwise `/gaps`. A missing state is a paper edit here and a rewritten test later |
 | 7 | **Release constraint** *(production target)* | The flag that holds this slice back from the actor, named in the plan: the key of the releasable capability the slice belongs to, declared in `infra/service/flags.auto.tfvars` seeded `off`. One flag covers a capability, not a slice — the stage says to recommend which, and to ask only where it is genuinely a product question |
 | 8 | **Plan and tasks** | `plan.md` and `tasks.md`, whose *Structure Decision* names the owning service and bounded context |
-| 9 | **Implementation** | Spec Kit's implement command, one RED-GREEN-REFACTOR increment per task, starting from a green `make verify` |
+| 9 | **Implementation** | Spec Kit's implement command, one RED-GREEN-REFACTOR increment per task — one rule of the example map with its examples — starting from a green `make verify` |
 | 10 | **Convergence** | A converged verdict for the current commit, then `/gaps` over the slice diff |
 | 11 | **Demo** | The actor-visible path, ready to show — a stop for feedback, not a report. It opens with a progress board in the actor's words (✅ works now · 🆕 new in this demo · ⬜ still to come, `N of M slices accepted` · ⚠️ not working yet · 🔀 ready (parallel) · ➡️ next (this session) · ⛔ blocked) and ends with the command to paste and a question only the actor can answer. Slices are counted, tasks are not: a slice is a thing the actor can use. `/where-are-we` draws the same board on demand between demos |
 
@@ -189,6 +189,19 @@ transcript. And the factory's own gate runs no fixed benchmark slice: that is an
 and a bill, and it is comparable only when the same harness and model run it every time — a decision for an issue
 of its own, once real records show what varies between two runs of the same slice.
 
+### The boundary, and experiments on the method
+
+How many rules one implementation delegate is handed is a choice `/drive` makes and records — `task`, `rule`
+or `story`, the last being every rule of one user story run as its own cycle in one context, which is what
+stops a fresh delegate re-reading the same four files per rule. The increment inside is always the rule. The
+boundary goes on the implement entry as `arm=`, with `split=N` where the delegate fanned out, so the record
+can say what a wall time was a wall time *of*. Where a project declares an experiment on its method in
+`.specify/experiment.md` — a hypothesis, arms that each move one variable and state their licence in full,
+what does not change between them, a control arm and a stop condition — `/drive` asks which arm every slice
+runs, says which arm has gone unrun, records the answer the same way, and stops the experiment when the
+control arm is answered. `make benchmark` reads the arms back, and `scripts/agents/benchmark.py arms` says,
+per arm, how many slices ran it and how long ago.
+
 ## The commands
 
 Thirteen in the event profile, eleven in `standard`, and four more in a repository that adopted the method
@@ -301,22 +314,27 @@ decision nobody made that reads as agreed three slices later.
 ## Story
 Buyer places an order for the items in their cart and gets a confirmation.
 
-## Rules
-1. An order cannot be placed from an empty cart.
-2. The order total is the sum of the cart's line totals at the moment it is placed.
-3. A cart that has been ordered from cannot be ordered from again.
+## R1 — An order cannot be placed from an empty cart
+- empty cart → rejected, nothing recorded
 
-## Examples
-- Rule 1 — empty cart → rejected, nothing recorded
-- Rule 2 — 2 x £29.99 → order total £59.98, and later price changes do not move it
-- Rule 3 — placing twice on CART-001 → the second is rejected
+## R2 — The order total is the sum of the cart's line totals at the moment it is placed
+- 2 x £29.99 → order total £59.98, and later price changes do not move it
+
+## R3 — A cart that has been ordered from cannot be ordered from again
+- placing twice on CART-001 → the second is rejected
 
 ## Questions
 - Does a cart expire, and if so does expiry reject or silently empty it?  → for the product owner
 ```
 
-Then each agreed example becomes a Given/When/Then scenario in the vocabulary of the event model — prior
-events, one command, the events produced:
+**Rules own their examples.** Each numbered rule carries its examples and, below them, their scenarios, rather
+than every rule in one section and every scenario in another. The rule is the unit of a RED-GREEN-REFACTOR
+increment — its examples may be written together or one at a time, but an increment never spans rules — so
+this grouping is the boundary the tasks are cut on and the converge verdicts cite. Rules are never renumbered
+once cited, and the shape is not retrofitted onto a map already implemented.
+
+Then each agreed example becomes a Given/When/Then scenario in the vocabulary of the event model, under its
+rule — prior events, one command, the events produced:
 
 ```markdown
 ### Scenario: Successfully place an order

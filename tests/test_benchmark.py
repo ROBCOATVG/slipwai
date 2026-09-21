@@ -204,7 +204,7 @@ class BenchmarkTest(FactoryTestCase):
             aggregate = bench(repo, env=env)
             self.assertEqual(aggregate.returncode, 0, aggregate.stderr)
             row = next(line for line in aggregate.stdout.splitlines() if line.strip().startswith("S1 "))
-            self.assertRegex(row, r"^\s+S1\s+\d+s\+\s+1\.5k \(\+5 unread\)\s+370\s+")
+            self.assertRegex(row, r"^\s+S1\s+—\s+\d+s\+\s+1\.5k \(\+5 unread\)\s+370\s+")
             self.assertRegex(row, r"\s+1\s+2\s+0/2\s+87%\s+0\s+accepted\s+1\s+1\s+5\s+2\s+\+6/-2\s*$")
             self.assertIn("tokens are not prices", aggregate.stdout)
             summary = json.loads(bench(repo, "--json", env=env).stdout)[0]
@@ -216,7 +216,7 @@ class BenchmarkTest(FactoryTestCase):
                 " | 1.5k (+5 unread) | 370 | claude-fable-5-1, claude-sonnet-4-5 | 1 | 1 | 2 | 0/2 | 87% | "
                 "0 | accepted | 1 | 1 | 5 | 2 | +6/-2 |"
             )
-            self.assertRegex(page, re.escape("| S1 | ") + r"\d+s\+" + re.escape(rest))
+            self.assertRegex(page, re.escape("| S1 | — | ") + r"\d+s\+" + re.escape(rest))
             self.assertIn("| implement | ", page)
             self.assertIn("| yes | verify_failures=1 |", page)
             self.assertIn("| demo | ", page)

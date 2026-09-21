@@ -19,7 +19,7 @@ from .compose import composed
 from .flags import flag_gate, flag_gate_dependency
 from .integration import integration_targets, integration_variables
 from .mutation import mutation_notes
-from .native_commands import STEP, format_command, gated, native_commands, steps
+from .native_commands import STEP, format_command, gated, go_modules_variable, native_commands, steps
 from .openapi import exporting, openapi_targets
 from .production import production_targets
 from .shared_packages import npm_dependency, npm_workspace_targets
@@ -161,7 +161,7 @@ check-model: ## Validate the global event model and its links to implemented cod
 \tpython3 scripts/event-model/check.py
 
 .PHONY: model
-model: ## Regenerate the event-model diagrams and browsable page from model.yaml (needs Node; PNG=1 for a raster copy)
+model: ## Regenerate the event-model diagrams and browsable page from model.yaml (needs Node; PNG=1 for a raster copy; MERMAID_PUPPETEER_CONFIG=<json> where Chromium cannot sandbox)
 \tnpm --prefix scripts/event-model install --no-audit --no-fund --loglevel=error
 \tscripts/event-model/node_modules/.bin/tsx scripts/event-model/render.ts
 """ if event else ""
@@ -187,7 +187,7 @@ model: ## Regenerate the event-model diagrams and browsable page from model.yaml
     # migrations to apply, are traits the options declare in `catalog.json` and are read per service.
     integrating = any(s.selection.integration_feature is not None for s in services)
     migrating = any(s.selection.migrating_feature is not None for s in services)
-    service_variables = integration_variables(suites, apps, per_suite)
+    service_variables = integration_variables(suites, apps, per_suite) + go_modules_variable(services)
     if migrating:
         # Under a marked region per migrating store, so pruning the last one prunes the CI step with it.
         service_variables += "".join(

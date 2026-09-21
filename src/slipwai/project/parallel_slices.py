@@ -91,7 +91,10 @@ Rejected means another session got there first: skip to the next unclaimed ready
 never error. Read the claims back with `git ls-remote --heads origin 'slice/*'`; the board shows 🔀
 *Ready* split into *claimed by* and *unclaimed*. A claim whose last commit is days old is reported as
 stale, never silently taken — its owner may be mid-slice. Without a remote, the local branch is the claim,
-and say so.
+and say so. A remote that is configured and cannot be reached is the other case, and it looks like success:
+`ls-remote` fails, every slice reads as unclaimed, and that is exactly the answer that lets two sessions take
+one slice. A failed read is reported as *claims could not be read*, never as *unclaimed*, and no slice is
+claimed on the strength of it.
 
 **Each slice has its own worktree and one delegate.** For every unclaimed ready slice whose contract is
 settled, in the same turn: claim it, give it a worktree (`git worktree add ../<project>-<id> slice/<id>`;

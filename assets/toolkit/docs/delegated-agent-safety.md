@@ -12,7 +12,16 @@ brief from carrying an incomplete copy of either.
   implementation delegate may edit only the files its manifest names. Stop and report when another change
   is needed.
 - Preserve work already in the checkout. Never use `git stash`, never use `git checkout` without the exact
-  path and intent, and never copy a tracked file aside as a backup.
+  path and intent, and never copy a tracked file aside as a backup. The one sanctioned way to observe a
+  failure without leaving the tree dirty — to check an assertion has teeth, or to see a RED on code that
+  already exists — is to change the production file, run the test, and restore that file with
+  `git checkout -- <exact path>`. A prohibition with no legal route gets routed around by exactly the
+  delegates trying hardest to do the job well; this is the route.
+- A delegate that edits the tree as part of its *method* rather than its output — a converge pass mutating
+  code to prove a finding, an implementation delegate checking an assertion discriminates — owns leaving it
+  clean on every exit path, including being stopped: branch or commit before the first such edit, restore
+  each file before the next, and report what was touched. A stopped pass once left a mutation live in the
+  tree the demo was next to run from.
 - Do not stop processes by command-line pattern: `pkill -f <pattern>` can match the shell issuing it. Stop only
   a PID the task started and recorded.
 - Leave existing long-lived processes running, including development servers, demos, watchers and backing

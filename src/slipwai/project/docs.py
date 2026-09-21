@@ -254,7 +254,7 @@ For one small vertical slice:
 3. Create or resume `plan.md` and `tasks.md` with the Spec Kit commands installed by `./init`.
 4. Implement each task RED-GREEN-REFACTOR, keeping `make verify` green.
 5. Run the installed Spec Kit converge command, implement whatever it appends, and repeat until it reports
-   converged; then `/gaps` over the slice diff.
+   converged or reaches its bound; then `/gaps` over the slice diff.
 6. Demonstrate the actor-visible path and pause for feedback.
 7. After acceptance, run `/mutation` and `make verify` — and `/adversary` first, when the slice changed
    attack surface or closed the split.
@@ -270,7 +270,7 @@ there is a target — before the first principle is written. It applies from the
 feature under `specs/` whether or not the constitution was touched.
 
 Three stages in the loop are deliberately not the shape they look like. **Converge** is append-only — its
-only write is new tasks — so it is safe to repeat until it reports converged, and it is what makes the demo
+only write is new tasks — so it is safe to repeat until it reports converged or reaches its bound, and it is what makes the demo
 worth showing. The **second `/gaps`** runs after that verdict rather than before it, because ahead of
 converge every unbuilt task reads as a gap and buries the findings that need judgement. **`/adversary`** is
 an end-of-phase pass rather than a per-slice one: `commands/adversary.md` runs it when the diff changed

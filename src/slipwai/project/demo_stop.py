@@ -14,7 +14,9 @@ def board_sources(event: bool) -> str:
     """Where the progress board is read from, per profile — shared with `/where-are-we`, which draws the same
     board between demos, so the two commands cannot name different artifacts."""
     claims = (
-        "and the forge's `slice/<id>` branches (`git ls-remote --heads origin 'slice/*'`), which are the claims"
+        "and the forge's `slice/<id>` branches (`git ls-remote --heads origin 'slice/*'`), which are the claims —"
+        " read, never assumed: where that command fails the board says the claims could not be read, and"
+        " shows no slice as unclaimed on the strength of a failed read"
     )
     sources = (
         "the ordered split and its `## Slice graph`, the register at `specs/<feature>/slices/README.md` — a row\n"

@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..layout import AT_ROOT, Layout
+from .converge_stage import levels
 from .stage_models import AGENT, ANY, MANIFEST, NO_STAGE, STAGES
 
 # Where the canonical types live, beside `skills/` and `commands/`.
@@ -120,6 +121,17 @@ The task, its contract and the files you may read and write are in the brief; no
 repository is yours to edit, including `tasks.md` — report which task you finished and the session that
 delegated you ticks the checkbox, because concurrent siblings would otherwise all write that one file.
 
+**RED is observed before the code that satisfies it exists, and the report says so.** A failure reconstructed
+afterwards — implement, undo the implementation to watch the test fail, restore — proves the test fails without
+the change and not that it was written independently of it, and the two are indistinguishable in the diff.
+Where every symbol the test names already exists from earlier increments there is nothing to write first: the
+RED is the new test run against the unchanged code. To check that an assertion has teeth — a test that passed
+on first run, an example you want to see fail for its own reason — change the production file, run the test,
+and restore that one file with `git checkout -- <exact path>`. Never `git stash`: it is a whole-tree operation
+and sweeps up the uncommitted work of a sibling writing beside you. Never copy the file aside as a backup. The
+safety page forbids both, and this is the sanctioned route it implies. Say in your report whether each RED was
+an assertion failure rather than a build failure, and whether it was observed before the implementation existed.
+
 Return the task you finished, the tests you added with their names, the commands you ran and their results,
 and anything you had to leave undone. A task that cannot be done as specified is reported, not reinterpreted:
 say what the plan assumed and what the code actually is.""",
@@ -131,10 +143,25 @@ The verdict names each principle the diff touches — a MUST about money, time, 
 file and line that satisfies it. "No constitution obligation unmet" as one sentence is not a verdict: a slice
 has shipped a float in a monetary column under exactly that sentence.
 
+Account for every level in one pass — {levels()} — saying for
+each what the diff proves there and what it does not, so the session that delegated you is not sent back for
+a pass per level. Grade every task you append
+`CRITICAL`, `HIGH`, `MEDIUM` or `LOW`: only the first two re-open the loop, and only a `CRITICAL` re-opens it
+past the ladder's bound, so the grade is a decision about what the slice may ship without, not a label. The
+brief names your budget; when you reach it, return what you have found marked incomplete rather than
+continuing — an incomplete verdict with three findings is worth more than a complete one nobody waited for.
+
+Where you prove a finding by changing the code and watching the suite, you own leaving the tree clean on every
+exit path, including the one where you are stopped: make a branch or a commit before your first mutation so an
+abandoned pass is recoverable by construction, restore each file with `git checkout -- <exact path>` before
+moving to the next, and never `git stash` or copy a file aside. A pass stopped mid-mutation left two arguments
+swapped in the working tree the demo was about to run from.
+
 Your one write is new tasks, which is what makes converge safe to repeat, plus whatever the verdict itself
 requires under the manifest. Do not run the full `{layout.make} verify`: that gate runs after demo
 acceptance, immediately before the implementation is pushed. Return the verdict, the tasks you appended and
-the evidence for each, so the session that delegated you can re-run this stage until it reports converged.""",
+the evidence for each, so the session that delegated you can re-run this stage until it reports converged
+or the ladder's bound is reached.""",
 
         "drive-gaps": """You read, and you report what is missing. You change nothing.
 

@@ -9,6 +9,7 @@ from ..targets import managed
 from .add_commands import add_command_files
 from .adversary import adversary_command
 from .benchmark import benchmark_command, what_each_stage_costs
+from .converge_stage import convergence_stage
 from .demo_stop import demo_stop
 from .drive_adoption import adoption_ladder
 from .existing import release_stage
@@ -124,25 +125,7 @@ def drive_command(
             if web
             else ""
         ),
-        """**Convergence** — `tasks.md` records a converged verdict for the current commit and has no
-   unchecked convergence task. Otherwise run the installed Spec Kit converge command, implement whatever it
-   appends, and repeat until it reports converged; record that verdict under a `## Convergence` heading so
-   this stage is not re-run, then `/gaps` over the slice diff. The verdict names each constitution principle
-   the diff touches — a MUST about money, time, identity, a boundary — with the file and line that satisfies
-   it; "no constitution obligation unmet" as one sentence is not a verdict, and a slice has shipped a float in
-   a monetary column under exactly that sentence. Converge is append-only — its one write is
-   new tasks — so repeating it is safe. A Spec Kit install with no converge command is a skip with a stated
-   reason, not a stop.
-
-   **Each appended task closes the class, not the instance it was found at.** Where a finding sits on a
-   repeated surface — a field in a parser, a row in a route table, one screen of a pair, one array cap in a
-   decoder, one column of a field table — the task's GREEN names the sweep rather than the example ("every
-   field this parser validates", "both screens of the crossing", "every array this decoder bounds"), and the
-   verdict records the sweep that was performed and what it found. A pass that validates one field and leaves
-   its neighbour is a pass the next one repeats: six of them closing a sibling each is the same work as one
-   closing the surface, at six times the price, and it is what writing the task as the example produces.
-   Where the sweep is genuinely larger than the slice, say so in the verdict and leave a task naming the
-   rest — that is a scope decision recorded, not a sibling found again next pass.""",
+        convergence_stage(),
         """**Demo** — the actor-visible path is ready to show.""",
     ]
     if adoption is not None:
@@ -164,6 +147,17 @@ Read artifacts from disk rather than conversation memory and walk this ladder fr
 is the first one whose artifact is missing, empty, or still a placeholder — **including the stages upstream
 of the slice loop**. State the entry stage and the evidence that selected it before changing anything, then
 run that stage and every stage after it. Never rerun a completed stage merely to check.
+
+**The checkout goes stale the way conversation memory does, so check the branch before the artifacts.**
+Every signal the ladder reads — a slice's `status`, whether `examples.md` or `tasks.md` exists, the slice
+graph — is a property of this commit, and a branch behind trunk reads exactly like a project where the work
+was never done: a `/drive` fifty-seven commits behind wrote a second example map for a slice that had
+shipped. So fetch and compare first — `git fetch`, then `git log --oneline HEAD..@{{u}}`, or against
+`origin/main` where the branch has no upstream. Behind by anything, stop and say so rather than deriving:
+the artifacts about to be read are not the project's current ones. The evidence line names the branch, its
+head and its distance from trunk in the same breath as the stage. Where the fetch could not run — no remote,
+or a remote this environment cannot reach — the line says *could not verify this checkout is current*, and
+that never reads as *current*.
 
 {ladder}
 

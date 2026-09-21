@@ -292,7 +292,7 @@ type: a brief adds only its task-specific contract and file manifest, and restat
 Use `/drive` to resume from the first missing artifact or unchecked task, whether that artifact is the
 constitution, the product specification, the split, or the slice's own tasks. Work through specification,
 `/gaps` over the slice's acceptance criteria, plan, tasks, RED-GREEN-REFACTOR implementation, the installed
-Spec Kit converge command until it reports converged, `/gaps` over the slice diff, and an actor-visible
+Spec Kit converge command until it reports converged or reaches its bound, `/gaps` over the slice diff, and an actor-visible
 demo. Pause at the demo for feedback; after acceptance run `/adversary` when the slice changed attack
 surface or closed the split — `commands/adversary.md` makes and records that decision — then `/mutation` and
 `make verify`. Stop earlier only for a product decision or unavailable external input.
@@ -308,7 +308,7 @@ extension hook is not a gate.
 
 Continue until the actor-visible path is ready for a demo, a product decision or unavailable external input
 blocks progress, or the ordered split is exhausted. Before the demo, run the installed Spec Kit converge
-command until it reports converged and `/gaps` over the slice diff. At the demo, pause for feedback. On
+command until it reports converged or reaches its bound, and `/gaps` over the slice diff. At the demo, pause for feedback. On
 acceptance, harden and finish the slice — `/adversary` when the slice changed attack surface or closed the
 split, then `/mutation` and `make verify` — then continue to the ready slices (not done, every `depends_on` done): every unclaimed one whose contract is settled runs concurrently, one delegate per slice on a `slice/<id>` branch, merged in split order (`commands/drive.md`, *Running ready slices concurrently*); where the harness cannot delegate, the earliest in split order, naming the rest.
 

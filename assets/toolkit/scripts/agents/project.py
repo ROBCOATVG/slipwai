@@ -656,6 +656,9 @@ def main() -> None:
                     if isinstance(harness.get("agentFile"), dict)
                     else "Project skills and commands installed")
             print(f'{done} for {harness["name"]} ({key}).')
+            if isinstance(harness.get("agentFile"), dict) and not CONTEXT_ONLY:
+                print("A harness reads its agent types once, at session start: restart the session before "
+                      "delegating, or the first delegation cannot use the types just projected.")
     if CHECK:
         if FINDINGS:
             raise RuntimeError("agent projection drift:\n  - " + "\n  - ".join(FINDINGS))

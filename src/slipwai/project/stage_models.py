@@ -169,7 +169,13 @@ worktree to choose a model for each stage it then runs.
 
 Delegate to the type by name. The type is the standing brief, so the call adds only the task, its contract and
 the file manifest — it never describes the role again or restates the scope, and it does not give the delegate
-conclusions. The page each type is written on is `docs/delegated-agent-safety.md`, the standing boundary every
+conclusions. It may give it a map: which precedent to copy, which decision in `research.md` governs, which
+helper already exists — a file and a section, which the delegate then opens and reads for itself. Naming where
+a fact lives is a pointer and costs a sentence; asserting what it says is a conclusion, and a brief that asked
+the delegate to read a decision itself and report what it says has caught what a brief that summarised it got
+wrong. Where a brief offers a delegate more than one way of working, every permission is written into each
+mode that has it, even at the price of a repeated paragraph: a fresh delegate reads a silence conservatively,
+and the conservative reading is the expensive one. The page each type is written on is `docs/delegated-agent-safety.md`, the standing boundary every
 delegation is held to: reference it, restate none of it (`AGENTS.md`, *Delegated agents*).
 
 **A delegate does not inherit this session's code-index connection.** Where `AGENTS.md` carries the
@@ -198,7 +204,11 @@ A stage is not always one delegate. Before delegating implementation, read `task
 its *Parallel opportunities* section: the tasks command writes both, and they are the plan for what may run
 alongside what — written by one half of this workflow to be read here, not decoration. Every unchecked `[P]`
 task whose files are disjoint from the batch already running is a concurrent sibling, delegated in the same turn
-with a manifest of its own; a task with no marker, or whose files overlap a sibling's, waits its turn. What the
+with a manifest of its own — and so is a task with no marker whose manifest shares no file with the batch. The
+marker is the tasks command's reading of production-code contention, and it under-reports: one slice's list
+marked one pair concurrent, said of the rest "none, by construction", and left two pairs that shared no file
+to run in sequence. The manifests are the artifact; read them, and let only an overlap with a running
+sibling's files, or what the section rules out, keep a task waiting. What the
 section rules out stays sequential whatever the markers seem to allow — a RED-GREEN-REFACTOR increment starts
 from a green, committed suite, and two of them at once is the batched-tests anti-pattern with a `[P]` on it.
 The siblings are `drive-implement` delegates, and that type is where the rule they cannot infer for
@@ -207,7 +217,9 @@ otherwise contend for, so each reports which task it finished and this session t
 
 When several delegates form one batch, report once when the batch completes rather than once per delegate.
 Verify their claims by spot-checking the recorded reproduction or RED evidence; do not repeat each complete
-investigation in the host context. Do not re-investigate. An adversary pass is the same kind of batch:
+investigation in the host context. Do not re-investigate. A delegate that was stopped has filed nothing:
+everything in its stop notification is a lead, never a result, and a lead is re-run before it is written
+anywhere outside this session. An adversary pass is the same kind of batch:
 disjoint-manifest seams of one pass are concurrent `drive-adversary` siblings in one turn, and the host
 writes the log after the batch rather than re-attacking. It records the type and the explicit model that
 ran each seam in `specs/<feature>/adversary-log.md`, especially when seams use different models.

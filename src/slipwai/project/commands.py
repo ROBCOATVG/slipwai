@@ -12,11 +12,13 @@ from .benchmark import benchmark_command, what_each_stage_costs
 from .converge_stage import convergence_stage
 from .demo_stop import demo_stop
 from .drive_adoption import adoption_ladder
+from .drive_settings import drive_settings_command, implementation_section
 from .existing import release_stage
 from .flags import PUSH_CHECK
 from .mutation import mutation_command
 from .parallel_slices import concurrent_slices, done_marker, ready_set_selection
-from .stage_models import who_runs_command, who_runs_each_stage
+from .stage_models import model_delegation_settings_command, who_runs_each_stage
+from .whats_next import whats_next_command
 from .where_are_we import where_are_we_command
 
 
@@ -169,10 +171,12 @@ decision is a stop.
 
 {who_runs_each_stage(layout)}
 {what_each_stage_costs(layout)}
+{implementation_section(layout)}
 ## Once inside the slice
 
 Start the slice from a green `make verify`. During implementation, take one RED-GREEN-REFACTOR increment per
-task, run only the quickest relevant tests in the same file or area, commit that increment locally, and keep
+task — one rule of the example map with its examples, where the map numbers its rules — run only the quickest
+relevant tests in the same file or area, commit that increment locally, and keep
 task checkboxes truthful. A local commit is not a push: it does not run the full gate and it does not start
 CI. Do not push increment commits until the actor has accepted the demo.
 
@@ -295,7 +299,8 @@ than an open question.
 
 # Every command a generated project carries, in the order `docs/skills-and-commands.md` lists them — the last
 # three reaching back out to the factory. One list, so the documentation and the files cannot disagree.
-BASE_COMMANDS = ("drive", "where-are-we", "gaps", "adversary", "mutation", "constitution-coverage", "who-runs",
+BASE_COMMANDS = ("drive", "where-are-we", "whats-next", "gaps", "adversary", "mutation", "constitution-coverage", "model-delegation-settings",
+                 "drive-settings",
                  "benchmark", "add-service", "add-frontend", "catch-up")
 # Copied whole from `assets/profiles/event-modelling/commands/`; listed because the documentation names them in order.
 EVENT_COMMANDS = ("example-map", "validate-code-against-model")
@@ -313,11 +318,13 @@ def command_files(
     files = {
         "commands/drive.md": drive_command(event, apps, target, layout, adoption),
         "commands/where-are-we.md": where_are_we_command(event, target),
+        "commands/whats-next.md": whats_next_command(event),
         "commands/gaps.md": gaps_command(event),
         "commands/adversary.md": adversary_command(event),
         "commands/mutation.md": mutation_command(backends_of(apps)),
         "commands/constitution-coverage.md": constitution_coverage_command(event),
-        "commands/who-runs.md": who_runs_command(layout),
+        "commands/model-delegation-settings.md": model_delegation_settings_command(layout),
+        "commands/drive-settings.md": drive_settings_command(layout),
         "commands/benchmark.md": benchmark_command(layout),
     }
     files.update(add_command_files(apps, target))

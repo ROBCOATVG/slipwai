@@ -107,7 +107,7 @@ def service_commands(backend: str, path: str, verify: str = "scripts/verify") ->
             # Three analysers, widening as they go: the formatter, the compiler's own narrow vet, and
             # staticcheck for what vet deliberately leaves alone (`go.py` says which).
             "lint": (
-                f"test -z \"$$(gofmt -l {APP})\"\n\tcd {APP} && go vet ./...\n\tcd {APP} && {GO_STATICCHECK}"
+                f"test -z \"$$(gofmt -l $(GO_MODULES))\"\n\tcd {APP} && go vet ./...\n\tcd {APP} && {GO_STATICCHECK}"
             ),
             # The suite, then the coverage gate over the profile it wrote: `-coverpkg=./...` so a package
             # is credited with every test that reaches it, and the script's minimum on the line (`go.py`).
@@ -233,15 +233,35 @@ BIOME_FORMAT = (
 FORMATTERS: dict[str, str] = {
     "typescript": BIOME_FORMAT,
     "python": f"./{VERIFY} --format",
-    "go": f"gofmt -w {APP}",
+    # Over `$(GO_MODULES)`, the one list `lint` reads too (`makefile.py`), so the two can never cover different
+    # paths: a project whose gate checked two directories while its formatter rewrote one had a `make format`
+    # that exited 0 and left the files `make lint` was about to fail.
+    "go": "gofmt -w $(GO_MODULES)",
 }
+
+
+# Every Go module `gofmt` covers, named once and read by `lint` and `format` alike, so the two cannot drift. A
+# project whose gate checked two directories while its formatter rewrote one had a `make format` that exited 0
+# and left the files `make lint` was about to fail — twice, and diagnosed as delegate negligence both times,
+# because formatting drift only ever surfaces downstream of the delegate that caused it.
+GO_MODULES = """
+# The Go modules `gofmt` formats and `make lint` checks, once, so the two never cover different paths. A Go
+# module added under packages/ belongs on this line; both targets follow.
+GO_MODULES := {paths}
+"""
+
+
+def go_modules_variable(services: list[App]) -> str:
+    """The `GO_MODULES` definition for the Makefile, or nothing where no service is Go."""
+    paths = [service.path for service in services if service.language == "go"]
+    return GO_MODULES.format(paths=" ".join(paths)) if paths else ""
 
 
 def format_command(apps: list[App]) -> str:
     """The `format` recipe for this project, or an empty string where nothing in it has a formatter.
 
-    Go is the one family spelled per service — `gofmt` takes paths rather than reading a configuration —
-    so its line is stamped for each; the others are one recipe whatever the project holds.
+    Every family is one recipe whatever the project holds: `gofmt` takes paths rather than reading a
+    configuration, and its paths are the Makefile's `GO_MODULES`, named once for `lint` and `format` alike.
     """
     services = services_of(apps)
     lines: list[str] = []

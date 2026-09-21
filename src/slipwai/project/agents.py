@@ -9,7 +9,7 @@ delegate may touch. So the constraint belongs in the file, where the harness enf
 brief is left carrying only what is actually per-call: the task, the contract and the manifest.
 
 These are the canonical types, one per delegable stage in `stage_models.STAGES`, named for the stage so the
-model resolves through `.specify/models.json` with no second lookup and `/who-runs` stays the only place a
+model resolves through `.specify/models.json` with no second lookup and `/model-delegation-settings` stays the only place a
 model is chosen. `scripts/agents/project.py` renders each into the installed harness's own agent file —
 Codex's sandbox mode, Cursor's `readonly`, Copilot's and Gemini's tool lists, opencode's permissions, Claude
 Code's `disallowedTools` — resolving the model at projection time, and says in the stamp where a harness
@@ -62,8 +62,8 @@ def summary(agent: Type) -> str:
         "drive-tasks":
             "Turns one slice's finished plan into its ordered tasks; writes only that slice's tasks.md",
         "drive-implement":
-            "Implements one complete task of a slice through RED-GREEN-REFACTOR; edits only the files its "
-            "manifest names, never tasks.md",
+            "Implements one boundary of a slice — a task, a rule with its examples, or every rule of one user "
+            "story, each its own RED-GREEN-REFACTOR cycle; edits only the files its manifest names, never tasks.md",
         "drive-converge":
             "Judges whether a slice converged against the constitution and appends what it still owes; edits "
             "only what the verdict requires",
@@ -92,16 +92,21 @@ Run the installed Spec Kit tasks command after the host has made the canonical `
 this slice. That command is the only state-changing command in your scope; otherwise run only commands that
 read. Inspect the resulting file and make only the corrections this standing brief requires.
 
-Every task is **one RED-GREEN-REFACTOR increment**, taken one per commit. Do not schedule the tests as one
-task and implementation as another: that is the batched-tests anti-pattern, and the plan's own Principle V
-row fails on it.
+Every task is **one RED-GREEN-REFACTOR increment**, taken one per commit, and the unit of an increment is one
+rule of the example map with the examples that belong to it (Principle V): where the map numbers its rules,
+cut one task per rule and cite it. Do not schedule the tests as one task and implementation as another: that
+is the batched-tests anti-pattern, and the plan's own Principle V row fails on it. A task whose GREEN would be
+empty — a proof over behaviour an earlier task already produced — is a rule cut too small: fold it into the
+task that produces the behaviour it guards, so no task instructs the implementer to write a test that passes
+the moment it is written.
 
 Cover **every layer the slice's patterns require** — domain logic alone is a component, not a vertical
 slice. Where the slice puts anything on a screen, its styling is a task here, naming the screen and where
 its styles come from. Writing each white box's states back as committed mockups is a task too, because
 `check-model` refuses an implemented slice without them.
 
-Mark `[P]` only where the files are genuinely disjoint, and write the *Parallel opportunities* section that
+Mark `[P]` wherever a task's files are disjoint from its siblings' — whether or not it adds production code —
+and nowhere else, and write the *Parallel opportunities* section that
 says what may run alongside what and what may not. The implementation session reads both to decide how many
 delegates to spawn, so a `[P]` you cannot justify becomes two agents writing one file. Number tasks in
 dependency order and leave a `## Convergence` heading for the verdict that comes later.
@@ -110,11 +115,18 @@ Your one write is this slice's `tasks.md`. Not the model, plan, code, benchmark 
 prepared before delegating you. Return the path you wrote, the tasks and parallel batches you derived, and
 any contradiction or file you believe needs changing; leave every other file alone.""",
 
-        "drive-implement": f"""You implement exactly one task of one slice, from a plan that is already complete.
+        "drive-implement": f"""You implement one boundary of one slice, from a plan that is already complete: one
+task, one rule of the example map with the examples that belong to it, or every rule of one user story —
+each rule its own RED-GREEN-REFACTOR cycle, in this one context, in the map's order. The brief also names
+the cycle unit — `rule` or `example` — from `.specify/drive.json`. The licence below is the same whichever
+boundary you were handed; a story is never one batch of tests.
 
-Work the task as a single RED-GREEN-REFACTOR increment: a failing test that names the behaviour, the smallest
-change that passes it, then the refactor with the quickest relevant test command scoped to the same file or
-area green. That local, fast feedback is all this increment needs. Commit the increment locally when it is
+Work each rule as a single RED-GREEN-REFACTOR increment: the failing examples that name the behaviour, the smallest
+change that passes them, then the refactor with the quickest relevant test command scoped to the same file or
+area green. Within a rule the cycle unit says how: `rule`, its examples written together and implemented
+against; `example`, one at a time. Either way each example is observed failing for its own stated reason: stub
+whatever an example names, as a no-op or a default return, before writing it, so a broken build is never the
+RED. That local, fast feedback is all this increment needs. Commit the increment locally when it is
 green; do not push, and do not widen to affected suites, static analysis or the full `{layout.make} verify`.
 Those checks belong immediately before the first implementation push, which happens after demo acceptance.
 The task, its contract and the files you may read and write are in the brief; nothing else in the
@@ -132,8 +144,15 @@ and sweeps up the uncommitted work of a sibling writing beside you. Never copy t
 safety page forbids both, and this is the sanctioned route it implies. Say in your report whether each RED was
 an assertion failure rather than a build failure, and whether it was observed before the implementation existed.
 
-Return the task you finished, the tests you added with their names, the commands you ran and their results,
-and anything you had to leave undone. A task that cannot be done as specified is reported, not reinterpreted:
+**You may fan your own increment out** where a rule's examples fall on disjoint files, to sub-delegates of this
+same type, under four constraints: a sub-delegate's manifest is a subset of yours, never wider; you verify each
+one's evidence against the tree rather than relaying its claim; nothing you spawn writes `tasks.md`; and you
+report as one delegate with one cycle's evidence, saying that you split and into how many groups. The obvious
+implementation hands a sub-delegate your whole write scope, and that is the one this forbids.
+
+Return what you finished, the boundary you were given and the cycle unit you ran, whether you fanned out and
+into how many groups, the tests you added with their names, the commands you ran and their
+results, and anything you had to leave undone. A task that cannot be done as specified is reported, not reinterpreted:
 say what the plan assumed and what the code actually is.""",
 
         "drive-converge": f"""You judge whether one slice converged, and append what it still owes.

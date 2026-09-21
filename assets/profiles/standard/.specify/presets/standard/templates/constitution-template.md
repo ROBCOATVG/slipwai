@@ -108,28 +108,42 @@ still a choice.
 - **What is NOT a GWT scenario**: format and structure validation. That belongs in the type system,
   which MUST make invalid states unrepresentable. If the compiler can reject it, do not write a scenario.
 - **Cycle**: RED-GREEN-REFACTOR. Tests written after the code they cover MUST be sent back.
-- **One increment at a time (NON-NEGOTIABLE).** One failing test, the smallest code that passes it,
-  refactor on green. The next test MUST NOT be written until the current one is green and refactored.
-  **Writing a slice's scenarios up front as a batch and then implementing against them is
+- **One increment at a time (NON-NEGOTIABLE).** The unit of an increment is **one rule** —
+  one numbered rule of the slice's example map, or one acceptance criterion where there is no map,
+  with the examples that belong to it — taken RED-GREEN-REFACTOR: its examples
+  failing, the smallest code that passes them, refactor on green. Within a rule the examples MAY be written
+  together and implemented against, or taken one at a time, as the implementer judges; an increment MUST
+  NOT span rules, and the next rule's examples MUST NOT be written until the current rule is green and
+  refactored. **Writing a slice's scenarios up front as a batch and then implementing against them is
   prohibited**, however carefully those scenarios were specified — it is a planning artifact executed as
-  code, not a test-driven cycle.
-- At most **one** test may be failing at a time. Each cycle MUST leave the quickest relevant tests in its
-  file or area green. Commit each completed cycle locally; do not push those commits until the actor has
-  accepted the demo. The whole suite MUST be green immediately before that first implementation push,
-  which is what may land on trunk. A row of pending tests is not RED; it is an unintegrated batch of the
-  kind IX exists to prevent.
-- A test MUST be observed failing, **and failing for the stated reason**, before the code that satisfies
-  it is written. A test that passes the moment it is written is evidence of nothing and MUST be treated as
-  a defect in the test.
+  code, not a test-driven cycle. A task that produces no behaviour — a proof over what an earlier increment
+  already built — is a rule cut too small, and belongs inside the increment that produces the behaviour it
+  guards.
+- At most **one rule's** examples may be failing at a time. Each cycle MUST leave the quickest relevant
+  tests in its file or area green. Commit each completed cycle locally; do not push those commits until the
+  actor has accepted the demo. The whole suite MUST be green immediately before that first implementation push,
+  which is what may land on trunk. A row of pending tests is not RED; it is an unintegrated batch of
+  the kind IX exists to prevent.
+- **RED is a failing assertion, not a failing build.** Whatever an example names — function, method, type,
+  field — MUST exist far enough to compile against before that example is written, as a no-op or a default
+  return; that fixes the shape while saying nothing about the behaviour. A red build is not a red test, and
+  "it does not compile yet" is never the stated reason a test fails.
+- Every example MUST be observed failing, **and failing for its own stated reason, distinct from its
+  siblings'**, before the code that satisfies it is written. Examples that all fail for one shared cause
+  have been observed once rather than once each, and every one beyond the first is unproven. A test that
+  passes the moment it is written is evidence of nothing until it has been observed failing: where the
+  behaviour already exists, that observation is the behaviour changed and restored, and the report says so.
 - REFACTOR is a step, not an option. It happens on green, before the next test, and it MUST NOT change
   observable behaviour.
 
 Rationale for the increment rule: writing every scenario first looks like rigour and removes the thing
 that makes TDD work. Each test is supposed to be a design experiment whose result changes what you write
 next; a batch fixes the design before the first result arrives. It also destroys the attribution that
-makes a failure cheap — with one red test you know exactly which change broke it, and with nine you are
-debugging. The scenarios discovered during specification are the *list* of increments to drive, not a body
-of code to author in one sitting.
+makes a failure cheap — with one rule red you know exactly which change broke it, and with nine rules you
+are debugging. The rules discovered during specification are the *list* of increments to drive, their examples
+the tests inside each — not a body of code to author in one sitting. The rule is the unit because it is the
+smallest thing the example map agrees on: cut finer, the offcuts are tasks that prove what an earlier task
+built and produce nothing, and each is a red test that cannot be made red.
 
 - **Behaviour, not structure.** Tests MUST NOT assert private functions, internal call ordering, or mock
   invocation counts where an observable outcome exists. Renaming an internal function MUST NOT break a

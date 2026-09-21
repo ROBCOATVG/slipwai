@@ -90,7 +90,7 @@ the tool arrives *deferred*, a bare name the delegate has to load through the ha
 before it can call it. `registry.json` records all of that under `agentFile.mcp`, with the source and the date
 it was read, and every projection's stamp carries it, so a route a harness withholds is one somebody can read.
 
-Because the model lives in these files on five of the six harnesses, `/who-runs` rewrites them as part of the
+Because the model lives in these files on five of the six harnesses, `/model-delegation-settings` rewrites them as part of the
 change — the line saying so is part of its output — and `check-agents` reads a type that drifted from its
 canonical source the same way it reads a drifted skill.
 
@@ -102,7 +102,7 @@ identifiers per harness; `host` is the model running `/drive` itself. `python3 s
 resolves both into the line `/drive` reads before a stage — the model to delegate to and how, or why the stage
 runs on the host model — and `make models` prints the whole table. A harness with a `null` row runs every stage
 on the host model, and the line says so. Edit the roles for your harness — only Claude Code's `fast` is seeded —
-and `make check-agents` checks the shape. Change it whenever you like: `/who-runs implement=strong claude.fast=haiku` (the
+and `make check-agents` checks the shape. Change it whenever you like: `/model-delegation-settings implement=strong claude.fast=haiku` (the
 command over `python3 scripts/agents/models.py --set`) writes a checked edit, `/drive` reads the table before every stage so the
 change takes effect at the next one, and `slipwai migrate` merges a newer factory's table over yours rather than
 replacing it.

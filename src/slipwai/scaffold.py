@@ -27,6 +27,7 @@ from .project.convergence_page import convergence_page
 from .project.deploy_workflow import deploy_workflow, promotion_workflow, rollback_workflow
 from .project.docs import documentation_files
 from .project.docs_index import docs_index
+from .project.drive_settings import drive_config
 from .project.event_model import event_model_workflow
 from .project.existing import existing_deployment_page
 from .project.frontend import frontend_files
@@ -102,6 +103,7 @@ def project_files(
         "AGENTS.md": agent_guidance(profile, apps, target),
         ".claude/settings.json": claude_settings(apps, target),
         ".specify/models.json": stage_models(),
+        ".specify/drive.json": drive_config(),
         ".github/workflows/verify.yml": workflow(apps, layout),
         "docs/architecture.md": architecture(profile, apps),
         f"{PACKAGES}/.gitkeep": "",

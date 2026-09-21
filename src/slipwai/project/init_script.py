@@ -17,6 +17,7 @@ from ..layout import AT_ROOT, Layout
 from ..services import App, axes_of, services_of
 from ..targets import managed, tools_for
 from .init_production import ALREADY_BOOTSTRAPPED, PRODUCTION_BOOTSTRAP, PRODUCTION_CHECK
+from .pins import SPECKIT_SOURCE
 from .rules import CLOUD
 
 
@@ -234,23 +235,25 @@ def init_script(apps: list[App], target: str = "none", layout: Layout = AT_ROOT)
         f'# This lives under {layout.delivery}/; everything below happens at the repository root.\n'
         f'cd "$(dirname "$0")/{layout.to_root}"\n' if layout.moved else ""
     )
-    return """#!/bin/sh
+    script = """#!/bin/sh
 set -eu
 """ + to_root + scan + check + prompt + """
 run_specify() {
+  # The release this project records (`project.json`, `speckitSource`), so a rerun that restores the ignored
+  # projections reinstalls the same Spec Kit rather than moving to upstream HEAD. SPECIFY_SOURCE overrides it.
+  recorded=$(sed -n 's/.*"speckitSource": *"\\([^"]*\\)".*/\\1/p' project.json 2>/dev/null | head -n 1)
+  source=${SPECIFY_SOURCE:-${recorded:-__SPECKIT_SOURCE__}}
   if command -v specify >/dev/null 2>&1; then
     specify init --here --force "$@"
     return
   fi
 
   if command -v uvx >/dev/null 2>&1; then
-    source=${SPECIFY_SOURCE:-git+https://github.com/github/spec-kit.git}
     uvx --from "$source" specify init --here --force "$@"
     return
   fi
 
   if command -v uv >/dev/null 2>&1; then
-    source=${SPECIFY_SOURCE:-git+https://github.com/github/spec-kit.git}
     uv tool run --from "$source" specify init --here --force "$@"
     return
   fi
@@ -258,7 +261,7 @@ run_specify() {
   if command -v python3 >/dev/null 2>&1; then
     tools_dir=.specify-tools
     if [ ! -x "$tools_dir/bin/specify" ]; then
-      package=${SPECIFY_PACKAGE:-git+https://github.com/github/spec-kit.git}
+      package=${SPECIFY_PACKAGE:-$source}
       python3 -m pip install --disable-pip-version-check --upgrade --target "$tools_dir" "$package"
     fi
     PYTHONPATH="$tools_dir${PYTHONPATH:+:$PYTHONPATH}" "$tools_dir/bin/specify" init --here --force "$@"
@@ -294,3 +297,4 @@ else
   python3 scripts/agents/project.py
 fi
 """ + run_extensions + bootstrap
+    return script.replace("__SPECKIT_SOURCE__", SPECKIT_SOURCE)

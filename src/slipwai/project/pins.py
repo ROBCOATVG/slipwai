@@ -32,6 +32,14 @@ from ..backends import NODE_MAJOR, PYTHON_VERSION
 from ..services import App, families_of
 from .shared_packages import node_workspace
 
+# The Spec Kit release `./init` installs, recorded in `project.json` as `speckitSource` so that restoring the
+# gitignored projections later is a reinstall at the same version rather than a silent move to upstream HEAD —
+# which took one project from 1.0.6 to 1.0.9.dev0 while it was only asking for its commands back, and made
+# `check-speckit` read every projected skill as edited in place. Raising it here reaches every project through
+# `slipwai migrate`, as a diff the project decides.
+SPECKIT_TAG = "v1.0.8"
+SPECKIT_SOURCE = f"git+https://github.com/github/spec-kit.git@{SPECKIT_TAG}"
+
 # What EditorConfig says about a file of each kind here. Two spaces as the house default because that is what
 # every formatter in this project's toolchain already emits (Prettier, Biome, the YAML this factory writes);
 # four for Python and Java, which is what PEP 8 and every Java convention ask; tabs for Go, which `gofmt`

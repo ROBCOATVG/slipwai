@@ -78,19 +78,32 @@ function mermaidCli(): string {
   return bin;
 }
 
+/**
+ * Runs mermaid-cli once. Chromium refuses to start as root without `--no-sandbox`, which is how every rootless
+ * container fails here; when that is the situation and no Puppeteer config was given, say which variable
+ * fixes it before rethrowing, rather than leaving Chromium's own message to be searched for.
+ */
+function runMermaid(args: string[]): void {
+  try {
+    execFileSync(mermaidCli(), [...args, ...PUPPETEER_FLAGS], { cwd: ROOT, stdio: 'inherit' });
+  } catch (error) {
+    if (PUPPETEER_FLAGS.length === 0 && typeof process.getuid === 'function' && process.getuid() === 0) {
+      process.stderr.write(
+        'render: running as root, and Chromium will not start without --no-sandbox. Point MERMAID_PUPPETEER_CONFIG '
+          + 'at a JSON file such as {"args": ["--no-sandbox", "--disable-dev-shm-usage"]} and rerun; the generated '
+          + 'CI workflow does exactly this.\n',
+      );
+    }
+    throw error;
+  }
+}
+
 function mermaidToSvg(input: string, output: string): void {
-  execFileSync(mermaidCli(), ['--input', input, '--output', output, '--width', WIDTH, ...PUPPETEER_FLAGS], {
-    cwd: ROOT,
-    stdio: 'inherit',
-  });
+  runMermaid(['--input', input, '--output', output, '--width', WIDTH]);
 }
 
 function mermaidToPng(input: string, output: string): void {
-  execFileSync(
-    mermaidCli(),
-    ['--input', input, '--output', output, '--width', WIDTH, '--backgroundColor', 'white', ...PUPPETEER_FLAGS],
-    { cwd: ROOT, stdio: 'inherit' },
-  );
+  runMermaid(['--input', input, '--output', output, '--width', WIDTH, '--backgroundColor', 'white']);
 }
 
 /**

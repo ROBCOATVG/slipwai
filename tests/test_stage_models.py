@@ -80,8 +80,8 @@ class StageModelsTest(FactoryTestCase):
             makefile = (repo / "Makefile").read_text()
             self.assertIn("models: ## Show which model runs each stage of /drive", makefile)
             gate = ("check-agents: ## Fail when an initialized agent projection has drifted, or .specify/models.json "
-                    "is malformed\n\tpython3 scripts/agents/project.py --check\n"
-                    "\tpython3 scripts/agents/models.py --check\n")
+                    "or drive.json is malformed\n\tpython3 scripts/agents/project.py --check\n"
+                    "\tpython3 scripts/agents/models.py --check && python3 scripts/agents/drive.py --check\n")
             self.assertIn(gate, makefile)
             subprocess.run(["make", "check-agents"], cwd=repo, check=True, capture_output=True)
             for page in ("docs/agent-harnesses.md",):
@@ -89,19 +89,20 @@ class StageModelsTest(FactoryTestCase):
 
             # The change is a command of the project's own, projected like every other, and it goes through the
             # checked path — the ladder names it as the way an owner's request becomes the change.
-            command = (repo / "commands/who-runs.md").read_text()
+            command = (repo / "commands/model-delegation-settings.md").read_text()
             self.assertIn("description: Show or change which model runs each stage of /drive", command)
             self.assertIn("python3 scripts/agents/models.py --set $ARGUMENTS", command)
             self.assertIn("do not work around it by editing the file", command)
             self.assertIn("ask for the identifier rather than inventing one", command)
             self.assertIn("commit\n`.specify/models.json` on its own", command)
-            self.assertIn("`/who-runs implement=strong claude.fast=haiku` edits it checked", section)
-            self.assertIn("- `/who-runs` — `commands/who-runs.md`", (repo / "docs/skills-and-commands.md").read_text())
+            self.assertIn("`/model-delegation-settings implement=strong claude.fast=haiku` edits it checked", section)
+            self.assertIn("- `/model-delegation-settings` — `commands/model-delegation-settings.md`",
+                          (repo / "docs/skills-and-commands.md").read_text())
             installed(repo, "claude")
             subprocess.run(["python3", "scripts/agents/project.py", "claude"], cwd=repo, check=True,
                            capture_output=True)
-            projected = (repo / ".claude/commands/who-runs.md").read_text()
-            self.assertIn("Generated from commands/who-runs.md", projected)
+            projected = (repo / ".claude/commands/model-delegation-settings.md").read_text()
+            self.assertIn("Generated from commands/model-delegation-settings.md", projected)
 
     def test_delegation_names_the_safety_page_and_each_sessions_index_routes(self) -> None:
         """The delegation preference and the code-index block used to say opposite things about the same

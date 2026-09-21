@@ -246,7 +246,7 @@ def agent_model(stage: str, harness: dict[str, object]) -> tuple[str | None, str
 
     The agent file is a *projection* of `.specify/models.json`, never a second place a model is written: five
     of the six harnesses that can give a sub-task its own model can only do it here, so if this file decided
-    for itself, `/who-runs` would stop being the answer to "which model runs implement".
+    for itself, `/model-delegation-settings` would stop being the answer to "which model runs implement".
     """
     if stage == NO_STAGE:
         return None, ("this type runs a whole slice and reads the table stage by stage inside itself, so it "

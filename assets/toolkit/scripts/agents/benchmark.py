@@ -21,7 +21,8 @@ with the reason where it does not; which model ran, from the same lines; the tas
 converge pass; how many times converge ran; a stage re-entered after implementation; files and lines from
 `git diff`. What nothing on disk can supply is passed to `end` as `key=value`: `gaps=N`, `findings=N`,
 `seams=N`, `mutation_score=…` copied from the tool's line, `verify_failures=N`, `outcome=accepted|behaviour|implementation`,
-and `model=` or `agent=` only where no transcript could say. A number that was not read is not written.
+`delegate=<boundary>` and `cycle=<unit>` for how an implement entry was delegated and driven with `split=N` for
+how many groups its delegate fanned out into, and `model=` or `agent=` only where no transcript could say. A number that was not read is not written.
 """
 
 from __future__ import annotations
@@ -60,8 +61,8 @@ OUTCOMES = ("accepted", "behaviour", "implementation")
 # Converge passes beyond which the overview says something: one pass to find work and one to confirm it
 # closed is the shape of a slice that converged, so the third is the first that is worth reading about.
 REPEATED = 3
-COUNTS = ("gaps", "findings", "seams", "verify_failures")
-WORDS = ("mutation_score", "outcome", "model", "agent", "note")
+COUNTS = ("gaps", "findings", "seams", "verify_failures", "split")
+WORDS = ("mutation_score", "outcome", "model", "agent", "note", "delegate", "cycle")
 COMMENT = (
     "What each stage of /drive cost this slice and how well it did, one entry per stage run, appended by "
     "scripts/agents/benchmark.py at the stage's start and end. Tokens come from the harness's own transcript or are "
@@ -535,6 +536,14 @@ def summarise(record: dict[str, Any]) -> dict[str, Any]:
         "findings": sum(entry["signals"].get("findings", 0) for entry in ended),
         "seams": sum(entry["signals"].get("seams", 0) for entry in ended),
         "verify_failures": sum(entry["signals"].get("verify_failures", 0) for entry in ended),
+        # How each implement entry was delegated and driven, `delegate/cycle`: one shape is a comparable slice,
+        # two is a slice that ran as both and compares with neither (`commands/drive.md`, *How implementation
+        # is delegated*).
+        "delegation": sorted({
+            f"{entry['signals'].get('delegate', '?')}/{entry['signals'].get('cycle', '?')}"
+            for entry in ended if {"delegate", "cycle"} & set(entry.get("signals", {}))
+        }),
+        "split": sum(entry["signals"].get("split", 0) for entry in ended),
         "rework": rework, "shape": record.get("shape"),
     }
 
@@ -544,7 +553,7 @@ def records() -> list[tuple[Path, dict[str, Any]]]:
     return [(path, json.loads(path.read_text())) for path in sorted(specs.rglob(RECORD))] if specs.is_dir() else []
 
 
-COLUMNS = ("slice", "wall", "in", "out", "models", "sessions", "converge", "+tasks", "gaps", "mutation",
+COLUMNS = ("slice", "delegate/cycle", "wall", "in", "out", "models", "sessions", "converge", "+tasks", "gaps", "mutation",
            "adversary", "demo", "verify✗", "rework", "tasks", "files", "±lines")
 
 
@@ -553,7 +562,7 @@ def row(summary: dict[str, Any]) -> list[str]:
     shape = summary.get("shape") or {}
     unknown = f" (+{summary['usage_unknown']} unread)" if summary["usage_unknown"] else ""
     return [
-        summary["slice"] or "(feature)", summary_wall(summary),
+        summary["slice"] or "(feature)", ", ".join(summary["delegation"]) or "—", summary_wall(summary),
         compact(tokens["input"] + tokens["cache_read"] + tokens["cache_creation"]) + unknown, compact(tokens["output"]),
         ", ".join(summary["models"]) or "—", str(summary["sessions"]) or "—",
         str(summary["converge_passes"]), str(summary["tasks_appended"]),
@@ -570,7 +579,7 @@ def table(rows: list[list[str]]) -> str:
                      for line in [list(COLUMNS), *rows])
 
 
-LEGEND = ("in = input + cache read + cache creation tokens; gaps = before/after converge; +tasks = tasks converge "
+LEGEND = ("delegate/cycle = how implementation was delegated and driven; in = input + cache read + cache creation tokens; gaps = before/after converge; +tasks = tasks converge "
           "appended; sessions = harness sessions read; a stage's tokens are a floor (the turn that ends it is partly "
           "uncounted); a trailing + makes wall a floor because an unbracketed stage is missing; tokens are not prices")
 READING = """These numbers compare the slices of this project on this harness, and one slice before and after a change
@@ -603,6 +612,8 @@ def notes(summaries: list[dict[str, Any]], records_: list[dict[str, Any]]) -> li
               for summary in summaries if summary["slice"] and summary["converge_passes"] >= REPEATED]
     lines += [f"{summary['slice']}: re-entered {', '.join(summary['rework'])} after implementation"
               for summary in summaries if summary["slice"] and summary["rework"]]
+    lines += [f"{summary['slice']}: implemented as {' and '.join(summary['delegation'])} — its wall compares with "
+              "neither" for summary in summaries if summary["slice"] and len(summary["delegation"]) > 1]
     for record in records_:
         for entry in record.get("stages", []):
             usage = entry.get("usage")

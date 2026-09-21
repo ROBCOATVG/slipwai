@@ -18,7 +18,13 @@ from typing import Any
 
 from slipwai.assets import LANGUAGE_ROOT
 from slipwai.project.languages.go import GO_COVERAGE_SCRIPT, GO_GREMLINS_TOKEN
-from slipwai.project.mutation import GO_GREMLINS, GO_MUTATION_SCRIPT, mutation_notes
+from slipwai.project.mutation import (
+    GO_GREMLINS,
+    GO_GREMLINS_CONFIG,
+    GO_GREMLINS_REPORT,
+    GO_MUTATION_SCRIPT,
+    mutation_notes,
+)
 from slipwai.services import App
 
 
@@ -41,6 +47,9 @@ class MutationNoteTest(unittest.TestCase):
         note = mutation_notes([service("orders", "go"), service("billing", "go")])
 
         self.assertIn("`apps/orders/.gremlins.yaml` and `apps/billing/.gremlins.yaml`", note)
+        # The report the run now leaves is named per service for the same reason the gate is: a reader
+        # looking for a score needs the path of the one their service wrote.
+        self.assertIn("`apps/orders/gremlins.json` and `apps/billing/gremlins.json`", note)
         self.assertNotIn("__APP__", note)
         # One note for the backend, however many services are written on it.
         self.assertEqual(note.count("Wired up: Gremlins"), 1)
@@ -73,6 +82,35 @@ class MutationNoteTest(unittest.TestCase):
         text = (LANGUAGE_ROOT / "go" / GO_MUTATION_SCRIPT).read_text()
         self.assertEqual(text.count(GO_GREMLINS_TOKEN), 1)
         self.assertNotIn("gremlins@v", text)
+
+
+    def test_the_note_says_how_to_scope_a_run_and_where_the_report_lands(self) -> None:
+        # Both are what the note is for: an unscoped run is priced per repository, and a run whose report
+        # was deleted left a log line where the stage's evidence should be.
+        note = mutation_notes([service("orders", "go")])
+        self.assertIn("make mutation SINCE=", note)
+        self.assertIn("`apps/orders/gremlins.json`", note)
+
+
+class MutationCommandTest(unittest.TestCase):
+    def test_the_go_command_says_how_to_scope_and_where_the_report_is(self) -> None:
+        # A flag nobody reading `/mutation` knows to pass is a stage that keeps being run at sweep price.
+        from slipwai.project.mutation import mutation_command
+
+        self.assertIn("make mutation SINCE=<review-base>", mutation_command(["go"]))
+        self.assertIn("gremlins.json", mutation_command(["go", "typescript"]))
+        # It is the Go target's flag; a project with no Go service is not told to pass it.
+        self.assertNotIn("SINCE", mutation_command(["typescript"]))
+
+
+class GitignoreTest(unittest.TestCase):
+    def test_a_go_projects_mutation_report_is_not_committed(self) -> None:
+        # One run on one machine, replaced by the next: the same lifetime as `coverage.out` beside it.
+        from slipwai.project.gitignore import build_artifacts
+
+        ignored = build_artifacts(False, [service("orders", "go")])
+        self.assertIn(f"{GO_GREMLINS_REPORT}\n", ignored)
+        self.assertNotIn(GO_GREMLINS_REPORT, build_artifacts(False, [service("ledger", "java", "spring-boot")]))
 
 
 class CoverageGateTest(unittest.TestCase):
@@ -137,6 +175,97 @@ class MutationWrapperTest(unittest.TestCase):
         self.assertTrue(self.wrapper.required("require (\n\texample.com/p/x v0.0.0\n)\n", "example.com/p/x"))
         self.assertFalse(self.wrapper.required("require example.com/p/xy v0.0.0\n", "example.com/p/x"))
         self.assertFalse(self.wrapper.required("module example.com/p/svc\n", "example.com/p/x"))
+
+    def test_the_command_line_is_the_service_and_an_optional_ref(self) -> None:
+        self.assertEqual(self.wrapper.arguments(["x", "apps/service"]), (Path("apps/service"), None))
+        self.assertEqual(self.wrapper.arguments(["x", "apps/service", "--since", "main"]),
+                         (Path("apps/service"), "main"))
+        # `$(if $(SINCE),--since $(SINCE))` expands before the path on some lines and after it on others
+        # depending on how the recipe is edited; neither ordering is the user's mistake.
+        self.assertEqual(self.wrapper.arguments(["x", "--since", "main", "apps/service"]),
+                         (Path("apps/service"), "main"))
+        self.assertIsNone(self.wrapper.arguments(["x"]))
+        self.assertIsNone(self.wrapper.arguments(["x", "apps/service", "--since"]))
+        self.assertIsNone(self.wrapper.arguments(["x", "apps/service", "apps/other"]))
+
+    def test_the_projects_own_exclusions_are_read_back_out_of_the_yaml(self) -> None:
+        """A scoped run passes `--exclude-files`, which replaces the file's list rather than adding to it,
+        so a scope that could not read the file would quietly mutate what the project excluded on purpose."""
+        shipped = LANGUAGE_ROOT / "go" / "app" / GO_GREMLINS_CONFIG
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / GO_GREMLINS_CONFIG
+            config.write_text(shipped.read_text())
+            self.assertEqual(self.wrapper.excluded(config), ["cmd/.*", "eventstorecontract/.*"])
+            # An absent file has nothing to carry forward; that is not a failure.
+            config.unlink()
+            self.assertEqual(self.wrapper.excluded(config), [])
+            # Keys of another top-level section are not this section's.
+            config.write_text("other:\n  exclude-files:\n    - \"a.go\"\nunleash:\n  integration: true\n")
+            self.assertEqual(self.wrapper.excluded(config), [])
+            # Quoting styles, a comment line, and a key after the list ending it.
+            config.write_text(
+                "unleash:\n"
+                "  exclude-files:\n"
+                "    # the skeleton's own\n"
+                "    - \"cmd/.*\"\n"
+                "    - 'a b.go'\n"
+                "    - bare.go # trailing\n"
+                "  threshold:\n"
+                "    efficacy: 99.99\n"
+            )
+            self.assertEqual(self.wrapper.excluded(config), ["cmd/.*", "a b.go", "bare.go"])
+
+    def test_an_unreadable_exclusion_list_is_loud(self) -> None:
+        # The failure this refuses: an inline list read as an empty one, and a scoped run that silently
+        # mutates the trees the project excluded. Running is not evidence of being configured.
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / GO_GREMLINS_CONFIG
+            config.write_text('unleash:\n  exclude-files: ["cmd/.*"]\n')
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.wrapper.excluded(config)
+
+    def test_a_scope_is_the_complement_of_what_changed(self) -> None:
+        """Gremlins has no include list, so scoping to a file means excluding every other one by name."""
+        with tempfile.TemporaryDirectory() as directory:
+            module = Path(directory)
+            (module / "cmd" / "serve").mkdir(parents=True)
+            for name in ("domain.go", "events.go", "domain_test.go", "cmd/serve/main.go"):
+                (module / name).write_text("package x\n")
+
+            self.assertEqual(self.wrapper.sources(module), {"domain.go", "events.go", "cmd/serve/main.go"})
+            arguments = self.wrapper.scope(module, {"domain.go"}, ["cmd/.*"])
+
+            # The project's own patterns first, then one anchored pattern per file out of scope. Anchored so
+            # `events.go` cannot take `domain/events.go` with it, and never a test file: Gremlins does not
+            # mutate one, so excluding it would say something untrue about the scope.
+            self.assertEqual(arguments, [
+                "--exclude-files", "cmd/.*",
+                "--exclude-files", r"^cmd/serve/main\.go$",
+                "--exclude-files", r"^events\.go$",
+            ])
+
+    def test_a_change_confined_to_an_excluded_tree_scopes_to_nothing_rather_than_red(self) -> None:
+        # `cmd/` is wiring the project excludes on purpose. A change that touched only it has no mutant to
+        # answer for — and "no mutants" is this script's red, which would be true of the run and false
+        # about the change.
+        own = ["cmd/.*", "eventstorecontract/.*"]
+        self.assertEqual(self.wrapper.mutable({"cmd/serve/main.go"}, own), set())
+        self.assertEqual(self.wrapper.mutable({"cmd/serve/main.go", "domain.go"}, own), {"domain.go"})
+        self.assertEqual(self.wrapper.mutable({"domain.go"}, []), {"domain.go"})
+
+    def test_the_report_is_copied_out_before_the_staging_tree_goes(self) -> None:
+        """The defect this fixes: Gremlins writes the report inside the tree the wrapper deletes, so the
+        stage left a scrollback where the slice record expects its evidence."""
+        with tempfile.TemporaryDirectory() as staging, tempfile.TemporaryDirectory() as directory:
+            service = Path(directory)
+            report = Path(staging) / "gremlins.json"
+            with contextlib.redirect_stdout(io.StringIO()):
+                # Nothing to copy when Gremlins wrote nothing, and that is `assess`'s red, not a crash here.
+                self.assertIsNone(self.wrapper.keep_report(report, service))
+                report.write_text('{"files": []}')
+                kept = self.wrapper.keep_report(report, service)
+            self.assertEqual(kept, service / GO_GREMLINS_REPORT)
+            self.assertEqual(kept.read_text(), '{"files": []}')
 
     def test_nothing_mutated_and_a_timeout_are_red(self) -> None:
         def mutants(*statuses: str) -> str:

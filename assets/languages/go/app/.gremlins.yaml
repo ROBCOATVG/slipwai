@@ -27,6 +27,19 @@
 # and not on a missing one — `make test`'s coverage gate (`scripts/go-coverage.py`) is where the missing one
 # fails.
 #
+# What a run costs, because it is the reason this stage gets skipped rather than read: one mutant costs one
+# run of the suite above, so the bill is mutants times that suite. `integration: true` makes the second term
+# the whole module's suite deliberately — the alternative is scoring a domain package "not covered" — which
+# leaves the first term as the only one to move. `make mutation SINCE=<branch-or-commit>` moves it: the
+# wrapper mutates only the production files that differ from that ref, leaving the unscoped target as the
+# full sweep. Package granularity is the other half of the same arithmetic and it is not set here: a pure
+# function living in a ninety-file package pays that package's whole suite per mutant, so moving it to a
+# package of its own is a mutation-testing decision as much as a design one.
+#
+# Not a worker count, because there is nothing to gain: Gremlins parallelises across the CPUs it finds by
+# default, and setting `workers` explicitly was measured slower than leaving it alone on an eighteen-core
+# machine (0.6.0, 2026-09-21). A run that feels serial is paying for the suite, not for a missing flag.
+#
 # A survivor is a test to write or an equivalent mutant. Gremlins excludes files, not mutants: `exclude-files`
 # takes regular expressions on the path within this module. The two below are the skeleton's own: `cmd/` is
 # wiring by construction, where a survivor is a test of the framework nobody should write; and

@@ -30,6 +30,11 @@ GO_GREMLINS = "github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0"
 # Where a Go service's mutation gate is written, relative to the service: the threshold Gremlins reads.
 GO_GREMLINS_CONFIG = ".gremlins.yaml"
 
+# Where a Go service's mutation run leaves its report, relative to the service. Named here because the note
+# points at it per service and `gitignore.py` keeps it out of the history: one run, one machine, replaced by
+# the next run.
+GO_GREMLINS_REPORT = "gremlins.json"
+
 # The script `make mutation` runs Gremlins through, written once per project by `languages/go.py` from the
 # asset of the same name. It exists because of two things verified against 0.6.0 on 2026-09-09 (the marches
 # review of the Gremlins migration raised the first):
@@ -44,12 +49,21 @@ GO_GREMLINS_CONFIG = ".gremlins.yaml"
 #   2. Gremlins passes two runs the Spring backend's `failWhenNoMutations` would fail: a module with nothing
 #      to mutate ("No results to report.", exit 0), and a run whose mutants timed out — a timed-out mutant is
 #      left out of the score, and at the default coefficient half the skeleton's were. The script fails both.
+#
+# It carries two more things, both verified against 0.6.0 on 2026-09-21. It copies the report out of the
+# staging tree before deleting it, so the target leaves evidence rather than a scrollback. And it takes
+# `--since <ref>`, scoping the run to the production files that differ from that ref by generating the
+# complement of exclusions — because Gremlins' own `--diff` is unusable from a module in a subdirectory: it
+# resolves changed paths against the repository root, matches them against paths within the module, finds no
+# overlap, and reports every mutant SKIPPED and the run successful. That is the shape of failure this backend
+# keeps producing, so it is named here rather than discovered again.
 GO_MUTATION_SCRIPT = "scripts/go-mutation.py"
 
 
 # Emitted above the `mutation:` target so the next person to read a score, or a red run, knows what was run
 # and where the gate is before trusting either. Make comments do not match the `help` grep, so this stays out
-# of `make help`. `__APP__/.gremlins.yaml` is rewritten to the project's own Go services by `mutation_notes`.
+# of `make help`. `__APP__/<file>` is rewritten to the project's own Go services by `mutation_notes`, for
+# every name in `NAMED_FILES` — here the gate's yaml and the report the run leaves.
 GO_MUTATION_NOTE = """\
 # Wired up: Gremlins, pinned to a release and run through `go run` by `scripts/go-mutation.py`, so it is
 # never a dependency of the module it mutates. It needs Go 1.25 or newer; an older `go` with the default
@@ -64,6 +78,21 @@ GO_MUTATION_NOTE = """\
 # mutant killed, 100% efficacy and a green target, with tests that could not fail. The staged copy gets a
 # `require` and an absolute `replace` per imported module and runs with GOWORK=off. The shared module is
 # built there and never mutated; run this against it as a service of its own if its rules need a gate.
+#
+# The report lands at `__APP__/gremlins.json`, copied out of that staging tree before it is deleted, and is
+# ignored by git: it is one run on one machine, and the next run replaces it. It is written whether the run
+# passed or failed, because a red run's report is the one worth reading.
+#
+# `make mutation SINCE=<branch-or-commit>` scopes the run to the production files that differ from that ref
+# and leaves the unscoped target as the full sweep. That is the difference between a stage priced per
+# repository and one priced per change: every mutant costs a run of this module's suite, so an unscoped run
+# re-proves every file that shipped weeks ago at full price, and a stage that expensive gets routed around
+# rather than read. The scope is computed from git before staging, not handed to Gremlins' own `--diff`:
+# `--diff` resolves changed paths against the repository root and matches them against paths within the
+# module, so from a service directory it skips every mutant and reports success having mutated nothing. Gremlins has no
+# include list either, so a scope is a complement of exclusions, generated per run — and since
+# `--exclude-files` replaces the yaml's list rather than adding to it, the script reads that list and passes
+# it back rather than dropping the exclusions below.
 #
 # The gate is in `__APP__/.gremlins.yaml`, not on this line: a run with a surviving mutant fails. The
 # value there is 99.99 and it lives in a file for two reasons the file records — in Gremlins 0.6.0 the
@@ -183,7 +212,7 @@ MUTATION_NOTES = {
 
 # The per-service files a note names, spelled with `APP` where the service's path goes: PIT's scope is in the
 # pom, Gremlins' threshold is in its yaml, and a project with two services of one backend has two of each.
-NAMED_FILES = ("pom.xml", GO_GREMLINS_CONFIG)
+NAMED_FILES = ("pom.xml", GO_GREMLINS_CONFIG, GO_GREMLINS_REPORT)
 
 
 def mutation_notes(apps: list[App]) -> str:
@@ -201,6 +230,15 @@ def mutation_notes(apps: list[App]) -> str:
 def mutation_command(backends: list[str]) -> str:
     tools = {"typescript": "Stryker", "python": "mutmut", "go": "Gremlins", "java-quarkus": "PIT (pitest)",
              "java-spring": "PIT (pitest)"}
+    # Said here and only where a Go service exists, because `SINCE` is the Go target's: the skill teaches
+    # diff-scoped runs as the posture at this gate and the other backends reach for their own tool's way of
+    # doing it. Without this line the scoped run is a flag in a Makefile nobody reading the command knows to
+    # pass, and the unscoped run is the one that gets skipped for costing an hour.
+    scoping = ("""
+`make mutation SINCE=<review-base>` scopes the Go run to the production files that differ from that ref;
+without `SINCE` it mutates the whole module, which is a sweep rather than a check on this change. Either way
+the run leaves its report at `<service>/gremlins.json` — read that, not the scrollback.
+""" if "go" in backends else "")
     return f"""---
 description: Evaluate test effectiveness with mutation testing
 argument-hint: [changed-production-paths]
@@ -212,4 +250,4 @@ Read `skills/mutation-testing/SKILL.md`. Target changed production code and use 
 project has configured it. Mutation tooling is intentionally not part of the mandatory repository gate: if it
 is absent, report the exact setup decision needed instead of pretending mutations ran. Classify survivors,
 add tests only for meaningful behavioural gaps, then finish with `make verify`.
-"""
+{scoping}"""

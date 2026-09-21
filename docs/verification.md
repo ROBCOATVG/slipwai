@@ -41,7 +41,7 @@ One `make` away, and none of them in the gate:
 |---|---|---|
 | `make test-integration` | The integration suite against real backing services | Needs `services-up` and a database; an empty integration suite is a valid starting state |
 | `make adversarial` | Tests named or tagged adversarial | An end-of-slice pass, after the demo is accepted, where the slice changed attack surface |
-| `make mutation` | The backend's native mutation testing | Minutes, not seconds — an end-of-phase question, not a per-increment one |
+| `make mutation` | The backend's native mutation testing | Minutes, not seconds — an end-of-phase question, not a per-increment one. A mutant costs a run of the suite, so an unscoped run is priced by the whole module however small the change; on Go, `make mutation SINCE=<branch-or-commit>` scopes it to what differs from that ref and leaves the unscoped target as the sweep |
 | `make audit` | The ecosystem-native dependency-vulnerability audit | Needs the network, and answers a question that does not change between two commits an hour apart |
 | `make model` *(event)* | Re-renders the model's diagrams and browsable page | Needs Node and a headless browser; `make check-model` proves the committed output is current without either, which is why *that* one is in the gate |
 | `make ci` | The extended gate | Under a production target it also builds every service's production image and runs it against its probe — the half of a deploy provable without an account |

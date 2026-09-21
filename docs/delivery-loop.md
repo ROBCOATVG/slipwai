@@ -27,7 +27,10 @@ slice enters the loop at its own `/gaps` pass over the acceptance criteria inste
 Three stages in it are deliberately not the shape they look like:
 
 - **Converge is append-only.** Its only write is new tasks, so repeating it costs a read and is always safe.
-  Loop it until it reports converged.
+  Loop it until it reports converged — or until the bound the ladder sets, two passes by default, after which
+  what is still open is appended as Phase 4 tasks: a loop whose exit condition is the judgement of the thing
+  being looped has no other end. An open `CRITICAL` finding is the one thing the bound does not hold
+  against; it re-opens the loop however many passes have run.
 - **The second `/gaps` runs after the converged verdict, not before it.** Ahead of converge, every unbuilt
   task reads as a gap and buries the findings that actually need judgement.
 - **`/adversary` is an end-of-phase pass, not a per-slice one.** It runs when the diff changed attack

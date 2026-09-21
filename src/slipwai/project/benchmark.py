@@ -17,7 +17,8 @@ from ..layout import AT_ROOT, Layout
 SIGNALS: tuple[tuple[str, str], ...] = (
     ("gaps", "`gaps=N` — criteria or states added before the plan; findings traced after converge"),
     ("implement", "`verify_failures=N` — red `make verify` runs during the stage"),
-    ("implement", "`arm=…` — the boundary or experiment arm the stage ran under (*The implementation boundary*)"),
+    ("implement", "`delegate=…` and `cycle=…` — how the stage was delegated and driven (*How implementation is "
+                  "delegated*)"),
     ("implement", "`split=N` — groups the delegate fanned out into; `0` where it did not"),
     ("adversary", "`findings=N` — findings the pass recorded in the log; a recorded skip is `0`"),
     ("adversary", "`seams=N` — delegates spawned; a recorded skip is `0`"),
@@ -120,7 +121,7 @@ supports it:
   `.specify/models.json` the history records: cheaper or dearer, more or fewer converge passes, gaps found after
   converge, the mutation score. Host context grows through a session, so do not compare host tokens directly
   between slices spanning different numbers or lengths of sessions.
-- **Whether the split paid** — where a stage ran on the `fast` role (`/who-runs` shows which), what it cost against
+- **Whether the split paid** — where a stage ran on the `fast` role (`/model-delegation-settings` shows which), what it cost against
   the converge passes, verify failures and mutation score of the slices it ran in. A conclusion needs more than
   one slice; with one, say so.
 - **What is unknown** — every `unknown` on the page, with the reason the record gives, and the harness or setting

@@ -9,7 +9,7 @@ delegate may touch. So the constraint belongs in the file, where the harness enf
 brief is left carrying only what is actually per-call: the task, the contract and the manifest.
 
 These are the canonical types, one per delegable stage in `stage_models.STAGES`, named for the stage so the
-model resolves through `.specify/models.json` with no second lookup and `/who-runs` stays the only place a
+model resolves through `.specify/models.json` with no second lookup and `/model-delegation-settings` stays the only place a
 model is chosen. `scripts/agents/project.py` renders each into the installed harness's own agent file —
 Codex's sandbox mode, Cursor's `readonly`, Copilot's and Gemini's tool lists, opencode's permissions, Claude
 Code's `disallowedTools` — resolving the model at projection time, and says in the stamp where a harness
@@ -117,15 +117,16 @@ any contradiction or file you believe needs changing; leave every other file alo
 
         "drive-implement": f"""You implement one boundary of one slice, from a plan that is already complete: one
 task, one rule of the example map with the examples that belong to it, or every rule of one user story —
-each rule its own RED-GREEN-REFACTOR cycle, in this one context, in the map's order. The licence below is
-the same whichever you were handed; a story is never one batch of tests.
+each rule its own RED-GREEN-REFACTOR cycle, in this one context, in the map's order. The brief also names
+the cycle unit — `rule` or `example` — from `.specify/drive.json`. The licence below is the same whichever
+boundary you were handed; a story is never one batch of tests.
 
 Work each rule as a single RED-GREEN-REFACTOR increment: the failing examples that name the behaviour, the smallest
 change that passes them, then the refactor with the quickest relevant test command scoped to the same file or
-area green. Within a rule, you choose how to drive it — its examples written together and implemented against,
-or one at a time — and either way each example is observed failing for its own stated reason: stub whatever an
-example names, as a no-op or a default return, before writing it, so a broken build is never the RED. That
-local, fast feedback is all this increment needs. Commit the increment locally when it is
+area green. Within a rule the cycle unit says how: `rule`, its examples written together and implemented
+against; `example`, one at a time. Either way each example is observed failing for its own stated reason: stub
+whatever an example names, as a no-op or a default return, before writing it, so a broken build is never the
+RED. That local, fast feedback is all this increment needs. Commit the increment locally when it is
 green; do not push, and do not widen to affected suites, static analysis or the full `{layout.make} verify`.
 Those checks belong immediately before the first implementation push, which happens after demo acceptance.
 The task, its contract and the files you may read and write are in the brief; nothing else in the
@@ -149,8 +150,8 @@ one's evidence against the tree rather than relaying its claim; nothing you spaw
 report as one delegate with one cycle's evidence, saying that you split and into how many groups. The obvious
 implementation hands a sub-delegate your whole write scope, and that is the one this forbids.
 
-Return what you finished and the boundary you were given, whether you batched any rule's examples, whether you
-fanned out and into how many groups, the tests you added with their names, the commands you ran and their
+Return what you finished, the boundary you were given and the cycle unit you ran, whether you fanned out and
+into how many groups, the tests you added with their names, the commands you ran and their
 results, and anything you had to leave undone. A task that cannot be done as specified is reported, not reinterpreted:
 say what the plan assumed and what the code actually is.""",
 

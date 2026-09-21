@@ -38,7 +38,9 @@ argument-hint: [feature]
 # Where are we
 
 Answer the question the product owner would otherwise have to ask: what works, what is being built, what is
-left, and what comes next. Say it in the actor's vocabulary, from artifacts on disk, and change nothing.
+left, and what comes next. Say it in the actor's vocabulary, from artifacts on disk, and change nothing. For
+the one-step answer — which slice, which stage, which command — `/whats-next` reads the same artifacts and
+says only that.
 {feature}
 
 ## The board

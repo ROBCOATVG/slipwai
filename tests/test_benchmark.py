@@ -110,7 +110,9 @@ class BenchmarkTest(FactoryTestCase):
                 self.assertIn(f"**{heading}**", command)
             self.assertIn("An unknown is never estimated", command)
             listed = (repo / "docs/skills-and-commands.md").read_text()
-            self.assertIn("- `/who-runs` — `commands/who-runs.md`\n- `/benchmark` — `commands/benchmark.md`", listed)
+            self.assertIn("- `/model-delegation-settings` — `commands/model-delegation-settings.md`\n"
+                          "- `/drive-settings` — `commands/drive-settings.md`\n"
+                          "- `/benchmark` — `commands/benchmark.md`", listed)
             self.assertIn("Under `usage`, the registry also says", (repo / "docs/agent-harnesses.md").read_text())
 
             registry = json.loads(REGISTRY.read_text())

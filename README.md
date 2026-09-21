@@ -27,7 +27,7 @@ You do not clone this repository to scaffold or adopt a product. Install once, t
 One-shot scaffolder for new product monorepos, and the ramp they leave from: *slipwai* is said *slipway*,
 the slope a finished hull slides down into the water, after which the yard has nothing more to do with it.
 Answer a few questions and you get a fresh Git repository containing a walking skeleton, an executable test,
-a `verify` gate that runs locally and in CI, and a complete delivery method — Spec Kit, up to 49 skills, thirteen
+a `verify` gate that runs locally and in CI, and a complete delivery method — Spec Kit, up to 49 skills, fifteen
 workflow commands, a global event model that renders itself, and generated documentation — set up for coding
 agents to work in from the first commit.
 
@@ -238,7 +238,7 @@ again later.
 | Document | Covers |
 |---|---|
 | [What a generated repository gets for free](docs/what-you-get.md) | The tour: the layout, the generated documentation, the agent harnesses, and how to run it |
-| [The delivery loop](docs/delivery-loop.md) | The `/drive` ladder and the diagram behind it, the thirteen commands, story splitting and example mapping with worked examples, the Spec Kit hooks, the preset layer, and the constitution floor |
+| [The delivery loop](docs/delivery-loop.md) | The `/drive` ladder and the diagram behind it, the fifteen commands, story splitting and example mapping with worked examples, the Spec Kit hooks, the preset layer, and the constitution floor |
 | [The skill catalogue](docs/skills.md) | The 49 skills grouped by what they are for, why a project is given only the ones whose subject it has, how examples are rendered in your own languages, and where to edit them |
 | [The global event model](docs/event-model.md) | Why the model is global, what `make model` renders, the status ladder `make check-model` enforces, and how the browsable page is published |
 | [Gates](docs/verification.md) | What `make verify` runs, what is deliberately outside it, and why the split falls where it does |

@@ -48,7 +48,7 @@ class RuleIncrementTest(FactoryTestCase):
             self.assertIn("whether or not it adds production code", tasks)
             implement = (repo / "agents/drive-implement.md").read_text()
             self.assertIn("or every rule of one user story", implement)
-            self.assertIn("stub whatever an\nexample names", implement)
+            self.assertIn("as a no-op or a default return, before writing it", implement)
             # Sub-delegation, and the constraint a harness gets wrong by default.
             self.assertIn("**You may fan your own increment out**", implement)
             self.assertIn("a sub-delegate's manifest is a subset of yours, never wider", implement)

@@ -108,7 +108,7 @@ is the anti-pattern the adversarial-testing skill lists first; it is now a file 
 the harness cannot hold part of it — the shell is one tool on four of the six, and an adversary has to run a
 reproduction — the projection's stamp says so rather than leaving the gap to be assumed away, as the
 project's own `docs/agent-harnesses.md` explains. Because five of the six harnesses name a sub-task's model
-only in that file, `/who-runs` rewrites the types as part of the change. `make models` prints the whole table, and
+only in that file, `/model-delegation-settings` rewrites the types as part of the change. `make models` prints the whole table, and
 `make check-agents` refuses a malformed edit. Nothing about what a stage produces changes with who runs it.
 Nor is a delegated stage always one delegate: `tasks.md`'s `[P]` markers and its parallel-opportunities section
 are the tasks command's plan for what may run alongside what, and `/drive` reads them before delegating
@@ -129,7 +129,7 @@ Spec Kit commands write through, so being there no longer means shipped: `status
 event profile, a row in `slices/README.md`'s register otherwise. `docs/event-model.md` says why the contract
 comes first; a harness that cannot delegate takes one slice at a time and names the rest.
 
-The table is the owner's to change as and when. `/who-runs implement=strong claude.fast=haiku` — the command over
+The table is the owner's to change as and when. `/model-delegation-settings implement=strong claude.fast=haiku` — the command over
 `python3 scripts/agents/models.py --set` — edits it checked — a stage's role, or what a role maps to on a harness; a role a stage newly
 names is added as `null` under every harness until it is mapped, and a harness the registry records no
 mechanism for is refused rather than given a row nothing reads. A hand edit works the same way, held by
@@ -189,34 +189,38 @@ transcript. And the factory's own gate runs no fixed benchmark slice: that is an
 and a bill, and it is comparable only when the same harness and model run it every time — a decision for an issue
 of its own, once real records show what varies between two runs of the same slice.
 
-### The boundary, and experiments on the method
+### How implementation is delegated
 
-How many rules one implementation delegate is handed is a choice `/drive` makes and records — `task`, `rule`
-or `story`, the last being every rule of one user story run as its own cycle in one context, which is what
-stops a fresh delegate re-reading the same four files per rule. The increment inside is always the rule. The
-boundary goes on the implement entry as `arm=`, with `split=N` where the delegate fanned out, so the record
-can say what a wall time was a wall time *of*. Where a project declares an experiment on its method in
-`.specify/experiment.md` — a hypothesis, arms that each move one variable and state their licence in full,
-what does not change between them, a control arm and a stop condition — `/drive` asks which arm every slice
-runs, says which arm has gone unrun, records the answer the same way, and stops the experiment when the
-control arm is answered. `make benchmark` reads the arms back, and `scripts/agents/benchmark.py arms` says,
-per arm, how many slices ran it and how long ago.
+Two settings in `.specify/drive.json`, beside the models table and changed the same way — through
+`/drive-settings`, checked, at any time. `delegate` is how much one implementation delegate is handed:
+`story`, every rule of one user story run as its own cycle in one context, which is what stops a fresh
+delegate re-reading the same four files per rule; `rule`; or `task`. `cycle` is how many RED tests one
+RED-GREEN-REFACTOR cycle opens with: `rule`, a rule's examples together, each failing for its own stated
+reason and stub-first so none fails on a build; or `example`, one at a time. The defaults are `story` and
+`rule`; a story is never a cycle unit, since that is the batch Principle V prohibits. Two vetoes override the
+defaults on a slice: no story tags falls to `rule`, and a map without numbered rules falls to `task` and
+`example`. Whatever the boundary, siblings with disjoint manifests run concurrently and a delegate may fan out
+inside its boundary; one cycle is never parallel. The delegate reports both settings and its fan-out, and the
+implement entry records them as `delegate=`, `cycle=` and `split=N`, so `make benchmark` can say what a wall
+time was a wall time *of*.
 
 ## The commands
 
-Thirteen in the event profile, eleven in `standard`, and four more in a repository that adopted the method
+Fifteen in the event profile, thirteen in `standard`, and four more in a repository that adopted the method
 around existing code. None of them is copied: each is generated against this
 project's profile, languages, frameworks and services, so the paths and toolchains named in them are real.
 
 | Command | Does |
 |---|---|
 | `/drive` | The ladder above: one slice from wherever it currently stands to an actor-visible demo |
+| `/whats-next` | One slice, one stage, one command and the reason, in at most six lines — the board's ➡️ *Next* line on its own, for the start of a session or after an interruption |
 | `/where-are-we` | The demo stop's progress board on demand — ✅ works now · 🔧 in progress, and the ladder stage it has reached · ⬜ still to come, `N of M slices accepted` · ⚠️ not working yet · 🔀 ready (parallel) · ➡️ next (this session) · ⛔ blocked — read off the same artifacts, running nothing |
 | `/gaps` | Adversarially review a written artifact — spec, criteria, examples, a slice diff — for holes before they become rewritten tests |
 | `/adversary` | Direct an independent agent to try to break a finished slice: hostile inputs, replays, interleavings, authorisation paths |
 | `/mutation` | Run the backend's native mutation testing, or explain the project decision that is missing |
 | `/constitution-coverage` | Check a ratified constitution against the floor this project depends on, or print the floor |
-| `/who-runs` | Show which model runs each stage of `/drive`, or change it — a stage's role, or what a role maps to on this harness — through the checked path |
+| `/model-delegation-settings` | Show which model runs each stage of `/drive`, or change it — a stage's role, or what a role maps to on this harness — through the checked path |
+| `/drive-settings` | Show how `/drive` delegates implementation — the boundary a delegate is handed and the cycle it runs — or change either, through the checked path |
 | `/benchmark` | Draw `specs/<feature>/benchmark.md` from the slice records — what each slice cost and how each stage did — and read it back: where the cost sits, what moved, whether the model split paid, what is unknown and why |
 | `/add-service` | Add a service — its own language, framework and axis answers — without hand edits |
 | `/add-frontend` | Add a browser application the same way |

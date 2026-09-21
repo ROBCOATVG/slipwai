@@ -215,5 +215,5 @@ Full recipe: [Bring a generated project forward](upgrading.md).
 |---|---|
 | [Scaffold a new project](generating.md) | Every flag, the interactive form in full, layout, adding a second service |
 | [Project shape](axes.md) | What each answer brings, and which combinations are refused |
-| [The delivery loop](delivery-loop.md) | `/drive` and the thirteen workflow commands |
+| [The delivery loop](delivery-loop.md) | `/drive` and the fifteen workflow commands |
 | [Adopt an existing repository](learn-adopt.md) | The other learning path — method around code that already exists |

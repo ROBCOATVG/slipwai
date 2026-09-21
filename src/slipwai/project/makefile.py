@@ -302,9 +302,9 @@ agents-list: ## Show every supported harness and which integrations are installe
 \tpython3 scripts/agents/project.py --list
 check-extensions: ## Fail when elected extension guidance differs from the factory-owned source
 \tpython3 scripts/extensions/project.py --check
-check-agents: ## Fail when an initialized agent projection has drifted, or .specify/models.json is malformed
+check-agents: ## Fail when an initialized agent projection has drifted, or .specify/models.json or drive.json is malformed
 \tpython3 scripts/agents/project.py --check
-\tpython3 scripts/agents/models.py --check
+\tpython3 scripts/agents/models.py --check && python3 scripts/agents/drive.py --check
 models: ## Show which model runs each stage of /drive for the installed harness, and why
 \tpython3 scripts/agents/models.py
 check-benchmark: ## Fail when benchmark boundary and rendering behaviour regresses

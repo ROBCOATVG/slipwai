@@ -224,8 +224,9 @@ class AgentTypesTest(FactoryTestCase):
     def test_the_model_comes_from_the_table_and_a_change_rewrites_the_types(self) -> None:
         """The agent file is a projection of `.specify/models.json`, never a second place a model is written:
         five of the six harnesses can only give a sub-task its own model here, so if the file decided for
-        itself `/who-runs` would stop being the answer to which model runs implement. Which means a `--set`
-        has to rewrite the files, and a role that maps to nothing has to say so rather than pick something."""
+        itself `/model-delegation-settings` would stop being the answer to which model runs implement. Which
+        means a `--set` has to rewrite the files, and a role that maps to nothing has to say so rather than
+        pick something."""
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "resolved", "standard", "python")
             installed(repo, "claude", "codex")
@@ -260,7 +261,7 @@ class AgentTypesTest(FactoryTestCase):
             check = subprocess.run(["python3", "scripts/agents/project.py", "--check"], cwd=repo, text=True,
                                    capture_output=True)
             self.assertEqual(check.returncode, 0, check.stderr)
-            self.assertIn("rewrites the agent types", (repo / "commands/who-runs.md").read_text())
+            self.assertIn("rewrites the agent types", (repo / "commands/model-delegation-settings.md").read_text())
 
     def test_a_fresh_clone_has_no_projections_and_is_not_drifted(self) -> None:
         """The projections are derived and ignored, so a clone nobody has run `./init` in has none — which is

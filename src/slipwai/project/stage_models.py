@@ -209,7 +209,8 @@ marker is the tasks command's reading of production-code contention, and it unde
 marked one pair concurrent, said of the rest "none, by construction", and left two pairs that shared no file
 to run in sequence. The manifests are the artifact; read them, and let only an overlap with a running
 sibling's files, or what the section rules out, keep a task waiting. How many rules one delegate is handed
-— a task, a rule or a user story — is *The implementation boundary* below, and goes on the record. What the
+— a task, a rule or a user story — and how many RED tests each cycle opens with are `.specify/drive.json`'s
+two settings (*How implementation is delegated* below), said in the stage line and put on the record. What the
 section rules out stays sequential whatever the markers seem to allow — a RED-GREEN-REFACTOR increment starts
 from a green, committed suite, and two of them at once is the batched-tests anti-pattern with a `[P]` on it.
 The siblings are `drive-implement` delegates, and that type is where the rule they cannot infer for
@@ -227,22 +228,22 @@ ran each seam in `specs/<feature>/adversary-log.md`, especially when seams use d
 
 The table is the project owner's to change at any point, and it is read before every stage rather than once,
 so a change takes effect at the next stage — and rewrites the agent types, which carry the model on every
-harness that reads one from a file: `/who-runs implement=strong claude.fast=haiku` edits it checked
-(`commands/who-runs.md`, over `python3 scripts/agents/models.py --set`), or edit the file by hand and let
-`make check-agents` hold the shape. When the owner asks for a different model at a stage, `/who-runs` is the
+harness that reads one from a file: `/model-delegation-settings implement=strong claude.fast=haiku` edits it checked
+(`commands/model-delegation-settings.md`, over `python3 scripts/agents/models.py --set`), or edit the file by hand and let
+`make check-agents` hold the shape. When the owner asks for a different model at a stage, `/model-delegation-settings` is the
 change — not a note, and not a switch made silently in the delegation. Commit the file: the choice is versioned with the project, and `slipwai
 migrate` merges a newer factory's table over it rather than replacing it.
 """
 
 
-def who_runs_command(layout: Layout = AT_ROOT) -> str:
-    """`/who-runs`: the table shown, or changed through the checked `--set` — never by editing a delegation."""
+def model_delegation_settings_command(layout: Layout = AT_ROOT) -> str:
+    """`/model-delegation-settings`: the table shown, or changed through the checked `--set` — never by editing a delegation."""
     return f"""---
 description: Show or change which model runs each stage of /drive
 argument-hint: [stage=role | harness.role=identifier ...]
 ---
 
-# Who runs
+# Model delegation settings
 
 `.specify/models.json` says which model runs each stage of `/drive`'s ladder, by role — `strong` where a
 stage decides what to build or whether it was built, `fast` where the input is already fully specified on

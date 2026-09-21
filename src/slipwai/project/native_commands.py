@@ -118,7 +118,12 @@ def service_commands(backend: str, path: str, verify: str = "scripts/verify") ->
             # Gremlins through the wrapper, which stages the service beside the workspace modules it imports
             # and fails a run Gremlins would pass on nothing. The gate is the service's `.gremlins.yaml`:
             # Gremlins 0.6.0 ignores a threshold given as a flag, so none is given here (see `mutation.py`).
-            "mutation": f"python3 {GO_MUTATION_SCRIPT} {APP}",
+            #
+            # `make mutation SINCE=main` scopes the run to what differs from that ref, which is the whole
+            # module's price against one change's. Written as a conditional rather than read from a variable
+            # the Makefile defines, because an undefined `SINCE` has to mean the full sweep and `$(if ...)`
+            # says that in the one place the flag is built — nothing to prune, nothing to leave dangling.
+            "mutation": f"python3 {GO_MUTATION_SCRIPT} {APP} $(if $(SINCE),--since $(SINCE))",
         },
         "java-quarkus": {
             "install": MAVEN_READY,

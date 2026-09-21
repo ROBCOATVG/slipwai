@@ -2,7 +2,7 @@
 """`make mutation` for a Go service: Gremlins, over a staged copy of the module and the workspace modules
 it imports, held to what its own report says.
 
-    python3 scripts/go-mutation.py <service>
+    python3 scripts/go-mutation.py <service> [--since <branch-or-commit>]
 
 Why a stage. Gremlins copies the module it mutates — the nearest `go.mod` upwards, never the workspace — to
 a temporary directory and runs the tests there. Nothing above that copy exists: not the root `go.work`, not
@@ -27,6 +27,25 @@ than a red one:
 
 Only this module is mutated. A shared module under `packages/` is built here and never mutated: run this
 against it as a service of its own if its rules deserve a gate of their own.
+
+`--since <branch-or-commit>` scopes the run to the production files that differ from that ref, which is the
+difference between a stage priced per repository and one priced per change: every mutant of every file the
+change did not touch re-proves work that shipped weeks ago, at the price of a full suite run each, and a
+stage that expensive gets routed around rather than read. Without it the whole module is mutated, which is
+what a scheduled sweep wants.
+
+It is done here rather than with Gremlins' own `--diff`, which does not survive this layout. `--diff`
+resolves changed paths against the repository root and matches them against paths within the module, so from
+a module in a subdirectory — `apps/<service>`, every service this factory writes — every mutant comes back
+SKIPPED and the run reports success having mutated nothing. Verified against 0.6.0 from both the module
+directory and the repository root. The staged tree has no `.git` of its own either, and there `--diff` exits
+1 without running. So the scope is computed here, from git, before anything is staged.
+
+Gremlins has no include list: it selects by exclusion, so a scope is a complement, and this generates the
+complement per run rather than writing one down — a written one is correct until the next file is added,
+and says nothing when it stops being. The complement is passed as `--exclude-files`, which *replaces* the
+`.gremlins.yaml` list rather than adding to it, so this reads that list and passes it back; a scoped run
+that did not would quietly mutate the two trees the project excluded on purpose.
 """
 from __future__ import annotations
 
@@ -43,6 +62,7 @@ from pathlib import Path
 # The pinned release the factory wrote here; `go run` fetches it, so it is never a dependency of the module.
 GREMLINS = "__GO_GREMLINS__"
 REPORT = "gremlins.json"
+CONFIG = ".gremlins.yaml"
 TIMED_OUT = "TIMED OUT"
 
 
@@ -131,6 +151,124 @@ def stage(service: Path, root: Path, modules: dict[str, Path], into: Path) -> Pa
     return staged_service
 
 
+def scalar(text: str) -> str:
+    """A YAML scalar as these files write one: bare, single-quoted or double-quoted.
+
+    Quoted forms are taken whole, so a `#` inside a pattern stays in it; only a bare scalar has a trailing
+    comment stripped, which is the one place a `#` cannot be part of the value.
+    """
+    text = text.strip()
+    for quote in ("'", '"'):
+        if len(text) >= 2 and text.startswith(quote) and text.endswith(quote):
+            body = text[1:-1]
+            return body.replace("\\\\", "\\").replace('\\"', '"') if quote == '"' else body.replace("''", "'")
+    return text.split(" #", 1)[0].strip()
+
+
+def excluded(config: Path) -> list[str]:
+    """The `exclude-files` patterns under `unleash:` in a service's `.gremlins.yaml`.
+
+    Read here because a scoped run has to carry them forward itself: `--exclude-files` replaces the file's
+    list rather than adding to it, verified against 0.6.0, so a scoped run passing only its own complement
+    would mutate `cmd/` and the store contract — the two trees this project excludes on purpose — and report
+    survivors nobody should act on.
+
+    Two nested keys in block style, and a loud failure on anything it cannot read rather than a silent empty
+    list, because an unread exclusion list and an empty one look identical from here and only one of them is
+    true. An absent file is not a failure: there is then nothing to carry forward.
+    """
+    if not config.is_file():
+        return []
+    lines = [line for line in config.read_text().splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    if any("\t" in line[: len(line) - len(line.lstrip())] for line in lines):
+        sys.exit(f"{config}: a tab in the indentation. YAML does not allow one, so Gremlins is not reading "
+                 "this file the way it looks like it reads.")
+    patterns: list[str] = []
+    section, listing = "", False
+    for line in lines:
+        body = line.strip()
+        if line[0] not in " \t":
+            section, listing = body.split(":", 1)[0], False
+            continue
+        if section != "unleash":
+            continue
+        if listing and body.startswith("- "):
+            patterns.append(scalar(body[2:]))
+            continue
+        listing = False
+        if body.startswith("exclude-files:"):
+            rest = body[len("exclude-files:"):].strip()
+            if rest and rest != "[]":
+                sys.exit(f"{config}: `exclude-files` is written inline. Write it as a block list, one "
+                         "`- pattern` per line, so a scoped run can read it and pass it back.")
+            listing = True
+    return patterns
+
+
+def sources(module: Path) -> set[str]:
+    """Every file in the module Gremlins could mutate, by path within it: Go production files, never tests."""
+    return {str(path.relative_to(module)) for path in module.rglob("*.go") if not path.name.endswith("_test.go")}
+
+
+def changed(service: Path, since: str) -> set[str]:
+    """The module's production files that differ from `since`, as paths within it.
+
+    `git diff <ref>` is the working tree against the ref, so work not yet committed counts; untracked files
+    are asked for separately, because a file git has never seen is the likeliest thing a change in progress
+    just wrote. Test files are dropped: Gremlins mutates production code, so a change that touched only its
+    tests has no mutant of its own to answer for.
+    """
+    def git(*arguments: str) -> list[str]:
+        done = subprocess.run(["git", "-C", str(service), *arguments], text=True, capture_output=True)
+        if done.returncode != 0:
+            sys.stderr.write(done.stderr)
+            sys.exit("mutation: --since takes a branch or commit this repository has, and git could not "
+                     f"resolve {since!r}.")
+        return [line.strip() for line in done.stdout.splitlines() if line.strip()]
+
+    paths = git("diff", "--name-only", "--relative", since, "--", ".")
+    paths += git("ls-files", "--others", "--exclude-standard", "--", ".")
+    return {path for path in paths if path.endswith(".go") and not path.endswith("_test.go")}
+
+
+def mutable(keep: set[str], own: list[str]) -> set[str]:
+    """Of the changed files, the ones this project has not already excluded from mutation.
+
+    Gremlins matches an `exclude-files` pattern anywhere in the path within the module, so the same search
+    is used here. Without this step a change confined to `cmd/` — wiring, excluded on purpose — would scope
+    a run down to nothing, and a run that found nothing to mutate is this script's red. That red would be
+    true of the run and false about the change.
+    """
+    return {path for path in keep if not any(re.search(pattern, path) for pattern in own)}
+
+
+def scope(module: Path, keep: set[str], own: list[str]) -> list[str]:
+    """Gremlins' arguments for a run scoped to `keep`: the module's own exclusions, then one per file out of
+    scope.
+
+    Anchored, and over the path within the module — `cmd/serve/main.go`, no leading `./`, which is the form
+    0.6.0 matches — so that `events.go` cannot take `domain/events.go` with it.
+    """
+    out_of_scope = (f"^{re.escape(path)}$" for path in sorted(sources(module) - keep))
+    return [argument for pattern in (*own, *out_of_scope) for argument in ("--exclude-files", pattern)]
+
+
+def keep_report(report: Path, service: Path) -> Path | None:
+    """The run's own report, copied beside the service before the staging tree it was written into is
+    deleted.
+
+    Without this the target leaves a log line and no evidence: Gremlins writes the report inside the tree
+    this script makes and this script removes. Copied whatever the exit status, because a red run's report
+    is the one most worth reading.
+    """
+    if not report.is_file():
+        return None
+    kept = service / REPORT
+    shutil.copyfile(report, kept)
+    print(f"mutation: report written to {os.path.relpath(kept)}")
+    return kept
+
+
 def assess(report: Path) -> int:
     """Exit status from Gremlins' own report, after a run Gremlins itself passed."""
     if not report.is_file():
@@ -155,23 +293,54 @@ def assess(report: Path) -> int:
     return 0
 
 
+USAGE = "usage: go-mutation.py <service> [--since <branch-or-commit>]\n"
+
+
+def arguments(argv: list[str]) -> tuple[Path, str | None] | None:
+    """The service directory and the ref to scope against, or None when the line is not one of those."""
+    rest, since = argv[1:], None
+    if "--since" in rest:
+        at = rest.index("--since")
+        if at + 1 == len(rest):
+            return None
+        since, rest = rest[at + 1], rest[:at] + rest[at + 2:]
+    return (Path(rest[0]), since) if len(rest) == 1 else None
+
+
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        sys.stderr.write("usage: go-mutation.py <service>\n")
+    parsed = arguments(argv)
+    if parsed is None:
+        sys.stderr.write(USAGE)
         return 2
-    service = Path(argv[1]).resolve()
+    given, since = parsed
+    service = given.resolve()
     if not (service / "go.mod").is_file():
         sys.stderr.write(f"{service}: no go.mod; the argument is a Go service's directory\n")
         return 2
+    scoped: list[str] = []
+    if since is not None:
+        own = excluded(service / CONFIG)
+        keep = mutable(changed(service, since), own)
+        if not keep:
+            # Not the "nothing mutated" failure below, and the difference is worth keeping: that one is a run
+            # that found no mutable code, which can only mean a misconfigured scope. This is a change with no
+            # mutant of its own to answer for — it touched no production Go file, or only files this project
+            # excludes — said out loud, because an unexplained green is what this script exists to refuse.
+            print(f"mutation: nothing under {given} that differs from {since} is a file Gremlins would "
+                  "mutate; no mutant to run")
+            return 0
+        scoped = scope(service, keep, own)
+        print(f"mutation: scoped to {len(keep)} changed file(s) since {since}: {', '.join(sorted(keep))}")
     root, modules = workspace(service)
     into = Path(tempfile.mkdtemp(prefix="go-mutation-"))
     try:
         staged = stage(service, root.resolve(), modules, into)
         report = into / REPORT
         run = subprocess.run(
-            ["go", "run", GREMLINS, "unleash", "--output", str(report), "."],
+            ["go", "run", GREMLINS, "unleash", "--output", str(report), *scoped, "."],
             cwd=staged, env={**os.environ, "GOWORK": "off"},
         )
+        keep_report(report, service)
         if run.returncode != 0:
             return run.returncode
         return assess(report)

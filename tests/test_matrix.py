@@ -9,6 +9,7 @@ suite runs native tools only where a selection gives them a distinct tree to jud
 """
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
 
@@ -110,10 +111,12 @@ class MatrixTest(FactoryTestCase):
         """`make mutation` on the layout `docs/architecture.md` prescribes for shared Go code.
 
         Gremlins copies only the module it mutates and scores the build failure that follows as a kill, so
-        before `scripts/go-mutation.py` this passed with a test that could not fail. Two runs: one whose test
-        kills the mutant in the importing package, one whose test cannot — a wrapper that lost the shared
-        module would pass both. Here and nowhere else, because `make mutation` is run by no gate in a
-        generated project (docs/backend-obligations.md section 2)."""
+        before `scripts/go-mutation.py` this passed with a test that could not fail. Three runs: the sweep,
+        whose test kills the mutant in the importing package and whose report has to outlive the staging
+        tree; the same sweep scoped to the one changed file; and a run whose test cannot kill the mutant — a
+        wrapper that lost the shared module would pass the first and the last alike. Here and nowhere else,
+        because `make mutation` is run by no gate in a generated project (docs/backend-obligations.md
+        section 2)."""
         if "go" not in backends_under_test():
             self.skipTest("the Go slice of the matrix")
         with tempfile.TemporaryDirectory() as directory:
@@ -138,6 +141,26 @@ class MatrixTest(FactoryTestCase):
             self.assertEqual(strong.returncode, 0, strong.stdout)
             self.assertIn("staged packages/greeting", strong.stdout)
             self.assertIn("KILLED CONDITIONALS_NEGATION at health/health.go", strong.stdout)
+
+            # The report is the stage's evidence, and Gremlins writes it inside the staging tree the wrapper
+            # deletes: without the copy out, `make mutation` leaves a scrollback and nothing to re-read.
+            report = repo / "apps/service/gremlins.json"
+            self.assertTrue(report.is_file(), strong.stdout)
+            mutated = json.loads(report.read_text())["files"]
+            self.assertIn("health/health.go", {entry["file_name"] for entry in mutated})
+
+            # Scoped to the one changed file. This is the layout Gremlins' own `--diff` cannot serve — a
+            # module in a subdirectory, where it matches repository-root paths against module-relative ones
+            # and skips everything — so what is proved here is that the scope reaches the right file and
+            # that the run is smaller than the sweep above, not merely that the flag is accepted.
+            scoped = subprocess.run([*run, "SINCE=HEAD"], cwd=repo, text=True,
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            self.assertEqual(scoped.returncode, 0, scoped.stdout)
+            self.assertIn("scoped to 1 changed file(s) since HEAD: health/health.go", scoped.stdout)
+            self.assertEqual({entry["file_name"] for entry in json.loads(report.read_text())["files"]},
+                             {"health/health.go"})
+            self.assertLess(sum(len(entry["mutations"]) for entry in json.loads(report.read_text())["files"]),
+                            sum(len(entry["mutations"]) for entry in mutated))
             (repo / "apps/service/health/health_test.go").write_text(
                 'package health\n\nimport "testing"\n\n'
                 'func TestReportsReady(t *testing.T) {\n\t_ = Check().Status\n}\n'

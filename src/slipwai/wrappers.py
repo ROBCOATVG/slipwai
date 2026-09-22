@@ -30,6 +30,15 @@ from .ecosystems import prefixed
 from .layout import Layout
 from .services import App
 
+# Where the shell ends one command and begins the next, and what a segment can start with that is not a
+# program: an assignment, or one of the shell's own words. `cd` leads the list because a wrapped build that
+# is not at the repository root is recorded as `cd <dir> && <build>`, which is most of them.
+SEPARATORS = re.compile(r"&&|\|\||\||;")
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*", re.DOTALL)
+BUILTINS = frozenset((
+    "cd", "export", "unset", "set", "echo", "printf", "true", "false", "source", ".", "test", "[", "exec",
+    "eval", "exit", "return", "shift", "read", "trap", "umask", "ulimit", "wait", "pushd", "popd", "local",
+))
 MAVEN_SOURCE = LANGUAGE_ROOT / "java/build"
 GRADLE_SOURCE = ADOPTION_ROOT / "wrappers/gradle"
 # Per ecosystem: the tool's name, the script whose presence *is* the wrapper, and the files that make it up as
@@ -102,15 +111,35 @@ def wrapper_lines(written: dict[str, list[str]], apps: list[App]) -> list[str]:
     return lines
 
 
+def tools_in(command: str) -> list[str]:
+    """Every program a recorded command runs, in the order it runs them.
+
+    A recorded command is a shell line, not a program and its arguments: a build that lives in a subdirectory
+    is recorded as `cd tests/UI && npm ci`, and the program it needs is `npm`. Reading the first word off the
+    whole line and asking the PATH for it reported `cd` — a shell builtin, on no PATH anywhere — as a missing
+    tool for every target of every application whose build is not at the root, which buried the one tool that
+    really was missing. So the line is split where the shell would split it, each segment's leading
+    `VAR=value` assignments are stepped over, and the builtins are not programs to install.
+    """
+    found = []
+    for segment in SEPARATORS.split(command):
+        words = segment.strip().lstrip("(").split()
+        while words and ASSIGNMENT.fullmatch(words[0]):
+            words = words[1:]
+        if words and words[0] not in BUILTINS:
+            found.append(words[0])
+    return list(dict.fromkeys(found))
+
+
 def missing_tools(apps: list[App], layout: Layout) -> list[str]:
-    """One line per tool a recorded command starts with that is not on this machine's PATH: the gate will stop
+    """One line per tool a recorded command runs that is not on this machine's PATH: the gate will stop
     there, and saying so now beats a `command not found` in the middle of the first `verify`."""
     runs: dict[str, list[str]] = {}
     for app in apps:
         for target, command in (app.commands or {}).items():
-            tool = (command or "").split()[0] if (command or "").split() else ""
-            if tool and "/" not in tool and "=" not in tool and shutil.which(tool) is None:
-                runs.setdefault(tool, []).append(f"{app.name}'s {target}")
+            for tool in tools_in(command or ""):
+                if "/" not in tool and shutil.which(tool) is None:
+                    runs.setdefault(tool, []).append(f"{app.name}'s {target}")
     return [
         f"  `{tool}` is not on PATH here, and {', '.join(targets)} run it: {layout.make} verify stops there until it "
         "is installed, or project.json records what this machine does run."

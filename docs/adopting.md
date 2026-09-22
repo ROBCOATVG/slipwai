@@ -145,6 +145,8 @@ it of, so `adopt` refuses rather than guessing.
 |---|---|
 | `--yes` | Everything, as the survey found it — nothing is asked, and each fact is recorded `detected` |
 | `--refresh` | In an adopted repository: survey again, refresh what was only detected, report what disagrees with what a person decided, and regenerate what the record drives. This is what `/survey` runs |
+| `--next` | In an adopted repository: where it stands in the sequence this report names — what is done, what is next, and why. Read off the tree, not remembered: `./init` leaves `.specify/integration.json`, the first gate run leaves the baseline, `/ground` moves a row off `unrecorded`, a strategy is an accepted ADR |
+| `--experimental-intro` | Use the reshaped intro rather than the interview this version asks by default (or `SLIPWAI_EXPERIMENTAL_INTRO=1`): the terminal asks only what a terminal can answer, and the rest is the agent's to confirm against the code. Experimental within an experiment; its shape is still moving |
 | `--name NAME` | The project's name. Default: the directory's |
 | `--profile` | `standard` or `event-modelling`. Default: `standard` |
 | `--target` | `existing` — this deploys to infrastructure it does not own — or `none`. Default: `existing`, unless the infrastructure is `none` |

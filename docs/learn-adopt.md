@@ -78,6 +78,13 @@ How does a change reach production today? …
 Why is this work happening? …
 ```
 
+`slipwai adopt --experimental-intro` (or `SLIPWAI_EXPERIMENTAL_INTRO=1`) walks a shorter version of this: the
+questions a terminal cannot answer well are not asked in one. The language is the first of them — the line
+above it has already printed what the build file says, and `--language NAME=LANGUAGE` is where to correct it —
+and the rest follow as issue #74 reshapes the intro. What that switch turns on is experimental within an
+experiment, and the default interview is exactly the one transcribed here until it is not.
+
+
 `--yes` takes every survey proposal without asking (recorded as `detected`). A flag overrides one answer
 either way. Outside a terminal without `--yes`, `adopt` refuses rather than guessing.
 
@@ -97,6 +104,12 @@ Then: make verify — the gate. Its first run records the lint and typecheck fin
 
 Your `README.md` is left alone. `AGENTS.md` and `.gitignore` each get a marked block, appended once. The
 method lives under `delivery/` by default (`--delivery` names another directory).
+
+That closing list takes longer than one sitting, and it scrolls away. `slipwai adopt --next` says where you
+are in it whenever you come back — done, now, then — read off the tree rather than remembered: `./init`
+leaves `.specify/integration.json` behind it, the first gate run leaves `delivery/baseline.json`, `/ground`
+moves a row of the map off `unrecorded`, and a strategy is an accepted ADR. The same sequence in prose, with
+what each step forfeits, is `delivery/docs/adoption.md`.
 
 ### Bootstrap and prove the gate
 

@@ -217,6 +217,8 @@ def report(done: Adopted) -> str:
         f"Read {done.layout.delivery}/docs/adoption.md — what was wrapped, what that forfeits, and where each fact "
         f"came from — and {done.layout.delivery}/docs/convergence.md, where this repository stands and what is next; "
         f"{done.layout.delivery}/survey/survey.md is the survey with its evidence.",
+        "This list scrolls away, and the sequence it names takes longer than one sitting: `slipwai adopt --next` "
+        "says where you are in it, read off the tree rather than remembered.",
     ]
     return "\n".join(lines)
 

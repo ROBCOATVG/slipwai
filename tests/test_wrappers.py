@@ -109,6 +109,44 @@ def _on_path(tool: str) -> bool:
     return shutil.which(tool) is not None
 
 
+class RecordedToolTest(FactoryTestCase):
+    """What the report calls a missing tool. A build that is not at the repository root is recorded as
+    `cd <dir> && <build>`, and reading the first word off that line asked the PATH for `cd` — a shell
+    builtin, on no PATH anywhere — so every target of every such application was reported as blocked by a
+    tool that is not one, and the one tool that really was missing was a line among them."""
+
+    def test_a_command_that_changes_directory_first_needs_the_build_tool_and_not_cd(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = repository(Path(directory), "shop", {
+                "package.json": json.dumps({"name": "shop", "scripts": {"lint": "eslint ."}}),
+                "sub/package.json": json.dumps({"name": "widget", "scripts": {"lint": "eslint ."}}),
+            })
+            result = slipwai(
+                repo, "adopt", "--yes",
+                "--command", "sub:lint=cd sub && no-such-linter .",
+                "--command", "shop:test=FORCE_COLOR=0 no-such-runner",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn("`cd` is not on PATH", result.stdout)
+            self.assertIn("`no-such-linter` is not on PATH here, and sub's lint run it", result.stdout)
+            self.assertIn(
+                "`no-such-runner` is not on PATH here, and shop's test run it", result.stdout,
+                "a leading VAR=value is the shell's, not the program's name",
+            )
+
+    def test_the_tools_a_recorded_command_runs_are_every_segment_past_the_shell_words(self) -> None:
+        from slipwai.wrappers import tools_in
+
+        self.assertEqual(tools_in("cd tests/UI && npm ci"), ["npm"])
+        self.assertEqual(tools_in("composer install --no-interaction"), ["composer"])
+        self.assertEqual(tools_in("./mvnw -B -q verify"), ["./mvnw"])
+        self.assertEqual(tools_in("npm ci && npm run build"), ["npm"], "named once, however often it is run")
+        self.assertEqual(tools_in("make -C sub all | tee build.log"), ["make", "tee"])
+        self.assertEqual(tools_in("cd a && (cd b && go test ./...)"), ["go"])
+        self.assertEqual(tools_in(""), [])
+        self.assertEqual(tools_in("cd sub"), [], "a command that only moves needs nothing installed")
+
+
 class AntTest(FactoryTestCase):
     def test_an_ant_build_has_no_wrapper_so_the_runner_installs_ant_until_the_build_moves(self) -> None:
         from slipwai.project.adopted_ci import setup_steps

@@ -192,7 +192,8 @@ see, and enters at the first stage whose artifact is missing. See [The delivery 
 `/drive` stops when it needs a person: for a product decision, and at every demo. `/cruise` runs the same
 ladder and answers those stops itself. It decides as the product owner, runs each demo as the actor, and
 writes every answer down where you can read it and overturn it. It keeps going until the specification is
-satisfied, and it stops only for you. It ships switched off. See [Cruise](docs/cruise.md).
+satisfied, and it stops only for you. The session you type it in watches the run — what each iteration does,
+as it does it — and answers you while it watches. It ships switched off. See [Cruise](docs/cruise.md).
 
 ---
 
@@ -226,7 +227,7 @@ the paths and toolchains named in them are real.
 | Command | What it does |
 |---|---|
 | `/drive` | Takes one slice from wherever it stands to a demo the actor can see |
-| `/cruise` | Runs `/drive` on its own, deciding as the product owner and demoing as the actor, until the specification is satisfied. Stops only for a person |
+| `/cruise` | Runs `/drive` on its own, deciding as the product owner and demoing as the actor, until the specification is satisfied. Stops only for a person. `/cruise <kick-off>` gives the first iteration a brief; the session then watches the run and answers you |
 | `/whats-next` | Says what is next — one slice, one stage, one command. Reads the disk and changes nothing |
 | `/where-are-we` | Shows the progress board: what works, what is in progress, what is still to come |
 | `/gaps` | Reviews an artifact for holes, before they become rewritten tests |

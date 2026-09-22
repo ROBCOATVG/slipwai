@@ -17,6 +17,9 @@ STOP_FILE = ".specify/cruise.stop"
 # message a harness's after-response hook kept for a stop hook whose event does not carry it.
 RUNNER_PID = ".specify/cruise.pid"
 RUNNER_LOG = ".specify/cruise-run.log"
+# The harness's raw event stream the feed in the run log was rendered from, and how far the watch seat has read.
+RUNNER_STREAM = ".specify/cruise-stream.jsonl"
+WATCH_CURSOR = ".specify/cruise-watch.cursor"
 LAST_RESPONSE = ".specify/cruise-last-response.txt"
 DECISION_ENTRY = f"""## D<n> — <the question, in one line>
 - **Stage:** <stage> · **Slice:** <id> · **When:** <ISO instant> · **Iteration:** <n>

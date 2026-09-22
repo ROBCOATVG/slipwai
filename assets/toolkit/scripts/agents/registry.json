@@ -157,15 +157,16 @@
         "source": "the Agent tool's own schema, read 2026-09-09"
       },
       "headless": {
-        "how": "`claude -p <prompt>` prints the response and exits; `--output-format text` keeps the last line readable; `--permission-mode` picks how tool calls are approved in a session nobody is watching; `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` keeps a print session waiting for its background delegates, which it otherwise terminates after 600s — mid-slice, with the story delegate still running; under `acceptEdits` the project's `.claude/settings.json` allowlist applies only once the workspace is trusted (`projects[<path>].hasTrustDialogAccepted` in ~/.claude.json); `-p /cruise` resolves the project's slash command, which is how every run so far was driven",
-        "command": "claude -p {prompt} --output-format text {permissions}",
-        "permissions": "--permission-mode acceptEdits",
+        "how": "`claude -p <prompt>` prints the response and exits; `--output-format stream-json --verbose` writes one JSON line per event — the assistant's text and tool calls, each tool's result, a delegate's own with `parent_tool_use_id` set, and one `result` at the end carrying the final text and every permission the session was refused — which the runner renders into its feed and reads the last line from; `--permission-mode` picks how tool calls are approved in a session nobody is watching; `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` keeps a print session waiting for its background delegates, which it otherwise terminates after 600s — mid-slice, with the story delegate still running; under `acceptEdits` alone a print session is refused every command its allowlist does not name — and the project's `.claude/settings.json` allow rules are ignored until the workspace is trusted (`projects[<path>].hasTrustDialogAccepted` in ~/.claude.json), a prefix rule never admits a compound command (`make verify; echo done` is \"shell syntax that cannot be statically analyzed\"), and a print session has nobody to ask — so the runner passes `--allowedTools Bash`, which lets the shell run wholesale while the settings file's `deny` rules still win over it, trusted or not; `-p /cruise` resolves the project's slash command, which is how every run so far was driven",
+        "command": "claude -p {prompt} --output-format stream-json --verbose {permissions}",
+        "permissions": "--permission-mode acceptEdits --allowedTools Bash",
         "sandboxPermissions": "--dangerously-skip-permissions",
-        "source": "the installed Claude Code 2.1.278's --help (-p/--print, --output-format, --permission-mode with acceptEdits and bypassPermissions, --dangerously-skip-permissions), read 2026-09-22; the wait ceiling and the trust rule from the messages the same build printed during a /cruise run, read 2026-09-22",
+        "source": "the installed Claude Code 2.1.278's --help (-p/--print, --output-format, --permission-mode with acceptEdits and bypassPermissions, --dangerously-skip-permissions), read 2026-09-22; the stream-json event shapes from the stream 2.1.280 wrote for a tool call and a delegate, read 2026-09-22; the wait ceiling and the trust rule from the messages the same build printed during a /cruise run, read 2026-09-22; `--allowedTools Bash` running a compound command while a settings `deny` rule still refused `git clean -n`, and the allow rules ignored in an untrusted workspace, from a 2.1.280 print session run with exactly those flags, read 2026-09-22",
         "env": {
           "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "0"
         },
-        "prompt": "slash"
+        "prompt": "slash",
+        "stream": "claude"
       },
       "agentFile": {
         "dir": ".claude/agents",
@@ -290,11 +291,12 @@
         "source": "developers.openai.com/codex/subagents, Custom agents, read 2026-09-09"
       },
       "headless": {
-        "how": "`codex exec <prompt>` runs one non-interactive session and prints the agent's messages; `--skip-git-repo-check` lets it run in a worktree",
-        "command": "codex exec --skip-git-repo-check {permissions} {prompt}",
+        "how": "`codex exec <prompt>` runs one non-interactive session and prints the agent's messages; `--skip-git-repo-check` lets it run in a worktree `--json` writes one JSON line per event instead — `thread.started`, `turn.*`, and `item.started|updated|completed` with a typed item: `command_execution`, `file_change`, `agent_message`, `collab_tool_call`, `mcp_tool_call`, `web_search`, `error` — which the runner renders into its feed, reading the last line from the final `agent_message`.",
+        "command": "codex exec --skip-git-repo-check --json {permissions} {prompt}",
         "permissions": "",
         "sandboxPermissions": "--dangerously-bypass-approvals-and-sandbox",
-        "source": "codex-rs/exec/src/cli.rs (the `codex exec [OPTIONS] [PROMPT]` usage, --json, --output-last-message, --skip-git-repo-check) and exec/src/lib.rs (dangerously_bypass_approvals_and_sandbox) on main, read 2026-09-22; the approval flag for a sandboxed-but-unattended run was not verified, so `permissions` is empty and the run takes Codex's own defaults"
+        "source": "codex-rs/exec/src/cli.rs (the `codex exec [OPTIONS] [PROMPT]` usage, --json, --output-last-message, --skip-git-repo-check) and exec/src/lib.rs (dangerously_bypass_approvals_and_sandbox) on main, read 2026-09-22; `--json` and the event shapes from exec/src/cli.rs and exec/src/exec_events.rs on main, read 2026-09-22; the approval flag for a sandboxed-but-unattended run was not verified, so `permissions` is empty and the run takes Codex's own defaults",
+        "stream": "codex"
       },
       "agentFile": {
         "dir": ".codex/agents",

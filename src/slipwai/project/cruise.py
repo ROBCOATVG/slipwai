@@ -31,8 +31,8 @@ LAST_LINES = ("cruise: continue", "cruise: done", "cruise: parked: <what a perso
 # here would end with nobody to re-invoke it. `scripts/agents/cruise.py loop` prints the same words, so the
 # command and the script cannot disagree: the runner is the one thing that continues a run, on every harness.
 UNREAD = ("no outer loop is reading this: a `/cruise` typed in a session starts the runner — `python3 "
-          "scripts/agents/cruise.py start` — and ends the turn with what that printed; the runner drives the ladder "
-          "from here, a fresh session per iteration, and this session runs no stage of it")
+          "scripts/agents/cruise.py start` — and then watches it with `python3 scripts/agents/cruise.py watch`; the "
+          "runner drives the ladder from here, a fresh session per iteration, and this session runs no stage of it")
 # Every setting, its values, its default and what it controls — the one list the config, the command, the
 # settings command and `scripts/agents/cruise.py` are all written from.
 SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
@@ -93,7 +93,7 @@ def cruise_command(
     )
     return f"""---
 description: Run /drive as driver and product owner, iteration after iteration, until every specification is satisfied — stopping only for a human
-argument-hint: [feature] | unblock: <what the outer loop saw>
+argument-hint: [kick-off: what this run is for, where the brief or PRD is] | unblock: <what the outer loop saw>
 ---
 
 # Cruise
@@ -114,14 +114,42 @@ Read `{CONFIG}`. `enabled: false`, or `{STOP_FILE}` present, is a refusal in one
 `specs/<feature>/spec.md` is a refusal too: a specification is the one thing a person brings. Then run
 `python3 {SCRIPT} loop`: it says what is reading this session's last line. **Where it says nobody is** — this
 command was typed in a session, and no runner set `CRUISE_RUNNER` and `CRUISE_ITERATION` — run
-`python3 {SCRIPT} start` (with `--feature <feature>` where one was given), repeat what it printed, and end
-the turn there: the runner it started drives the ladder from here, one fresh session per iteration, and this
-session runs no stage of it. What it prints is the whole answer, a refusal included — a runner already
-running, the stop file present, no harness on PATH it can run an iteration through. **Where it says the outer
-loop started this session**, this is an iteration: read the owner brief (`{OWNER_BRIEF}`) and every standing
-entry in `{DECISIONS}`, and say the iteration number from `{LOG}`, the branch and its distance from trunk,
-and that a person stops this run with `touch {STOP_FILE}`. Open a `skipper` or `hand` benchmark entry around
-each delegation the way every stage is bracketed, and pass `driver=cruise` to every `end` this iteration closes.
+`python3 {SCRIPT} start` with everything typed after `/cruise` as its arguments, verbatim, and repeat what it
+printed: the runner it started drives the ladder from here, one fresh session per iteration, and this session
+runs no stage of it. A refusal is the whole answer — a runner already running, the stop file present, no
+harness on PATH it can run an iteration through. Then take the watch seat (*The watch seat*, below). **Where
+it says the outer loop started this session**, this is an iteration: read the owner brief (`{OWNER_BRIEF}`)
+and every standing entry in `{DECISIONS}`, and say the iteration number from `{LOG}`, the branch and its
+distance from trunk, and that a person stops this run with `touch {STOP_FILE}`. Open a `skipper` or `hand`
+benchmark entry around each delegation the way every stage is bracketed, and
+pass `driver=cruise` to every `end` this iteration closes.
+
+**The argument is the kick-off.** What a person typed after `/cruise` — what this run is for, where the brief
+or the PRD is, which feature — reaches the first iteration of the run and no other: every later iteration
+runs bare and derives its stage from disk. So the first iteration writes down whatever the kick-off says that
+must outlive it — a PRD it names becomes the specification through the ladder's own stages, a preference it
+states goes into the owner brief (`{OWNER_BRIEF}`), a scope it sets is a decision entry — before it does
+anything else. `unblock: <reason>` is the one argument the runner itself passes (*Blocked: the bosun protocol*, below).
+
+## The watch seat
+
+After `start` — or where `start` said a runner is already running — run `python3 {SCRIPT} watch`. It prints
+what the iteration does as it happens, one line per command, file, and delegate out and back, and returns at
+the iteration's end, a park, the run's end, once the feed has gone quiet for a moment, or after a minute and a
+half with nothing new; its last line says which. **Where it says the run continues, or the iteration is in
+flight, run `watch` again at once** — the feed it printed is the report, and a sentence on top of it is
+enough where something happened; where it says parked, ended, or no runner, repeat what it said and end
+the turn. A watch the harness cut short — a tool timeout, with no last line from `watch` — is watched again,
+not asked about. Where the harness can run a command in the background and re-invoke this session with its
+output when it returns, run `watch` that way, so the turn ends between watches and a person can type in the
+gap. Watching is only ever reading — the runner needs nothing from this session, and a turn that ends here
+ends nothing else — so it is never a reason to run a stage of the ladder in this session.
+
+**A person typing here is talking to you, not stopping the run.** Answer them — what the feed shows, what
+`{CONFIG}` says (`python3 {SCRIPT}` prints every setting and what it controls), what `python3 {SCRIPT} status`
+says, what `{DECISIONS}` records — and change a setting through `/cruise-settings` where they ask; it takes
+effect at the next iteration. Then watch again. Only `touch {STOP_FILE}`, `python3 {SCRIPT} stop`, or
+`{layout.make} cruise-stop` ends the run, and only when they ask for that.
 
 ## Run the ladder, and answer at its stops
 
@@ -216,7 +244,7 @@ of these, and the outer loop reads nothing else:
 **An iteration ends only on one of those four lines.** Any other message that ends a turn is a stop, whatever
 it says it is about to do: in Claude Code a message with no tool call *is* the end of the turn, so "continuing
 into the plan now" is a stop that called itself progress. And an iteration is only ever a session the runner
-started: where `python3 {SCRIPT} loop` said nobody is reading, this command started the runner and ended
+started: where `python3 {SCRIPT} loop` said nobody is reading, this command started the runner and watched it
 (*{UNREAD}*). Neither rule is left to this text. The runner reads the last line and re-invokes, on every
 harness, and a session that ended without one is no progress to it. Where a harness lets a hook refuse the
 end of a turn, the project's hook file runs `python3 {SCRIPT} stopping` there — `.claude/settings.json` runs

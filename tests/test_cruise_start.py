@@ -39,8 +39,9 @@ class CruiseStartTest(FactoryTestCase):
                 self.assertIn(field, row, f"{entry['key']}: {field}")
             self.assertRegex(row["source"], r"read \d{4}-\d{2}-\d{2}", entry["key"])
         claude = next(entry for entry in REGISTRY if entry["key"] == "claude")["headless"]
-        self.assertEqual(claude["command"], "claude -p {prompt} --output-format text {permissions}")
-        self.assertEqual(claude["permissions"], "--permission-mode acceptEdits")
+        self.assertEqual(claude["command"], "claude -p {prompt} --output-format stream-json --verbose {permissions}")
+        self.assertEqual(claude["stream"], "claude")
+        self.assertEqual(claude["permissions"], "--permission-mode acceptEdits --allowedTools Bash")
         self.assertEqual(claude["sandboxPermissions"], "--dangerously-skip-permissions")
         # A print session ends its background delegates after 600s unless told to wait: a real run lost its
         # story delegate mid-slice to exactly that.
@@ -114,10 +115,10 @@ class CruiseStartTest(FactoryTestCase):
             self.assertEqual(sandboxed.returncode, 0, sandboxed.stderr)
             self.assertIn("--sandbox: every permission check is bypassed", sandboxed.stdout)
             self.assertEqual((Path(directory) / "claude-args").read_text(),
-                             "-p /cruise --output-format text --permission-mode acceptEdits wait=0 session=none "
-                             "nested=none\n"
-                             "-p /cruise S1 --output-format text --dangerously-skip-permissions wait=0 session=none "
-                             "nested=none\n")
+                             "-p /cruise --output-format stream-json --verbose --permission-mode acceptEdits "
+                             "--allowedTools Bash wait=0 session=none nested=none\n"
+                             "-p /cruise S1 --output-format stream-json --verbose --dangerously-skip-permissions "
+                             "wait=0 session=none nested=none\n")
             self.assertNotIn("session", logged(repo)[-1])
             # An iteration whose output carries no last line is logged as such and treated as `continue` —
             # and this is the third iteration in a row that changed nothing, so the run parks as stuck.
@@ -130,8 +131,8 @@ class CruiseStartTest(FactoryTestCase):
             self.assertIn("the bosun's iteration did not move it", silent.stdout)
             self.assertEqual(logged(repo)[-1].get("attempt"), "unblock")
             self.assertEqual((Path(directory) / "claude-args").read_text().splitlines()[-1],
-                             "-p /cruise unblock: no progress since iteration 1 --output-format text "
-                             "--permission-mode acceptEdits")
+                             "-p /cruise unblock: no progress since iteration 1 --output-format stream-json --verbose "
+                             "--permission-mode acceptEdits --allowedTools Bash")
 
     def test_a_typed_cruise_starts_the_runner_detached_and_a_person_stops_it_from_anywhere(self) -> None:
         """A `/cruise` typed into a session has nobody to re-invoke it, on any harness, so the command starts

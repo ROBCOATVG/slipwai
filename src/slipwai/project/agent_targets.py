@@ -12,7 +12,7 @@ from __future__ import annotations
 
 def agent_targets() -> str:
     """The `.PHONY` block between the npm workspace targets and the native gate targets."""
-    return """.PHONY: agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-status cruise-stop check-decisions
+    return """.PHONY: agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop check-decisions
 agents: ## Refresh elected extensions, then skills, commands and agent types in every installed agent harness
 \tpython3 scripts/extensions/project.py
 \tpython3 scripts/agents/project.py
@@ -31,6 +31,8 @@ benchmark: ## Show what each slice cost and how each stage of /drive did, from t
 \tpython3 scripts/agents/benchmark.py
 cruise: ## Run /drive with nobody at the wheel, a fresh session per iteration, until the specs are satisfied or a person stops it (FEATURE=<name> to scope it)
 \tpython3 scripts/agents/cruise.py run $(if $(FEATURE),--feature $(FEATURE),) $(CRUISE_FLAGS)
+cruise-watch: ## Watch a /cruise run from here: what the iteration does as it happens, returning at the iteration's end, a park, or the run's end (CRUISE_FLAGS=\"--minutes 10\" to sit longer)
+	python3 scripts/agents/cruise.py watch $(CRUISE_FLAGS)
 cruise-status: ## Say whether a /cruise runner is running and what its log shows: iterations run, the last line, whether it is parked and why
 \tpython3 scripts/agents/cruise.py status
 cruise-stop: ## End a /cruise run after the iteration in flight (CRUISE_FLAGS=--now ends that iteration too)

@@ -25,6 +25,11 @@ from pathlib import Path
 from .assets import TOOLKIT_ROOT
 
 REGISTRY = TOOLKIT_ROOT / "scripts/agents/registry.json"
+# Where Spec Kit records the integration `./init` installed. Written by `specify init` and by nothing this
+# factory generates, so its `integration` is not a reading of the tree but a person's answer to `./init`'s
+# own question — the strongest evidence there is, and the one that closes the gap where `adopt` could not
+# tell and handed the question on.
+SPEC_KIT = ".specify/integration.json"
 # A context file every harness with `contextMode: canonical` shares, so its presence names none of them.
 SHARED_CONTEXT = "AGENTS.md"
 # Variables a harness sets in the environment of what it runs, where that has been verified from the harness
@@ -115,11 +120,34 @@ def from_tree(root: Path) -> Agent | None:
     return None
 
 
+def from_spec_kit(root: Path) -> Agent | None:
+    """The harness `./init` installed, as Spec Kit recorded it when it asked.
+
+    A person answered that question, so this is `confirmed` rather than `detected` — the one source here
+    that is somebody's word rather than a reading. It is why a repository whose tree reads for three
+    harnesses stops being a question once `./init` has run.
+    """
+    recorded = root / SPEC_KIT
+    if not recorded.is_file():
+        return None
+    try:
+        document = json.loads(recorded.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    key = document.get("integration") if isinstance(document, dict) else None
+    if not isinstance(key, str) or key not in keys():
+        return None
+    return Agent(key, f"`{SPEC_KIT}` records it: `./init` asked, and this was the answer", "confirmed")
+
+
 def detect(root: Path, environ: dict[str, str] | None = None) -> Agent:
-    """Which harness this adoption is for: the one that started it, else the one already here, else nobody's
-    word. The environment outranks the tree — a person running from inside an agent is using that one now,
-    whatever the repository was set up for once."""
-    return from_environment(environ) or from_tree(root) or Agent()
+    """Which harness this adoption is for: the one somebody answered `./init` with, else the one this run
+    started from, else the one already here, else nobody's word.
+
+    Spec Kit's record outranks both because it is an answer and they are readings. The environment then
+    outranks the tree — a person running from inside an agent is using that one now, whatever the repository
+    was set up for once."""
+    return from_spec_kit(root) or from_environment(environ) or from_tree(root) or Agent()
 
 
 def chosen(key: str) -> Agent:

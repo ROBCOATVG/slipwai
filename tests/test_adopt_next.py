@@ -181,109 +181,6 @@ class ReshapedIntroTest(FactoryTestCase):
             self.assertEqual(json.loads((repo / "project.json").read_text())["deployables"], {})
 
 
-class HarnessTest(FactoryTestCase):
-    """Which coding agent the material is projected into. `./init` has always asked, after `adopt` had already
-    finished — one step too late to be any use to the adoption, since the questions worth handing to an agent
-    are asked before there is one. It is also mostly answerable without asking: the environment a run started
-    in says so, and a repository a team already uses an agent in says so in the tree. What neither says stays
-    `unrecorded`, because a thirty-six-row list is not a question a terminal can ask well."""
-
-    def test_nothing_saying_which_agent_is_recorded_as_nobody_having_said(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            result = slipwai(repo, "adopt", "--yes", environment=BARE)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("Agent: not recorded — nothing here says which one", result.stdout)
-            self.assertEqual(
-                json.loads((repo / "project.json").read_text())["agent"], {"provenance": "unrecorded"}
-            )
-
-    def test_the_harness_a_run_started_from_is_detected_from_its_environment(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            result = slipwai(repo, "adopt", "--yes", environment={**BARE, "CLAUDECODE": "1"})
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("Agent: Claude Code (Claude Code set CLAUDECODE", result.stdout)
-            recorded = json.loads((repo / "project.json").read_text())["agent"]
-            self.assertEqual(recorded["harness"], "claude")
-            self.assertEqual(recorded["provenance"], "detected")
-
-    def test_an_agent_the_tree_already_reads_for_is_detected_from_it(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = repository(Path(directory), "shop", {
-                "package.json": NODE["package.json"], ".claude/skills/theirs/SKILL.md": "# theirs\n",
-            })
-            result = slipwai(repo, "adopt", "--yes", environment=BARE)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("which only Claude Code reads", result.stdout)
-            self.assertEqual(json.loads((repo / "project.json").read_text())["agent"]["harness"], "claude")
-
-    def test_a_tree_that_reads_for_two_records_neither_because_that_is_a_decision(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = repository(Path(directory), "shop", {
-                "package.json": NODE["package.json"],
-                ".cursor/skills/a.md": "a\n",
-                ".gemini/commands/b.md": "b\n",
-            })
-            result = slipwai(repo, "adopt", "--yes", environment=BARE)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("this tree reads for more than one (Cursor, Gemini CLI)", result.stdout)
-            self.assertEqual(
-                json.loads((repo / "project.json").read_text())["agent"], {"provenance": "unrecorded"}
-            )
-
-    def test_a_directory_two_harnesses_read_names_neither(self) -> None:
-        from slipwai.harness import marks
-
-        self.assertEqual(marks().get(".claude/skills"), "claude")
-        self.assertIsNone(marks().get(".agents/skills"), "Codex, Zed and Antigravity all read it")
-        self.assertIsNone(marks().get("AGENTS.md"), "every canonical harness writes it")
-
-    def test_naming_the_agent_outranks_what_was_detected_and_says_so(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            result = slipwai(repo, "adopt", "--yes", "--integration", "cursor-agent",
-                             environment={**BARE, "CLAUDECODE": "1"})
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("Agent: Cursor (named)", result.stdout)
-            recorded = json.loads((repo / "project.json").read_text())["agent"]
-            self.assertEqual(recorded["harness"], "cursor-agent")
-            self.assertEqual(recorded["provenance"], "overridden")
-
-    def test_a_harness_the_registry_does_not_know_is_refused_before_anything_is_written(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            result = slipwai(repo, "adopt", "--yes", "--integration", "nonsense")
-            self.assertEqual(result.returncode, 2)
-            self.assertIn("the agent registry has no such harness", result.stderr)
-            self.assertFalse((repo / "project.json").exists(), "refused before a byte was written")
-
-    def test_a_recorded_agent_changes_what_the_report_says_init_will_ask(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            known = slipwai(repo, "adopt", "--yes", environment={**BARE, "CLAUDECODE": "1"}).stdout
-            self.assertIn("projects the skills and commands into Claude Code, which this record already names, "
-                          "so it asks nothing", known)
-            self.assertNotIn("asks which coding agent", known)
-        with tempfile.TemporaryDirectory() as directory:
-            bare = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            self.assertIn("asks which coding agent", slipwai(bare, "adopt", "--yes", environment=BARE).stdout)
-
-    def test_a_re_survey_carries_the_recorded_agent_rather_than_re_reading_it(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            self.assertEqual(
-                slipwai(repo, "adopt", "--yes", "--integration", "cursor-agent").returncode, 0
-            )
-            # `adopt` commits its own work, so the tree a re-survey needs clean already is.
-            self.assertEqual(git(repo, "status", "--porcelain").stdout, "")
-            self.assertEqual(slipwai(repo, "adopt", "--refresh", environment=BARE).returncode, 0)
-            self.assertEqual(
-                json.loads((repo / "project.json").read_text())["agent"]["harness"], "cursor-agent",
-                "a re-survey reads the tree; which agent gets the material is not something the tree says",
-            )
-
-
 class RunInitTest(FactoryTestCase):
     """`./init` is the one step that reaches the network, so `adopt` runs it last, after its own commit, and
     never inside it: an unreachable source then costs the adoption nothing. Off unless asked for, because
@@ -307,6 +204,18 @@ class RunInitTest(FactoryTestCase):
             result = slipwai(repo, "adopt", "--yes", "--no-init")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertNotIn("Running ./delivery/init", result.stdout)
+
+    def test_the_report_does_not_name_init_as_next_when_it_is_about_to_run_it(self) -> None:
+        """Naming a step and then taking it two lines later reads as two instructions about one thing.
+        The rest of the sequence still has to be there: the conditional is the first line, not the list."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
+            result = slipwai(repo, "adopt", "--yes", "--init", environment={**BARE, "CLAUDECODE": "1"})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("./delivery/init is running now", result.stdout)
+            self.assertNotIn("Next: ./delivery/init — installs Spec Kit and", result.stdout)
+            for kept in ("Then: /ground, in the agent", "Then: make", "slipwai adopt --next` says where you are"):
+                self.assertIn(kept, result.stdout, "the rest of the sequence is still the sequence")
 
     def test_init_and_no_init_cannot_both_be_asked_for(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

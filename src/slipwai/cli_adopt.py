@@ -14,7 +14,6 @@ again rather than a second thing to learn: `--refresh` reconciles a fresh survey
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
@@ -23,12 +22,13 @@ from . import next_steps, resurvey
 from .adopt import Answers, adopt, candidates_of, proposed, report
 from .catalog import CATALOG
 from .cli_confirm import confirmations
+from .cli_init import agent_line, run_init
 from .cli_interview import NOTHING_TO_ASK, interview, shape, with_override
 from .cli_prompts import validate_project_name
 from .ecosystems import EXTRA, TARGETS
 from .errors import GenerationError
 from .experimental import FLAG, HELP, reshaped_intro
-from .harness import Agent, chosen, detect, keys, name_of
+from .harness import chosen, detect, keys
 from .layout import layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import FORGES, HOMES, RELEASE_PATHS, WRAPPED_KINDS, adoption_of
@@ -51,50 +51,6 @@ def next_report(root: Path) -> str:
             "project's next steps are its README, and every row of its map is at the top by construction"
         )
     return next_steps.report(root, layout_of(document), adoption, apps_from_manifest(document, True))
-
-
-def agent_line(agent: Agent) -> str:
-    """What the report says about which coding agent the material is for, and how that was established."""
-    if agent.harness:
-        established = "named" if agent.provenance == "overridden" else agent.evidence
-        return (
-            f"Agent: {name_of(agent.harness)} ({established}), recorded in project.json. `./init` projects the "
-            f"skills and commands into it without asking; `--integration <agent>` there changes it."
-        )
-    if agent.candidates:
-        named = ", ".join(name_of(key) for key in agent.candidates)
-        return (
-            f"Agent: not recorded — this tree reads for more than one ({named}), and which of them gets the "
-            "material is a decision, not a guess. `./init` asks."
-        )
-    return (
-        "Agent: not recorded — nothing here says which one, and this did not run from inside one. `./init` asks, "
-        "or `./init --integration <agent>` names it."
-    )
-
-
-def run_init(root: Path, delivery: str, agent: Agent) -> None:
-    """`./<delivery>/init`, run once the adoption is committed.
-
-    Last, and never inside the commit: it is the one step that reaches the network, so a source that is
-    unreachable costs the adoption nothing — the commit is already made — and what it writes is left in the
-    tree for the person to read and commit, exactly as it is in a project the factory generated.
-    """
-    script = Path(delivery) / "init" if delivery != "." else Path("init")
-    command = [f"./{script.as_posix()}", *(["--integration", agent.harness] if agent.harness else [])]
-    print(f"\nRunning {' '.join(command)} — it installs Spec Kit, which needs the network.")
-    finished = subprocess.run(command, cwd=root, check=False)
-    if finished.returncode == 0:
-        print(
-            f"`{' '.join(command)}` is done; what it wrote is uncommitted, and yours to read and commit. "
-            "`slipwai adopt --next` says what is left."
-        )
-        return
-    print(
-        f"`{' '.join(command)}` exited {finished.returncode}, and the adoption is committed and unaffected: it is "
-        f"a step of its own, which is why it runs after. Run it again when whatever stopped it is fixed — "
-        f"`slipwai adopt --next` will keep saying that it is the step you are on."
-    )
 
 
 def adopt_main(argv: list[str]) -> None:
@@ -329,10 +285,12 @@ def adopt_main(argv: list[str]) -> None:
         done = adopt(root, answers, found)
     except GenerationError as error:
         parser.error(str(error))
-    print(report(done))
-    print(agent_line(agent))
     # `./init` reaches Spec Kit's source, so it is the one step that needs the network, and it leaves files for
     # the person to commit. Off unless asked, and asked for by default only where somebody is sitting at the
-    # terminal under the reshaped intro — which is the case the wall of `Next:` lines was written for.
-    if args.run_init if args.run_init is not None else (reshaped and not args.yes):
+    # terminal under the reshaped intro — which is the case the wall of `Next:` lines was written for. Decided
+    # before the report is printed, because the report says something different when it is about to happen.
+    running_init = args.run_init if args.run_init is not None else (reshaped and not args.yes)
+    print(report(done, running_init))
+    print(agent_line(agent))
+    if running_init:
         run_init(root, args.delivery, agent)

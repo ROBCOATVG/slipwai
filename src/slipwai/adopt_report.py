@@ -132,7 +132,7 @@ def quick_wins_table(findings: tuple[dict, ...]) -> str:
     )
 
 
-def report(done: Adopted) -> str:
+def report(done: Adopted, running_init: bool = False) -> str:
     """What was written, what it forfeits, and the next steps in order — the first line says experimental, and the
     first step is always `init`, as it is in a generated project's README: the agent before the gate."""
     wrapped = wrapped_of(done.apps)
@@ -237,14 +237,24 @@ def report(done: Adopted) -> str:
     verify = "make" if done.makefile_written else done.layout.make
     init = f"./{done.layout.delivery}/init"
     named = recorded_agent(done)
-    lines += [
-        "",
-        f"Next: {init} — installs Spec Kit and " + (
+    # `--init` runs it below, so naming it as the next step and then doing it reads as two different
+    # instructions about the same thing. What is left after it is what the rest of this list is for.
+    # `--init` runs it below, so naming it as the next step and then doing it reads as two instructions
+    # about one thing. What is left after it is what the rest of this list is for.
+    init_line = (
+        f"Next: {init} is running now — it installs Spec Kit and projects the skills and commands; what it "
+        "writes is left uncommitted for you to read."
+        if running_init
+        else f"Next: {init} — installs Spec Kit and " + (
             f"projects the skills and commands into {name_of(named)}, which this record already "
             f"names, so it asks nothing ({init} --integration <agent> changes it)"
             if named
             else f"asks which coding agent gets the skills and commands (or name it: {init} --integration claude)"
-        ) + ". Add --extension codegraph to index the code for that agent.",
+        ) + ". Add --extension codegraph to index the code for that agent."
+    )
+    lines += [
+        "",
+        init_line,
         "Then: /ground, in the agent — it asks what the tree could not say" + (
             ", starting with which of the directories above is an application, what it is called and what it "
             "owns; then one row of the map at a time"

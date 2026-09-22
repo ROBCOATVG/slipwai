@@ -211,6 +211,64 @@ Everything below is in a generated repository from its first commit.
 | **[A path to production](docs/aws-target.md)** | `--target aws` or `--target azure` gives you `infra/` in OpenTofu, one deployable per application released blue/green, a pipeline from every push to `main` through staging to production, and a one-command rollback. The same promise on either cloud. [The Azure page](docs/azure-target.md) is where they are compared |
 | **[Extensions](docs/extensions.md)** | Optional dev tooling, adopted with `./init --extension <key>`. CodeGraph is the first. None of them changes the generated skeleton's code |
 
+### The commands a project gets
+
+Fifteen, of which thirteen are in `standard`. A repository that adopted the method gets four more. None of
+them is copied: each is generated against this project's profile, languages, frameworks and services, so
+the paths and toolchains named in them are real.
+
+| Command | What it does |
+|---|---|
+| `/drive` | Takes one slice from wherever it stands to a demo the actor can see |
+| `/whats-next` | Says what is next — one slice, one stage, one command. Reads the disk and changes nothing |
+| `/where-are-we` | Shows the progress board: what works, what is in progress, what is still to come |
+| `/gaps` | Reviews an artifact for holes, before they become rewritten tests |
+| `/example-map` | *Event profile.* Turns one slice of the event model into rules, examples and executable scenarios |
+| `/validate-code-against-model` | *Event profile.* Checks that the code and the event model still agree |
+| `/adversary` | Attacks a finished slice: hostile inputs, replays, interleavings, authorisation paths |
+| `/mutation` | Runs the backend's own mutation testing, to find tests that do not really test |
+| `/catch-up` | After a migration, works through what the newer factory now asks of code it did not write |
+| `/add-service` | Adds a service, with its own language, framework and answers |
+| `/add-frontend` | Adds a browser app |
+| `/benchmark` | Draws what each slice cost and how each stage did |
+| `/constitution-coverage` | Checks the constitution against the floor this project depends on, or prints the floor |
+| `/drive-settings` | Shows or changes how `/drive` hands implementation to a delegate |
+| `/model-delegation-settings` | Shows or changes which model runs each stage of `/drive` |
+
+[The delivery loop](docs/delivery-loop.md) describes each one in full, and the ladder they sit on.
+
+#### The two that change settings
+
+Run either with no arguments to see the current setting. Pass arguments to change it. Both refuse a value
+they do not know and write nothing, and both ask you to commit the settings file on its own — the choice is
+versioned with the project.
+
+**`/drive-settings`** — how much one implementation delegate is handed, and how many failing tests a cycle
+opens with. It writes `.specify/drive.json`.
+
+```
+/drive-settings                             # show both settings
+/drive-settings delegate=task               # one delegate per task
+/drive-settings cycle=example               # one failing test at a time
+/drive-settings delegate=story cycle=rule   # back to the defaults
+```
+
+`delegate` takes `story`, `rule` or `task`. `cycle` takes `rule` or `example`. `cycle=story` is refused:
+that is the batch Principle V prohibits.
+
+**`/model-delegation-settings`** — which model runs each stage of `/drive`. It writes `.specify/models.json`.
+
+```
+/model-delegation-settings                  # show the table
+/model-delegation-settings implement=strong # move a stage to the strong role
+/model-delegation-settings claude.fast=haiku  # map a role to a model on one harness
+```
+
+A `stage=role` argument moves a stage between `strong` and `fast`. A `harness.role=identifier` argument says
+what a role runs on. Changing it also rewrites the agent types, so the harnesses cannot drift apart.
+
+The change takes effect at the next stage `/drive` runs. Nothing already running is interrupted.
+
 ---
 
 ## The answers you give

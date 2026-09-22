@@ -455,7 +455,7 @@ rotted.
    (most `cd {APP}` first — never `apps/service`, because a project may have several services and the
    table is stamped per service; `docs/services.md`). Match the other languages' shape — the generated `make verify`
    runs `lint typecheck check-imports check-migrations check-slice-scope check-extensions check-agents check-speckit check-codegraph
-   check-constitution check-benchmark test [check-model]` (see `verify_dependencies` in `project/makefile.py`, the table's only reader) and
+   check-constitution check-benchmark check-decisions test [check-model]` (see `verify_dependencies` in `project/makefile.py`, the table's only reader) and
    `make ci` adds
    `audit test-integration`, so every key must produce a working command with no project-level
    config beyond what sections 3 and 5 provide. If the ecosystem needs a separate frontend-aware
@@ -822,7 +822,7 @@ in section 2, item 3 fails that generated repo's own `make verify`.
 
 **A green `make verify` is not the whole obligation.** The factory's gate runs each generated project's
 `make verify` and nothing else (`tests/test_matrix.py`), and that target is
-`lint typecheck check-imports check-migrations check-slice-scope check-extensions check-agents check-speckit check-codegraph check-constitution check-benchmark test`. Five of the eight
+`lint typecheck check-imports check-migrations check-slice-scope check-extensions check-agents check-speckit check-codegraph check-constitution check-benchmark check-decisions test`. Five of the eight
 commands section 2 item 3 declares are therefore never run by this factory: `install`, `integration`,
 `audit`, `adversarial` and `mutation`. Two of them (`audit`, `integration`) at least run in the generated
 project's own `make ci`; **`adversarial` and `mutation` are reached by no gate at either level**, so a

@@ -79,9 +79,11 @@ class StageModelsTest(FactoryTestCase):
 
             makefile = (repo / "Makefile").read_text()
             self.assertIn("models: ## Show which model runs each stage of /drive", makefile)
-            gate = ("check-agents: ## Fail when an initialized agent projection has drifted, or .specify/models.json "
-                    "or drive.json is malformed\n\tpython3 scripts/agents/project.py --check\n"
-                    "\tpython3 scripts/agents/models.py --check && python3 scripts/agents/drive.py --check\n")
+            gate = ("check-agents: ## Fail when an initialized agent projection has drifted, "
+                    "or .specify/models.json, drive.json or cruise.json is malformed\n"
+                    "\tpython3 scripts/agents/project.py --check\n"
+                    "\tpython3 scripts/agents/models.py --check && python3 scripts/agents/drive.py --check && "
+                    "python3 scripts/agents/cruise.py --check\n")
             self.assertIn(gate, makefile)
             subprocess.run(["make", "check-agents"], cwd=repo, check=True, capture_output=True)
             for page in ("docs/agent-harnesses.md",):

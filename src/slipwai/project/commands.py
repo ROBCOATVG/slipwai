@@ -151,7 +151,9 @@ Deliver one small vertical slice under `AGENTS.md`. Once the ladder below has pr
 Read artifacts from disk rather than conversation memory and walk this ladder from the top. The entry stage
 is the first one whose artifact is missing, empty, or still a placeholder — **including the stages upstream
 of the slice loop**. State the entry stage and the evidence that selected it before changing anything, then
-run that stage and every stage after it. Never rerun a completed stage merely to check.
+run that stage and every stage after it. Never rerun a completed stage merely to check. Where `.codegraph/` is in
+the tree, load `codegraph_explore` by name through this harness's tool-search step before the first stage, so a
+caller or blast-radius question later is one call and not a text search.
 
 **The checkout goes stale the way conversation memory does, so check the branch before the artifacts.**
 Every signal the ladder reads — a slice's `status`, whether `examples.md` or `tasks.md` exists, the slice
@@ -181,7 +183,10 @@ Start the slice from a green `make verify`. During implementation, take one RED-
 task — one rule of the example map with its examples, where the map numbers its rules — run only the quickest
 relevant tests in the same file or area, commit that increment locally, and keep
 task checkboxes truthful. A local commit is not a push: it does not run the full gate and it does not start
-CI. Do not push increment commits until the actor has accepted the demo.
+CI. Do not push increment commits until the actor has accepted the demo. Before an increment that changes a
+shared function, ask `codegraph_explore` what calls it and what the change reaches — loaded by name where the
+harness defers it — and name those callers in the delegate's manifest; a project without `.codegraph/` answers
+with a text search and says so.
 
 When the tasks are done, converge, then stop at the actor-visible demo from the unpushed slice branch. After
 acceptance — and only then — a project that has adopted CodeGraph runs `codegraph sync`, then the full

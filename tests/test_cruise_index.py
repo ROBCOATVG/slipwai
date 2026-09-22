@@ -156,7 +156,12 @@ class CruiseIndexTest(FactoryTestCase):
             enable(repo)
             index(repo)
             first = MCP_CALL + "\n" + DONE.replace("{last}", "continue")
-            second = DONE.replace("{last}", "continue")
+            # Keeping the index fresh is not asking it: a `sync` that keeps `check-codegraph` green counted as a query
+            # once, and a run claimed the index was asked when every answer was grep.
+            second = json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "tool_use", "id": "toolu_s", "name": "Bash",
+                 "input": {"command": "npx -y @colbymchenry/codegraph sync && make check-codegraph"}}]},
+                "parent_tool_use_id": None}) + "\n" + DONE.replace("{last}", "continue")
             third = json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [
                 {"type": "tool_use", "id": "toolu_b", "name": "Bash",
                  "input": {"command": "npx -y @colbymchenry/codegraph explore 'who calls post_entry'"}}]},
@@ -169,6 +174,7 @@ class CruiseIndexTest(FactoryTestCase):
             run = cruise(repo, "run", env={**env, "CRUISE_HARNESS_STREAM": "claude"})
             self.assertEqual(run.returncode, 0, run.stderr)
             self.assertIn("  codegraph.codegraph_explore  what calls post_entry", run.stdout)
+            self.assertIn("  $ npx -y @colbymchenry/codegraph sync && make check-codegraph", run.stdout)
             self.assertIn("  $ npx -y @colbymchenry/codegraph explore 'who calls post_entry'", run.stdout)
             self.assertIn("# iteration 3 ", (repo / RUNNER_STREAM).read_text())
             status = cruise(repo, "status")

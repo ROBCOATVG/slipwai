@@ -82,6 +82,10 @@ STREAM = ROOT / ".specify/cruise-stream.jsonl"
 # The code index `./init --extension codegraph` leaves, and the project MCP file that carries its server: what the
 # runner says it can expect of them before the first iteration, rather than a feed that fell back to grep without saying.
 CODE_INDEX = ROOT / ".codegraph/codegraph.db"
+# A shell command that asks the index something, as against one that maintains it: `codegraph sync` keeps the gate
+# green and answers nothing, and counting it once let a run claim the index was asked when every answer was grep
+# (the CLI's query subcommands, `codegraph help` in the 1.6.0 bundle, read 2026-09-22).
+INDEX_QUERY = re.compile(r"\bcodegraph\s+(query|explore|node|files|callers|callees|impact|affected)\b")
 MCP_CONFIG = ROOT / ".mcp.json"
 # How far into the run log the watching session has read.
 WATCH_CURSOR = ROOT / ".specify/cruise-watch.cursor"
@@ -1129,8 +1133,9 @@ def refusals() -> dict[tuple[str, str], list[int]]:
 
 
 def index_queries() -> dict[int, int]:
-    """How many times each iteration in the stream asked the code index — an MCP tool of the codegraph server, or the
-    CLI through the shell — so `status` can say whether the index was used rather than only kept fresh."""
+    """How many times each iteration in the stream asked the code index — an MCP tool of the codegraph server, or a
+    query subcommand of the CLI through the shell; never `sync`, `init` or `serve`, which maintain it — so `status`
+    can say whether the index was used rather than only kept fresh."""
     asked: dict[int, int] = {}
     if not STREAM.is_file():
         return asked
@@ -1152,12 +1157,12 @@ def index_queries() -> dict[int, int]:
                 continue
             given = block.get("input") if isinstance(block.get("input"), dict) else {}
             if str(block.get("name", "")).startswith("mcp__codegraph__") or (
-                    block.get("name") == "Bash" and "codegraph" in str(given.get("command", ""))):
+                    block.get("name") == "Bash" and INDEX_QUERY.search(str(given.get("command", "")))):
                 asked[iteration] = asked.get(iteration, 0) + 1
         item = event.get("item") if isinstance(event.get("item"), dict) else {}
         if event.get("type") == "item.started" and (
                 (item.get("type") == "mcp_tool_call" and item.get("server") == "codegraph")
-                or (item.get("type") == "command_execution" and "codegraph" in str(item.get("command", "")))):
+                or (item.get("type") == "command_execution" and INDEX_QUERY.search(str(item.get("command", ""))))):
             asked[iteration] = asked.get(iteration, 0) + 1
     return asked
 

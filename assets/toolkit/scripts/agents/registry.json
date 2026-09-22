@@ -1,5 +1,5 @@
 {
-  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what `scripts/agents/cruise.py run` needs for each iteration — the command as a shell template with {prompt} and {permissions}, read the same way, or null where none was verified, which the script reports rather than guessing a flag.",
+  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what `scripts/agents/cruise.py run` needs for each iteration — the command as a shell template with {prompt} and {permissions}, read the same way, or null with a `headlessReason` where none was verified, which the script reports rather than guessing a flag; the runner looks for the command's first word on PATH, and `prompt: \"slash\"` marks the one harness whose print mode is known to resolve `/cruise` itself (every other is asked to read the command file). `hooks` is the factory's fourth: whether this harness has a hook that fires when a turn ends and can refuse the end (`holds`), how, and the `projection` `scripts/agents/project.py` writes so that `scripts/agents/cruise.py stopping` runs there — or null with a `why` where the file's shape was not read, and null altogether where nothing was verified.",
   "speckitVersion": "0.16.1",
   "harnesses": [
     {
@@ -16,10 +16,22 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`agy -p` runs one headless turn and prints the final answer as plain text (`--output-format` defaults to text; json and stream-json exist), exiting once the answer is delivered; fatal errors go to stderr with an `error:` marker. Unattended, a tool that would need a confirmation is soft-denied with a stderr notice naming the allow rule, the agent settles choices itself instead of asking, and plan review proceeds automatically; `--mode accept-edits` pre-approves file edits. An `always-proceed` permission mode is mentioned in the changelog with no CLI flag value seen, so nothing bypasses every check here.",
+        "command": "agy -p {prompt} {permissions}",
+        "permissions": "--mode accept-edits",
+        "sandboxPermissions": "",
+        "source": "README.md and CHANGELOG.md in google-antigravity/antigravity-cli on main (the entries on -p/--print/--prompt, --output-format text|json|stream-json, --mode accept-edits|plan, headless soft-deny), read 2026-09-22 (antigravity.google/docs/cli/headless/ returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "hooks.json in the customization directory, workspace-level at <workspace>/.agents/hooks.json. Events seen in the changelog: PreToolUse, PostToolUse, PostInvocation, Stop; a Stop hook that blocks makes the agent continue, and stop hooks that always block are capped after a configurable number of consecutive continuations. The exact output schema is not verified (docs site blocked). Source: CHANGELOG.md in google-antigravity/antigravity-cli on main (1.1.9 and 1.2.x), read 2026-09-22.",
+        "projection": null,
+        "why": "the output schema of a Stop hook was not verified"
+      }
     },
     {
       "key": "alquimia",
@@ -38,7 +50,9 @@
       "headless": null,
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "headlessReason": "Alquimia AI is an enterprise agent platform (Runtime, Studio, InsightHub; event-driven, Knative-based), not a terminal coding agent: its documentation repository README and the Alquimia-ai GitHub organisation show no CLI coding agent, and docs.alquimia.ai returned HTTP 403. Read 2026-09-22.",
+      "hooks": null
     },
     {
       "key": "amp",
@@ -54,10 +68,22 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`amp -x` (`--execute`) runs the prompt in a fresh thread and prints only the agent's last message as plain text, then exits (execute mode is also enabled when stdout is redirected; `--stream-json` switches to JSONL), so the last line of stdout is the tail of the response. Unattended, a tool not allowlisted through `amp.commands.allowlist` in the settings file is not run: Amp prints \"Rerun with --dangerously-allow-all to bypass\" on stderr and exits. A search snippet of ampcode.com/news/neo says that bypass is now the default for users with no permissions configured, so the flag is legacy-compatible rather than freshly verified.",
+        "command": "amp -x {prompt} {permissions}",
+        "permissions": "",
+        "sandboxPermissions": "--dangerously-allow-all",
+        "source": "the option and error text in the last standalone npm bundle @sourcegraph/amp@0.0.1778732631-gc5875c (dist/main.js: -x/--execute, --stream-json, --dangerously-allow-all) and guides/cli/README.md and guides/command-piping/README.md in ampcode/amp-examples-and-guides on main, read 2026-09-22 (ampcode.com/manual returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "Settings-file hooks (entries with compatibilityDate 2025-05-13, on.event tool:pre-execute or tool:post-execute) fire only around tool calls. End-of-turn continuation is the plugin API: a plugin under .amp/plugins/ receives `agent.end` and may return {action: \"continue\", userMessage: \"...\"}, which becomes a new user message on the thread. Source: dist/main.js in @sourcegraph/amp@0.0.1778732631-gc5875c, read 2026-09-22; the current plugin docs (ampcode.com/docs/plugin-api) returned HTTP 403, so the config path is not verified.",
+        "projection": null,
+        "why": "continuation is a plugin under `.amp/plugins/`, not a command hook"
+      }
     },
     {
       "key": "auggie",
@@ -73,10 +99,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`auggie --print` (`-p`) runs a single instruction and prints results as text (`--output-format json` exists), `--quiet` (`-q`) shows only the last assistant message so the final answer is the tail of stdout, and `--dont-save-session` keeps the run from being saved. Tool approvals are `--permission <tool-name:policy>` rules (allow, deny, ask-user, webhook-policy(url), script-policy(path)) and settings; no global bypass flag was found, and what an ask-user tool does with no TTY is not verified.",
+        "command": "auggie --print --quiet --dont-save-session {permissions} {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "",
+        "source": "README.md in augmentcode/auggie on main (--print, --quiet) and the option text in the npm package @augmentcode/auggie@0.36.0 augment.mjs (-p/--print, -q/--quiet, --output-format, --dont-save-session, --permission <rule>, --max-turns), read 2026-09-22 (docs.augmentcode.com/cli/reference returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": false,
+        "how": "Hooks under the `hooks` key of .augment/settings.json or .augment/settings.local.json (workspace) and ~/.augment/settings.json; events PreToolUse, PostToolUse, Stop, SessionStart, SessionEnd, Notification, PromptSubmit (Cursor-style names such as `stop` are mapped onto them). A Stop hook's hookSpecificOutput {decision: \"block\", reason} is parsed, but triggerStopHook runs after the agent loop has returned end_turn and its result is discarded, so it cannot make the agent continue. Source: augment.mjs in @augmentcode/auggie@0.36.0, read 2026-09-22.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     },
     {
       "key": "bob",
@@ -95,7 +133,9 @@
       "headless": null,
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "headlessReason": "Not verified from an official page: bob.ibm.com (including /docs/shell/getting-started/start-bobshell-non-interactive) and www.ibm.com returned HTTP 403 on 2026-09-22, and the npm package @ibm/bob@0.0.2 is a placeholder with no README or binary. Search snippets suggest `bob -p \"...\"`, `--yolo` and `--accept-license`, unseen on a fetched page.",
+      "hooks": null
     },
     {
       "key": "claude",
@@ -117,14 +157,15 @@
         "source": "the Agent tool's own schema, read 2026-09-09"
       },
       "headless": {
-        "how": "`claude -p <prompt>` prints the response and exits; `--output-format text` keeps the last line readable; `--permission-mode` picks how tool calls are approved in a session nobody is watching; `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` keeps a print session waiting for its background delegates, which it otherwise terminates after 600s — mid-slice, with the story delegate still running; under `acceptEdits` the project's `.claude/settings.json` allowlist applies only once the workspace is trusted (`projects[<path>].hasTrustDialogAccepted` in ~/.claude.json)",
+        "how": "`claude -p <prompt>` prints the response and exits; `--output-format text` keeps the last line readable; `--permission-mode` picks how tool calls are approved in a session nobody is watching; `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` keeps a print session waiting for its background delegates, which it otherwise terminates after 600s — mid-slice, with the story delegate still running; under `acceptEdits` the project's `.claude/settings.json` allowlist applies only once the workspace is trusted (`projects[<path>].hasTrustDialogAccepted` in ~/.claude.json); `-p /cruise` resolves the project's slash command, which is how every run so far was driven",
         "command": "claude -p {prompt} --output-format text {permissions}",
         "permissions": "--permission-mode acceptEdits",
         "sandboxPermissions": "--dangerously-skip-permissions",
         "source": "the installed Claude Code 2.1.278's --help (-p/--print, --output-format, --permission-mode with acceptEdits and bypassPermissions, --dangerously-skip-permissions), read 2026-09-22; the wait ceiling and the trust rule from the messages the same build printed during a /cruise run, read 2026-09-22",
         "env": {
           "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "0"
-        }
+        },
+        "prompt": "slash"
       },
       "agentFile": {
         "dir": ".claude/agents",
@@ -159,6 +200,12 @@
         },
         "where": ".claude/settings.json, `hooks`",
         "source": "the hook events in the installed Claude Code 2.1.278 executable (PreCompact, PostCompact, SessionStart) and the documented SessionStart matcher `compact`, read 2026-09-22; PostCompact is in the build and its context semantics were not verified, so it is not used"
+      },
+      "hooks": {
+        "holds": true,
+        "how": "`Stop` runs when the model tries to end its turn; a hook printing {\"decision\": \"block\", \"reason\": \"...\"} refuses the end and the reason is read next; the event carries `last_assistant_message` and `transcript_path`. Hooks run in `-p` sessions. Source: the installed Claude Code 2.1.278's hook events and the Stop hook decision it acted on during /cruise runs, read 2026-09-22.",
+        "projection": null,
+        "why": "the factory writes `.claude/settings.json` itself, hooks included (Stop, PreCompact, SessionStart); Grok Build reads that file too"
       }
     },
     {
@@ -175,10 +222,22 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`cline \"prompt\"` runs a single turn in a fresh session and exits, printing styled text to stdout (`--json` gives NDJSON instead), so the last line of stdout is the tail of the response. Tool calls are auto-approved by default; where stdin or stdout is not a TTY, a call that still needs approval is denied, and `-y`/`--yolo` skips every approval prompt (it also disables the spawn and team tools by default and turns runtime hooks off).",
+        "command": "cline {permissions} {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "--yolo",
+        "source": "apps/cli/README.md in cline/cline on main (Modes, Headless mode for CI/CD, the options table, Tool approval), read 2026-09-22 (docs.cline.bot returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": false,
+        "how": "File hooks are executables named after the event, found in ~/Documents/Cline/Hooks/, ~/.cline/hooks/, <workspace>/.clinerules/hooks/ and <workspace>/.cline/hooks/. TaskComplete maps to agent_end, fired from afterRun when a run completes, but it runs detached and its output is not read, so it cannot continue the agent; only PreToolUse, PostToolUse and UserPromptSubmit can cancel or inject context, and `--yolo` disables runtime hooks. Sources: sdk/examples/hooks/README.md, sdk/packages/shared/src/storage/paths.ts, sdk/packages/core/src/hooks/hook-file-config.ts and hook-file-hooks.ts, apps/cli/src/utils/hooks.ts in cline/cline on main, read 2026-09-22.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     },
     {
       "key": "codebuddy",
@@ -194,10 +253,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`codebuddy -p` (`--print`) runs non-interactively and prints the final result as plain text (`--output-format` defaults to text; json and stream-json exist), so the last line of stdout is the tail of the response. Unattended, an action not pre-approved is blocked rather than prompted: `--permission-mode acceptEdits` lets read and edit tools run in trusted directories, `-y`/`--dangerously-skip-permissions` equals `--permission-mode bypassPermissions` (the docs call it required for operations needing authorisation), and HIGH and CRITICAL commands are skipped only with the process environment CODEBUDDY_IS_SANDBOX=1 beside `-y`.",
+        "command": "codebuddy -p {prompt} {permissions}",
+        "permissions": "--permission-mode acceptEdits",
+        "sandboxPermissions": "-y",
+        "source": "the docs bundled in the npm package @tencent-ai/codebuddy-code@2.156.0 at dist/web-ui/docs/en/cli/headless.md and en/cli/permission-modes.md (the pages www.codebuddy.ai/docs/cli/headless serves, which returned HTTP 403), read 2026-09-22"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "Hooks under the `hooks` key of ~/.codebuddy/settings.json, <project>/.codebuddy/settings.json or .codebuddy/settings.local.json. Events include PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStop, SessionStart, SessionEnd, Notification, PreCompact, PostCompact. A Stop command hook that prints {\"continue\": false, \"reason\": \"...\"} (or exits 2) prevents stopping and the agent keeps working with the reason injected; `stop_hook_active` is true when a stop hook already forced a continuation. Source: dist/web-ui/docs/en/cli/hooks.md in @tencent-ai/codebuddy-code@2.156.0, read 2026-09-22.",
+        "projection": null,
+        "why": "its Stop hook is held with `{\"continue\": false, \"reason\"}`, the opposite of every other harness's spelling, and the entry shape was not read"
+      }
     },
     {
       "key": "codex",
@@ -246,7 +317,8 @@
         "source": "codex-rs/protocol (TokenUsage, TokenUsageRecord, shell_environment), codex-rs/rollout (recorder, policy) and codex-rs/history (RolloutItemWire) on main, read 2026-09-09"
       },
       "compaction": null,
-      "compactionReason": "docs/config.md in openai/codex on main documents lifecycle hooks only as an admin setting, with no event around compaction found, read 2026-09-22"
+      "compactionReason": "docs/config.md in openai/codex on main documents lifecycle hooks only as an admin setting, with no event around compaction found, read 2026-09-22",
+      "hooks": null
     },
     {
       "key": "copilot",
@@ -267,7 +339,13 @@
         "identifiers": "a model name the Copilot model picker lists",
         "source": "docs.github.com, Custom agents configuration, YAML frontmatter properties, read 2026-09-09"
       },
-      "headless": null,
+      "headless": {
+        "how": "`copilot -p PROMPT` executes the prompt programmatically in a new session and exits; `-s`/`--silent` outputs only the agent response, no usage statistics, so the answer is the last thing on stdout (`--output-format` defaults to text; json gives JSONL). There is no interactive prompt under `-p`, so `--allow-all-tools` is documented as required for programmatic use; `--yolo` (`--allow-all`) additionally allows every path and URL, and `--deny-tool` rules still win. `--continue` and `--resume` are not passed.",
+        "command": "copilot -p {prompt} -s {permissions}",
+        "permissions": "--allow-all-tools",
+        "sandboxPermissions": "--yolo",
+        "source": "docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference (the command-line options table: -p/--prompt, -s/--silent, --output-format, --allow-all-tools, --allow-all, --yolo, --allow-tool, --deny-tool, --continue, --resume), read 2026-09-22"
+      },
       "agentFile": {
         "dir": ".github/agents",
         "extension": ".agent.md",
@@ -284,7 +362,13 @@
         "source": "docs.github.com/en/copilot/reference/custom-agents-configuration, YAML frontmatter properties and Tool aliases, read 2026-09-15"
       },
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "Hook files ({\"version\": 1, \"hooks\": {...}}) are loaded from ~/.copilot/hooks/*.json (or $COPILOT_HOME/hooks/), .github/hooks/*.json in the repository, the `hooks` field of ~/.copilot/settings.json or .github/copilot/settings.json, and plugin hooks.json files. `agentStop` fires when the main agent finishes a turn; a hook writing {\"decision\": \"block\", \"reason\": \"...\"} forces another turn with the reason as the prompt, `stop_hook_active` flags a forced continuation, and after 8 consecutive block continuations the CLI ends the turn. Source: docs.github.com/en/copilot/reference/hooks-reference, read 2026-09-22.",
+        "projection": null,
+        "why": "the entry shape of a `.github/hooks/*.json` file was not read, only the event and its output"
+      }
     },
     {
       "key": "cursor-agent",
@@ -306,7 +390,13 @@
         "identifiers": "a Cursor model id",
         "source": "cursor.com/docs/agent/subagents, read 2026-09-09"
       },
-      "headless": null,
+      "headless": {
+        "how": "`agent -p` (print mode) runs one prompt non-interactively in a fresh chat and, with the default `--output-format text`, prints clean, final-answer-only responses to stdout, so the last line of stdout is the tail of the agent's final answer. Without `--force` the agent cannot change files or run commands unattended; `-f/--force` (alias `--yolo`) is \"Force allow commands unless explicitly denied\", and no flag bypassing explicit denies is documented, so `--force` serves both levels. `--resume`/`--continue` reuse a prior chat and are not passed.",
+        "command": "agent -p --output-format text {permissions} {prompt}",
+        "permissions": "--force",
+        "sandboxPermissions": "--force",
+        "source": "cursor.com/docs/cli/reference/parameters and cursor.com/docs/cli/headless, read 2026-09-22"
+      },
       "agentFile": {
         "dir": ".cursor/agents",
         "extension": ".md",
@@ -322,7 +412,38 @@
         "source": "cursor.com/docs/subagents, Configuration fields (cursor.com/docs/agent/subagents redirects there), read 2026-09-15"
       },
       "usage": null,
-      "compaction": null
+      "compaction": {
+        "before": {
+          "event": "preCompact",
+          "how": "runs before automatic or manual compaction; its input carries `trigger` and the context counts, and an optional `user_message` in its output is shown to the person"
+        },
+        "after": null,
+        "where": ".cursor/hooks.json, `hooks`",
+        "source": "cursor.com/docs/agent/hooks, read 2026-09-22: `sessionStart` can add `additional_context` but fires at session start, not after compaction, so nothing replays the checkpoint there"
+      },
+      "hooks": {
+        "holds": true,
+        "how": "Config: project `.cursor/hooks.json` or user `~/.cursor/hooks.json`, shape {\"version\": 1, \"hooks\": {\"stop\": [{\"command\": \"...\", \"loop_limit\": 10}]}}. `stop` fires when the agent loop ends; input JSON has `status` (completed | aborted | error), `loop_count` (automatic follow-ups already triggered, from 0) and `modified_files`. Output JSON `followup_message` (string): when provided and non-empty, Cursor submits it as the next user message; `loop_limit` (default 5, null for no cap) caps auto follow-ups per script. Docs state hooks work in the desktop app and the CLI. Source: cursor.com/docs/agent/hooks, read 2026-09-22.",
+        "projection": {
+          "where": ".cursor/hooks.json",
+          "root": {
+            "version": 1
+          },
+          "key": "hooks",
+          "entry": {
+            "command": "{command}"
+          },
+          "events": {
+            "stopping": "stop",
+            "responded": "afterAgentResponse",
+            "compacting": "preCompact"
+          },
+          "stopEntry": {
+            "loop_limit": null
+          },
+          "how": "`stop` returns `followup_message`, which Cursor submits as the next user message; its event carries no text, so `afterAgentResponse` keeps the last message (`text`) for it; `loop_limit: null` lifts Cursor's cap of five follow-ups so that it is this script's three holds that decide. Grok Build reads this file too."
+        }
+      }
     },
     {
       "key": "devin",
@@ -341,7 +462,9 @@
       "headless": null,
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "headlessReason": "Not verified: every official page returned HTTP 403 on 2026-09-22 (docs.devin.ai/cli, docs.devin.ai/cli/reference/commands, devin.ai/cli, cli.devin.ai), and no official source repository exists. Third-party snippets mention `devin -p \"<prompt>\" --permission-mode dangerous`, unseen on an official page.",
+      "hooks": null
     },
     {
       "key": "droid",
@@ -357,10 +480,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`droid exec \"<prompt>\"` is Factory's non-interactive single-pass mode: it completes the task and exits, printing text by default (`-o, --output-format`, default text; json and stream-jsonrpc exist), so the final response is the tail of stdout. Approvals are tiered and opt-in: no flag is read-only; `--auto low` allows project file creation and edits; `--auto medium` adds trusted package installs, builds, tests and git commit/checkout/pull; `--auto high` adds remote writes and deployments; an action above the level stops droid exec with a non-zero exit. `-s/--session-id` and `--fork` continue existing sessions and are not passed.",
+        "command": "droid exec {prompt} {permissions}",
+        "permissions": "--auto medium",
+        "sandboxPermissions": "--skip-permissions-unsafe",
+        "source": "docs.factory.ai/cli/droid-exec/overview, read 2026-09-22"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "Hooks under a top-level `hooks` key in `~/.factory/settings.json` or project `.factory/settings.json` (the reference page also names `.factory/hooks.json`). Events: PreToolUse, PostToolUse, UserPromptSubmit, Notification, Stop, SubagentStop, PreCompact, SessionStart, SessionEnd. `Stop` runs when the main Droid is about to finish responding; input has `stop_hook_active`, `tool_execution_count`, `elapsed_time`; output `decision: \"block\"` prevents stopping and requires `reason`; `continue: false` stops. Whether hooks fire under `droid exec` is not verified. Sources: docs.factory.ai/cli/configuration/hooks-guide and docs.factory.ai/reference/hooks-reference, read 2026-09-22.",
+        "projection": null,
+        "why": "the entry shape inside `.factory/settings.json` was not read, and whether hooks fire under `droid exec` is not verified"
+      }
     },
     {
       "key": "firebender",
@@ -380,7 +515,9 @@
       "headless": null,
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "headlessReason": "No CLI found: docs.firebender.com and firebender.com returned HTTP 403 on 2026-09-22; search results describe Firebender only as a coding agent plugin for Android Studio and JetBrains IDEs, with no terminal binary or headless mode.",
+      "hooks": null
     },
     {
       "key": "forge",
@@ -396,10 +533,22 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`forge -p \"<prompt>\"` (\"Direct prompt to process without entering interactive mode. When provided, executes a single command and exits\"; stdin can be piped too) runs one prompt in a new conversation and returns to the shell, so the final response is the tail of stdout; there is no `--output-format` flag. No approval or permission flag exists in cli.rs or the README (only `--verbose`, `--sandbox <name>` for a git worktree, `--conversation-id` to resume, `--agent`, `-C`), so how tool approvals behave unattended is not verified. `--conversation-id` resumes and is not passed.",
+        "command": "forge -p {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "",
+        "source": "github.com/antinomyhq/forge README.md and crates/forge_main/src/cli.rs on main, read 2026-09-22 (forgecode.dev/docs returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": false,
+        "how": "No hook system in the README or crates/forge_main/src/cli.rs; forgecode.dev was unreachable (HTTP 403), so not fully verified. Read 2026-09-22.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     },
     {
       "key": "gemini",
@@ -420,7 +569,13 @@
         "identifiers": "a Gemini model id",
         "source": "google-gemini/gemini-cli docs/core/subagents.md, read 2026-09-09"
       },
-      "headless": null,
+      "headless": {
+        "how": "`gemini -p \"<prompt>\"` (\"Prompt text. Appended to stdin input if provided. Forces non-interactive mode.\") runs one prompt in a fresh session; `--output-format text` (the default; text, json, stream-json) prints the response as plain text, so the last line of stdout is the tail of the final answer. `--approval-mode` (default `default`) takes `default`, `auto_edit`, `yolo`, `plan`: `auto_edit` auto-approves edits and keeps the other approvals, `yolo` approves everything (`--yolo`/`-y` is deprecated in its favour). `--resume` is not passed.",
+        "command": "gemini -p {prompt} --output-format text {permissions}",
+        "permissions": "--approval-mode auto_edit",
+        "sandboxPermissions": "--approval-mode yolo",
+        "source": "docs/cli/cli-reference.md and docs/cli/headless.md in google-gemini/gemini-cli on main, read 2026-09-22"
+      },
       "agentFile": {
         "dir": ".gemini/agents",
         "extension": ".md",
@@ -445,6 +600,25 @@
         "after": null,
         "where": "the hooks configuration docs/hooks/index.md describes",
         "source": "docs/hooks/index.md in google-gemini/gemini-cli on main, read 2026-09-22: SessionStart fires on startup, resume and clear, not after compression, so nothing replays the checkpoint there"
+      },
+      "hooks": {
+        "holds": true,
+        "how": "Hooks in settings.json (project `.gemini/settings.json`, user `~/.gemini/settings.json`, system `/etc/gemini-cli/settings.json`) as {\"hooks\": {\"AfterAgent\": [{\"type\": \"command\", \"command\": \"...\", \"name\": \"...\", \"timeout\": 60000}]}}. `AfterAgent` fires when the agent loop ends, once per turn after the final response. Input: `prompt`, `prompt_response` (the final text), `stop_hook_active` (true inside a retry sequence). Output: `decision: \"deny\"` (`block` accepted as an alias) rejects the response and triggers a retry turn with `reason` sent to the agent as a new prompt; exit code 2 does the same with stderr as feedback; `continue: false` stops; `systemMessage` shows to the user. Only the JSON object may be printed. Whether hooks run in `-p` mode is not verified. Sources: docs/hooks/index.md and docs/hooks/reference.md in google-gemini/gemini-cli on main, read 2026-09-22.",
+        "projection": {
+          "where": ".gemini/settings.json",
+          "root": {},
+          "key": "hooks",
+          "entry": {
+            "type": "command",
+            "command": "{command}",
+            "name": "cruise"
+          },
+          "events": {
+            "stopping": "AfterAgent"
+          },
+          "stopEntry": {},
+          "how": "`AfterAgent` carries the final text as `prompt_response` and takes `decision: \"block\"` (an alias of `deny`) with `reason`, which becomes the next prompt; the hook prints only the JSON object. Merged into the project's settings under `hooks`, the rest of the file left as it was."
+        }
       }
     },
     {
@@ -461,10 +635,17 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`goose run -t \"<prompt>\" --no-session -q` runs one prompt headless: `-t, --text` is the input text, `--no-session` runs without creating or storing a session file, `-q, --quiet` suppresses non-response output and prints only the model response to stdout (`--output-format` defaults to text), so the last line of stdout is the tail of the response. Approvals are the `GOOSE_MODE` environment variable, not a flag: auto, approve, chat, smart_approve, default auto (autonomous: files and tools without approval), so no permission flag is needed and the runner sets nothing. `-r/--resume` is not passed.",
+        "command": "goose run -t {prompt} --no-session -q {permissions}",
+        "permissions": "",
+        "sandboxPermissions": "",
+        "source": "documentation/docs/guides/goose-cli-commands.md, environment-variables.md and managing-tools/goose-permissions.md in block/goose on main, read 2026-09-22 (block.github.io returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": null
     },
     {
       "key": "grok",
@@ -480,10 +661,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`grok -p \"<prompt>\"` (`-p, --single <PROMPT>`) is headless mode: Grok processes the prompt, runs any tools, prints the result to stdout and exits when the response is complete. The default `--output-format plain` is text (json and streaming forms exist; update messages go to stderr), so the last line of stdout is the tail of the final answer. `--permission-mode <MODE>` takes acceptEdits (file edits without a prompt), auto, dontAsk (pre-approved tools only) and bypassPermissions; `--always-approve` (alias `--yolo`, the same as bypassPermissions) runs tool calls without interactive prompts, with deny rules, hooks and admin locks still applied, and is what the docs recommend for scripts. `-r/--resume`, `-c/--continue` and `--fork-session` are not passed.",
+        "command": "grok -p {prompt} {permissions}",
+        "permissions": "--permission-mode acceptEdits",
+        "sandboxPermissions": "--always-approve",
+        "source": "crates/codegen/xai-grok-pager/docs/user-guide/14-headless-mode.md and 22-permissions-and-safety.md in xai-org/grok-build on main (the binary is installed as `grok`), read 2026-09-22 (docs.x.ai returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "Hooks are read from `~/.grok/config.toml` (plus managed config) and, for compatibility, from `~/.claude/settings.json`, `<project>/.claude/settings.json`, `~/.cursor/hooks.json` and `<project>/.cursor/hooks.json` (Cursor's camelCase `stop` maps to `Stop`). `Stop` fires when an agent turn ends on a genuine completion and can block the stop (Claude Code-compatible); input has `stopHookActive`, `lastAssistantMessage` (the final text, clipped at 32,768 chars) and `reason` (`end_turn`). Output {\"decision\": \"block\", \"reason\": \"...\"} feeds the reason back as a user message and the agent runs another round; {\"continue\": false, \"stopReason\": \"...\"} forces a stop; exit code 2 blocks with stderr as feedback. After 8 continuations in one turn the gate is overridden; Stop times out at 600 s and fails open. Whether Stop fires in `-p` mode is not stated. Source: docs/user-guide/10-hooks.md in xai-org/grok-build on main, read 2026-09-22.",
+        "projection": null,
+        "why": "reads `<project>/.claude/settings.json` and `<project>/.cursor/hooks.json`, both of which the factory writes, so nothing of its own is needed"
+      }
     },
     {
       "key": "hermes",
@@ -501,10 +694,22 @@
       "projectable": false,
       "unprojectableReason": "its skills directory is ~/.hermes/skills, outside the repository",
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`hermes -z <prompt>` is the documented scripted one-shot entry point: one prompt in, only the agent's final reply as plain text on stdout (no banner, spinner or tool previews), then exit, so the last line of stdout is the tail of the final answer. Exit codes: 0 completed, 2 failed, partial or iteration budget spent, 1 completed with no text, 130 interrupted. Unattended approvals follow `approvals.mode` in ~/.hermes/config.yaml (default `smart`: an auxiliary model auto-approves low-risk flagged commands, denies risky ones and escalates uncertain ones); `--yolo` bypasses the dangerous-command prompts, with `approvals.deny` globs still enforced. `-c/--continue` and `-r/--resume` are not passed.",
+        "command": "hermes -z {prompt} {permissions}",
+        "permissions": "",
+        "sandboxPermissions": "--yolo",
+        "source": "website/docs/reference/cli-commands.md (the global options table, `hermes -z <prompt> — scripted one-shot`) and website/docs/user-guide/configuration.md (Smart Approvals) in NousResearch/hermes-agent on main, read 2026-09-22 (hermes-agent.nousresearch.com returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "Shell hooks in the `hooks:` block of ~/.hermes/config.yaml: each is a script given a JSON payload on stdin that answers JSON on stdout, consented to on first use. `post_llm_call` and `on_session_end` are observers whose return is ignored; the one directive that keeps a turn going is `pre_verify`, at the bounded edited-code verify gate, which accepts {\"action\": \"continue\", \"message\": \"...\"} or {\"decision\": \"block\", \"reason\": \"...\"} — continuation at that gate only, not an every-turn stop hook. Source: website/docs/user-guide/features/hooks.md in NousResearch/hermes-agent on main, read 2026-09-22.",
+        "projection": null,
+        "why": "continuation is only at the verify gate (`pre_verify`), not at the end of a turn"
+      }
     },
     {
       "key": "junie",
@@ -523,7 +728,9 @@
       "headless": null,
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "headlessReason": "Not verified: jetbrains.com/help/junie and junie.jetbrains.com returned HTTP 403 on 2026-09-22, the GitHub README shows the `junie` binary in interactive use only, and the npm README is empty. JetBrains' own action.yml (JetBrains/junie-github-action on main) runs `junie --output-format=json --input-format=json --json-output-file=<file> --auth=<token> < input.json`, JSON in and out with an undocumented input schema; no plain-text prompt run or approval flag was seen.",
+      "hooks": null
     },
     {
       "key": "kilocode",
@@ -539,10 +746,22 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`kilo run \"<message>\"` is the non-interactive mode: it sends one prompt, streams the formatted output to stdout (`--format default`; `--format json` gives raw JSON events) and exits when the session goes idle, so the last line of stdout is the tail of the response; exit 0 on success, 124 on timeout, 1 on error or no assistant message. Without `--auto` a non-interactive run cannot prompt and auto-rejects any permission request, exiting 1 with a stderr diagnostic; permissions the config resolves to `allow` run without asking. `--auto` approves every request not explicitly denied. `-c/--continue`, `-s/--session` and `--fork` are not passed.",
+        "command": "kilo run {permissions} {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "--auto",
+        "source": "packages/kilo-docs/pages/code-with-ai/platforms/cli-reference.md and cli.md (Autonomous Mode, exit codes, auto-reject) and packages/opencode/src/cli/cmd/run.ts in Kilo-Org/kilocode on main, read 2026-09-22 (kilocode.ai returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": false,
+        "how": "Kilo CLI (an opencode fork) has plugins, not shell hooks: JS/TS modules in ~/.config/kilo/plugin/, the `plugin` array of ~/.config/kilo/kilo.json, or the project's .kilo/ config. The `event` hook fires for every bus event including `session.idle`; no documented hook output makes the agent continue. Source: packages/kilo-docs/pages/automate/extending/plugins.md in Kilo-Org/kilocode on main, read 2026-09-22.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     },
     {
       "key": "kimi",
@@ -558,10 +777,22 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`kimi -p \"<prompt>\"` (`--prompt`) runs one prompt non-interactively and streams the assistant output to stdout without the TUI: assistant text goes to stdout prefixed with `• ` (wrapped lines indented two spaces), thinking, tool progress and notices to stderr, so the last stdout line is the tail of the final answer, possibly `• `-prefixed; `--output-format stream-json` is the JSONL alternative. `--prompt` cannot be combined with `--yolo`, `--auto` or `--plan`: non-interactive mode uses the `auto` (never ask) permission mode by default, so nothing prompts and no flag is needed. `-c/--continue` and `-S/--session` are not passed.",
+        "command": "kimi -p {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "",
+        "source": "docs/en/reference/kimi-command.md (the flag table, Non-interactive (print) mode, constraints) in MoonshotAI/kimi-code on main, read 2026-09-22 (moonshotai.github.io returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "Hooks are [[hooks]] entries (event, optional matcher, command) in ~/.kimi-code/config.toml; the CLI passes the event as JSON on stdin with `hook_event_name`. `Stop` is blockable: triggered when the model is about to end the turn, and if blocked a message can be appended to let the model continue — exit code 2 with stderr as the reason, or a JSON object on stdout; exit 0 allows. Fail-open on script error or timeout. Source: docs/en/customization/hooks.md in MoonshotAI/kimi-code on main, read 2026-09-22.",
+        "projection": null,
+        "why": "hooks live in `~/.kimi-code/config.toml`, a person's file, not the project's"
+      }
     },
     {
       "key": "kiro-cli",
@@ -580,7 +811,9 @@
       "headless": null,
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "headlessReason": "Not verified: kiro.dev (docs/cli/chat, docs/cli/headless, docs/cli/hooks) and docs.aws.amazon.com returned HTTP 403 on 2026-09-22, and github.com/kirodotdev/Kiro is the issue tracker only. `kiro-cli chat --no-interactive \"prompt\"` and `--trust-all-tools` appear only in search snippets and in issue #7398 there, which also reports `--trust-all-tools` now showing an interactive confirmation before the session starts.",
+      "hooks": null
     },
     {
       "key": "lingma",
@@ -596,10 +829,22 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "Lingma was renamed Qoder CN (May 2026) and its terminal product is Qoder CLI, binary `qodercli` (npm @qoder-ai/qodercli, which also installs a `qoder` dispatcher). `qodercli -p \"<prompt>\"` is the documented non-interactive mode for scripts: `-p`/`--print` prints the run and exits (the bundle's output formats are text, json and stream-json; the default layout of stdout was not verified, and the README example shows plain `-p`). `--permission-mode <mode>` (environment QODER_PERMISSION_MODE) takes default, accept_edits, bypass_permissions, dont_ask and auto, `bypass_permissions` being the internal yolo mode that bypasses every check (a hidden `--yolo` does the same). What print mode does with a permission it cannot ask about was not verified. `-r/--resume` and `--session-id` are not passed.",
+        "command": "qodercli {permissions} -p {prompt}",
+        "permissions": "--permission-mode accept_edits",
+        "sandboxPermissions": "--permission-mode bypass_permissions",
+        "source": "the npm package @qoder-ai/qodercli: its README (`qodercli -p \"...\"`, the --permission-mode / QODER_PERMISSION_MODE table, the bin names) and the published bundle/qodercli.js in qodercli-1.1.61 (the option definitions -p/--print, --permission-mode with its mode list, the hidden --yolo), read 2026-09-22 (docs.qoder.com, help.aliyun.com and alibabacloud.com returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "From the published bundle/qodercli.js (1.1.61): hooks under `hooks` by event in settings.json (global <config dir>/settings.json, workspace settings.json or settings.local.json); events include PreToolUse, PostToolUse, PostToolUseFailure, UserPromptSubmit, Stop, SubagentStop, SessionStart, SessionEnd, Notification, PreCompact, PostCompact, StopFailure. A blocking Stop hook's text is injected as a continuation message and the turn goes on, mirroring Claude Code's `decision: block`. The docs page (docs.qoder.com/cli/hooks) returned HTTP 403, so the JSON shape is from source, read 2026-09-22.",
+        "projection": null,
+        "why": "hooks live in a settings.json the docs page for was unreachable; the shape is from source only"
+      }
     },
     {
       "key": "omp",
@@ -615,10 +860,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`omp -p \"<prompt>\"` (`--print`) runs Oh My Pi non-interactively: it processes the prompt, streams the result to stdout as plain rendered text (`--mode text` is the default under --print) and exits without the TUI, so the last line of stdout is the tail of the response; `--mode json` emits events instead, `--max-time <duration>` bounds the run and `--no-session` makes it ephemeral. The default `tools.approvalMode` is `yolo` (read, write and exec auto-approved, with safety overrides such as `rm -rf /`), so nothing prompts; `--auto-approve`/`--yolo` force it for the session and `--approval-mode always-ask|write|yolo` selects a stricter one. `-c/--continue` and `-r/--resume` are not passed.",
+        "command": "omp {permissions} -p {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "--yolo",
+        "source": "docs/cli-reference.md (Headless / print mode, the tools and approvals flags, output modes), docs/approval-mode.md and README.md in can1357/oh-my-pi on main, read 2026-09-22"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": false,
+        "how": "Hooks are JS/TS factories under <cwd>/.omp/hooks/pre/*.ts and .omp/hooks/post/*.ts (and the config-root equivalents) registering handlers with pi.on(event, ...). Lifecycle events include `agent_end` and `turn_end`, and the docs list what a hook can mutate (context, tool args, tool output, an injected message on before_agent_start) with no return from agent_end or turn_end that re-prompts the agent. Source: docs/hooks.md in can1357/oh-my-pi on main, read 2026-09-22.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     },
     {
       "key": "opencode",
@@ -639,7 +896,13 @@
         "identifiers": "provider/model, as opencode spells them",
         "source": "sst/opencode docs agents.mdx, read 2026-09-09"
       },
-      "headless": null,
+      "headless": {
+        "how": "`opencode run [message..]` runs opencode non-interactively with the prompt passed directly; `--format default` (the default) prints formatted text to stdout and `--format json` raw JSON events, so the last line of stdout is the tail of the response. Unattended approvals follow the `permission` config (most tools default to allow; `doom_loop` and `external_directory` default to ask; reads of .env files are denied), and what a non-interactive `ask` does was not verified. `--auto` approves every request not explicitly denied. `-c/--continue`, `-s/--session` and `--fork` are not passed.",
+        "command": "opencode run {permissions} {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "--auto",
+        "source": "packages/web/src/content/docs/cli.mdx (the `run` section and flag table) and permissions.mdx (Auto mode, the defaults, `opencode run --auto`) in anomalyco/opencode on dev, read 2026-09-22 (opencode.ai returned HTTP 403)"
+      },
       "agentFile": {
         "dir": ".opencode/agents",
         "extension": ".md",
@@ -656,7 +919,13 @@
         "source": "opencode docs agents.mdx, Markdown and Permissions (the repository is anomalyco/opencode; opencode.ai is blocked from this sandbox), read 2026-09-15"
       },
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": false,
+        "how": "No shell hooks; plugins are JS/TS modules in .opencode/plugins/ (project) or ~/.config/opencode/plugins/ (global), or the `plugin` array in opencode.json. The `event` hook receives every bus event including `session.idle` (session completion), and `permission.ask` can auto-allow or auto-deny; no documented hook output makes the agent continue. Source: packages/web/src/content/docs/plugins.mdx and sdk.mdx in anomalyco/opencode on dev, read 2026-09-22.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     },
     {
       "key": "pi",
@@ -672,10 +941,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`pi -p`/`--print` runs the prompt, writes only the final assistant text to stdout and exits (the JSON and RPC modes reserve stdout for protocol records), so the last line of stdout is the tail of the response. Pi never asks per-tool approval, so an unattended run needs no permission flag; `--no-session` keeps the run ephemeral, a fresh session nothing persists. Print mode cannot show the project-trust prompt, so protected project resources are skipped unless `--approve` is passed.",
+        "command": "pi -p --no-session {prompt} {permissions}",
+        "permissions": "",
+        "sandboxPermissions": "",
+        "source": "packages/coding-agent/docs/cli.md, sessions.md, security.md and usage.md in badlogic/pi-mono on main, read 2026-09-22"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "No settings-file hooks: Pi uses extensions (TypeScript files under ~/.pi/agent/extensions/ or the project's extensions directory, or `-e <path>`). Events include session_start, before_agent_start, turn_end, agent_before_settle, agent_settled, agent_end; `turn_end` and `agent_before_settle` handlers can return `continue: true` for one more model request. Source: packages/coding-agent/docs/extensions.md in badlogic/pi-mono on main, read 2026-09-22.",
+        "projection": null,
+        "why": "continuation is an extension written in TypeScript, not a command hook"
+      }
     },
     {
       "key": "qodercli",
@@ -691,10 +972,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "Qoder CLI, binary `qodercli` (npm @qoder-ai/qodercli, which also installs a `qoder` dispatcher). `qodercli -p \"<prompt>\"` is the documented non-interactive mode for scripts: `-p`/`--print` prints the run and exits (the bundle's output formats are text, json and stream-json; the default layout of stdout was not verified, and the README example shows plain `-p`). `--permission-mode <mode>` (environment QODER_PERMISSION_MODE) takes default, accept_edits, bypass_permissions, dont_ask and auto, `bypass_permissions` being the internal yolo mode that bypasses every check (a hidden `--yolo` does the same). What print mode does with a permission it cannot ask about was not verified. `-r/--resume` and `--session-id` are not passed.",
+        "command": "qodercli {permissions} -p {prompt}",
+        "permissions": "--permission-mode accept_edits",
+        "sandboxPermissions": "--permission-mode bypass_permissions",
+        "source": "the npm package @qoder-ai/qodercli: its README (`qodercli -p \"...\"`, the --permission-mode / QODER_PERMISSION_MODE table, the bin names) and the published bundle/qodercli.js in qodercli-1.1.61 (the option definitions -p/--print, --permission-mode with its mode list, the hidden --yolo), read 2026-09-22 (docs.qoder.com, help.aliyun.com and alibabacloud.com returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "From the published bundle/qodercli.js (1.1.61): hooks under `hooks` by event in settings.json (global <config dir>/settings.json, workspace settings.json or settings.local.json); events include PreToolUse, PostToolUse, PostToolUseFailure, UserPromptSubmit, Stop, SubagentStop, SessionStart, SessionEnd, Notification, PreCompact, PostCompact, StopFailure. A blocking Stop hook's text is injected as a continuation message and the turn goes on, mirroring Claude Code's `decision: block`. The docs page (docs.qoder.com/cli/hooks) returned HTTP 403, so the JSON shape is from source, read 2026-09-22.",
+        "projection": null,
+        "why": "hooks live in a settings.json the docs page for was unreachable; the shape is from source only"
+      }
     },
     {
       "key": "qwen",
@@ -710,10 +1003,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`qwen -p <prompt>` runs headless and prints the response as plain text to stdout (`--output-format`/`-o` takes text, json, stream-json; text is the default), so the last line of stdout is the tail of the final answer. `--approval-mode` takes plan, default, auto-edit, auto, yolo; `--yolo`/`-y` auto-approves every tool call, shell and edits included, and enables no sandbox. `--continue` and `--resume` are not passed; each `-p` run without them is a fresh session.",
+        "command": "qwen -p {prompt} {permissions}",
+        "permissions": "--approval-mode auto-edit",
+        "sandboxPermissions": "--yolo",
+        "source": "docs/users/features/headless.md and docs/users/features/approval-mode.md in QwenLM/qwen-code on main, read 2026-09-22"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "Hooks in the settings (project `.qwen/settings.json` or user settings). Events include PreToolUse, PostToolUse, Stop (before the turn ends), SubagentStop, SessionEnd. Stop returns {\"decision\": \"allow|deny|block|ask\", \"reason\": \"...\"}; `block` or `deny` with a mandatory reason makes the agent continue. Hooks fire in headless (-p) runs, save fire-and-forget events such as StopFailure. Source: docs/users/features/hooks.md in QwenLM/qwen-code on main, read 2026-09-22.",
+        "projection": null,
+        "why": "the entry shape inside `.qwen/settings.json` was not read, only the event and its output"
+      }
     },
     {
       "key": "rovodev",
@@ -729,10 +1034,17 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`acli rovodev run <instruction>` runs Rovo Dev non-interactively with the prompt as the trailing argument; Atlassian's own GitHub Action invokes exactly `acli rovodev run --yolo \"$PROMPT\"`, and `--yolo` runs every file, shell and git tool without confirmation. Whether a run without `--yolo` blocks on a confirmation unattended, and the exact shape of stdout, are not verified: support.atlassian.com returned HTTP 403 to every fetch.",
+        "command": "acli rovodev run {permissions} {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "--yolo",
+        "source": "action.yml in atlassian-labs/rovo-dev-action on main, read 2026-09-22 (support.atlassian.com/rovo/docs/rovo-dev-cli-commands/ returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": null
     },
     {
       "key": "shai",
@@ -748,10 +1060,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "SHAI enters headless mode when stdin is not a terminal or a prompt is given as trailing arguments (`shai \"now run it!\"`): events stream to stderr and the final assistant message is printed to stdout, so the last line of stdout is the tail of the response (`--trace` prints the whole trace as JSON instead). The headless agent is built with `.sudo()`, so tools run without approval prompts and no permission flag exists or is needed.",
+        "command": "shai {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "",
+        "source": "README.md, shai-cli/src/main.rs and shai-cli/src/headless/app.rs in ovh/shai on main, read 2026-09-22"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": false,
+        "how": "No hook system in the README or the shai-cli source read, 2026-09-22.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     },
     {
       "key": "tabnine",
@@ -767,10 +1091,22 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`tabnine -y -p <prompt>` is how Tabnine's own GitHub Action runs the agent non-interactively: `-p` passes the prompt, `-y` auto-accepts so tool calls execute without confirmation, and TABNINE_TOKEN must be set. Search excerpts of docs.tabnine.com say a non-interactive run converts any tool decision that would ask the user into a deny, so `-y` is needed for edits to land; the docs pages returned HTTP 403, so the shape of stdout is not verified.",
+        "command": "tabnine -p {prompt} {permissions}",
+        "permissions": "-y",
+        "sandboxPermissions": "-y",
+        "source": "action.yml in codota/tabnine-pr-agent on main, read 2026-09-22 (docs.tabnine.com/main/getting-started/tabnine-cli/git-integrations and features/commands returned HTTP 403)"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": false,
+        "how": "Not verified: docs.tabnine.com/main/getting-started/tabnine-cli/features/hooks exists and search excerpts list events under a `hooks` settings key (BeforeAgent, AfterAgent, SessionStart, SessionEnd, BeforeTool, AfterTool, BeforeModel, AfterModel), but the page returned HTTP 403 on 2026-09-22, so the payloads and whether a hook can continue the agent are unconfirmed.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     },
     {
       "key": "trae",
@@ -789,7 +1125,14 @@
       "headless": null,
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "headlessReason": "Editor-only: the Trae IDE (docs.trae.ai, SOLO mode) has no command line. ByteDance's open-source Trae Agent ships `trae-cli run \"task\"` (installed from source with `uv sync`), a different product whose output ends on `Trajectory saved to: <file>` rather than the response; not recorded here. github.com/bytedance/trae-agent README.md and trae_agent/cli.py, read 2026-09-22.",
+      "hooks": {
+        "holds": false,
+        "how": "No hook system found in trae-agent's README or cli.py, read 2026-09-22.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     },
     {
       "key": "vibe",
@@ -805,10 +1148,22 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
-      "headless": null,
+      "headless": {
+        "how": "`vibe --prompt <task>` (or `-p`) runs non-interactively; `--output` is text by default (json prints every message at the end, streaming is NDJSON), so the last line of stdout is the tail of the response. Without a flag the run keeps Vibe's normal tool-approval behaviour; `--auto-approve` (alias `--yolo`) approves every tool call. `-c/--continue` and `--resume` are not passed.",
+        "command": "vibe -p {prompt} {permissions}",
+        "permissions": "",
+        "sandboxPermissions": "--yolo",
+        "source": "README.md in mistralai/mistral-vibe on main, read 2026-09-22"
+      },
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "hooks": {
+        "holds": true,
+        "how": "Hooks in <project>/.vibe/hooks.toml (trusted projects) and ~/.vibe/hooks.toml, types pre_tool, post_tool, post_agent. `post_agent` fires after an assistant turn ends with no pending tool calls and can return `decision: \"deny\"` with a reason to request a retry, capped at 3 retries per hook per user turn. Source: README.md in mistralai/mistral-vibe on main, read 2026-09-22.",
+        "projection": null,
+        "why": "`.vibe/hooks.toml` is TOML, which this factory writes nothing in, and `post_agent` caps retries at three"
+      }
     },
     {
       "key": "zcode",
@@ -827,7 +1182,9 @@
       "headless": null,
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "headlessReason": "ZCode (zcode.z.ai) is Z.ai's desktop coding agent; zcode.z.ai/en/docs/agents returned HTTP 403 on 2026-09-22 and no official CLI page was found. The CLIs found (kingsword09/zcode-cli, npm zcode-app-cli) say they are not affiliated with Z.ai.",
+      "hooks": null
     },
     {
       "key": "zed",
@@ -846,7 +1203,14 @@
       "headless": null,
       "agentFile": null,
       "usage": null,
-      "compaction": null
+      "compaction": null,
+      "headlessReason": "Editor-only: the zed CLI (docs/src/reference/cli.md in zed-industries/zed on main, read 2026-09-22) lists only -w/--wait, -n/--new, -a/--add, -r/--reuse, -e/--existing, --diff, --foreground, --user-data-dir, -v/--version, --completions, --uninstall, --zed and the channel flags; nothing sends a prompt to the agent panel.",
+      "hooks": {
+        "holds": false,
+        "how": "No CLI-level hook system; the agent lives in the GUI Agent Panel. docs/src/reference/cli.md in zed-industries/zed on main, read 2026-09-22.",
+        "projection": null,
+        "why": "no way for a hook's output to continue the agent was verified"
+      }
     }
   ]
 }

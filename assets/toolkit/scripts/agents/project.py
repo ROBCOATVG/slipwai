@@ -460,6 +460,67 @@ def copy_context_blocks(path: Path) -> None:
         materialize(path, updated)
 
 
+def materialize_json(path: Path, content: dict[str, object]) -> None:
+    """A JSON projection compared as data: a file a person may also hold keys in, and format as they like."""
+    EXPECTED.add(path)
+    if CHECK:
+        if not path.is_file():
+            FINDINGS.append(f"{path.relative_to(ROOT)}: missing")
+            return
+        try:
+            present = json.loads(path.read_text())
+        except ValueError:
+            present = None
+        if present != content:
+            FINDINGS.append(f"{path.relative_to(ROOT)}: differs from its canonical source")
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(content, indent=2, ensure_ascii=False) + "\n")
+
+
+def hook_file(harness: dict[str, object]) -> tuple[Path, dict[str, object]] | None:
+    """The hook file this harness reads `scripts/agents/cruise.py stopping` from, and its whole content: the
+    registry's `hooks.projection` says where, how an entry is spelled and which event runs which verb, and the
+    project's own keys in that file — a person's other hooks, other settings — are carried over untouched.
+    None where the registry records no projection: the harness has no such hook, the factory writes the file
+    elsewhere (Claude Code's settings), or the file's shape was not read."""
+    hooks = harness.get("hooks")
+    projection = hooks.get("projection") if isinstance(hooks, dict) else None
+    if not isinstance(projection, dict):
+        return None
+    path = ROOT / str(projection["where"])
+    script = f"python3 {PREFIX}scripts/agents/cruise.py"
+    events: dict[str, object] = {}
+    for verb, event in dict(projection["events"]).items():  # type: ignore[call-overload]
+        entry = json.loads(json.dumps(projection["entry"]).replace("{command}", f"{script} {verb}"))
+        if verb == "stopping":
+            entry.update(dict(projection.get("stopEntry") or {}))  # type: ignore[call-overload]
+        events[str(event)] = [entry]
+    present: dict[str, object] = {}
+    if path.is_file():
+        try:
+            loaded = json.loads(path.read_text())
+        except ValueError:
+            raise RuntimeError(f"{path.relative_to(ROOT)} is not JSON; the hooks {harness['name']} runs /cruise's "
+                               "stop hook from cannot be written into it") from None
+        if isinstance(loaded, dict):
+            present = loaded
+    content: dict[str, object] = {**dict(projection.get("root") or {}), **present}  # type: ignore[call-overload]
+    key = str(projection["key"])
+    existing = content.get(key)
+    merged = dict(existing) if isinstance(existing, dict) else {}
+    merged.update(events)
+    content[key] = merged
+    return path, content
+
+
+def project_hooks(harness: dict[str, object]) -> None:
+    """The stop hook, where the harness has one this factory knows the shape of."""
+    projected = hook_file(harness)
+    if projected is not None:
+        materialize_json(*projected)
+
+
 def unprojected(directory: object) -> bool:
     """Under `--check`, whether this projection directory is simply absent.
 
@@ -512,8 +573,10 @@ def project(harness: dict[str, object]) -> None:
     if declared and len(absent) == len(declared):
         # Every one of this harness's directories is missing, so `./init` has not run in this checkout and
         # its context file is as unwritten as the rest — the same `unprojected` reasoning, which has to
-        # cover the context file too or a fresh clone fails the gate for a copy nobody has made yet.
+        # cover the context file and the hook file too, or a fresh clone fails the gate for a copy nobody has
+        # made yet.
         return
+    project_hooks(harness)
     sync_context(harness)
 
 
@@ -609,6 +672,55 @@ def check_registry(registry: list[dict[str, object]]) -> None:
                             "— an identifier, or null with a `commandsReason`")
         elif row["commands"] is None and not row.get("commandsReason"):
             FINDINGS.append(f"registry.json: `{harness['key']}` cannot bound commands and says no reason why")
+    check_headless_and_hooks(registry)
+
+
+def check_headless_and_hooks(registry: list[dict[str, object]]) -> None:
+    """The two columns `scripts/agents/cruise.py` runs a project through: a headless row is whole and names its
+    source, or it is null with the reason nobody verified one; a hooks row says whether the harness can hold a
+    turn and either carries the projection this script writes, whole, or says why it writes none."""
+    for harness in registry:
+        key = harness["key"]
+        if "headless" not in harness:
+            FINDINGS.append(f"registry.json: `{key}` has no `headless` column")
+        elif harness["headless"] is None:
+            if not harness.get("headlessReason"):
+                FINDINGS.append(f"registry.json: `{key}` has no headless command and says no `headlessReason`")
+        elif isinstance(harness["headless"], dict):
+            row = harness["headless"]
+            for field in ("how", "command", "permissions", "sandboxPermissions", "source"):
+                if field not in row:
+                    FINDINGS.append(f"registry.json: `{key}`'s headless row says no {field}")
+            if "{prompt}" not in str(row.get("command", "")):
+                FINDINGS.append(f"registry.json: `{key}`'s headless command has no {{prompt}} placeholder")
+            if not re.search(r"read \d{4}-\d{2}-\d{2}", str(row.get("source", ""))):
+                FINDINGS.append(f"registry.json: `{key}`'s headless source names no date it was read")
+        else:
+            FINDINGS.append(f"registry.json: `{key}`'s headless is neither an object nor null")
+        if "hooks" not in harness:
+            FINDINGS.append(f"registry.json: `{key}` has no `hooks` column")
+            continue
+        hooks = harness["hooks"]
+        if hooks is None:
+            continue
+        if not isinstance(hooks, dict) or "holds" not in hooks or not hooks.get("how"):
+            FINDINGS.append(f"registry.json: `{key}`'s hooks row must say `holds` and `how`, or be null")
+            continue
+        projection = hooks.get("projection")
+        if projection is None:
+            if not hooks.get("why"):
+                FINDINGS.append(f"registry.json: `{key}`'s hooks row projects nothing and says no `why`")
+        elif isinstance(projection, dict):
+            for field in ("where", "root", "key", "entry", "events", "how"):
+                if field not in projection:
+                    FINDINGS.append(f"registry.json: `{key}`'s hooks projection says no {field}")
+            events = projection.get("events")
+            if not isinstance(events, dict) or "stopping" not in events:
+                FINDINGS.append(f"registry.json: `{key}`'s hooks projection runs no `stopping`")
+            if "{command}" not in json.dumps(projection.get("entry")):
+                FINDINGS.append(f"registry.json: `{key}`'s hooks entry has no {{command}} placeholder")
+        else:
+            FINDINGS.append(f"registry.json: `{key}`'s hooks projection is neither an object nor null")
 
 
 def list_harnesses(registry: list[dict[str, object]]) -> None:

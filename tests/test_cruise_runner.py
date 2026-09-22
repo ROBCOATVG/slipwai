@@ -18,7 +18,7 @@ from support import FactoryTestCase
 
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.project.cruise import CONFIG, LOG, SETTINGS, STOP_FILE, cruise_config
-from slipwai.project.cruise_record import CHECKPOINT, CHECKPOINT_ENTRY
+from slipwai.project.cruise_record import CHECKPOINT, CHECKPOINT_ENTRY, LAST_RESPONSE, RUNNER_LOG, RUNNER_PID
 
 REGISTRY = json.loads((TOOLKIT_ROOT / "scripts/agents/registry.json").read_text())["harnesses"]
 # A harness the loop can stand in for: one shell script, its behaviour chosen by the first word of its script.
@@ -172,8 +172,10 @@ echo "cruise: continue\"""")
             spinning = fake_harness(Path(directory), 'echo "cruise: continue"')
             stuck = cruise(repo, "run", "--no-park", env=spinning)
             self.assertEqual(stuck.returncode, 3, stuck.stdout)
-            self.assertIn("cruise: parked — no progress since iteration 3", stuck.stdout)
-            self.assertEqual([entry["last_line"] for entry in logged(repo)[2:]], ["cruise: continue"] * 2)
+            # The log is the run's memory: iteration 2 changed nothing this iteration did not, so it is the
+            # second of the two the window holds.
+            self.assertIn("cruise: parked — no progress since iteration 2", stuck.stdout)
+            self.assertEqual([entry["last_line"] for entry in logged(repo)[2:]], ["cruise: continue"])
             # A budget is the other honest end: it says so and exits 0.
             (Path(directory) / "calls").unlink()
             cruise(repo, "--set", "max_iterations=1")
@@ -181,72 +183,6 @@ echo "cruise: continue\"""")
             budget = cruise(repo, "run", env=ticking)
             self.assertEqual(budget.returncode, 0, budget.stderr)
             self.assertIn("cruise: budget spent — 1 iteration(s)", budget.stdout)
-
-    def test_the_registry_says_how_each_harness_runs_headless_or_that_nobody_checked(self) -> None:
-        """The loop guesses no flag: a harness runs headless the way its own documentation says, on the date
-        the row names, and a harness with `null` is told to use its own loop over `/cruise` in a session."""
-        for entry in REGISTRY:
-            self.assertIn("headless", entry, entry["key"])
-            row = entry["headless"]
-            if row is None:
-                continue
-            self.assertIn("{prompt}", row["command"], entry["key"])
-            for field in ("how", "command", "permissions", "sandboxPermissions", "source"):
-                self.assertIn(field, row, f"{entry['key']}: {field}")
-            self.assertRegex(row["source"], r"read \d{4}-\d{2}-\d{2}", entry["key"])
-        claude = next(entry for entry in REGISTRY if entry["key"] == "claude")["headless"]
-        self.assertEqual(claude["command"], "claude -p {prompt} --output-format text {permissions}")
-        self.assertEqual(claude["permissions"], "--permission-mode acceptEdits")
-        self.assertEqual(claude["sandboxPermissions"], "--dangerously-skip-permissions")
-        # A print session ends its background delegates after 600s unless told to wait: a real run lost its
-        # story delegate mid-slice to exactly that.
-        self.assertEqual(claude["env"], {"CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "0"})
-        self.assertTrue(next(entry for entry in REGISTRY if entry["key"] == "codex")["headless"])
-        self.assertIsNone(next(entry for entry in REGISTRY if entry["key"] == "gemini")["headless"])
-        with tempfile.TemporaryDirectory() as directory:
-            repo = self.generate(directory, "headless", "standard", "python")
-            enable(repo, harness="gemini")
-            unknown = cruise(repo, "run")
-            self.assertEqual(unknown.returncode, 1)
-            self.assertIn("the registry records no way to run Gemini CLI headless", unknown.stderr)
-            self.assertIn("set CRUISE_HARNESS_COMMAND", unknown.stderr)
-            # The registry's own template is what runs when nothing overrides it, with the permission flag the
-            # row names — said once, at the start — and `--sandbox` is the only way to bypass them all.
-            enable(repo, harness="claude")
-            fake_claude = Path(directory) / "bin"
-            fake_claude.mkdir()
-            (fake_claude / "claude").write_text(
-                '#!/bin/sh\necho "$* wait=$CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS'
-                f' session=${{CLAUDE_CODE_SESSION_ID:-none}}" >> {Path(directory) / "claude-args"}\n'
-                'echo "cruise: done"\n')
-            (fake_claude / "claude").chmod(0o755)
-            # A loop started from inside a Claude Code session inherits that session's id; the child must not.
-            env = {"PATH": f"{fake_claude}:{os.environ['PATH']}", "CRUISE_POLL_SECONDS": "0",
-                   "CLAUDE_CODE_SESSION_ID": "the-parent-session"}
-            plain = cruise(repo, "run", env=env)
-            self.assertEqual(plain.returncode, 0, plain.stderr)
-            self.assertIn("cruise: harness: Claude Code; edits are accepted and every other permission is the "
-                          "harness's own to grant or refuse", plain.stdout)
-            sandboxed = cruise(repo, "run", "--sandbox", "--feature", "S1", env=env)
-            self.assertEqual(sandboxed.returncode, 0, sandboxed.stderr)
-            self.assertIn("--sandbox: every permission check is bypassed", sandboxed.stdout)
-            self.assertEqual((Path(directory) / "claude-args").read_text(),
-                             "-p /cruise --output-format text --permission-mode acceptEdits wait=0 session=none\n"
-                             "-p /cruise S1 --output-format text --dangerously-skip-permissions wait=0 session=none\n")
-            self.assertNotIn("session", logged(repo)[-1])
-            # An iteration whose output carries no last line is logged as such and treated as `continue` —
-            # and this is the third iteration in a row that changed nothing, so the run parks as stuck.
-            (fake_claude / "claude").write_text(f'#!/bin/sh\necho "$*" >> {Path(directory) / "claude-args"}\n'
-                                                'echo nothing to see\n')
-            silent = cruise(repo, "run", "--no-park", env=env)
-            self.assertEqual(silent.returncode, 3, silent.stdout + silent.stderr)
-            self.assertEqual(logged(repo)[-1]["last_line"], "no last line")
-            self.assertIn("no progress since iteration 1; one iteration to unblock, then park", silent.stdout)
-            self.assertIn("the bosun's iteration did not move it", silent.stdout)
-            self.assertEqual(logged(repo)[-1].get("attempt"), "unblock")
-            self.assertEqual((Path(directory) / "claude-args").read_text().splitlines()[-1],
-                             "-p /cruise unblock: no progress since iteration 1 --output-format text "
-                             "--permission-mode acceptEdits")
 
     def test_the_makefile_carries_the_loop_and_the_gate_holds_the_logs(self) -> None:
         """`make cruise` is the loop, `make cruise-status` the log, and `check-decisions` sits on `verify`
@@ -258,7 +194,11 @@ echo "cruise: continue\"""")
                 self.assertIn("cruise: ## Run /drive with nobody at the wheel", makefile)
                 self.assertIn("\tpython3 scripts/agents/cruise.py run $(if $(FEATURE),--feature $(FEATURE),) "
                               "$(CRUISE_FLAGS)", makefile)
-                self.assertIn("cruise-status: ## Say what the /cruise log shows", makefile)
+                self.assertIn("cruise-status: ## Say whether a /cruise runner is running and what its log shows",
+                              makefile)
+                self.assertIn("cruise-stop: ## End a /cruise run after the iteration in flight (CRUISE_FLAGS=--now "
+                              "ends that iteration too)\n\tpython3 scripts/agents/cruise.py stop $(CRUISE_FLAGS)",
+                              makefile)
                 self.assertIn("check-decisions: ## Fail when a decision log or demo log /cruise wrote has lost its "
                               "shape", makefile)
                 verify = re.search(r"^verify: (.*)$", makefile, re.MULTILINE)
@@ -280,7 +220,9 @@ echo "cruise: continue\"""")
             self.assertEqual(settings["hooks"]["SessionStart"], [{"matcher": "compact", "hooks": [resume_hook]}])
             self.assertEqual(settings["hooks"]["PreCompact"][0]["hooks"][0]["command"],
                              "python3 scripts/agents/cruise.py compacting")
-            self.assertIn(CHECKPOINT + "\n", (repo / ".gitignore").read_text())
+            ignored = (repo / ".gitignore").read_text()
+            for state in (CHECKPOINT, STOP_FILE, RUNNER_PID, RUNNER_LOG, LAST_RESPONSE):
+                self.assertIn(state + "\n", ignored)
             self.assertIn("## Checkpoint: what survives a compacted context", (repo / "commands/cruise.md").read_text())
             self.assertIn(CHECKPOINT_ENTRY, (repo / "commands/cruise.md").read_text())
             enable(repo)

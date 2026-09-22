@@ -14,6 +14,7 @@ again rather than a second thing to learn: `--refresh` reconciles a fresh survey
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from .cli_prompts import validate_project_name
 from .ecosystems import EXTRA, TARGETS
 from .errors import GenerationError
 from .experimental import FLAG, HELP, reshaped_intro
+from .harness import Agent, chosen, detect, keys, name_of
 from .layout import layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import FORGES, HOMES, RELEASE_PATHS, WRAPPED_KINDS, adoption_of
@@ -49,6 +51,50 @@ def next_report(root: Path) -> str:
     return next_steps.report(root, layout_of(document), adoption, apps_from_manifest(document))
 
 
+def agent_line(agent: Agent) -> str:
+    """What the report says about which coding agent the material is for, and how that was established."""
+    if agent.harness:
+        established = "named" if agent.provenance == "overridden" else agent.evidence
+        return (
+            f"Agent: {name_of(agent.harness)} ({established}), recorded in project.json. `./init` projects the "
+            f"skills and commands into it without asking; `--integration <agent>` there changes it."
+        )
+    if agent.candidates:
+        named = ", ".join(name_of(key) for key in agent.candidates)
+        return (
+            f"Agent: not recorded — this tree reads for more than one ({named}), and which of them gets the "
+            "material is a decision, not a guess. `./init` asks."
+        )
+    return (
+        "Agent: not recorded — nothing here says which one, and this did not run from inside one. `./init` asks, "
+        "or `./init --integration <agent>` names it."
+    )
+
+
+def run_init(root: Path, delivery: str, agent: Agent) -> None:
+    """`./<delivery>/init`, run once the adoption is committed.
+
+    Last, and never inside the commit: it is the one step that reaches the network, so a source that is
+    unreachable costs the adoption nothing — the commit is already made — and what it writes is left in the
+    tree for the person to read and commit, exactly as it is in a project the factory generated.
+    """
+    script = Path(delivery) / "init" if delivery != "." else Path("init")
+    command = [f"./{script.as_posix()}", *(["--integration", agent.harness] if agent.harness else [])]
+    print(f"\nRunning {' '.join(command)} — it installs Spec Kit, which needs the network.")
+    finished = subprocess.run(command, cwd=root, check=False)
+    if finished.returncode == 0:
+        print(
+            f"`{' '.join(command)}` is done; what it wrote is uncommitted, and yours to read and commit. "
+            "`slipwai adopt --next` says what is left."
+        )
+        return
+    print(
+        f"`{' '.join(command)}` exited {finished.returncode}, and the adoption is committed and unaffected: it is "
+        f"a step of its own, which is why it runs after. Run it again when whatever stopped it is fixed — "
+        f"`slipwai adopt --next` will keep saying that it is the step you are on."
+    )
+
+
 def adopt_main(argv: list[str]) -> None:
     parser = argparse.ArgumentParser(
         prog="slipwai adopt",
@@ -68,6 +114,20 @@ def adopt_main(argv: list[str]) -> None:
         "next, and why — read off the tree rather than remembered from the report",
     )
     parser.add_argument(FLAG, action="store_true", dest="experimental_intro", help=HELP)
+    parser.add_argument(
+        "--integration", default=None, metavar="AGENT",
+        help="which coding agent gets the skills and commands, by its key in the agent registry (default: the "
+        "harness this ran from, or the one the tree already reads; neither, and ./init keeps its own question)",
+    )
+    init = parser.add_mutually_exclusive_group()
+    init.add_argument(
+        "--init", action="store_true", dest="run_init", default=None,
+        help="run ./<delivery>/init once the adoption is committed, rather than leaving it as the next step. "
+        "It reaches Spec Kit's source, so it needs the network; what it writes is left for you to commit",
+    )
+    init.add_argument(
+        "--no-init", action="store_false", dest="run_init", help="do not run ./<delivery>/init (default)"
+    )
     parser.add_argument("--name", default=None, help="the project's name (default: the directory's)")
     parser.add_argument("--profile", choices=CATALOG["profiles"], default="standard")
     parser.add_argument(
@@ -111,6 +171,7 @@ def adopt_main(argv: list[str]) -> None:
     )
     args = parser.parse_args(argv)
     root = Path.cwd()
+    reshaped = reshaped_intro(args.experimental_intro)
     if args.next_steps:
         try:
             print(next_report(root))
@@ -144,7 +205,7 @@ def adopt_main(argv: list[str]) -> None:
             if not sys.stdin.isatty():
                 raise GenerationError(NOTHING_TO_ASK)
             apps, database, infrastructure, ci, release, asked_why = interview(
-                root, apps, proposal, args.delivery, reshaped_intro(args.experimental_intro)
+                root, apps, proposal, args.delivery, reshaped
             )
             why = why or asked_why
         apps = [app for app in apps if app.name not in args.skip]
@@ -203,8 +264,23 @@ def adopt_main(argv: list[str]) -> None:
             release = {"path": args.release, "provenance": "overridden" if args.release != "unknown" else "unrecorded"}
         home = (infrastructure or {}).get("home", proposal["home"])
         target = args.target or ("none" if home == "none" else "existing")
-        answers = Answers(name, args.profile, target, args.delivery, why, apps, database, infrastructure, ci, release)
+        if args.integration is not None and args.integration not in keys():
+            raise GenerationError(
+                f"--integration names `{args.integration}`, and the agent registry has no such harness; "
+                f"`python3 {args.delivery}/scripts/agents/project.py --list` lists them once the method is here"
+            )
+        agent = chosen(args.integration) if args.integration else detect(root)
+        answers = Answers(
+            name, args.profile, target, args.delivery, why, apps, database, infrastructure, ci, release,
+            agent=agent.record(),
+        )
         done = adopt(root, answers, found)
     except GenerationError as error:
         parser.error(str(error))
     print(report(done))
+    print(agent_line(agent))
+    # `./init` reaches Spec Kit's source, so it is the one step that needs the network, and it leaves files for
+    # the person to commit. Off unless asked, and asked for by default only where somebody is sitting at the
+    # terminal under the reshaped intro — which is the case the wall of `Next:` lines was written for.
+    if args.run_init if args.run_init is not None else (reshaped and not args.yes):
+        run_init(root, args.delivery, agent)

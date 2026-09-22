@@ -67,6 +67,11 @@ class Adoption:
     # `{"snapshot": the support table's date, "dated": the day it was read, "products": [{app, product, title, version,
     # cycle, status, eol, evidence}], "provenance"}` — what the applications run on, dated (`platform.py`).
     platform: dict = field(default_factory=dict)
+    # `{"harness": a key from the agent registry, "evidence": how it was established, "provenance": ...}` — which
+    # coding agent `./init` projects the skills and commands into. Detected from the environment a run started in
+    # or from what the tree already reads (`harness.py`), named with `--integration`, and `unrecorded` where
+    # neither said: `./init` still has its own question, and an empty record is that question still open.
+    agent: dict = field(default_factory=dict)
     # `{"with": version, "from": the delivery directory the material moved out of}` once `slipwai converge` has run:
     # every row read *as generated*, the material is at the root, and `origin: adopted` is history from then on.
     converged: dict = field(default_factory=dict)
@@ -83,6 +88,7 @@ class Adoption:
             **({"strategy": self.strategy} if self.strategy else {}),
             **({"convergence": self.convergence} if self.convergence else {}),
             **({"survey": self.survey} if self.survey else {}),
+            **({"agent": self.agent} if self.agent else {}),
             **({"converged": self.converged} if self.converged else {}),
         }
 
@@ -162,7 +168,10 @@ def adoption_of(document: dict) -> Adoption | None:
     converged = document.get("converged", {})
     if not isinstance(converged, dict) or (converged and not isinstance(converged.get("with"), str)):
         raise GenerationError("project.json's converged does not say which factory converged it")
+    agent = document.get("agent", {})
+    if not isinstance(agent, dict):
+        raise GenerationError("project.json's agent is not a record of which coding agent gets the material")
     return Adoption(
         why, facts["database"], facts["infrastructure"], facts["survey"], ci=facts["ci"], release=facts["release"],
-        convergence=convergence, strategy=strategy, platform=platform, converged=converged,
+        convergence=convergence, strategy=strategy, platform=platform, agent=agent, converged=converged,
     )

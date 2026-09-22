@@ -38,10 +38,10 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("foundation", ("assets", "errors", "versions", "changelog", "naming", "experimental")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what a snippet resolves to, what differs
-    # per backend language and where each backend answers its two probes — and what a build ecosystem's
-    # files say, for a repository the factory did not make.
+    # per backend language and where each backend answers its two probes — what a build ecosystem's
+    # files say, for a repository the factory did not make, and which coding agent reads what is written.
     ("contract", ("catalog", "axes", "features", "extensions", "targets", "examples", "backends", "images",
-                  "ecosystems", "probes")),
+                  "ecosystems", "probes", "harness")),
     # One validated answer per axis, which applications a project has, what they add up to being able to do,
     # how a written manifest reads back into that list, how a canonical toolkit file reaches a project, where
     # the delivery material lives — and the build wrapper a wrapped Java application runs through, written

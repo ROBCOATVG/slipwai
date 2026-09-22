@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .assets import VERSION
 from .convergence import summary
+from .harness import name_of
 from .layout import Layout
 from .origin import Adoption
 from .programme import expired, phrase, unplaced
@@ -202,10 +203,15 @@ def report(done: Adopted) -> str:
     lines += missing_tools(wrapped, done.layout)
     verify = "make" if done.makefile_written else done.layout.make
     init = f"./{done.layout.delivery}/init"
+    named = recorded_agent(done)
     lines += [
         "",
-        f"Next: {init} — installs Spec Kit and asks which coding agent gets the skills and commands (or name it: "
-        f"{init} --integration claude). Add --extension codegraph to index the code for that agent.",
+        f"Next: {init} — installs Spec Kit and " + (
+            f"projects the skills and commands into {name_of(named)}, which this record already "
+            f"names, so it asks nothing ({init} --integration <agent> changes it)"
+            if named
+            else f"asks which coding agent gets the skills and commands (or name it: {init} --integration claude)"
+        ) + ". Add --extension codegraph to index the code for that agent.",
         "Then: /ground, in the agent — it asks what the tree could not say, one row of the map at a time, and records "
         "each answer with its provenance; what --yes left unrecorded is settled there.",
         f"Then: {verify} verify — the gate. Its first run records the lint and typecheck findings that are there as "
@@ -221,6 +227,12 @@ def report(done: Adopted) -> str:
         "says where you are in it, read off the tree rather than remembered.",
     ]
     return "\n".join(lines)
+
+
+def recorded_agent(done: Adopted) -> str | None:
+    """The harness the record names, or None where the question is still `./init`'s to ask."""
+    harness = (done.adoption.agent or {}).get("harness")
+    return harness if isinstance(harness, str) and harness else None
 
 
 def ci_lines(adoption: Adoption, layout: Layout) -> list[str]:

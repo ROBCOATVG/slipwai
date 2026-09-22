@@ -306,6 +306,9 @@ def _answers(document: dict, database: dict, infrastructure: dict, ci: dict, rel
     return Answers(
         document["name"], document["profile"], document["target"], layout_of(document).delivery,
         document.get("why"), [], database, infrastructure, ci, release,
+        # Which coding agent the material is projected into is not a fact about the tree, so a re-survey does
+        # not re-read it: it is carried exactly as recorded, and `./init --integration` is what changes it.
+        agent=document.get("agent", {}),
     )
 
 

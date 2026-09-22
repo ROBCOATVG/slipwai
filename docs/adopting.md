@@ -147,6 +147,8 @@ it of, so `adopt` refuses rather than guessing.
 | `--refresh` | In an adopted repository: survey again, refresh what was only detected, report what disagrees with what a person decided, and regenerate what the record drives. This is what `/survey` runs |
 | `--next` | In an adopted repository: where it stands in the sequence this report names — what is done, what is next, and why. Read off the tree, not remembered: `./init` leaves `.specify/integration.json`, the first gate run leaves the baseline, `/ground` moves a row off `unrecorded`, a strategy is an accepted ADR |
 | `--experimental-intro` | Use the reshaped intro rather than the interview this version asks by default (or `SLIPWAI_EXPERIMENTAL_INTRO=1`): the terminal asks only what a terminal can answer, and the rest is the agent's to confirm against the code. Experimental within an experiment; its shape is still moving |
+| `--integration AGENT` | Which coding agent `./init` projects the skills and commands into, by its key in the agent registry. Default: the harness this ran from, or the one the tree already reads; where neither says, nothing is recorded and `./init` keeps its own question |
+| `--init` / `--no-init` | Run `./<delivery>/init` once the adoption is committed, or do not (default). It reaches Spec Kit's source, so it is the one step that needs the network, and what it writes is left uncommitted for you to read |
 | `--name NAME` | The project's name. Default: the directory's |
 | `--profile` | `standard` or `event-modelling`. Default: `standard` |
 | `--target` | `existing` — this deploys to infrastructure it does not own — or `none`. Default: `existing`, unless the infrastructure is `none` |
@@ -164,6 +166,24 @@ it of, so `adopt` refuses rather than guessing.
 | `--infrastructure-repository URL` | Likewise, and likewise implying `elsewhere` |
 | `--forge` | Where CI runs — `github`, `gitea`, `gitlab`, `other`, `none` — which decides what shape the gate's CI configuration can take. Default: what the tree or the remote says |
 | `--release` | How a change reaches production today: `pipeline`, `scripted`, `manual`, `unknown`. Default: what the tree says, and `unknown` recorded as `unrecorded` where it says nothing |
+
+## Which coding agent
+
+`./init` projects the canonical `skills/`, `commands/` and `agents/` into one harness's native locations —
+`assets/toolkit/scripts/agents/registry.json` declares the thirty-six it knows, and where each reads them
+from. That has always been `./init`'s question, asked after `adopt` had finished, which is one step too late
+to help the adoption: the questions worth handing to a coding agent are the ones asked before there is one.
+
+So `adopt` establishes it, and mostly without asking. A run started from inside a harness is told so by its
+environment. A repository whose team already uses one says so in the tree — `.claude/skills`, `.gemini/commands`,
+`.github/copilot-instructions.md`. Either way the answer is recorded in `project.json` under `agent`, with the
+evidence and `detected` provenance, and `./init` then asks nothing. `--integration` names it outright and is
+recorded `overridden`.
+
+What nothing says is left `unrecorded`, and said out loud: a directory two harnesses read — `.agents/skills`,
+which Codex, Zed and Antigravity all use — names neither, a tree that reads for two records neither because
+that is a decision, and a thirty-six-row list is not a question a terminal has any good way to ask. `./init`
+still has its own, and an empty record is that question still open.
 
 ## The map
 

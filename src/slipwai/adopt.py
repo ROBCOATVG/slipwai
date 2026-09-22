@@ -67,6 +67,9 @@ class Answers:
     # stands as `detected`, or as `unrecorded` where the tree said nothing.
     ci: dict = field(default_factory=dict)
     release: dict = field(default_factory=dict)
+    # `{"harness": ..., "evidence": ..., "provenance": ...}` from `harness.py`: which coding agent `./init`
+    # projects into. Empty means nobody said and nothing showed, and `./init` keeps its own question.
+    agent: dict = field(default_factory=dict)
 
 
 def check_repository(root: Path) -> None:
@@ -176,6 +179,7 @@ def facts(found: Survey, answers: Answers, layout: Layout) -> Adoption:
             "ci": list(found.ci), "containers": list(found.containers),
             "makefile": found.makefile, "readme": found.readme, "quickWins": list(found.quick_wins),
         },
+        agent=answers.agent,
     )
 
 

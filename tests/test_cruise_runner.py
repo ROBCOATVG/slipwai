@@ -1,9 +1,7 @@
 """`/cruise`'s settings and its outer loop: `.specify/cruise.json`, `scripts/agents/cruise.py`, and the registry's
-`headless` column the loop runs a harness through.
-
-The command says it stops for a human and for nothing else; the loop is what makes that true across sessions,
-so it is run here for real against a fake harness — one that makes progress and finishes, one that parks, one
-that touches the stop file, one that spins without changing anything — and read back through the log it keeps.
+`headless` column the loop runs a harness through. The command says it stops for a human and for nothing else;
+the loop is what makes that true across sessions, so it is run here for real against a fake harness — one that
+finishes, one that parks, one that touches the stop file, one that spins — and read back through its log.
 """
 from __future__ import annotations
 
@@ -28,6 +26,7 @@ FAKE = """#!/bin/sh
 count_file="$(dirname "$0")/calls"
 n=$(cat "$count_file" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$count_file"
 echo "$*" >> "$(dirname "$0")/prompts"
+echo "runner=${CRUISE_RUNNER:-unset} iteration=${CRUISE_ITERATION:-unset}" >> "$(dirname "$0")/marks"
 echo "iteration $n of the fake harness"
 {behaviour}
 """
@@ -45,8 +44,7 @@ def enable(repo: Path, harness: str = "claude", **settings: str) -> None:
 
 
 def fake_harness(directory: Path, behaviour: str) -> dict[str, str]:
-    """A fake harness whose command the loop runs instead of the registry's, and a fast poll."""
-    script = directory / "harness.sh"
+    script = directory / "harness.sh"  # the loop runs this instead of the registry's command, with a fast poll
     script.write_text(FAKE.replace("{behaviour}", behaviour))
     return {"CRUISE_HARNESS_COMMAND": f"sh {script} {{prompt}}", "CRUISE_POLL_SECONDS": "0.1"}
 
@@ -113,6 +111,8 @@ if [ "$n" -lt 3 ]; then echo "cruise: continue"; else echo "cruise: done"; fi"""
             self.assertIn("each iteration runs `/cruise 001-campaign` in a fresh session", run.stdout)
             self.assertIn("cruise: done — every specification is satisfied", run.stdout)
             self.assertEqual((Path(directory) / "prompts").read_text(), "/cruise 001-campaign\n" * 3)
+            self.assertEqual((Path(directory) / "marks").read_text().splitlines(),
+                             [f"runner=1 iteration={n}" for n in (1, 2, 3)])
             log = logged(repo)
             self.assertEqual([entry["iteration"] for entry in log], [1, 2, 3])
             self.assertEqual([entry["last_line"] for entry in log],

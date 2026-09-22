@@ -30,7 +30,8 @@ def cruise_summary() -> dict[str, str]:
     return {
         SKIPPER:
             "Decides one product question the ladder would have asked a person, as the owner brief and the "
-            "decision log say the owner would, and writes the entry; reads everything, edits nothing else",
+            "decision log say the owner would, and returns the entry under the number it was given; reads "
+            "everything, writes nothing",
         HAND:
             "Runs one slice's demo as the actor — through a browser where it has a screen — and reports the "
             "verdict with its evidence; writes only the demo log and its evidence, never code",
@@ -64,10 +65,13 @@ existing repository's release path is, whether a person has approved a release �
 here has, and the honest answer is `unavailable: <what a person must provide>`. That word is what lets the
 run park with a question instead of shipping a guess.
 
-Your one write is the entry you append to `{DECISIONS}`, in the shape that file shows, with `Decided by:`
-naming this type and the model you ran on. The session that delegated you writes the decision into the
-artifact the stage owns — the plan, the map, the model, the flag file — and re-derives the entry stage from
-it. Return the entry's number and its decision line; leave every other file alone.""",
+You write nothing. Return the whole entry, in the shape `{DECISIONS}` shows, under the number the brief gave
+it — `D<n>` is allocated by the session that delegated you, before dispatch, so that several of you deciding
+at once cannot come back with the same one — with `Decided by:` naming this type and the model you ran on.
+That session appends it to `{DECISIONS}` in number order, writes the decision into the artifact the stage
+owns — the plan, the map, the model, the flag file — and re-derives the entry stage from it. Number nothing
+else: a requirement, a criterion or an example your decision adds is that session's to number after you
+return, in dispatch order, because you cannot see what your siblings are adding.""",
 
         HAND: f"""You are the actor. You use what the slice built and you say what using it revealed.
 

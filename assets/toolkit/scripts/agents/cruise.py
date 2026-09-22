@@ -14,6 +14,12 @@ fresh context, until the last line of an iteration says `done`, a person stops i
     python3 scripts/agents/cruise.py status      # what the log says the run is doing
     python3 scripts/agents/cruise.py resume      # print the checkpoint into a compacted context; nothing when none
     python3 scripts/agents/cruise.py compacting  # stamp the checkpoint before the harness compacts
+    python3 scripts/agents/cruise.py loop        # what is reading this session's last line: the runner, or nobody
+    python3 scripts/agents/cruise.py stopping    # Claude Code's Stop hook: refuse to end a turn mid-iteration
+
+`run` marks every session it starts with `CRUISE_RUNNER=1` and `CRUISE_ITERATION=<n>`, which is how `loop` and
+`stopping` tell a runner's iteration from a `/cruise` a person typed — where nothing reads the last line, so
+`continue` is not an end the ladder has, and the session goes on to the next unit instead.
 
 A person stops a run with `touch .specify/cruise.stop`, or by interrupting this script: the iteration under
 way is killed, its increment commits are on the slice branch, and the next iteration re-derives from disk.
@@ -54,6 +60,15 @@ CHECKPOINT = ROOT / "specs/cruise-checkpoint.md"
 RESUME = ("cruise: this session is a /cruise iteration whose context was compacted. The checkpoint below is what "
           "the summary lost; read it before acting, then commands/cruise.md for the rules it names — run "
           "commands/drive.md as written, decide at its stops by the stop table, end with one of the four last lines.")
+# The two variables `run` sets in every session it starts: what tells a runner's iteration from a typed one.
+RUNNER_VARIABLE, ITERATION_VARIABLE = "CRUISE_RUNNER", "CRUISE_ITERATION"
+# What a session is told when nothing reads its last line — the same words `commands/cruise.md` carries.
+UNREAD = ("no outer loop is reading this: `cruise: continue` is not an end here, so the ladder goes on to the next "
+          "unit in this session and ends only with `done`, `parked` or `stopped`; `make cruise` runs it unattended")
+# How many times the Stop hook holds a turn against one checkpoint before it lets go: the command rewrites the
+# checkpoint at every stage boundary, so a checkpoint held this often without a rewrite is a session that is
+# not moving, and a hook that never let go would spend tokens forever on it.
+HOLD_LIMIT = 3
 REGISTRY = Path(__file__).with_name("registry.json")
 INTEGRATION = ROOT / ".specify/integration.json"
 # Every setting: the values it takes — a tuple of words, or a kind — its default, and what it controls. The
@@ -237,9 +252,10 @@ def child_environment(harness: dict[str, Any]) -> dict[str, str]:
     return environment
 
 
-def iterate(template: str, prompt: str, environment: dict[str, str]) -> str | None:
-    """Run one iteration, echoing its output, and return its last line."""
+def iterate(template: str, prompt: str, environment: dict[str, str], iteration: int) -> str | None:
+    """Run one iteration, marked as the runner's, echoing its output, and return its last line."""
     command = template.replace("{prompt}", shlex.quote(prompt))
+    environment = {**environment, RUNNER_VARIABLE: "1", ITERATION_VARIABLE: str(iteration)}
     last = None
     with subprocess.Popen(command, shell=True, cwd=ROOT, text=True, stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT, env=environment) as process:
@@ -268,6 +284,91 @@ def compacting() -> None:
     if CHECKPOINT.is_file():
         with CHECKPOINT.open("a") as handle:
             handle.write(f"- **Compacted:** {now()}\n")
+
+
+def loop() -> None:
+    """Say what is reading this session's last line, so an iteration knows what its end means."""
+    if os.environ.get(RUNNER_VARIABLE):
+        print(f"cruise: the outer loop (scripts/agents/cruise.py run) started this session as iteration "
+              f"{os.environ.get(ITERATION_VARIABLE, '?')} and reads its last line")
+    else:
+        print(f"cruise: {UNREAD}")
+
+
+def last_assistant_text(transcript: Path) -> str | None:
+    """The text of the last assistant message in a Claude Code transcript, or None where there is none."""
+    text = None
+    for line in transcript.read_text(errors="replace").splitlines():
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if entry.get("type") != "assistant":
+            continue
+        content = (entry.get("message") or {}).get("content")
+        if isinstance(content, str):
+            text = content
+        elif isinstance(content, list):
+            texts = [block.get("text", "") for block in content if isinstance(block, dict) and block.get("type") == "text"]
+            if texts:
+                text = texts[-1]
+    return text
+
+
+def stopping() -> None:
+    """Claude Code's Stop hook: hold the turn while an iteration is in flight and this is not its end.
+
+    Prose in a command file is not a control — the same session ended an iteration after the upstream stages
+    and, later, on a report that said "continuing now" — so the end of a turn is checked here, where the harness
+    lets a hook refuse it. The hook reads the event Claude Code hands it on stdin, and holds the turn (a
+    `block` decision, with the reason the model reads next) when a checkpoint says an iteration is in flight,
+    no stop file says a person ended it, and the last assistant message does not end on one of the four last
+    lines — or ends on `continue` in a session no runner started, where that line reaches nobody. A turn that
+    ends on `done` or `stopped` takes the checkpoint with it, the way the runner would. Every hold is stamped
+    on the checkpoint, and the hook lets go after HOLD_LIMIT holds with no rewrite in between — below the
+    harness's own cap on consecutive blocks, so it is this script that decides when to let go, and says so.
+    """
+    if not CHECKPOINT.is_file() or STOP.is_file():
+        return
+    try:
+        event = json.loads(sys.stdin.read() or "{}")
+    except ValueError:
+        event = {}
+    # The message the turn ends on, as the event carries it; the transcript otherwise, which can lag the event.
+    text = event.get("last_assistant_message")
+    if not isinstance(text, str) or not text.strip():
+        transcript = Path(str(event.get("transcript_path") or ""))
+        if not transcript.is_file():
+            return
+        text = last_assistant_text(transcript)
+    last = (text or "").rstrip().splitlines()[-1].strip() if (text or "").strip() else ""
+    ended = LAST_LINE.match(last) is not None
+    if ended and last in ("cruise: done", "cruise: stopped: human"):
+        CHECKPOINT.unlink(missing_ok=True)
+        return
+    if ended and (last != "cruise: continue" or os.environ.get(RUNNER_VARIABLE)):
+        return
+    checkpoint = CHECKPOINT.read_text()
+    if checkpoint.count("- **Held:**") >= HOLD_LIMIT:
+        print(f"cruise: held {HOLD_LIMIT} times against a checkpoint nothing rewrote; letting the turn end",
+              file=sys.stderr)
+        return
+    next_step = next((line.strip() for line in checkpoint.splitlines() if line.strip().startswith("- **Next:**")),
+                     "- **Next:** (the checkpoint names no next step; read it and commands/cruise.md)")
+    if last == "cruise: continue":
+        why = (f"`cruise: continue` reaches nobody: no runner started this session ({RUNNER_VARIABLE} is unset), "
+               "so the ladder continues here and the iteration ends only with `cruise: done`, "
+               "`cruise: parked: <why>` or `cruise: stopped: human`.")
+    else:
+        why = ("an iteration is in flight (specs/cruise-checkpoint.md) and this turn did not end on one of its "
+               "four last lines. An iteration ends only on `cruise: continue`, `cruise: done`, "
+               "`cruise: parked: <why>` or `cruise: stopped: human`; a message that says what it is about to do "
+               "next is a stop, whatever it says.")
+    with CHECKPOINT.open("a") as handle:
+        handle.write(f"- **Held:** {now()} — {last or 'no last line'!r}\n")
+    reason = (f"cruise: {why} Continue from the checkpoint: {next_step}. A person ends the run with "
+              f"`touch {STOP.relative_to(ROOT)}`.")
+    print(json.dumps({"decision": "block", "reason": reason}))
 
 
 def park(reason: str, no_park: bool, poll: float, seen: str) -> None:
@@ -318,7 +419,7 @@ def run(arguments: list[str]) -> None:
             return
         iteration = len(entries()) + 1
         started = now()
-        last = iterate(template, ask, environment)
+        last = iterate(template, ask, environment, iteration)
         iterations_this_run += 1
         seen = fingerprint()
         fingerprints.append(seen)
@@ -385,6 +486,12 @@ def main() -> None:
         return
     if arguments[:1] == ["compacting"]:
         compacting()
+        return
+    if arguments[:1] == ["loop"]:
+        loop()
+        return
+    if arguments[:1] == ["stopping"]:
+        stopping()
         return
     if "--set" in arguments:
         table = json.loads(CONFIG.read_text())

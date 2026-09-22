@@ -16,17 +16,22 @@ MAVEN_PERMISSIONS = ["./mvnw *"]
 
 
 def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
-    """What Claude Code runs around compaction, so a `/cruise` iteration resumes from its checkpoint.
+    """What Claude Code runs around compaction and at the end of a turn, so a `/cruise` iteration resumes
+    from its checkpoint and cannot end anywhere but on one of its four last lines.
 
     `SessionStart` with the `compact` matcher runs when the session continues after compaction and its
-    stdout is added to the context; `PreCompact` runs just before. Both call the cruise script, which prints
-    nothing unless an iteration is in flight, so a plain `/drive` session never sees them. The other
-    harnesses' equivalents, where one exists, are the registry's `compaction` rows.
+    stdout is added to the context; `PreCompact` runs just before. `Stop` runs when the model tries to end
+    its turn, and a hook there can refuse: `stopping` does, while a checkpoint says an iteration is in flight
+    and the turn's last line is not an end the contract knows — the one control a command file's prose is
+    not. All three call the cruise script, which does nothing unless an iteration is in flight, so a plain
+    `/drive` session never sees them. The other harnesses' equivalents, where one exists, are the registry's
+    `compaction` rows.
     """
     script = layout.under("scripts/agents/cruise.py")
     return {
         "PreCompact": [{"hooks": [{"type": "command", "command": f"python3 {script} compacting"}]}],
         "SessionStart": [{"matcher": "compact", "hooks": [{"type": "command", "command": f"python3 {script} resume"}]}],
+        "Stop": [{"hooks": [{"type": "command", "command": f"python3 {script} stopping"}]}],
     }
 
 

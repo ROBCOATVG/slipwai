@@ -16,6 +16,8 @@ from slipwai.catalog import CATALOG
 from slipwai.extensions import known_extensions, validate_extensions
 
 FAKE_SPECIFY = "#!/bin/sh\nexit 0\n"
+# `j` once per row moves the cursor from the first extension to the Confirm row below the last.
+TO_CONFIRM = b"j" * len(known_extensions(CATALOG))
 
 
 def run_init_at_a_terminal(repo: Path, args: list[str], keys: bytes, environment: dict) -> str:
@@ -59,7 +61,7 @@ class ExtensionsTest(FactoryTestCase):
             (fake_bin / "codegraph").chmod(0o755)
             environment = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
 
-            output = run_init_at_a_terminal(repo, ["--integration", "codex"], b"\rj\r", environment)
+            output = run_init_at_a_terminal(repo, ["--integration", "codex"], b"\r" + TO_CONFIRM + b"\r", environment)
 
             self.assertIn("CodeGraph", output)
             self.assertIn("Extensions: codegraph", output)
@@ -75,7 +77,7 @@ class ExtensionsTest(FactoryTestCase):
             (fake_bin / "specify").chmod(0o755)
             environment = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
 
-            output = run_init_at_a_terminal(repo, ["--integration", "codex"], b"j\r", environment)
+            output = run_init_at_a_terminal(repo, ["--integration", "codex"], TO_CONFIRM + b"\r", environment)
 
             self.assertIn("Extensions: none", output)
             self.assertNotIn("<!-- extension:codegraph:begin -->", (repo / "AGENTS.md").read_text())
@@ -259,7 +261,7 @@ class ExtensionsTest(FactoryTestCase):
 class ExtensionsCatalogTest(FactoryTestCase):
     def test_the_shipped_extensions_are_valid(self) -> None:
         validate_extensions(CATALOG)
-        self.assertIn("codegraph", known_extensions(CATALOG))
+        self.assertEqual(sorted(known_extensions(CATALOG)), ["codegraph", "uipro", "ux-gates"])
 
     def test_every_extension_exposes_replaceable_side_effect_free_guidance(self) -> None:
         for key in known_extensions(CATALOG):

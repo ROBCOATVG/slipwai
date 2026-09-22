@@ -107,6 +107,13 @@ have to reverse-engineer it from hex codes:
 - **Accessibility is part of the design, not a pass afterwards.** Real landmarks (`header`, `main`,
   `footer`, `nav`), a visible focus ring — `base.css` sets one — labels on controls, and a status message
   in a `role="status"` region so a change is announced rather than only seen.
+- **Decide before you build.** The first screen of a slice that this page has no decision for starts with
+  `skills/frontend-design`: a compact plan — palette, type, layout, principles — reviewed against the brief
+  for generic defaults before any code, then written into `tokens.css` and recorded here in the same commit.
+- **Review before you demo.** Every file the slice added or changed under the browser app is read against
+  `skills/web-interface-guidelines` — labels, focus, forms, motion, typography, the anti-patterns — and what
+  it finds is fixed before the demo stop, not carried as a note. Where the rules and this page disagree,
+  this page wins.
 """ }
 
 

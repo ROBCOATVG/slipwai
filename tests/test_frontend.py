@@ -211,6 +211,37 @@ class FrontendTest(FactoryTestCase):
             self.assertFalse((repo / "docs/design.md").exists())
             self.assertNotIn("docs/design.md", (repo / "AGENTS.md").read_text())
 
+    def test_a_browser_app_brings_the_two_design_skills_and_the_design_page_says_when(self) -> None:
+        """The catalogue said how work is done and nothing about what a screen should look like or how to
+        check one before it is demonstrated. `frontend-design` decides, `web-interface-guidelines` reviews,
+        and both are named at the moment they are needed — the design page every browser slice reads
+        first and the styled check in the demo stop — because a skill only listed in `skills/` is a skill
+        nobody reaches for. The guidelines are a pinned file: a review that fetched them would silently not
+        happen in a sandbox."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "designed-web", frontend="react-vite")
+
+            for skill in ("frontend-design", "web-interface-guidelines"):
+                text = (repo / f"skills/{skill}/SKILL.md").read_text()
+                self.assertIn("capabilities: frontend", text)
+                self.assertTrue((repo / f"skills/{skill}/LICENSE").is_file(), f"{skill} carries no LICENSE")
+            guidelines = repo / "skills/web-interface-guidelines/references/guidelines.md"
+            self.assertIn("### Anti-patterns", guidelines.read_text())
+            wrapper = (repo / "skills/web-interface-guidelines/SKILL.md").read_text()
+            self.assertNotIn("raw.githubusercontent.com", wrapper)
+
+            page = (repo / "docs/design.md").read_text()
+            self.assertIn("`skills/frontend-design`", page)
+            self.assertIn("`skills/web-interface-guidelines`", page)
+            self.assertIn("this page wins", page)
+            drive = (repo / "commands/drive.md").read_text()
+            self.assertIn("`skills/web-interface-guidelines`", drive)
+
+            headless = self.generate(directory, "headless-again", frontend="none")
+            for skill in ("frontend-design", "web-interface-guidelines"):
+                self.assertFalse((headless / f"skills/{skill}").exists(), f"{skill} shipped with no browser app")
+            self.assertNotIn("web-interface-guidelines", (headless / "commands/drive.md").read_text())
+
     def test_the_browser_app_calls_its_service_through_a_generated_client(self) -> None:
         """The types the app expects and the shapes the service serialises are one declaration.
 

@@ -18,9 +18,11 @@ notices:
 - event-modeling — current adaptation under the root MIT licence; its NOTICE
   records the CC0-1.0 starting point
 - find-skills — MIT; copyright Vercel, Inc.
+- frontend-design — Apache-2.0; copyright Anthropic, PBC
 - improve-codebase-architecture — MIT; copyright Matt Pocock
 - reduce-system-complexity — MIT; copyright Adam Bulmer
 - technical-writing — MIT; copyright Adam Bulmer
+- web-interface-guidelines — MIT (references/guidelines.md); copyright Vercel, Inc.
 - wtf — MIT; copyright Adam Bulmer
 
 The applicable licence notice and exact provenance for each adaptation remain

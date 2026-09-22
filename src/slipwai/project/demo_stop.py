@@ -51,8 +51,11 @@ STYLED = """**Before the demo, check every screen this slice adds or changes is 
 project's own styles — `docs/design.md`, or the design notes in the constitution or under `specs/` — or, where
 the slice needs something those do not cover, the baseline stylesheet and design tokens in {baseline} extended
 rather than bypassed. A screen still on browser defaults is a reason not to demo yet: the actor is being asked
-whether the thing works, and an unstyled page answers a different question first. Record the check with the
-others, naming the screens and where their styles came from.
+whether the thing works, and an unstyled page answers a different question first. Then read the files the
+slice changed under the browser app against `skills/web-interface-guidelines` — labels, focus, forms, motion,
+typography, the anti-patterns it lists — and fix what it finds before the demo rather than carrying it as a
+note. Record both checks with the others, naming the screens, where their styles came from, and what the
+review found.
 
 """
 DEMO_STOP = """### What the demo stop has to contain

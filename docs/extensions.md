@@ -4,7 +4,16 @@ An **extension** is an opt-in developer-tooling integration a generated project 
 --extension <key>` (repeatable, alongside `--integration <agent>`). It is not an axis: it never changes the
 generated skeleton's code, and it is answered later than generation — at `./init` time, the same moment a
 Spec Kit agent integration is chosen — rather than baked into `apps`/`Selection` when `./slipwai generate` runs.
-CodeGraph (a local MCP code-knowledge graph, https://github.com/colbymchenry/codegraph) is the first one.
+There are three:
+
+| Key | What it installs | Where | What it adds to `AGENTS.md` and `make verify` |
+|---|---|---|---|
+| `codegraph` | [CodeGraph](https://github.com/colbymchenry/codegraph), a local MCP code-knowledge graph, and indexes the tree | `.codegraph/` (ignored) | A pointer to query it before grep; `check-codegraph` fails when the index stops describing the source |
+| `uipro` | [UI/UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill), an offline design-system generator, as one skill in the root catalogue | `skills/ui-ux-pro-max/` (ignored; `make agents` projects it like any other) | When to generate a design system, where its `MASTER.md` goes, and that `docs/design.md` stays the page a slice reads first. Needs a browser app |
+| `ux-gates` | [ux-ui-agent-skills](https://github.com/plugin87/ux-ui-agent-skills), whose objective gates measure a screen | `tools/ux-gates/` (ignored) | `check-ux-gates` runs the kit's no-literal-values gate over each browser app's source, and its real-render contrast, focus, target-size, responsive and axe gates over `<app>/screens/*.html` when a browser is present — skipped, never passed, when it is not. Needs a browser app |
+
+An extension that needs a capability the project has not got refuses politely at `./init` — exit 0, the
+command that would change that on stderr — rather than installing something with nothing to act on.
 
 ## What ships where
 

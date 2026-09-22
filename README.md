@@ -170,8 +170,8 @@ Spec Kit is deliberately absent until you ask for it. From inside the generated 
 ```
 
 That installs Spec Kit. It then asks which coding agent to project `skills/`, `commands/` and `agents/`
-into — any of [36 harnesses](docs/spec-kit.md). It then offers optional extensions as a checkbox menu, of
-which CodeGraph is the first.
+into — any of [36 harnesses](docs/spec-kit.md). It then offers optional extensions as a checkbox menu:
+CodeGraph, UI/UX Pro Max and the UX gates.
 
 `--integration <name>` and `--extension <key>` skip those questions. `--extension` also adds one later. See
 [Extensions](docs/extensions.md).
@@ -200,7 +200,7 @@ Everything below is in a generated repository from its first commit.
 | | |
 |---|---|
 | **[The delivery loop](docs/delivery-loop.md)** | `/drive`'s ten-stage ladder on top of Spec Kit. It is resumable, because it reads artifacts rather than conversation memory. Fifteen workflow commands, thirteen of them in `standard`. Story splitting and example mapping are first-class stages with real heuristics behind them. Hooks apply the method even to a session that never typed `/drive` |
-| **[Up to 49 skills](docs/skills.md)** | The part of the delivery catalogue this project can use, owned by the project: TDD, testing, hexagonal architecture, DDD, ubiquitous language, API and BFF design, observability, secure OAuth/OIDC, refactoring, debugging and more. Code examples are rendered in the languages this project's services are actually written in |
+| **[Up to 51 skills](docs/skills.md)** | The part of the delivery catalogue this project can use, owned by the project: TDD, testing, hexagonal architecture, DDD, ubiquitous language, API and BFF design, observability, secure OAuth/OIDC, refactoring, debugging and more. Code examples are rendered in the languages this project's services are actually written in |
 | **[The global event model](docs/event-model.md)** | *Event profile.* One cumulative model for the whole system, in `model.yaml`. `make model` renders the timeline, the per-segment diagrams and a self-contained browsable page. `make check-model` fails when the code and the model disagree |
 | **[The read side](docs/what-you-get.md#the-read-side)** | *Event profile.* The machinery a view is *maintained* with, finished in every backend rather than left as the greenfield half: a unit of work on the event store; a `CheckpointStore` port with memory, SQLite and Postgres adapters behind a contract suite of its own; a catch-up runner that advances the checkpoint inside the view's own transaction; a rebuild; whatever each framework already schedules a pass with; and a tag index derived from the log, so a conditional append can hold a boundary one stream cannot |
 | **[Gates](docs/verification.md)** | `make verify` runs native checks, tests, architecture direction, agent and Spec Kit drift, constitution coverage, and the event model. It is identical locally and in CI, and never needs Docker. Integration, adversarial, mutation and audit checks sit deliberately outside it |
@@ -209,7 +209,7 @@ Everything below is in a generated repository from its first commit.
 | **[Generated documentation](docs/what-you-get.md#documentation-written-for-this-project)** | Thirteen pages written for this project's actual shape rather than copied, and an index built from the files that shipped |
 | **[Services and bounded contexts](docs/services.md)** | One list of applications, each with its own language, framework and answers. `add-service` and `add-frontend` grow it. Contexts are found rather than declared |
 | **[A path to production](docs/aws-target.md)** | `--target aws` or `--target azure` gives you `infra/` in OpenTofu, one deployable per application released blue/green, a pipeline from every push to `main` through staging to production, and a one-command rollback. The same promise on either cloud. [The Azure page](docs/azure-target.md) is where they are compared |
-| **[Extensions](docs/extensions.md)** | Optional dev tooling, adopted with `./init --extension <key>`. CodeGraph is the first. None of them changes the generated skeleton's code |
+| **[Extensions](docs/extensions.md)** | Optional dev tooling, adopted with `./init --extension <key>`: a code index, a design-system generator, and objective UX gates in `make verify`. None of them changes the generated skeleton's code |
 
 ### The commands a project gets
 
@@ -286,7 +286,7 @@ Beyond the profile, each role is a separate question, answered independently:
 | HTTP transport | `--http` | `none`, `fastify`, `fastapi`, `net-http`, `quarkus-rest`, `spring-web` |
 | Staff authentication | `--auth` | `none`, `keycloak` (local only), `cognito` (AWS), `entra` (Azure), `auth0` (either cloud) |
 | Customer authentication | `--users` | `none`, `keycloak` (local only), `cognito` (AWS), `auth0` (either cloud) |
-| Dev tooling | `--extension` | `codegraph` |
+| Dev tooling | `--extension` | `codegraph`, `uipro`, `ux-gates` |
 
 The default is `event-modelling` with `typescript`, the `react-vite` frontend, a Postgres event store, and
 the HTTP transport that backend has.
@@ -325,7 +325,7 @@ is which, what each answer brings, and how a project answers a question again la
 |---|---|
 | [What a generated repository gets for free](docs/what-you-get.md) | The tour: the layout, the generated documentation, the agent harnesses, and how to run it |
 | [The delivery loop](docs/delivery-loop.md) | The `/drive` ladder and the diagram behind it, the fifteen commands, story splitting and example mapping with worked examples, the Spec Kit hooks, the preset layer, and the constitution floor |
-| [The skill catalogue](docs/skills.md) | The 49 skills grouped by what they are for, why a project is given only the ones whose subject it has, how examples are rendered in your own languages, and where to edit them |
+| [The skill catalogue](docs/skills.md) | The 51 skills grouped by what they are for, why a project is given only the ones whose subject it has, how examples are rendered in your own languages, and where to edit them |
 | [The global event model](docs/event-model.md) | Why the model is global, what `make model` renders, the status ladder `make check-model` enforces, and how the browsable page is published |
 | [Gates](docs/verification.md) | What `make verify` runs, what is deliberately outside it, and why the split falls where it does |
 | [Bootstrap Spec Kit](docs/spec-kit.md) | `./init`, the 36 agent integrations, how Spec Kit is obtained, and the constitution floor gated from both sides |

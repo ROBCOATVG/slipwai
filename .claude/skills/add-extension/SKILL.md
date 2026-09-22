@@ -7,8 +7,8 @@ description: Factory-maintenance skill for adding an optional dev-tooling extens
 
 An **extension** is an opt-in developer-tooling hook, adopted with `./init --extension <key>`
 (repeatable, alongside `--integration <agent>`) — never an axis: it changes nothing about the generated
-skeleton's code, and it is answered at `./init` time rather than baked in at `slipwai generate` time. CodeGraph
-is the only one today. `docs/extensions.md` is the full contract; this skill is the procedure that keeps a
+skeleton's code, and it is answered at `./init` time rather than baked in at `slipwai generate` time. There are
+three today: `codegraph`, `uipro` and `ux-gates`. `docs/extensions.md` is the full contract; this skill is the procedure that keeps a
 new one to it.
 
 Read `docs/extensions.md` in full before starting. It is short by design — an extension is a much lighter

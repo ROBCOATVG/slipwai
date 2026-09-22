@@ -167,7 +167,7 @@ model: ## Regenerate the event-model diagrams and browsable page from model.yaml
 """ if event else ""
     verify_dependencies = (
         "lint typecheck check-imports check-migrations check-slice-scope check-extensions check-agents check-speckit "
-        "check-codegraph check-constitution check-benchmark test"
+        "check-codegraph check-ux-gates check-constitution check-benchmark test"
     )
     style_target = ""
     if web:
@@ -199,13 +199,11 @@ model: ## Regenerate the event-model diagrams and browsable page from model.yaml
 
     # One pair of targets for every container, rather than a Postgres-shaped pair: a project given only
     # Keycloak still has something to start, and `docker compose up -d --wait` blocks on the healthchecks
-    # each service declares for itself. Nothing here needs to know which containers those are.
-    #
-    # Guarded on the Compose file rather than wrapped in a marker, because a marker is per-feature and the
-    # condition here is "any container at all" — which no single feature's region can express. The pruner
-    # already deletes docker-compose.yml once nothing needs a container, so testing for it is testing the
-    # truth directly, and these targets stay correct after a prune instead of failing inside `docker
-    # compose` with no file to read.
+    # each service declares for itself. Nothing here needs to know which containers those are. Guarded on
+    # the Compose file rather than wrapped in a marker, because a marker is per-feature and the condition
+    # here is "any container at all", which no single feature's region can express. The pruner already
+    # deletes docker-compose.yml once nothing needs a container, so testing for it is testing the truth
+    # directly, and these targets stay correct after a prune instead of failing with no file to read.
     compose_targets = """
 .PHONY: services-up services-down
 services-up: ## Start the local backing services and wait for them to report healthy
@@ -311,7 +309,7 @@ check-benchmark: ## Fail when benchmark boundary and rendering behaviour regress
 \tpython3 scripts/test_benchmark.py
 benchmark: ## Show what each slice cost and how each stage of /drive did, from the records under specs/
 \tpython3 scripts/agents/benchmark.py
-.PHONY: typecheck lint {'format ' if formatting else ''}check-imports check-migrations check-slice-scope {'check-styles ' if web else ''}{'check-flags ' if target != 'none' else ''}check-speckit check-codegraph check-constitution constitution-requirements
+.PHONY: typecheck lint {'format ' if formatting else ''}check-imports check-migrations check-slice-scope {'check-styles ' if web else ''}{'check-flags ' if target != 'none' else ''}check-speckit check-codegraph check-ux-gates check-constitution constitution-requirements
 typecheck: ## Run the native compiler or static type check
 \t{native['typecheck']}
 lint: ## Run the native formatting and static-analysis gate
@@ -327,6 +325,8 @@ check-slice-scope: ## Fail when a slice/<id> branch touches what a sibling slice
 \tpython3 scripts/check-speckit.py
 check-codegraph: ## Fail when the adopted code index no longer describes the tracked source
 \tpython3 scripts/check-codegraph.py
+check-ux-gates: ## Fail when a browser app breaks the adopted UX gates: literal values outside the tokens, and the render gates over screens/
+\tpython3 scripts/check-ux-gates.py
 check-constitution: ## Fail when a ratified constitution drops a principle this project depends on
 \tpython3 scripts/check-constitution.py
 constitution-requirements: ## Print the normative text the constitution must cover in this profile

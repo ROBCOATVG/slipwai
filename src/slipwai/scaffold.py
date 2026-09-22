@@ -24,6 +24,7 @@ from .project.ci_workflows import workflow
 from .project.commands import command_files
 from .project.constitution_journey import journey_template
 from .project.convergence_page import convergence_page
+from .project.cruise import cruise_config
 from .project.deploy_workflow import deploy_workflow, promotion_workflow, rollback_workflow
 from .project.docs import documentation_files
 from .project.docs_index import docs_index
@@ -104,6 +105,7 @@ def project_files(
         ".claude/settings.json": claude_settings(apps, target),
         ".specify/models.json": stage_models(),
         ".specify/drive.json": drive_config(),
+        ".specify/cruise.json": cruise_config(),
         ".github/workflows/verify.yml": workflow(apps, layout),
         "docs/architecture.md": architecture(profile, apps),
         f"{PACKAGES}/.gitkeep": "",

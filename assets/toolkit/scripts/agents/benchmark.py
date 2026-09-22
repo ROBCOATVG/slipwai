@@ -55,14 +55,14 @@ OVERVIEW = "benchmark.md"
 # The ladder, in order, plus the stages an adopted repository adds; a stage outside it is accepted and sorted last.
 LADDER = (
     "ground", "principles", "specify", "event-model", "split", "example-map", "gaps", "release-constraint", "plan",
-    "tasks", "pin", "implement", "converge", "demo", "adversary", "mutation",
+    "tasks", "pin", "implement", "converge", "demo", "adversary", "mutation", "skipper", "hand",
 )
 OUTCOMES = ("accepted", "behaviour", "implementation")
 # Converge passes beyond which the overview says something: one pass to find work and one to confirm it
 # closed is the shape of a slice that converged, so the third is the first that is worth reading about.
 REPEATED = 3
 COUNTS = ("gaps", "findings", "seams", "verify_failures", "split")
-WORDS = ("mutation_score", "outcome", "model", "agent", "note", "delegate", "cycle")
+WORDS = ("mutation_score", "outcome", "model", "agent", "note", "delegate", "cycle", "driver")
 COMMENT = (
     "What each stage of /drive cost this slice and how well it did, one entry per stage run, appended by "
     "scripts/agents/benchmark.py at the stage's start and end. Tokens come from the harness's own transcript or are "

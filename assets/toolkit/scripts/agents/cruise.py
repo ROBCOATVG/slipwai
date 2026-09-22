@@ -11,7 +11,9 @@ fresh context, until the last line of an iteration says `done`, a person stops i
     python3 scripts/agents/cruise.py --check               # well-formed; `make check-agents` runs this
     python3 scripts/agents/cruise.py --set enabled=true    # change settings, checked, any time
     python3 scripts/agents/cruise.py run [--feature F] [--no-park] [--sandbox]   # the loop; `make cruise`
-    python3 scripts/agents/cruise.py status                # what the log says the run is doing
+    python3 scripts/agents/cruise.py status      # what the log says the run is doing
+    python3 scripts/agents/cruise.py resume      # print the checkpoint into a compacted context; nothing when none
+    python3 scripts/agents/cruise.py compacting  # stamp the checkpoint before the harness compacts
 
 A person stops a run with `touch .specify/cruise.stop`, or by interrupting this script: the iteration under
 way is killed, its increment commits are on the slice branch, and the next iteration re-derives from disk.
@@ -47,6 +49,11 @@ ROOT = project_root(Path(__file__).resolve(), 2)
 CONFIG = ROOT / ".specify/cruise.json"
 STOP = ROOT / ".specify/cruise.stop"
 LOG = ROOT / "specs/cruise-log.jsonl"
+# The iteration in flight, rewritten by `/cruise` at every stage boundary so a compacted context can resume.
+CHECKPOINT = ROOT / "specs/cruise-checkpoint.md"
+RESUME = ("cruise: this session is a /cruise iteration whose context was compacted. The checkpoint below is what "
+          "the summary lost; read it before acting, then commands/cruise.md for the rules it names — run "
+          "commands/drive.md as written, decide at its stops by the stop table, end with one of the four last lines.")
 REGISTRY = Path(__file__).with_name("registry.json")
 INTEGRATION = ROOT / ".specify/integration.json"
 # Every setting: the values it takes — a tuple of words, or a kind — its default, and what it controls. The
@@ -183,12 +190,17 @@ def harness_command(harness: dict[str, Any], sandbox: bool) -> tuple[str, str]:
 def fingerprint() -> str:
     """What the tree looks like to the ladder: the commit, the working tree's state, and every file under specs/."""
     digest = hashlib.sha256()
-    for arguments in (("rev-parse", "HEAD"), ("status", "--porcelain")):
-        result = subprocess.run(["git", *arguments], cwd=ROOT, text=True, capture_output=True)
-        digest.update(result.stdout.encode())
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True)
+    digest.update(head.stdout.encode())
+    # Untracked files one per line, so the log and the checkpoint can be left out: a directory reported as
+    # untracked the moment the log is first written read as progress, once, in every run.
+    status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT, text=True,
+                            capture_output=True)
+    own = tuple(path.relative_to(ROOT).as_posix() for path in (LOG, CHECKPOINT))
+    digest.update("\n".join(line for line in status.stdout.splitlines() if not line.endswith(own)).encode())
     specs = ROOT / "specs"
     for path in sorted(specs.rglob("*")) if specs.is_dir() else []:
-        if path.is_file() and path != LOG:
+        if path.is_file() and path not in (LOG, CHECKPOINT):
             digest.update(str(path.relative_to(ROOT)).encode())
             digest.update(path.read_bytes())
     return digest.hexdigest()[:16]
@@ -233,6 +245,25 @@ def iterate(template: str, prompt: str, environment: dict[str, str]) -> str | No
             if LAST_LINE.match(line):
                 last = line.strip()
     return last
+
+
+def resume() -> None:
+    """What a harness prints back into a compacted context: nothing unless an iteration is in flight."""
+    if not CHECKPOINT.is_file():
+        return
+    print(RESUME)
+    print(CHECKPOINT.read_text().rstrip())
+    log = entries()
+    if log:
+        print(f"cruise: the log's last iteration is {log[-1]['iteration']}, ended {log[-1]['ended']} with "
+              f"`{log[-1]['last_line']}`")
+
+
+def compacting() -> None:
+    """Stamp the checkpoint before compaction, so the resumed context can see when it lost its memory."""
+    if CHECKPOINT.is_file():
+        with CHECKPOINT.open("a") as handle:
+            handle.write(f"- **Compacted:** {now()}\n")
 
 
 def park(reason: str, no_park: bool, poll: float, seen: str) -> None:
@@ -286,11 +317,11 @@ def run(arguments: list[str]) -> None:
         fingerprints.append(seen)
         record({"iteration": iteration, "started": started, "ended": now(), "harness": harness["key"],
                 "last_line": last or "no last line", "fingerprint": seen})
-        if last == "cruise: done":
-            print("cruise: done — every specification is satisfied")
-            return
-        if last == "cruise: stopped: human":
-            print("cruise: stopped by human")
+        if last in ("cruise: done", "cruise: stopped: human"):
+            # The iteration is over for good; a checkpoint left behind would read as state to resume.
+            CHECKPOINT.unlink(missing_ok=True)
+            print("cruise: done — every specification is satisfied" if last == "cruise: done"
+                  else "cruise: stopped by human")
             return
         if last is not None and last.startswith("cruise: parked: "):
             park(last.removeprefix("cruise: parked: "), no_park, poll, seen)
@@ -304,6 +335,9 @@ def status() -> None:
     log = entries()
     if not log:
         print("cruise: no iteration has run here")
+        if CHECKPOINT.is_file():
+            print(f"cruise: {CHECKPOINT.relative_to(ROOT)} is present — an iteration is in flight in a session "
+                  "that has not ended yet")
         return
     last = log[-1]
     print(f"cruise: {len(log)} iteration(s) logged; the last ended {last['ended']} with `{last['last_line']}`")
@@ -311,6 +345,9 @@ def status() -> None:
         print(f"cruise: parked — {str(last['last_line']).removeprefix('cruise: parked: ')}")
     if STOP.is_file():
         print(f"cruise: {STOP.relative_to(ROOT)} is present; remove it before the next run")
+    if CHECKPOINT.is_file():
+        print(f"cruise: {CHECKPOINT.relative_to(ROOT)} is present — an iteration is in flight, or ended without "
+              "`done`; the next iteration reads it as a lead")
 
 
 def main() -> None:
@@ -323,6 +360,12 @@ def main() -> None:
         return
     if arguments[:1] == ["status"]:
         status()
+        return
+    if arguments[:1] == ["resume"]:
+        resume()
+        return
+    if arguments[:1] == ["compacting"]:
+        compacting()
         return
     if "--set" in arguments:
         table = json.loads(CONFIG.read_text())

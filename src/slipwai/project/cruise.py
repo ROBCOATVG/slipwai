@@ -17,11 +17,11 @@ import json
 from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
 from ..services import App
-from .cruise_agents import BROWSER, DECISIONS, DEMO_LOG, EVIDENCE, HAND, OWNER_BRIEF, SKIPPER
+from .cruise_agents import DECISIONS, DEMO_LOG, EVIDENCE, HAND, OWNER_BRIEF, SKIPPER
+from .cruise_record import CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, DEMO_ENTRY, STOP_FILE
 
 CONFIG = ".specify/cruise.json"
 SCRIPT = "scripts/agents/cruise.py"
-STOP_FILE = ".specify/cruise.stop"
 LOG = "specs/cruise-log.jsonl"
 REPORT = "specs/<feature>/cruise-report.md"
 # The last line of every iteration: the one thing the outer loop reads.
@@ -51,22 +51,6 @@ COMMENT = (
     f"{SCRIPT} --set key=value), checked; `make check-agents` holds the shape. commands/cruise.md says what "
     "each value means. `enabled: false` is the default: a project has to ask for this."
 )
-DECISION_ENTRY = f"""## D<n> — <the question, in one line>
-- **Stage:** <stage> · **Slice:** <id> · **When:** <ISO instant> · **Iteration:** <n>
-- **Question:** <as the stage raised it>
-- **Options:** <each, marking the one the stage recommended>
-- **Decision:** <one>
-- **Why:** <in the actor's terms>
-- **Decided by:** host (stage recommendation) | host (standing decision D<m>) | {SKIPPER} (<model>) | human
-- **Confidence:** high | medium | low · **Would reverse if:** <the one condition>
-- **Written to:** <the artifact paths the answer went into>
-- **Status:** standing | overridden by D<m> | overridden by human <date>"""
-DEMO_ENTRY = f"""## <ISO instant> — <accepted | behaviour | implementation> · iteration <n> · {HAND} (<model>)
-- **Started with:** <the literal command or URL> · **Seeded:** <what, or none>
-- **Driven through:** {BROWSER} | <harness browser tool> | HTTP | CLI — <why, where not the first>
-- **Examples:** <one line each — R1 e1: passed · R2 e1: failed, expected X, saw Y · R3 e2: unreachable, why>
-- **Evidence:** <paths under demo/>
-- **Feedback:** <what re-entered the ladder and at which stage, or the note for the next slice>"""
 
 
 def cruise_config() -> str:
@@ -227,7 +211,7 @@ re-derives the entry stage from that artifact, the way demo feedback re-enters t
 At the demo stop, compose everything `commands/drive.md` says the stop must contain — the board, the literal
 command or URL, the seed data, the expected result, the running process — and hand it, with the slice's
 acceptance script, to one fresh `{HAND}` delegate instead of a person. `hand: {SETTINGS[4][2]}` is the top of
-its ladder: `{BROWSER}` where the slice has a screen, then a browser tool the harness exposes, then HTTP, then
+its ladder: `agent-browser` where the slice has a screen, then a browser tool the harness exposes, then HTTP, then
 the CLI, each falling through where it cannot run and saying so. Its verdict is the actor's: `accepted`
 continues to *After acceptance*, `behaviour` re-enters the ladder at the stage that owns the change with the
 example that shows it, `implementation` is a task. Record `outcome=` on the demo entry from the verdict, and
@@ -255,6 +239,7 @@ fan-out through its merges in split order — and then end the iteration rather 
 a context that has already carried one. `commands/drive.md` says *do not wait to be invoked again*; here the
 outer loop is what re-invokes, with a fresh context, which is the rule every delegate already lives by.
 Between stages, look for `{STOP_FILE}`: present, finish the stage's own writes, commit what is green, and end.
+At every stage boundary and every delegation, rewrite the checkpoint (*Checkpoint*, below).
 Where nothing can move — every ready slice blocked on an input nobody here has — end with `parked` and the
 exact thing a person must provide; the loop waits, it does not exit. The last line of every iteration is one
 of these, and the outer loop reads nothing else:
@@ -263,6 +248,27 @@ of these, and the outer loop reads nothing else:
 - `{LAST_LINES[1]}`
 - `{LAST_LINES[2]}`
 - `{LAST_LINES[3]}`
+
+## Checkpoint: what survives a compacted context
+
+A harness can summarise this context at any point — Claude Code compacts, Gemini CLI compresses — and what a
+summary loses is the state nothing on disk carries: which delegates are out and with what manifest, a
+question half-answered, which slice's demo comes next. So keep `{CHECKPOINT}` current: rewrite it at every
+stage boundary and every delegation, in this shape:
+
+```markdown
+{CHECKPOINT_ENTRY}
+```
+
+At the start of every stage, and whenever this context looks summarised — the iteration number is not in
+memory, or a summary opens the context — read the checkpoint before acting; `python3 {SCRIPT} resume` prints
+it with the rules beside it, and prints nothing where no iteration is in flight. Where the harness can run a
+command after compaction, the project's settings do that for you: `.claude/settings.json` runs `resume` on
+Claude Code's `SessionStart` with the `compact` matcher and stamps the checkpoint on `PreCompact`, and
+`scripts/agents/registry.json`, `compaction`, says what each harness can. A checkpoint left by an earlier
+iteration is a lead, never a result: its delegates ended with that session, so verify what they left in the
+tree before continuing. The runner deletes the checkpoint when an iteration ends `done` or `stopped`; one
+that ends `continue` or `parked` leaves it for the next.
 
 ## What holds throughout
 

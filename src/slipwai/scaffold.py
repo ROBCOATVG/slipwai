@@ -103,7 +103,7 @@ def project_files(
         "renovate.json": renovate_config(apps),
         "Makefile": makefile(project_name, profile, apps, target, layout),
         "AGENTS.md": agent_guidance(profile, apps, target),
-        ".claude/settings.json": claude_settings(apps, target),
+        ".claude/settings.json": claude_settings(apps, target, layout),
         ".specify/models.json": stage_models(),
         ".specify/drive.json": drive_config(),
         ".specify/cruise.json": cruise_config(),

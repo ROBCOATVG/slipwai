@@ -192,6 +192,27 @@ it to the addresses the run skill names. Where the tool cannot be installed, the
 harness exposes. Where there is none, it drives the API over HTTP and records that the screen was judged
 from its API alone. `agent-browser` is never a dependency of the project.
 
+## When the context is compacted
+
+A harness can shorten a long context at any point. Claude Code calls this compaction; Gemini CLI calls it
+compression. A summary loses the state that no file carries: which delegates are out and with what
+manifest, a question that is half answered, which slice's demo comes next.
+
+`/cruise` keeps that state in one small file, `specs/cruise-checkpoint.md`. It rewrites the file at every
+stage boundary and at every delegation. At the start of every stage, and whenever its context looks
+summarised, it reads the file before it acts. `python3 scripts/agents/cruise.py resume` prints the
+checkpoint with the rules beside it, and prints nothing when no iteration is in flight. The file is run
+state, not a record: it is ignored by git, and the runner deletes it when an iteration ends with `done` or
+`stopped`.
+
+Where a harness can run a command after compaction, the project's settings replay the checkpoint for you.
+On Claude Code, `.claude/settings.json` runs `resume` on the `SessionStart` hook with the `compact` matcher,
+and stamps the checkpoint on `PreCompact`. Both commands print nothing unless an iteration is in flight, so a
+plain `/drive` session never sees them. `scripts/agents/registry.json` records under `compaction` what each
+harness can do, read from its documentation on a named date: Gemini CLI has a `PreCompress` event but nothing
+that adds context afterwards, and the rest are `null` until someone checks. On those harnesses the checkpoint
+still works; only the automatic replay is missing, and the command's rule to re-read the file covers it.
+
 ## The limits
 
 - **Adopted repositories park at two places.** The Ground stage asks facts about the world, such as the

@@ -234,7 +234,7 @@ def adopt(root: Path, answers: Answers, found: Survey | None = None) -> Adopted:
     settings_written = not (root / SETTINGS).exists()
     if settings_written:
         (root / SETTINGS).parent.mkdir(parents=True, exist_ok=True)
-        (root / SETTINGS).write_text(claude_settings(apps, answers.target))
+        (root / SETTINGS).write_text(claude_settings(apps, answers.target, layout))
         written.append(SETTINGS)
     # No root Makefile means nothing of theirs to clash with, so `make verify` can be one word from day one.
     # Where there is one, its targets are theirs and the include is a person's edit — see `report`.

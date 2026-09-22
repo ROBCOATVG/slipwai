@@ -20,6 +20,7 @@ from support import FactoryTestCase
 
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.project.cruise import CONFIG, LOG, SETTINGS, STOP_FILE, cruise_config
+from slipwai.project.cruise_record import CHECKPOINT, CHECKPOINT_ENTRY
 
 REGISTRY = json.loads((TOOLKIT_ROOT / "scripts/agents/registry.json").read_text())["harnesses"]
 # A harness the loop can stand in for: one shell script, its behaviour chosen by the first word of its script.
@@ -233,12 +234,13 @@ echo "cruise: continue\"""")
                              "-p /cruise --output-format text --permission-mode acceptEdits wait=0 session=none\n"
                              "-p /cruise S1 --output-format text --dangerously-skip-permissions wait=0 session=none\n")
             self.assertNotIn("session", logged(repo)[-1])
-            # An iteration whose output carries no last line is logged as such and treated as `continue`.
+            # An iteration whose output carries no last line is logged as such and treated as `continue` —
+            # and this is the third iteration in a row that changed nothing, so the run parks as stuck.
             (fake_claude / "claude").write_text("#!/bin/sh\necho nothing to see\n")
-            cruise(repo, "--set", "max_iterations=1")
-            silent = cruise(repo, "run", env=env)
-            self.assertEqual(silent.returncode, 0, silent.stderr)
+            silent = cruise(repo, "run", "--no-park", env=env)
+            self.assertEqual(silent.returncode, 3, silent.stdout + silent.stderr)
             self.assertEqual(logged(repo)[-1]["last_line"], "no last line")
+            self.assertIn("no progress since iteration 1", silent.stdout)
 
     def test_the_makefile_carries_the_loop_and_the_gate_holds_the_logs(self) -> None:
         """`make cruise` is the loop, `make cruise-status` the log, and `check-decisions` sits on `verify`
@@ -259,3 +261,58 @@ echo "cruise: continue\"""")
                 self.assertIn("check-benchmark check-decisions test", verify.group(1))
                 self.assertTrue((repo / "scripts/agents/cruise.py").is_file())
                 self.assertLess(time.time() - (repo / "scripts/agents/cruise.py").stat().st_mtime, 3600)
+
+    def test_a_compacted_context_resumes_from_the_checkpoint_and_the_hooks_replay_it(self) -> None:
+        """A harness summarises a long context, and the summary loses the state nothing on disk carries. The
+        command keeps it in one file; the runner prints it back (and nothing where no iteration is in
+        flight), stamps it before compaction, leaves it out of the stuck detector's fingerprint, and removes it
+        when an iteration ends for good. Claude Code replays it through the two hooks the registry names."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "compact", "standard", "python")
+            settings = json.loads((repo / ".claude/settings.json").read_text())
+            resume_hook = {"type": "command", "command": "python3 scripts/agents/cruise.py resume"}
+            self.assertEqual(settings["hooks"]["SessionStart"], [{"matcher": "compact", "hooks": [resume_hook]}])
+            self.assertEqual(settings["hooks"]["PreCompact"][0]["hooks"][0]["command"],
+                             "python3 scripts/agents/cruise.py compacting")
+            self.assertIn(CHECKPOINT + "\n", (repo / ".gitignore").read_text())
+            self.assertIn("## Checkpoint: what survives a compacted context", (repo / "commands/cruise.md").read_text())
+            self.assertIn(CHECKPOINT_ENTRY, (repo / "commands/cruise.md").read_text())
+            enable(repo)
+            # Nothing in flight: the hooks print nothing, so a plain /drive session never hears about cruise.
+            quiet = cruise(repo, "resume")
+            self.assertEqual((quiet.returncode, quiet.stdout), (0, ""))
+            cruise(repo, "compacting")
+            self.assertFalse((repo / CHECKPOINT).exists())
+            checkpoint = repo / CHECKPOINT
+            checkpoint.parent.mkdir(parents=True, exist_ok=True)
+            checkpoint.write_text("# Cruise checkpoint — iteration 3\n- **Stage:** implement\n- **Next:** tick T004\n")
+            stamped = cruise(repo, "compacting")
+            self.assertEqual(stamped.returncode, 0, stamped.stderr)
+            self.assertRegex(checkpoint.read_text(), r"- \*\*Compacted:\*\* \d{4}-\d{2}-\d{2}T")
+            replayed = cruise(repo, "resume")
+            self.assertIn("this session is a /cruise iteration whose context was compacted", replayed.stdout)
+            self.assertIn("- **Next:** tick T004", replayed.stdout)
+            self.assertIn("run commands/drive.md as written", replayed.stdout)
+            self.assertIn("an iteration is in flight", cruise(repo, "status").stdout)
+            # Rewriting the checkpoint is not progress: two iterations that change only it read as stuck.
+            enable(repo, stuck_after="2", max_iterations="2")
+            script = Path(directory) / "harness.sh"
+            script.write_text(f"#!/bin/sh\necho touched >> {checkpoint}\necho 'cruise: continue'\n")
+            env = {"CRUISE_HARNESS_COMMAND": f"sh {script} {{prompt}}", "CRUISE_POLL_SECONDS": "0"}
+            stuck = cruise(repo, "run", "--no-park", env=env)
+            self.assertEqual(stuck.returncode, 3, stuck.stdout + stuck.stderr)
+            self.assertIn("no progress since iteration", stuck.stdout)
+            self.assertTrue(checkpoint.exists())
+            # `done` ends the iteration for good, and the checkpoint with it.
+            done = cruise(repo, "run", env={**env, "CRUISE_HARNESS_COMMAND": "echo 'cruise: done'"})
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertFalse(checkpoint.exists())
+        claude = next(entry for entry in REGISTRY if entry["key"] == "claude")["compaction"]
+        self.assertEqual((claude["after"]["event"], claude["after"]["matcher"]), ("SessionStart", "compact"))
+        self.assertEqual(claude["before"]["event"], "PreCompact")
+        gemini = next(entry for entry in REGISTRY if entry["key"] == "gemini")["compaction"]
+        self.assertEqual((gemini["before"]["event"], gemini["after"]), ("PreCompress", None))
+        for entry in REGISTRY:
+            self.assertIn("compaction", entry, entry["key"])
+            if entry["compaction"] is not None:
+                self.assertRegex(entry["compaction"]["source"], r"read \d{4}-\d{2}-\d{2}", entry["key"])

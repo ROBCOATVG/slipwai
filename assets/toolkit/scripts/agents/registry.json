@@ -18,7 +18,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "alquimia",
@@ -36,7 +37,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "amp",
@@ -54,7 +56,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "auggie",
@@ -72,7 +75,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "bob",
@@ -90,7 +94,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "claude",
@@ -141,6 +146,19 @@
         "what": "message.usage on every assistant line — input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens — and message.model; one line is written per content block, so a request is counted once by requestId; a sub-agent's assistant lines also carry `attributionAgent`, the name of the agent type that ran it",
         "env": "CLAUDE_CODE_SESSION_ID",
         "source": "the transcripts Claude Code 2.1.266 wrote on this machine, read 2026-09-09; `attributionAgent` from the same transcripts, read 2026-09-15"
+      },
+      "compaction": {
+        "before": {
+          "event": "PreCompact",
+          "how": "runs a command before manual or automatic compaction; its stdout is not added to the context"
+        },
+        "after": {
+          "event": "SessionStart",
+          "matcher": "compact",
+          "how": "runs a command when the session continues after compaction; its stdout is added to the context"
+        },
+        "where": ".claude/settings.json, `hooks`",
+        "source": "the hook events in the installed Claude Code 2.1.278 executable (PreCompact, PostCompact, SessionStart) and the documented SessionStart matcher `compact`, read 2026-09-22; PostCompact is in the build and its context semantics were not verified, so it is not used"
       }
     },
     {
@@ -159,7 +177,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "codebuddy",
@@ -177,7 +196,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "codex",
@@ -224,7 +244,9 @@
         "what": "token_usage_record lines, `usage` per response — input_tokens, cached_input_tokens, cache_write_input_tokens, output_tokens, reasoning_output_tokens — or the difference between the cumulative total_token_usage of token_count events; the model from turn_context where it carries one",
         "env": "CODEX_THREAD_ID",
         "source": "codex-rs/protocol (TokenUsage, TokenUsageRecord, shell_environment), codex-rs/rollout (recorder, policy) and codex-rs/history (RolloutItemWire) on main, read 2026-09-09"
-      }
+      },
+      "compaction": null,
+      "compactionReason": "docs/config.md in openai/codex on main documents lifecycle hooks only as an admin setting, with no event around compaction found, read 2026-09-22"
     },
     {
       "key": "copilot",
@@ -261,7 +283,8 @@
         },
         "source": "docs.github.com/en/copilot/reference/custom-agents-configuration, YAML frontmatter properties and Tool aliases, read 2026-09-15"
       },
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "cursor-agent",
@@ -298,7 +321,8 @@
         },
         "source": "cursor.com/docs/subagents, Configuration fields (cursor.com/docs/agent/subagents redirects there), read 2026-09-15"
       },
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "devin",
@@ -316,7 +340,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "droid",
@@ -334,7 +359,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "firebender",
@@ -353,7 +379,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "forge",
@@ -371,7 +398,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "gemini",
@@ -408,7 +436,16 @@
         },
         "source": "google-gemini/gemini-cli docs/core/subagents.md (Configuration schema) and docs/tools/, for the tool names, read 2026-09-15"
       },
-      "usage": null
+      "usage": null,
+      "compaction": {
+        "before": {
+          "event": "PreCompress",
+          "how": "advisory: runs before context compression"
+        },
+        "after": null,
+        "where": "the hooks configuration docs/hooks/index.md describes",
+        "source": "docs/hooks/index.md in google-gemini/gemini-cli on main, read 2026-09-22: SessionStart fires on startup, resume and clear, not after compression, so nothing replays the checkpoint there"
+      }
     },
     {
       "key": "goose",
@@ -426,7 +463,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "grok",
@@ -444,7 +482,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "hermes",
@@ -464,7 +503,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "junie",
@@ -482,7 +522,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "kilocode",
@@ -500,7 +541,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "kimi",
@@ -518,7 +560,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "kiro-cli",
@@ -536,7 +579,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "lingma",
@@ -554,7 +598,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "omp",
@@ -572,7 +617,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "opencode",
@@ -609,7 +655,8 @@
         },
         "source": "opencode docs agents.mdx, Markdown and Permissions (the repository is anomalyco/opencode; opencode.ai is blocked from this sandbox), read 2026-09-15"
       },
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "pi",
@@ -627,7 +674,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "qodercli",
@@ -645,7 +693,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "qwen",
@@ -663,7 +712,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "rovodev",
@@ -681,7 +731,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "shai",
@@ -699,7 +750,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "tabnine",
@@ -717,7 +769,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "trae",
@@ -735,7 +788,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "vibe",
@@ -753,7 +807,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "zcode",
@@ -771,7 +826,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "zed",
@@ -789,7 +845,8 @@
       "subagentModel": null,
       "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     }
   ]
 }

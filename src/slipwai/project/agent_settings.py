@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 
 from ..catalog import CATALOG
+from ..layout import AT_ROOT, Layout
 from ..services import App, backends_of, containers_of, families_of, services_of, web_apps
 from ..targets import managed
 from .compose import composed
@@ -14,7 +15,22 @@ from .compose import composed
 MAVEN_PERMISSIONS = ["./mvnw *"]
 
 
-def claude_settings(apps: list[App], target: str = "none") -> str:
+def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
+    """What Claude Code runs around compaction, so a `/cruise` iteration resumes from its checkpoint.
+
+    `SessionStart` with the `compact` matcher runs when the session continues after compaction and its
+    stdout is added to the context; `PreCompact` runs just before. Both call the cruise script, which prints
+    nothing unless an iteration is in flight, so a plain `/drive` session never sees them. The other
+    harnesses' equivalents, where one exists, are the registry's `compaction` rows.
+    """
+    script = layout.under("scripts/agents/cruise.py")
+    return {
+        "PreCompact": [{"hooks": [{"type": "command", "command": f"python3 {script} compacting"}]}],
+        "SessionStart": [{"matcher": "compact", "hooks": [{"type": "command", "command": f"python3 {script} resume"}]}],
+    }
+
+
+def claude_settings(apps: list[App], target: str = "none", layout: Layout = AT_ROOT) -> str:
     services = services_of(apps)
     per_backend = {
         "typescript": ["npm ci", "npm run verify", "npm test *"],
@@ -79,4 +95,5 @@ def claude_settings(apps: list[App], target: str = "none") -> str:
         # `make rollback` are deliberately absent: they change an environment, and that is a prompt worth
         # answering every time.
         allowed += ["make build", "make build *", "make smoke-image", "make smoke-image *", "tofu fmt *", "tofu validate"]
-    return json.dumps({"permissions": {"allow": [f"Bash({command})" for command in allowed]}}, indent=2) + "\n"
+    return json.dumps({"permissions": {"allow": [f"Bash({command})" for command in allowed]},
+                       "hooks": compaction_hooks(layout)}, indent=2) + "\n"

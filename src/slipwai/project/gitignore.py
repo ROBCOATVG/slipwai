@@ -8,6 +8,7 @@ from ..catalog import CATALOG
 from ..extensions import known_extensions
 from ..services import App, backends_of, families_of, needs_environment, services_of, web_apps
 from ..targets import managed
+from .cruise_record import CHECKPOINT
 from .openapi import API_CLIENT
 from .shared_packages import PACKAGES, node_workspace
 
@@ -144,6 +145,9 @@ def build_artifacts(event: bool, apps: list[App], target: str = "none") -> str:
         # scaffolding — committed, it would point somewhere different on every slice branch and conflict at
         # every merge — and `check-slice-scope` refuses a regular file left where the link was.
         + "".join(f"specs/*/{slot}\n" for slot in CANONICAL_SLOTS)
+        # `/cruise`'s checkpoint: the state of the iteration in flight, rewritten at every stage boundary so a
+        # compacted context can resume, and deleted when the iteration ends — run state, never a record.
+        + f"{CHECKPOINT}\n"
         # The agent projections: derived from `skills/`, `commands/` and `agents/`, rewritten by `./init`, `make agents` and
         # `slipwai migrate`, and never the place to edit — so never committed, whichever harness the project uses.
         + projection_artifacts()

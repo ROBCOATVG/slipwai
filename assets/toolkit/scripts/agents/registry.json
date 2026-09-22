@@ -1,5 +1,5 @@
 {
-  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified \u2014 which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope \u2014 read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes \u2014 `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives \u2014 see docs/agent-harnesses.md.",
+  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified \u2014 which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope \u2014 read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes \u2014 `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives \u2014 see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what `scripts/agents/cruise.py run` needs for each iteration \u2014 the command as a shell template with {prompt} and {permissions}, read the same way, or null where none was verified, which the script reports rather than guessing a flag.",
   "speckitVersion": "0.16.1",
   "harnesses": [
     {
@@ -16,6 +16,7 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -33,6 +34,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -50,6 +52,7 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -67,6 +70,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -84,6 +88,7 @@
       "multiInstallSafe": false,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -105,6 +110,13 @@
         "where": "in the call itself; no file",
         "identifiers": "an alias \u2014 sonnet, opus, haiku, fable \u2014 or a model id",
         "source": "the Agent tool's own schema, read 2026-09-09"
+      },
+      "headless": {
+        "how": "`claude -p <prompt>` prints the response and exits; `--output-format text` keeps the last line readable; `--permission-mode` picks how tool calls are approved in a session nobody is watching",
+        "command": "claude -p {prompt} --output-format text {permissions}",
+        "permissions": "--permission-mode acceptEdits",
+        "sandboxPermissions": "--dangerously-skip-permissions",
+        "source": "the installed Claude Code 2.1.278's --help (-p/--print, --output-format, --permission-mode with acceptEdits and bypassPermissions, --dangerously-skip-permissions), read 2026-09-22"
       },
       "agentFile": {
         "dir": ".claude/agents",
@@ -142,6 +154,7 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -159,6 +172,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -180,6 +194,13 @@
         "where": ".codex/agents/<name>.toml",
         "identifiers": "an OpenAI model id",
         "source": "developers.openai.com/codex/subagents, Custom agents, read 2026-09-09"
+      },
+      "headless": {
+        "how": "`codex exec <prompt>` runs one non-interactive session and prints the agent's messages; `--skip-git-repo-check` lets it run in a worktree",
+        "command": "codex exec --skip-git-repo-check {permissions} {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "--dangerously-bypass-approvals-and-sandbox",
+        "source": "codex-rs/exec/src/cli.rs (the `codex exec [OPTIONS] [PROMPT]` usage, --json, --output-last-message, --skip-git-repo-check) and exec/src/lib.rs (dangerously_bypass_approvals_and_sandbox) on main, read 2026-09-22; the approval flag for a sandboxed-but-unattended run was not verified, so `permissions` is empty and the run takes Codex's own defaults"
       },
       "agentFile": {
         "dir": ".codex/agents",
@@ -221,6 +242,7 @@
         "identifiers": "a model name the Copilot model picker lists",
         "source": "docs.github.com, Custom agents configuration, YAML frontmatter properties, read 2026-09-09"
       },
+      "headless": null,
       "agentFile": {
         "dir": ".github/agents",
         "extension": ".agent.md",
@@ -258,6 +280,7 @@
         "identifiers": "a Cursor model id",
         "source": "cursor.com/docs/agent/subagents, read 2026-09-09"
       },
+      "headless": null,
       "agentFile": {
         "dir": ".cursor/agents",
         "extension": ".md",
@@ -288,6 +311,7 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -305,6 +329,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -323,6 +348,7 @@
       "requiresCli": false,
       "contextFrontmatter": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -340,6 +366,7 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -362,6 +389,7 @@
         "identifiers": "a Gemini model id",
         "source": "google-gemini/gemini-cli docs/core/subagents.md, read 2026-09-09"
       },
+      "headless": null,
       "agentFile": {
         "dir": ".gemini/agents",
         "extension": ".md",
@@ -393,6 +421,7 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -410,6 +439,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -429,6 +459,7 @@
       "projectable": false,
       "unprojectableReason": "its skills directory is ~/.hermes/skills, outside the repository",
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -446,6 +477,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -463,6 +495,7 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -480,6 +513,7 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -497,6 +531,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -514,6 +549,7 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -531,6 +567,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -553,6 +590,7 @@
         "identifiers": "provider/model, as opencode spells them",
         "source": "sst/opencode docs agents.mdx, read 2026-09-09"
       },
+      "headless": null,
       "agentFile": {
         "dir": ".opencode/agents",
         "extension": ".md",
@@ -584,6 +622,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -601,6 +640,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -618,6 +658,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -635,6 +676,7 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -652,6 +694,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -669,6 +712,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -686,6 +730,7 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -703,6 +748,7 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -720,6 +766,7 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     },
@@ -737,6 +784,7 @@
       "multiInstallSafe": false,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
       "usage": null
     }

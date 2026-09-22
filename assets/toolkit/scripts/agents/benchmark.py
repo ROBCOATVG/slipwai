@@ -379,15 +379,17 @@ def span_now(mark: dict[str, Any]) -> dict[str, dict[str, int]]:
     return {"from": from_, "to": to}
 
 
-def usage_since(mark: dict[str, Any], own: Window | None = None, others: list[Window] | None = None) -> dict[str, Any]:
+def usage_since(mark: dict[str, Any], own: Window | None = None, others: list[Window] | None = None,
+                live: bool = True) -> dict[str, Any]:
     """Tokens by model between the cursor and now, split host/sub-agents, or why there are none. With the bracket's
     own window and every other bracket's, a line another bracket owns — one nested inside this one, or one whose
-    stage owns the delegate type that wrote it — is left to that bracket."""
+    stage owns the delegate type that wrote it — is left to that bracket. `live` is `end`'s reading, in the session
+    that opened the bracket; a cut-off reads the transcript the cursor names after that session is gone."""
     if mark.get("source") is None:
         return {"source": None, "reason": mark.get("reason", "no transcript")}
     overlapping = [other for other in (others or []) if own is not None]
     if mark["source"] == "claude":
-        if os.environ.get("CLAUDE_CODE_SESSION_ID") != mark["session"]:
+        if live and os.environ.get("CLAUDE_CODE_SESSION_ID") != mark["session"]:
             return {"source": None, "reason": f"the session changed since the stage started ({mark['session']})"}
         main, subagents = claude_transcripts(mark["session"])
         host: dict[str, dict[str, int]] = {}
@@ -416,7 +418,7 @@ def usage_since(mark: dict[str, Any], own: Window | None = None, others: list[Wi
             read += f"; {shared} request(s) left to a bracket open at the same time"
         return {"source": "claude", "session": mark["session"], "read": read, "host": host, "subagents": delegated,
                 "agents": sorted(types)}
-    if os.environ.get("CODEX_THREAD_ID") != mark["session"]:
+    if live and os.environ.get("CODEX_THREAD_ID") != mark["session"]:
         return {"source": None, "reason": f"the thread changed since the stage started ({mark['session']})"}
     rollout = codex_rollout(mark["session"])
     if rollout is None:
@@ -463,15 +465,20 @@ def parse_signals(arguments: list[str]) -> dict[str, Any]:
 
 
 def start(directory: Path, stage: str) -> None:
+    """Open an entry — after closing any this record still has open, as cut off: the stages of one record run one
+    after another, so an entry still open at the next `start` was left by a session that ended without ending it,
+    and a second one stacked on top would leave the first open for good with its hours uncounted."""
     record = load(directory)
-    left_open = [entry["stage"] for entry in record["stages"] if "ended" not in entry]
+    for index, entry in enumerate(record["stages"]):
+        if "ended" not in entry:
+            cut_off_entry(directory / RECORD, index, entry, f"a new `{stage}` entry started while it was open")
+            print(f"benchmark: {record.get('slice') or '(feature)'} {entry['stage']}: cut off — {entry['cut_off']}")
     mark = cursor()
     record["stages"].append({"stage": stage, "started": now(), "planned": planned(stage),
                              "tasks": {"start": task_counts(directory)}, "cursor": mark})
     save(directory, record)
     where = f"usage from {mark['source']}" if mark.get("source") else f"no usage: {mark.get('reason')}"
-    note = f"; left open: {', '.join(left_open)}" if left_open else ""
-    print(f"benchmark: {stage} started ({(directory / RECORD).relative_to(ROOT)}; {where}{note})")
+    print(f"benchmark: {stage} started ({(directory / RECORD).relative_to(ROOT)}; {where})")
 
 
 def end(directory: Path, stage: str, arguments: list[str], clock: Callable[[], str] = now) -> None:
@@ -556,24 +563,42 @@ def close(directory: Path) -> None:
     print(aggregate())
 
 
+def cut_off_entry(path: Path, index: int, entry: dict[str, Any], reason: str) -> None:
+    """Close an entry nothing will `end`: the session that opened it is gone. Its wall is real, and its tokens are
+    read from the transcript the cursor names — a file on this machine, whoever's session it was — up to where
+    that transcript stopped, so the hours before the interruption still count; its signals were never reported,
+    and the record says so rather than guessing. The window is kept, so a bracket that enclosed it leaves it its
+    lines."""
+    entry["ended"] = now()
+    entry["seconds"] = int((moment(entry["ended"]) - moment(entry["started"])).total_seconds())
+    mark = entry.pop("cursor", {"source": None, "reason": "no cursor was recorded"})
+    own = None
+    if mark.get("source"):
+        entry["span"] = span_now(mark)
+        own = Window(entry["stage"], entry["started"], entry["span"]["from"], entry["span"]["to"])
+    usage = usage_since(mark, own, other_windows(path, index), live=False)
+    if usage.get("source"):
+        usage["read"] += "; read after the session that opened the entry had ended"
+    else:
+        usage = {"source": None, "reason": f"cut off — {reason}"}
+    entry["usage"] = usage
+    entry["ran"] = models_that_ran(usage) or None
+    entry["agents"] = types_that_ran(usage) or None
+    entry["delegated"] = any(any(tokens.values()) for tokens in (usage.get("subagents") or {}).values())
+    entry.setdefault("tasks", {})["end"] = task_counts(path.parent)
+    entry["signals"] = {}
+    entry["cut_off"] = reason
+
+
 def cut_off(reason: str) -> None:
-    """Close every entry still open in any record, with the reason and no usage: the session that opened it is
-    gone — the runner's iteration ended, or was ended — so nothing will `end` it, and an entry left open reads
-    as a stage still running. Its wall is real; its tokens and signals were never recorded, and the record says
-    so rather than guessing. The window is still kept, so a bracket that enclosed it leaves it its lines."""
+    """Close every entry still open in any record: the runner's iteration ended, or was ended, so nothing will
+    `end` them, and an entry left open reads as a stage still running."""
     for path, record in records():
         changed = False
-        for entry in record.get("stages", []):
+        for index, entry in enumerate(record.get("stages", [])):
             if "ended" in entry:
                 continue
-            entry["ended"] = now()
-            entry["seconds"] = int((moment(entry["ended"]) - moment(entry["started"])).total_seconds())
-            mark = entry.pop("cursor", {"source": None})
-            if mark.get("source"):
-                entry["span"] = span_now(mark)
-            entry["usage"] = {"source": None, "reason": f"cut off — {reason}"}
-            entry.update(ran=None, agents=None, delegated=False, signals={}, cut_off=reason)
-            entry.setdefault("tasks", {})["end"] = task_counts(path.parent)
+            cut_off_entry(path, index, entry, reason)
             changed = True
             print(f"benchmark: {record.get('slice') or '(feature)'} {entry['stage']}: cut off — {reason}")
         if changed:
@@ -822,7 +847,8 @@ def notes(summaries: list[dict[str, Any]], records_: list[dict[str, Any]]) -> li
                 lines.append(f"{record.get('slice') or '(feature)'} {entry['stage']}: tokens unknown — {usage.get('reason')}")
             if entry.get("cut_off"):
                 lines.append(f"{record.get('slice') or '(feature)'} {entry['stage']}: cut off — {entry['cut_off']}; "
-                             "its wall is real, its tokens and signals were never recorded")
+                             "its wall is real, its signals were never reported"
+                             + ("" if (entry.get("usage") or {}).get("source") else ", its tokens unknown"))
             if is_unbracketed(entry):
                 lines.append(
                     f"{record.get('slice') or '(feature)'} {entry['stage']}: not bracketed around its work — "

@@ -8,7 +8,9 @@ delivered with no record at all, through a gate that only ran the script's self-
 innermost bracket covering it, and a delegate's lines to the bracket whose stage owns the type that ran them,
 across every record in the project, with the request count left to another bracket written into the entry's
 `read`. The `/cruise` runner closes what an iteration left open — when it ends, or when `stop --now` ends it —
-as `cut off` with the reason, no tokens and no signals, and the overview's notes say so. And
+and so does the next `start` in the same record, which used to stack a second entry on top and leave the first
+open for good: each is `cut off` with the reason, its tokens read from the transcript it left up to where that
+transcript stopped, and no signals, and the overview's notes say so. And
 `python3 scripts/agents/benchmark.py check`, run by `make check-benchmark`, fails on an entry still open, on a
 slice the ladder calls done (a row in `slices/README.md`, or `status: implemented` in the event model) with no
 record or an unclosed one, and on a feature with done slices and no record above the slice loop. Two things

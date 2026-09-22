@@ -83,6 +83,52 @@ class BenchmarkBracketsTest(FactoryTestCase):
             self.assertEqual(implement["agents"], ["drive-implement"])
             self.assertIn("2 request(s) left to a bracket open at the same time", implement["usage"]["read"])
 
+    def test_a_left_open_entry_is_cut_off_by_the_next_start_with_its_tokens_read_from_the_transcript(self) -> None:
+        """A run was stopped mid-implement; the next iteration's `start implement` stacked a second entry on the
+        first and only said "left open", `end` closed the newer one, and an hour and twenty minutes of work stayed
+        open for good. Now `start` cuts off what its record still has open — and the cut-off reads the dead
+        session's transcript from the files the cursor named, so those tokens still count."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "leftopen", "standard", "python")
+            home = Path(directory) / "home"
+            transcript = home / ".claude/projects/-x-leftopen" / f"{SESSION}.jsonl"
+            transcript.parent.mkdir(parents=True)
+            subagents = transcript.parent / SESSION / "subagents"
+            subagents.mkdir(parents=True)
+            transcript.write_text("")
+            installed(repo, "claude")
+            slice_ = "specs/shop/slices/A1"
+            (repo / slice_).mkdir(parents=True)
+            commit(repo, "the slice begins")
+            first = clean(HOME=str(home), CLAUDE_CODE_SESSION_ID=SESSION)
+            self.assertEqual(bench(repo, "start", slice_, "implement", env=first).returncode, 0)
+            with transcript.open("a") as handle:
+                handle.write(turn("r1", "claude-fable-5-1", (10, 100, 0, 0)))
+            (subagents / "agent-impl.jsonl").write_text(turn("r2", "claude-sonnet-5", (2, 20, 0, 0), "drive-implement"))
+            time.sleep(1.05)
+            # The session is gone; the next one has no transcript of its own yet and starts the next stage.
+            later = clean(HOME=str(home), CLAUDE_CODE_SESSION_ID="next-session")
+            started = bench(repo, "start", slice_, "converge", env=later)
+            self.assertEqual(started.returncode, 0, started.stderr)
+            self.assertIn("benchmark: A1 implement: cut off — a new `converge` entry started while it was open",
+                          started.stdout)
+            self.assertNotIn("left open", started.stdout)
+            implement, converge = record(repo, slice_)["stages"]
+            self.assertEqual(implement["cut_off"], "a new `converge` entry started while it was open")
+            self.assertGreaterEqual(implement["seconds"], 1)
+            self.assertEqual(tokens(implement, "host"), {"claude-fable-5-1": {"input": 10, "output": 100}})
+            self.assertEqual(tokens(implement, "subagents"), {"claude-sonnet-5": {"input": 2, "output": 20}})
+            self.assertEqual((implement["agents"], implement["delegated"], implement["signals"]),
+                             (["drive-implement"], True, {}))
+            self.assertIn("read after the session that opened the entry had ended", implement["usage"]["read"])
+            self.assertNotIn("ended", converge)
+            self.assertEqual(bench(repo, "end", slice_, "converge", env=later).returncode, 0)
+            self.assertEqual(bench(repo, "check", env=later).returncode, 0)
+            self.assertIn("A1 implement: cut off — a new `converge` entry started while it was open; its wall is real, "
+                          "its signals were never reported", bench(repo, env=later).stdout)
+            note = bench(repo, env=later).stdout.split("A1 implement: cut off")[1].split("\n")[0]
+            self.assertNotIn("tokens unknown", note)
+
     def test_the_runner_cuts_off_what_an_iteration_left_open_and_says_so(self) -> None:
         """An iteration that opens a bracket and ends without closing it — or is ended by `stop --now` — leaves
         nothing open: the runner closes the entry with the reason, no tokens and no signals, its wall real, and

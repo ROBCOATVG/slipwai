@@ -64,8 +64,9 @@ this session's. A number the script could not read is `null` with its reason and
 in, and never pass `model=` when the record already names one. Start and end must bracket the work itself. Two
 brackets open at once are told apart: a line goes to the innermost bracket covering it, and a delegate's lines to
 the bracket whose stage owns the type that ran them, so a skipper round during implementation costs the skipper
-and not the implementers. An entry a session leaves open is cut off by the `/cruise` runner when the iteration
-ends, with the reason and no tokens — nothing will close it truthfully afterwards. `{layout.make}
+and not the implementers. An entry a session leaves open is cut off — by the `/cruise` runner when the iteration
+ends, and by the next `start` in the same record — with the reason, its tokens read from the transcript it left,
+and no signals: nothing will close it truthfully afterwards. `{layout.make}
 check-benchmark`, in `{layout.make} verify`, fails on an entry still open, on a slice the ladder calls done with no
 record or an unclosed one, and on a feature with done slices and no record above the slice loop. Close
 `adversary` after its findings are triaged and before any fix, passing `findings=N` and `seams=N`; each

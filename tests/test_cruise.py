@@ -84,8 +84,14 @@ class CruiseTest(FactoryTestCase):
                 refuse = cruise.split("## Before anything: refuse, or start")[1].split("## Run the ladder")[0]
                 self.assertIn(f"Read `{CONFIG}`. `enabled: false`, or `{STOP_FILE}` present, is a refusal", refuse)
                 self.assertIn("No\n`specs/<feature>/spec.md` is a refusal too", refuse)
-                self.assertIn(f"owner brief (`{OWNER_BRIEF}`) and every standing entry in `{DECISIONS}`", refuse)
-                self.assertIn(f"the iteration number from\n`{LOG}`", refuse)
+                # A typed /cruise starts the runner and ends; only a runner's session is an iteration.
+                self.assertIn(f"Then run\n`python3 {SCRIPT} loop`: it says what is reading this session's last line. "
+                              "**Where it says nobody is**", refuse)
+                self.assertIn(f"run\n`python3 {SCRIPT} start` (with `--feature <feature>` where one was given), repeat "
+                              "what it printed, and end\nthe turn there", refuse)
+                self.assertIn("**Where it says the outer\nloop started this session**, this is an iteration: read the "
+                              f"owner brief (`{OWNER_BRIEF}`) and every standing\nentry in `{DECISIONS}`", refuse)
+                self.assertIn(f"the iteration number from `{LOG}`", refuse)
                 self.assertIn(f"`touch {STOP_FILE}`", refuse)
                 self.assertIn("pass `driver=cruise` to every `end` this iteration closes", refuse)
                 # The table, and the rows that depend on what the project is.
@@ -135,8 +141,11 @@ class CruiseTest(FactoryTestCase):
                               "turn is a stop, whatever\nit says it is about to do", cruise)
                 self.assertIn(f"`python3 {SCRIPT} loop`", cruise)
                 self.assertIn(f"*{UNREAD}*", cruise)
-                self.assertIn(f"runs `python3 {SCRIPT} stopping` as the `Stop` hook", cruise)
-                self.assertIn("It lets go after three holds against a checkpoint nothing rewrote", cruise)
+                self.assertIn(f"the project's hook file runs `python3 {SCRIPT} stopping` there — "
+                              "`.claude/settings.json` runs\nit as Claude Code's `Stop` hook, `.cursor/hooks.json` as "
+                              "Cursor's `stop`, `.gemini/settings.json` as Gemini\nCLI's `AfterAgent`", cruise)
+                self.assertIn("and while a runner\nstarted the session", cruise)
+                self.assertIn("It\nlets go after three holds against a checkpoint nothing rewrote", cruise)
                 # Identifiers are the host's to allocate: the number goes out in the brief, the entry comes back.
                 self.assertIn("**the number its entry will carry**. `D<n>` is\nallocated here, before dispatch", cruise)
                 self.assertIn("Every other identifier a decision adds to a shared artifact — a requirement, a "
@@ -183,7 +192,8 @@ class CruiseTest(FactoryTestCase):
             self.assertIn(f"python3 {SCRIPT} --set $ARGUMENTS", command)
             self.assertIn(f"python3 {SCRIPT}\n```", command)
             self.assertIn(f"commit `{CONFIG}` on its own", command)
-            self.assertIn(f"`touch\n{STOP_FILE}`", command)
+            self.assertIn(f"it is `python3 {SCRIPT}\nstop` — `touch {STOP_FILE}`, which ends the run after the "
+                          "iteration in flight; `--now` ends that iteration too", command)
 
     def test_the_skipper_decides_and_never_invents_a_fact_and_the_hand_demos_and_never_edits_code(self) -> None:
         """A skipper that deferred is a stalled slice; one that made up a credential is a shipped guess; a hand

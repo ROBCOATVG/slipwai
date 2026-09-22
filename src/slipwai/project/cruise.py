@@ -27,11 +27,12 @@ SCRIPT = "scripts/agents/cruise.py"
 # The last line of every iteration: the one thing the outer loop reads.
 LAST_LINES = ("cruise: continue", "cruise: done", "cruise: parked: <what a person must provide>",
               "cruise: stopped: human")
-# What a session is told when nothing is reading its last line — a person typed `/cruise`, and `continue`
-# would end the run without anyone noticing. `scripts/agents/cruise.py loop` prints the same words, and the
-# Stop hook holds the turn to them, so the command, the script and the hook cannot disagree.
-UNREAD = ("no outer loop is reading this: `cruise: continue` is not an end here, so the ladder goes on to the next "
-          "unit in this session and ends only with `done`, `parked` or `stopped`; `make cruise` runs it unattended")
+# What a session is told when nothing is reading its last line — a person typed `/cruise`, and an iteration run
+# here would end with nobody to re-invoke it. `scripts/agents/cruise.py loop` prints the same words, so the
+# command and the script cannot disagree: the runner is the one thing that continues a run, on every harness.
+UNREAD = ("no outer loop is reading this: a `/cruise` typed in a session starts the runner — `python3 "
+          "scripts/agents/cruise.py start` — and ends the turn with what that printed; the runner drives the ladder "
+          "from here, a fresh session per iteration, and this session runs no stage of it")
 # Every setting, its values, its default and what it controls — the one list the config, the command, the
 # settings command and `scripts/agents/cruise.py` are all written from.
 SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
@@ -103,19 +104,23 @@ every rule as written** — with nobody at the wheel: it decides what the ladder
 runs each demo as the actor, and re-enters the ladder until the specification under `specs/<feature>/` is
 satisfied. Nothing about what a stage produces changes; what changes is who answers. It stops for a human and
 for nothing else. An iteration is one invocation of this command; the outer loop that re-invokes it with a
-fresh context is `python3 {SCRIPT} run` (`{layout.make} cruise`), and a person watching a run in this session
-can use the harness's own loop over `/cruise` instead. Typed in a session, nothing re-invokes it: there
-`continue` is not an end, and the ladder goes on in the session (*The iteration contract*, below).{adopted}
+fresh context is `python3 {SCRIPT} run` (`{layout.make} cruise`), on every harness. Typed in a session, nothing
+re-invokes it, so the command starts that loop instead of running the ladder here (*Before anything*, below):
+the runner is the one thing that continues a run, whatever the harness.{adopted}
 
 ## Before anything: refuse, or start
 
 Read `{CONFIG}`. `enabled: false`, or `{STOP_FILE}` present, is a refusal in one line that says which. No
-`specs/<feature>/spec.md` is a refusal too: a specification is the one thing a person brings. Then read the
-owner brief (`{OWNER_BRIEF}`) and every standing entry in `{DECISIONS}`, and say the iteration number from
-`{LOG}`, the branch and its distance from trunk, and that a person stops this run with `touch {STOP_FILE}` or
-by interrupting the session, and what is reading this iteration's last line — `python3 {SCRIPT} loop` says
-whether the outer loop is (it sets `CRUISE_RUNNER` and `CRUISE_ITERATION` in every session it starts) or
-nobody is, and what that means for how this iteration ends. Open a `skipper` or `hand` benchmark entry around
+`specs/<feature>/spec.md` is a refusal too: a specification is the one thing a person brings. Then run
+`python3 {SCRIPT} loop`: it says what is reading this session's last line. **Where it says nobody is** — this
+command was typed in a session, and no runner set `CRUISE_RUNNER` and `CRUISE_ITERATION` — run
+`python3 {SCRIPT} start` (with `--feature <feature>` where one was given), repeat what it printed, and end
+the turn there: the runner it started drives the ladder from here, one fresh session per iteration, and this
+session runs no stage of it. What it prints is the whole answer, a refusal included — a runner already
+running, the stop file present, no harness on PATH it can run an iteration through. **Where it says the outer
+loop started this session**, this is an iteration: read the owner brief (`{OWNER_BRIEF}`) and every standing
+entry in `{DECISIONS}`, and say the iteration number from `{LOG}`, the branch and its distance from trunk,
+and that a person stops this run with `touch {STOP_FILE}`. Open a `skipper` or `hand` benchmark entry around
 each delegation the way every stage is bracketed, and pass `driver=cruise` to every `end` this iteration closes.
 
 ## Run the ladder, and answer at its stops
@@ -210,13 +215,17 @@ of these, and the outer loop reads nothing else:
 
 **An iteration ends only on one of those four lines.** Any other message that ends a turn is a stop, whatever
 it says it is about to do: in Claude Code a message with no tool call *is* the end of the turn, so "continuing
-into the plan now" is a stop that called itself progress. Where `python3 {SCRIPT} loop` said nobody is reading
-— this command was typed in a session — `continue` is not an end either: *{UNREAD}*. Neither rule is left to
-this text. On Claude Code, `.claude/settings.json` runs `python3 {SCRIPT} stopping` as the `Stop` hook, and
-while `{CHECKPOINT}` says an iteration is in flight and `{STOP_FILE}` is absent, it refuses a turn that ends
-on anything but a last line — or on `continue` with no runner — and hands back the checkpoint's `Next:` line
-as the reason. It lets go after three holds against a checkpoint nothing rewrote, so a session that cannot
-move is not held forever; rewriting the checkpoint at every stage boundary is what keeps it moving.
+into the plan now" is a stop that called itself progress. And an iteration is only ever a session the runner
+started: where `python3 {SCRIPT} loop` said nobody is reading, this command started the runner and ended
+(*{UNREAD}*). Neither rule is left to this text. The runner reads the last line and re-invokes, on every
+harness, and a session that ended without one is no progress to it. Where a harness lets a hook refuse the
+end of a turn, the project's hook file runs `python3 {SCRIPT} stopping` there — `.claude/settings.json` runs
+it as Claude Code's `Stop` hook, `.cursor/hooks.json` as Cursor's `stop`, `.gemini/settings.json` as Gemini
+CLI's `AfterAgent`; `scripts/agents/registry.json`, `hooks`, says what each harness has — and while a runner
+started the session, `{CHECKPOINT}` says an iteration is in flight and `{STOP_FILE}` is absent, it refuses a
+turn that ends on anything but a last line and hands back the checkpoint's `Next:` line as the reason. It
+lets go after three holds against a checkpoint nothing rewrote, so a session that cannot move is not held
+forever; rewriting the checkpoint at every stage boundary is what keeps it moving.
 
 ## Checkpoint: what survives a compacted context
 
@@ -237,7 +246,7 @@ Claude Code's `SessionStart` with the `compact` matcher and stamps the checkpoin
 `scripts/agents/registry.json`, `compaction`, says what each harness can. A checkpoint left by an earlier
 iteration is a lead, never a result: its delegates ended with that session, so verify what they left in the
 tree before continuing. The runner deletes the checkpoint when an iteration ends `done` or `stopped`, and so
-does the `Stop` hook; one that ends `continue` or `parked` leaves it for the next.
+does the stop hook; one that ends `continue` or `parked` leaves it for the next.
 
 {unblock_section(SCRIPT)}
 ## What holds throughout
@@ -301,6 +310,7 @@ message naming the change: it takes effect at the next iteration, and nothing al
 
 "Turn it on" is `enabled=true`; "stop after tonight" is `max_hours=<n>`; "ask me before every release" is
 `release=park`; "let the skipper decide everything" is `decide=skipper-always`; "back to the defaults" is
-every key at the value the table shows. Stopping a run that is going is not a setting: it is `touch
-{STOP_FILE}`, or interrupting the session, and `commands/cruise.md` says how the run ends cleanly from either.
+every key at the value the table shows. Stopping a run that is going is not a setting: it is `python3 {SCRIPT}
+stop` — `touch {STOP_FILE}`, which ends the run after the iteration in flight; `--now` ends that iteration too
+— and `commands/cruise.md` says how the run ends cleanly from either.
 """

@@ -13,6 +13,11 @@ from .cruise_agents import BROWSER, HAND, SKIPPER
 
 CHECKPOINT = "specs/cruise-checkpoint.md"
 STOP_FILE = ".specify/cruise.stop"
+# The runner's pid while it runs, where a detached runner writes what a foreground one prints, and the last
+# message a harness's after-response hook kept for a stop hook whose event does not carry it.
+RUNNER_PID = ".specify/cruise.pid"
+RUNNER_LOG = ".specify/cruise-run.log"
+LAST_RESPONSE = ".specify/cruise-last-response.txt"
 DECISION_ENTRY = f"""## D<n> — <the question, in one line>
 - **Stage:** <stage> · **Slice:** <id> · **When:** <ISO instant> · **Iteration:** <n>
 - **Question:** <as the stage raised it>

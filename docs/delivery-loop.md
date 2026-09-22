@@ -88,7 +88,9 @@ input is already fully specified on paper (tasks, implement, mutation) — and, 
 to. Roles rather than model names, because identifiers are provider-specific and go stale; `host` means the
 model running `/drive` itself, and `strong` maps to it everywhere.
 
-Whether a harness can act on the table at all is the registry's business. `scripts/agents/registry.json`
+Whether a harness can act on the table at all is the registry's business (the same file records under
+`headless` how each harness runs one prompt and exits, which is what `/cruise`'s runner drives, and under
+`hooks` whether it can refuse the end of a turn; [Cruise](cruise.md) says how both are used). `scripts/agents/registry.json`
 records under `subagentModel` how each harness lets a sub-task run on a chosen model — read from that
 harness's own documentation on the date the row names, for Claude Code, Codex CLI, Gemini CLI, Cursor, GitHub
 Copilot and opencode — or `null` where none was verified. `python3 scripts/agents/models.py <stage>` resolves

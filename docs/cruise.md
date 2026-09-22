@@ -39,14 +39,16 @@ Nothing about what a stage produces changes. What changes is who answers.
 5. **The board is honest.** A slice the machine accepted says so. A person can see at a glance which demos
    a person has seen.
 6. **An iteration ends only on one of its four last lines.** A message that says what it is about to do
-   next is a stop, whatever it says, and on Claude Code a hook refuses it. Typed in a session, where nothing
-   reads the last line, the ladder goes on in the session instead of ending on `continue`.
+   next is a stop, whatever it says, and where the harness has a hook that can refuse it, the project's hook
+   file does. An iteration is only ever a session the runner started: typed in a session, `/cruise` starts
+   the runner and ends, on every harness, so nothing depends on what a session does with its last line.
 
 ## Three roles and two loops
 
 ```text
-outer loop — make cruise (scripts/agents/cruise.py run)
-  a fresh harness session per iteration · the stop file · a stuck detector · parks when blocked · a log
+outer loop — scripts/agents/cruise.py run: make cruise from a terminal, or what a typed /cruise starts (detached)
+  a fresh harness session per iteration, through any CLI harness on PATH · the stop file · a stuck detector
+  · parks when blocked · a log
   │
   └─ one iteration — /cruise
        driver: runs commands/drive.md as written, stage by stage, delegating as it does
@@ -55,7 +57,7 @@ outer loop — make cruise (scripts/agents/cruise.py run)
          └─ the demo stop ────────▶ hand: drive-hand, with a browser where the slice has a screen
                                     verdict → demo-log.md, the benchmark outcome, back into the ladder
        ends with one line: cruise: continue | done | parked: <why> | stopped: human
-       (held to that by the Stop hook: python3 scripts/agents/cruise.py stopping)
+       (held to that, where the harness has a stop hook: python3 scripts/agents/cruise.py stopping)
 ```
 
 **The driver** is the session that runs `/cruise`. It runs `commands/drive.md` itself, not a copy of it, so
@@ -136,31 +138,43 @@ stages of their own, so `make benchmark` can say what a decision cost and what a
 
 ## Start a run, watch it, stop it
 
-A project ships with `/cruise` disabled. To start:
+A project ships with `/cruise` disabled. To start, in any harness's session:
 
 ```sh
-/cruise-settings enabled=true     # in an agent session; commits .specify/cruise.json
-make cruise                       # the outer loop: python3 scripts/agents/cruise.py run
+/cruise-settings enabled=true     # commits .specify/cruise.json
+/cruise                           # starts the runner, detached from this session, and reports
 ```
 
-`make cruise` runs the installed harness headless, one fresh session per iteration, until the last line says
-`done`. A parked run waits, and re-checks every `poll_minutes` for a reason to resume: the stop file, or an
-artifact a person changed. `make cruise-status` prints the log's tail.
+or from a terminal, `make cruise`, which runs the same loop in the foreground. Either way the runner is the
+one thing that continues a run: `python3 scripts/agents/cruise.py run` starts one fresh headless session per
+iteration, reads its last line, and runs again until the line says `done`. A parked run waits, and re-checks
+every `poll_minutes` for a reason to resume: the stop file, or an artifact a person changed.
 
-To watch a run inside a Claude Code session instead, type `/loop /cruise`. The session's own timer re-runs
-the command. The context is summarised rather than fresh, so this is the way to watch, not the way to run
-unattended. Typing `/cruise` on its own is one iteration that nobody re-invokes, so there `continue` is not
-an end: the command says so at the start (`python3 scripts/agents/cruise.py loop` tells it whether a runner
-started the session), goes on to the next unit in the same session, and ends only with `done`, `parked` or
-`stopped`. The Stop hook holds it to that ([How an iteration is held to its end](#how-an-iteration-is-held-to-its-end)).
+A `/cruise` typed into a session never runs the ladder itself. The command asks `python3
+scripts/agents/cruise.py loop` who is reading its last line; where nobody is, it runs `python3
+scripts/agents/cruise.py start`, repeats what that printed, and ends the turn. `start` checks everything that
+can refuse before it detaches — the settings, the stop file, a runner already running, no harness on the PATH
+it can run an iteration through — so the refusal is what you read. The runner then writes to
+`.specify/cruise-run.log`, keeps its pid in `.specify/cruise.pid`, and `make cruise-status` says whether it
+is running and what the log shows. This is the same on every harness, because it needs nothing of the
+session beyond a shell.
 
-To stop a run, do one of three things. Each is safe in the middle of a slice, because the slice's commits
-are on its branch and the next iteration re-derives its stage from the artifacts.
+Which harness the runner drives is `scripts/agents/registry.json`'s business, under `headless`: for each
+harness, how it runs one prompt non-interactively and exits, read from its own documentation on the date the
+row names — 27 of the 36 have a row; the nine that do not say why, editor-only or unreachable docs. The runner
+takes the first installed harness with a row whose binary is on the PATH, and otherwise any harness in the
+registry whose binary is, so a `/cruise` typed into Zed or Antigravity runs through whichever CLI harness the
+machine has, and the log names which. Only Claude Code's print mode is known to resolve `/cruise` itself;
+every other harness is asked, in the same words, to read `commands/cruise.md` and follow it.
+`CRUISE_HARNESS_COMMAND`, a shell template with `{prompt}`, overrides the choice.
 
-- Run `touch .specify/cruise.stop`. The runner checks between iterations. The command checks between stages,
-  finishes the stage's own writes, commits what is green, and ends.
-- Press Ctrl-C on the runner. The harness session dies with it.
-- Type into an interactive session.
+To stop a run, do one of these. Each is safe in the middle of a slice, because the slice's commits are on
+its branch and the next iteration re-derives its stage from the artifacts.
+
+- Run `make cruise-stop`, or `touch .specify/cruise.stop`. The runner ends after the iteration in flight, and
+  the command checks between stages, finishes the stage's own writes, commits what is green, and ends.
+  `make cruise-stop CRUISE_FLAGS=--now` ends the iteration in flight too.
+- Press Ctrl-C on a foreground runner. The harness session dies with it.
 
 ## The settings
 
@@ -239,16 +253,30 @@ the contract named no unit before the split; the same session later ended a turn
 `make verify` was green both times, and the checkpoint correctly said an iteration was in flight, and nothing
 read it. So the end of a turn is checked where the harness lets a hook refuse it.
 
-On Claude Code, `.claude/settings.json` runs `python3 scripts/agents/cruise.py stopping` as the `Stop` hook.
-While `specs/cruise-checkpoint.md` says an iteration is in flight and `.specify/cruise.stop` is absent, it
-refuses a turn whose last assistant message does not end on one of the four last lines, and one that ends on
-`continue` in a session no runner started (`CRUISE_RUNNER` is unset). The reason it hands back is the
-checkpoint's own `Next:` line. Every hold is stamped on the checkpoint, and the hook lets go after three holds
-against a checkpoint nothing rewrote, so a session that cannot move is not held forever: rewriting the
-checkpoint at every stage boundary, which the command already requires, is what keeps a turn holdable. A
-turn that ends on `done` or `stopped` takes the checkpoint with it. Outside an iteration the hook does
-nothing, so a plain `/drive` session never meets it. Other harnesses have no equivalent recorded; there the
-contract's words are all there is.
+The control is the runner. It marks every session it starts (`CRUISE_RUNNER`, `CRUISE_ITERATION`), reads
+the last line, and treats an iteration that ended without one as no progress, which the stuck detector then
+counts. A typed `/cruise` starts the runner rather than running an iteration, so there is no session whose
+last line matters and nobody is reading.
+
+The hook is the seatbelt inside a runner's iteration, where a harness has one. `python3
+scripts/agents/cruise.py stopping` runs from the project's hook file: `.claude/settings.json` on Claude
+Code's `Stop`, `.cursor/hooks.json` on Cursor's `stop`, `.gemini/settings.json` on Gemini CLI's `AfterAgent`.
+In a session the runner started, while `specs/cruise-checkpoint.md` says an iteration is in flight and
+`.specify/cruise.stop` is absent, it refuses a turn whose last message does not end on one of the four last
+lines, spelled the way that harness reads a refusal — a block decision, or Cursor's follow-up message — with
+the checkpoint's own `Next:` line as the reason. Every hold is stamped on the checkpoint, and the hook lets go
+after three holds against a checkpoint nothing rewrote, so a session that cannot move is not held forever:
+rewriting the checkpoint at every stage boundary, which the command already requires, is what keeps a turn
+holdable. A turn that ends on `done` or `stopped` takes the checkpoint with it. Cursor's stop event carries no
+text, so its `afterAgentResponse` hook keeps the last message for it (`cruise.py responded`); an event that
+carries no message and no kept one is no evidence, and the hook does not hold on none. Outside a runner's
+iteration the hook does nothing, so a plain `/drive` session, and a typed `/cruise`, never meet it.
+
+`scripts/agents/registry.json` records under `hooks`, for every harness, whether it has a hook that fires
+when a turn ends and can refuse the end, how, and the projection `scripts/agents/project.py` writes — merged
+into a file a person may keep other keys in, and held to by `make check-agents`. Where the file's shape was
+not read, or a harness's hook cannot continue the agent, the row says so and the runner's own reading of the
+last line is what holds.
 
 ## When it is blocked
 
@@ -292,9 +320,10 @@ and parks at once.
   one goes to the bosun for the reading that keeps them all, and parks only if there is none.
 - **The hand edits no code.** A defect it finds is a task. A fix there would make the verdict evidence for
   itself.
-- **Unattended permissions need a sandbox.** The headless call runs with `acceptEdits` by default. Bypassing
-  permissions is allowed only with the runner's `--sandbox` flag, and the runner says why. Run an unattended
-  loop inside a container or sandbox.
+- **Unattended permissions need a sandbox.** The headless call runs with the permissions the registry row
+  names for a normal run — edits accepted, the rest the harness's own to grant or refuse. Bypassing them all
+  is allowed only with the runner's `--sandbox` flag, and the runner says why. Run an unattended loop inside
+  a container or sandbox.
 - **A run that loops is detected.** `stuck_after` iterations with the same artifact fingerprint give the
   bosun one iteration, then park the loop; the same open question raised twice in one iteration goes the
   same way.

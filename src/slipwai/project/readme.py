@@ -95,7 +95,7 @@ the other stopping boundary.
 
 `/cruise` runs the same ladder with nobody at the wheel — deciding as the owner, demoing as the actor, recording
 both under `specs/` — until the specification is satisfied. It ships switched off: `/cruise-settings enabled=true`,
-then `make cruise`; `touch .specify/cruise.stop` stops it. `commands/cruise.md` is exact.
+then `/cruise` in any session, or `make cruise`, starts the runner; `make cruise-stop` stops it. `commands/cruise.md` is exact.
 
 ### The browsable model
 

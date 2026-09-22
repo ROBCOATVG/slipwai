@@ -5,26 +5,37 @@
 product question, how a slice is released, what a demo is driven with, when a run parks. This reads the file
 and says what each setting is and controls, checks a hand edit, and changes them through `--set`, refusing
 anything the command could not act on. `run` is the loop: one headless harness session per iteration, each a
-fresh context, until the last line of an iteration says `done`, a person stops it, or nothing can move.
+fresh context, until the last line of an iteration says `done`, a person stops it, or nothing can move. It is
+the one thing that continues a run, on every harness: a `/cruise` typed in a session starts it, detached,
+with `start`, and the session that typed it runs no stage of the ladder.
 
     python3 scripts/agents/cruise.py                       # every setting and what it controls
     python3 scripts/agents/cruise.py --check               # well-formed; `make check-agents` runs this
     python3 scripts/agents/cruise.py --set enabled=true    # change settings, checked, any time
     python3 scripts/agents/cruise.py run [--feature F] [--no-park] [--sandbox]   # the loop; `make cruise`
-    python3 scripts/agents/cruise.py status      # what the log says the run is doing
+    python3 scripts/agents/cruise.py start [--feature F] [--no-park] [--sandbox] # the loop, detached from this session
+    python3 scripts/agents/cruise.py stop [--now]  # end the run after the iteration in flight, or now
+    python3 scripts/agents/cruise.py status      # whether a runner is running, and what the log says it is doing
     python3 scripts/agents/cruise.py resume      # print the checkpoint into a compacted context; nothing when none
     python3 scripts/agents/cruise.py compacting  # stamp the checkpoint before the harness compacts
     python3 scripts/agents/cruise.py loop        # what is reading this session's last line: the runner, or nobody
-    python3 scripts/agents/cruise.py stopping    # Claude Code's Stop hook: refuse to end a turn mid-iteration
+    python3 scripts/agents/cruise.py stopping    # a harness's stop hook: refuse to end a runner's iteration early
+    python3 scripts/agents/cruise.py responded   # a harness's after-response hook: keep the last message for `stopping`
 
 `run` marks every session it starts with `CRUISE_RUNNER=1` and `CRUISE_ITERATION=<n>`, which is how `loop` and
-`stopping` tell a runner's iteration from a `/cruise` a person typed — where nothing reads the last line, so
-`continue` is not an end the ladder has, and the session goes on to the next unit instead.
+`stopping` tell a runner's iteration from a `/cruise` a person typed — where nothing reads the last line, so the
+command starts the runner instead of running the ladder itself.
 
-A person stops a run with `touch .specify/cruise.stop`, or by interrupting this script: the iteration under
-way is killed, its increment commits are on the slice branch, and the next iteration re-derives from disk.
-`CRUISE_HARNESS_COMMAND` (a shell template with `{prompt}`) overrides how the harness is run and
-`CRUISE_POLL_SECONDS` how long a parked loop waits, so a run can be rehearsed against a fake harness.
+Which harness an iteration runs through is the registry's `headless` column (`scripts/agents/registry.json`):
+the first installed harness with a verified headless command whose binary is on PATH, else any harness in the
+registry whose binary is, so a `/cruise` typed into an editor with no command line of its own still runs
+through whichever CLI harness the machine has. `CRUISE_HARNESS_COMMAND` (a shell template with `{prompt}`)
+overrides all of that, and `CRUISE_POLL_SECONDS` how long a parked loop waits, so a run can be rehearsed
+against a fake harness.
+
+A person stops a run with `touch .specify/cruise.stop` (`stop`), or by interrupting a foreground `run`: the
+iteration under way is killed, its increment commits are on the slice branch, and the next iteration re-derives
+from disk.
 """
 
 from __future__ import annotations
@@ -35,6 +46,7 @@ import os
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -51,9 +63,19 @@ def project_root(script: Path, depth: int) -> Path:
     return script.parents[depth]
 
 
-ROOT = project_root(Path(__file__).resolve(), 2)
+SCRIPT = Path(__file__).resolve()
+ROOT = project_root(SCRIPT, 2)
+# The delivery toolkit this script is part of: `commands/`, `scripts/`, `skills/` beside each other, at the root
+# or under the delivery directory of an adopted repository.
+DELIVERY = SCRIPT.parents[2]
+COMMAND = DELIVERY / "commands/cruise.md"
 CONFIG = ROOT / ".specify/cruise.json"
 STOP = ROOT / ".specify/cruise.stop"
+# The runner's own state: its pid while it runs, and where a detached runner writes what a foreground one prints.
+PID = ROOT / ".specify/cruise.pid"
+RUN_LOG = ROOT / ".specify/cruise-run.log"
+# The last message a harness's after-response hook saw, for a stop hook whose event does not carry it.
+LAST_RESPONSE = ROOT / ".specify/cruise-last-response.txt"
 LOG = ROOT / "specs/cruise-log.jsonl"
 # The iteration in flight, rewritten by `/cruise` at every stage boundary so a compacted context can resume.
 CHECKPOINT = ROOT / "specs/cruise-checkpoint.md"
@@ -63,13 +85,14 @@ RESUME = ("cruise: this session is a /cruise iteration whose context was compact
 # The two variables `run` sets in every session it starts: what tells a runner's iteration from a typed one.
 RUNNER_VARIABLE, ITERATION_VARIABLE = "CRUISE_RUNNER", "CRUISE_ITERATION"
 # What a session is told when nothing reads its last line — the same words `commands/cruise.md` carries.
-UNREAD = ("no outer loop is reading this: `cruise: continue` is not an end here, so the ladder goes on to the next "
-          "unit in this session and ends only with `done`, `parked` or `stopped`; `make cruise` runs it unattended")
+UNREAD = ("no outer loop is reading this: a `/cruise` typed in a session starts the runner — `python3 "
+          "scripts/agents/cruise.py start` — and ends the turn with what that printed; the runner drives the ladder "
+          "from here, a fresh session per iteration, and this session runs no stage of it")
 # How many times the Stop hook holds a turn against one checkpoint before it lets go: the command rewrites the
 # checkpoint at every stage boundary, so a checkpoint held this often without a rewrite is a session that is
 # not moving, and a hook that never let go would spend tokens forever on it.
 HOLD_LIMIT = 3
-REGISTRY = Path(__file__).with_name("registry.json")
+REGISTRY = SCRIPT.with_name("registry.json")
 INTEGRATION = ROOT / ".specify/integration.json"
 # Every setting: the values it takes — a tuple of words, or a kind — its default, and what it controls. The
 # factory writes the same list into `.specify/cruise.json` and `commands/cruise-settings.md`.
@@ -110,10 +133,19 @@ CONTROLS = {
 LAST_LINE = re.compile(r"^cruise: (continue|done|parked: .+|stopped: human)\s*$")
 PARKED_EXIT = 3
 ABSENT = f"no {CONFIG.relative_to(ROOT)}: /cruise is not enabled here; `slipwai migrate` writes the file"
+# The environment a harness session started from inside another harness's session must not inherit: the parent's
+# own identity, or the child would read the parent's transcript as its own, and refuse to start as a nested copy.
+PARENT_SESSION_VARIABLES = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT")
+# The iteration under way, so a SIGTERM to the runner ends it too rather than orphaning a harness session.
+CURRENT: subprocess.Popen[str] | None = None
 
 
 def now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def relative(path: Path) -> str:
+    return path.relative_to(ROOT).as_posix()
 
 
 def check(table: object) -> list[str]:
@@ -175,17 +207,71 @@ def load() -> dict[str, Any]:
     return table
 
 
-def installed_harness() -> dict[str, Any]:
-    """The registry row of the first harness Spec Kit recorded as installed."""
+def enabled() -> dict[str, Any]:
+    table = load()
+    if not table["enabled"]:
+        raise RuntimeError("not enabled: `python3 scripts/agents/cruise.py --set enabled=true`, checked, turns it on")
+    return table
+
+
+def registry() -> dict[str, dict[str, Any]]:
+    return {row["key"]: row for row in json.loads(REGISTRY.read_text())["harnesses"]}
+
+
+def installed_keys() -> list[str]:
+    """The harnesses Spec Kit recorded as installed here, in the order it recorded them; none where it never ran."""
     if not INTEGRATION.is_file():
-        raise RuntimeError("no harness is initialised here (`./init --integration <agent>` records one)")
+        return []
     state = json.loads(INTEGRATION.read_text())
     keys = state.get("installed_integrations") or [state.get("default_integration")]
-    rows = {row["key"]: row for row in json.loads(REGISTRY.read_text())["harnesses"]}
-    for key in keys:
-        if key in rows:
-            return rows[key]
-    raise RuntimeError("the installed harness is not one the registry knows")
+    return [key for key in keys if isinstance(key, str)]
+
+
+def headless_row(harness: dict[str, Any]) -> dict[str, Any] | None:
+    row = harness.get("headless")
+    return row if isinstance(row, dict) else None
+
+
+def binary_of(harness: dict[str, Any]) -> str:
+    """The executable a harness's headless command starts with: what the runner looks for on PATH."""
+    row = headless_row(harness)
+    assert row is not None
+    return shlex.split(str(row["command"]))[0]
+
+
+def choose_harness() -> tuple[dict[str, Any], str]:
+    """The harness an iteration runs through, and a sentence saying why that one.
+
+    The first installed harness with a verified headless command whose binary is on PATH. Failing that, any
+    harness in the registry whose binary is on PATH — a `/cruise` typed into an editor that has no command
+    line, or into a CLI nobody has verified a print mode for, still runs through whichever CLI harness this
+    machine has, and the sentence says so. Failing that, a refusal that names what is installed, which
+    harnesses would do, and the override.
+    """
+    rows = registry()
+    installed = [key for key in installed_keys() if key in rows]
+    for key in installed:
+        harness = rows[key]
+        if headless_row(harness) is not None and shutil.which(binary_of(harness)):
+            return harness, f"harness: {harness['name']}"
+    for harness in rows.values():
+        if headless_row(harness) is not None and shutil.which(binary_of(harness)):
+            if installed:
+                why = (f"{rows[installed[0]]['name']} is the installed harness, and "
+                       + ("the registry records no way to run it headless"
+                          if headless_row(rows[installed[0]]) is None
+                          else f"`{binary_of(rows[installed[0]])}` is not on PATH"))
+            else:
+                why = "no harness is initialised here (`./init --integration <agent>` records one)"
+            return harness, f"harness: {harness['name']}, found on PATH — {why}"
+    able = ", ".join(f"{harness['name']} (`{binary_of(harness)}`)" for harness in rows.values()
+                     if headless_row(harness) is not None)
+    named = ", ".join(rows[key]["name"] for key in installed) or "no harness is initialised here"
+    raise RuntimeError(f"no harness this loop can run an iteration through is on PATH: {named}"
+                       f"{' is installed' if len(installed) == 1 else ' are installed' if installed else ''}, "
+                       "and none of the harnesses the registry records a headless command for is on PATH — "
+                       f"{able} (scripts/agents/registry.json, `headless`). Install one of those, or set "
+                       "CRUISE_HARNESS_COMMAND to a shell template with {prompt}")
 
 
 def harness_command(harness: dict[str, Any], sandbox: bool) -> tuple[str, str]:
@@ -193,17 +279,39 @@ def harness_command(harness: dict[str, Any], sandbox: bool) -> tuple[str, str]:
     override = os.environ.get("CRUISE_HARNESS_COMMAND")
     if override:
         return override, "harness: CRUISE_HARNESS_COMMAND, as given"
-    headless = harness.get("headless")
-    if not isinstance(headless, dict):
-        raise RuntimeError(f"the registry records no way to run {harness['name']} headless "
-                           "(scripts/agents/registry.json, `headless`): use the harness's own loop over /cruise "
-                           "in a session, or set CRUISE_HARNESS_COMMAND to a shell template with {prompt}")
+    headless = headless_row(harness)
+    assert headless is not None
     permissions = headless.get("sandboxPermissions" if sandbox else "permissions", "")
     why = ("--sandbox: every permission check is bypassed, which is only for a container with nothing to lose"
            if sandbox else
            "edits are accepted and every other permission is the harness's own to grant or refuse; pass "
            "--sandbox inside a disposable container to bypass them all")
-    return str(headless["command"]).replace("{permissions}", permissions), f"harness: {harness['name']}; {why}"
+    return str(headless["command"]).replace("{permissions}", permissions), why
+
+
+def resolve_harness(sandbox: bool) -> tuple[dict[str, Any] | None, str, str]:
+    """The harness row (none under the override where nothing is installed), the shell template, and the sentence
+    the run starts with. The override is consulted first so a rehearsal against a fake harness needs no CLI."""
+    if os.environ.get("CRUISE_HARNESS_COMMAND"):
+        rows = registry()
+        installed = [key for key in installed_keys() if key in rows]
+        harness = rows[installed[0]] if installed else None
+        template, why = harness_command(harness or {}, sandbox)
+        return harness, template, why
+    harness, chosen = choose_harness()
+    template, why = harness_command(harness, sandbox)
+    return harness, template, f"{chosen}; {why}"
+
+
+def prompt_for(harness: dict[str, Any] | None, argument: str | None) -> str:
+    """What an iteration is asked. A harness whose headless row says its print mode resolves the project's slash
+    commands (`prompt: "slash"`) is asked `/cruise`; every other is asked to read the command file and follow
+    it, which needs nothing of a harness beyond reading a file — the same words whatever the harness."""
+    headless = headless_row(harness) if harness is not None else None
+    if headless is not None and headless.get("prompt") == "slash":
+        return f"/cruise {argument}" if argument else "/cruise"
+    tail = f", with `{argument}` as its argument" if argument else "; it is given no argument"
+    return f"Run the /cruise command: read {relative(COMMAND)} and follow it exactly as written{tail}."
 
 
 def fingerprint() -> str:
@@ -215,7 +323,7 @@ def fingerprint() -> str:
     # untracked the moment the log is first written read as progress, once, in every run.
     status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT, text=True,
                             capture_output=True)
-    own = tuple(path.relative_to(ROOT).as_posix() for path in (LOG, CHECKPOINT))
+    own = tuple(path.relative_to(ROOT).as_posix() for path in (LOG, CHECKPOINT, PID, RUN_LOG, LAST_RESPONSE))
     digest.update("\n".join(line for line in status.stdout.splitlines() if not line.endswith(own)).encode())
     specs = ROOT / "specs"
     for path in sorted(specs.rglob("*")) if specs.is_dir() else []:
@@ -237,33 +345,40 @@ def record(entry: dict[str, Any]) -> None:
         handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
-def child_environment(harness: dict[str, Any]) -> dict[str, str]:
+def child_environment(harness: dict[str, Any] | None) -> dict[str, str]:
     """What the iteration runs under: this environment, plus what the registry's `headless.env` sets for the
     harness — Claude Code's wait ceiling, which otherwise ends a print session while its delegates still run —
-    and minus the harness's own session variable, so a session started from inside another never reads its
-    parent's id as its own."""
+    and minus the harness's own session variables, so a session started from inside another never reads its
+    parent's id as its own, or refuses to start as a nested copy of it."""
     environment = dict(os.environ)
-    headless = harness.get("headless")
-    if isinstance(headless, dict) and isinstance(headless.get("env"), dict):
+    for variable in PARENT_SESSION_VARIABLES:
+        environment.pop(variable, None)
+    for row in registry().values():
+        session_variable = (row.get("usage") or {}).get("env")
+        if session_variable:
+            environment.pop(str(session_variable), None)
+    headless = headless_row(harness) if harness is not None else None
+    if headless is not None and isinstance(headless.get("env"), dict):
         environment.update({str(key): str(value) for key, value in headless["env"].items()})
-    session_variable = (harness.get("usage") or {}).get("env")
-    if session_variable:
-        environment.pop(str(session_variable), None)
     return environment
 
 
 def iterate(template: str, prompt: str, environment: dict[str, str], iteration: int) -> str | None:
     """Run one iteration, marked as the runner's, echoing its output, and return its last line."""
+    global CURRENT
     command = template.replace("{prompt}", shlex.quote(prompt))
     environment = {**environment, RUNNER_VARIABLE: "1", ITERATION_VARIABLE: str(iteration)}
     last = None
     with subprocess.Popen(command, shell=True, cwd=ROOT, text=True, stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT, env=environment) as process:
+        CURRENT = process
         assert process.stdout is not None
         for line in process.stdout:
             sys.stdout.write(line)
+            sys.stdout.flush()
             if LAST_LINE.match(line):
                 last = line.strip()
+    CURRENT = None
     return last
 
 
@@ -315,38 +430,75 @@ def last_assistant_text(transcript: Path) -> str | None:
     return text
 
 
-def stopping() -> None:
-    """Claude Code's Stop hook: hold the turn while an iteration is in flight and this is not its end.
-
-    Prose in a command file is not a control — the same session ended an iteration after the upstream stages
-    and, later, on a report that said "continuing now" — so the end of a turn is checked here, where the harness
-    lets a hook refuse it. The hook reads the event Claude Code hands it on stdin, and holds the turn (a
-    `block` decision, with the reason the model reads next) when a checkpoint says an iteration is in flight,
-    no stop file says a person ended it, and the last assistant message does not end on one of the four last
-    lines — or ends on `continue` in a session no runner started, where that line reaches nobody. A turn that
-    ends on `done` or `stopped` takes the checkpoint with it, the way the runner would. Every hold is stamped
-    on the checkpoint, and the hook lets go after HOLD_LIMIT holds with no rewrite in between — below the
-    harness's own cap on consecutive blocks, so it is this script that decides when to let go, and says so.
-    """
-    if not CHECKPOINT.is_file() or STOP.is_file():
-        return
+def read_event() -> dict[str, Any]:
     try:
         event = json.loads(sys.stdin.read() or "{}")
     except ValueError:
-        event = {}
-    # The message the turn ends on, as the event carries it; the transcript otherwise, which can lag the event.
-    text = event.get("last_assistant_message")
-    if not isinstance(text, str) or not text.strip():
-        transcript = Path(str(event.get("transcript_path") or ""))
-        if not transcript.is_file():
-            return
-        text = last_assistant_text(transcript)
-    last = (text or "").rstrip().splitlines()[-1].strip() if (text or "").strip() else ""
+        return {}
+    return event if isinstance(event, dict) else {}
+
+
+def responded() -> None:
+    """A harness's after-response hook, for one whose stop event does not carry the message the turn ends on:
+    keep the last assistant message where `stopping` can read it. Cursor's `afterAgentResponse` hands the text
+    as `text`; anything else with a `text` or `last_assistant_message` field is kept the same way."""
+    if not os.environ.get(RUNNER_VARIABLE):
+        return
+    event = read_event()
+    text = event.get("text") or event.get("last_assistant_message")
+    if isinstance(text, str) and text.strip():
+        LAST_RESPONSE.parent.mkdir(parents=True, exist_ok=True)
+        LAST_RESPONSE.write_text(text)
+
+
+def ending_message(event: dict[str, Any]) -> str:
+    """The message the turn ends on: the event's own copy first — `last_assistant_message` (Claude Code),
+    `lastAssistantMessage` (Grok Build), `prompt_response` (Gemini CLI) — then the harness's transcript, then
+    what the after-response hook kept, and the empty string where none of those has it."""
+    for field in ("last_assistant_message", "lastAssistantMessage", "prompt_response"):
+        text = event.get(field)
+        if isinstance(text, str) and text.strip():
+            return text
+    transcript = Path(str(event.get("transcript_path") or ""))
+    if transcript.is_file():
+        return last_assistant_text(transcript) or ""
+    if LAST_RESPONSE.is_file():
+        return LAST_RESPONSE.read_text()
+    return ""
+
+
+def stopping() -> None:
+    """A harness's stop hook: hold a runner's iteration while it is in flight and this turn is not its end.
+
+    Prose in a command file is not a control — a session ended an iteration after the upstream stages and,
+    later, on a report that said "continuing now" — so the end of a turn is checked here, where a harness
+    lets a hook refuse it. Only in a session the runner started: a typed `/cruise` runs no iteration, it
+    starts the runner, so there is nothing to hold. The hook reads the event on stdin and holds the turn
+    when a checkpoint says an iteration is in flight, no stop file says a person ended it, and the message the
+    turn ends on does not end on one of the four last lines. A turn that ends on `done` or `stopped` takes the
+    checkpoint with it, the way the runner would. Every hold is stamped on the checkpoint, and the hook lets
+    go after HOLD_LIMIT holds with no rewrite in between — below every harness's own cap on consecutive
+    holds, so it is this script that decides when to let go, and says so.
+
+    The hold is spelled the way the harness reads it: Claude Code's `Stop` takes `{"decision": "block",
+    "reason"}`, Cursor's `stop` takes `{"followup_message"}`, which it submits as the next user message. The
+    event says which — Cursor's carries `loop_count`, Claude Code's `hook_event_name: "Stop"`.
+    """
+    if not os.environ.get(RUNNER_VARIABLE) or not CHECKPOINT.is_file() or STOP.is_file():
+        return
+    event = read_event()
+    text = ending_message(event)
+    if not text.strip():
+        # Nothing says what the turn ended on — an event with no message, no transcript, no after-response
+        # hook — so there is nothing to judge, and a hold on no evidence would be a hold on every turn.
+        print("cruise: the stop event carries no last message and no hook kept one; not holding", file=sys.stderr)
+        return
+    last = text.rstrip().splitlines()[-1].strip()
     ended = LAST_LINE.match(last) is not None
     if ended and last in ("cruise: done", "cruise: stopped: human"):
         CHECKPOINT.unlink(missing_ok=True)
         return
-    if ended and (last != "cruise: continue" or os.environ.get(RUNNER_VARIABLE)):
+    if ended:
         return
     checkpoint = CHECKPOINT.read_text()
     if checkpoint.count("- **Held:**") >= HOLD_LIMIT:
@@ -355,20 +507,17 @@ def stopping() -> None:
         return
     next_step = next((line.strip() for line in checkpoint.splitlines() if line.strip().startswith("- **Next:**")),
                      "- **Next:** (the checkpoint names no next step; read it and commands/cruise.md)")
-    if last == "cruise: continue":
-        why = (f"`cruise: continue` reaches nobody: no runner started this session ({RUNNER_VARIABLE} is unset), "
-               "so the ladder continues here and the iteration ends only with `cruise: done`, "
-               "`cruise: parked: <why>` or `cruise: stopped: human`.")
-    else:
-        why = ("an iteration is in flight (specs/cruise-checkpoint.md) and this turn did not end on one of its "
-               "four last lines. An iteration ends only on `cruise: continue`, `cruise: done`, "
-               "`cruise: parked: <why>` or `cruise: stopped: human`; a message that says what it is about to do "
-               "next is a stop, whatever it says.")
     with CHECKPOINT.open("a") as handle:
         handle.write(f"- **Held:** {now()} — {last or 'no last line'!r}\n")
-    reason = (f"cruise: {why} Continue from the checkpoint: {next_step}. A person ends the run with "
-              f"`touch {STOP.relative_to(ROOT)}`.")
-    print(json.dumps({"decision": "block", "reason": reason}))
+    reason = ("cruise: an iteration is in flight (specs/cruise-checkpoint.md) and this turn did not end on one of "
+              "its four last lines. An iteration ends only on `cruise: continue`, `cruise: done`, `cruise: parked: "
+              "<why>` or `cruise: stopped: human`; a message that says what it is about to do next is a stop, "
+              f"whatever it says. Continue from the checkpoint: {next_step}. A person ends the run with "
+              f"`touch {relative(STOP)}`.")
+    if "loop_count" in event or str(event.get("hook_event_name", "")) == "stop":
+        print(json.dumps({"followup_message": reason}))
+    else:
+        print(json.dumps({"decision": "block", "reason": reason}))
 
 
 def park(reason: str, no_park: bool, poll: float, seen: str) -> None:
@@ -376,8 +525,8 @@ def park(reason: str, no_park: bool, poll: float, seen: str) -> None:
     print(f"cruise: parked — {reason}")
     if no_park:
         raise SystemExit(PARKED_EXIT)
-    print(f"cruise: waiting; `touch {STOP.relative_to(ROOT)}` ends the run, a change under specs/ or a commit "
-          "resumes it")
+    print(f"cruise: waiting; `touch {relative(STOP)}` ends the run, a change under specs/ or a commit "
+          "resumes it", flush=True)
     while True:
         time.sleep(poll)
         if STOP.is_file():
@@ -388,19 +537,57 @@ def park(reason: str, no_park: bool, poll: float, seen: str) -> None:
             return
 
 
+def running_pid() -> tuple[int, str] | None:
+    """The pid and start time of the runner the pid file names, where that process is still alive."""
+    if not PID.is_file():
+        return None
+    words = PID.read_text().split()
+    if not words or not words[0].isdigit():
+        return None
+    pid = int(words[0])
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return None
+    except PermissionError:
+        pass
+    return pid, words[1] if len(words) > 1 else "?"
+
+
+def terminated(_signal: int, _frame: object) -> None:
+    """A SIGTERM to the runner ends the iteration under way with it, so `stop --now` leaves no orphan session."""
+    if CURRENT is not None and CURRENT.poll() is None:
+        CURRENT.terminate()
+    raise SystemExit(128 + signal.SIGTERM)
+
+
 def run(arguments: list[str]) -> None:
-    table = load()
-    if not table["enabled"]:
-        raise RuntimeError("not enabled: `python3 scripts/agents/cruise.py --set enabled=true`, checked, turns it on")
+    table = enabled()
+    running = running_pid()
+    if running is not None and running[0] != os.getpid():
+        raise RuntimeError(f"a runner is already running here (pid {running[0]}, since {running[1]}); "
+                           f"`python3 scripts/agents/cruise.py status` says where it is")
     feature = arguments[arguments.index("--feature") + 1] if "--feature" in arguments else None
     no_park, sandbox = "--no-park" in arguments, "--sandbox" in arguments
-    harness = installed_harness()
-    template, why = harness_command(harness, sandbox)
+    harness, template, why = resolve_harness(sandbox)
     environment = child_environment(harness)
-    prompt = f"/cruise {feature}" if feature else "/cruise"
+    prompt = prompt_for(harness, feature)
     poll = float(os.environ.get("CRUISE_POLL_SECONDS", table["poll_minutes"] * 60))
+    PID.parent.mkdir(parents=True, exist_ok=True)
+    PID.write_text(f"{os.getpid()} {now()}\n")
+    signal.signal(signal.SIGTERM, terminated)
+    try:
+        drive(table, harness, template, why, environment, prompt, feature, no_park, poll)
+    finally:
+        if PID.is_file() and PID.read_text().split()[:1] == [str(os.getpid())]:
+            PID.unlink()
+
+
+def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, why: str,
+          environment: dict[str, str], prompt: str, feature: str | None, no_park: bool, poll: float) -> None:
     print(f"cruise: {why}")
-    print(f"cruise: each iteration runs `{prompt}` in a fresh session; `touch {STOP.relative_to(ROOT)}` stops it")
+    print(f"cruise: each iteration runs `{prompt}` in a fresh session; `touch {relative(STOP)}` stops it",
+          flush=True)
     started_run = time.monotonic()
     iterations_this_run = 0
     fingerprints = [entry["fingerprint"] for entry in entries()]
@@ -419,12 +606,14 @@ def run(arguments: list[str]) -> None:
             return
         iteration = len(entries()) + 1
         started = now()
+        LAST_RESPONSE.unlink(missing_ok=True)
         last = iterate(template, ask, environment, iteration)
         iterations_this_run += 1
         seen = fingerprint()
         fingerprints.append(seen)
         entry: dict[str, Any] = {"iteration": iteration, "started": started, "ended": now(),
-                                 "harness": harness["key"], "last_line": last or "no last line", "fingerprint": seen}
+                                 "harness": harness["key"] if harness is not None else "override",
+                                 "last_line": last or "no last line", "fingerprint": seen}
         if ask != prompt:
             entry["attempt"] = "unblock"
         ask = prompt
@@ -444,14 +633,81 @@ def run(arguments: list[str]) -> None:
             if table["unblock"] == "bosun" and unblocked_at != seen:
                 # One iteration for the bosun to move it, said in the prompt so the command goes straight there.
                 unblocked_at = seen
-                ask = f"{prompt} unblock: no progress since iteration {since}"
+                ask = prompt_for(harness, f"{feature + ' ' if feature else ''}unblock: no progress since iteration {since}")
                 print(f"cruise: no progress since iteration {since}; one iteration to unblock, then park")
                 continue
             park(f"no progress since iteration {since}, and the bosun's iteration did not move it"
                  if unblocked_at == seen else f"no progress since iteration {since}", no_park, poll, seen)
 
 
+def start(arguments: list[str]) -> None:
+    """The loop, detached from the session that asked for it: what a typed `/cruise` does instead of running
+    the ladder in a context nothing re-invokes. Everything that can refuse — the settings, the stop file, a
+    runner already running, no harness to run through — is checked here, before the fork, so the refusal is
+    read by whoever typed it; the runner's own output goes to the run log."""
+    enabled()
+    if os.environ.get(RUNNER_VARIABLE):
+        raise RuntimeError(f"this session is iteration {os.environ.get(ITERATION_VARIABLE, '?')} of a run already "
+                           "under way; the runner that started it re-invokes /cruise, nothing here has to")
+    running = running_pid()
+    if running is not None:
+        print(f"cruise: the runner is already running (pid {running[0]}, since {running[1]}); its log is "
+              f"{relative(RUN_LOG)}, and `python3 scripts/agents/cruise.py status` says where it is")
+        return
+    if STOP.is_file():
+        raise RuntimeError(f"{relative(STOP)} is present: a person ended the last run, and the runner would end "
+                           "again at once; remove the file to start another")
+    feature = arguments[arguments.index("--feature") + 1] if "--feature" in arguments else None
+    harness, _template, why = resolve_harness("--sandbox" in arguments)
+    prompt = prompt_for(harness, feature)
+    RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with RUN_LOG.open("ab") as log:
+        log.write(f"cruise: runner started {now()} from a session, detached\n".encode())
+        process = subprocess.Popen([sys.executable, str(SCRIPT), "run", *arguments], cwd=ROOT,
+                                   stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                                   start_new_session=True, env=dict(os.environ))
+    # The runner writes its pid file as it starts; wait for that, so `status` typed a moment later sees it —
+    # and so a runner that refused after all is reported here, with its reason, rather than found in the log.
+    for _ in range(100):
+        if process.poll() is not None:
+            tail = RUN_LOG.read_text().rstrip().splitlines()[-3:] if RUN_LOG.is_file() else []
+            raise RuntimeError(f"the runner ended at once (exit {process.returncode}); {relative(RUN_LOG)} says: "
+                               + " | ".join(tail))
+        words = PID.read_text().split() if PID.is_file() else []
+        if words[:1] == [str(process.pid)]:
+            break
+        time.sleep(0.05)
+    print(f"cruise: runner started as pid {process.pid}, detached from this session ({why})")
+    print(f"cruise: each iteration runs `{prompt}` in a fresh session; this session runs no stage of it")
+    print(f"cruise: it writes to {relative(RUN_LOG)}; `python3 scripts/agents/cruise.py status` says where it is; "
+          f"`touch {relative(STOP)}` ends it after the iteration in flight, `python3 scripts/agents/cruise.py stop "
+          "--now` ends it now")
+
+
+def stop(arguments: list[str]) -> None:
+    """End the run: the stop file ends it after the iteration in flight, `--now` ends the iteration too."""
+    STOP.parent.mkdir(parents=True, exist_ok=True)
+    STOP.touch()
+    running = running_pid()
+    if running is None:
+        print(f"cruise: {relative(STOP)} written; no runner is running here, and /cruise refuses to start until "
+              "the file is removed")
+        return
+    if "--now" in arguments:
+        os.kill(running[0], signal.SIGTERM)
+        print(f"cruise: {relative(STOP)} written and the runner (pid {running[0]}) terminated with the iteration "
+              "in flight; its increment commits are on the slice branch, and the next run re-derives from disk")
+        return
+    print(f"cruise: {relative(STOP)} written; the runner (pid {running[0]}) ends after the iteration in flight, "
+          "and /cruise refuses to start until the file is removed")
+
+
 def status() -> None:
+    running = running_pid()
+    if running is not None:
+        print(f"cruise: the runner is running (pid {running[0]}, since {running[1]}); its log is {relative(RUN_LOG)}")
+    else:
+        print("cruise: no runner is running here")
     log = entries()
     if not log:
         print("cruise: no iteration has run here")
@@ -475,23 +731,11 @@ def main() -> None:
     if not CONFIG.is_file():
         print(ABSENT)
         return
-    if arguments[:1] == ["run"]:
-        run(arguments[1:])
-        return
-    if arguments[:1] == ["status"]:
-        status()
-        return
-    if arguments[:1] == ["resume"]:
-        resume()
-        return
-    if arguments[:1] == ["compacting"]:
-        compacting()
-        return
-    if arguments[:1] == ["loop"]:
-        loop()
-        return
-    if arguments[:1] == ["stopping"]:
-        stopping()
+    verbs = {"run": lambda: run(arguments[1:]), "start": lambda: start(arguments[1:]),
+             "stop": lambda: stop(arguments[1:]), "status": status, "resume": resume, "compacting": compacting,
+             "loop": loop, "stopping": stopping, "responded": responded}
+    if arguments and arguments[0] in verbs:
+        verbs[arguments[0]]()
         return
     if "--set" in arguments:
         table = json.loads(CONFIG.read_text())

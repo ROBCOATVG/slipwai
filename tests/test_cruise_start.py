@@ -8,11 +8,16 @@ here for real, against a fake harness, and the runner is watched to its end.
 """
 from __future__ import annotations
 
+import contextlib
+import importlib.util
+import io
 import re
 import shutil
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
+from unittest import mock
 
 from support import FactoryTestCase
 from test_cruise_runner import LOG, REGISTRY, STOP_FILE, cruise, enable, fake_harness, logged
@@ -204,12 +209,67 @@ if [ "$n" -lt 3 ]; then echo "cruise: continue"; else echo "cruise: done"; fi"""
                 time.sleep(0.1)
             self.assertFalse((repo / RUNNER_PID).exists())
             self.assertIn(f"{STOP_FILE} is present; remove it before the next run", cruise(repo, "status").stdout)
-            # A run with nothing left to do ends inside `start`'s own wait, and that is a finished run, not a refusal.
+            # A run with nothing left to do is over almost as soon as it starts. Whether it ends inside `start`'s
+            # own wait or a moment after is the runner's timing against `start`'s poll, so what is held here is
+            # what holds either way: a clean start, a runner gone, a run that reads as done. Which sentence `start`
+            # says when the end falls inside its wait is proved below, where the timing is fixed.
             (repo / STOP_FILE).unlink()
             (Path(directory) / "calls").unlink()
             quick = cruise(repo, "start", env=fake_harness(Path(directory), 'echo "cruise: done"'))
             self.assertEqual(quick.returncode, 0, quick.stderr)
-            self.assertIn("cruise: the runner started and already ended (harness: CRUISE_HARNESS_COMMAND, as given); "
-                          f"{RUNNER_LOG} says:", quick.stdout)
-            self.assertIn("cruise: done — every specification is satisfied", quick.stdout)
+            deadline = time.time() + 10
+            while time.time() < deadline and (repo / RUNNER_PID).exists():
+                time.sleep(0.1)
+            self.assertFalse((repo / RUNNER_PID).exists(), "the runner did not finish in time")
+            self.assertEqual(logged(repo)[-1]["last_line"], "cruise: done")
+            self.assertIn("cruise: done — every specification is satisfied", (repo / RUNNER_LOG).read_text())
+
+    def test_a_runner_that_ends_inside_starts_wait_is_reported_finished_or_refused_by_its_exit(self) -> None:
+        """`start` waits for the runner's pid file, and a runner can end inside that wait: cleanly, because there
+        was nothing left to do, or with an error, because it refused after all. The first is a finished run and
+        `start` says so with the log's last lines; the second is the refusal, with the same lines, as an error.
+        Whether a real runner ends inside the wait is a race against `start`'s poll, so the runner is stood in
+        for here by a process whose end is certain, and the script is driven in this process to reach it."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "quick", "standard", "python")
+            enable(repo)
+            specification = importlib.util.spec_from_file_location("cruise_quick", repo / "scripts/agents/cruise.py")
+            assert specification is not None and specification.loader is not None
+            module: Any = importlib.util.module_from_spec(specification)
+            specification.loader.exec_module(module)
+
+            class Ended:
+                """What `Popen` returns for a runner that wrote its last lines and ended before `start` looked."""
+                pid = 4242
+
+                def __init__(self, command: list[str], stdout: Any, exit_code: int, **_: Any) -> None:
+                    self.command, self.returncode = command, exit_code
+                    stdout.write(b"cruise: harness: CRUISE_HARNESS_COMMAND, as given\n"
+                                 b"cruise: done \xe2\x80\x94 every specification is satisfied\n")
+
+                def poll(self) -> int:
+                    return self.returncode
+
+            def ending(exit_code: int) -> Any:
+                return lambda command, **keywords: Ended(command, exit_code=exit_code, **keywords)
+
+            env = fake_harness(Path(directory), 'echo "cruise: done"')
+            said = io.StringIO()
+            with (mock.patch.dict(module.os.environ, env), mock.patch.object(module.subprocess, "Popen", ending(0)),
+                  contextlib.redirect_stdout(said)):
+                module.start([])
+            self.assertRegex(said.getvalue(), re.escape(
+                "cruise: the runner started and already ended (harness: CRUISE_HARNESS_COMMAND, as given); "
+                f"{RUNNER_LOG} says: cruise: runner started ") + r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
+                + re.escape(" from a session, detached | cruise: harness: CRUISE_HARNESS_COMMAND, as given | "
+                            "cruise: done — every specification is satisfied\n"))
+            self.assertEqual(said.getvalue().count("\n"), 1)
             self.assertFalse((repo / RUNNER_PID).exists())
+            with (mock.patch.dict(module.os.environ, env), mock.patch.object(module.subprocess, "Popen", ending(1)),
+                  self.assertRaises(RuntimeError) as refused):
+                module.start([])
+            self.assertTrue(str(refused.exception).startswith(
+                f"the runner ended at once (exit 1); {RUNNER_LOG} says: "), str(refused.exception))
+            self.assertTrue(str(refused.exception).endswith(
+                " | cruise: harness: CRUISE_HARNESS_COMMAND, as given | cruise: done — every specification is "
+                "satisfied"), str(refused.exception))

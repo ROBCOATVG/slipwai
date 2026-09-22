@@ -161,3 +161,40 @@ Gitea has no Pages feature, so `scripts/gitea-pages.py` can export each local
 repository's `pages` branch and serve it at
 `http://localhost:3301/<owner>/<repo>/`. See the script's module documentation
 and `./scripts/install-gitea-pages` for local-host configuration.
+
+### The link a generated project carries
+
+A project generated with the event profile has the address of its own browsable
+page written into its documentation, built as `<base>/<owner>/<project>/`. Both
+halves belong to whoever runs `slipwai generate`, so both are read from that
+machine's environment at generation time:
+
+| Variable | Default | What it is |
+|---|---|---|
+| `GITEA_OWNER` | `your-owner` | The Gitea user or organisation the project will be pushed under. Never defaulted to a person's name — unset, the link says `your-owner` for the reader to replace |
+| `GITEA_PAGES_URL` | `http://localhost:3301` | The host serving the pages, matching the `GITEA_PAGES_*` family `scripts/gitea-pages.py` reads and `GITEA_URL` in `scripts/publish-to-gitea.py` |
+
+Set both before generating if the link should be right in the first commit.
+
+**Against a remote forge, `GITEA_PAGES_URL` must be set.** Its default is the
+local daemon, which is correct for the setup this factory ships and wrong the
+moment the forge is elsewhere: `scripts/gitea-pages.py` serves bare repositories
+read off a *local* Gitea's disk (`GITEA_REPOS_DIR`), so against a remote forge it
+has nothing to read. Nothing fails, and the workflow publishes the `pages` branch
+perfectly well — the generated document just carries a dead link.
+
+A remote forge serves pages from a `pages.` host beside the `git.` one, at the
+same `<owner>/<repo>` path. So the value is the repository's own URL with the
+host swapped, and nothing else changed:
+
+| Repository | `GITEA_PAGES_URL` | The link the project carries |
+|---|---|---|
+| `https://git.treyco.dev/ROBCOATVG/aztest2` | `https://pages.treyco.dev` | `https://pages.treyco.dev/ROBCOATVG/aztest2/` |
+
+Set the host only. The owner comes from `GITEA_OWNER` and the repository name
+from the project's own name, so neither belongs in this variable.
+
+Both are read every time the factory writes those files, so `slipwai replay` and
+`slipwai migrate` take them from the environment of whoever runs *them*. A project
+whose link is wrong can also just edit the file, the same as any other generated
+file it owns.

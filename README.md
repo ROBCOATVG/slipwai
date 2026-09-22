@@ -3,36 +3,18 @@
 [![PyPI](https://img.shields.io/pypi/v/slipwai)](https://pypi.org/project/slipwai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+Slipwai creates a new product repository. You answer a few questions. You get a Git repository with one
+commit on `main`, ready for coding agents to work in.
+
+Say the name as "slipway".
+
 The canonical source is
 [git.treyco.dev/ROBCOATVG/slipwai](https://git.treyco.dev/ROBCOATVG/slipwai).
-[GitHub](https://github.com/ROBCOATVG/slipwai) is the public mirror and the
-place to report issues and propose changes.
-
-## New to this — start here
-
-Two learning paths. Each starts with **installing the command**, walks the first session with terminal
-screenshots, then shows how to **update** `slipwai`, **migrate** a project when the factory moves, and
-**catch up** — `/catch-up` is the work a merge cannot finish.
-
-| Path | When |
-|---|---|
-| **[Generate a new project](docs/learn-generate.md)** | You want a fresh repository — walking skeleton, gate, delivery method — from a few answers |
-| **[Adopt an existing repository](docs/learn-adopt.md)** — experimental | You already have a codebase; install the method *around* it without rewriting it first |
-
-You do not clone this repository to scaffold or adopt a product. Install once, then `slipwai generate` or
-`slipwai adopt`.
-
----
-
-One-shot scaffolder for new product monorepos, and the ramp they leave from: *slipwai* is said *slipway*,
-the slope a finished hull slides down into the water, after which the yard has nothing more to do with it.
-Answer a few questions and you get a fresh Git repository containing a walking skeleton, an executable test,
-a `verify` gate that runs locally and in CI, and a complete delivery method — Spec Kit, up to 49 skills, fifteen
-workflow commands, a global event model that renders itself, and generated documentation — set up for coding
-agents to work in from the first commit.
+[GitHub](https://github.com/ROBCOATVG/slipwai) is the public mirror. Report issues and propose changes
+there.
 
 ```sh
-slipwai generate            # answer a few questions → a fresh Git repo, one commit, on main
+slipwai generate            # answer a few questions -> a fresh Git repo, one commit, on main
 cd ledger && ./init         # Spec Kit + your coding agent, on demand
 make verify                 # the gate, the same one CI runs
 ```
@@ -43,89 +25,129 @@ make verify                 # the gate, the same one CI runs
 
 ---
 
+## New to this — start here
+
+Do not clone this repository to create a product. Install the command once. Then run `slipwai generate` or
+`slipwai adopt`.
+
+Two learning paths. Each one installs the command, walks the first session with terminal screenshots, then
+shows how to update `slipwai`, how to migrate a project when the factory moves, and how to catch up.
+`/catch-up` handles the work a merge cannot finish.
+
+| Path | When |
+|---|---|
+| **[Generate a new project](docs/learn-generate.md)** | You want a fresh repository. You get a walking skeleton, a gate and a delivery method from a few answers |
+| **[Adopt an existing repository](docs/learn-adopt.md)** — experimental | You already have a codebase. Install the method around it, without rewriting it first |
+
+---
+
 ## What it is
 
-A factory. **A generated project owns every one of its files** and may rename, replace or delete any of
-them: nothing is stamped factory-owned, there is no manifest of files it may not touch, and the factory
-never reaches in to overwrite. That is what makes the skeleton safe to edit on day one.
+A factory.
 
-It is not a one-way door, though. The factory is designed to be run again *inside* a project it made:
-`slipwai add-service` and `slipwai add-frontend` read `project.json` and regenerate exactly the files that
-list a project's applications, deriving that set by generating the project twice and diffing, so it can
-never drift from a hand-kept list. `./init` re-answers the event store, HTTP, staff and customer identity
-axes by pruning what they brought. Both respect what the project has become rather than what it was
-generated from.
+**A generated project owns every one of its files.** It may rename, replace or delete any of them. No file
+is marked as belonging to the factory. There is no list of files a project may not touch. The factory never
+reaches in and overwrites one. That is what makes the skeleton safe to edit on day one.
 
-Later improvements reach a project the same way: `slipwai migrate`, run inside it, generates what the
-current factory would for its recorded answers and merges that over what the project has become — a file
-only the factory changed is taken, a file only the project changed is kept, and the project decides every
-place both did. Every generated file stays the project's own, so the upgrade path is a merge rather than a
-replace: [Bring a generated project forward](docs/upgrading.md) is the recipe, and `make test-migration`
-proves it against the last release on every change. What a merge *cannot* bring — a step in the account, an
-answer the project has to give, a gate that now judges code written before it — is left in the project as
-catch-up notes, taken from the CHANGELOG entries for the versions just crossed, and `/catch-up` in the
-project works them through against its own `make verify`.
+It is not a one-way door. You can run the factory again inside a project it made:
 
-Everything generated comes from `assets/`, the single source — there is no starter copy committed anywhere,
-so a change in that tree reaches every combination the moment it is generated.
+- **`slipwai add-service` and `slipwai add-frontend`** read `project.json` and regenerate only the files
+  that list the project's applications. The factory derives that set by generating the project twice and
+  comparing the results, so it cannot drift from a hand-kept list.
+- **`./init`** answers the event store, HTTP, staff identity and customer identity questions again, by
+  removing what the old answers brought.
 
-### The one irreversible answer: the profile
+Both respect what the project has become, not what it was generated from.
+
+**Later improvements arrive the same way.** Run `slipwai migrate` inside the project. It generates what the
+current factory would produce for the project's recorded answers, then merges that over the project:
+
+- A file only the factory changed is taken.
+- A file only the project changed is kept.
+- Where both changed, the project decides.
+
+So an upgrade is a merge, never a replace. [Bring a generated project forward](docs/upgrading.md) is the
+recipe. `make test-migration` proves it against the last release on every change.
+
+**A merge cannot finish some work.** Examples: a step in a cloud account, an answer the project has to give,
+a gate that now judges code written before it. `migrate` leaves these in the project as catch-up notes,
+taken from the CHANGELOG entries for the versions just crossed. `/catch-up` works through them against the
+project's own `make verify`.
+
+**Everything generated comes from `assets/`.** No starter copy is committed anywhere, so a change in that
+tree reaches every combination the moment it is generated.
+
+### The profile is the one answer you cannot change later
 
 | Profile | Includes | When it fits |
 |---|---|---|
-| `standard` | Walking skeleton, executable test, local/CI `verify` gate, minimum-CD constitution, the delivery skills and commands | A supporting subdomain, tool, a spike, an internal script — anything short-lived |
-| `event-modelling` | Everything above, plus **Event Modeling and event sourcing as one bundle** — the global model, example mapping, the model-to-code gate | A product or core domain a team will grow for years |
+| `standard` | A walking skeleton, an executable test, a local and CI `verify` gate, a minimum-CD constitution, and the delivery skills and commands | A supporting subdomain, a tool, a spike, an internal script — anything short-lived |
+| `event-modelling` | Everything above, plus **Event Modeling and event sourcing as one bundle** — the global model, example mapping, and the model-to-code gate | A product or core domain a team will grow for years |
 
-The profile is the one question a generated project cannot answer again, and the two directions are not
-symmetric: an event log folds back down into tables whenever you want it to, while state cannot be turned
-into history nobody recorded. So `event-modelling` is the reversible choice, and what it buys is a flat cost
-per slice rather than a cheap first slice — worth it for a product with years ahead of it, overkill for a
-throwaway tool, and worth *more* rather than less when agents are writing the slices, because flat marginal
-cost per slice is the same property as bounded reading per slice. Both the prompt and
-[Which profile](docs/axes.md#which-profile) make the argument before you answer.
+The two directions are not symmetric. An event log folds back down into tables whenever you want it to.
+State cannot be turned into history nobody recorded. So `event-modelling` is the reversible choice.
 
-Everything else is a separate question with its own answer, and a project can answer most of them again
-later — see [The answers you give](#the-answers-you-give).
+What it buys is a flat cost per slice, rather than a cheap first slice. That is worth it for a product with
+years ahead of it, and overkill for a throwaway tool. It is worth *more* when agents write the slices, not
+less: a flat marginal cost per slice is the same property as bounded reading per slice.
+
+Both the prompt and [Which profile](docs/axes.md#which-profile) make this argument before you answer.
+
+Every other question has its own answer, and a project can answer most of them again later. See
+[The answers you give](#the-answers-you-give).
 
 ---
 
 ## Getting started
 
-Four steps. You install a `slipwai` and run it; you do not clone this repository to scaffold a product.
-New here? Prefer the [generate learning path](docs/learn-generate.md) (or
-[adopt](docs/learn-adopt.md) for an existing tree) — install, first session, upgrade, migrate and
-`/catch-up`, with terminal screenshots. [Scaffold a new project](docs/generating.md) is the full reference; [Tools
-required](docs/requirements.md) is the complete table of what each toolchain and `make` target needs.
+Four steps. You install a `slipwai` command and run it. You do not clone this repository.
+
+New here? Use the [generate learning path](docs/learn-generate.md), or
+[adopt](docs/learn-adopt.md) for an existing tree. Both cover install, first session, upgrade, migrate and
+`/catch-up`, with terminal screenshots.
+
+[Scaffold a new project](docs/generating.md) is the full reference.
+[Tools required](docs/requirements.md) lists what each toolchain and `make` target needs.
 
 ### 1. Get the command
 
-Scaffolding needs **Python 3.11+** and **Git**. **`uv` is the recommended installer** — and worth having
-anyway, because a generated project's `./init` uses `uv` to fetch Spec Kit, so one tool covers both ends:
+Scaffolding needs **Python 3.11 or later** and **Git**.
+
+**`uv` is the recommended installer.** It is worth having anyway: a generated project's `./init` uses `uv`
+to fetch Spec Kit, so one tool covers both ends.
 
 ```sh
 uv tool install slipwai
 slipwai --version
 ```
 
-`pip install slipwai` is the alternative, and there is a standalone executable
-that needs nothing but Git. All three embed the same catalog, templates,
-skills, commands and locks, and produce identical repositories —
-see [Install the command](docs/executable.md). `slipwai upgrade` moves an installed copy to the newest
-release; `slipwai upgrade --pre` counts the snapshot of `main` as well.
+`pip install slipwai` is the alternative. There is also a standalone executable that needs nothing but Git.
+All three embed the same catalog, templates, skills, commands and locks, and produce identical
+repositories. See [Install the command](docs/executable.md).
 
-This repository is the factory that *makes* the command. Clone it only to change the factory; [Work on the
-factory](docs/maintaining.md) is that path.
+`slipwai upgrade` moves an installed copy to the newest release. `slipwai upgrade --pre` counts the snapshot
+of `main` as well.
 
-Going to a cloud needs four more things on the machine before you generate, because `./init` there pushes
-the repository and bootstraps the account: OpenTofu, that cloud's CLI signed in with enough authority to
-create what the bootstrap creates, a region, and access to your forge. `slipwai generate` checks all four
-the moment `aws` or `azure` is chosen and refuses with what is missing — the full list is in
-[Tools required](docs/requirements.md), and the running costs are in [The AWS target](docs/aws-target.md)
-and [The Azure target](docs/azure-target.md), which is also where the two are compared.
+This repository is the factory that *makes* the command. Clone it only to change the factory.
+[Work on the factory](docs/maintaining.md) is that path.
+
+**Going to a cloud needs four more things on the machine before you generate**, because `./init` there
+pushes the repository and bootstraps the account:
+
+1. OpenTofu.
+2. That cloud's CLI, signed in with enough authority to create what the bootstrap creates.
+3. A region.
+4. Access to your forge.
+
+`slipwai generate` checks all four as soon as you choose `aws` or `azure`, and refuses with what is missing.
+[Tools required](docs/requirements.md) has the full list. Running costs are in
+[The AWS target](docs/aws-target.md) and [The Azure target](docs/azure-target.md), which is also where the
+two are compared.
 
 ### 2. Generate a project
 
-Run `generate` bare to be asked one question at a time, or pass the answers — the form for scripts and CI:
+Run `generate` with no arguments to be asked one question at a time. Pass the answers as flags for scripts
+and CI:
 
 ```sh
 slipwai generate ledger \
@@ -136,8 +158,8 @@ slipwai generate ledger \
   --http fastify
 ```
 
-That creates `./ledger` in the current directory, initialized on `main` with one commit. `--output` names a
-different **parent directory** if you want one. The target must not already exist.
+That creates `./ledger` in the current directory, initialised on `main` with one commit. The target
+directory must not already exist. `--output` names a different **parent directory**.
 
 ### 3. Bootstrap the new repository
 
@@ -147,10 +169,12 @@ Spec Kit is deliberately absent until you ask for it. From inside the generated 
 ./init
 ```
 
-That installs Spec Kit and asks which coding agent to project `skills/`, `commands/` and `agents/` into —
-any of [36 harnesses](docs/spec-kit.md) — then offers optional extensions (CodeGraph is the first) as a
-checkbox menu. `--integration <name>` and `--extension <key>` skip those questions; `--extension` also adds
-one later. [Extensions](docs/extensions.md).
+That installs Spec Kit. It then asks which coding agent to project `skills/`, `commands/` and `agents/`
+into — any of [36 harnesses](docs/spec-kit.md). It then offers optional extensions as a checkbox menu, of
+which CodeGraph is the first.
+
+`--integration <name>` and `--extension <key>` skip those questions. `--extension` also adds one later. See
+[Extensions](docs/extensions.md).
 
 ### 4. Work in it, and run it
 
@@ -161,31 +185,89 @@ make dev         # the service in the foreground
 make demo        # the whole thing in containers, printing the addresses once it answers
 ```
 
-Then open an agent session and type `/drive`: it walks the ladder from principles to an actor-visible demo,
-entering at the first stage whose artifact is missing. See [The delivery loop](docs/delivery-loop.md).
+Then open an agent session and type `/drive`. It walks the ladder from principles to a demo the actor can
+see, and enters at the first stage whose artifact is missing. See [The delivery loop](docs/delivery-loop.md).
 
 ---
 
 ## What you get
 
 Everything below is in a generated repository from its first commit.
-**[The full tour is here](docs/what-you-get.md)**; each row links to the page that covers it properly.
+**[The full tour is here](docs/what-you-get.md)**. Each row links to the page that covers it properly.
 
 [![The delivery loop: run once — principles, specify, gaps, model the events, split into slices — then once per slice: example map, gaps, plan, tasks, implement, converge, gaps, demo, adversary, mutation, next slice](docs/images/delivery-loop.svg)](docs/delivery-loop.md)
 
 | | |
 |---|---|
-| **[The delivery loop](docs/delivery-loop.md)** | `/drive`'s ten-stage ladder on top of Spec Kit, resumable because it reads artifacts rather than conversation memory; the thirteen workflow commands — eleven in `standard`; story splitting and example mapping as first-class stages with real heuristics behind them; and hooks that apply the method even to a session that never typed `/drive` |
-| **[Up to 49 skills](docs/skills.md)** | The part of the delivery catalogue this project can use, owned by the project — TDD, testing, hexagonal architecture, DDD, ubiquitous language, API and BFF design, observability, secure OAuth/OIDC, refactoring, debugging and more — with code examples rendered in the languages this project's services are actually written in |
-| **[The global event model](docs/event-model.md)** | *Event profile.* One cumulative model for the whole system in `model.yaml`; `make model` renders the timeline, per-segment diagrams and a self-contained browsable page; `make check-model` fails when the code and the model disagree |
-| **[The read side](docs/what-you-get.md#the-read-side)** | *Event profile.* The machinery a view is *maintained* with, finished in every backend rather than left as the greenfield half: a unit of work on the event store, a `CheckpointStore` port with memory, SQLite and Postgres adapters behind a contract suite of its own, a catch-up runner that advances the checkpoint inside the view's own transaction, a rebuild, whatever each framework already schedules a pass with, and a tag index derived from the log so a conditional append can hold a boundary one stream cannot |
-| **[Gates](docs/verification.md)** | `make verify` — native checks, tests, architecture direction, agent and Spec Kit drift, constitution coverage, event model — identical locally and in CI, and never needing Docker; with integration, adversarial, mutation and audit deliberately outside it |
-| **[Spec Kit, properly installed](docs/spec-kit.md)** | Obtained on demand rather than vendored; customised through a preset layer so it is never edited in place and `specify integration upgrade` stays automatic; and the constitution held to a floor from both directions |
-| **[36 agent harnesses](docs/what-you-get.md#one-canonical-source-36-agent-harnesses)** | One canonical `skills/`, `commands/` and `agents/`, projected into Claude Code, Cursor, Codex, Copilot, Gemini CLI, Zed and 30 more — with a named agent type per delegated stage, carrying its model and as much of its write scope as that harness can enforce, and a gate that fails when a projection drifts |
+| **[The delivery loop](docs/delivery-loop.md)** | `/drive`'s ten-stage ladder on top of Spec Kit. It is resumable, because it reads artifacts rather than conversation memory. Fifteen workflow commands, thirteen of them in `standard`. Story splitting and example mapping are first-class stages with real heuristics behind them. Hooks apply the method even to a session that never typed `/drive` |
+| **[Up to 49 skills](docs/skills.md)** | The part of the delivery catalogue this project can use, owned by the project: TDD, testing, hexagonal architecture, DDD, ubiquitous language, API and BFF design, observability, secure OAuth/OIDC, refactoring, debugging and more. Code examples are rendered in the languages this project's services are actually written in |
+| **[The global event model](docs/event-model.md)** | *Event profile.* One cumulative model for the whole system, in `model.yaml`. `make model` renders the timeline, the per-segment diagrams and a self-contained browsable page. `make check-model` fails when the code and the model disagree |
+| **[The read side](docs/what-you-get.md#the-read-side)** | *Event profile.* The machinery a view is *maintained* with, finished in every backend rather than left as the greenfield half: a unit of work on the event store; a `CheckpointStore` port with memory, SQLite and Postgres adapters behind a contract suite of its own; a catch-up runner that advances the checkpoint inside the view's own transaction; a rebuild; whatever each framework already schedules a pass with; and a tag index derived from the log, so a conditional append can hold a boundary one stream cannot |
+| **[Gates](docs/verification.md)** | `make verify` runs native checks, tests, architecture direction, agent and Spec Kit drift, constitution coverage, and the event model. It is identical locally and in CI, and never needs Docker. Integration, adversarial, mutation and audit checks sit deliberately outside it |
+| **[Spec Kit, properly installed](docs/spec-kit.md)** | Obtained on demand rather than vendored. Customised through a preset layer, so it is never edited in place and `specify integration upgrade` stays automatic. The constitution is held to a floor from both directions |
+| **[36 agent harnesses](docs/what-you-get.md#one-canonical-source-36-agent-harnesses)** | One canonical `skills/`, `commands/` and `agents/`, projected into Claude Code, Cursor, Codex, Copilot, Gemini CLI, Zed and 30 more. Each delegated stage gets a named agent type, carrying its model and as much of its write scope as that harness can enforce. A gate fails when a projection drifts |
 | **[Generated documentation](docs/what-you-get.md#documentation-written-for-this-project)** | Thirteen pages written for this project's actual shape rather than copied, and an index built from the files that shipped |
-| **[Services and bounded contexts](docs/services.md)** | One list of applications, each with its own language, framework and answers; `add-service` and `add-frontend` to grow it; and contexts found rather than declared |
-| **[A path to production](docs/aws-target.md)** | `--target aws` or `--target azure`: `infra/` in OpenTofu, one deployable per application released blue/green, a pipeline from every push to `main` through staging to production, and a one-command rollback. The same promise on either cloud; [the Azure page](docs/azure-target.md) is where they are compared |
-| **[Extensions](docs/extensions.md)** | Optional dev tooling adopted with `./init --extension <key>` — CodeGraph is the first — none of which changes the generated skeleton's code |
+| **[Services and bounded contexts](docs/services.md)** | One list of applications, each with its own language, framework and answers. `add-service` and `add-frontend` grow it. Contexts are found rather than declared |
+| **[A path to production](docs/aws-target.md)** | `--target aws` or `--target azure` gives you `infra/` in OpenTofu, one deployable per application released blue/green, a pipeline from every push to `main` through staging to production, and a one-command rollback. The same promise on either cloud. [The Azure page](docs/azure-target.md) is where they are compared |
+| **[Extensions](docs/extensions.md)** | Optional dev tooling, adopted with `./init --extension <key>`. CodeGraph is the first. None of them changes the generated skeleton's code |
+
+### The commands a project gets
+
+Fifteen, of which thirteen are in `standard`. A repository that adopted the method gets four more. None of
+them is copied: each is generated against this project's profile, languages, frameworks and services, so
+the paths and toolchains named in them are real.
+
+| Command | What it does |
+|---|---|
+| `/drive` | Takes one slice from wherever it stands to a demo the actor can see |
+| `/whats-next` | Says what is next — one slice, one stage, one command. Reads the disk and changes nothing |
+| `/where-are-we` | Shows the progress board: what works, what is in progress, what is still to come |
+| `/gaps` | Reviews an artifact for holes, before they become rewritten tests |
+| `/example-map` | *Event profile.* Turns one slice of the event model into rules, examples and executable scenarios |
+| `/validate-code-against-model` | *Event profile.* Checks that the code and the event model still agree |
+| `/adversary` | Attacks a finished slice: hostile inputs, replays, interleavings, authorisation paths |
+| `/mutation` | Runs the backend's own mutation testing, to find tests that do not really test |
+| `/catch-up` | After a migration, works through what the newer factory now asks of code it did not write |
+| `/add-service` | Adds a service, with its own language, framework and answers |
+| `/add-frontend` | Adds a browser app |
+| `/benchmark` | Draws what each slice cost and how each stage did |
+| `/constitution-coverage` | Checks the constitution against the floor this project depends on, or prints the floor |
+| `/drive-settings` | Shows or changes how `/drive` hands implementation to a delegate |
+| `/model-delegation-settings` | Shows or changes which model runs each stage of `/drive` |
+
+[The delivery loop](docs/delivery-loop.md) describes each one in full, and the ladder they sit on.
+
+#### The two that change settings
+
+Run either with no arguments to see the current setting. Pass arguments to change it. Both refuse a value
+they do not know and write nothing, and both ask you to commit the settings file on its own — the choice is
+versioned with the project.
+
+**`/drive-settings`** — how much one implementation delegate is handed, and how many failing tests a cycle
+opens with. It writes `.specify/drive.json`.
+
+```
+/drive-settings                             # show both settings
+/drive-settings delegate=task               # one delegate per task
+/drive-settings cycle=example               # one failing test at a time
+/drive-settings delegate=story cycle=rule   # back to the defaults
+```
+
+`delegate` takes `story`, `rule` or `task`. `cycle` takes `rule` or `example`. `cycle=story` is refused:
+that is the batch Principle V prohibits.
+
+**`/model-delegation-settings`** — which model runs each stage of `/drive`. It writes `.specify/models.json`.
+
+```
+/model-delegation-settings                  # show the table
+/model-delegation-settings implement=strong # move a stage to the strong role
+/model-delegation-settings claude.fast=haiku  # map a role to a model on one harness
+```
+
+A `stage=role` argument moves a stage between `strong` and `fast`. A `harness.role=identifier` argument says
+what a role runs on. Changing it also rewrites the agent types, so the harnesses cannot drift apart.
+
+The change takes effect at the next stage `/drive` runs. Nothing already running is interrupted.
 
 ---
 
@@ -202,18 +284,22 @@ Beyond the profile, each role is a separate question, answered independently:
 | Frontend | `--frontend` | `none`, `react-vite` |
 | Event store | `--event-store` | `memory`, `sqlite`, `postgres` |
 | HTTP transport | `--http` | `none`, `fastify`, `fastapi`, `net-http`, `quarkus-rest`, `spring-web` |
-| Staff authentication | `--auth` | `none`, `keycloak`, `cognito` |
-| Customer authentication | `--users` | `none`, `keycloak`, `cognito` |
+| Staff authentication | `--auth` | `none`, `keycloak` (local only), `cognito` (AWS), `entra` (Azure), `auth0` (either cloud) |
+| Customer authentication | `--users` | `none`, `keycloak` (local only), `cognito` (AWS), `auth0` (either cloud) |
 | Dev tooling | `--extension` | `codegraph` |
 
-The default is `event-modelling/typescript` with the `react-vite` frontend, a Postgres event store, and the
-HTTP transport that backend has. Both identity questions default to `none`, and they are genuinely different
-questions: Keycloak answers either one with a realm of its own in one local container — a staff realm with
-groups, or a customers realm with self-registration, password reset and browser login — but a service's token
-validation is only written where a framework owns it. `--event-store memory --http none` gives a project with
-no infrastructure at all. An unimplementable combination is refused rather than half-ported, and
-[Project shape](docs/axes.md) says which is which, what each answer brings, and how a project answers an axis
-again later.
+The default is `event-modelling` with `typescript`, the `react-vite` frontend, a Postgres event store, and
+the HTTP transport that backend has.
+
+Both identity questions default to `none`, and they are genuinely different questions. Keycloak answers
+either one with a realm of its own, in one local container: a staff realm with groups, or a customers realm
+with self-registration, password reset and browser login. A service's token validation is only written where
+a framework owns it.
+
+`--event-store memory --http none` gives a project with no infrastructure at all.
+
+An unimplementable combination is refused rather than half-ported. [Project shape](docs/axes.md) says which
+is which, what each answer brings, and how a project answers a question again later.
 
 ---
 
@@ -223,15 +309,15 @@ again later.
 
 | Document | Covers |
 |---|---|
-| [Generate a new project — learning path](docs/learn-generate.md) | Install → generate → upgrade → migrate → `/catch-up`, with terminal screenshots |
-| [Adopt an existing repository — learning path](docs/learn-adopt.md) — **experimental** | Install → adopt → upgrade → migrate → `/catch-up`, with terminal screenshots |
+| [Generate a new project — learning path](docs/learn-generate.md) | Install, generate, upgrade, migrate and `/catch-up`, with terminal screenshots |
+| [Adopt an existing repository — learning path](docs/learn-adopt.md) — **experimental** | Install, adopt, upgrade, migrate and `/catch-up`, with terminal screenshots |
 | [Scaffold a new project](docs/generating.md) | The interactive and argument forms, one-shot semantics, the generated repository layout, and the event-sourcing boundary between the services and `apps/web` |
-| [Bring a generated project forward](docs/upgrading.md) | `slipwai migrate`: a newer factory's output merged over a project already generated — what comes through clean, what conflicts and should, the catch-up notes it leaves for what a merge cannot do, and the gate that proves it |
-| [Adopt an existing repository](docs/adopting.md) — **experimental** | `slipwai adopt`: the method installed around a repository the factory did not make — the survey, the questions with the findings as defaults, what is written beside the code and never over it, what `project.json` records with provenance, and what it forfeits for a language the factory cannot generate |
+| [Bring a generated project forward](docs/upgrading.md) | `slipwai migrate`: a newer factory's output merged over a project already generated. What comes through clean, what conflicts and should, the catch-up notes it leaves for what a merge cannot do, and the gate that proves it |
+| [Adopt an existing repository](docs/adopting.md) — **experimental** | `slipwai adopt`: the method installed around a repository the factory did not make. The survey, the questions with the findings as defaults, what is written beside the code and never over it, what `project.json` records with provenance, and what it forfeits for a language the factory cannot generate |
 | [The two workflows](docs/two-workflows.md) | Generated and adopted side by side: the same delivery loop, where each starts on its ladders, the adoption phases woven into `/drive`, the convergence map, and `slipwai converge` as the point where the distinction ends |
-| [Project shape](docs/axes.md) | Profiles, target, language, frontend, and the axes — what each answer brings, why an unimplementable combination is refused, and how a project answers an axis again later |
+| [Project shape](docs/axes.md) | Profiles, target, language, frontend and the axes. What each answer brings, why an unimplementable combination is refused, and how a project answers an axis again later |
 | [Tools required](docs/requirements.md) | What scaffolding needs, and what each generated toolchain and `make` target needs |
-| [Install the command](docs/executable.md) | `uv tool install` / `pip install` from the forge's registry, the standalone executable, `slipwai upgrade`, and building and publishing both |
+| [Install the command](docs/executable.md) | `uv tool install` and `pip install` from the forge's registry, the standalone executable, `slipwai upgrade`, and building and publishing both |
 
 ### What a generated project gets
 
@@ -243,20 +329,20 @@ again later.
 | [The global event model](docs/event-model.md) | Why the model is global, what `make model` renders, the status ladder `make check-model` enforces, and how the browsable page is published |
 | [Gates](docs/verification.md) | What `make verify` runs, what is deliberately outside it, and why the split falls where it does |
 | [Bootstrap Spec Kit](docs/spec-kit.md) | `./init`, the 36 agent integrations, how Spec Kit is obtained, and the constitution floor gated from both sides |
-| [Services](docs/services.md) | `project.json`'s one list of applications, everything that reads it, what a second service is in each language, `add-service`/`add-frontend` and their agent commands, and what a maintainer owes a new generated file that names an application |
+| [Services](docs/services.md) | `project.json`'s one list of applications, everything that reads it, what a second service is in each language, `add-service` and `add-frontend` and their agent commands, and what a maintainer owes a new generated file that names an application |
 | [Extensions](docs/extensions.md) | `./init --extension <key>`, the contract every extension's `init.py` owes, and what makes a second one a catalog entry plus one file |
-| [The AWS target](docs/aws-target.md) | What `--target aws` gives — the stacks, the images, the pipeline, the rollback — what it costs, what the factory proves about it and what it cannot, and how the next cloud becomes a row |
+| [The AWS target](docs/aws-target.md) | What `--target aws` gives: the stacks, the images, the pipeline and the rollback. What it costs, what the factory proves about it and what it cannot, and how the next cloud becomes a row |
 | [The Azure target](docs/azure-target.md) | The same for `--target azure`, held against that page line for line: what it costs against AWS and why the gap widens per service, the four places the promise is not quite the same, and what a third cloud would need |
-| [Auth0 on both identity axes](docs/auth0-identity.md) | `--auth auth0` and `--users auth0` under either cloud: what the stack creates, the human step no other row has, the three places it is not like-for-like, and why the provider is chosen at generation time rather than pruned |
+| [Auth0 on both identity axes](docs/auth0-identity.md) | `--auth auth0` and `--users auth0` under either cloud: what the stack creates, the human step no other row has, the three places it is not like for like, and why the provider is chosen at generation time rather than pruned |
 
 ### Working on the factory
 
 | Document | Covers |
 |---|---|
-| [Work on the factory](docs/maintaining.md) | `make verify` and the gates it runs, how `src/slipwai/` is laid out and the check that keeps it that way, browsing generated starters, regenerating dependency locks |
-| [Architecture decisions](docs/adr/) | The factory's own, in the shape its `architecture-decisions` skill asks of a generated project — which here mostly means the shape of something a project persists, because a project's log is the one thing no version of this factory can migrate for it: [`0001`](docs/adr/0001-a-dcb-capable-log.md), the log's derived tag index and why stream-per-aggregate stays the default write path; [`0002`](docs/adr/0002-the-guard-a-slice-declares.md), the guard a slice declares and identity modelled while tags are not |
-| [The canonical toolkit](assets/README.md) | The asset tree — where to edit skills, docs, gate scripts, language and frontend packs, and axis adapters |
-| [What a backend owes](docs/backend-obligations.md) | The checklist behind adding a language or a framework — every axis, every `make` target and which gate runs it, every per-backend table, the choices that belong to the ecosystem rather than to this repository, and what a framework that owns startup provides instead of a hand-written adapter |
+| [Work on the factory](docs/maintaining.md) | `make verify` and the gates it runs, how `src/slipwai/` is laid out and the check that keeps it that way, browsing generated starters, and regenerating dependency locks |
+| [Architecture decisions](docs/adr/) | The factory's own decisions, in the shape its `architecture-decisions` skill asks of a generated project. Here that mostly means the shape of something a project persists, because a project's log is the one thing no version of this factory can migrate for it. [`0001`](docs/adr/0001-a-dcb-capable-log.md) covers the log's derived tag index and why stream-per-aggregate stays the default write path. [`0002`](docs/adr/0002-the-guard-a-slice-declares.md) covers the guard a slice declares, and identity modelled while tags are not |
+| [The canonical toolkit](assets/README.md) | The asset tree: where to edit skills, docs, gate scripts, language and frontend packs, and axis adapters |
+| [What a backend owes](docs/backend-obligations.md) | The checklist behind adding a language or a framework: every axis, every `make` target and which gate runs it, every per-backend table, the choices that belong to the ecosystem rather than to this repository, and what a framework that owns startup provides instead of a hand-written adapter |
 | [Publish the factory to Gitea](docs/publishing.md) | `scripts/publish-to-gitea.py`, cutting a release with `make release`, and the local `pages` server |
 | [Changelog](CHANGELOG.md) | Every version, its bump level, what it changed, and what a repository generated by an earlier one owes to catch up |
 
@@ -265,11 +351,10 @@ Adding a language, a framework, a backing service, a target or an extension each
 
 ## Licence and contributing
 
-Slipwai is licensed under the [MIT License](LICENSE). Some adapted skills carry
-their own nested licence, including `cli-design` under CC BY-SA 4.0; [NOTICE](NOTICE)
-lists them and each complete notice remains beside its material.
+Slipwai is licensed under the [MIT License](LICENSE). Some adapted skills carry their own nested licence,
+including `cli-design` under CC BY-SA 4.0. [NOTICE](NOTICE) lists them, and each complete notice remains
+beside its material.
 
 Public issues and proposed changes belong on the
-[GitHub mirror](https://github.com/ROBCOATVG/slipwai). See
-[CONTRIBUTING.md](CONTRIBUTING.md) and report vulnerabilities through
-[SECURITY.md](SECURITY.md).
+[GitHub mirror](https://github.com/ROBCOATVG/slipwai). See [CONTRIBUTING.md](CONTRIBUTING.md), and report
+vulnerabilities through [SECURITY.md](SECURITY.md).

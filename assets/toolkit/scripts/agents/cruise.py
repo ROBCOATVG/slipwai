@@ -64,6 +64,7 @@ CHOICES: dict[str, tuple[str, ...]] = {
     "release": ("flagged", "park"),
     "constitution": ("ratify", "park"),
     "hand": ("browser", "http", "cli"),
+    "unblock": ("bosun", "park"),
 }
 # Whole numbers: the least value allowed, and whether `null` is one of the answers.
 NUMBERS: dict[str, tuple[int, bool]] = {
@@ -71,7 +72,8 @@ NUMBERS: dict[str, tuple[int, bool]] = {
 }
 DEFAULTS: dict[str, Any] = {
     "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
-    "hand": "browser", "stuck_after": 3, "max_iterations": None, "max_hours": None, "poll_minutes": 10,
+    "hand": "browser", "unblock": "bosun", "stuck_after": 3, "max_iterations": None, "max_hours": None,
+    "poll_minutes": 10,
 }
 CONTROLS = {
     "enabled": "whether `/cruise` runs at all; `false` is a refusal that says so",
@@ -82,6 +84,8 @@ CONTROLS = {
     "constitution": "an unratified constitution: the skipper drafts and ratifies it, marked pending human "
                     "review; or park",
     "hand": "the top of the hand's ladder for a demo; each falls through to the next where it cannot run",
+    "unblock": "what a block becomes: work for `drive-bosun` first — a stub, a narrower reading, a repair — parking "
+               "only at the catastrophic or when it fails; or a park at once",
     "stuck_after": "iterations with no artifact change before the loop parks",
     "max_iterations": "a budget on iterations; null is unbounded",
     "max_hours": "a budget on wall time; null is unbounded",
@@ -299,6 +303,9 @@ def run(arguments: list[str]) -> None:
     started_run = time.monotonic()
     iterations_this_run = 0
     fingerprints = [entry["fingerprint"] for entry in entries()]
+    # The fingerprint a stuck run was already given its one unblocking iteration at, so it gets exactly one.
+    unblocked_at: str | None = None
+    ask = prompt
     while True:
         if STOP.is_file():
             print("cruise: stopped by human")
@@ -311,12 +318,16 @@ def run(arguments: list[str]) -> None:
             return
         iteration = len(entries()) + 1
         started = now()
-        last = iterate(template, prompt, environment)
+        last = iterate(template, ask, environment)
         iterations_this_run += 1
         seen = fingerprint()
         fingerprints.append(seen)
-        record({"iteration": iteration, "started": started, "ended": now(), "harness": harness["key"],
-                "last_line": last or "no last line", "fingerprint": seen})
+        entry: dict[str, Any] = {"iteration": iteration, "started": started, "ended": now(),
+                                 "harness": harness["key"], "last_line": last or "no last line", "fingerprint": seen}
+        if ask != prompt:
+            entry["attempt"] = "unblock"
+        ask = prompt
+        record(entry)
         if last in ("cruise: done", "cruise: stopped: human"):
             # The iteration is over for good; a checkpoint left behind would read as state to resume.
             CHECKPOINT.unlink(missing_ok=True)
@@ -328,7 +339,15 @@ def run(arguments: list[str]) -> None:
             continue
         window = fingerprints[-table["stuck_after"]:]
         if len(window) == table["stuck_after"] and len(set(window)) == 1:
-            park(f"no progress since iteration {iteration - table['stuck_after'] + 1}", no_park, poll, seen)
+            since = iteration - table["stuck_after"] + 1
+            if table["unblock"] == "bosun" and unblocked_at != seen:
+                # One iteration for the bosun to move it, said in the prompt so the command goes straight there.
+                unblocked_at = seen
+                ask = f"{prompt} unblock: no progress since iteration {since}"
+                print(f"cruise: no progress since iteration {since}; one iteration to unblock, then park")
+                continue
+            park(f"no progress since iteration {since}, and the bosun's iteration did not move it"
+                 if unblocked_at == seen else f"no progress since iteration {since}", no_park, poll, seen)
 
 
 def status() -> None:

@@ -205,7 +205,7 @@ class StageModelsTest(FactoryTestCase):
 
             check = models(repo, "--check")
             self.assertEqual(check.returncode, 0, check.stderr)
-            self.assertIn("check-models: .specify/models.json names 16 stage(s) and 6 harness(es)", check.stdout)
+            self.assertIn("check-models: .specify/models.json names 17 stage(s) and 6 harness(es)", check.stdout)
 
             path = repo / ".specify/models.json"
             table = json.loads(path.read_text())

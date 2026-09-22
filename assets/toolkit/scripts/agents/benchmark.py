@@ -55,7 +55,7 @@ OVERVIEW = "benchmark.md"
 # The ladder, in order, plus the stages an adopted repository adds; a stage outside it is accepted and sorted last.
 LADDER = (
     "ground", "principles", "specify", "event-model", "split", "example-map", "gaps", "release-constraint", "plan",
-    "tasks", "pin", "implement", "converge", "demo", "adversary", "mutation", "skipper", "hand",
+    "tasks", "pin", "implement", "converge", "demo", "adversary", "mutation", "skipper", "hand", "bosun",
 )
 OUTCOMES = ("accepted", "behaviour", "implementation")
 # Converge passes beyond which the overview says something: one pass to find work and one to confirm it

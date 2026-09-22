@@ -158,7 +158,7 @@ if [ "$n" -eq 1 ]; then echo "cruise: parked: a database credential nobody here 
         change nothing is not a run: after `stuck_after` identical fingerprints it parks, saying since when."""
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "stop", "standard", "python")
-            enable(repo, stuck_after="2")
+            enable(repo, stuck_after="2", unblock="park")
             env = fake_harness(Path(directory), f"""mkdir -p specs && touch "specs/progress-$n"
 if [ "$n" -eq 2 ]; then touch {STOP_FILE}; fi
 echo "cruise: continue\"""")
@@ -236,11 +236,17 @@ echo "cruise: continue\"""")
             self.assertNotIn("session", logged(repo)[-1])
             # An iteration whose output carries no last line is logged as such and treated as `continue` —
             # and this is the third iteration in a row that changed nothing, so the run parks as stuck.
-            (fake_claude / "claude").write_text("#!/bin/sh\necho nothing to see\n")
+            (fake_claude / "claude").write_text(f'#!/bin/sh\necho "$*" >> {Path(directory) / "claude-args"}\n'
+                                                'echo nothing to see\n')
             silent = cruise(repo, "run", "--no-park", env=env)
             self.assertEqual(silent.returncode, 3, silent.stdout + silent.stderr)
             self.assertEqual(logged(repo)[-1]["last_line"], "no last line")
-            self.assertIn("no progress since iteration 1", silent.stdout)
+            self.assertIn("no progress since iteration 1; one iteration to unblock, then park", silent.stdout)
+            self.assertIn("the bosun's iteration did not move it", silent.stdout)
+            self.assertEqual(logged(repo)[-1].get("attempt"), "unblock")
+            self.assertEqual((Path(directory) / "claude-args").read_text().splitlines()[-1],
+                             "-p /cruise unblock: no progress since iteration 1 --output-format text "
+                             "--permission-mode acceptEdits")
 
     def test_the_makefile_carries_the_loop_and_the_gate_holds_the_logs(self) -> None:
         """`make cruise` is the loop, `make cruise-status` the log, and `check-decisions` sits on `verify`
@@ -295,7 +301,7 @@ echo "cruise: continue\"""")
             self.assertIn("run commands/drive.md as written", replayed.stdout)
             self.assertIn("an iteration is in flight", cruise(repo, "status").stdout)
             # Rewriting the checkpoint is not progress: two iterations that change only it read as stuck.
-            enable(repo, stuck_after="2", max_iterations="2")
+            enable(repo, stuck_after="2", max_iterations="2", unblock="park")
             script = Path(directory) / "harness.sh"
             script.write_text(f"#!/bin/sh\necho touched >> {checkpoint}\necho 'cruise: continue'\n")
             env = {"CRUISE_HARNESS_COMMAND": f"sh {script} {{prompt}}", "CRUISE_POLL_SECONDS": "0"}
@@ -316,3 +322,29 @@ echo "cruise: continue\"""")
             self.assertIn("compaction", entry, entry["key"])
             if entry["compaction"] is not None:
                 self.assertRegex(entry["compaction"]["source"], r"read \d{4}-\d{2}-\d{2}", entry["key"])
+
+    def test_a_stuck_run_gets_one_iteration_to_unblock_and_continues_when_it_moved(self) -> None:
+        """Blocked is work before it is a stop: the outer loop hands a stuck run one iteration with the reason in
+        the prompt, and only parks when that iteration changed nothing either. Under `unblock: park` it parks
+        at once, the way it did before the bosun existed."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "stuck", "standard", "python")
+            enable(repo, stuck_after="2", max_iterations="6")
+            # Two idle iterations, then the unblocking one writes an artifact, then `done`.
+            env = fake_harness(Path(directory), """case "$*" in
+  *unblock:*) mkdir -p specs && echo "stubbed the payment gateway" > specs/unblocked.md; echo "cruise: continue";;
+  *) if [ "$n" -ge 4 ]; then echo "cruise: done"; else echo "cruise: continue"; fi;;
+esac""")
+            moved = cruise(repo, "run", "--no-park", env=env)
+            self.assertEqual(moved.returncode, 0, moved.stdout + moved.stderr)
+            self.assertIn("no progress since iteration 1; one iteration to unblock, then park", moved.stdout)
+            self.assertNotIn("cruise: parked", moved.stdout)
+            self.assertEqual([entry.get("attempt") for entry in logged(repo)], [None, None, "unblock", None])
+            self.assertTrue((repo / "specs/unblocked.md").is_file())
+            enable(repo, unblock="park", stuck_after="2", max_iterations="2")
+            (repo / LOG).unlink()
+            (Path(directory) / "calls").unlink()
+            parked = cruise(repo, "run", "--no-park", env=env)
+            self.assertEqual(parked.returncode, 3, parked.stdout)
+            self.assertNotIn("one iteration to unblock", parked.stdout)
+            self.assertIn("cruise: parked — no progress since iteration 1", parked.stdout)

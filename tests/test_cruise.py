@@ -27,7 +27,8 @@ from slipwai.project.cruise import (
     SETTINGS,
     STOP_FILE,
 )
-from slipwai.project.cruise_agents import BROWSER, DECISIONS, DEMO_LOG, HAND, OWNER_BRIEF, SKIPPER
+from slipwai.project.cruise_agents import BOSUN, BROWSER, DECISIONS, DEMO_LOG, HAND, OWNER_BRIEF, SKIPPER
+from slipwai.project.cruise_unblock import CATASTROPHIC
 from slipwai.project.stage_models import STAGES, switchable_harnesses
 
 PROFILES = ("event-modelling", "standard")
@@ -75,7 +76,7 @@ class CruiseTest(FactoryTestCase):
                 cruise = (repo / "commands/cruise.md").read_text()
                 declared = frontmatter(cruise)
                 self.assertTrue(declared["description"].startswith("Run /drive as driver and product owner"))
-                self.assertEqual(declared["argument-hint"], "[feature]")
+                self.assertEqual(declared["argument-hint"], "[feature] | unblock: <what the outer loop saw>")
                 self.assertIn("runs **that ladder — `commands/drive.md`,\nevery rule as written**", cruise)
                 self.assertIn("Run `commands/drive.md` from *Enter at the first incomplete stage* to its end", cruise)
                 # The refusals: a run has to be asked for, a person can always stop it, and a spec is theirs to bring.
@@ -96,7 +97,12 @@ class CruiseTest(FactoryTestCase):
                 self.assertIn(f"| The ready set is empty | Not a stop: the completion audit below. Only an audit with "
                               f"nothing left is `done` | `{REPORT}`, decision entries |", cruise)
                 self.assertIn("| An input that is genuinely unavailable — a credential, an external system, a "
-                              "person's approval | Never decided.", cruise)
+                              "person's approval | Never invented. Mark the slice blocked, take the next ready slice, "
+                              "and hand the blocker to `drive-bosun`", cruise)
+                self.assertIn("## Blocked: the bosun protocol", cruise)
+                for item in CATASTROPHIC:
+                    self.assertIn(f"- {item}", cruise)
+                self.assertIn("`unblock: park` turns this off", cruise)
                 for row in RELEASE_ROWS:
                     self.assertEqual(row in cruise, target != "none", (profile, row))
                 for row in ADOPTED_ROWS:
@@ -119,20 +125,26 @@ class CruiseTest(FactoryTestCase):
                 self.assertIn("The last line of every iteration is one\nof these, and the outer loop reads nothing "
                               "else:", cruise)
                 self.assertIn(f"`python3 {SCRIPT} run` (`make cruise`)", cruise)
-                self.assertIn("`driver=cruise` on every benchmark entry, `skipper` and `hand` as stages", cruise)
-                self.assertNotIn("degraded by design", cruise, "only an adopted repository is told that")
+                self.assertIn("`driver=cruise` on every benchmark entry, `skipper`, `hand` and `bosun` as stages",
+                              cruise)
+                self.assertNotIn("stated assumptions and `Proposed` records", cruise,
+                                 "only an adopted repository is told that")
 
-    def test_an_adopted_repository_parks_where_a_persons_word_is_the_artifact(self) -> None:
+    def test_an_adopted_repository_proceeds_on_assumptions_where_a_persons_word_is_the_artifact(self) -> None:
         """Ground's `unrecorded` rows and the strategy ADR's `Accepted` are a person's, and the first adoption to
         run unattended must not learn that by inventing either: the three adopted stops are rows of their own,
-        two of them parks, and the command says up front that a run here is degraded by design."""
+        two of them worked on as stated assumptions and `Proposed` records — never `confirmed`, never
+        `Accepted` — and the command says up front that a person confirms or overturns them afterwards."""
         files = adopted([wrapped("shop", ".")])
         cruise = files["delivery/commands/cruise.md"]
         for row in ADOPTED_ROWS:
             self.assertIn(row, cruise)
-        self.assertIn("| A fact about the world is not a decision. The row stays `unrecorded`", cruise)
-        self.assertIn("| The word is a person's. Park | — |", cruise)
-        self.assertIn("A run here is degraded by design", cruise)
+        self.assertIn("| A fact about the world is not a decision, and is never invented. The row stays "
+                      "`unrecorded`", cruise)
+        self.assertIn("never marked `confirmed` |", cruise)
+        self.assertIn("| The word is a person's. The bosun proceeds on the recommendation at `Proposed` and says so |",
+                      cruise)
+        self.assertIn("a person confirms or overturns them afterwards", cruise)
         self.assertIn("(`make -f delivery/Makefile cruise`)", cruise, "the Makefile where the layout puts it")
         self.assertIn(".specify/cruise.json", files)
         self.assertIn("delivery/commands/cruise-settings.md", files)
@@ -204,7 +216,7 @@ class CruiseTest(FactoryTestCase):
             self.assertEqual(hand.stdout, "hand: strong → host model — `strong` maps to the host model\n")
             check = subprocess.run(["python3", str(models), "--check"], cwd=repo, text=True, capture_output=True)
             self.assertEqual(check.returncode, 0, check.stderr)
-            self.assertIn("names 16 stage(s)", check.stdout)
+            self.assertIn("names 17 stage(s)", check.stdout)
             changed = subprocess.run(["python3", str(models), "--set", "claude.skipper=opus"], cwd=repo, text=True,
                                      capture_output=True)
             self.assertEqual(changed.returncode, 0, changed.stderr)
@@ -221,13 +233,15 @@ class CruiseTest(FactoryTestCase):
                 drive = (repo / "commands/drive.md").read_text()
                 self.assertIn(f"| `skipper` | `{SKIPPER}` | nothing | anything that reads |", drive)
                 self.assertIn(f"| `hand` | `{HAND}` | only the report it produces | anything |", drive)
-                self.assertIn("The last two rows, `skipper` and `hand`, are\n`/cruise`'s: the product owner and the "
-                              "actor", drive)
+                self.assertIn("The last three rows, `skipper`, `hand` and `bosun`,\nare `/cruise`'s: the product "
+                              "owner, the actor and the one who gets a blocked run moving", drive)
+                self.assertIn(f"| `bosun` | `{BOSUN}` | the files its manifest names | anything |", drive)
                 self.assertIn("Under `/drive` alone they run nothing; a person is the owner and the actor.", drive)
                 page = (repo / "docs/skills-and-commands.md").read_text()
                 self.assertIn("- `/cruise` — `commands/cruise.md`\n"
                               "- `/cruise-settings` — `commands/cruise-settings.md`", page)
-                self.assertIn(f"Two more, `{SKIPPER}` and `{HAND}`, are `/cruise`'s product owner and actor", page)
+                self.assertIn(f"Three more, `{SKIPPER}`, `{HAND}` and `{BOSUN}`, are `/cruise`'s product owner, "
+                              "actor and\nunblocker", page)
                 self.assertIn("`claude.skipper=opus`", (repo / "commands/model-delegation-settings.md").read_text())
 
     def test_the_benchmark_records_who_drove(self) -> None:

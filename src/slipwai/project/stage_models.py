@@ -89,6 +89,9 @@ STAGES: tuple[Stage, ...] = (
     # deciding than on driving without moving every judgement stage with it.
     Stage("skipper", "skipper", writes=NONE, commands=READ_ONLY),
     Stage("hand", "strong", writes=REPORT, commands=ANY),
+    # The bosun gets a blocked run moving — a stub behind a port, a narrower reading, a repaired checkout — so
+    # it writes the files its brief names, on the skipper's role: unblocking is judgement, not typing.
+    Stage("bosun", "skipper", writes=MANIFEST, commands=ANY),
 )
 DEFAULT_ROLE = "strong"
 HOST = "host"
@@ -173,8 +176,8 @@ and each is a **named agent type** this project carries in `agents/`, projected 
 product question, which is the whole reason a stage stays here. Any other conversational stage stays here too,
 and has no type for that reason. There is a seventh type, `drive-slice`, for a whole slice rather than a stage:
 *Running ready slices concurrently* is where it is delegated, and it reads this section from inside its own
-worktree to choose a model for each stage it then runs. The last two rows, `skipper` and `hand`, are
-`/cruise`'s: the product owner and the actor, delegated only when that command is running this ladder on its
+worktree to choose a model for each stage it then runs. The last three rows, `skipper`, `hand` and `bosun`,
+are `/cruise`'s: the product owner, the actor and the one who gets a blocked run moving, delegated only when that command is running this ladder on its
 own (`commands/cruise.md`). Under `/drive` alone they run nothing; a person is the owner and the actor.
 
 Delegate to the type by name. The type is the standing brief, so the call adds only the task, its contract and
@@ -278,7 +281,7 @@ Each argument is one of two edits, and the first thing to decide is which one th
 - `stage=role` moves a stage between roles — `implement=strong` puts implementation back on the model running
   `/drive`. The keys are the commands the ladder runs: `principles`, `specify`, `event-model`, `split`,
   `example-map`, `gaps`, `release-constraint`, `plan`, `tasks`, `implement`, `converge`, `demo`, `adversary`,
-  `mutation`, the two `/cruise` delegates `skipper` and `hand`, and `default` for any stage without a row of
+  `mutation`, the three `/cruise` delegates `skipper`, `hand` and `bosun`, and `default` for any stage without a row of
   its own.
 - `harness.role=identifier` changes what a role runs on — `claude.fast=haiku`, or `claude.skipper=opus` to
   put a bigger model on `/cruise`'s product decisions than on driving. `host` is the model running `/drive`;

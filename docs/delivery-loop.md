@@ -99,9 +99,9 @@ itself otherwise, and in both cases says which model ran the stage.
 
 Each stage the ladder sends to a fresh context is a **named agent type** the project carries in `agents/`:
 `drive-tasks`, `drive-implement`, `drive-converge`, `drive-gaps`, `drive-adversary`, `drive-mutation`, with `drive-slice` for
-the whole-slice delegate the concurrent fan-out spawns, and `drive-skipper` and `drive-hand` for the product owner
-and the actor that `/cruise` puts in a person's place — the first on a `skipper` role of its own, so a project
-can run a bigger model on deciding than on driving. The type declares what
+the whole-slice delegate the concurrent fan-out spawns, and `drive-skipper`, `drive-hand` and `drive-bosun` for the
+product owner, the actor and the unblocker that `/cruise` puts in a person's place — the first and last on a
+`skipper` role of its own, so a project can run a bigger model on deciding than on driving. The type declares what
 its delegate may write and what it may run, in words no harness owns, and carries that stage's standing brief
 so a per-call brief adds only the task, its contract and the file manifest. `make agents` renders each into
 the installed harness's own agent file with the model the table resolved, and with as much of the scope as
@@ -213,7 +213,9 @@ time was a wall time *of*.
 same ladder — `commands/drive.md`, every rule as written — with nobody at the wheel. It decides as the product
 owner: on the host where the stage recommends an answer or a standing decision covers the question, and through
 a `drive-skipper` delegate where the question is open. It runs each demo as the actor through a `drive-hand`
-delegate, with a browser where the slice has a screen. When the split runs out it audits the specification
+delegate, with a browser where the slice has a screen. A block is work before it is a stop: a `drive-bosun`
+delegate stubs the missing thing behind its port, takes the reading that keeps every MUST, or repairs the run,
+and writes down what it did, so a run parks only at the catastrophic. When the split runs out it audits the specification
 against what shipped, so *done* means satisfied rather than exhausted. Every decision is written where `/drive`
 would have written a person's and again in `specs/<feature>/decisions.md`; every demo in the slice's
 `demo-log.md`. A script re-invokes it with a fresh context until it says `done`, and it stops only for a human.

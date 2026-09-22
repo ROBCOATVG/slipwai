@@ -16,6 +16,7 @@ Nothing about what a stage produces changes. What changes is who answers.
 - [The settings](#the-settings)
 - [What a person reviews afterwards](#what-a-person-reviews-afterwards)
 - [The browser](#the-browser)
+- [When it is blocked](#when-it-is-blocked)
 - [The limits](#the-limits)
 
 ## What it guarantees
@@ -25,10 +26,12 @@ Nothing about what a stage produces changes. What changes is who answers.
 2. **It writes every answer down twice.** Each answer goes where `/drive` would have written a person's
    answer, and again into one log per feature. A person can read every decision the machine took in one
    place, and can overturn any of them.
-3. **It never invents an input.** A product *decision* is the owner's to make, and the machine makes it. A
-   *fact* it does not have, such as a credential, a third party's behaviour or an approval, is recorded as
-   blocked, with what a person must provide. The run moves to work that does not need that fact. If no work
-   can move, the run parks.
+3. **It never invents an input, and it does not stop for one either.** A product *decision* is the owner's
+   to make, and the machine makes it. A *fact* it does not have, such as a credential or a third party's
+   behaviour, is never invented: the slice is marked blocked, the run takes the next ready slice, and a
+   strong delegate, the bosun, works around the block. It puts a fake behind the port, recorded as a fake,
+   or takes the narrower reading that keeps every rule, and writes down what it did. The run parks only for
+   something catastrophic, or when the bosun could not move it.
 4. **Done means the specification is satisfied.** When the split runs out, the last stage audits the
    specification against what shipped. Each finding becomes a new slice, or a recorded decision that it is
    out of scope. Only an audit with nothing left ends the run.
@@ -117,7 +120,7 @@ only in a context window. Four things are added to a project.
 | `specs/<feature>/slices/<id>/demo-log.md` and `demo/` | One section per demo: what was started and how, each example walked and what happened, the verdict, the feedback, and the screenshots and responses under `demo/`. | `drive-hand` |
 | `specs/cruise-log.jsonl` and `specs/<feature>/cruise-report.md` | The outer loop's record, one line per iteration, and the completion audit's report. | the runner and the driver |
 
-The benchmark record gains `driver=cruise` on every stage a run bracketed, and `skipper` and `hand` are
+The benchmark record gains `driver=cruise` on every stage a run bracketed, and `skipper`, `hand` and `bosun` are
 stages of their own, so `make benchmark` can say what a decision cost and what a demo cost.
 
 ## Start a run, watch it, stop it
@@ -157,6 +160,7 @@ effect at the next iteration. `make check-agents` holds the file's shape.
 | `release` | `flagged`, `park` | `flagged` | the release-constraint stage: every slice behind a flag seeded off, so every merge is dark; or park at the push and let a person decide |
 | `constitution` | `ratify`, `park` | `ratify` | an unratified constitution: the skipper drafts and ratifies it, marked pending human review; or park |
 | `hand` | `browser`, `http`, `cli` | `browser` | the top of the hand's ladder for a demo; each falls through to the next where it cannot run |
+| `unblock` | `bosun`, `park` | `bosun` | what a block becomes: work for the bosun first, a park only at the catastrophic or when it fails; or a park at once |
 | `stuck_after` | a whole number | `3` | iterations with no artifact change before the loop parks |
 | `max_iterations` | a whole number or `null` | `null` | a budget on iterations; `null` is unbounded |
 | `max_hours` | a whole number or `null` | `null` | a budget on wall time; `null` is unbounded |
@@ -213,23 +217,54 @@ harness can do, read from its documentation on a named date: Gemini CLI has a `P
 that adds context afterwards, and the rest are `null` until someone checks. On those harnesses the checkpoint
 still works; only the automatic replay is missing, and the command's rule to re-read the file covers it.
 
+## When it is blocked
+
+A block is work before it is a stop. When the run meets an input nobody has, a question whose every option
+seems to break a constitution rule, a checkout that will not rebase, or an iteration that made no progress,
+it marks the slice blocked, takes the next ready slice, and hands the block to a third delegate,
+`drive-bosun`, on the skipper's model role. The bosun takes the least surprising way round, in this order:
+
+1. **Stub the world.** The code is a hexagon, so a fake adapter goes behind the port the missing thing sits
+   behind, chosen by configuration and seeded with what the examples need. The plan records it as a
+   deliberate stub, so the progress board shows it under *Not working yet*. A stub is always recorded as a
+   stub, never as a fact about the real system.
+2. **Narrow the reading.** Where every option seems to break a rule, it takes the reading that keeps every
+   rule and defers the rest behind the slice's flag. The amendment a person may want becomes an ADR at
+   `Proposed`, never ratified by the machine. In an adopted repository a fact the tree cannot say stays
+   `unrecorded` or `detected`: the bosun works on the survey's value as a stated assumption and never marks
+   it `confirmed`.
+3. **Repair the run.** Rebase and resolve, finish or revert what a dead delegate left, find why a gate
+   loops.
+
+Every move is an entry in `decisions.md` with `Decided by: drive-bosun`, the condition under which a person
+should undo it, and a task in the next slice to remove the stub when the real thing arrives. Nothing done to
+get moving is done silently. When the outer loop sees no progress for `stuck_after` iterations, it gives the
+bosun one iteration before it parks, and the log marks that iteration `attempt: unblock`.
+
+**What always parks.** The bosun refuses, and the run parks, at anything on this list: destroying data or
+history; releasing what a person has not asked for, such as turning a flag on or deploying to production;
+spending money or exposing a secret; weakening security; discarding a person's commits to make a checkout
+consistent. It also parks when the bosun could not move the block. `unblock: park` switches the bosun off
+and parks at once.
+
 ## The limits
 
-- **Adopted repositories park at two places.** The Ground stage asks facts about the world, such as the
-  release path of code the factory did not write. A fact is not a decision, so a row stays `unrecorded`,
-  and slices that touch that axis are blocked. The change-strategy ADR is accepted only by a person's word.
-  A run on an adopted repository is degraded by design.
-- **Facts are never decided.** See guarantee 3.
+- **Adopted repositories run on stated assumptions.** The Ground stage asks facts about the world, such
+  as the release path of code the factory did not write. A fact is not a decision, so a row stays
+  `unrecorded` and the bosun works on the survey's value as an assumption it names. The change-strategy ADR
+  proceeds at `Proposed`; only a person writes `Accepted`. A person confirms or overturns both afterwards.
+- **Facts are never invented.** See guarantee 3.
 - **Flags stay off.** Under `release: flagged`, turning a flag on is never a decision the log can contain.
 - **The constitution's MUSTs are the floor.** No decision waives one. A question whose every option breaks
-  one parks.
+  one goes to the bosun for the reading that keeps them all, and parks only if there is none.
 - **The hand edits no code.** A defect it finds is a task. A fix there would make the verdict evidence for
   itself.
 - **Unattended permissions need a sandbox.** The headless call runs with `acceptEdits` by default. Bypassing
   permissions is allowed only with the runner's `--sandbox` flag, and the runner says why. Run an unattended
   loop inside a container or sandbox.
-- **A run that loops is detected.** `stuck_after` iterations with the same artifact fingerprint park the
-  loop, and the same open question raised twice in one iteration parks with it.
+- **A run that loops is detected.** `stuck_after` iterations with the same artifact fingerprint give the
+  bosun one iteration, then park the loop; the same open question raised twice in one iteration goes the
+  same way.
 
 The ladder `/cruise` runs, its stages, the models table and the benchmark are all described in
 [The delivery loop](delivery-loop.md).

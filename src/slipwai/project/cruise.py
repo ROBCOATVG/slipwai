@@ -17,8 +17,9 @@ import json
 from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
 from ..services import App
-from .cruise_agents import DECISIONS, DEMO_LOG, EVIDENCE, HAND, OWNER_BRIEF, SKIPPER
+from .cruise_agents import BOSUN, DECISIONS, DEMO_LOG, EVIDENCE, HAND, OWNER_BRIEF, SKIPPER
 from .cruise_record import CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, DEMO_ENTRY, STOP_FILE
+from .cruise_unblock import unblock_section
 
 CONFIG = ".specify/cruise.json"
 SCRIPT = "scripts/agents/cruise.py"
@@ -41,6 +42,9 @@ SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
      "an unratified constitution: the skipper drafts and ratifies it, marked pending human review; or park"),
     ("hand", ("browser", "http", "cli"), "browser",
      "the top of the hand's ladder for a demo; each falls through to the next where it cannot run"),
+    ("unblock", ("bosun", "park"), "bosun",
+     "what a block becomes: work for `drive-bosun` first — a stub, a narrower reading, a repair — parking only "
+     "at the catastrophic or when it fails; or a park at once"),
     ("stuck_after", "a whole number", 3, "iterations with no artifact change before the loop parks"),
     ("max_iterations", "a whole number or null", None, "a budget on iterations; null is unbounded"),
     ("max_hours", "a whole number or null", None, "a budget on wall time; null is unbounded"),
@@ -108,9 +112,10 @@ def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
          "Not a stop: the completion audit below. Only an audit with nothing left is `done`",
          f"`{REPORT}`, decision entries"),
         ("An input that is genuinely unavailable — a credential, an external system, a person's approval",
-         "Never decided. Record it as blocked with what is needed, take the next ready slice, and park only "
-         "when nothing can move",
-         "a `parked` line in the log, ⛔ on the board"),
+         f"Never invented. Mark the slice blocked, take the next ready slice, and hand the blocker to `{BOSUN}` "
+         "(*Blocked*, below): a stub behind the port, recorded as a stub. Park only at the catastrophic, or "
+         "when the bosun could not move it",
+         "a decision entry, the stub in `plan.md`, ⛔ on the board"),
     ]
     if target != "none":
         rows.insert(5, (
@@ -120,14 +125,17 @@ def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
             "`plan.md`, the flag file, a decision entry"))
         rows.insert(6, (
             "\"A release they want now\" — no flag, or a flag already on, before the push",
-            "Never answered by the machine. Under `flagged` it does not arise; where it does, park with the "
-            "exact question", "a `parked` line in the log"))
+            "Never answered by the machine: a release nobody asked for is on the catastrophic list. Under "
+            "`flagged` it does not arise; where it does, park with the exact question", "a `parked` line in the log"))
     if adoption is not None:
         rows += [
             ("Ground: a convergence row still `unrecorded` on an axis the slice touches",
-             "A fact about the world is not a decision. The row stays `unrecorded`; slices touching that axis "
-             "are blocked; product slices that do not proceed", "nothing — a `parked` line where nothing can move"),
-            ("The change-strategy ADR at `Accepted`", "The word is a person's. Park", "—"),
+             "A fact about the world is not a decision, and is never invented. The row stays `unrecorded`; the "
+             "bosun works on the survey's `detected` value as a stated assumption, never marked `confirmed`",
+             "a decision entry naming the assumption"),
+            ("The change-strategy ADR at `Accepted`",
+             "The word is a person's. The bosun proceeds on the recommendation at `Proposed` and says so",
+             "the ADR at `Proposed`, a decision entry"),
             ("Quick wins and method slices offered from the programme",
              "Take the programme top-first, as the stage recommends", "`project.json` `planned`, a decision entry"),
         ]
@@ -142,13 +150,13 @@ def cruise_command(
     del apps  # the ladder's own text already carries the profile's services; nothing here is per service
     adopted = (
         "\n\nThis repository adopted the method around code that was already there, and two of its stops "
-        "stay a person's under `/cruise` — the rows at the foot of the table. A run here is degraded by design: "
-        "it parks where a person's word is the artifact."
+        "are a person's word — the rows at the foot of the table. A run here proceeds on stated assumptions "
+        "and `Proposed` records rather than parking, and a person confirms or overturns them afterwards."
         if adoption is not None else ""
     )
     return f"""---
 description: Run /drive as driver and product owner, iteration after iteration, until every specification is satisfied — stopping only for a human
-argument-hint: [feature]
+argument-hint: [feature] | unblock: <what the outer loop saw>
 ---
 
 # Cruise
@@ -240,8 +248,9 @@ a context that has already carried one. `commands/drive.md` says *do not wait to
 outer loop is what re-invokes, with a fresh context, which is the rule every delegate already lives by.
 Between stages, look for `{STOP_FILE}`: present, finish the stage's own writes, commit what is green, and end.
 At every stage boundary and every delegation, rewrite the checkpoint (*Checkpoint*, below).
-Where nothing can move — every ready slice blocked on an input nobody here has — end with `parked` and the
-exact thing a person must provide; the loop waits, it does not exit. The last line of every iteration is one
+Where nothing can move — every ready slice blocked and the bosun could not move one, or a blocker is on the
+catastrophic list — end with `parked` and the exact thing a person must provide or decide; the loop waits,
+it does not exit. The last line of every iteration is one
 of these, and the outer loop reads nothing else:
 
 - `{LAST_LINES[0]}`
@@ -270,6 +279,7 @@ iteration is a lead, never a result: its delegates ended with that session, so v
 tree before continuing. The runner deletes the checkpoint when an iteration ends `done` or `stopped`; one
 that ends `continue` or `parked` leaves it for the next.
 
+{unblock_section(SCRIPT)}
 ## What holds throughout
 
 - **Parallelism is inherited and widened.** Everything *Running ready slices concurrently* allows runs the
@@ -279,12 +289,13 @@ that ends `continue` or `parked` leaves it for the next.
 - **Flags stay off.** Under `release: flagged` nothing this run merges is visible to a real actor until a
   person flips a key. Turning a flag on is never a decision the log can contain.
 - **The constitution's MUSTs are the floor.** No decision waives one; a question whose every option breaks
-  one parks.
+  one goes to the bosun for the reading that keeps them all, and parks only if there is none.
 - **The hand edits no code.** A defect it finds is a task; a fix there would make the verdict evidence for
   itself.
-- **Stuck is detected.** `stuck_after` iterations with the same artifact fingerprint park the loop, and the
-  same open question raised twice in one iteration parks with it. A run that loops is not a run.
-- **The record says who drove.** `driver=cruise` on every benchmark entry, `skipper` and `hand` as stages
+- **Stuck is detected.** `stuck_after` iterations with the same artifact fingerprint give the bosun one
+  iteration to move it, then park the loop; the same open question raised twice in one iteration goes the
+  same way. A run that loops is not a run.
+- **The record says who drove.** `driver=cruise` on every benchmark entry, `skipper`, `hand` and `bosun` as stages
   of their own, so a decision's cost and a demo's cost are numbers `{layout.make} benchmark` can read.
 - **Settings change only through `/cruise-settings`**, never inside an iteration, and `{CONFIG}` is
   committed: a run's rules are a diff.

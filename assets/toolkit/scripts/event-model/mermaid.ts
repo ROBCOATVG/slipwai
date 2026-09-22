@@ -21,20 +21,17 @@
 import { createHash } from 'node:crypto';
 
 import {
-  BAND_OF,
   eventProducers,
+  laneName,
   laneSources,
   numberFrames,
-  streamLaneName,
+  sliceInputs,
   type Attribute,
-  type LaneBand,
-  type LaneSource,
+  type LaneSources,
   type Model,
   type NumberedFrame,
   type Slice,
 } from './model.ts';
-
-type LaneSources = Readonly<Record<LaneBand, LaneSource>>;
 
 export const HASH_MARKER = 'em-source-sha256';
 
@@ -71,31 +68,15 @@ function namespaced(namespace: string, name: string): string {
 }
 
 /**
- * The box's identifier, namespaced by whatever its own band groups by.
- *
- * Per band rather than per diagram, because that is how Mermaid resolves it — which is what lets the
- * actors run across the top and the streams across the bottom of the same picture, as the notation draws
- * it. A band whose source the slice cannot answer (no actor, no stream, no context) leaves its boxes
- * un-namespaced, so they fall into that band's default lane instead of inventing one.
+ * The box's identifier, namespaced by its lane — `laneName` in `model.ts`, which is the model's answer to
+ * which swimlane a box sits in; only the spelling is Mermaid's. Per band rather than per diagram, because
+ * that is how Mermaid resolves it — which is what lets the actors run across the top and the streams
+ * across the bottom of the same picture, as the notation draws it. A box with no lane is left
+ * un-namespaced, so it falls into that band's default lane instead of inventing one.
  */
 function entityIdentifier(frame: NumberedFrame, slice: Slice, lanes: LaneSources): string {
-  const namespace = laneNamespace(frame, slice, lanes);
+  const namespace = laneName(frame, slice, lanes);
   return namespace === undefined ? frame.name : namespaced(namespace, frame.name);
-}
-
-function laneNamespace(frame: NumberedFrame, slice: Slice, lanes: LaneSources): string | undefined {
-  switch (lanes[BAND_OF[frame.type]]) {
-    case 'none':
-      return undefined;
-    case 'actor':
-      return slice.actor;
-    case 'context':
-      return slice.context;
-    case 'stream':
-      // A slice guarding with a `guard` rather than a `stream` has no stream to name, and its context is
-      // the next-coarsest true answer. Neither, and the event keeps the default lane.
-      return slice.stream === undefined ? slice.context : (streamLaneName(slice.stream) ?? slice.context);
-  }
 }
 
 function frameLine(
@@ -117,14 +98,6 @@ function frameLine(
         ? ''
         : inlineData(frame.data);
   return `${token} ${String(frame.n)} ${frame.type} ${identifier}${arrows}${data}`;
-}
-
-/** The frame numbers a slice's first box draws its arrows from, ascending and deduplicated. */
-function inputsFor(slice: Slice, producers: Map<string, NumberedFrame>): number[] {
-  const resolved = (slice.reads ?? [])
-    .map((name) => producers.get(name)?.n)
-    .filter((n): n is number => n !== undefined);
-  return [...new Set(resolved)].sort((a, b) => a - b);
 }
 
 function sliceComment(slice: Slice): string {
@@ -159,7 +132,7 @@ function renderScoped(model: Model, sliceIds: readonly string[]): string {
   const consumedNumbers: number[] = [];
 
   const blocks = slices.map((slice) => {
-    const inputs = inputsFor(slice, producers);
+    const inputs = sliceInputs(slice, producers);
     for (const n of inputs) {
       const producer = frames.find((frame) => frame.n === n);
       if (producer !== undefined && !inScope.has(producer.sliceId)) {

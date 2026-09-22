@@ -93,6 +93,10 @@ surface or closed the split — verifies and archives the slice, and starts the 
 another invocation. A real product question or unavailable external input is
 the other stopping boundary.
 
+`/cruise` runs the same ladder with nobody at the wheel — deciding as the owner, demoing as the actor, recording
+both under `specs/` — until the specification is satisfied. It ships switched off: `/cruise-settings enabled=true`,
+then `make cruise`; `touch .specify/cruise.stop` stops it. `commands/cruise.md` is exact.
+
 ### The browsable model
 
 The event-model workflow renders `docs/event-model/model.yaml` into a zoomable timeline with per-slice

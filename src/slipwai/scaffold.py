@@ -24,6 +24,8 @@ from .project.ci_workflows import workflow
 from .project.commands import command_files
 from .project.constitution_journey import journey_template
 from .project.convergence_page import convergence_page
+from .project.cruise import cruise_config
+from .project.decisions import decision_files
 from .project.deploy_workflow import deploy_workflow, promotion_workflow, rollback_workflow
 from .project.docs import documentation_files
 from .project.docs_index import docs_index
@@ -101,10 +103,11 @@ def project_files(
         "renovate.json": renovate_config(apps),
         "Makefile": makefile(project_name, profile, apps, target, layout),
         "AGENTS.md": agent_guidance(profile, apps, target),
-        ".claude/settings.json": claude_settings(apps, target),
+        ".claude/settings.json": claude_settings(apps, target, layout),
         ".specify/models.json": stage_models(),
         ".specify/drive.json": drive_config(),
-        ".github/workflows/verify.yml": workflow(apps, layout),
+        ".specify/cruise.json": cruise_config(),
+        ".github/workflows/verify.yml": workflow(apps, layout, event),
         "docs/architecture.md": architecture(profile, apps),
         f"{PACKAGES}/.gitkeep": "",
         "skills/run-the-app/SKILL.md": run_skill(project_name, apps, layout),
@@ -143,6 +146,7 @@ def project_files(
     generated.update(pin_files(apps))
     generated.update(repository_files(project_name, profile, apps, target))
     generated.update(agent_files(layout))
+    generated.update(decision_files())
     generated.update(biome_files(apps))
     generated.update(command_files(event, apps, target, layout, adoption))
     generated.update(documentation_files(project_name, profile, apps, target))

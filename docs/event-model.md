@@ -2,12 +2,14 @@
 
 *Event profile only.* `docs/event-model/model.yaml` is the source of truth for the commands, events, read
 models and actors of the whole system — and `make model` draws it, `make check-model` refuses to let it
-drift from the code.
+drift from the code, and `make model-drawio` writes the one rendering that is committed, which
+`make check-drawio` holds current on every commit.
 
 - [What Event Modeling is](#what-event-modeling-is)
 - [Why one model rather than one per feature](#why-one-model-rather-than-one-per-feature)
 - [What `make model` produces](#what-make-model-produces)
 - [What `make check-model` enforces](#what-make-check-model-enforces)
+- [The committed canvas: `make model-drawio` and `make check-drawio`](#the-committed-canvas-make-model-drawio-and-make-check-drawio)
 - [What a slice owes: its guard, and where its read model lives](#what-a-slice-owes-its-guard-and-where-its-read-model-lives)
 - [Publishing the page](#publishing-the-page)
 - [From a box to a file](#from-a-box-to-a-file)
@@ -135,6 +137,58 @@ and `check-model` fails with the name it could not find.**
 It also refuses a slice that leaves its owning service or bounded context unsaid once there is more than one
 to choose between — because defaulting to the first service in the list is how a model quietly stops
 describing the system. See [Services](services.md).
+
+## The committed canvas: `make model-drawio` and `make check-drawio`
+
+Everything `make model` writes is gitignored. It has to be: Mermaid draws through a headless Chromium, so
+`make verify` — which must never need a browser — cannot check that a rendered diagram still matches the
+model, and a diagram nothing checks is a diagram that quietly stops matching `model.yaml`. Which is exactly
+how a model stops being trusted.
+
+So the event profile has a second rendering with a property none of the Mermaid artifacts have: it is
+committed, and a gate proves it current. `make model-drawio` writes `docs/event-model/model.drawio`, one
+editable draw.io canvas of the whole timeline. A `.drawio` file is plain XML, and producing one is arithmetic
+and a string — no browser, no account, no credential, no network — so `check-drawio` can regenerate it in
+memory and compare, and it sits **inside `verify`**. Its failure names the fix (`Run make model-drawio and
+commit the result`), and tells a missing file from a stale one.
+
+| | Mermaid | draw.io |
+|---|---|---|
+| Produces | slice diagrams, README segments, whole-timeline SVG, HTML page | one editable canvas |
+| Lives | gitignored, regenerated on demand | committed |
+| Needs | a headless browser | Node, and nothing else |
+| Currency | unchecked | **`check-drawio`, inside `verify`** |
+| Good for | reading, embedding, GitHub | working on, annotating, presenting |
+
+Neither replaces the other. `make model` and everything it writes are unchanged, the README's generated
+block still renders, and `check-model` still asks only its own question — is the model valid, and does the
+code agree with it — which is a different question from whether a drawing is current.
+
+The pipeline is four files under `assets/toolkit/scripts/event-model/`, and the split is what keeps the next
+change cheap: `board-plan.ts` is pure geometry — every box, label and arrow with a centre, a size and a
+colour, reading no file, no clock and no network, and knowing no output format; `drawio.ts` is a pure
+`BoardPlan` → mxGraph XML string; `render-drawio.ts` is the entry point that writes the file or `--check`s
+it; `example-model.ts` is the worked example both test files run over. `make model-drawio-test` runs those
+tests, with no browser and no network. The two questions a rendering must not decide for itself — which
+swimlane a box sits in, and which frames a slice's first box draws its arrows from — live in `model.ts` as
+`laneName` and `sliceInputs`, and both renderers import them, so the canvas and the SVG cannot disagree on
+the things that make them the same model. The palette is one table, `palette.ts`, that the page's legend
+and the canvas both read.
+
+Two properties the whole thing rests on. **Determinism**: the file is a pure function of the model — no
+timestamp, no `modified` attribute, no generated id, every collection ordered by the model or sorted, a
+trailing newline — so the same model gives byte-identical output and the gate has something to compare.
+**Readability**: a slice can read an event modelled thirty columns earlier, and an arrow drawn straight
+between them crosses every box in between. A read that spans more than a column instead leaves its source
+underneath, runs along a corridor below the bands, and rises into its reader; every read of one event shares
+that event's corridor, packed by interval colouring; and a caption under each reader names every event it
+reads. Captions are positioned text cells, not edge labels — edge labels inside a container carrying
+hand-placed waypoints did not render — and the trunks are not colour-coded, because fifteen hues that
+survive a colour-vision check do not exist and a corridor's index is rank, not identity.
+
+`check-drawio` needs Node, which `make verify` in an event-profile project therefore needs too, whatever
+language the services are written in. The generated verify workflow sets one up where the project has no
+Node of its own.
 
 ## What a slice owes: its guard, and where its read model lives
 

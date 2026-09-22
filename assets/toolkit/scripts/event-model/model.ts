@@ -504,6 +504,34 @@ export function streamLaneName(stream: string): string | undefined {
   return name.length > 0 ? name : undefined;
 }
 
+export type LaneSources = Readonly<Record<LaneBand, LaneSource>>;
+
+/**
+ * Which swimlane a box sits in: the band its type belongs to, grouped by whatever `render.lanes` says
+ * that band groups by. `undefined` is the band's default lane.
+ *
+ * A fact about the model, not a rendering concern, which is why it lives here and not in a renderer:
+ * Mermaid flattens the name into a one-segment namespace and a canvas writes it as a row label, but the
+ * lane is the same either way, and two renderers that each decided it for themselves would drift apart on
+ * precisely the question that makes them the same model. A band whose source the slice cannot answer (no
+ * actor, no stream, no context) gives its boxes no lane, so they fall into the default one instead of
+ * inventing one.
+ */
+export function laneName(frame: Frame, slice: Slice, lanes: LaneSources): string | undefined {
+  switch (lanes[BAND_OF[frame.type]]) {
+    case 'none':
+      return undefined;
+    case 'actor':
+      return slice.actor;
+    case 'context':
+      return slice.context;
+    case 'stream':
+      // A slice guarding with a `guard` rather than a `stream` has no stream to name, and its context is
+      // the next-coarsest true answer. Neither, and the event keeps the default lane.
+      return slice.stream === undefined ? slice.context : (streamLaneName(slice.stream) ?? slice.context);
+  }
+}
+
 /** Frame numbers are spaced ten apart per slice, so a slice can gain a box without renumbering the rest. */
 export const FRAMES_PER_SLICE = 10;
 
@@ -538,6 +566,21 @@ export function eventProducers(frames: readonly NumberedFrame[]): Map<string, Nu
     }
   }
   return producers;
+}
+
+/**
+ * The frame numbers a slice's first box draws its arrows from — its `reads`, resolved to the frames that
+ * produce those events — ascending and deduplicated. A read nothing produces resolves to no arrow;
+ * `validate.ts` is what reports it.
+ *
+ * Here for the same reason `laneName` is: which arrows exist is a fact about the model, and every
+ * renderer draws exactly these.
+ */
+export function sliceInputs(slice: Slice, producers: Map<string, NumberedFrame>): number[] {
+  const resolved = (slice.reads ?? [])
+    .map((name) => producers.get(name)?.n)
+    .filter((n): n is number => n !== undefined);
+  return [...new Set(resolved)].sort((a, b) => a - b);
 }
 
 /** A contiguous run of whole slices, rendered as one image small enough to read. */

@@ -2,7 +2,9 @@
 # The global event model. One file, for the life of the project.
 #
 # This is the source of truth for the diagram, not the diagram itself: `make model` generates
-# model.mmd, model.svg, one view per slice, and model.html from what is here. Never edit those.
+# model.mmd, model.svg, one view per slice, and model.html from what is here, and `make model-drawio`
+# writes model.drawio — the one rendering that is committed, and that `make check-drawio` holds
+# current on every commit. Never edit any of those.
 #
 # It ships empty on purpose. A slice named here is a permanent commitment — event schemas are never
 # rewritten and stream identity sets the concurrency ceiling — so the starter makes none. Your first

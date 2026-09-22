@@ -188,6 +188,11 @@ make demo        # the whole thing in containers, printing the addresses once it
 Then open an agent session and type `/drive`. It walks the ladder from principles to a demo the actor can
 see, and enters at the first stage whose artifact is missing. See [The delivery loop](docs/delivery-loop.md).
 
+`/drive` stops when it needs a person: for a product decision, and at every demo. `/cruise` runs the same
+ladder and answers those stops itself. It decides as the product owner, runs each demo as the actor, and
+writes every answer down where you can read it and overturn it. It keeps going until the specification is
+satisfied, and it stops only for you. It ships switched off. See [Cruise](docs/cruise.md).
+
 ---
 
 ## What you get
@@ -199,7 +204,7 @@ Everything below is in a generated repository from its first commit.
 
 | | |
 |---|---|
-| **[The delivery loop](docs/delivery-loop.md)** | `/drive`'s ten-stage ladder on top of Spec Kit. It is resumable, because it reads artifacts rather than conversation memory. Fifteen workflow commands, thirteen of them in `standard`. Story splitting and example mapping are first-class stages with real heuristics behind them. Hooks apply the method even to a session that never typed `/drive` |
+| **[The delivery loop](docs/delivery-loop.md)** | `/drive`'s ten-stage ladder on top of Spec Kit. It is resumable, because it reads artifacts rather than conversation memory. Seventeen workflow commands, fifteen of them in `standard`. Story splitting and example mapping are first-class stages with real heuristics behind them. Hooks apply the method even to a session that never typed `/drive` |
 | **[Up to 51 skills](docs/skills.md)** | The part of the delivery catalogue this project can use, owned by the project: TDD, testing, hexagonal architecture, DDD, ubiquitous language, API and BFF design, observability, secure OAuth/OIDC, refactoring, debugging and more. Code examples are rendered in the languages this project's services are actually written in |
 | **[The global event model](docs/event-model.md)** | *Event profile.* One cumulative model for the whole system, in `model.yaml`. `make model` renders the timeline, the per-segment diagrams and a self-contained browsable page. `make check-model` fails when the code and the model disagree |
 | **[The read side](docs/what-you-get.md#the-read-side)** | *Event profile.* The machinery a view is *maintained* with, finished in every backend rather than left as the greenfield half: a unit of work on the event store; a `CheckpointStore` port with memory, SQLite and Postgres adapters behind a contract suite of its own; a catch-up runner that advances the checkpoint inside the view's own transaction; a rebuild; whatever each framework already schedules a pass with; and a tag index derived from the log, so a conditional append can hold a boundary one stream cannot |
@@ -213,13 +218,14 @@ Everything below is in a generated repository from its first commit.
 
 ### The commands a project gets
 
-Fifteen, of which thirteen are in `standard`. A repository that adopted the method gets four more. None of
+Seventeen, of which fifteen are in `standard`. A repository that adopted the method gets four more. None of
 them is copied: each is generated against this project's profile, languages, frameworks and services, so
 the paths and toolchains named in them are real.
 
 | Command | What it does |
 |---|---|
 | `/drive` | Takes one slice from wherever it stands to a demo the actor can see |
+| `/cruise` | Runs `/drive` on its own, deciding as the product owner and demoing as the actor, until the specification is satisfied. Stops only for a person |
 | `/whats-next` | Says what is next — one slice, one stage, one command. Reads the disk and changes nothing |
 | `/where-are-we` | Shows the progress board: what works, what is in progress, what is still to come |
 | `/gaps` | Reviews an artifact for holes, before they become rewritten tests |
@@ -234,14 +240,15 @@ the paths and toolchains named in them are real.
 | `/constitution-coverage` | Checks the constitution against the floor this project depends on, or prints the floor |
 | `/drive-settings` | Shows or changes how `/drive` hands implementation to a delegate |
 | `/model-delegation-settings` | Shows or changes which model runs each stage of `/drive` |
+| `/cruise-settings` | Shows or changes how `/cruise` runs: who decides, how it releases, what it demos with, when it parks |
 
 [The delivery loop](docs/delivery-loop.md) describes each one in full, and the ladder they sit on.
 
-#### The two that change settings
+#### The three that change settings
 
-Run either with no arguments to see the current setting. Pass arguments to change it. Both refuse a value
-they do not know and write nothing, and both ask you to commit the settings file on its own — the choice is
-versioned with the project.
+Run any of them with no arguments to see the current setting. Pass arguments to change it. Each refuses a
+value it does not know and writes nothing, and each asks you to commit the settings file on its own — the
+choice is versioned with the project.
 
 **`/drive-settings`** — how much one implementation delegate is handed, and how many failing tests a cycle
 opens with. It writes `.specify/drive.json`.
@@ -268,6 +275,20 @@ A `stage=role` argument moves a stage between `strong` and `fast`. A `harness.ro
 what a role runs on. Changing it also rewrites the agent types, so the harnesses cannot drift apart.
 
 The change takes effect at the next stage `/drive` runs. Nothing already running is interrupted.
+
+**`/cruise-settings`** — how `/cruise` runs `/drive` with nobody at the wheel. It writes `.specify/cruise.json`.
+
+```
+/cruise-settings                            # show every setting
+/cruise-settings enabled=true               # switch it on; it ships switched off
+/cruise-settings release=park               # stop before every push and ask a person
+/cruise-settings max_hours=8                # give a run a budget
+```
+
+`enabled` switches the command on. `decide` says who answers a product question. `release` says whether every
+merge stays behind a flag or waits for a person. `hand` says what a demo is driven with, a browser first.
+The rest bound the run: when it counts as stuck, how many iterations or hours it may take, how often a parked
+run looks for a reason to resume. [Cruise](docs/cruise.md) explains each one.
 
 ---
 
@@ -324,7 +345,8 @@ is which, what each answer brings, and how a project answers a question again la
 | Document | Covers |
 |---|---|
 | [What a generated repository gets for free](docs/what-you-get.md) | The tour: the layout, the generated documentation, the agent harnesses, and how to run it |
-| [The delivery loop](docs/delivery-loop.md) | The `/drive` ladder and the diagram behind it, the fifteen commands, story splitting and example mapping with worked examples, the Spec Kit hooks, the preset layer, and the constitution floor |
+| [The delivery loop](docs/delivery-loop.md) | The `/drive` ladder and the diagram behind it, the seventeen commands, story splitting and example mapping with worked examples, the Spec Kit hooks, the preset layer, and the constitution floor |
+| [Cruise](docs/cruise.md) | `/cruise`: the same ladder with nobody at the wheel — the agent decides as the product owner and runs each demo as the actor, writes every answer where a person can overturn it, and stops only for a human; how to start, watch and stop a run, the settings, and the limits |
 | [The skill catalogue](docs/skills.md) | The 51 skills grouped by what they are for, why a project is given only the ones whose subject it has, how examples are rendered in your own languages, and where to edit them |
 | [The global event model](docs/event-model.md) | Why the model is global, what `make model` renders, the status ladder `make check-model` enforces, and how the browsable page is published |
 | [Gates](docs/verification.md) | What `make verify` runs, what is deliberately outside it, and why the split falls where it does |

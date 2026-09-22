@@ -1,5 +1,5 @@
 {
-  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified \u2014 which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope \u2014 read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes \u2014 `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives \u2014 see docs/agent-harnesses.md.",
+  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what `scripts/agents/cruise.py run` needs for each iteration — the command as a shell template with {prompt} and {permissions}, read the same way, or null where none was verified, which the script reports rather than guessing a flag.",
   "speckitVersion": "0.16.1",
   "harnesses": [
     {
@@ -16,8 +16,10 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "alquimia",
@@ -33,8 +35,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "amp",
@@ -50,8 +54,10 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "auggie",
@@ -67,8 +73,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "bob",
@@ -84,8 +92,10 @@
       "multiInstallSafe": false,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "claude",
@@ -103,19 +113,29 @@
       "subagentModel": {
         "how": "the Agent tool's `model` parameter, set per call",
         "where": "in the call itself; no file",
-        "identifiers": "an alias \u2014 sonnet, opus, haiku, fable \u2014 or a model id",
+        "identifiers": "an alias — sonnet, opus, haiku, fable — or a model id",
         "source": "the Agent tool's own schema, read 2026-09-09"
+      },
+      "headless": {
+        "how": "`claude -p <prompt>` prints the response and exits; `--output-format text` keeps the last line readable; `--permission-mode` picks how tool calls are approved in a session nobody is watching; `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` keeps a print session waiting for its background delegates, which it otherwise terminates after 600s — mid-slice, with the story delegate still running; under `acceptEdits` the project's `.claude/settings.json` allowlist applies only once the workspace is trusted (`projects[<path>].hasTrustDialogAccepted` in ~/.claude.json)",
+        "command": "claude -p {prompt} --output-format text {permissions}",
+        "permissions": "--permission-mode acceptEdits",
+        "sandboxPermissions": "--dangerously-skip-permissions",
+        "source": "the installed Claude Code 2.1.278's --help (-p/--print, --output-format, --permission-mode with acceptEdits and bypassPermissions, --dangerously-skip-permissions), read 2026-09-22; the wait ceiling and the trust rule from the messages the same build printed during a /cruise run, read 2026-09-22",
+        "env": {
+          "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "0"
+        }
       },
       "agentFile": {
         "dir": ".claude/agents",
         "extension": ".md",
         "format": "markdown",
-        "model": "`model` in the frontmatter: `inherit`, an alias \u2014 sonnet, opus, haiku \u2014 or a model id",
+        "model": "`model` in the frontmatter: `inherit`, an alias — sonnet, opus, haiku — or a model id",
         "writes": "`disallowedTools` in the frontmatter, spelled as `tools` is: Edit, Write and NotebookEdit denied",
         "commands": null,
         "commandsReason": "Bash is one tool, allowed or not at all, so a delegate that must run a reproduction cannot also be stopped from running a command that changes state; a hook could, and a hook is not a projection",
         "mcp": {
-          "reaches": "inherits this session's MCP servers, and `disallowedTools` withholds nothing from them \u2014 but an MCP tool can arrive deferred: the delegate's context lists it as a bare name with no schema, and the call fails until the delegate loads that name through the harness's own tool-search step",
+          "reaches": "inherits this session's MCP servers, and `disallowedTools` withholds nothing from them — but an MCP tool can arrive deferred: the delegate's context lists it as a bare name with no schema, and the call fails until the delegate loads that name through the harness's own tool-search step",
           "grant": null,
           "source": "the deferred-tool listing a sub-agent receives and the tool-search strings in the installed Claude Code 2.1.274 bundle (code.claude.com is blocked from this sandbox), read 2026-09-17"
         },
@@ -123,9 +143,22 @@
       },
       "usage": {
         "where": "~/.claude/projects/<cwd slug>/<session id>.jsonl; a sub-agent's transcript under <session id>/subagents/",
-        "what": "message.usage on every assistant line \u2014 input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens \u2014 and message.model; one line is written per content block, so a request is counted once by requestId; a sub-agent's assistant lines also carry `attributionAgent`, the name of the agent type that ran it",
+        "what": "message.usage on every assistant line — input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens — and message.model; one line is written per content block, so a request is counted once by requestId; a sub-agent's assistant lines also carry `attributionAgent`, the name of the agent type that ran it",
         "env": "CLAUDE_CODE_SESSION_ID",
         "source": "the transcripts Claude Code 2.1.266 wrote on this machine, read 2026-09-09; `attributionAgent` from the same transcripts, read 2026-09-15"
+      },
+      "compaction": {
+        "before": {
+          "event": "PreCompact",
+          "how": "runs a command before manual or automatic compaction; its stdout is not added to the context"
+        },
+        "after": {
+          "event": "SessionStart",
+          "matcher": "compact",
+          "how": "runs a command when the session continues after compaction; its stdout is added to the context"
+        },
+        "where": ".claude/settings.json, `hooks`",
+        "source": "the hook events in the installed Claude Code 2.1.278 executable (PreCompact, PostCompact, SessionStart) and the documented SessionStart matcher `compact`, read 2026-09-22; PostCompact is in the build and its context semantics were not verified, so it is not used"
       }
     },
     {
@@ -142,8 +175,10 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "codebuddy",
@@ -159,8 +194,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "codex",
@@ -181,6 +218,13 @@
         "identifiers": "an OpenAI model id",
         "source": "developers.openai.com/codex/subagents, Custom agents, read 2026-09-09"
       },
+      "headless": {
+        "how": "`codex exec <prompt>` runs one non-interactive session and prints the agent's messages; `--skip-git-repo-check` lets it run in a worktree",
+        "command": "codex exec --skip-git-repo-check {permissions} {prompt}",
+        "permissions": "",
+        "sandboxPermissions": "--dangerously-bypass-approvals-and-sandbox",
+        "source": "codex-rs/exec/src/cli.rs (the `codex exec [OPTIONS] [PROMPT]` usage, --json, --output-last-message, --skip-git-repo-check) and exec/src/lib.rs (dangerously_bypass_approvals_and_sandbox) on main, read 2026-09-22; the approval flag for a sandboxed-but-unattended run was not verified, so `permissions` is empty and the run takes Codex's own defaults"
+      },
       "agentFile": {
         "dir": ".codex/agents",
         "extension": ".toml",
@@ -191,16 +235,18 @@
         "mcp": {
           "reaches": "inherits the parent session's `mcp_servers` wherever the agent file omits that key, which this projection does",
           "grant": null,
-          "source": "learn.chatgpt.com/docs/agent-configuration/subagents, Custom agents \u2014 \"Other session settings, such as sandbox_mode, mcp_servers, and skills.config, inherit from the parent when the custom agent file omits them\", read 2026-09-17"
+          "source": "learn.chatgpt.com/docs/agent-configuration/subagents, Custom agents — \"Other session settings, such as sandbox_mode, mcp_servers, and skills.config, inherit from the parent when the custom agent file omits them\", read 2026-09-17"
         },
         "source": "learn.chatgpt.com/docs/agent-configuration/subagents, Custom agents (developers.openai.com/codex/subagents redirects there), read 2026-09-15"
       },
       "usage": {
         "where": "$CODEX_HOME (default ~/.codex)/sessions/YYYY/MM/DD/rollout-<timestamp>-<thread id>.jsonl",
-        "what": "token_usage_record lines, `usage` per response \u2014 input_tokens, cached_input_tokens, cache_write_input_tokens, output_tokens, reasoning_output_tokens \u2014 or the difference between the cumulative total_token_usage of token_count events; the model from turn_context where it carries one",
+        "what": "token_usage_record lines, `usage` per response — input_tokens, cached_input_tokens, cache_write_input_tokens, output_tokens, reasoning_output_tokens — or the difference between the cumulative total_token_usage of token_count events; the model from turn_context where it carries one",
         "env": "CODEX_THREAD_ID",
         "source": "codex-rs/protocol (TokenUsage, TokenUsageRecord, shell_environment), codex-rs/rollout (recorder, policy) and codex-rs/history (RolloutItemWire) on main, read 2026-09-09"
-      }
+      },
+      "compaction": null,
+      "compactionReason": "docs/config.md in openai/codex on main documents lifecycle hooks only as an admin setting, with no event around compaction found, read 2026-09-22"
     },
     {
       "key": "copilot",
@@ -221,6 +267,7 @@
         "identifiers": "a model name the Copilot model picker lists",
         "source": "docs.github.com, Custom agents configuration, YAML frontmatter properties, read 2026-09-09"
       },
+      "headless": null,
       "agentFile": {
         "dir": ".github/agents",
         "extension": ".agent.md",
@@ -236,7 +283,8 @@
         },
         "source": "docs.github.com/en/copilot/reference/custom-agents-configuration, YAML frontmatter properties and Tool aliases, read 2026-09-15"
       },
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "cursor-agent",
@@ -258,12 +306,13 @@
         "identifiers": "a Cursor model id",
         "source": "cursor.com/docs/agent/subagents, read 2026-09-09"
       },
+      "headless": null,
       "agentFile": {
         "dir": ".cursor/agents",
         "extension": ".md",
         "format": "markdown",
         "model": "`model` in the frontmatter: `inherit` (the default) or a model id",
-        "writes": "`readonly: true` \u2014 \"restricted write permissions (no file edits, no state-changing shell commands)\"",
+        "writes": "`readonly: true` — \"restricted write permissions (no file edits, no state-changing shell commands)\"",
         "commands": "the same `readonly`, which is why it is the one flag that expresses both",
         "mcp": {
           "reaches": "inherits every tool from the parent, MCP tools included; `readonly` gates writing, not which servers are reachable. A cloud subagent is the exception: it runs on a cloud VM and uses the servers configured for the team",
@@ -272,7 +321,8 @@
         },
         "source": "cursor.com/docs/subagents, Configuration fields (cursor.com/docs/agent/subagents redirects there), read 2026-09-15"
       },
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "devin",
@@ -288,8 +338,10 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "droid",
@@ -305,8 +357,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "firebender",
@@ -323,8 +377,10 @@
       "requiresCli": false,
       "contextFrontmatter": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "forge",
@@ -340,8 +396,10 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "gemini",
@@ -362,6 +420,7 @@
         "identifiers": "a Gemini model id",
         "source": "google-gemini/gemini-cli docs/core/subagents.md, read 2026-09-09"
       },
+      "headless": null,
       "agentFile": {
         "dir": ".gemini/agents",
         "extension": ".md",
@@ -377,7 +436,16 @@
         },
         "source": "google-gemini/gemini-cli docs/core/subagents.md (Configuration schema) and docs/tools/, for the tool names, read 2026-09-15"
       },
-      "usage": null
+      "usage": null,
+      "compaction": {
+        "before": {
+          "event": "PreCompress",
+          "how": "advisory: runs before context compression"
+        },
+        "after": null,
+        "where": "the hooks configuration docs/hooks/index.md describes",
+        "source": "docs/hooks/index.md in google-gemini/gemini-cli on main, read 2026-09-22: SessionStart fires on startup, resume and clear, not after compression, so nothing replays the checkpoint there"
+      }
     },
     {
       "key": "goose",
@@ -393,8 +461,10 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "grok",
@@ -410,8 +480,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "hermes",
@@ -429,8 +501,10 @@
       "projectable": false,
       "unprojectableReason": "its skills directory is ~/.hermes/skills, outside the repository",
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "junie",
@@ -446,8 +520,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "kilocode",
@@ -463,8 +539,10 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "kimi",
@@ -480,8 +558,10 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "kiro-cli",
@@ -497,8 +577,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "lingma",
@@ -514,8 +596,10 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "omp",
@@ -531,8 +615,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "opencode",
@@ -553,22 +639,24 @@
         "identifiers": "provider/model, as opencode spells them",
         "source": "sst/opencode docs agents.mdx, read 2026-09-09"
       },
+      "headless": null,
       "agentFile": {
         "dir": ".opencode/agents",
         "extension": ".md",
         "format": "markdown",
         "model": "`model` in the frontmatter, as provider/model",
-        "writes": "`permission.edit: deny` \u2014 the map gates read, edit, bash, task and the rest with allow, ask or deny",
+        "writes": "`permission.edit: deny` — the map gates read, edit, bash, task and the rest with allow, ask or deny",
         "commands": null,
         "commandsReason": "`permission.bash` is allow, ask or deny, or a map of command patterns to those: a project can enumerate the commands a delegate may run, but a generated list would be this factory guessing at that project's shell",
         "mcp": {
           "reaches": "reaches every MCP tool: the permission map is a denylist whose keys are wildcard patterns matched against the tool name, so `edit: deny` leaves an MCP tool alone",
           "grant": null,
-          "source": "anomalyco/opencode packages/web/src/content/docs/agents.mdx, Permissions \u2014 \"`mymcp_*`: `deny` denies every tool from an MCP server\", read 2026-09-17"
+          "source": "anomalyco/opencode packages/web/src/content/docs/agents.mdx, Permissions — \"`mymcp_*`: `deny` denies every tool from an MCP server\", read 2026-09-17"
         },
         "source": "opencode docs agents.mdx, Markdown and Permissions (the repository is anomalyco/opencode; opencode.ai is blocked from this sandbox), read 2026-09-15"
       },
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "pi",
@@ -584,8 +672,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "qodercli",
@@ -601,8 +691,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "qwen",
@@ -618,8 +710,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "rovodev",
@@ -635,8 +729,10 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "shai",
@@ -652,8 +748,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "tabnine",
@@ -669,8 +767,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "trae",
@@ -686,8 +786,10 @@
       "multiInstallSafe": true,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "vibe",
@@ -703,8 +805,10 @@
       "multiInstallSafe": false,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "zcode",
@@ -720,8 +824,10 @@
       "multiInstallSafe": true,
       "requiresCli": true,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     },
     {
       "key": "zed",
@@ -737,8 +843,10 @@
       "multiInstallSafe": false,
       "requiresCli": false,
       "subagentModel": null,
+      "headless": null,
       "agentFile": null,
-      "usage": null
+      "usage": null,
+      "compaction": null
     }
   ]
 }

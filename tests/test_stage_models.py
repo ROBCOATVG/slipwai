@@ -79,9 +79,11 @@ class StageModelsTest(FactoryTestCase):
 
             makefile = (repo / "Makefile").read_text()
             self.assertIn("models: ## Show which model runs each stage of /drive", makefile)
-            gate = ("check-agents: ## Fail when an initialized agent projection has drifted, or .specify/models.json "
-                    "or drive.json is malformed\n\tpython3 scripts/agents/project.py --check\n"
-                    "\tpython3 scripts/agents/models.py --check && python3 scripts/agents/drive.py --check\n")
+            gate = ("check-agents: ## Fail when an initialized agent projection has drifted, "
+                    "or .specify/models.json, drive.json or cruise.json is malformed\n"
+                    "\tpython3 scripts/agents/project.py --check\n"
+                    "\tpython3 scripts/agents/models.py --check && python3 scripts/agents/drive.py --check && "
+                    "python3 scripts/agents/cruise.py --check\n")
             self.assertIn(gate, makefile)
             subprocess.run(["make", "check-agents"], cwd=repo, check=True, capture_output=True)
             for page in ("docs/agent-harnesses.md",):
@@ -203,7 +205,7 @@ class StageModelsTest(FactoryTestCase):
 
             check = models(repo, "--check")
             self.assertEqual(check.returncode, 0, check.stderr)
-            self.assertIn("check-models: .specify/models.json names 14 stage(s) and 6 harness(es)", check.stdout)
+            self.assertIn("check-models: .specify/models.json names 17 stage(s) and 6 harness(es)", check.stdout)
 
             path = repo / ".specify/models.json"
             table = json.loads(path.read_text())
@@ -274,7 +276,7 @@ class StageModelsTest(FactoryTestCase):
             self.assertTrue(models(repo, "tasks").stdout.startswith("tasks: fast → haiku — Claude Code:"))
             table = json.loads(path.read_text())
             self.assertEqual(table["stages"]["implement"], "strong")
-            self.assertEqual(table["roles"]["claude"], {"strong": "host", "fast": "haiku"})
+            self.assertEqual(table["roles"]["claude"], {"strong": "host", "fast": "haiku", "skipper": "host"})
             self.assertEqual(table["_comment"], json.loads(before)["_comment"])
 
             added = models(repo, "--set", "tasks=cheap")

@@ -49,7 +49,7 @@ INTEGRATION = ROOT / ".specify/integration.json"
 # `.specify/models.json`; a key outside it is a typo the check reports rather than a row `/drive` never reads.
 KNOWN_STAGES = (
     "principles", "specify", "event-model", "split", "example-map", "gaps", "release-constraint", "plan", "tasks",
-    "implement", "converge", "demo", "adversary", "mutation",
+    "implement", "converge", "demo", "adversary", "mutation", "skipper", "hand", "bosun",
 )
 # A role mapped to this runs on the model running `/drive` itself: no delegation, said in as many words.
 HOST = "host"

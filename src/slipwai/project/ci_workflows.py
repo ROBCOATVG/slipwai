@@ -203,7 +203,7 @@ def integration_job(family: str, services: list[App], apps: list[App], several: 
 {end}"""
 
 
-def workflow(apps: list[App], layout: Layout = AT_ROOT) -> str:
+def workflow(apps: list[App], layout: Layout = AT_ROOT, event: bool = False) -> str:
     """The gate runs `make verify`, whose recipes already loop over the services — so CI loops too, inside
     Make, rather than fanning out a matrix. A matrix would give CI a shape the laptop does not have, and the
     project's rule is that the two run the same command; it would also start one job per service on a
@@ -217,6 +217,14 @@ def workflow(apps: list[App], layout: Layout = AT_ROOT) -> str:
     )
     # Of the family: a TypeScript service behind any framework has already set Node up above.
     frontend_setup = NODE_SETUP if web_apps(apps) and "typescript" not in families else ""
+    # The event profile's `check-drawio` runs the TypeScript pipeline — no browser, but Node — so a project
+    # with no Node of its own is given one here, pinned to the same major the event-model workflow uses.
+    # Without `cache: npm`, which needs a lockfile the pipeline's own manifest does not keep.
+    event_setup = (
+        f"      - uses: actions/setup-node@v6\n        with:\n          node-version: {NODE_MAJOR}\n"
+        if event and not frontend_setup and "typescript" not in families
+        else ""
+    )
     # The suite that needs real infrastructure is a second job with its own service container, so the
     # `verify` job stays free of infrastructure exactly as `make verify` is locally. Which of a service's
     # answers brings such a suite, and which one has migrations to apply first, are traits the options
@@ -254,6 +262,7 @@ permissions:
 """
         + setups
         + frontend_setup
+        + event_setup
         + f"      - run: {layout.make} verify\n"
         + jobs
     )

@@ -5,6 +5,7 @@ project adds is the **method around them**, and one command that drives it.
 
 - [The loop](#the-loop)
 - [`/drive`: the ladder](#drive-the-ladder)
+- [Cruise: the driver as owner](#cruise-the-driver-as-owner)
 - [The commands](#the-commands)
 - [Story splitting](#story-splitting)
 - [Example mapping](#example-mapping)
@@ -98,7 +99,9 @@ itself otherwise, and in both cases says which model ran the stage.
 
 Each stage the ladder sends to a fresh context is a **named agent type** the project carries in `agents/`:
 `drive-tasks`, `drive-implement`, `drive-converge`, `drive-gaps`, `drive-adversary`, `drive-mutation`, with `drive-slice` for
-the whole-slice delegate the concurrent fan-out spawns. The type declares what
+the whole-slice delegate the concurrent fan-out spawns, and `drive-skipper`, `drive-hand` and `drive-bosun` for the
+product owner, the actor and the unblocker that `/cruise` puts in a person's place — the first and last on a
+`skipper` role of its own, so a project can run a bigger model on deciding than on driving. The type declares what
 its delegate may write and what it may run, in words no harness owns, and carries that stage's standing brief
 so a per-call brief adds only the task, its contract and the file manifest. `make agents` renders each into
 the installed harness's own agent file with the model the table resolved, and with as much of the scope as
@@ -204,15 +207,31 @@ inside its boundary; one cycle is never parallel. The delegate reports both sett
 implement entry records them as `delegate=`, `cycle=` and `split=N`, so `make benchmark` can say what a wall
 time was a wall time *of*.
 
+### Cruise: the driver as owner
+
+`/drive` stops for a product decision and at every demo, because both belong to a person. `/cruise` runs the
+same ladder — `commands/drive.md`, every rule as written — with nobody at the wheel. It decides as the product
+owner: on the host where the stage recommends an answer or a standing decision covers the question, and through
+a `drive-skipper` delegate where the question is open. It runs each demo as the actor through a `drive-hand`
+delegate, with a browser where the slice has a screen. A block is work before it is a stop: a `drive-bosun`
+delegate stubs the missing thing behind its port, takes the reading that keeps every MUST, or repairs the run,
+and writes down what it did, so a run parks only at the catastrophic. When the split runs out it audits the specification
+against what shipped, so *done* means satisfied rather than exhausted. Every decision is written where `/drive`
+would have written a person's and again in `specs/<feature>/decisions.md`; every demo in the slice's
+`demo-log.md`. A script re-invokes it with a fresh context until it says `done`, and it stops only for a human.
+It ships disabled. [Cruise](cruise.md) says how to start, watch and stop a run, what the settings are, and where
+it parks rather than guesses.
+
 ## The commands
 
-Fifteen in the event profile, thirteen in `standard`, and four more in a repository that adopted the method
+Seventeen in the event profile, fifteen in `standard`, and four more in a repository that adopted the method
 around existing code. None of them is copied: each is generated against this
 project's profile, languages, frameworks and services, so the paths and toolchains named in them are real.
 
 | Command | Does |
 |---|---|
 | `/drive` | The ladder above: one slice from wherever it currently stands to an actor-visible demo |
+| `/cruise` | The same ladder with nobody at the wheel: the agent decides as the product owner and runs each demo as the actor, iteration after iteration, until the specification is satisfied — stopping only for a human ([Cruise](cruise.md)) |
 | `/whats-next` | One slice, one stage, one command and the reason, in at most six lines — the board's ➡️ *Next* line on its own, for the start of a session or after an interruption |
 | `/where-are-we` | The demo stop's progress board on demand — ✅ works now · 🔧 in progress, and the ladder stage it has reached · ⬜ still to come, `N of M slices accepted` · ⚠️ not working yet · 🔀 ready (parallel) · ➡️ next (this session) · ⛔ blocked — read off the same artifacts, running nothing |
 | `/gaps` | Adversarially review a written artifact — spec, criteria, examples, a slice diff — for holes before they become rewritten tests |
@@ -222,6 +241,7 @@ project's profile, languages, frameworks and services, so the paths and toolchai
 | `/model-delegation-settings` | Show which model runs each stage of `/drive`, or change it — a stage's role, or what a role maps to on this harness — through the checked path |
 | `/drive-settings` | Show how `/drive` delegates implementation — the boundary a delegate is handed and the cycle it runs — or change either, through the checked path |
 | `/benchmark` | Draw `specs/<feature>/benchmark.md` from the slice records — what each slice cost and how each stage did — and read it back: where the cost sits, what moved, whether the model split paid, what is unknown and why |
+| `/cruise-settings` | Show how `/cruise` runs on its own — who decides, how it releases, what it demos with, when it parks — or change any of it, through the checked path |
 | `/add-service` | Add a service — its own language, framework and axis answers — without hand edits |
 | `/add-frontend` | Add a browser application the same way |
 | `/catch-up` | After `slipwai migrate`, work through what the newer factory now asks of code it did not write — the changelog notes for the versions crossed, and the gates that are now red because of them |

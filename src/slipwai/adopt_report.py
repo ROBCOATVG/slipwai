@@ -149,7 +149,40 @@ def report(done: Adopted) -> str:
             f"  {app.name}: {app.path} ({app.language}; {what}), {recorded} of {len(app.commands or {})} targets "
             "have a command; the rest are written no's"
         )
-    if not wrapped:
+    # Nothing a person said stands behind an application every one of whose facts is still the survey's own
+    # reading, which is what `--yes` leaves. Said once, plainly, rather than left to be inferred from the word
+    # `detected` in a file nobody opens: the whole point of the candidate state is that a record says whether
+    # somebody looked, and a record that says nobody did has to be as readable as one that says somebody did.
+    unlooked = [app for app in wrapped if set(app.provenance.values()) <= {"detected", "unrecorded"}]
+    if unlooked and len(unlooked) == len(wrapped):
+        lines.append(
+            f"  Nobody has looked at {'either' if len(unlooked) == 2 else 'any'} of these: every fact above is "
+            "the survey's own reading, recorded `detected`. /ground asks about each, and `/survey` refreshes "
+            "what stays the tree's word."
+            if len(unlooked) > 1 else
+            "  Nobody has looked at it: every fact above is the survey's own reading, recorded `detected`. "
+            "/ground asks, and `/survey` refreshes what stays the tree's word."
+        )
+    candidates = done.adoption.candidates or []
+    if candidates:
+        one = len(candidates) == 1
+        lines.append(
+            f"  {len(candidates)} buildable director{'y' if one else 'ies'}, "
+            + ("which is not recorded as an application yet" if one else "none of them recorded as an "
+               "application yet")
+            + " — what each is, what it is called and what it owns are questions the code answers:"
+        )
+        for row in candidates:
+            answered = sum(1 for command in (row.get("commands") or {}).values() if command)
+            lines.append(
+                f"    {row['path']} ({row['language']}, from {row['evidence']}), "
+                f"{answered} of {len(row.get('commands') or {})} targets have a command"
+            )
+        lines.append(
+            "  Until one is confirmed, `verify` refuses rather than passing over nothing: /ground asks about "
+            "each with the code in front of it, and `slipwai adopt --confirm <name>` records the answer."
+        )
+    elif not wrapped:
         lines.append("  no buildable directory was found; the gate is the method's own checks alone")
     lines += ci_lines(done.adoption, done.layout)
     at, below, unrecorded = summary(done.adoption.convergence)
@@ -212,9 +245,17 @@ def report(done: Adopted) -> str:
             if named
             else f"asks which coding agent gets the skills and commands (or name it: {init} --integration claude)"
         ) + ". Add --extension codegraph to index the code for that agent.",
-        "Then: /ground, in the agent — it asks what the tree could not say, one row of the map at a time, and records "
-        "each answer with its provenance; what --yes left unrecorded is settled there.",
-        f"Then: {verify} verify — the gate. Its first run records the lint and typecheck findings that are there as "
+        "Then: /ground, in the agent — it asks what the tree could not say" + (
+            ", starting with which of the directories above is an application, what it is called and what it "
+            "owns; then one row of the map at a time"
+            if done.adoption.candidates
+            else ", one row of the map at a time"
+        ) + ", and records each answer with its provenance; what --yes left unrecorded is settled there.",
+        f"Then: {verify} verify — the gate" + (
+            ", once a candidate above has been confirmed: it refuses while nothing is, because a gate with "
+            "nothing to hold has not been given its subject yet"
+            if done.adoption.candidates else ""
+        ) + ". Its first run records the lint and typecheck findings that are there as "
         f"the baseline; commit {done.layout.delivery}/baseline.json with what init wrote. A test suite that is red "
         "stops that run and says so: read the failures, then `make ratchet-tighten` quarantines it deliberately.",
         *([] if done.makefile_written else [

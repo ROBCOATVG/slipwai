@@ -85,16 +85,31 @@ ASSET_PATHS = {
 }
 
 
-def spoken_for(text: str, service: App, web: App | None) -> str:
+def spoken_for(text: str, service: App | None, web: App | None) -> str:
     """An asset's `apps/service` and `apps/web`, as this project spells them.
 
     In a service's own files `apps/service` is that service, whichever one it is; in the toolkit and the
     profile overlays it is the first service. `apps/web` is the browser app that proxies to that service,
     or the first, where the project has one at all — and is left alone where it has none, because prose
-    about a browser app the project lacks is not made truer by renaming it.
+    about a browser app the project lacks is not made truer by renaming it. `apps/service` is left alone
+    for the same reason and in one more case: an adopted repository between `adopt` and its first confirmed
+    candidate (ADR 0003) has no application to name, and gets the asset's own words until it has one.
     """
-    text = ASSET_PATHS["service"].sub(service.path, text)
+    text = text if service is None else ASSET_PATHS["service"].sub(service.path, text)
     return text if web is None else ASSET_PATHS["web"].sub(web.path, text)
+
+
+# What the prose says where a repository holds no application to point at as its example: `adopt` writes the
+# commands before any candidate has been confirmed (ADR 0003), and confirming one regenerates them, so this is
+# what stands in for the short window between. The same question `spoken_for` answers for an asset's paths.
+NO_APPLICATION = "the first application confirmed"
+NO_DIRECTORY = "that application's own directory"
+
+
+def example_of(apps: list[App]) -> tuple[str, str]:
+    """The application a generated command's prose points at, and its directory — or what to say instead."""
+    first = next(iter(services_of(apps) or wrapped_of(apps)), None)
+    return (first.name if first else NO_APPLICATION, first.path if first else NO_DIRECTORY)
 
 
 def own_paths(files: dict[str, str], apps: list[App]) -> dict[str, str]:
@@ -145,7 +160,7 @@ def toolkit_files_from_assets(profile: str, apps: list[App]) -> dict[str, str]:
     # TypeScript examples for — which is none of them when one of the services is TypeScript.
     # Where nothing here was made by the factory, the first application that existed before the method did
     # is what the prose's `apps/service` means, and its language is the one the snippets are not in.
-    first = (services_of(apps) or wrapped_of(apps))[0]
+    first = next(iter(services_of(apps) or wrapped_of(apps)), None)
     web = web_apps(apps)
     speakers = speakers_of(apps)
     families = families_of(apps) or list(dict.fromkeys(app.language for app in wrapped_of(apps)))

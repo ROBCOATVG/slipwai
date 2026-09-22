@@ -55,9 +55,10 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # whole of it again, from a newer factory, as a commit the existing one can merge, that merge made, what
     # the merge could not do said out loud, and where an adoption stands in the sequence it was given.
     ("assembly", ("scaffold", "add_service", "replay", "migrate", "catch_up", "adopt", "adopt_report", "resurvey",
-                  "converge", "next_steps")),
+                  "converge", "next_steps", "confirm")),
     # The command line, and the entry point the executable is built from.
-    ("edge", ("cli", "cli_add", "cli_adopt", "cli_interview", "cli_prompts", "preflight", "upgrade", "__main__")),
+    ("edge", ("cli", "cli_add", "cli_adopt", "cli_confirm", "cli_interview", "cli_prompts", "preflight",
+              "upgrade", "__main__")),
     # The package's own `__init__`: last, so it may name anything and nothing may name it.
     ("package", ("__init__",)),
 )

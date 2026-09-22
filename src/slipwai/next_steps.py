@@ -63,12 +63,22 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
     baseline = (root / layout.under(BASELINE)).is_file()
     decided = bool((adoption.strategy or {}).get("decided"))
     recommended = (adoption.strategy or {}).get("recommended")
+    outstanding = [str(row.get("name")) for row in (adoption.candidates or []) if isinstance(row, dict)]
     found = [
         Step(
             f"./{layout.under('init')}" if layout.moved else "./init",
             "installs Spec Kit and projects the skills and commands into the agent that gets them "
             "(`--integration claude` names it; `--extension codegraph` indexes the code for it)",
             initialised,
+        ),
+        Step(
+            "confirm what the survey found",
+            f"{len(outstanding)} buildable director{'y' if len(outstanding) == 1 else 'ies'} "
+            f"({', '.join(outstanding)}) are recorded as candidates and none as an application — /ground asks "
+            "which of them is one, with the code in front of it, and `slipwai adopt --confirm <name>` records "
+            "the answer. `verify` refuses until one is confirmed"
+            if outstanding else "every buildable directory the survey found has been answered for",
+            not outstanding,
         ),
         Step(
             "/ground, in the agent",

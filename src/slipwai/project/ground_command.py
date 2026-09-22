@@ -150,6 +150,46 @@ def question_sections(apps: list[App]) -> str:
     return "\n\n".join(sections)
 
 
+def candidate_section(adoption: Adoption, layout: Layout) -> str:
+    """The candidates, asked about before any row of the map.
+
+    First because nothing else can be answered without it: a Structure row is about applications, and until
+    somebody says which of the directories the survey found *are* applications there is nothing for the rows
+    to be about — and `verify` refuses (ADR 0003). This is the question the terminal used to ask once per
+    directory with `[Y/n]` and a default of yes, which is how asset bundles and a test suite were wrapped as
+    applications on the first real monorepo it met.
+    """
+    candidates = [row for row in (adoption.candidates or []) if isinstance(row, dict)]
+    if not candidates:
+        return ""
+    rows = "\n".join(
+        f"   - `{row.get('name')}` at `{row.get('path')}` — {row.get('language')}, from `{row.get('evidence')}`"
+        + (f"; the tree says {row.get('kind')} ({row.get('roleEvidence')})" if row.get("roleEvidence")
+           else "; nothing in the tree says what it is for")
+        for row in candidates
+    )
+    return (
+        "## What is an application here\n\n"
+        "Asked first, and before any row: until one of these is confirmed there is nothing for the rows to be\n"
+        f"about, and `{layout.make} verify` refuses rather than passing over nothing. `adopt` recorded them and\n"
+        "wrapped none of them, because which of them the gate should hold is a question the code answers and a\n"
+        "terminal cannot ask.\n\n"
+        "   The directories the survey found that build:\n\n"
+        f"{rows}\n\n"
+        "**Ask, one at a time, having read the directory first:** is this an application the gate should hold —\n"
+        "or is it an asset bundle, a test suite for something else here, a sample, a vendored dependency? Say\n"
+        "which you think it is *and why, from what you read*, before asking; the person is confirming your\n"
+        "reading, not answering a quiz. Where it is one: what should it be called (the directory's name is what\n"
+        "the record proposes, and `default` or `ui` is rarely what anybody calls it), what does it own in a\n"
+        "sentence or two, and are the commands the survey read the ones that matter?\n\n"
+        "**Write:** one `slipwai adopt --confirm <name>` per application — with `--as <name>=<new>` where the\n"
+        "directory's name is not its name, and `--kind`, `--purpose` and `--command` for what you established —\n"
+        "and `--decline <name>` for each that is not one. The command builds the record and regenerates\n"
+        "everything that reads it, so never edit `deployables` by hand. A directory you are unsure of stays a\n"
+        "candidate: that is what the state is for, and leaving it is an honest answer where guessing is not.\n\n"
+    )
+
+
 def ground_command(apps: list[App], layout: Layout, adoption: Adoption) -> str:
     page = layout.under("docs/convergence.md")
     return f"""---
@@ -187,7 +227,7 @@ axes to ask about; empty means every row a person has not yet placed.
   release path, an application's `kind`, a home, `why` — write it there with `confirmed` provenance; the row
   follows when `/survey` re-reads the record.
 
-## The rows, as they stand
+{candidate_section(adoption, layout)}## The rows, as they stand
 
 {row_table(adoption)}
 

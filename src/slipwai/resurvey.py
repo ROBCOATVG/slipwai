@@ -154,14 +154,19 @@ def reconciled_home(record: dict, key: str, proposed: str, what: str, done: Refr
     return record
 
 
-def refresh(root: Path) -> Refreshed:
-    """Survey again, reconcile, regenerate what the record drives, and rewrite the survey page."""
+def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
+    """Survey again, reconcile, regenerate what the record drives, and rewrite the survey page.
+
+    `clean_checked` is for a caller that has already refused an unclean tree and has since written to it on
+    purpose — `confirm`, which edits `project.json` and then needs every file the record drives to follow.
+    """
     document = read_manifest(root, verb="adopt --refresh")
     adoption = adoption_of(document)
     if adoption is None:
         raise GenerationError("this project was generated, not adopted, so there is nothing to re-survey")
-    refuse_uncommitted(root)
-    apps = apps_from_manifest(document)
+    if not clean_checked:
+        refuse_uncommitted(root)
+    apps = apps_from_manifest(document, allow_empty=True)
     layout = layout_of(document)
     found = survey(root)
     done = Refreshed()

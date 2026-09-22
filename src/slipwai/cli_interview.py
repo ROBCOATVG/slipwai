@@ -185,3 +185,45 @@ def interview(
         release_record = {"path": release, "provenance": provenance}
     why = ask("Why is this work happening? (the business trigger, recorded in docs/adoption.md; Enter to skip)")
     return kept, database, infrastructure, ci, release_record, why
+
+
+def candidate_table(candidates: list[dict]) -> str:
+    """The buildable directories the survey found, shown as facts rather than asked about one at a time."""
+    width = max((len(row["path"]) for row in candidates), default=1)
+    language = max((len(row["language"]) for row in candidates), default=1)
+    lines = []
+    for row in candidates:
+        answered = sum(1 for command in (row.get("commands") or {}).values() if command)
+        total = len(row.get("commands") or {})
+        lines.append(
+            f"  {row['path']:<{width}}  {row['language']:<{language}}  from {row['evidence']}"
+            f"  ({answered} of {total} targets have a command)"
+        )
+    return "\n".join(lines)
+
+
+def shape(candidates: list[dict], proposal: dict[str, str | None]) -> dict:
+    """The reshaped intro (ADR 0003): what the survey found, shown; and the one question a terminal can answer.
+
+    Everything else this used to ask — which of these is an application, what it is called, what it is for,
+    which of its commands matter, where the schema and the infrastructure live, how a change reaches
+    production, why the work is happening — needs the code read, or needs a conversation. None of that is
+    what a terminal is good at, and the record now has somewhere to keep an unanswered question, so they go
+    to the agent instead of being answered with Enter.
+    """
+    print(
+        "Adopt the delivery method here (experimental, reshaped intro). The survey read the tree; what it\n"
+        "found is below. Nothing here is recorded as an application yet: which of these the gate should hold,\n"
+        "what each is called and what it owns are questions the code answers, and the agent asks them with the\n"
+        "code in front of it. This asks the one thing the tree cannot settle on its own."
+    )
+    one = len(candidates) == 1
+    print(f"\n{len(candidates)} director{'y' if one else 'ies'} that build{'s' if one else ''}:")
+    print(candidate_table(candidates))
+    print()
+    forge = prompt_choice(
+        "CI forge", list(FORGES), str(proposal["forge"]), lambda f: FORGE_DESCRIPTIONS[f],
+        question="Where does this repository's CI run? (decides what shape the gate's CI configuration can "
+        "take, which is a fact about your forge and not about your code)",
+    )
+    return {"forge": forge, "provenance": "confirmed" if forge == proposal["forge"] else "overridden"}

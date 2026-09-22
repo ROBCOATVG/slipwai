@@ -95,7 +95,10 @@ class NextStepsTest(FactoryTestCase):
             self.assertIn("then: make -f delivery/Makefile verify", result.stdout)
             self.assertIn("then: add `-include delivery/Makefile` to the root Makefile", result.stdout)
             self.assertIn("then: an accepted ADR with a `Strategy:` line", result.stdout)
-            self.assertNotIn("done:", result.stdout, "nothing has been done yet")
+            # `--yes` without the reshaped intro wraps what it found, so the one step that *is* done here is
+            # the confirming — by the person who typed `--yes`. Nothing else has happened yet.
+            self.assertEqual(result.stdout.count("done:"), 1)
+            self.assertIn("done: confirm what the survey found", result.stdout)
 
     def test_each_step_turns_to_done_as_the_mark_it_leaves_appears(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -157,22 +160,25 @@ class ReshapedIntroTest(FactoryTestCase):
             self.assertIn("Found a node build at the repository root (.): javascript.", output)
             self.assertIn("Language [javascript]", output, "today it asks again; the switch is what removes it")
 
-    def test_the_reshaped_intro_shows_the_language_instead_of_asking_for_it(self) -> None:
+    def test_the_reshaped_intro_shows_the_language_rather_than_asking_about_it(self) -> None:
+        """The language was the first question to leave the terminal, and the rest followed it (ADR 0003):
+        the reshaped intro asks nothing per application, because nothing is an application yet."""
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            output = in_terminal(repo, "adopt", "--experimental-intro")
-            self.assertIn("Found a node build at the repository root (.): javascript.", output)
+            output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
             self.assertNotIn("Language [javascript]", output)
-            self.assertIn("`--language NAME=LANGUAGE` is where to correct one", output)
-            self.assertEqual(json.loads((repo / "project.json").read_text())["deployables"]["shop"]["language"],
+            self.assertNotIn("Found a node build at the repository root (.)", output)
+            self.assertIn("javascript", output, "it is shown in the table of what builds")
+            self.assertEqual(json.loads((repo / "project.json").read_text())["candidates"][0]["language"],
                              "javascript")
 
     def test_the_switch_is_the_environment_too_so_a_test_run_does_not_retype_it(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            output = in_terminal(repo, "adopt", environment={"SLIPWAI_EXPERIMENTAL_INTRO": "1"})
+            output = in_terminal(repo, "adopt", "--no-init", environment={"SLIPWAI_EXPERIMENTAL_INTRO": "1"})
             self.assertNotIn("Language [javascript]", output)
-            self.assertIn("`--language NAME=LANGUAGE` is where to correct one", output)
+            self.assertIn("1 directory that builds", output)
+            self.assertEqual(json.loads((repo / "project.json").read_text())["deployables"], {})
 
 
 class HarnessTest(FactoryTestCase):

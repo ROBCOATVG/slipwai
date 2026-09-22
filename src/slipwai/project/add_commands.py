@@ -22,8 +22,9 @@ from __future__ import annotations
 
 from ..assets import NOTES
 from ..catalog import CATALOG, families
-from ..services import App, contexts_phrase, services_of, web_apps, wrapped_of
+from ..services import App, contexts_phrase, services_of, web_apps
 from ..targets import managed
+from ..toolkit import example_of
 
 # The command is the factory's, not this repository's, and a generated project does not know where its
 # factory is: a released executable on the PATH, or a checkout somewhere the user knows.
@@ -103,14 +104,14 @@ WEB_PRODUCTION_AFTERWARDS = {
 
 def add_service_command(apps: list[App], target: str = "none") -> str:
     services = services_of(apps)
-    first = (services or wrapped_of(apps))[0]
+    example_name, example_path = example_of(apps)
     default_language = (
-        f"without `--language` the new service is `{first.backend}`, like `{first.name}`."
+        f"without `--language` the new service is `{services[0].backend}`, like `{services[0].name}`."
         if services
         else "this project has no service the factory made to take a language from, so `--language` is required."
     )
     inherits = (
-        f"inherits `{first.name}`'s answer where the new backend offers it, and takes that\n  backend's own "
+        f"inherits `{services[0].name}`'s answer where the new backend offers it, and takes that\n  backend's own "
         "default where it cannot (a transport is per framework)."
         if services
         else "takes the backend's own default."
@@ -129,7 +130,7 @@ argument-hint: <name> --purpose "<what it owns>" [--context <name>]... [--langua
 
 A service is a change to the list in `project.json` and a regeneration of everything that reads it — the
 Makefile, Compose, CI, the workspace, `scripts/verify`, the prose that lists the services. The factory's
-`add-service` makes both. Nothing here is copied from `{first.path}` by hand: a copy has to find the nine
+`add-service` makes both. Nothing here is copied from `{example_path}` by hand: a copy has to find the nine
 files that name it, and misses the tenth.
 
 ## What is here
@@ -155,7 +156,7 @@ files that name it, and misses the tenth.
   A service already listed is described after the fact: `<factory> describe-service <name> --purpose "..." --context <name>`.
 
 The language, the store, and what the service owns are product decisions. When the request does not name
-them, ask; taking `{first.name}`'s answers is the default for the first two, and saying so is part of
+them, ask; taking `{example_name}`'s answers is the default for the first two, and saying so is part of
 asking. Someone asking for a service has a reason for wanting it separate — the purpose is that reason,
 written down. The port is the command's own decision — the next one free — and is not asked.
 
@@ -166,10 +167,10 @@ may hold several contexts as `src/<context>/`, each behind its own `public` modu
 keeping them apart — and that is where a context whose boundary is still being found belongs. A service is
 the right shape when there is a *deployment* reason: its own release cadence, its own scaling or runtime, a
 data store of its own, another team, another language. When the request is "a context for X" rather than
-one of those, say so, and offer to add `X` to `{first.name}`'s `contexts` in `project.json` instead —
+one of those, say so, and offer to add `X` to `{example_name}`'s `contexts` in `project.json` instead —
 `docs/architecture.md`, *Bounded contexts*, has the three rungs and the reasoning to point at.
 
-{FACTORY.format(verb="add-service", stop=BY_HAND.format(first_path=first.path))}
+{FACTORY.format(verb="add-service", stop=BY_HAND.format(first_path=example_path))}
 
 {RUN.format(
     invocation='<factory> add-service <name> --purpose "<what it owns>" [--context <name>] [--language <language>] [--<axis> <answer>]',
@@ -185,9 +186,9 @@ one of those, say so, and offer to add `X` to `{first.name}`'s `contexts` in `pr
 
 def add_frontend_command(apps: list[App], target: str = "none") -> str:
     services = services_of(apps)
-    first = (services or wrapped_of(apps))[0]
+    _, example_path = example_of(apps)
     default_api = (
-        f"Without it, `{first.name}`."
+        f"Without it, `{services[0].name}`."
         if services
         else "This project has no service the factory made, so `--api` has to name one — `/add-service` first."
     )
@@ -219,7 +220,7 @@ directory by hand.
 The framework is not a question: every browser app is the one the project was generated with, and the
 dev-server port is the command's own decision — the next one free.
 
-{FACTORY.format(verb="add-frontend", stop=BY_HAND.format(first_path=first.path))}
+{FACTORY.format(verb="add-frontend", stop=BY_HAND.format(first_path=example_path))}
 
 {RUN.format(
     invocation="<factory> add-frontend <name> [--api <service>]",
@@ -267,7 +268,7 @@ def catch_up_command(apps: list[App], target: str = "none") -> str:
     `CHANGELOG.md`: it has no copy, and the frozen executable has none to reach. The verb writes the file before it
     returns, conflicts or not, and says why when the versions crossed cannot be told: no absent file means "none owed".
     """
-    first = (services_of(apps) or wrapped_of(apps))[0]
+    _, example_path = example_of(apps)
     return f"""---
 description: After a migration, work through what the newer factory now asks of code it did not write
 ---
@@ -315,7 +316,7 @@ A failing gate after a migration is not a bug report; it is a rule arriving. So 
 these it is before changing anything, because the right response differs:
 
 - **The rule is right and this project has not done it yet.** The ordinary case. Adopt it: change the code,
-  not the gate. `{first.path}` and its siblings are yours to change; the gate script is the factory's.
+  not the gate. `{example_path}` and its siblings are yours to change; the gate script is the factory's.
 - **The rule is right and this project already decided the opposite, on purpose.** The decision is written
   down somewhere — a plan, a `tasks.md` line, an ADR — and the migration did not know about it. This is the
   one case that is not yours to settle alone: put the two side by side, the rule and the recorded decision,

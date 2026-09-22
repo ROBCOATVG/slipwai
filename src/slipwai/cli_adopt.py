@@ -18,10 +18,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from . import confirm as confirming
 from . import next_steps, resurvey
-from .adopt import Answers, adopt, proposed, report
+from .adopt import Answers, adopt, candidates_of, proposed, report
 from .catalog import CATALOG
-from .cli_interview import NOTHING_TO_ASK, interview, with_override
+from .cli_confirm import confirmations
+from .cli_interview import NOTHING_TO_ASK, interview, shape, with_override
 from .cli_prompts import validate_project_name
 from .ecosystems import EXTRA, TARGETS
 from .errors import GenerationError
@@ -48,7 +50,7 @@ def next_report(root: Path) -> str:
             "this project was generated, not adopted, so there is no adoption sequence to stand in: a generated "
             "project's next steps are its README, and every row of its map is at the top by construction"
         )
-    return next_steps.report(root, layout_of(document), adoption, apps_from_manifest(document))
+    return next_steps.report(root, layout_of(document), adoption, apps_from_manifest(document, True))
 
 
 def agent_line(agent: Agent) -> str:
@@ -115,6 +117,21 @@ def adopt_main(argv: list[str]) -> None:
     )
     parser.add_argument(FLAG, action="store_true", dest="experimental_intro", help=HELP)
     parser.add_argument(
+        "--confirm", action="append", default=[], metavar="NAME",
+        help="in an adopted repository: a candidate the survey found that is an application, recorded as one "
+        "with `confirmed` provenance; the describing flags below apply to it, and everything the record "
+        "drives is regenerated. Repeatable (what /ground calls once it has read the directory)",
+    )
+    parser.add_argument(
+        "--decline", action="append", default=[], metavar="NAME",
+        help="in an adopted repository: a candidate that is not an application. It is dropped, and nothing is "
+        "recorded in its place. Repeatable",
+    )
+    parser.add_argument(
+        "--as", action="append", default=[], dest="renamed", metavar="NAME=NEW",
+        help="confirm a candidate under a name of your own, rather than the directory's",
+    )
+    parser.add_argument(
         "--integration", default=None, metavar="AGENT",
         help="which coding agent gets the skills and commands, by its key in the agent registry (default: the "
         "harness this ran from, or the one the tree already reads; neither, and ./init keeps its own question)",
@@ -178,6 +195,12 @@ def adopt_main(argv: list[str]) -> None:
         except GenerationError as error:
             parser.error(str(error))
         return
+    if args.confirm or args.decline:
+        try:
+            print(confirming.report(confirming.confirm(root, confirmations(args), args.decline)))
+        except GenerationError as error:
+            parser.error(str(error))
+        return
     if args.refresh:
         try:
             refreshed = resurvey.refresh(root)
@@ -201,7 +224,18 @@ def adopt_main(argv: list[str]) -> None:
         ci: dict = {}
         release: dict = {}
         why = args.why
-        if not args.yes:
+        # Under the reshaped intro nothing is wrapped by this command: the directories the survey found are
+        # recorded as candidates, and what each of them is stays a question until somebody with the code in
+        # front of them answers it (ADR 0003). `--yes` is the exception it has always been — it confirms every
+        # one of them unlooked-at, which is what an unattended run is for, and the report says so out loud.
+        candidates: list[dict] = []
+        if reshaped and not args.yes:
+            if not sys.stdin.isatty():
+                raise GenerationError(NOTHING_TO_ASK)
+            candidates = candidates_of(found, name)
+            ci = shape(candidates, proposal)
+            apps = []
+        elif not args.yes:
             if not sys.stdin.isatty():
                 raise GenerationError(NOTHING_TO_ASK)
             apps, database, infrastructure, ci, release, asked_why = interview(
@@ -209,9 +243,27 @@ def adopt_main(argv: list[str]) -> None:
             )
             why = why or asked_why
         apps = [app for app in apps if app.name not in args.skip]
-        if not apps:
+        candidates = [row for row in candidates if row["name"] not in args.skip]
+        if not apps and not candidates:
             raise GenerationError(NOTHING_LEFT)
-        known = {app.name for app in apps}
+        known = {app.name for app in apps} or {row["name"] for row in candidates}
+        # A flag that describes an application has nothing to describe while every directory is a candidate:
+        # it would be read, validated against the candidate names, and then quietly do nothing, because the
+        # loops below walk `apps`. Refused by name instead, pointing at the command that does take them.
+        if candidates:
+            describing = [
+                flag for flag, given in
+                (("--language", args.language), ("--purpose", args.purpose), ("--kind", args.kind),
+                 ("--command", args.command), ("--hexagonal", args.hexagonal))
+                if given
+            ]
+            if describing:
+                raise GenerationError(
+                    f"{', '.join(describing)} describe(s) an application, and under the reshaped intro this "
+                    "command records what the survey found as candidates rather than wrapping any of them. "
+                    "`slipwai adopt --confirm <name>` takes the same flags and makes a candidate an "
+                    "application; `--yes` here confirms every candidate as found."
+                )
         given_names = (
             *(("language", g) for g in args.language), *(("purpose", g) for g in args.purpose),
             *(("command", g) for g in args.command), *(("hexagonal", g) for g in args.hexagonal),
@@ -272,7 +324,7 @@ def adopt_main(argv: list[str]) -> None:
         agent = chosen(args.integration) if args.integration else detect(root)
         answers = Answers(
             name, args.profile, target, args.delivery, why, apps, database, infrastructure, ci, release,
-            agent=agent.record(),
+            agent=agent.record(), candidates=candidates,
         )
         done = adopt(root, answers, found)
     except GenerationError as error:

@@ -70,6 +70,10 @@ class Answers:
     # `{"harness": ..., "evidence": ..., "provenance": ...}` from `harness.py`: which coding agent `./init`
     # projects into. Empty means nobody said and nothing showed, and `./init` keeps its own question.
     agent: dict = field(default_factory=dict)
+    # Buildable directories found and not yet confirmed (ADR 0003). Under the reshaped intro this carries
+    # every one of them and `applications` is empty; under the interview it is empty and `applications`
+    # carries what the person confirmed in the terminal.
+    candidates: list = field(default_factory=list)
 
 
 def check_repository(root: Path) -> None:
@@ -131,6 +135,31 @@ def proposed(found: Survey, name: str) -> list[App]:
     return apps
 
 
+def candidates_of(found: Survey, name: str) -> list[dict]:
+    """Every buildable directory the survey found, as a candidate record: what `proposed` would have made an
+    application of, plus the evidence that found it, and confirmed by nobody.
+
+    The same directories `proposed` reads, so that confirming one produces exactly the application the old
+    interview would have recorded had somebody pressed Enter knowing what they were pressing it over.
+    """
+    return [
+        {
+            "name": app.name,
+            "path": app.path,
+            "language": app.language,
+            "kind": app.kind,
+            "commands": dict(app.commands or {}),
+            "toolchain": dict(app.toolchain or {}),
+            "evidence": root.found.evidence,
+            # What the tree said the directory is for, where it said anything. A candidate whose `kind` is
+            # `application` with nothing here is one nobody and nothing has placed — the commonest case, and
+            # the one the confirming agent has to read the directory to answer.
+            **({"roleEvidence": root.role_evidence} if root.role_evidence else {}),
+        }
+        for app, root in zip(proposed(found, name), found.roots, strict=True)
+    ]
+
+
 def facts(found: Survey, answers: Answers, layout: Layout) -> Adoption:
     """The project-level record: the person's answers where given, the survey's proposal where not — and where
     the tree said nothing and nobody was asked, `unrecorded`, which is a fact about the record and not a guess."""
@@ -180,6 +209,7 @@ def facts(found: Survey, answers: Answers, layout: Layout) -> Adoption:
             "makefile": found.makefile, "readme": found.readme, "quickWins": list(found.quick_wins),
         },
         agent=answers.agent,
+        candidates=answers.candidates,
     )
 
 
@@ -199,7 +229,7 @@ def adopt(root: Path, answers: Answers, found: Survey | None = None) -> Adopted:
     found = survey(root) if found is None else found
     layout = Layout(answers.delivery)
     apps = answers.applications
-    if not apps:
+    if not apps and not answers.candidates:
         raise GenerationError("no application to install the method around: adopt wraps at least one")
     adoption = with_recommendation(root, layout, with_platform(root, facts(found, answers, layout), apps), apps)
     files = project_files(answers.name, answers.profile, answers.target, apps, layout, adoption)
@@ -265,4 +295,4 @@ def manifest_of(root: Path) -> dict:
     return json.loads((root / "project.json").read_text())
 
 
-__all__ = ["Adopted", "Answers", "WRITTEN", "adopt", "manifest_of", "proposed", "report"]
+__all__ = ["Adopted", "Answers", "WRITTEN", "adopt", "candidates_of", "manifest_of", "proposed", "report"]

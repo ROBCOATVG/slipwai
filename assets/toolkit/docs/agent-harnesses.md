@@ -125,3 +125,13 @@ record that says the tokens are unknown and why, never an estimate. The numbers 
 on this harness, and a stage before and after a change to a prompt, a skill or the layout; they are tokens rather
 than prices, a stage's count is a floor (the turn that closes it is still being written), and they do not compare
 harnesses or projects.
+
+Under `projectMcp`, the registry says which project-scoped file each harness reads an MCP server from, in what
+shape, and which flags a headless iteration needs for that file to be honoured in a checkout nobody has trusted
+— `.mcp.json` and `--mcp-config` on Claude Code, `.codex/config.toml` and a one-run trust override on Codex,
+`.gemini/settings.json`, `.cursor/mcp.json` and `opencode.json` read by their harnesses as they are — each from
+the harness's own documentation on the date the row names, or null with a `projectMcpReason`. An extension that
+installs an MCP server (`./init --extension codegraph`) names it in every installed harness's file through
+`scripts/extensions/guidance.py`, so the connection travels with the checkout instead of living in one user's
+home; `scripts/agents/cruise.py` passes the flags when the file exists; and a harness with a null row reaches
+the same tool through its CLI from the shell, which is the route `AGENTS.md`'s block names last.

@@ -306,11 +306,12 @@ def harness_command(harness: dict[str, Any], sandbox: bool) -> tuple[str, str]:
            "edits are accepted and every other permission is the harness's own to grant or refuse; pass "
            "--sandbox inside a disposable container to bypass them all")
     template = str(headless["command"]).replace("{permissions}", permissions)
-    # A print session in an untrusted checkout ignores the project's settings, its `.mcp.json` with them, so the
-    # file is passed by name where the row knows how — and only when it exists, because the flag refuses a missing one.
-    project = headless.get("projectMcp")
-    if isinstance(project, dict) and (ROOT / str(project.get("file", ""))).is_file():
-        template = f"{template} {project['flags']}"
+    # A headless session in a checkout nobody has trusted ignores the project's own MCP file on some harnesses, so
+    # the row's `headlessFlags` make it honoured — passed only when the file exists, since a flag naming a missing
+    # file refuses to start, and `{root}` is this checkout for a harness that trusts by path.
+    project = harness.get("projectMcp")
+    if isinstance(project, dict) and project.get("headlessFlags") and (ROOT / str(project["file"])).is_file():
+        template = f"{template} {str(project['headlessFlags']).replace('{root}', str(ROOT))}"
     return template, why
 
 
@@ -320,20 +321,23 @@ def index_lines(harness: dict[str, Any] | None) -> list[str]:
     if not CODE_INDEX.is_file():
         return []
     cli = "codegraph" if shutil.which("codegraph") else "npx" if shutil.which("npx") else None
-    headless = headless_row(harness) if harness is not None else None
-    project = headless.get("projectMcp") if headless is not None else None
+    project = harness.get("projectMcp") if harness is not None else None
+    name = str(harness.get("name", "the harness")) if harness is not None else "the harness"
     if cli is None:
         return [f"cruise: the code index ({relative(CODE_INDEX.parent)}) is here, but neither `codegraph` nor `npx` is "
                 "on PATH: no iteration can reach it, and each is told to say so and use text search — install the "
                 "CLI, or Node, before an unattended run"]
-    if isinstance(project, dict) and MCP_CONFIG.is_file():
-        return [f"cruise: the code index is reached over MCP — {relative(MCP_CONFIG)} is passed to every iteration "
-                "with its tools allowed"]
     if isinstance(project, dict):
-        return [f"cruise: the code index ({relative(CODE_INDEX.parent)}) is here, but {relative(MCP_CONFIG)} is not, "
-                f"so an iteration reaches it only through the `{cli}` CLI; `./init --extension codegraph` writes "
-                "the file"]
-    return [f"cruise: the code index is reached through the `{cli}` CLI; this harness's row names no project MCP file"]
+        file = ROOT / str(project["file"])
+        if file.is_file():
+            passed = (f", and every iteration is started with it ({str(project['headlessFlags']).replace('{root}', '<root>')})"
+                      if project.get("headlessFlags") else f", which {name} reads itself")
+            return [f"cruise: the code index is reached over MCP — {relative(file)} names the server{passed}"]
+        return [f"cruise: the code index ({relative(CODE_INDEX.parent)}) is here, but {relative(file)} does not name "
+                f"its server, so an iteration reaches it only through the `{cli}` CLI; `make agents` writes the file "
+                "once the extension is adopted (`./init --extension codegraph`)"]
+    return [f"cruise: the code index is reached through the `{cli}` CLI; the registry knows no project MCP file for "
+            f"{name}"]
 
 
 def resolve_harness(sandbox: bool) -> tuple[dict[str, Any] | None, str, str]:

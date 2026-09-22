@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Shared state and marker projection for optional extensions."""
+"""Shared state and marker projection for optional extensions, and the one writer that puts an extension's MCP
+server into the project-scoped config file of every harness installed here."""
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
@@ -18,6 +20,8 @@ ROOT = project_root(Path(__file__).resolve())
 HERE = Path(__file__).resolve().parent
 AGENTS = ROOT / "AGENTS.md"
 STATE = ROOT / ".slipwai/extensions.json"
+INTEGRATION = ROOT / ".specify/integration.json"
+REGISTRY = HERE.parent / "agents/registry.json"
 SCHEMA = 1
 BLOCK = re.compile(
     r"<!-- extension:([a-z0-9][a-z0-9-]*):begin -->.*?<!-- extension:\1:end -->",
@@ -103,3 +107,125 @@ def replace_block(key: str, guidance: str) -> None:
     else:
         updated = content.rstrip("\n") + f"\n\n{canonical}\n"
     AGENTS.write_text(updated)
+
+
+
+# --- an MCP server that travels with the checkout ---------------------------------------------------------------
+#
+# A tool reached over MCP is reached through a config file, and the file a tool's own installer writes lives in the
+# user's home — on the one machine `./init` ran on. A container, a CI runner and the fresh session a `/cruise`
+# iteration is all open the checkout with the tool's data and no way to ask it. So an extension names its server in
+# the project-scoped file each installed harness reads, as `scripts/agents/registry.json`'s `projectMcp` column
+# spells that file and its shape, and commits it. Every file here is a merge target (docs/extensions.md, 6): a
+# server a person configured stays, a second run rewrites nothing, and a file that cannot be parsed is left alone
+# and said.
+
+
+def installed_harnesses() -> list[str]:
+    """The harness keys Spec Kit recorded here, plus the one this `./init` is installing — its record is written
+    by the same run and may not be there yet when an extension hook runs (`SLIPWAI_INTEGRATION`)."""
+    keys: list[str] = []
+    if INTEGRATION.is_file():
+        state = json.loads(INTEGRATION.read_text())
+        recorded = state.get("installed_integrations")
+        if isinstance(recorded, list) and recorded:
+            keys = [key for key in recorded if isinstance(key, str)]
+        elif isinstance(state.get("default_integration"), str):
+            keys = [state["default_integration"]]
+    chosen = os.environ.get("SLIPWAI_INTEGRATION")
+    if chosen and chosen not in keys:
+        keys.append(chosen)
+    return list(dict.fromkeys(keys))
+
+
+def harness_rows() -> dict[str, dict]:
+    return {row["key"]: row for row in json.loads(REGISTRY.read_text())["harnesses"]}
+
+
+def write_project_mcp(name: str, command: list[str]) -> list[str]:
+    """Name the server `name`, started by `command`, in the project MCP file of every harness installed here whose
+    file the registry knows. Returns one line per thing worth saying: a file written, a harness with no known
+    file, a file that could not be merged — and nothing for a file that already says so."""
+    installed = installed_harnesses()
+    if not installed:
+        return [f"no harness is recorded here (`.specify/integration.json`), so no project MCP file names `{name}` yet; "
+                "`./init --integration <agent>` records one and `make agents` then writes the file"]
+    rows = harness_rows()
+    lines: list[str] = []
+    for key in installed:
+        row = rows.get(key)
+        if row is None:
+            continue
+        spec = row.get("projectMcp")
+        if not isinstance(spec, dict):
+            lines.append(f"{row['name']}: no project MCP file is known for it, so it reaches `{name}` through the CLI — "
+                         f"{row.get('projectMcpReason', 'not verified')}")
+            continue
+        said = write_project_mcp_entry(spec, name, command)
+        if said:
+            lines.append(f"{row['name']}: {said}")
+    return lines
+
+
+def write_project_mcp_entry(spec: dict, name: str, command: list[str]) -> str | None:
+    path = ROOT / str(spec["file"])
+    if spec["format"] == "toml-codex":
+        return write_toml_table(path, f"mcp_servers.{name}", {"command": command[0], "args": command[1:]})
+    if spec["format"] == "json-opencode":
+        # opencode reads either spelling; an existing `.jsonc` is the person's choice and is merged rather than shadowed.
+        jsonc = path.with_suffix(".jsonc")
+        if jsonc.is_file() and not path.is_file():
+            path = jsonc
+        return write_json_entry(path, "mcp", name, {"type": "local", "command": command, "enabled": True})
+    return write_json_entry(path, "mcpServers", name, {"type": "stdio", "command": command[0], "args": command[1:]})
+
+
+def write_json_entry(path: Path, key: str, name: str, entry: dict) -> str | None:
+    shown = path.relative_to(ROOT)
+    document: dict = {}
+    if path.is_file():
+        try:
+            loaded = json.loads(path.read_text())
+        except ValueError:
+            loaded = None
+        if not isinstance(loaded, dict):
+            return (f"{shown} is not a JSON object (comments, perhaps); left as it is — add the server by hand: "
+                    f"{json.dumps({key: {name: entry}})}")
+        document = loaded
+    servers = document.get(key)
+    if not isinstance(servers, dict):
+        servers = document[key] = {}
+    if servers.get(name) == entry:
+        return None
+    servers[name] = entry
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(document, indent=2) + "\n")
+    return f"{shown} names `{name}`; commit it"
+
+
+def write_toml_table(path: Path, table: str, values: dict) -> str | None:
+    """One `[table]` of scalar and string-array values, replaced in place where the file has it and appended where
+    it does not. Standard library only, so the file is not parsed as TOML: the table runs from its header to the
+    next header, which is what a table is, and a file with the header twice is left alone and said."""
+    shown = path.relative_to(ROOT)
+    rendered = "".join(f"{field} = {json.dumps(value)}\n" for field, value in values.items())
+    block = f"[{table}]\n{rendered}"
+    text = path.read_text() if path.is_file() else ""
+    header = re.compile(rf"^\[{re.escape(table)}\][ \t]*(?:#.*)?$\n?", re.MULTILINE)
+    starts = [match for match in header.finditer(text)]
+    if len(starts) > 1:
+        return f"{shown} declares [{table}] more than once; left as it is — keep one and put in it:\n{rendered}"
+    if starts:
+        begin = starts[0].start()
+        after = text[starts[0].end():]
+        following = re.search(r"^\[", after, re.MULTILINE)
+        end = starts[0].end() + (following.start() if following else len(after))
+        current = text[begin:end]
+        if current.rstrip("\n") == block.rstrip("\n"):
+            return None
+        text = text[:begin] + block + ("\n" if following else "") + text[end:]
+    else:
+        text = (text.rstrip("\n") + "\n\n" if text.strip() else "") + block
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+    return f"{shown} names `{table.rpartition('.')[2]}`; commit it"

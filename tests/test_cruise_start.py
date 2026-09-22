@@ -43,10 +43,7 @@ class CruiseStartTest(FactoryTestCase):
         self.assertEqual(claude["stream"], "claude")
         self.assertEqual(claude["permissions"], "--permission-mode acceptEdits "
                          "--allowedTools 'Bash,Skill,Agent,WebFetch,WebSearch,mcp__codegraph__*'")
-        # The project's own MCP file, passed by name: a print session in an untrusted checkout ignores the settings.
-        self.assertEqual(claude["projectMcp"]["file"], ".mcp.json")
-        self.assertEqual(claude["projectMcp"]["flags"], "--mcp-config .mcp.json")
-        self.assertRegex(claude["projectMcp"]["source"], r"read \d{4}-\d{2}-\d{2}")
+        self.assertNotIn("projectMcp", claude, "the project MCP file is the harness's column, not the print mode's")
         self.assertEqual(claude["sandboxPermissions"], "--dangerously-skip-permissions")
         # A print session ends its background delegates after 600s unless told to wait: a real run lost its
         # story delegate mid-slice to exactly that.

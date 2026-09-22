@@ -18,8 +18,9 @@ from slipwai.extensions import known_extensions, validate_extensions
 FAKE_SPECIFY = "#!/bin/sh\nexit 0\n"
 # `j` once per row moves the cursor from the first extension to the Confirm row below the last.
 TO_CONFIRM = b"j" * len(known_extensions(CATALOG))
-# The server `.mcp.json` names, as `scripts/extensions/codegraph/init.py` writes it.
+# The server as `scripts/extensions/codegraph/init.py` names it, in the JSON shape most harnesses read and Codex's TOML.
 SERVER = {"type": "stdio", "command": "npx", "args": ["-y", "@colbymchenry/codegraph", "serve", "--mcp"]}
+CODEX_TABLE = '[mcp_servers.codegraph]\ncommand = "npx"\nargs = ["-y", "@colbymchenry/codegraph", "serve", "--mcp"]\n'
 
 
 def run_init_at_a_terminal(repo: Path, args: list[str], keys: bytes, environment: dict) -> str:
@@ -114,40 +115,18 @@ class ExtensionsTest(FactoryTestCase):
                 {"schemaVersion": 1, "extensions": ["codegraph"]},
             )
             self.assertIn(".codegraph/", (repo / ".gitignore").read_text())
-            # The connection travels with the checkout: the project-scoped MCP file Claude Code reads, committed,
-            # with the server started through `npx` so a checkout with Node reaches the index without the CLI.
-            self.assertEqual(json.loads((repo / ".mcp.json").read_text()), {"mcpServers": {"codegraph": SERVER}})
-            self.assertNotIn(".mcp.json", (repo / ".gitignore").read_text())
+            # The connection travels with the checkout: the harness this run installs — recorded by Spec Kit in the
+            # same run, so learnt from `SLIPWAI_INTEGRATION` — gets the server in the project file it reads, Codex's
+            # TOML here, started through `npx` so a checkout with Node reaches the index without the CLI. The file
+            # is committed: only the projected `.codex/agents/` is ignored, never the directory.
+            self.assertEqual((repo / ".codex/config.toml").read_text(), CODEX_TABLE)
+            self.assertFalse((repo / ".mcp.json").exists(), "Claude Code is not installed here")
+            self.assertNotIn(".codex/\n", (repo / ".gitignore").read_text())
+            self.assertNotIn("config.toml", (repo / ".gitignore").read_text())
             self.assertIn(".slipwai/catch-up.md", (repo / ".gitignore").read_text())
             self.assertNotIn(".slipwai/\n", (repo / ".gitignore").read_text())
             # Agent projection still ran alongside the extension.
             self.assertTrue((repo / ".agents/skills/testing/SKILL.md").is_file())
-
-    def test_the_mcp_file_is_a_merge_target_that_keeps_every_server_a_person_added(self) -> None:
-        """A file the user hand-edits is merged, never replaced (docs/extensions.md, 6): a server they configured
-        stays, running the extension again changes nothing, and a file that is not JSON is left alone and said."""
-        with tempfile.TemporaryDirectory() as directory:
-            repo = self.generate(directory, "codegraph-merge")
-            fake_bin = Path(directory) / "fake-bin"
-            fake_bin.mkdir()
-            (fake_bin / "specify").write_text(FAKE_SPECIFY)
-            (fake_bin / "specify").chmod(0o755)
-            (fake_bin / "codegraph").write_text("#!/bin/sh\nexit 0\n")
-            (fake_bin / "codegraph").chmod(0o755)
-            environment = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
-            docs = {"type": "http", "url": "https://docs.example/mcp"}
-            (repo / ".mcp.json").write_text(json.dumps({"mcpServers": {"docs": docs}, "note": "kept"}))
-            adopt = ["./init", "--integration", "codex", "--extension", "codegraph"]
-            subprocess.run(adopt, cwd=repo, check=True, env=environment, capture_output=True)
-            merged = json.loads((repo / ".mcp.json").read_text())
-            self.assertEqual(merged, {"mcpServers": {"docs": docs, "codegraph": SERVER}, "note": "kept"})
-            before = (repo / ".mcp.json").stat().st_mtime_ns
-            subprocess.run(adopt, cwd=repo, check=True, env=environment, capture_output=True)
-            self.assertEqual((repo / ".mcp.json").stat().st_mtime_ns, before, "a second run rewrites nothing")
-            (repo / ".mcp.json").write_text("{not json")
-            said = subprocess.run(adopt, cwd=repo, check=True, env=environment, capture_output=True, text=True)
-            self.assertEqual((repo / ".mcp.json").read_text(), "{not json")
-            self.assertIn(".mcp.json is not a JSON object; left as it is", said.stderr)
 
     def test_extension_guidance_is_replaceable_without_duplicating_its_markers(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

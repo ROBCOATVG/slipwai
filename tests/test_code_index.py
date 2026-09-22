@@ -184,9 +184,14 @@ class CodeIndexTest(FactoryTestCase):
         source = (ROOT / "assets/toolkit/scripts/extensions/codegraph/init.py").read_text()
         block = source.split("MARKER_BEGIN}\n")[1].split("{MARKER_END")[0]
         self.assertIn("The connection travels with the checkout", block)
-        self.assertIn("`.mcp.json` at the root names the server, started through `npx`", block)
+        self.assertIn("The project-scoped MCP file of every harness installed here\nnames the server, started through "
+                      "`npx`", block)
+        for named in ("`.mcp.json` for Claude Code", "`.codex/config.toml` for Codex", "`.gemini/settings.json` for "
+                      "Gemini CLI", "`.cursor/mcp.json` for Cursor", "`opencode.json` for opencode"):
+            self.assertIn(named, block)
         self.assertLess(block.index("The connection travels"), block.index("Check you can reach it"))
-        self.assertIn('"args": ["-y", "@colbymchenry/codegraph", "serve", "--mcp"]', source)
+        self.assertIn('MCP_COMMAND = ["npx", "-y", "@colbymchenry/codegraph", "serve", "--mcp"]', source)
+        self.assertIn('write_project_mcp("codegraph", MCP_COMMAND)', source)
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "ready", "standard", "typescript")
             settings = json.loads((repo / ".claude/settings.json").read_text())

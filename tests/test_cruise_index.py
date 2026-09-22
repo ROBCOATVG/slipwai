@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 from support import FactoryTestCase
-from test_cruise_runner import cruise, enable, fake_harness
+from test_cruise_runner import REGISTRY, cruise, enable, fake_harness
 
 from slipwai.project.cruise_record import RUNNER_STREAM
 
@@ -70,14 +70,14 @@ class CruiseIndexTest(FactoryTestCase):
             (fake_claude / "codegraph").write_text("#!/bin/sh\nexit 0\n")
             (fake_claude / "codegraph").chmod(0o755)
             by_cli = cruise(repo, "run", env=env)
-            self.assertIn("cruise: the code index (.codegraph) is here, but .mcp.json is not, so an iteration reaches "
-                          "it only through the `codegraph` CLI; `./init --extension codegraph` writes the file",
+            self.assertIn("cruise: the code index (.codegraph) is here, but .mcp.json does not name its server, so an "
+                          "iteration reaches it only through the `codegraph` CLI; `make agents` writes the file",
                           by_cli.stdout)
             self.assertNotIn("--mcp-config", (here / "claude-args").read_text())
             (repo / ".mcp.json").write_text('{"mcpServers": {"codegraph": {}}}')
             over_mcp = cruise(repo, "run", env=env)
-            self.assertIn("cruise: the code index is reached over MCP — .mcp.json is passed to every iteration with "
-                          "its tools allowed", over_mcp.stdout)
+            self.assertIn("cruise: the code index is reached over MCP — .mcp.json names the server, and every "
+                          "iteration is started with it (--mcp-config .mcp.json)", over_mcp.stdout)
             # The file is passed by name, after the row's own flags, only now that it exists.
             self.assertTrue((here / "claude-args").read_text().splitlines()[-1].endswith(
                 "--allowedTools Bash,Skill,Agent,WebFetch,WebSearch,mcp__codegraph__* --mcp-config .mcp.json"))
@@ -87,13 +87,64 @@ class CruiseIndexTest(FactoryTestCase):
             for _ in range(200):
                 if cruise(repo, "status", env=env).stdout.startswith("cruise: no runner is running"):
                     break
-            # A harness whose row names no project file reaches the index through the CLI, and the run says so.
-            enable(repo, harness="cursor-agent")
-            (fake_claude / "agent").write_text('#!/bin/sh\necho "cruise: done"\n')
-            (fake_claude / "agent").chmod(0o755)
+            # Codex reads its project file only in a trusted project, so the runner trusts this checkout for the run:
+            # the row's `{root}` is this repository, passed once the file exists.
+            enable(repo, harness="codex")
+            (fake_claude / "codex").write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > {here / "codex-args"}\n'
+                                               'echo "cruise: done"\n')
+            (fake_claude / "codex").chmod(0o755)
+            codex = cruise(repo, "run", env=env)
+            self.assertIn("cruise: the code index (.codegraph) is here, but .codex/config.toml does not name its "
+                          "server", codex.stdout)
+            self.assertNotIn("-c", (here / "codex-args").read_text().split())
+            (repo / ".codex").mkdir()
+            (repo / ".codex/config.toml").write_text("[mcp_servers.codegraph]\ncommand = \"npx\"\n")
+            trusted = cruise(repo, "run", env=env)
+            self.assertIn("cruise: the code index is reached over MCP — .codex/config.toml names the server, and every "
+                          "iteration is started with it (-c 'projects.\"<root>\".trust_level=\"trusted\"')",
+                          trusted.stdout)
+            self.assertIn(f'projects."{repo.resolve()}".trust_level="trusted"',
+                          (here / "codex-args").read_text().splitlines())
+            # A harness that reads its file itself needs nothing passed; one with no known file is reached by CLI.
+            enable(repo, harness="gemini")
+            (fake_claude / "gemini").write_text('#!/bin/sh\necho "cruise: done"\n')
+            (fake_claude / "gemini").chmod(0o755)
+            (repo / ".gemini").mkdir()
+            (repo / ".gemini/settings.json").write_text("{}")
+            gemini = cruise(repo, "run", env=env)
+            self.assertIn("cruise: the code index is reached over MCP — .gemini/settings.json names the server, which "
+                          "Gemini CLI reads itself", gemini.stdout)
+            enable(repo, harness="copilot")
+            (fake_claude / "copilot").write_text('#!/bin/sh\necho "cruise: done"\n')
+            (fake_claude / "copilot").chmod(0o755)
             other = cruise(repo, "run", env=env)
-            self.assertIn("cruise: the code index is reached through the `codegraph` CLI; this harness's row names no "
-                          "project MCP file", other.stdout)
+            self.assertIn("cruise: the code index is reached through the `codegraph` CLI; the registry knows no "
+                          "project MCP file for GitHub Copilot", other.stdout)
+
+    def test_the_registry_says_which_project_file_each_harness_reads_a_server_from_or_that_nobody_checked(self) -> None:
+        """A row is the harness's own documentation, dated, or null with a dated reason — never a guess: six harnesses
+        have a file, the flags a headless iteration needs for it, and the shape the writer knows; thirty say why not."""
+        formats = {"json-mcpServers", "json-opencode", "toml-codex"}
+        known = {}
+        for entry in REGISTRY:
+            self.assertIn("projectMcp", entry, entry["key"])
+            row = entry["projectMcp"]
+            if row is None:
+                self.assertRegex(entry["projectMcpReason"], r"2026-\d{2}-\d{2}", entry["key"])
+                continue
+            known[entry["key"]] = row
+            for field in ("file", "format", "how", "source"):
+                self.assertTrue(row.get(field), f"{entry['key']}: {field}")
+            self.assertIn("headlessFlags", row, entry["key"])
+            self.assertIn(row["format"], formats, entry["key"])
+            self.assertRegex(row["source"], r"read \d{4}-\d{2}-\d{2}", entry["key"])
+        self.assertEqual({key: row["file"] for key, row in known.items()}, {
+            "claude": ".mcp.json", "codex": ".codex/config.toml", "cursor-agent": ".cursor/mcp.json",
+            "gemini": ".gemini/settings.json", "opencode": "opencode.json", "kiro-cli": ".kiro/settings/mcp.json"})
+        self.assertEqual({key: row["headlessFlags"] for key, row in known.items() if row["headlessFlags"]}, {
+            "claude": "--mcp-config .mcp.json", "codex": "-c 'projects.\"{root}\".trust_level=\"trusted\"'"})
+        copilot = next(entry for entry in REGISTRY if entry["key"] == "copilot")
+        self.assertIn("supportsLocation('local')", copilot["projectMcpReason"])
 
     def test_an_index_call_is_a_line_of_the_feed_and_status_counts_the_iterations_that_asked(self) -> None:
         """The gate checks that the index is fresh, not that anyone uses it: a run kept `check-codegraph` green with

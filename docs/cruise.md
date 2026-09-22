@@ -209,11 +209,13 @@ reaches for — `Bash`, the shell allowed wholesale, with the project's `.claude
 plain force-push, `reset --hard`, `clean`) still refusing what they name; `Skill` and `Agent`, the project's
 own commands and delegates; `WebFetch` and `WebSearch`, because a stage reading documentation has nobody to
 ask; and `mcp__codegraph__*`, the code index's tools. Each of those was tried from a print session before it
-was named, and the two web tools were the only refusals. The row also names the project's `.mcp.json`, the
-file `./init --extension codegraph` commits with the index's MCP server in it, which the runner passes with
-`--mcp-config` whenever the file exists: a print session in a checkout nobody has trusted ignores the
-project's settings, the servers they approve and the allow rules they carry — hooks still run — so what the
-iteration needs travels on its command line. Before the first iteration, `start` says how the index will be
+was named, and the two web tools were the only refusals. Each harness's `projectMcp` row names the project
+file it reads an MCP server from — the file `./init --extension codegraph` commits with the index's server in
+it, `.mcp.json` on Claude Code, `.codex/config.toml` on Codex, and so on — and the flags that make a headless
+iteration honour it whenever the file exists: `--mcp-config` on Claude Code, whose print session in a checkout
+nobody has trusted ignores the project's settings, the servers they approve and the allow rules they carry
+(hooks still run); a one-run trust override on Codex, which skips every project `.codex/` layer in an
+untrusted project. What the iteration needs travels on its command line. Before the first iteration, `start` says how the index will be
 reached, or that it cannot be, and `status` says afterwards in how many iterations it was asked; an index
 kept fresh and never queried is the failure the block in `AGENTS.md` describes, and the count is what makes
 it visible. `--sandbox` on `run` or `start` swaps in the row's `sandboxPermissions`, which bypasses every

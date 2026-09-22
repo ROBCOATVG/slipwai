@@ -3,10 +3,11 @@
 
 CodeGraph (https://github.com/colbymchenry/codegraph) is a local, 100%-offline MCP code-knowledge graph.
 Its own installer already wires the MCP server into whichever coding agents it finds and appends its own
-instruction block to their context files — this script only does the two things that belong to the
-project rather than to CodeGraph itself: index this repository, and add one marker-fenced pointer to
-`AGENTS.md` so the primary agent reaches for the graph on a cross-file question instead of falling back to
-grep-and-read. The same block tells a delegated agent to probe its own session rather than assume it
+instruction block to their context files — but that config is the user's, on the one machine `./init` ran on,
+and never reaches a container, a CI runner or the fresh session a `/cruise` iteration is. So this script does the
+three things that belong to the project rather than to CodeGraph itself: index this repository, add one
+marker-fenced pointer to `AGENTS.md` so the primary agent reaches for the graph on a cross-file question instead
+of falling back to grep-and-read, and write the committed `.mcp.json` that carries the server with the checkout. The same block tells a delegated agent to probe its own session rather than assume it
 inherited the primary agent's connection. The pointer says how to tell that an environment cannot reach
 the index at all, because a checkout travels into
 places its tooling does not, and `make check-codegraph` is what notices an index nothing is maintaining.
@@ -16,6 +17,7 @@ Never fails `./init`: a missing `codegraph` CLI is reported, not fatal.
 """
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -49,6 +51,11 @@ This project is indexed by CodeGraph (`.codegraph/`). For any question about cal
 the blast radius of a change, query it directly — `codegraph_explore` over MCP, or the `codegraph` CLI —
 before grep or reading files one at a time. Say which route you used when you report what you found.
 
+**The connection travels with the checkout.** `.mcp.json` at the root names the server, started through `npx`
+so a checkout with Node reaches the index whether or not the `codegraph` CLI was ever installed there. Claude
+Code reads that file, and a `/cruise` iteration is started with it and its tools allowed; every other harness
+reaches the same index through the routes below.
+
 **Check you can reach it before you trust it.** The index is data in this checkout; the tooling that
 serves and maintains it is not, and a tree carried into a container, a sandbox or a CI runner routinely
 has one without the other. Probe the available routes in order: use `codegraph_explore` when this session
@@ -80,10 +87,46 @@ keeps its focused stage brief. `commands/drive.md`, *Who runs each stage*, carri
 """
 
 
+MCP_FILE = ROOT / ".mcp.json"
+# The server as Claude Code's project-scoped `.mcp.json` names one (code.claude.com/docs/en/mcp, the scope table;
+# CodeGraph's own `codegraph install --location=local` writes the same file, read from its 1.6.0 bundle
+# 2026-09-22). Started through `npx` rather than the `codegraph` binary because the file is committed and travels:
+# a checkout with Node reaches the index whether or not the CLI was installed there — a container, a sandbox, a CI
+# runner, the cases the block above describes. Proved 2026-09-22: a Claude Code 2.1.280 print session given this
+# file with `--mcp-config` connected the server and answered a caller question through `codegraph_explore`.
+MCP_SERVER = {"type": "stdio", "command": "npx", "args": ["-y", "@colbymchenry/codegraph", "serve", "--mcp"]}
+
+
+def write_mcp_config() -> None:
+    """Make `.mcp.json` carry the CodeGraph server, leaving every other server a person configured as it was: a
+    file the user may hand-edit is a merge target (docs/extensions.md, 6), and one that does not parse is left
+    alone and said so rather than replaced."""
+    document: dict = {}
+    if MCP_FILE.is_file():
+        try:
+            loaded = json.loads(MCP_FILE.read_text())
+        except ValueError:
+            loaded = None
+        if not isinstance(loaded, dict):
+            print(f"{MCP_FILE.name} is not a JSON object; left as it is — add the server to it by hand: "
+                  f"{json.dumps({'mcpServers': {'codegraph': MCP_SERVER}})}", file=sys.stderr)
+            return
+        document = loaded
+    servers = document.get("mcpServers")
+    if not isinstance(servers, dict):
+        servers = document["mcpServers"] = {}
+    if servers.get("codegraph") == MCP_SERVER:
+        return
+    servers["codegraph"] = MCP_SERVER
+    MCP_FILE.write_text(json.dumps(document, indent=2) + "\n")
+
+
 def project_guidance() -> None:
-    """Record this election and make its factory-owned guidance region current."""
+    """Record this election and make its factory-owned projections current: the guidance block, and the MCP file
+    the checkout carries. Installation and indexing are `main`'s alone."""
     record_extension("codegraph")
     replace_block("codegraph", GUIDANCE)
+    write_mcp_config()
 
 
 def main() -> int:

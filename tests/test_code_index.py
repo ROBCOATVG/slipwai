@@ -19,6 +19,7 @@ the rule, written here where it is enforced instead of only in prose.
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 import subprocess
 import tempfile
@@ -173,6 +174,25 @@ class CodeIndexTest(FactoryTestCase):
         self.assertIn("<!-- extension:codegraph:begin -->", source)
         self.assertIn("<!-- extension:codegraph:end -->", source)
         self.assertIn("AGENTS.md", source)
+
+    def test_the_connection_travels_with_the_checkout_and_every_project_is_ready_for_it(self) -> None:
+        """CodeGraph's own installer writes user-level config, on the one machine `./init` ran on; a container, a
+        CI runner and a `/cruise` iteration's fresh session open the checkout with the index and no way to ask it,
+        and a run there kept the gate green with `codegraph sync` and answered every caller question with grep.
+        So the extension commits `.mcp.json`, the block says so, and every project's settings approve that file's
+        server and allow its tools before the extension is ever adopted — inert until the file exists."""
+        source = (ROOT / "assets/toolkit/scripts/extensions/codegraph/init.py").read_text()
+        block = source.split("MARKER_BEGIN}\n")[1].split("{MARKER_END")[0]
+        self.assertIn("The connection travels with the checkout", block)
+        self.assertIn("`.mcp.json` at the root names the server, started through `npx`", block)
+        self.assertLess(block.index("The connection travels"), block.index("Check you can reach it"))
+        self.assertIn('"args": ["-y", "@colbymchenry/codegraph", "serve", "--mcp"]', source)
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "ready", "standard", "typescript")
+            settings = json.loads((repo / ".claude/settings.json").read_text())
+            self.assertEqual(settings["enabledMcpjsonServers"], ["codegraph"])
+            self.assertIn("mcp__codegraph__*", settings["permissions"]["allow"])
+            self.assertFalse((repo / ".mcp.json").exists(), "the file is the extension's to write")
 
 
 # The three columns `scripts/check-codegraph.py` reads, written the way CodeGraph writes them: a path

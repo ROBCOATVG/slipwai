@@ -79,6 +79,10 @@ PID = ROOT / ".specify/cruise.pid"
 RUN_LOG = ROOT / ".specify/cruise-run.log"
 # The harness's own event stream, raw, for a harness that has one: everything the feed was rendered from.
 STREAM = ROOT / ".specify/cruise-stream.jsonl"
+# The code index `./init --extension codegraph` leaves, and the project MCP file that carries its server: what the
+# runner says it can expect of them before the first iteration, rather than a feed that fell back to grep without saying.
+CODE_INDEX = ROOT / ".codegraph/codegraph.db"
+MCP_CONFIG = ROOT / ".mcp.json"
 # How far into the run log the watching session has read.
 WATCH_CURSOR = ROOT / ".specify/cruise-watch.cursor"
 # The last message a harness's after-response hook saw, for a stop hook whose event does not carry it.
@@ -301,7 +305,35 @@ def harness_command(harness: dict[str, Any], sandbox: bool) -> tuple[str, str]:
            if sandbox else
            "edits are accepted and every other permission is the harness's own to grant or refuse; pass "
            "--sandbox inside a disposable container to bypass them all")
-    return str(headless["command"]).replace("{permissions}", permissions), why
+    template = str(headless["command"]).replace("{permissions}", permissions)
+    # A print session in an untrusted checkout ignores the project's settings, its `.mcp.json` with them, so the
+    # file is passed by name where the row knows how — and only when it exists, because the flag refuses a missing one.
+    project = headless.get("projectMcp")
+    if isinstance(project, dict) and (ROOT / str(project.get("file", ""))).is_file():
+        template = f"{template} {project['flags']}"
+    return template, why
+
+
+def index_lines(harness: dict[str, Any] | None) -> list[str]:
+    """What a run can expect of the code index, said before the first iteration: nothing where none was adopted; the
+    route an iteration reaches it by; or that no iteration can, so its text-search answers are read for what they are."""
+    if not CODE_INDEX.is_file():
+        return []
+    cli = "codegraph" if shutil.which("codegraph") else "npx" if shutil.which("npx") else None
+    headless = headless_row(harness) if harness is not None else None
+    project = headless.get("projectMcp") if headless is not None else None
+    if cli is None:
+        return [f"cruise: the code index ({relative(CODE_INDEX.parent)}) is here, but neither `codegraph` nor `npx` is "
+                "on PATH: no iteration can reach it, and each is told to say so and use text search — install the "
+                "CLI, or Node, before an unattended run"]
+    if isinstance(project, dict) and MCP_CONFIG.is_file():
+        return [f"cruise: the code index is reached over MCP — {relative(MCP_CONFIG)} is passed to every iteration "
+                "with its tools allowed"]
+    if isinstance(project, dict):
+        return [f"cruise: the code index ({relative(CODE_INDEX.parent)}) is here, but {relative(MCP_CONFIG)} is not, "
+                f"so an iteration reaches it only through the `{cli}` CLI; `./init --extension codegraph` writes "
+                "the file"]
+    return [f"cruise: the code index is reached through the `{cli}` CLI; this harness's row names no project MCP file"]
 
 
 def resolve_harness(sandbox: bool) -> tuple[dict[str, Any] | None, str, str]:
@@ -496,6 +528,9 @@ class Feed:
             return f"search  {given.get('pattern', '')}"
         if name in ("WebFetch", "WebSearch"):
             return f"fetch  {given.get('url') or given.get('query') or ''}"
+        if name.startswith("mcp__"):
+            server, _, tool = name.removeprefix("mcp__").partition("__")
+            return f"{server}.{tool}  {first_line(given.get('query') or json.dumps(given), 100)}"
         return f"{name}  {first_line(json.dumps(given), 100)}"
 
     def outcome(self, block: dict[str, Any], indent: str) -> list[str]:
@@ -807,8 +842,10 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
     print(f"cruise: {why}")
     if first != prompt:
         print(f"cruise: the first iteration runs `{first}`, the kick-off; every later one runs `{prompt}`")
-    print(f"cruise: each iteration runs `{prompt}` in a fresh session; `touch {relative(STOP)}` stops it",
-          flush=True)
+    print(f"cruise: each iteration runs `{prompt}` in a fresh session; `touch {relative(STOP)}` stops it")
+    for line in index_lines(harness):
+        print(line)
+    sys.stdout.flush()
     stream = stream_of(harness)
     started_run = time.monotonic()
     iterations_this_run = 0
@@ -890,6 +927,9 @@ def start(arguments: list[str]) -> None:
     harness, _template, why = resolve_harness(sandbox)
     prompt = prompt_for(harness, feature)
     first = prompt_for(harness, " ".join(part for part in (feature, kickoff) if part))
+    # Said before the fork, so a runner that ends at once has still said how its iterations reach the index.
+    for line in index_lines(harness):
+        print(line)
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
     # The watch seat starts reading here, so the first `watch` shows this run from its first line.
     WATCH_CURSOR.write_text(str(RUN_LOG.stat().st_size if RUN_LOG.is_file() else 0))
@@ -1084,6 +1124,57 @@ def refusals() -> dict[tuple[str, str], list[int]]:
     return found
 
 
+def index_queries() -> dict[int, int]:
+    """How many times each iteration in the stream asked the code index — an MCP tool of the codegraph server, or the
+    CLI through the shell — so `status` can say whether the index was used rather than only kept fresh."""
+    asked: dict[int, int] = {}
+    if not STREAM.is_file():
+        return asked
+    iteration = 0
+    for line in STREAM.read_text(errors="replace").splitlines():
+        if line.startswith("# iteration "):
+            iteration = int(line.split()[2])
+            asked.setdefault(iteration, 0)
+            continue
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        message = event.get("message") if isinstance(event.get("message"), dict) else {}
+        for block in message.get("content") if isinstance(message.get("content"), list) else []:
+            if not isinstance(block, dict) or block.get("type") != "tool_use":
+                continue
+            given = block.get("input") if isinstance(block.get("input"), dict) else {}
+            if str(block.get("name", "")).startswith("mcp__codegraph__") or (
+                    block.get("name") == "Bash" and "codegraph" in str(given.get("command", ""))):
+                asked[iteration] = asked.get(iteration, 0) + 1
+        item = event.get("item") if isinstance(event.get("item"), dict) else {}
+        if event.get("type") == "item.started" and (
+                (item.get("type") == "mcp_tool_call" and item.get("server") == "codegraph")
+                or (item.get("type") == "command_execution" and "codegraph" in str(item.get("command", "")))):
+            asked[iteration] = asked.get(iteration, 0) + 1
+    return asked
+
+
+def index_use_lines() -> list[str]:
+    """`status`'s account of the index: in how many of the stream's iterations it was asked, and — when never — that
+    every answer was a text search, which AGENTS.md's block asks each iteration to say and nothing else checks."""
+    if not CODE_INDEX.is_file():
+        return []
+    asked = index_queries()
+    if not asked:
+        return []
+    used = sum(1 for count in asked.values() if count)
+    if used:
+        return [f"cruise: the code index was asked in {used} of {len(asked)} iteration(s) the stream holds "
+                f"({sum(asked.values())} quer{'y' if sum(asked.values()) == 1 else 'ies'})"]
+    return [f"cruise: the code index was never asked in the {len(asked)} iteration(s) the stream holds — every answer "
+            "about callers and blast radius was a text search; `python3 scripts/agents/cruise.py denials` says whether "
+            "it was refused, and `start` says whether it can be reached at all"]
+
+
 def denials() -> None:
     """What a run needed that its permissions did not allow — the list to read after a run, before widening
     anything, because the tools a build needs are measured from a build and not guessed at."""
@@ -1128,6 +1219,8 @@ def status() -> None:
     if found:
         print(f"cruise: {sum(len(its) for its in found.values())} permission refusal(s) in the stream; "
               "`python3 scripts/agents/cruise.py denials` lists them")
+    for line in index_use_lines():
+        print(line)
 
 
 def main() -> None:

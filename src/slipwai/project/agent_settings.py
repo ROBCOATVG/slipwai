@@ -75,6 +75,14 @@ TOOLKIT_PERMISSIONS = [
 # Denied whatever the allow rules say: a deny rule wins, and a prefix rule cannot say "but not this". A rule is
 # a prefix, so these catch the flag where it is written first — `git push --force origin main` — and leave the
 # lease-guarded form alone; a `--force` written after the remote is beyond what a prefix can see.
+# The MCP servers a project's extensions install, reached through the committed `.mcp.json` the extension writes
+# (`scripts/extensions/codegraph/init.py`): named here so a person's session in this project loads that file's
+# server without a first-use approval and calls its tools without a prompt. Unconditional, like the extension's
+# `.gitignore` line — inert until the file exists, and adopting the extension later needs no second edit here. A
+# headless `/cruise` iteration cannot rely on this file, which an untrusted workspace ignores, so the registry's
+# row passes the same file and allow rule on the command line. `scripts/agents/project.py` carries the same list
+# for the delegates' tool grants.
+EXTENSION_MCP_SERVERS = ["codegraph"]
 DENIED_PERMISSIONS = [
     "git push --force",
     "git push --force *",
@@ -152,6 +160,8 @@ def claude_settings(apps: list[App], target: str = "none", layout: Layout = AT_R
         # `make rollback` are deliberately absent: they change an environment, and that is a prompt worth
         # answering every time.
         allowed += ["make build", "make build *", "make smoke-image", "make smoke-image *", "tofu fmt *", "tofu validate"]
-    return json.dumps({"permissions": {"allow": [f"Bash({command})" for command in allowed],
+    return json.dumps({"permissions": {"allow": [f"Bash({command})" for command in allowed]
+                                       + [f"mcp__{server}__*" for server in EXTENSION_MCP_SERVERS],
                                        "deny": [f"Bash({command})" for command in DENIED_PERMISSIONS]},
+                       "enabledMcpjsonServers": EXTENSION_MCP_SERVERS,
                        "hooks": compaction_hooks(layout)}, indent=2) + "\n"

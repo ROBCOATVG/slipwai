@@ -204,15 +204,23 @@ every other harness is asked, in the same words, to read `commands/cruise.md` an
 
 What an iteration may do is the row's `permissions`. A headless session has nobody to ask, so it is refused
 whatever its rules do not name, and no list names the compound commands an agent writes: Claude Code's row
-therefore runs `--permission-mode acceptEdits --allowedTools Bash`, edits accepted and the shell allowed
-wholesale, with the project's `.claude/settings.json` `deny` rules — a plain force-push, `reset --hard`,
-`clean` — still refusing what they name. Everything else an iteration might reach for, the web, an MCP tool,
-is the harness's own to grant or refuse. `--sandbox` on `run` or `start` swaps in the row's
-`sandboxPermissions`, which bypasses every check, and is for a container with nothing to lose. Which tools a
-whole build needs is measured, not guessed: every refusal is in the feed as it happens, and `python3
-scripts/agents/cruise.py denials` lists them all afterwards from the raw stream, by tool and command, with
-the iterations each happened in — the list to read before widening a row or a rule, and the proof that a
-deny rule fired when it should.
+therefore runs `--permission-mode acceptEdits` with `--allowedTools` naming every tool family the ladder
+reaches for — `Bash`, the shell allowed wholesale, with the project's `.claude/settings.json` `deny` rules (a
+plain force-push, `reset --hard`, `clean`) still refusing what they name; `Skill` and `Agent`, the project's
+own commands and delegates; `WebFetch` and `WebSearch`, because a stage reading documentation has nobody to
+ask; and `mcp__codegraph__*`, the code index's tools. Each of those was tried from a print session before it
+was named, and the two web tools were the only refusals. The row also names the project's `.mcp.json`, the
+file `./init --extension codegraph` commits with the index's MCP server in it, which the runner passes with
+`--mcp-config` whenever the file exists: a print session in a checkout nobody has trusted ignores the
+project's settings, the servers they approve and the allow rules they carry — hooks still run — so what the
+iteration needs travels on its command line. Before the first iteration, `start` says how the index will be
+reached, or that it cannot be, and `status` says afterwards in how many iterations it was asked; an index
+kept fresh and never queried is the failure the block in `AGENTS.md` describes, and the count is what makes
+it visible. `--sandbox` on `run` or `start` swaps in the row's `sandboxPermissions`, which bypasses every
+check, and is for a container with nothing to lose. Which tools a whole build needs is measured, not
+guessed: every refusal is in the feed as it happens, and `python3 scripts/agents/cruise.py denials` lists
+them all afterwards from the raw stream, by tool and command, with the iterations each happened in — the
+list to read before widening a row or a rule, and the proof that a deny rule fired when it should.
 
 To stop a run, do one of these. Each is safe in the middle of a slice, because the slice's commits are on
 its branch and the next iteration re-derives its stage from the artifacts.

@@ -112,6 +112,12 @@ class CruiseRecordTest(FactoryTestCase):
             self.assertEqual(passed.returncode, 0, passed.stderr)
             self.assertIn("check-decisions: 2 decision(s) in 1 file(s), 1 demo(s) in 1 log(s), every field present "
                           "and every path in the tree", passed.stdout)
+            # The bosun writes `Decided by: drive-bosun`, as the command tells it to, with or without its model:
+            # a run's first workaround left `make verify` failing on exactly the entry it had been told to write.
+            for signed in ("drive-bosun", "drive-bosun (opus)"):
+                record(repo, DECISION.replace("host (stage recommendation)", signed) + SECOND)
+                bosun = gate(repo)
+                self.assertEqual(bosun.returncode, 0, (signed, bosun.stdout, bosun.stderr))
 
     def test_the_gate_refuses_every_shape_a_run_could_write_wrong(self) -> None:
         """Each malformation is one finding naming the file, the line and what the shape is — a decision nobody
@@ -123,7 +129,8 @@ class CruiseRecordTest(FactoryTestCase):
             ("bad status", DECISION.replace("- **Status:** standing", "- **Status:** maybe"), DEMO, True,
              "D1 `Status` is 'maybe'; it is standing, overridden by D<m> or overridden by human <date>"),
             ("bad decided-by", DECISION.replace("host (stage recommendation)", "the model"), DEMO, True,
-             "D1 `Decided by` is 'the model'; it is host (stage recommendation)"),
+             "D1 `Decided by` is 'the model'; it is host (stage recommendation), host (standing decision D<m>), "
+             "drive-skipper (<model>), drive-bosun or human"),
             ("path not in tree", DECISION.replace("`specs/f/slices/S4/plan.md`", "`specs/f/slices/S9/plan.md`"), DEMO,
              True, "D1 `Written to` names `specs/f/slices/S9/plan.md`, which is not in the tree"),
             ("placeholder left", DECISION.replace("`specs/f/slices/S4/plan.md`", "`specs/<feature>/plan.md`"), DEMO,

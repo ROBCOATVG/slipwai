@@ -9,7 +9,7 @@ in one small file and re-reads it, and the harnesses that can run a command afte
 """
 from __future__ import annotations
 
-from .cruise_agents import BROWSER, HAND, SKIPPER
+from .cruise_agents import BOSUN, BROWSER, HAND, SKIPPER
 
 CHECKPOINT = "specs/cruise-checkpoint.md"
 STOP_FILE = ".specify/cruise.stop"
@@ -27,7 +27,7 @@ DECISION_ENTRY = f"""## D<n> — <the question, in one line>
 - **Options:** <each, marking the one the stage recommended>
 - **Decision:** <one>
 - **Why:** <in the actor's terms>
-- **Decided by:** host (stage recommendation) | host (standing decision D<m>) | {SKIPPER} (<model>) | human
+- **Decided by:** host (stage recommendation) | host (standing decision D<m>) | {SKIPPER} (<model>) | {BOSUN} | human
 - **Confidence:** high | medium | low · **Would reverse if:** <the one condition>
 - **Written to:** <the artifact paths the answer went into>
 - **Status:** standing | overridden by D<m> | overridden by human <date>"""

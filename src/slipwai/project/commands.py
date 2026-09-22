@@ -61,9 +61,10 @@ def drive_command(
    never default to the first service or the first context. Which contexts there are is found here, not
    declared up front: before slices go to `modelled`, apply Conway's law to the model
    (`skills/event-modeling/references/nine-steps.md`, end of Step 9) — lanes with vocabularies of their
-   own, joined only by the events one publishes and another reads, are bounded contexts. Record them as
-   `contexts` on the service in `project.json`, with the user, and place each slice with `context:`. One
-   vocabulary is one context; say so and move on."""
+   own, joined only by the events one publishes and another reads, are bounded contexts. Record them on
+   the service, with the user, as `slipwai describe-service <name> --context <context>` (once per
+   context; `--purpose` records what the service owns the same way), and place each slice with
+   `context:`. One vocabulary is one context; say so and move on."""
         )
     stages.append(
         """**Split** — the work is ordered vertical slices rather than one undivided outcome. Otherwise run
@@ -93,9 +94,9 @@ def drive_command(
    found in a project without an event model: read the specification's vocabulary the way
    `skills/domain-driven-design/resources/bounded-contexts.md` describes under *The Language Test* — the
    same word meaning two things, qualifiers creeping in ("billing customer", "shipping customer"), rules
-   that change for different reasons. Two vocabularies are two bounded contexts: record them as `contexts`
-   on the service in `project.json`, with the user, and put each context's code under its own
-   `src/<context>/` behind a `public` module — `make check-imports` keeps them apart from then on. One
+   that change for different reasons. Two vocabularies are two bounded contexts: record them on the
+   service, with the user, as `slipwai describe-service <name> --context <context>` (once per context), and
+   put each context's code under its own `src/<context>/` behind a `public` module — `make check-imports` keeps them apart from then on. One
    vocabulary is one context, and saying so is the whole decision. Neither is a reason for a new service;
    `docs/architecture.md`, *Bounded contexts*, says what is."""
     )

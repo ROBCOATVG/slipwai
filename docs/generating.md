@@ -223,8 +223,10 @@ with, on the next port, and regenerates the files that list drives — the skill
 them, so a project written in two languages shows both at every example, each block labelled with its
 language and the services it is for. `add-frontend <name> [--api <service>]`
 does the same for a browser app — which is also how a project generated with `--frontend none` gets its
-first. Nothing is committed. [Services](services.md#adding-a-service-add-service) has what each writes, how
-it decides, and what it refuses.
+first. `describe-service <name> --purpose "<what it owns>" --context <name>` records what a service already
+there is for, once the model or the specification has said, and regenerates the files that print it. Nothing
+is committed. [Services](services.md#adding-a-service-add-service) has what each writes, how it decides, and
+what it refuses.
 
 ## Generation is one-shot
 

@@ -12,6 +12,7 @@ from .cli_add import (
     add_frontend_main,
     add_service_main,
     converge_main,
+    describe_service_main,
     migrate_main,
     replay_main,
     resolve_requested_backend,
@@ -38,14 +39,15 @@ from .services import FIRST_SERVICE, FIRST_WEB, default_apps
 from .targets import check_project_name, offered_backends
 from .upgrade import main as upgrade_main
 
-VERBS = ("generate", "add-service", "add-frontend", "migrate", "replay", "upgrade", "adopt", "converge")
+VERBS = ("generate", "add-service", "add-frontend", "describe-service", "migrate", "replay", "upgrade", "adopt",
+         "converge")
 
 
 def main() -> None:
     """`slipwai <verb>`: `generate` from anywhere, naming a project that does not exist yet; `add-service`,
-    `add-frontend`, `migrate` and `replay` from inside one that does; `upgrade` from anywhere, about the
-    command itself rather than about any project. Each verb owns its parser, so `slipwai generate --help` is
-    the generator's flags and nothing else's."""
+    `add-frontend`, `describe-service`, `migrate` and `replay` from inside one that does; `upgrade` from
+    anywhere, about the command itself rather than about any project. Each verb owns its parser, so
+    `slipwai generate --help` is the generator's flags and nothing else's."""
     validate_catalog(CATALOG)
     argv = sys.argv[1:]
     if argv[:1] == ["generate"]:
@@ -56,6 +58,9 @@ def main() -> None:
         return
     if argv[:1] == ["add-frontend"]:
         add_frontend_main(argv[1:])
+        return
+    if argv[:1] == ["describe-service"]:
+        describe_service_main(argv[1:])
         return
     if argv[:1] == ["migrate"]:
         migrate_main(argv[1:])

@@ -11,7 +11,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .add_service import add_frontend_to, add_service_to, report
+from .add_service import add_frontend_to, add_service_to, describe_service_in, described_report, report
 from .assets import VERSION
 from .catalog import CATALOG, families, family_of, resolve_backend
 from .converge import check as converge_check
@@ -103,6 +103,38 @@ def add_service_main(argv: list[str]) -> None:
     except GenerationError as error:
         parser.error(str(error))
     print(report(service, added, rewritten, read_manifest(Path.cwd())["target"]))
+
+
+def describe_service_main(argv: list[str]) -> None:
+    """`describe-service <name>`, run inside a generated project: what a service already there is for.
+
+    `generate` and `add-service` take `--purpose` and `--context` at scaffold time, but the contexts are found
+    later — in the model's lanes, in the specification's vocabulary — and a purpose nobody gave at the start is
+    the first question `/drive` asks. This is where the answer goes: the manifest, and every page that prints
+    it, so the file an agent reads says what was recorded rather than "no purpose recorded yet".
+    """
+    parser = argparse.ArgumentParser(
+        prog="slipwai describe-service",
+        description="Record what a service of the generated project in the current directory is for: what it "
+        "owns, the bounded contexts it holds, or both. Nothing is scaffolded; project.json and the files that "
+        "print the two fields are rewritten.",
+    )
+    parser.add_argument("name", help="the service, as project.json names it")
+    parser.add_argument(
+        "--purpose", default=None, metavar="TEXT",
+        help="what this service owns, in a sentence or two; replaces the purpose recorded before",
+    )
+    parser.add_argument(
+        "--context", action="append", default=None, metavar="NAME",
+        help="a bounded context this service holds; repeat for each. Together they replace the list recorded "
+        "before",
+    )
+    args = parser.parse_args(argv)
+    try:
+        service, rewritten = describe_service_in(Path.cwd(), args.name, purpose=args.purpose, contexts=args.context)
+    except GenerationError as error:
+        parser.error(str(error))
+    print(described_report(service, rewritten))
 
 
 def add_frontend_main(argv: list[str]) -> None:

@@ -152,6 +152,7 @@ files that name it, and misses the tenth.
   slice belongs to: a service added without one is a directory the loop cannot place work in, and it will
   stop to ask before it does. A context is one already on the list above, or a new one; without any the
   service is a context of its own. A context may span several services; the tree stays `apps/<name>`.
+  A service already listed is described after the fact: `<factory> describe-service <name> --purpose "..." --context <name>`.
 
 The language, the store, and what the service owns are product decisions. When the request does not name
 them, ask; taking `{first.name}`'s answers is the default for the first two, and saying so is part of

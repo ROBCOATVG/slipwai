@@ -53,7 +53,8 @@ It is not a one-way door. You can run the factory again inside a project it made
 
 - **`slipwai add-service` and `slipwai add-frontend`** read `project.json` and regenerate only the files
   that list the project's applications. The factory derives that set by generating the project twice and
-  comparing the results, so it cannot drift from a hand-kept list.
+  comparing the results, so it cannot drift from a hand-kept list. **`slipwai describe-service`** records
+  what a service already there is for — its purpose and its bounded contexts — and regenerates the same way.
 - **`./init`** answers the event store, HTTP, staff identity and customer identity questions again, by
   removing what the old answers brought.
 

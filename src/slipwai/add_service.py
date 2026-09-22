@@ -20,6 +20,13 @@ cannot inherit Fastify, so it gets FastAPI).
 and the same regeneration of what the list drives — which is also how a project generated with
 `--frontend none` gets its first browser app.
 
+`describe-service <name> --purpose ... --context ...` records, after the fact, what a service the list already
+has is for — the two fields the delivery loop places a slice against, which `generate` and `add-service` take
+at scaffold time and which are otherwise found later, when the model's lanes or the specification's vocabulary
+say what the contexts are. It scaffolds nothing: `project.json`'s entry is edited in place and every file
+whose content the two fields reach — the architecture page, the agent guidance, the commands that list the
+applications — is regenerated, the same way as above, so the file an agent reads says what was recorded.
+
 Nothing is committed. The tree has to be clean first so that `git checkout .` and `git clean -fd` undo the
 whole thing, and the command says what it wrote and what to run next.
 """
@@ -27,6 +34,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 from .assets import PRUNER
@@ -37,7 +45,7 @@ from .manifest import apps_from_manifest, check_known, read_manifest, wrote_here
 from .origin import adoption_of
 from .scaffold import project_files
 from .selection import Selection, resolve_selection
-from .services import App, add_service, add_web, contexts_phrase, frontend_of, services_of
+from .services import App, add_service, add_web, checked_contexts, contexts_phrase, frontend_of, services_of
 from .targets import managed, offered_backends
 from .toolkit import executable_paths
 
@@ -140,26 +148,79 @@ def grow(
             f"{app.path} already exists but project.json does not list it; move it aside, or register it "
             "by hand if it is an application"
         )
+    keep, settled = pruning_state(root, asked)
+    added, rewritten, manifest = regenerate(root, document, apps, with_new, asked, new_path=app.path)
+
+    # The manifest is edited in place rather than regenerated, so anything else it carries survives; the
+    # `frontend` field follows the browser apps, so a project that had none now says which framework it has.
+    document["deployables"][app.name] = manifest["deployables"][app.name]
+    document["frontend"] = frontend_of(with_new)
+    rewritten.append(record(root, document))
+    PRUNER.prune(root, keep, settled=settled, log=lambda _message: None)
+    return app, added, sorted(rewritten)
+
+
+def describe_service_in(
+    root: Path, name: str, purpose: str | None = None, contexts: list[str] | None = None
+) -> tuple[App, list[str]]:
+    """Record what a service already on the list is for, and rewrite every file that says so.
+
+    A field given replaces what was recorded; one not given is left as it was. Nothing under `apps/` is
+    touched: the two fields are read by the delivery loop and the pages that print them, never by the
+    scaffold.
+    """
+    if purpose is None and contexts is None:
+        raise GenerationError("nothing to record: say --purpose, --context (once per context), or both")
+    document = read_manifest(root)
+    apps = apps_from_manifest(document)
+    check_known(apps)
+    named = [app for app in apps if app.name == name]
+    if not named:
+        raise GenerationError(
+            f"project.json lists no application named '{name}'; it has {', '.join(app.name for app in apps)}"
+        )
+    app = named[0]
+    if not app.is_service:
+        raise GenerationError(f"'{name}' is a browser app; a purpose and bounded contexts are a service's to record")
+    revised = replace(
+        app,
+        purpose=(purpose or None) if purpose is not None else app.purpose,
+        contexts=checked_contexts(contexts) if contexts is not None else app.contexts,
+    )
+    if revised.purpose == app.purpose and revised.contexts == app.contexts:
+        raise GenerationError(f"'{name}' already records exactly that; nothing to write")
+    described = [revised if candidate is app else candidate for candidate in apps]
+    refuse_uncommitted(root)
+    keep, settled = pruning_state(root, set())
+    _added, rewritten, manifest = regenerate(root, document, apps, described, set())
+    entry = document["deployables"][name]
+    for key in ("purpose", "contexts"):
+        if key in manifest["deployables"][name]:
+            entry[key] = manifest["deployables"][name][key]
+        else:
+            entry.pop(key, None)
+    rewritten.append(record(root, document))
+    PRUNER.prune(root, keep, settled=settled, log=lambda _message: None)
+    return revised, sorted(rewritten)
+
+
+def regenerate(
+    root: Path, document: dict, apps: list[App], revised: list[App], asked: set[str], new_path: str | None = None
+) -> tuple[list[str], list[str], dict]:
+    """Write every file whose regenerated content differs between the list as it was and as it is — and
+    every file under `new_path`, the application being added — and return the added paths, the rewritten
+    ones, and the manifest the revised list generates, for the caller to take its entry from."""
     layout, adoption = layout_of(document), adoption_of(document)
     arguments = (document["name"], document["profile"], document["target"])
     before = project_files(*arguments, apps, layout, adoption)
-    after = project_files(*arguments, with_new, layout, adoption)
-    executables = {layout.place(path) for path in executable_paths(document["profile"], with_new)}
-
-    # What this project actually has, read off its disk rather than off the recorded selections: a later
-    # `./init` may have taken a feature away, and the new application must not bring it back — unless it was
-    # asked for.
-    existing = PRUNER.project_services(root)
-    installed = PRUNER.features_installed(root, existing)
-    present = PRUNER.features_present(root, existing)
-    keep = installed | asked
-
+    after = project_files(*arguments, revised, layout, adoption)
+    executables = {layout.place(path) for path in executable_paths(document["profile"], revised)}
     added: list[str] = []
     rewritten: list[str] = []
     for relative, content in after.items():
         if relative == "project.json":
             continue
-        new = relative.startswith(f"{app.path}/")
+        new = new_path is not None and relative.startswith(f"{new_path}/")
         # A file whose regenerated content is unchanged is left alone — unless it carries a region of a
         # feature asked for by name. `.env.example` reads the same whichever services a project has, so its
         # earlier prune is the only reason a newly asked feature's keys would be missing from it; written
@@ -171,19 +232,25 @@ def grow(
         path.write_text(content, newline="")
         path.chmod(0o755 if relative in executables else 0o644)
         (added if new else rewritten).append(relative)
+    return sorted(added), rewritten, json.loads(after["project.json"])
 
-    # The manifest is edited in place rather than regenerated, so anything else it carries survives; the
-    # `frontend` field follows the browser apps, so a project that had none now says which framework it has.
-    document["deployables"][app.name] = json.loads(after["project.json"])["deployables"][app.name]
-    document["frontend"] = frontend_of(with_new)
+
+def pruning_state(root: Path, asked: set[str]) -> tuple[set[str], set[str]]:
+    """What this project actually has, read off its disk before anything is written rather than off the
+    recorded selections: a later `./init` may have taken a feature away, and a regenerated file must not
+    bring it back — unless it was asked for. The features to keep, and the ones an earlier `./init` settled
+    (their files here, their markers gone), whose fresh markers the prune strips again."""
+    existing = PRUNER.project_services(root)
+    installed = PRUNER.features_installed(root, existing)
+    present = PRUNER.features_present(root, existing)
+    return installed | asked, installed - present
+
+
+def record(root: Path, document: dict) -> str:
+    """Write the manifest, edited in place, with this factory stamped as the last to write here."""
     document["generator"] = wrote_here(document.get("generator"))
     (root / "project.json").write_text(json.dumps(document, indent=2) + "\n")
-    rewritten.append("project.json")
-
-    # Features whose files are here but whose markers are gone were settled by an earlier `./init`; the
-    # regenerated files carry fresh markers for them, and the prune strips those again.
-    PRUNER.prune(root, keep, settled=installed - present, log=lambda _message: None)
-    return app, sorted(added), sorted(rewritten)
+    return "project.json"
 
 
 def carries_any(content: str, features: set[str]) -> bool:
@@ -213,7 +280,7 @@ def report(app: App, added: list[str], rewritten: list[str], target: str = "none
         )
         if not app.purpose:
             lines.append(
-                "no purpose recorded: say what it owns (add-service --purpose, or `purpose` in project.json), "
+                f"no purpose recorded: say what it owns (`slipwai describe-service {app.name} --purpose \"...\"`), "
                 "or /drive will ask before it places a slice here"
             )
     if managed(CATALOG, target) and app.is_service:
@@ -229,3 +296,13 @@ def report(app: App, added: list[str], rewritten: list[str], target: str = "none
         "Next: make verify",
     ]
     return "\n".join(lines)
+
+
+def described_report(app: App, rewritten: list[str]) -> str:
+    """What was recorded and which files now say it, for the person who ran `describe-service`."""
+    regenerated = ", ".join(path for path in rewritten if path != "project.json") or "nothing else"
+    return "\n".join([
+        f"recorded for {app.path}: it holds the bounded {contexts_phrase(app)}"
+        + (f" and owns: {app.purpose}" if app.purpose else " (no purpose recorded)"),
+        f"written to project.json; regenerated from it: {regenerated}",
+    ])

@@ -132,8 +132,10 @@ class DrawioCanvasTest(FactoryTestCase):
             # The planner's and serialiser's own suites, from the target a project gets.
             tested = run(repo, "model-drawio-test")
             self.assertEqual(tested.returncode, 0, tested.stderr + tested.stdout)
-            self.assertIn("# fail 0", tested.stdout)
-            self.assertNotIn("# pass 0", tested.stdout)
+            # Node's test runner reports in TAP (`# fail 0`) to a pipe and in its spec style (`ℹ fail 0`) to a
+            # terminal, and the forge's runner hands the job a terminal; the count is what matters, not the prefix.
+            self.assertRegex(tested.stdout, r"\bfail 0\b")
+            self.assertNotRegex(tested.stdout, r"\bpass 0\b")
 
     def test_the_canvas_agrees_with_the_mermaid_diagram(self) -> None:
         """Same order, same lanes, same arrows, same colours: the two renderings ask the model the same

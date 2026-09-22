@@ -1,9 +1,9 @@
 # The skill catalogue
 
 A generated project carries the delivery catalogue in `skills/`, owned by the project rather than referenced
-from anywhere — and carries **the part of it this project can use**. The catalogue holds 49 skills; a project
+from anywhere — and carries **the part of it this project can use**. The catalogue holds 51 skills; a project
 gets the ones whose subject it has an answer for, plus the one written for it, so a TypeScript project with a
-React frontend and a customer login gets 50 and a Python service with neither gets 41.
+React frontend and a customer login gets 52 and a Python service with neither gets 41.
 
 - [What is in it](#what-is-in-it)
 - [A skill is withheld when its subject is not here](#a-skill-is-withheld-when-its-subject-is-not-here)
@@ -18,6 +18,7 @@ React frontend and a customer login gets 50 and a Python service with neither ge
 | **Product and communication** | `specification`, `story-splitting`, `planning`, `expectations`, `acceptance-review`, `find-gaps`, `storyboard`, `diagrams`, `technical-writing`, `evaluate-existing-solutions`, `teach-me`, `wtf`, `double-check`, `find-skills` |
 | **Testing** | `tdd`, `testing`, `test-design-reviewer`, `front-end-testing`, `react-testing`, `characterisation-tests`, `finding-seams`, `adversarial-testing`, `mutation-testing` |
 | **Architecture and code** | `hexagonal-architecture`, `domain-driven-design`, `ubiquitous-language`, `codebase-design`, `structure-codebase`, `folder-structure`, `api-design`, `bff-design`, `bff-entry-points`, `functional`, `typescript-strict`, `twelve-factor`, `architecture-decisions`, `improve-codebase-architecture`, `reduce-system-complexity`, `refactoring`, `cli-design`, `observability`, `secure-oauth-oidc`, `production-parity-skill-builder` |
+| **Design** *(browser app only)* | `frontend-design`, `web-interface-guidelines` |
 | **Event Modeling** *(event profile only)* | `event-modeling`, `event-sourcing`, `global-event-model` |
 | **Working** | `debugging`, `ci-debugging`, `stack-pull-requests` |
 
@@ -25,7 +26,7 @@ They are active working guidance rather than reference material: each says when 
 reaches for `finding-seams` when a dependency is untestable and `characterisation-tests` when the code it is
 about to change has no tests, without being told to.
 
-Nine of them are about a capability rather than about how work is done, and a project gets each of those only
+Eleven of them are about a capability rather than about how work is done, and a project gets each of those only
 where it has the capability — the next section is which, and why.
 
 ## A skill is withheld when its subject is not here
@@ -56,6 +57,8 @@ and is earned by any identity provider on either axis. One match is enough.
 | `secure-oauth-oidc` | `auth-*`, `users-*` | 11,613 |
 | `bff-design` | `frontend` | 8,585 |
 | `front-end-testing` | `frontend` | 6,356 |
+| `frontend-design` | `frontend` | 1,600 |
+| `web-interface-guidelines` | `frontend` | 1,500 |
 | `react-testing` | `react` | 2,341 |
 | `typescript-strict` | `typescript` | 1,205 |
 | `event-modeling`, `event-sourcing`, `global-event-model` | `event-modelling`, `event-sourcing` | — |

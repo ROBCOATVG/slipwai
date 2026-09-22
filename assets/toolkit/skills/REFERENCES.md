@@ -615,3 +615,19 @@ These primary sources support `secure-oauth-oidc/SKILL.md` and its five files un
 - John Carroll's minimalism (The Nurnberg Funnel; "Ten Misconceptions") — task-first, error recovery inline, every word earns its place.
 - Adam Bulmer (mintuz), pinned "Developer Writing Playbook" and formatting guide at `280c015271cbf539f7950469df6f515cc41be6ec` — the seed this skill adapted; its MIT notice is preserved with the bundle.
 - Full URLs: the skill's resources/references.md.
+
+---
+
+## Frontend and Interface Design
+
+### Anthropic — [`frontend-design`](https://github.com/anthropics/skills/tree/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design) (pinned commit `41bbe19d`, Apache-2.0)
+
+- **Ground the design in the subject matter; plan a compact token system, review it against the brief for generic defaults, then build; spend boldness in one place** → `frontend-design/SKILL.md`, vendored verbatim
+- **Local adaptation** → `capabilities: frontend` so it ships only with a browser app; one paragraph under the title pointing at `docs/design.md` and the browser app's `tokens.css` as where the plan it asks for is recorded
+- **License and exact provenance** → `frontend-design/LICENSE` and `references/source-notes.md`
+
+### Vercel Labs — [Web Interface Guidelines](https://github.com/vercel-labs/web-interface-guidelines/blob/e3d624baaf29dc1fc645aff3e38f03e564d2d6b1/command.md) (pinned commit `e3d624ba`, MIT)
+
+- **The review checklist: accessibility, focus states, forms, animation, typography, content handling, images, performance, navigation state, touch, safe areas, dark mode, locale, hydration, hover states, copy, and the anti-patterns to flag; the terse `file:line` output format** → `web-interface-guidelines/references/guidelines.md`, copied unchanged
+- **Local adaptation** → `web-interface-guidelines/SKILL.md` is original: the rules are read from disk rather than fetched before each review, the review is scoped to the files a slice changed, and `docs/design.md` wins where the two disagree
+- **License and exact provenance** → `web-interface-guidelines/LICENSE` and `references/source-notes.md`

@@ -204,3 +204,12 @@ if [ "$n" -lt 3 ]; then echo "cruise: continue"; else echo "cruise: done"; fi"""
                 time.sleep(0.1)
             self.assertFalse((repo / RUNNER_PID).exists())
             self.assertIn(f"{STOP_FILE} is present; remove it before the next run", cruise(repo, "status").stdout)
+            # A run with nothing left to do ends inside `start`'s own wait, and that is a finished run, not a refusal.
+            (repo / STOP_FILE).unlink()
+            (Path(directory) / "calls").unlink()
+            quick = cruise(repo, "start", env=fake_harness(Path(directory), 'echo "cruise: done"'))
+            self.assertEqual(quick.returncode, 0, quick.stderr)
+            self.assertIn("cruise: the runner started and already ended (harness: CRUISE_HARNESS_COMMAND, as given); "
+                          f"{RUNNER_LOG} says:", quick.stdout)
+            self.assertIn("cruise: done — every specification is satisfied", quick.stdout)
+            self.assertFalse((repo / RUNNER_PID).exists())

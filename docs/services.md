@@ -232,6 +232,29 @@ is the command's own), where the factory is (a released `slipwai` on the `PATH` 
 files, `make verify`, and the shared local database). Both files list the project's current applications,
 so they are among the files `add-service` regenerates: the list an agent reads is the list that is there.
 
+## Saying what a service is for: `describe-service`
+
+```sh
+cd my-product
+path/to/slipwai/slipwai describe-service payments --purpose "Takes payment for an order and records the outcome."
+path/to/slipwai/slipwai describe-service payments --context billing --context refunds   # replaces the list
+```
+
+`purpose` and `contexts` are the two fields the delivery loop places a slice against, and `generate` and
+`add-service` take them at scaffold time — but a purpose is often left unsaid at the start, and the contexts
+are *found* later: in the event model's lanes, or in the specification's vocabulary, which is where `/drive`
+says to record them. This verb is where the answer goes after the fact. It edits the service's `project.json`
+entry in place — a field given replaces what was recorded, a field not given is left alone — and regenerates
+every file whose content the two fields reach, derived the same way `add-service` derives its set: the
+architecture page's *Bounded contexts*, the agent guidance, the `/add-service` command's list of what is
+there. Nothing under `apps/` is touched, because nothing scaffolded reads either field.
+
+It refuses when: the name is not on the list, or names a browser app; neither flag is given, or the flags
+say exactly what is already recorded; or the working tree has uncommitted changes, for the same reason
+`add-service` does. `/drive` and `/cruise` point at it wherever they say a purpose or a context is recorded,
+so an agent that finds "no purpose recorded yet" on the architecture page knows the command rather than
+editing the manifest by hand.
+
 ## Adding a browser app: `add-frontend`
 
 ```sh

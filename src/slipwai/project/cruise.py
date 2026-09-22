@@ -17,17 +17,21 @@ import json
 from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
 from ..services import App
-from .cruise_agents import BOSUN, DECISIONS, DEMO_LOG, EVIDENCE, HAND, OWNER_BRIEF, SKIPPER
+from .cruise_agents import DECISIONS, DEMO_LOG, EVIDENCE, HAND, OWNER_BRIEF, SKIPPER
 from .cruise_record import CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, DEMO_ENTRY, STOP_FILE
+from .cruise_stops import LOG, REPORT, stop_table
 from .cruise_unblock import unblock_section
 
 CONFIG = ".specify/cruise.json"
 SCRIPT = "scripts/agents/cruise.py"
-LOG = "specs/cruise-log.jsonl"
-REPORT = "specs/<feature>/cruise-report.md"
 # The last line of every iteration: the one thing the outer loop reads.
 LAST_LINES = ("cruise: continue", "cruise: done", "cruise: parked: <what a person must provide>",
               "cruise: stopped: human")
+# What a session is told when nothing is reading its last line — a person typed `/cruise`, and `continue`
+# would end the run without anyone noticing. `scripts/agents/cruise.py loop` prints the same words, and the
+# Stop hook holds the turn to them, so the command, the script and the hook cannot disagree.
+UNREAD = ("no outer loop is reading this: `cruise: continue` is not an end here, so the ladder goes on to the next "
+          "unit in this session and ends only with `done`, `parked` or `stopped`; `make cruise` runs it unattended")
 # Every setting, its values, its default and what it controls — the one list the config, the command, the
 # settings command and `scripts/agents/cruise.py` are all written from.
 SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
@@ -74,80 +78,12 @@ def settings_table() -> str:
     return f"| Setting | Values | Default | Controls |\n|---|---|---|---|\n{rows}"
 
 
-def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
-    """Every stop `/drive` makes, what `/cruise` does there instead, and where the answer is recorded."""
-    criteria = "`examples.md`" if event else "the criteria in `spec.md`"
-    rows = [
-        ("The checkout is behind trunk, or the fetch failed",
-         "Fetch and fast-forward where the tree is clean; rebase a `slice/<id>` branch that has local commits. "
-         "A conflict parks; a fetch that cannot run parks and says so. Never derive from a stale tree",
-         f"`{LOG}`"),
-        ("Principles: the constitution is unratified",
-         "`constitution: ratify` — the skipper drafts it with `/speckit-constitution` from the spec and the "
-         "owner brief, answers `/constitution-coverage`, and ratifies it with the line `ratified by cruise "
-         "(skipper) — pending human review`. `park` stops here instead",
-         "`constitution.md`, a decision entry"),
-        ("Product specification missing",
-         "Refuse to start. A spec is the one thing a person brings; `/cruise` writes no product from nothing",
-         "—"),
-        ("Which service or bounded context owns a slice",
-         "Decide against each service's recorded `purpose`; where none covers it, write the purpose the spec "
-         "implies and decide. Contexts by the language test, recorded on the service",
-         "the model or plan, `project.json`, a decision entry"),
-        (f"Slice gaps: a question at a time over {criteria}",
-         "The conversational loop runs with the owner as the other party: each gap is answered — host or "
-         "skipper by `decide` — and written back as the criterion or state. `gaps=N` still counts",
-         f"{criteria}, a decision entry per question"),
-        ("A delegate hands back a product question in `plan.md`",
-         "Answer it, un-block the slice, re-dispatch with the entry as a pointer, never as a conclusion",
-         "`plan.md`, a decision entry"),
-        ("Converge appended Phase 4 tasks; the after-converge `/gaps` says stop",
-         "Already bounded by the ladder: continue to the demo as `commands/drive.md` says", "—"),
-        ("The demo stop",
-         f"Delegate to `{HAND}` with exactly what the stop hands a person, plus the acceptance script; take its "
-         "verdict as the actor's and re-enter the ladder where demo feedback re-enters. Acceptance says "
-         f"`accepted-by: {HAND}` on the register row or status flip",
-         f"`{DEMO_LOG}`, `benchmark.json` `outcome=`, the register"),
-        ("The ready set is empty",
-         "Not a stop: the completion audit below. Only an audit with nothing left is `done`",
-         f"`{REPORT}`, decision entries"),
-        ("An input that is genuinely unavailable — a credential, an external system, a person's approval",
-         f"Never invented. Mark the slice blocked, take the next ready slice, and hand the blocker to `{BOSUN}` "
-         "(*Blocked*, below): a stub behind the port, recorded as a stub. Park only at the catastrophic, or "
-         "when the bosun could not move it",
-         "a decision entry, the stub in `plan.md`, ⛔ on the board"),
-    ]
-    if target != "none":
-        rows.insert(5, (
-            "Release constraint",
-            "Take the stage's own recommendation. `release: flagged` — every slice continues or opens a flag "
-            "seeded `off`, so every merge is dark and a person flips keys. `park` stops at the push instead",
-            "`plan.md`, the flag file, a decision entry"))
-        rows.insert(6, (
-            "\"A release they want now\" — no flag, or a flag already on, before the push",
-            "Never answered by the machine: a release nobody asked for is on the catastrophic list. Under "
-            "`flagged` it does not arise; where it does, park with the exact question", "a `parked` line in the log"))
-    if adoption is not None:
-        rows += [
-            ("Ground: a convergence row still `unrecorded` on an axis the slice touches",
-             "A fact about the world is not a decision, and is never invented. The row stays `unrecorded`; the "
-             "bosun works on the survey's `detected` value as a stated assumption, never marked `confirmed`",
-             "a decision entry naming the assumption"),
-            ("The change-strategy ADR at `Accepted`",
-             "The word is a person's. The bosun proceeds on the recommendation at `Proposed` and says so",
-             "the ADR at `Proposed`, a decision entry"),
-            ("Quick wins and method slices offered from the programme",
-             "Take the programme top-first, as the stage recommends", "`project.json` `planned`, a decision entry"),
-        ]
-    body = "\n".join(f"| {index} | {stop} | {does} | {recorded} |" for index, (stop, does, recorded)
-                     in enumerate(rows, start=1))
-    return f"| # | Where `/drive` stops | What `/cruise` does there | Recorded in |\n|---|---|---|---|\n{body}"
-
-
 def cruise_command(
     event: bool, apps: list[App], target: str = "none", layout: Layout = AT_ROOT, adoption: Adoption | None = None,
 ) -> str:
     del apps  # the ladder's own text already carries the profile's services; nothing here is per service
+    upstream = ("principles, the specification, the event model and the split" if event
+                else "principles, the specification and the split")
     adopted = (
         "\n\nThis repository adopted the method around code that was already there, and two of its stops "
         "are a person's word — the rows at the foot of the table. A run here proceeds on stated assumptions "
@@ -168,7 +104,8 @@ runs each demo as the actor, and re-enters the ladder until the specification un
 satisfied. Nothing about what a stage produces changes; what changes is who answers. It stops for a human and
 for nothing else. An iteration is one invocation of this command; the outer loop that re-invokes it with a
 fresh context is `python3 {SCRIPT} run` (`{layout.make} cruise`), and a person watching a run in this session
-can use the harness's own loop over `/cruise` instead.{adopted}
+can use the harness's own loop over `/cruise` instead. Typed in a session, nothing re-invokes it: there
+`continue` is not an end, and the ladder goes on in the session (*The iteration contract*, below).{adopted}
 
 ## Before anything: refuse, or start
 
@@ -176,8 +113,10 @@ Read `{CONFIG}`. `enabled: false`, or `{STOP_FILE}` present, is a refusal in one
 `specs/<feature>/spec.md` is a refusal too: a specification is the one thing a person brings. Then read the
 owner brief (`{OWNER_BRIEF}`) and every standing entry in `{DECISIONS}`, and say the iteration number from
 `{LOG}`, the branch and its distance from trunk, and that a person stops this run with `touch {STOP_FILE}` or
-by interrupting the session. Open a `skipper` or `hand` benchmark entry around each delegation the way every
-stage is bracketed, and pass `driver=cruise` to every `end` this iteration closes.
+by interrupting the session, and what is reading this iteration's last line — `python3 {SCRIPT} loop` says
+whether the outer loop is (it sets `CRUISE_RUNNER` and `CRUISE_ITERATION` in every session it starts) or
+nobody is, and what that means for how this iteration ends. Open a `skipper` or `hand` benchmark entry around
+each delegation the way every stage is bracketed, and pass `driver=cruise` to every `end` this iteration closes.
 
 ## Run the ladder, and answer at its stops
 
@@ -198,9 +137,17 @@ release-constraint stage says *recommend the answer with its reason rather than 
 when a standing entry already covers the question, or when the specification or the constitution answers it
 outright. Anything else is an **open question**: delegate it to one fresh `{SKIPPER}` delegate with the
 question, the stage, the options and the recommendation in its brief — the spec, the constitution, the owner
-brief and the log are the standing part of its own brief — and take the entry it appends. Under
-`decide: skipper-always`, every question goes to the delegate. Several open questions in one turn are several
-concurrent delegates; a slice delegate that handed one back does not wait on the others.
+brief and the log are the standing part of its own brief — and **the number its entry will carry**. `D<n>` is
+allocated here, before dispatch: the next after the last entry in `{DECISIONS}`, one per delegate in dispatch
+order where several go out at once. The delegate returns the whole entry under that number and writes
+nothing; this session appends it, in number order, and writes the decision into the artifact the stage owns.
+Under `decide: skipper-always`, every question goes to the delegate. Several open questions in one turn are
+several concurrent delegates, each with its own number; a slice delegate that handed one back does not wait
+on the others. Every other identifier a decision adds to a shared artifact — a requirement, a criterion, an
+example, a state — is allocated the same way: by this session, after the delegates return, in dispatch order.
+A delegate cannot see what its siblings are adding, so it numbers nothing they share; two entries that came
+back as the same `D3`, with requirement ranges that overlapped, were exactly the reconciliation by hand this
+protocol exists to end.
 
 The entry's shape, which `{layout.make} check-decisions` holds:
 
@@ -242,9 +189,12 @@ has not yet reviewed. Only an audit with nothing left to build ends with `cruise
 
 ## The iteration contract
 
-Spend this context on one unit of work — one slice through Phase 4 and its done marker, or one concurrent
-fan-out through its merges in split order — and then end the iteration rather than starting the next slice in
-a context that has already carried one. `commands/drive.md` says *do not wait to be invoked again*; here the
+Spend this context on one unit of work, and then end the iteration rather than starting the next unit in a
+context that has already carried one. **Before the split exists**, the unit is the upstream stages together —
+{upstream} — through to the split's first ready set: each reads the one before it and none is a slice, so the
+iteration does not end inside them; it ends when the split is written, or at a park. **From the split on**,
+the unit is one slice through Phase 4 and its done marker, or one concurrent fan-out through its merges in
+split order. `commands/drive.md` says *do not wait to be invoked again*; here the
 outer loop is what re-invokes, with a fresh context, which is the rule every delegate already lives by.
 Between stages, look for `{STOP_FILE}`: present, finish the stage's own writes, commit what is green, and end.
 At every stage boundary and every delegation, rewrite the checkpoint (*Checkpoint*, below).
@@ -257,6 +207,16 @@ of these, and the outer loop reads nothing else:
 - `{LAST_LINES[1]}`
 - `{LAST_LINES[2]}`
 - `{LAST_LINES[3]}`
+
+**An iteration ends only on one of those four lines.** Any other message that ends a turn is a stop, whatever
+it says it is about to do: in Claude Code a message with no tool call *is* the end of the turn, so "continuing
+into the plan now" is a stop that called itself progress. Where `python3 {SCRIPT} loop` said nobody is reading
+— this command was typed in a session — `continue` is not an end either: *{UNREAD}*. Neither rule is left to
+this text. On Claude Code, `.claude/settings.json` runs `python3 {SCRIPT} stopping` as the `Stop` hook, and
+while `{CHECKPOINT}` says an iteration is in flight and `{STOP_FILE}` is absent, it refuses a turn that ends
+on anything but a last line — or on `continue` with no runner — and hands back the checkpoint's `Next:` line
+as the reason. It lets go after three holds against a checkpoint nothing rewrote, so a session that cannot
+move is not held forever; rewriting the checkpoint at every stage boundary is what keeps it moving.
 
 ## Checkpoint: what survives a compacted context
 
@@ -276,8 +236,8 @@ command after compaction, the project's settings do that for you: `.claude/setti
 Claude Code's `SessionStart` with the `compact` matcher and stamps the checkpoint on `PreCompact`, and
 `scripts/agents/registry.json`, `compaction`, says what each harness can. A checkpoint left by an earlier
 iteration is a lead, never a result: its delegates ended with that session, so verify what they left in the
-tree before continuing. The runner deletes the checkpoint when an iteration ends `done` or `stopped`; one
-that ends `continue` or `parked` leaves it for the next.
+tree before continuing. The runner deletes the checkpoint when an iteration ends `done` or `stopped`, and so
+does the `Stop` hook; one that ends `continue` or `parked` leaves it for the next.
 
 {unblock_section(SCRIPT)}
 ## What holds throughout

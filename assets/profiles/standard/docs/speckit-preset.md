@@ -37,6 +37,13 @@ add it to `.specify/presets/standard/templates/` and declare it under `provides.
 unquoted `version: 1.0` parses as a float and Spec Kit reports the whole preset as corrupted without naming
 the field.
 
+From Spec Kit 1.0.9 on, its bash scripts compose the templates a preset declares with PyYAML, on the bare
+`python3` they call — without it, `.specify/scripts/bash/create-new-feature.sh` stops with "PyYAML is
+required to resolve preset template composition". `./init` checks for that after installing Spec Kit and
+installs it where it can: into the user site, or — where this Python refuses pip outside a venv (PEP 668:
+Homebrew's, Debian's) — into a venv at `.delivery-tools/venv` that shares the system's packages, printing the
+`PATH` line that puts it first. Rerun `./init` after changing the Python on your PATH.
+
 `make check-speckit` enforces all of this and runs inside `make verify` — in-place edits, deleted managed
 files, a preset with no or invalid `preset.yml`, and a declared override whose file is missing (which
 silently falls back to the core template). It reads the committed manifests directly rather than shelling

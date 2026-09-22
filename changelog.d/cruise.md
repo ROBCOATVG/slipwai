@@ -18,6 +18,16 @@ settings, `/cruise-settings` changes them checked, and it ships disabled: a proj
 `.specify/models.json` gains a `skipper` role and the `skipper`, `hand` and `bosun` stages, and the benchmark records
 `driver=cruise` on every stage a run bracketed.
 
+Three things the first runs taught it. An iteration has a unit before the split exists — the upstream stages
+together, through to the first ready set — and ends only on one of its four last lines: on Claude Code,
+`.claude/settings.json` runs `scripts/agents/cruise.py stopping` as the `Stop` hook, which refuses a turn that
+ends mid-iteration on anything else, or on `continue` in a session no runner started (the runner marks its
+sessions with `CRUISE_RUNNER`; `cruise.py loop` says which kind a session is), handing back the checkpoint's
+`Next:` line. And the session running `/cruise` allocates every identifier a decision carries — the `D<n>`
+goes out in the skipper's brief, the entry comes back and is appended in number order, requirements and
+criteria are numbered after concurrent delegates return — so four delegates deciding at once cannot come
+back as two `D3`s with overlapping requirement ranges.
+
 **Catch-up.** `slipwai migrate` brings the command, the three agent types, the settings file and the two new rows
 of `.specify/models.json`; then `./init` reprojects the agent types and, as with every new type, the harness
 reads them at its next session start. Nothing runs until `enabled` is set with `/cruise-settings enabled=true`.

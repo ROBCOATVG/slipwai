@@ -26,6 +26,7 @@ from slipwai.project.cruise import (
     SCRIPT,
     SETTINGS,
     STOP_FILE,
+    UNREAD,
 )
 from slipwai.project.cruise_agents import BOSUN, BROWSER, DECISIONS, DEMO_LOG, HAND, OWNER_BRIEF, SKIPPER
 from slipwai.project.cruise_unblock import CATASTROPHIC
@@ -124,6 +125,24 @@ class CruiseTest(FactoryTestCase):
                     self.assertIn(f"\n- `{last}`\n", cruise)
                 self.assertIn("The last line of every iteration is one\nof these, and the outer loop reads nothing "
                               "else:", cruise)
+                # The unit before the split exists, the turn rule, the typed-in-a-session rule, and the hook that
+                # holds all three — a run ended twice in one session on what the text alone allowed.
+                upstream = ("principles, the specification, the event model and the split"
+                            if profile == "event-modelling" else "principles, the specification and the split")
+                self.assertIn(f"**Before the split exists**, the unit is the upstream stages together —\n{upstream} — "
+                              "through to the split's first ready set", cruise)
+                self.assertIn("**An iteration ends only on one of those four lines.** Any other message that ends a "
+                              "turn is a stop, whatever\nit says it is about to do", cruise)
+                self.assertIn(f"`python3 {SCRIPT} loop`", cruise)
+                self.assertIn(f"*{UNREAD}*", cruise)
+                self.assertIn(f"runs `python3 {SCRIPT} stopping` as the `Stop` hook", cruise)
+                self.assertIn("It lets go after three holds against a checkpoint nothing rewrote", cruise)
+                # Identifiers are the host's to allocate: the number goes out in the brief, the entry comes back.
+                self.assertIn("**the number its entry will carry**. `D<n>` is\nallocated here, before dispatch", cruise)
+                self.assertIn("Every other identifier a decision adds to a shared artifact — a requirement, a "
+                              "criterion, an\nexample, a state — is allocated the same way: by this session, after the "
+                              "delegates return, in dispatch order.", cruise)
+                self.assertIn("`slipwai describe-service <name> --purpose`", cruise)
                 self.assertIn(f"`python3 {SCRIPT} run` (`make cruise`)", cruise)
                 self.assertIn("`driver=cruise` on every benchmark entry, `skipper`, `hand` and `bosun` as stages",
                               cruise)
@@ -188,7 +207,9 @@ class CruiseTest(FactoryTestCase):
             self.assertIn("Decide. Do not defer, do not list the options back", skipper)
             self.assertIn("**A fact is not a decision, and you never invent one.**", skipper)
             self.assertIn("`unavailable: <what a person must provide>`", skipper)
-            self.assertIn(f"Your one write is the entry you append to `{DECISIONS}`", skipper)
+            self.assertIn("You write nothing. Return the whole entry, in the shape", skipper)
+            self.assertIn("`D<n>` is allocated by the session that delegated you, before dispatch", skipper)
+            self.assertIn("Number nothing\nelse:", skipper)
             self.assertIn("You are the actor. You use what the slice built and you say what using it revealed.", hand)
             self.assertIn(f"**Where the slice has a screen, use a browser.** `{BROWSER}` first", hand)
             for word in ("`accepted`", "`behaviour`", "`implementation`"):

@@ -72,7 +72,8 @@ stops and what it may decide.]
 ## What the record looks like
 
 Every decision a run takes is appended to `{DECISIONS}`, one entry in this shape, and the artifact the stage
-owns is written in the same step:
+owns is written in the same step. The session running `/cruise` allocates the number before a delegate
+decides, so two decided at once never share one:
 
 ```markdown
 {DECISION_ENTRY}

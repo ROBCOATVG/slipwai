@@ -157,8 +157,8 @@ with, on the next free port, registers it in `project.json`, and regenerates the
 the skills' example snippets included, so a second language shows up beside the first at every example.
 Say what the service is for while adding it — `--purpose "<what it owns>"` and `--context <bounded
 context>`, repeated for each context it holds — because that is what the delivery loop reads when it decides
-which service a slice belongs to; `docs/architecture.md` has the contexts as recorded, and says when a
-context inside a service should become a service of its own.
+which service a slice belongs to; `describe-service <name>` takes the same flags for a service already there.
+`docs/architecture.md` has the contexts as recorded, and says when a context should become a service.
 `add-frontend <name> [--api <service>]` does the same for a browser app, proxying `/api` to the service it
 names. Code shared between services goes under `packages/`, and the hexagonal rule applies inside it too;
 `docs/architecture.md` says what a shared package is in each language and what each service owes.

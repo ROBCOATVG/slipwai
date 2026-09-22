@@ -17,6 +17,7 @@ Nothing about what a stage produces changes. What changes is who answers.
 - [What a person reviews afterwards](#what-a-person-reviews-afterwards)
 - [The browser](#the-browser)
 - [When it is blocked](#when-it-is-blocked)
+- [How an iteration is held to its end](#how-an-iteration-is-held-to-its-end)
 - [The limits](#the-limits)
 
 ## What it guarantees
@@ -37,6 +38,9 @@ Nothing about what a stage produces changes. What changes is who answers.
    out of scope. Only an audit with nothing left ends the run.
 5. **The board is honest.** A slice the machine accepted says so. A person can see at a glance which demos
    a person has seen.
+6. **An iteration ends only on one of its four last lines.** A message that says what it is about to do
+   next is a stop, whatever it says, and on Claude Code a hook refuses it. Typed in a session, where nothing
+   reads the last line, the ladder goes on in the session instead of ending on `continue`.
 
 ## Three roles and two loops
 
@@ -51,6 +55,7 @@ outer loop — make cruise (scripts/agents/cruise.py run)
          └─ the demo stop ────────▶ hand: drive-hand, with a browser where the slice has a screen
                                     verdict → demo-log.md, the benchmark outcome, back into the ladder
        ends with one line: cruise: continue | done | parked: <why> | stopped: human
+       (held to that by the Stop hook: python3 scripts/agents/cruise.py stopping)
 ```
 
 **The driver** is the session that runs `/cruise`. It runs `commands/drive.md` itself, not a copy of it, so
@@ -61,9 +66,13 @@ audit and the iteration contract.
 **The skipper** answers product questions. The driver answers on the host when the stage itself recommends
 an answer, when a standing decision already covers the question, or when the specification or the
 constitution answers it. Any other question is open. An open question goes to a fresh `drive-skipper`
-delegate. That delegate reads the specification, the constitution, the owner brief and the decision log,
-and then decides. It states its confidence and the one condition that would reverse the decision. It does
-not defer. `skipper` is a role of its own in `.specify/models.json`, so a project can run a bigger model on
+delegate, with the number its entry will carry: the driver allocates `D<n>` before dispatch, one per
+delegate in dispatch order, so several deciding at once never come back with the same one. That delegate
+reads the specification, the constitution, the owner brief and the decision log, and then decides. It
+states its confidence and the one condition that would reverse the decision. It does not defer, and it
+writes nothing: it returns the whole entry, the driver appends it in number order and writes the decision
+into the artifact. Every other identifier a decision adds — a requirement, a criterion, an example — is the
+driver's to number after the delegates return, for the same reason. `skipper` is a role of its own in `.specify/models.json`, so a project can run a bigger model on
 deciding than on driving: `/model-delegation-settings claude.skipper=opus`.
 
 **The hand** runs the demo. A fresh `drive-hand` delegate takes exactly what the demo stop hands a person:
@@ -73,8 +82,10 @@ actor would. It gives its verdict in the three words the benchmark already knows
 or `implementation`. The driver then re-enters the ladder at the stage that owns the change, exactly as
 `commands/drive.md` says demo feedback does.
 
-**The inner loop** is one `/cruise` invocation. It spends its context on one unit of work: one slice through
-its hardening, or one concurrent fan-out through its merges. Then it ends with one machine-readable line.
+**The inner loop** is one `/cruise` invocation. It spends its context on one unit of work. Before the split
+exists, the unit is the upstream stages together: principles, the specification, the event model where there
+is one, and the split, through to the first ready set. From the split on, it is one slice through its
+hardening, or one concurrent fan-out through its merges. Then it ends with one machine-readable line.
 **The outer loop** is a script. It runs the harness headless with a fresh context, reads that last line, and
 runs again until the line says `done` or a human stops it. Both loops are needed. `/drive` derives every
 stage from artifacts on disk, which is what lets a fresh session resume correctly, and no single context
@@ -92,7 +103,7 @@ with no production target has no release rows. An adopted repository has three m
 | 1 | The checkout is behind trunk, or the fetch failed | Fetch and fast-forward where the tree is clean. Rebase a `slice/<id>` branch that has local commits. A conflict parks. A fetch that cannot run parks and says so. | `specs/cruise-log.jsonl` |
 | 2 | The constitution is not ratified | With `constitution: ratify`, the skipper drafts it with `/speckit-constitution` from the spec and the owner brief, answers `/constitution-coverage`, and ratifies it with the line `ratified by cruise (skipper) — pending human review`. With `park`, the run stops here. | `constitution.md`, a decision entry |
 | 3 | There is no product specification | Refuse to start. A specification is the one thing a person brings. | — |
-| 4 | Which service or bounded context owns a slice | Decide against each service's recorded `purpose`. Where none covers it, write the purpose the spec implies, then decide. | the model or plan, `project.json`, a decision entry |
+| 4 | Which service or bounded context owns a slice | Decide against each service's recorded `purpose`. Where none covers it, record the purpose the spec implies with `slipwai describe-service <name> --purpose`, then decide. Contexts are recorded the same way, with `--context`. | the model or plan, `project.json`, a decision entry |
 | 5 | Slice gaps: one question at a time | The gaps loop runs with the owner as the other party. Each gap is answered, by the host or the skipper, and written back as the criterion or state. | `examples.md`, a decision entry per question |
 | 6 | The release constraint | Take the stage's own recommendation. With `release: flagged`, every slice continues or opens a flag seeded `off`, so every merge is dark and a person flips the keys. With `park`, the run stops at the push. | `plan.md`, the flag file, a decision entry |
 | 7 | "A release they want now": no flag, or a flag already on, before the push | Never answered by the machine. Under `flagged` it does not arise. Where it does, park with the exact question. | a `parked` line in the log |
@@ -115,7 +126,7 @@ only in a context window. Four things are added to a project.
 
 | File | Holds | Who writes it |
 |---|---|---|
-| `specs/<feature>/decisions.md` | The decision log: one numbered entry per product answer, with the question, the options, the decision, the reason, who decided (the host, `drive-skipper` with its model, or a human), the confidence, the condition that would reverse it, the artifacts it was written into, and its status. Append-only. | the driver and the skipper; a person overrides an entry by editing its status |
+| `specs/<feature>/decisions.md` | The decision log: one numbered entry per product answer, with the question, the options, the decision, the reason, who decided (the host, `drive-skipper` with its model, or a human), the confidence, the condition that would reverse it, the artifacts it was written into, and its status. Append-only, numbered by the driver before a delegate decides. | the driver; the skipper returns its entry and the driver appends it; a person overrides an entry by editing its status |
 | `.specify/product-owner.md` | The owner brief: who the actor is, what the product is for, priorities, tie-breakers, taste, what is out of scope. The skipper reads it before every decision. Edit it to steer a run without stopping it. | a person |
 | `specs/<feature>/slices/<id>/demo-log.md` and `demo/` | One section per demo: what was started and how, each example walked and what happened, the verdict, the feedback, and the screenshots and responses under `demo/`. | `drive-hand` |
 | `specs/cruise-log.jsonl` and `specs/<feature>/cruise-report.md` | The outer loop's record, one line per iteration, and the completion audit's report. | the runner and the driver |
@@ -138,7 +149,10 @@ artifact a person changed. `make cruise-status` prints the log's tail.
 
 To watch a run inside a Claude Code session instead, type `/loop /cruise`. The session's own timer re-runs
 the command. The context is summarised rather than fresh, so this is the way to watch, not the way to run
-unattended.
+unattended. Typing `/cruise` on its own is one iteration that nobody re-invokes, so there `continue` is not
+an end: the command says so at the start (`python3 scripts/agents/cruise.py loop` tells it whether a runner
+started the session), goes on to the next unit in the same session, and ends only with `done`, `parked` or
+`stopped`. The Stop hook holds it to that ([How an iteration is held to its end](#how-an-iteration-is-held-to-its-end)).
 
 To stop a run, do one of three things. Each is safe in the middle of a slice, because the slice's commits
 are on its branch and the next iteration re-derives its stage from the artifacts.
@@ -216,6 +230,25 @@ plain `/drive` session never sees them. `scripts/agents/registry.json` records u
 harness can do, read from its documentation on a named date: Gemini CLI has a `PreCompress` event but nothing
 that adds context afterwards, and the rest are `null` until someone checks. On those harnesses the checkpoint
 still works; only the automatic replay is missing, and the command's rule to re-read the file covers it.
+
+## How an iteration is held to its end
+
+Prose in a command file is not a control. One session ended an iteration after the upstream stages, because
+the contract named no unit before the split; the same session later ended a turn on a report that said
+"continuing into the plan now", which in Claude Code is the end of the turn whatever the sentence says.
+`make verify` was green both times, and the checkpoint correctly said an iteration was in flight, and nothing
+read it. So the end of a turn is checked where the harness lets a hook refuse it.
+
+On Claude Code, `.claude/settings.json` runs `python3 scripts/agents/cruise.py stopping` as the `Stop` hook.
+While `specs/cruise-checkpoint.md` says an iteration is in flight and `.specify/cruise.stop` is absent, it
+refuses a turn whose last assistant message does not end on one of the four last lines, and one that ends on
+`continue` in a session no runner started (`CRUISE_RUNNER` is unset). The reason it hands back is the
+checkpoint's own `Next:` line. Every hold is stamped on the checkpoint, and the hook lets go after three holds
+against a checkpoint nothing rewrote, so a session that cannot move is not held forever: rewriting the
+checkpoint at every stage boundary, which the command already requires, is what keeps a turn holdable. A
+turn that ends on `done` or `stopped` takes the checkpoint with it. Outside an iteration the hook does
+nothing, so a plain `/drive` session never meets it. Other harnesses have no equivalent recorded; there the
+contract's words are all there is.
 
 ## When it is blocked
 

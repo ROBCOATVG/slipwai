@@ -111,7 +111,9 @@ between services, not a package.
 ## Bounded contexts
 
 Every service records what it owns and the bounded contexts it holds — `purpose` and `contexts` on its
-`project.json` entry, given to `generate` or `add-service` as `--purpose` and `--context` (once per context):
+`project.json` entry, given to `generate` or `add-service` as `--purpose` and `--context` (once per context),
+and recorded afterwards with the factory's `slipwai describe-service <name> --purpose "..." --context <name>`,
+which rewrites this page and every other file that prints them:
 
 {contexts}
 
@@ -196,7 +198,8 @@ def agent_guidance(profile: str, apps: list[App], target: str = "none") -> str:
     if len(services) > 1:
         ownership += (
             "- `project.json` lists the services, each with its own language, framework and backing-service "
-            "answers; add one with the\n  factory's `add-service`, never by hand.\n"
+            "answers; add one with the\n  factory's `add-service`, and record what one is for with its "
+            "`describe-service`, never by hand.\n"
         )
     guidance = f"""# Repository guidance
 

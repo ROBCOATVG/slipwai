@@ -83,9 +83,16 @@ STAGES: tuple[Stage, ...] = (
     Stage("demo", "strong"),
     Stage("adversary", "strong", writes=NONE, commands=READ_ONLY),
     Stage("mutation", "fast", writes=REPORT, commands=ANY),
+    # The two `/cruise` delegates: the skipper decides a product question the ladder would have asked a person,
+    # the hand runs the demo as the actor. Neither is a rung; both are stages so the table names their model and
+    # the benchmark records their cost. `skipper` has a role of its own so a project can put a bigger model on
+    # deciding than on driving without moving every judgement stage with it.
+    Stage("skipper", "skipper", writes=NONE, commands=READ_ONLY),
+    Stage("hand", "strong", writes=REPORT, commands=ANY),
 )
 DEFAULT_ROLE = "strong"
 HOST = "host"
+SKIPPER = "skipper"
 # The one identifier verified today: an alias the Agent tool's `model` parameter takes (its schema, 2026-09-09).
 FAST_SEEDED = {"claude": "sonnet"}
 
@@ -109,7 +116,8 @@ def stage_models() -> str:
         ),
         "stages": {"default": DEFAULT_ROLE, **{stage.key: stage.role for stage in STAGES}},
         "roles": {
-            entry["key"]: {"strong": HOST, "fast": FAST_SEEDED.get(entry["key"])} for entry in switchable_harnesses()
+            entry["key"]: {"strong": HOST, "fast": FAST_SEEDED.get(entry["key"]), SKIPPER: HOST}
+            for entry in switchable_harnesses()
         },
     }
     return json.dumps(table, indent=2, ensure_ascii=False) + "\n"
@@ -165,7 +173,9 @@ and each is a **named agent type** this project carries in `agents/`, projected 
 product question, which is the whole reason a stage stays here. Any other conversational stage stays here too,
 and has no type for that reason. There is a seventh type, `drive-slice`, for a whole slice rather than a stage:
 *Running ready slices concurrently* is where it is delegated, and it reads this section from inside its own
-worktree to choose a model for each stage it then runs.
+worktree to choose a model for each stage it then runs. The last two rows, `skipper` and `hand`, are
+`/cruise`'s: the product owner and the actor, delegated only when that command is running this ladder on its
+own (`commands/cruise.md`). Under `/drive` alone they run nothing; a person is the owner and the actor.
 
 Delegate to the type by name. The type is the standing brief, so the call adds only the task, its contract and
 the file manifest — it never describes the role again or restates the scope, and it does not give the delegate
@@ -268,9 +278,11 @@ Each argument is one of two edits, and the first thing to decide is which one th
 - `stage=role` moves a stage between roles — `implement=strong` puts implementation back on the model running
   `/drive`. The keys are the commands the ladder runs: `principles`, `specify`, `event-model`, `split`,
   `example-map`, `gaps`, `release-constraint`, `plan`, `tasks`, `implement`, `converge`, `demo`, `adversary`,
-  `mutation`, and `default` for any stage without a row of its own.
-- `harness.role=identifier` changes what a role runs on — `claude.fast=haiku`. `host` is the model running
-  `/drive`; `null` is no identifier mapped, which the line before each stage then says.
+  `mutation`, the two `/cruise` delegates `skipper` and `hand`, and `default` for any stage without a row of
+  its own.
+- `harness.role=identifier` changes what a role runs on — `claude.fast=haiku`, or `claude.skipper=opus` to
+  put a bigger model on `/cruise`'s product decisions than on driving. `host` is the model running `/drive`;
+  `null` is no identifier mapped, which the line before each stage then says.
 
 Pass them through exactly as given:
 

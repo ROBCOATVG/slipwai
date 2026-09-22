@@ -89,7 +89,7 @@ class AgentTypesTest(FactoryTestCase):
         so it declares no stage, and inherits rather than resolving one model for fourteen stages."""
         self.assertEqual([agent.name for agent in types()],
                          ["drive-gaps", "drive-tasks", "drive-implement", "drive-converge", "drive-adversary",
-                          "drive-mutation", "drive-slice"])
+                          "drive-mutation", "drive-skipper", "drive-hand", "drive-slice"])
         self.assertEqual(next(a for a in types() if a.name == "drive-slice").stage, "none")
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "types", "standard", "python")

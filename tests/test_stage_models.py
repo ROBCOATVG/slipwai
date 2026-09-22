@@ -203,7 +203,7 @@ class StageModelsTest(FactoryTestCase):
 
             check = models(repo, "--check")
             self.assertEqual(check.returncode, 0, check.stderr)
-            self.assertIn("check-models: .specify/models.json names 14 stage(s) and 6 harness(es)", check.stdout)
+            self.assertIn("check-models: .specify/models.json names 16 stage(s) and 6 harness(es)", check.stdout)
 
             path = repo / ".specify/models.json"
             table = json.loads(path.read_text())
@@ -274,7 +274,7 @@ class StageModelsTest(FactoryTestCase):
             self.assertTrue(models(repo, "tasks").stdout.startswith("tasks: fast → haiku — Claude Code:"))
             table = json.loads(path.read_text())
             self.assertEqual(table["stages"]["implement"], "strong")
-            self.assertEqual(table["roles"]["claude"], {"strong": "host", "fast": "haiku"})
+            self.assertEqual(table["roles"]["claude"], {"strong": "host", "fast": "haiku", "skipper": "host"})
             self.assertEqual(table["_comment"], json.loads(before)["_comment"])
 
             added = models(repo, "--set", "tasks=cheap")

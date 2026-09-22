@@ -21,6 +21,7 @@ from dataclasses import dataclass
 
 from ..layout import AT_ROOT, Layout
 from .converge_stage import levels
+from .cruise_agents import cruise_body, cruise_summary
 from .stage_models import AGENT, ANY, MANIFEST, NO_STAGE, STAGES
 
 # Where the canonical types live, beside `skills/` and `commands/`.
@@ -78,6 +79,7 @@ def summary(agent: Type) -> str:
         "drive-slice":
             "Carries one ready slice from its example map to a converged verdict, in a worktree of its own and "
             "strictly sequentially; stops rather than guessing",
+        **cruise_summary(),
     }[agent.name]
 
 
@@ -242,6 +244,7 @@ Return the converged verdict, what you built, and anything you left. A product q
 artifacts do not settle, or a need outside that scope goes back to the session that delegated you — recorded
 in the slice's `plan.md`, with the slice marked blocked. Never guess past one: a sibling is building against
 the same contract, and a guess here becomes their rework.""",
+        **cruise_body(layout),
     }[agent.name]
 
 

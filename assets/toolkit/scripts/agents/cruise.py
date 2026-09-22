@@ -206,19 +206,33 @@ def record(entry: dict[str, Any]) -> None:
         handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
-def iterate(template: str, prompt: str, session_variable: str | None) -> tuple[str | None, str | None]:
-    """Run one iteration, echoing its output, and return its last line and the session id where one is set."""
+def child_environment(harness: dict[str, Any]) -> dict[str, str]:
+    """What the iteration runs under: this environment, plus what the registry's `headless.env` sets for the
+    harness — Claude Code's wait ceiling, which otherwise ends a print session while its delegates still run —
+    and minus the harness's own session variable, so a session started from inside another never reads its
+    parent's id as its own."""
+    environment = dict(os.environ)
+    headless = harness.get("headless")
+    if isinstance(headless, dict) and isinstance(headless.get("env"), dict):
+        environment.update({str(key): str(value) for key, value in headless["env"].items()})
+    session_variable = (harness.get("usage") or {}).get("env")
+    if session_variable:
+        environment.pop(str(session_variable), None)
+    return environment
+
+
+def iterate(template: str, prompt: str, environment: dict[str, str]) -> str | None:
+    """Run one iteration, echoing its output, and return its last line."""
     command = template.replace("{prompt}", shlex.quote(prompt))
     last = None
     with subprocess.Popen(command, shell=True, cwd=ROOT, text=True, stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT) as process:
+                          stderr=subprocess.STDOUT, env=environment) as process:
         assert process.stdout is not None
         for line in process.stdout:
             sys.stdout.write(line)
             if LAST_LINE.match(line):
                 last = line.strip()
-    session = os.environ.get(session_variable) if session_variable else None
-    return last, session
+    return last
 
 
 def park(reason: str, no_park: bool, poll: float, seen: str) -> None:
@@ -246,7 +260,7 @@ def run(arguments: list[str]) -> None:
     no_park, sandbox = "--no-park" in arguments, "--sandbox" in arguments
     harness = installed_harness()
     template, why = harness_command(harness, sandbox)
-    session_variable = (harness.get("usage") or {}).get("env")
+    environment = child_environment(harness)
     prompt = f"/cruise {feature}" if feature else "/cruise"
     poll = float(os.environ.get("CRUISE_POLL_SECONDS", table["poll_minutes"] * 60))
     print(f"cruise: {why}")
@@ -266,12 +280,12 @@ def run(arguments: list[str]) -> None:
             return
         iteration = len(entries()) + 1
         started = now()
-        last, session = iterate(template, prompt, session_variable)
+        last = iterate(template, prompt, environment)
         iterations_this_run += 1
         seen = fingerprint()
         fingerprints.append(seen)
         record({"iteration": iteration, "started": started, "ended": now(), "harness": harness["key"],
-                "session": session, "last_line": last or "no last line", "fingerprint": seen})
+                "last_line": last or "no last line", "fingerprint": seen})
         if last == "cruise: done":
             print("cruise: done — every specification is satisfied")
             return

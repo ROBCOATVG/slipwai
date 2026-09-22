@@ -197,6 +197,9 @@ echo "cruise: continue\"""")
         self.assertEqual(claude["command"], "claude -p {prompt} --output-format text {permissions}")
         self.assertEqual(claude["permissions"], "--permission-mode acceptEdits")
         self.assertEqual(claude["sandboxPermissions"], "--dangerously-skip-permissions")
+        # A print session ends its background delegates after 600s unless told to wait: a real run lost its
+        # story delegate mid-slice to exactly that.
+        self.assertEqual(claude["env"], {"CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "0"})
         self.assertTrue(next(entry for entry in REGISTRY if entry["key"] == "codex")["headless"])
         self.assertIsNone(next(entry for entry in REGISTRY if entry["key"] == "gemini")["headless"])
         with tempfile.TemporaryDirectory() as directory:
@@ -211,10 +214,14 @@ echo "cruise: continue\"""")
             enable(repo, harness="claude")
             fake_claude = Path(directory) / "bin"
             fake_claude.mkdir()
-            (fake_claude / "claude").write_text(f'#!/bin/sh\necho "$*" >> {Path(directory) / "claude-args"}\n'
-                                                'echo "cruise: done"\n')
+            (fake_claude / "claude").write_text(
+                '#!/bin/sh\necho "$* wait=$CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS'
+                f' session=${{CLAUDE_CODE_SESSION_ID:-none}}" >> {Path(directory) / "claude-args"}\n'
+                'echo "cruise: done"\n')
             (fake_claude / "claude").chmod(0o755)
-            env = {"PATH": f"{fake_claude}:{os.environ['PATH']}", "CRUISE_POLL_SECONDS": "0"}
+            # A loop started from inside a Claude Code session inherits that session's id; the child must not.
+            env = {"PATH": f"{fake_claude}:{os.environ['PATH']}", "CRUISE_POLL_SECONDS": "0",
+                   "CLAUDE_CODE_SESSION_ID": "the-parent-session"}
             plain = cruise(repo, "run", env=env)
             self.assertEqual(plain.returncode, 0, plain.stderr)
             self.assertIn("cruise: harness: Claude Code; edits are accepted and every other permission is the "
@@ -223,8 +230,9 @@ echo "cruise: continue\"""")
             self.assertEqual(sandboxed.returncode, 0, sandboxed.stderr)
             self.assertIn("--sandbox: every permission check is bypassed", sandboxed.stdout)
             self.assertEqual((Path(directory) / "claude-args").read_text(),
-                             "-p /cruise --output-format text --permission-mode acceptEdits\n"
-                             "-p /cruise S1 --output-format text --dangerously-skip-permissions\n")
+                             "-p /cruise --output-format text --permission-mode acceptEdits wait=0 session=none\n"
+                             "-p /cruise S1 --output-format text --dangerously-skip-permissions wait=0 session=none\n")
+            self.assertNotIn("session", logged(repo)[-1])
             # An iteration whose output carries no last line is logged as such and treated as `continue`.
             (fake_claude / "claude").write_text("#!/bin/sh\necho nothing to see\n")
             cruise(repo, "--set", "max_iterations=1")

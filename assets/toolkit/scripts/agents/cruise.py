@@ -671,6 +671,11 @@ def start(arguments: list[str]) -> None:
     for _ in range(100):
         if process.poll() is not None:
             tail = RUN_LOG.read_text().rstrip().splitlines()[-3:] if RUN_LOG.is_file() else []
+            if process.returncode == 0:
+                # A run with nothing left to do ends inside this wait: done, stopped, or a budget already spent.
+                print(f"cruise: the runner started and already ended ({why}); {relative(RUN_LOG)} says: "
+                      + " | ".join(tail))
+                return
             raise RuntimeError(f"the runner ended at once (exit {process.returncode}); {relative(RUN_LOG)} says: "
                                + " | ".join(tail))
         words = PID.read_text().split() if PID.is_file() else []

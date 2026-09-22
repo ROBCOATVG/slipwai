@@ -27,7 +27,7 @@ You do not clone this repository to scaffold or adopt a product. Install once, t
 One-shot scaffolder for new product monorepos, and the ramp they leave from: *slipwai* is said *slipway*,
 the slope a finished hull slides down into the water, after which the yard has nothing more to do with it.
 Answer a few questions and you get a fresh Git repository containing a walking skeleton, an executable test,
-a `verify` gate that runs locally and in CI, and a complete delivery method — Spec Kit, up to 49 skills, fifteen
+a `verify` gate that runs locally and in CI, and a complete delivery method — Spec Kit, up to 49 skills, seventeen
 workflow commands, a global event model that renders itself, and generated documentation — set up for coding
 agents to work in from the first commit.
 
@@ -164,6 +164,11 @@ make demo        # the whole thing in containers, printing the addresses once it
 Then open an agent session and type `/drive`: it walks the ladder from principles to an actor-visible demo,
 entering at the first stage whose artifact is missing. See [The delivery loop](docs/delivery-loop.md).
 
+`/drive` stops when it needs a person: for a product decision, and at every demo. `/cruise` runs the same
+ladder and answers those stops itself. It decides as the product owner, runs each demo as the actor, and
+writes every answer down where you can read it and overturn it. It keeps going until the specification is
+satisfied, and it stops only for you. It ships switched off. See [Cruise](docs/cruise.md).
+
 ---
 
 ## What you get
@@ -175,7 +180,7 @@ Everything below is in a generated repository from its first commit.
 
 | | |
 |---|---|
-| **[The delivery loop](docs/delivery-loop.md)** | `/drive`'s ten-stage ladder on top of Spec Kit, resumable because it reads artifacts rather than conversation memory; the thirteen workflow commands — eleven in `standard`; story splitting and example mapping as first-class stages with real heuristics behind them; and hooks that apply the method even to a session that never typed `/drive` |
+| **[The delivery loop](docs/delivery-loop.md)** | `/drive`'s ten-stage ladder on top of Spec Kit, resumable because it reads artifacts rather than conversation memory; the seventeen workflow commands — fifteen in `standard`; story splitting and example mapping as first-class stages with real heuristics behind them; and hooks that apply the method even to a session that never typed `/drive` |
 | **[Up to 49 skills](docs/skills.md)** | The part of the delivery catalogue this project can use, owned by the project — TDD, testing, hexagonal architecture, DDD, ubiquitous language, API and BFF design, observability, secure OAuth/OIDC, refactoring, debugging and more — with code examples rendered in the languages this project's services are actually written in |
 | **[The global event model](docs/event-model.md)** | *Event profile.* One cumulative model for the whole system in `model.yaml`; `make model` renders the timeline, per-segment diagrams and a self-contained browsable page; `make check-model` fails when the code and the model disagree |
 | **[The read side](docs/what-you-get.md#the-read-side)** | *Event profile.* The machinery a view is *maintained* with, finished in every backend rather than left as the greenfield half: a unit of work on the event store, a `CheckpointStore` port with memory, SQLite and Postgres adapters behind a contract suite of its own, a catch-up runner that advances the checkpoint inside the view's own transaction, a rebuild, whatever each framework already schedules a pass with, and a tag index derived from the log so a conditional append can hold a boundary one stream cannot |
@@ -238,7 +243,8 @@ again later.
 | Document | Covers |
 |---|---|
 | [What a generated repository gets for free](docs/what-you-get.md) | The tour: the layout, the generated documentation, the agent harnesses, and how to run it |
-| [The delivery loop](docs/delivery-loop.md) | The `/drive` ladder and the diagram behind it, the fifteen commands, story splitting and example mapping with worked examples, the Spec Kit hooks, the preset layer, and the constitution floor |
+| [The delivery loop](docs/delivery-loop.md) | The `/drive` ladder and the diagram behind it, the seventeen commands, story splitting and example mapping with worked examples, the Spec Kit hooks, the preset layer, and the constitution floor |
+| [Cruise](docs/cruise.md) | `/cruise`: the same ladder with nobody at the wheel — the agent decides as the product owner and runs each demo as the actor, writes every answer where a person can overturn it, and stops only for a human; how to start, watch and stop a run, the settings, and the limits |
 | [The skill catalogue](docs/skills.md) | The 49 skills grouped by what they are for, why a project is given only the ones whose subject it has, how examples are rendered in your own languages, and where to edit them |
 | [The global event model](docs/event-model.md) | Why the model is global, what `make model` renders, the status ladder `make check-model` enforces, and how the browsable page is published |
 | [Gates](docs/verification.md) | What `make verify` runs, what is deliberately outside it, and why the split falls where it does |

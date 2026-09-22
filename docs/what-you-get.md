@@ -102,7 +102,7 @@ got whether or not anybody weighed it ([The global event model](event-model.md))
 Spec Kit supplies the phases. The project supplies the method around them:
 
 - **[The delivery loop](delivery-loop.md)** — `/drive`'s ten-stage ladder — eleven under a production target, which adds the release constraint — resumable because it reads
-  artifacts rather than conversation memory; the fifteen workflow commands — thirteen in `standard`; story splitting and example mapping
+  artifacts rather than conversation memory; the seventeen workflow commands — fifteen in `standard`; story splitting and example mapping
   as first-class stages; and the hooks that apply the method even to a session that never typed `/drive`.
 - **[The skill catalogue](skills.md)** — as many of the 49 as this project can use, with code examples rendered in the languages this
   project's services are actually written in.

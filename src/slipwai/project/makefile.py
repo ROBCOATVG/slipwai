@@ -15,6 +15,7 @@ from ..services import App, containers_of, services_of, web_apps, wrapped_of
 from ..targets import managed
 from ..tooling import app_tooling, service_qualifier, verify_path
 from .adopted_targets import adoption_targets
+from .agent_targets import agent_targets
 from .compose import composed
 from .flags import flag_gate, flag_gate_dependency
 from .integration import integration_targets, integration_variables
@@ -158,7 +159,7 @@ def makefile(project_name: str, profile: str, apps: list[App], target: str = "no
         formatting = f"format: ## Rewrite this project's own code the way `make lint` expects to find it\n\t{formatting}\n"
     verify_dependencies = (
         "lint typecheck check-imports check-migrations check-slice-scope check-extensions check-agents check-speckit "
-        "check-codegraph check-ux-gates check-constitution check-benchmark test"
+        "check-codegraph check-ux-gates check-constitution check-benchmark check-decisions test"
     )
     style_target = ""
     if web:
@@ -283,23 +284,7 @@ install: ## Install native dependencies; refresh agent projections after init
 \t{native['install']}
 \t@if [ -f .specify/integration.json ]; then $(MAKE){layout.make_flag} --no-print-directory agents; else echo 'Spec Kit not initialized; run ./init when ready.'; fi
 {npm_workspace_targets(apps, target)}
-.PHONY: agents agents-list check-extensions check-agents models check-benchmark benchmark
-agents: ## Refresh elected extensions, then skills, commands and agent types in every installed agent harness
-\tpython3 scripts/extensions/project.py
-\tpython3 scripts/agents/project.py
-agents-list: ## Show every supported harness and which integrations are installed
-\tpython3 scripts/agents/project.py --list
-check-extensions: ## Fail when elected extension guidance differs from the factory-owned source
-\tpython3 scripts/extensions/project.py --check
-check-agents: ## Fail when an initialized agent projection has drifted, or .specify/models.json or drive.json is malformed
-\tpython3 scripts/agents/project.py --check
-\tpython3 scripts/agents/models.py --check && python3 scripts/agents/drive.py --check
-models: ## Show which model runs each stage of /drive for the installed harness, and why
-\tpython3 scripts/agents/models.py
-check-benchmark: ## Fail when benchmark boundary and rendering behaviour regresses
-\tpython3 scripts/test_benchmark.py
-benchmark: ## Show what each slice cost and how each stage of /drive did, from the records under specs/
-\tpython3 scripts/agents/benchmark.py
+{agent_targets()}
 .PHONY: typecheck lint {'format ' if formatting else ''}check-imports check-migrations check-slice-scope {'check-styles ' if web else ''}{'check-flags ' if target != 'none' else ''}check-speckit check-codegraph check-ux-gates check-constitution constitution-requirements
 typecheck: ## Run the native compiler or static type check
 \t{native['typecheck']}

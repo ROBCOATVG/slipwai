@@ -90,7 +90,7 @@ class BenchmarkTest(FactoryTestCase):
             makefile = (repo / "Makefile").read_text()
             self.assertIn("verify: lint typecheck check-imports check-migrations check-slice-scope "
                           "check-extensions check-agents "
-                          "check-speckit check-codegraph check-ux-gates check-constitution check-benchmark test "
+                          "check-speckit check-codegraph check-ux-gates check-constitution check-benchmark check-decisions test "
                           "check-model",
                           makefile)
             self.assertIn(

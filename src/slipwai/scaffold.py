@@ -25,6 +25,7 @@ from .project.commands import command_files
 from .project.constitution_journey import journey_template
 from .project.convergence_page import convergence_page
 from .project.cruise import cruise_config
+from .project.decisions import decision_files
 from .project.deploy_workflow import deploy_workflow, promotion_workflow, rollback_workflow
 from .project.docs import documentation_files
 from .project.docs_index import docs_index
@@ -145,6 +146,7 @@ def project_files(
     generated.update(pin_files(apps))
     generated.update(repository_files(project_name, profile, apps, target))
     generated.update(agent_files(layout))
+    generated.update(decision_files())
     generated.update(biome_files(apps))
     generated.update(command_files(event, apps, target, layout, adoption))
     generated.update(documentation_files(project_name, profile, apps, target))

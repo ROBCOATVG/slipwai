@@ -19,7 +19,7 @@ from pathlib import Path
 
 from . import confirm as confirming
 from . import next_steps, resurvey
-from .adopt import Answers, adopt, candidates_of, proposed, report
+from .adopt import Answers, adopt, candidates_of, check_repository, proposed, report
 from .catalog import CATALOG
 from .cli_confirm import confirmations
 from .cli_init import agent_line, run_init
@@ -167,6 +167,12 @@ def adopt_main(argv: list[str]) -> None:
     try:
         name = args.name or root.name.lower()
         validate_project_name(name)
+        # Before the survey and before a single question: this refuses a directory that is not a Git
+        # repository, one already holding a `project.json`, and one with uncommitted changes. `adopt` checks
+        # again when it writes, because it is a library function and its contract is its own — but finding
+        # out afterwards meant surveying twelve thousand files and answering the interview first, and then
+        # being told none of it could be kept. A refusal belongs before the work it refuses, not after.
+        check_repository(root)
         found = survey(root)
         apps = proposed(found, name)
         if not apps:

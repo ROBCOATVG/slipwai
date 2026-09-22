@@ -96,6 +96,28 @@ class CandidateRecordTest(FactoryTestCase):
             self.assertIn("slipwai adopt --confirm", result)
 
 
+class RefusesBeforeTheWorkTest(FactoryTestCase):
+    """A refusal belongs before the work it refuses. `adopt` checked the repository as it began writing,
+    which meant surveying the tree and answering the interview first and only then being told that none of
+    it could be kept — on a repository of twelve thousand files, with a stray untracked directory."""
+
+    def test_an_unclean_tree_is_refused_before_anything_is_surveyed_or_asked(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = repository(Path(directory), "shop", MONOREPO)
+            (repo / "untracked.txt").write_text("mine\n")
+            output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
+            self.assertIn("uncommitted changes", output)
+            self.assertNotIn("directories that build", output, "nothing is shown before the refusal")
+            self.assertNotIn("Where does this repository's CI run?", output, "and nothing is asked")
+
+    def test_a_repository_already_adopted_is_refused_the_same_way(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))  # `adopt` commits its own work, so the tree is already clean
+            output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
+            self.assertIn("already has a project.json", output)
+            self.assertNotIn("directories that build", output)
+
+
 class RefusingGateTest(FactoryTestCase):
     def test_verify_refuses_while_nothing_is_confirmed_and_names_what_confirms_one(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

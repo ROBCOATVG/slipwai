@@ -4,7 +4,7 @@
 A run with nobody at the wheel is trusted through what it wrote down. `specs/<feature>/decisions.md` is the one
 place every product decision the machine took can be read and overturned, and `specs/<feature>/slices/<id>/
 demo-log.md` is what a person reads to trust an acceptance the machine gave. Both are append-only entries in a
-fixed shape — `commands/cruise.md` shows it, and `.specify/memory/product-owner.md` repeats it — and this is the
+fixed shape — `commands/cruise.md` shows it, and `.specify/product-owner.md` repeats it — and this is the
 gate on that shape: an entry with a field missing is a decision nobody can audit, a `Written to` path that is
 not in the tree is a decision that was never applied, and evidence that does not exist is no evidence.
 

@@ -15,7 +15,7 @@ from ..layout import Layout
 SKIPPER, HAND = "drive-skipper", "drive-hand"
 # Where a decision is written, per feature; the shape of an entry is `cruise.DECISION_ENTRY`.
 DECISIONS = "specs/<feature>/decisions.md"
-OWNER_BRIEF = ".specify/memory/product-owner.md"
+OWNER_BRIEF = ".specify/product-owner.md"
 DEMO_LOG = "specs/<feature>/slices/<id>/demo-log.md"
 EVIDENCE = "specs/<feature>/slices/<id>/demo/"
 # What the hand drives a screen with, first: a CLI, so it runs from the shell on every harness and every

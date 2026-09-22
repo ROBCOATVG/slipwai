@@ -209,6 +209,42 @@ fi
 """
 
 
+# Spec Kit's own scripts compose this project's preset templates with PyYAML from 1.0.9 on: a
+# `.specify/scripts/bash/create-new-feature.sh` that finds `preset.yml` and no `yaml` module on the `python3`
+# it calls stops with "PyYAML is required to resolve preset template composition" — at the first
+# `/speckit-specify`, hours after `./init` ran, with no remedy given. So it is checked here, against the
+# `python3` those scripts call, only where the installed Spec Kit mentions it, and put right where it can be.
+# The user site is tried first, and fails on purpose under PEP 668 (Homebrew's and Debian's Python refuse
+# pip outside a venv); then a venv under `.delivery-tools/` that sees the system's packages, which the person
+# puts first on PATH — `python3` is what the scripts call, so nothing here can be pointed at it any other way.
+# Never fatal: Spec Kit is installed by now, and this is a message with the fix in it rather than a failed
+# bootstrap. `.delivery-tools/` is already gitignored for the event-model check's own `--target` installs.
+PYYAML_FOR_SPECKIT = """
+if grep -qs 'PyYAML' .specify/scripts/bash/*.sh && ! python3 -c 'import yaml' >/dev/null 2>&1; then
+  if python3 -m pip install --disable-pip-version-check --quiet --user PyYAML >/dev/null 2>&1 \\
+     && python3 -c 'import yaml' >/dev/null 2>&1; then
+    printf '%s\\n' "Installed PyYAML for python3: Spec Kit's scripts compose this project's preset templates with it."
+  elif python3 -m venv --system-site-packages .delivery-tools/venv >/dev/null 2>&1 \\
+     && .delivery-tools/venv/bin/python -m pip install --disable-pip-version-check --quiet PyYAML >/dev/null 2>&1; then
+    cat >&2 <<'EOF'
+Spec Kit's scripts need PyYAML on python3 to compose this project's preset templates, and this python3 will
+not take it from pip (PEP 668: an externally managed environment). A venv with it is at .delivery-tools/venv,
+sharing the system's packages; start the agent from a shell where that venv comes first:
+    export PATH="$PWD/.delivery-tools/venv/bin:$PATH"
+Without it, .specify/scripts/bash/create-new-feature.sh stops with "PyYAML is required".
+EOF
+  else
+    cat >&2 <<'EOF'
+Spec Kit's scripts need PyYAML on python3 to compose this project's preset templates, and neither pip nor a
+venv could install it here. Install it for the python3 on PATH — `python3 -m pip install --user PyYAML`, or
+your package manager's python3-yaml — and rerun ./init. Without it,
+.specify/scripts/bash/create-new-feature.sh stops with "PyYAML is required".
+EOF
+  fi
+fi
+"""
+
+
 def init_script(apps: list[App], target: str = "none", layout: Layout = AT_ROOT) -> str:
     # Every axis some service answered with something a later prune could take away.
     prunable = [
@@ -294,6 +330,7 @@ if ! command -v python3 >/dev/null 2>&1; then
   printf '%s\n' 'Spec Kit initialized, but Python 3 is required to install the project skills and commands for the selected agent.' >&2
   exit 1
 fi
+""" + PYYAML_FOR_SPECKIT + """
 if [ -n "$selected_integration" ]; then
   python3 scripts/agents/project.py "$selected_integration"
 else

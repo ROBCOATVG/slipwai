@@ -1,0 +1,254 @@
+"""`/cruise`: `/drive` with nobody at the wheel — the agent as driver and product owner until the specs are satisfied.
+
+What this gates is the spine the rest of cruise hangs from: the settings file a project has to opt into, the command
+that runs `commands/drive.md` as written and says at every one of its stops what happens instead of a person, the
+two delegates that answer those stops, the rows the models table and the benchmark gain for them, and the pages
+that name them. Every phrase asserted here is one a person or a delegate acts on; the constants come from the
+source module, so the text and the test cannot drift apart.
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+import tempfile
+
+from support import FactoryTestCase
+from test_benchmark import bench, clean, commit, installed, record
+from test_drive_adoption import adopted, wrapped
+
+from slipwai.project.cruise import (
+    CONFIG,
+    DECISION_ENTRY,
+    DEMO_ENTRY,
+    LAST_LINES,
+    LOG,
+    REPORT,
+    SCRIPT,
+    SETTINGS,
+    STOP_FILE,
+)
+from slipwai.project.cruise_agents import BROWSER, DECISIONS, DEMO_LOG, HAND, OWNER_BRIEF, SKIPPER
+from slipwai.project.stage_models import STAGES, switchable_harnesses
+
+PROFILES = ("event-modelling", "standard")
+# The rows that only exist where there is a production target, an adopted repository, or the event profile.
+RELEASE_ROWS = ("| Release constraint |",
+                '| "A release they want now" — no flag, or a flag already on, before the push |')
+ADOPTED_ROWS = ("| Ground: a convergence row still `unrecorded` on an axis the slice touches |",
+                "| The change-strategy ADR at `Accepted` |",
+                "| Quick wins and method slices offered from the programme |")
+
+
+def frontmatter(text: str) -> dict[str, str]:
+    return dict(line.split(": ", 1) for line in text.split("\n---\n")[0].splitlines()[1:] if ": " in line)
+
+
+def fenced(text: str) -> list[str]:
+    """Every fenced block's body, so a template is asserted where it is shown rather than anywhere in the prose."""
+    return [block.split("\n", 1)[1].rstrip("\n") for block in text.split("```")[1::2]]
+
+
+class CruiseTest(FactoryTestCase):
+    def test_the_settings_file_ships_every_setting_at_its_default_and_disabled(self) -> None:
+        """A run nobody asked for is the failure this prevents: the file exists in every project, at the defaults
+        the source declares, with `enabled` false, and its comment names the one command that changes it."""
+        with tempfile.TemporaryDirectory() as directory:
+            for profile in PROFILES:
+                repo = self.generate(directory, f"settings-{profile}", profile, "python")
+                table = json.loads((repo / CONFIG).read_text())
+                self.assertEqual([key for key in table if key != "_comment"], [key for key, *_ in SETTINGS], profile)
+                self.assertEqual({key: table[key] for key in table if key != "_comment"},
+                                 {key: default for key, _, default, _ in SETTINGS}, profile)
+                self.assertIs(table["enabled"], False)
+                self.assertIn("/cruise-settings", table["_comment"])
+                self.assertIn(SCRIPT, table["_comment"])
+
+    def test_cruise_runs_the_drive_ladder_and_says_what_happens_at_every_stop(self) -> None:
+        """A command that paraphrased the ladder would drift from it; one that stopped where `/drive` stops would
+        wait for a person who is not there. So it runs `commands/drive.md` as written, refuses the three things it
+        cannot start without, and carries one table row per stop — the release rows only under a target, the
+        profile's own artifact for the gaps row — plus the two record shapes, verbatim and fenced, and the four
+        last lines the outer loop reads."""
+        with tempfile.TemporaryDirectory() as directory:
+            for profile, target in (("event-modelling", "aws"), ("standard", "none")):
+                repo = self.generate(directory, f"cruise-{profile}", profile, "typescript", target=target)
+                cruise = (repo / "commands/cruise.md").read_text()
+                declared = frontmatter(cruise)
+                self.assertTrue(declared["description"].startswith("Run /drive as driver and product owner"))
+                self.assertEqual(declared["argument-hint"], "[feature]")
+                self.assertIn("runs **that ladder — `commands/drive.md`,\nevery rule as written**", cruise)
+                self.assertIn("Run `commands/drive.md` from *Enter at the first incomplete stage* to its end", cruise)
+                # The refusals: a run has to be asked for, a person can always stop it, and a spec is theirs to bring.
+                refuse = cruise.split("## Before anything: refuse, or start")[1].split("## Run the ladder")[0]
+                self.assertIn(f"Read `{CONFIG}`. `enabled: false`, or `{STOP_FILE}` present, is a refusal", refuse)
+                self.assertIn("No\n`specs/<feature>/spec.md` is a refusal too", refuse)
+                self.assertIn(f"owner brief (`{OWNER_BRIEF}`) and every standing entry in `{DECISIONS}`", refuse)
+                self.assertIn(f"the iteration number from\n`{LOG}`", refuse)
+                self.assertIn(f"`touch {STOP_FILE}`", refuse)
+                self.assertIn("pass `driver=cruise` to every `end` this iteration closes", refuse)
+                # The table, and the rows that depend on what the project is.
+                self.assertIn("| # | Where `/drive` stops | What `/cruise` does there | Recorded in |", cruise)
+                self.assertIn("| 1 | The checkout is behind trunk, or the fetch failed |", cruise)
+                self.assertIn("| Product specification missing | Refuse to start.", cruise)
+                self.assertIn(f"| The demo stop | Delegate to `{HAND}` with exactly what the stop hands a person",
+                              cruise)
+                self.assertIn(f"`accepted-by: {HAND}` on the register row or status flip | `{DEMO_LOG}`", cruise)
+                self.assertIn(f"| The ready set is empty | Not a stop: the completion audit below. Only an audit with "
+                              f"nothing left is `done` | `{REPORT}`, decision entries |", cruise)
+                self.assertIn("| An input that is genuinely unavailable — a credential, an external system, a "
+                              "person's approval | Never decided.", cruise)
+                for row in RELEASE_ROWS:
+                    self.assertEqual(row in cruise, target != "none", (profile, row))
+                for row in ADOPTED_ROWS:
+                    self.assertNotIn(row, cruise, profile)
+                gaps_row = ("| Slice gaps: a question at a time over `examples.md` |" if profile == "event-modelling"
+                            else "| Slice gaps: a question at a time over the criteria in `spec.md` |")
+                self.assertIn(gaps_row, cruise)
+                # The two record shapes are shown where they are used, verbatim, as a fenced block each.
+                blocks = fenced(cruise)
+                self.assertIn(DECISION_ENTRY, blocks)
+                self.assertIn(DEMO_ENTRY, blocks)
+                self.assertIn(f"one fresh `{SKIPPER}` delegate with the\nquestion", cruise)
+                self.assertIn("`decide: skipper-always`, every question goes to the delegate", cruise)
+                self.assertIn(f"`{BROWSER}` where the slice has a screen, then a browser tool the harness exposes, "
+                              "then HTTP, then\nthe CLI", cruise)
+                self.assertIn("Only an audit with nothing left to build ends with `cruise: done`.", cruise)
+                # The iteration contract ends with the four lines, listed as the only things the loop reads.
+                for last in LAST_LINES:
+                    self.assertIn(f"\n- `{last}`\n", cruise)
+                self.assertIn("The last line of every iteration is one\nof these, and the outer loop reads nothing "
+                              "else:", cruise)
+                self.assertIn(f"`python3 {SCRIPT} run` (`make cruise`)", cruise)
+                self.assertIn("`driver=cruise` on every benchmark entry, `skipper` and `hand` as stages", cruise)
+                self.assertNotIn("degraded by design", cruise, "only an adopted repository is told that")
+
+    def test_an_adopted_repository_parks_where_a_persons_word_is_the_artifact(self) -> None:
+        """Ground's `unrecorded` rows and the strategy ADR's `Accepted` are a person's, and the first adoption to
+        run unattended must not learn that by inventing either: the three adopted stops are rows of their own,
+        two of them parks, and the command says up front that a run here is degraded by design."""
+        files = adopted([wrapped("shop", ".")])
+        cruise = files["delivery/commands/cruise.md"]
+        for row in ADOPTED_ROWS:
+            self.assertIn(row, cruise)
+        self.assertIn("| A fact about the world is not a decision. The row stays `unrecorded`", cruise)
+        self.assertIn("| The word is a person's. Park | — |", cruise)
+        self.assertIn("A run here is degraded by design", cruise)
+        self.assertIn("(`make -f delivery/Makefile cruise`)", cruise, "the Makefile where the layout puts it")
+        self.assertIn(".specify/cruise.json", files)
+        self.assertIn("delivery/commands/cruise-settings.md", files)
+
+    def test_the_settings_command_shows_every_setting_and_changes_them_through_the_script(self) -> None:
+        """A setting changed by hand inside an iteration is a run under rules nobody can diff: the command lists
+        every key with its values and default from the same list the file is written from, and changes go
+        through the checked `--set`."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "settings-command", "standard", "go")
+            command = (repo / "commands/cruise-settings.md").read_text()
+            self.assertTrue(frontmatter(command)["description"].startswith("Show or change how /cruise runs /drive"))
+            self.assertIn("| Setting | Values | Default | Controls |", command)
+            for key, values, default, controls in SETTINGS:
+                spelled = " \\| ".join(f"`{value}`" for value in values) if isinstance(values, tuple) else values
+                self.assertIn(f"| `{key}` | {spelled} | `{json.dumps(default)}` | {controls} |", command)
+            self.assertIn(f"python3 {SCRIPT} --set $ARGUMENTS", command)
+            self.assertIn(f"python3 {SCRIPT}\n```", command)
+            self.assertIn(f"commit `{CONFIG}` on its own", command)
+            self.assertIn(f"`touch\n{STOP_FILE}`", command)
+
+    def test_the_skipper_decides_and_never_invents_a_fact_and_the_hand_demos_and_never_edits_code(self) -> None:
+        """A skipper that deferred is a stalled slice; one that made up a credential is a shipped guess; a hand
+        that fixed what it found would make the verdict evidence for itself. Each type declares its scope in the
+        frontmatter the projection enforces and says the refusal in its own words."""
+        by_key = {stage.key: stage for stage in STAGES}
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "types", "event-modelling", "python")
+            skipper = (repo / f"agents/{SKIPPER}.md").read_text()
+            hand = (repo / f"agents/{HAND}.md").read_text()
+            for text, stage in ((skipper, by_key["skipper"]), (hand, by_key["hand"])):
+                declared = frontmatter(text)
+                self.assertEqual(declared["stage"], stage.key)
+                self.assertEqual(declared["writes"], stage.writes)
+                self.assertEqual(declared["commands"], stage.commands)
+                self.assertIn("docs/delegated-agent-safety.md", text)
+                self.assertIn("hands the question back", text)
+            self.assertEqual((by_key["skipper"].writes, by_key["skipper"].commands), ("none", "read-only"))
+            self.assertEqual((by_key["hand"].writes, by_key["hand"].commands), ("report", "any"))
+            self.assertIn("You are the product owner for one question, and you decide it.", skipper)
+            self.assertIn("Decide. Do not defer, do not list the options back", skipper)
+            self.assertIn("**A fact is not a decision, and you never invent one.**", skipper)
+            self.assertIn("`unavailable: <what a person must provide>`", skipper)
+            self.assertIn(f"Your one write is the entry you append to `{DECISIONS}`", skipper)
+            self.assertIn("You are the actor. You use what the slice built and you say what using it revealed.", hand)
+            self.assertIn(f"**Where the slice has a screen, use a browser.** `{BROWSER}` first", hand)
+            for word in ("`accepted`", "`behaviour`", "`implementation`"):
+                self.assertIn(word, hand)
+            self.assertIn("you edit no code, no test and no artifact of\nthe slice", hand)
+            self.assertIn(f"Your writes are `{DEMO_LOG}`", hand)
+            self.assertIn("`make verify` is not yours to run", hand)
+
+    def test_the_models_table_names_both_stages_and_the_skipper_role_resolves(self) -> None:
+        """A stage the table does not name runs on the `default` row silently, and a role no harness maps is
+        refused by the check: both stages have rows, `skipper` is a role seeded to the host everywhere, and the
+        resolver prints a line for each — so a project can put a bigger model on deciding than on driving."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "models", "standard", "typescript")
+            table = json.loads((repo / ".specify/models.json").read_text())
+            self.assertEqual(table["stages"]["skipper"], "skipper")
+            self.assertEqual(table["stages"]["hand"], "strong")
+            for entry in switchable_harnesses():
+                self.assertEqual(table["roles"][entry["key"]]["skipper"], "host", entry["key"])
+            installed(repo, "claude")
+            models = repo / "scripts/agents/models.py"
+            skipper = subprocess.run(["python3", str(models), "skipper"], cwd=repo, text=True, capture_output=True)
+            self.assertEqual(skipper.stdout, "skipper: skipper → host model — `skipper` maps to the host model\n")
+            hand = subprocess.run(["python3", str(models), "hand"], cwd=repo, text=True, capture_output=True)
+            self.assertEqual(hand.stdout, "hand: strong → host model — `strong` maps to the host model\n")
+            check = subprocess.run(["python3", str(models), "--check"], cwd=repo, text=True, capture_output=True)
+            self.assertEqual(check.returncode, 0, check.stderr)
+            self.assertIn("names 16 stage(s)", check.stdout)
+            changed = subprocess.run(["python3", str(models), "--set", "claude.skipper=opus"], cwd=repo, text=True,
+                                     capture_output=True)
+            self.assertEqual(changed.returncode, 0, changed.stderr)
+            self.assertEqual(json.loads((repo / ".specify/models.json").read_text())["roles"]["claude"]["skipper"],
+                             "opus")
+
+    def test_the_ladder_and_the_skills_page_name_the_two_types_as_cruises(self) -> None:
+        """Under `/drive` alone a person is the owner and the actor, so the two rows in the delegable-types table
+        have to say whose they are, and the page that lists what a project carries names the command and both
+        types — a type no page names is one a session discovers from an error."""
+        with tempfile.TemporaryDirectory() as directory:
+            for profile in PROFILES:
+                repo = self.generate(directory, f"pages-{profile}", profile, "go")
+                drive = (repo / "commands/drive.md").read_text()
+                self.assertIn(f"| `skipper` | `{SKIPPER}` | nothing | anything that reads |", drive)
+                self.assertIn(f"| `hand` | `{HAND}` | only the report it produces | anything |", drive)
+                self.assertIn("The last two rows, `skipper` and `hand`, are\n`/cruise`'s: the product owner and the "
+                              "actor", drive)
+                self.assertIn("Under `/drive` alone they run nothing; a person is the owner and the actor.", drive)
+                page = (repo / "docs/skills-and-commands.md").read_text()
+                self.assertIn("- `/cruise` — `commands/cruise.md`\n"
+                              "- `/cruise-settings` — `commands/cruise-settings.md`", page)
+                self.assertIn(f"Two more, `{SKIPPER}` and `{HAND}`, are `/cruise`'s product owner and actor", page)
+                self.assertIn("`claude.skipper=opus`", (repo / "commands/model-delegation-settings.md").read_text())
+
+    def test_the_benchmark_records_who_drove(self) -> None:
+        """A piloted slice and a driven one cost differently, and a record that cannot say which was which cannot
+        compare them: `driver=cruise` is a signal `end` accepts and writes, and the two delegates are stages the
+        record takes without complaint."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "driver", "standard", "python")
+            slice_ = "specs/shop/slices/S1"
+            (repo / slice_).mkdir(parents=True)
+            (repo / slice_ / "tasks.md").write_text("# Tasks\n- [ ] T1\n")
+            commit(repo, "the slice begins")
+            env = clean()
+            for stage, signal in (("skipper", "driver=cruise"), ("hand", "outcome=accepted"),
+                                  ("implement", "driver=cruise")):
+                self.assertEqual(bench(repo, "start", slice_, stage, env=env).returncode, 0, stage)
+                ended = bench(repo, "end", slice_, stage, signal, env=env)
+                self.assertEqual(ended.returncode, 0, (stage, ended.stderr))
+            stages = record(repo, slice_)["stages"]
+            self.assertEqual([entry["stage"] for entry in stages], ["skipper", "hand", "implement"])
+            self.assertEqual(stages[0]["signals"], {"driver": "cruise"})
+            self.assertEqual(stages[2]["signals"], {"driver": "cruise"})
+            refused = bench(repo, "end", slice_, "implement", "driver=cruise", env=env)
+            self.assertEqual(refused.returncode, 1, "no open entry to close")

@@ -455,7 +455,7 @@ rotted.
    (most `cd {APP}` first — never `apps/service`, because a project may have several services and the
    table is stamped per service; `docs/services.md`). Match the other languages' shape — the generated `make verify`
    runs `lint typecheck check-imports check-migrations check-slice-scope check-extensions check-agents check-speckit check-codegraph check-ux-gates
-   check-constitution check-benchmark test [check-model]` (see `verify_dependencies` in `project/makefile.py`, the table's only reader) and
+   check-constitution check-benchmark test [check-model] [check-drawio]` (see `verify_dependencies` in `project/makefile.py`, the table's only reader) and
    `make ci` adds
    `audit test-integration`, so every key must produce a working command with no project-level
    config beyond what sections 3 and 5 provide. If the ecosystem needs a separate frontend-aware

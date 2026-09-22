@@ -104,7 +104,7 @@ def project_files(
         ".claude/settings.json": claude_settings(apps, target),
         ".specify/models.json": stage_models(),
         ".specify/drive.json": drive_config(),
-        ".github/workflows/verify.yml": workflow(apps, layout),
+        ".github/workflows/verify.yml": workflow(apps, layout, event),
         "docs/architecture.md": architecture(profile, apps),
         f"{PACKAGES}/.gitkeep": "",
         "skills/run-the-app/SKILL.md": run_skill(project_name, apps, layout),

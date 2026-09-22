@@ -15,6 +15,7 @@
  * Colours are Mermaid's own event-modeling defaults, so the legend cannot drift from the boxes.
  */
 import {
+  FRAME_TYPES,
   isExternalMockup,
   PATTERNS,
   segmentModel,
@@ -27,16 +28,11 @@ import {
   type Slice,
   type Status,
 } from './model.ts';
+import { SWATCHES as SWATCHES_BY_TYPE, type Swatch } from './palette.ts';
 import { MODEL_DIR, MODEL_SVG, segmentArtifact, type ServiceRecord } from './workspace.ts';
 
-/** Mermaid's `emUiFill` and friends, from its eventmodeling renderer. */
-const SWATCHES: ReadonlyArray<{ label: string; note: string; fill: string; stroke: string }> = [
-  { label: 'UI / wireframe', note: 'what the actor sees', fill: '#ffffff', stroke: '#dbdada' },
-  { label: 'Processor', note: 'automation: the conditional logic', fill: '#edb3f6', stroke: '#b88cbf' },
-  { label: 'Command', note: 'an intent that may be rejected', fill: '#bcd6fe', stroke: '#679ac3' },
-  { label: 'Read model', note: 'a fold over events; never what a command decides from', fill: '#d3f1a2', stroke: '#a3b732' },
-  { label: 'Event', note: 'a fact, permanent once written', fill: '#ffb778', stroke: '#c19a0f' },
-];
+/** The legend, in the order the bands read: `palette.ts` is the one table, shared with the draw.io canvas. */
+const SWATCHES: ReadonlyArray<Swatch> = FRAME_TYPES.map((type) => SWATCHES_BY_TYPE[type]);
 
 const STATUS_COLOURS: Readonly<Record<Status, string>> = {
   proposed: '#8a8a8a',

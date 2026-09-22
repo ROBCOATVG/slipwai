@@ -18,6 +18,7 @@ from .adopted_targets import adoption_targets
 from .compose import composed
 from .flags import flag_gate, flag_gate_dependency
 from .integration import integration_targets, integration_variables
+from .model_targets import MODEL_GATES, model_targets
 from .mutation import mutation_notes
 from .native_commands import STEP, format_command, gated, go_modules_variable, native_commands, steps
 from .openapi import exporting, openapi_targets
@@ -155,16 +156,6 @@ def makefile(project_name: str, profile: str, apps: list[App], target: str = "no
     formatting = format_command(apps)
     if formatting:
         formatting = f"format: ## Rewrite this project's own code the way `make lint` expects to find it\n\t{formatting}\n"
-    model_targets = """
-.PHONY: check-model
-check-model: ## Validate the global event model and its links to implemented code
-\tpython3 scripts/event-model/check.py
-
-.PHONY: model
-model: ## Regenerate the event-model diagrams and browsable page from model.yaml (needs Node; PNG=1 for a raster copy; MERMAID_PUPPETEER_CONFIG=<json> where Chromium cannot sandbox)
-\tnpm --prefix scripts/event-model install --no-audit --no-fund --loglevel=error
-\tscripts/event-model/node_modules/.bin/tsx scripts/event-model/render.ts
-""" if event else ""
     verify_dependencies = (
         "lint typecheck check-imports check-migrations check-slice-scope check-extensions check-agents check-speckit "
         "check-codegraph check-ux-gates check-constitution check-benchmark test"
@@ -176,7 +167,7 @@ model: ## Regenerate the event-model diagrams and browsable page from model.yaml
 \tpython3 scripts/check-styles.py
 """
     if event:
-        verify_dependencies += " check-model"
+        verify_dependencies += MODEL_GATES
     # Not appended to the line above but added as a rule of its own below, inside the transport's marked
     # region: a prerequisite that survived the transport it checks would be a `verify` that cannot run.
     api_document = openapi_targets(project_name, apps)
@@ -331,7 +322,7 @@ check-constitution: ## Fail when a ratified constitution drops a principle this 
 \tpython3 scripts/check-constitution.py
 constitution-requirements: ## Print the normative text the constitution must cover in this profile
 \t@python3 scripts/check-constitution.py --requirements
-{model_targets}{api_document}
+{model_targets(event)}{api_document}
 {service_targets}
 .PHONY: test test-integration {phony_integration + ' ' if phony_integration else ''}adversarial mutation audit
 test: ## Run the complete native test suite

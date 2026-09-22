@@ -106,7 +106,8 @@ def pull_request_template(profile: str, apps: list[App], target: str) -> str:
     ]
     if profile == "event-modelling":
         checks.append(
-            "the event model carries whatever this slice added or changed, and `make check-model` agrees "
+            "the event model carries whatever this slice added or changed, `make check-model` agrees, and the "
+            "committed canvas was regenerated with it — `make model-drawio`, which `make check-drawio` holds to "
             "(`docs/event-model/`)"
         )
     if any(service.selection.migrating_feature for service in services_of(apps)):

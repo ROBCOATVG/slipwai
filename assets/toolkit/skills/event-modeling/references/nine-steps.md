@@ -306,8 +306,8 @@ specs/<feature>/slices/<id>/examples.md   one slice's rules, examples and Given/
                                           linked from that slice's `gwt` field in model.yaml
 ```
 
-The diagram is generated from `model.yaml` by `make model` and checked by `make check-model`; it is never
-hand-written.
+The diagram is generated from `model.yaml` by `make model` and checked by `make check-model`; the draw.io
+canvas beside it by `make model-drawio`, held current by `make check-drawio`. Neither is ever hand-written.
 
 ## Facilitation Questions Quick Reference
 

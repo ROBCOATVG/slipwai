@@ -75,8 +75,10 @@ def build_artifacts(event: bool, apps: list[App], target: str = "none") -> str:
     # node_modules for its own sake, and a second copy of the line is not the answer for either.
     if web_apps(apps) and "typescript" not in families_of(apps):
         frontend_artifacts = "node_modules/\n" + frontend_artifacts
-    # Rendered event-model artifacts are CI-owned: the pages workflow regenerates them on every model
-    # change, and nothing browser-free can prove a committed copy is current, so none is committed.
+    # Rendered Mermaid artifacts are CI-owned: the pages workflow regenerates them on every model change,
+    # and nothing browser-free can prove a committed copy is current, so none is committed. The draw.io
+    # canvas beside them, `docs/event-model/model.drawio`, is the one rendering that *is* committed — it
+    # needs no browser, and `check-drawio` proves it current inside `verify` — so it is not listed here.
     event_artifacts = (
         "scripts/event-model/node_modules/\n"
         "scripts/event-model/.mermaid-cli/\n"

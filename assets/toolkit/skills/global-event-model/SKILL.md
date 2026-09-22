@@ -52,10 +52,12 @@ complete.
 Always finish with:
 
 ```bash
-make model && make check-model
+make model-drawio && make check-model && make check-drawio
 ```
 
-and commit the regenerated `model.mmd` and `model.svg` alongside the YAML. CI fails on a stale diagram.
+and commit the regenerated `model.drawio` alongside the YAML: it is the one rendering that lives in the
+repository, and `make verify` fails while it is older than the model. `make model` draws the Mermaid
+diagrams and the browsable page on demand; they are not committed, and the pages workflow redraws them.
 
 ## Adding a slice
 
@@ -286,6 +288,9 @@ slice lists it, which `code` requires anyway.
 - `docs/event-model/model.svg` — the committed picture. Embed it in Markdown as an image;
   **a fenced `eventmodeling` block will not render on GitHub**, whose Mermaid is older than 11.15.
 - `docs/event-model/slices/<id>.mmd` — one slice, with the events it consumes.
+- `docs/event-model/model.drawio` — the committed canvas: the same timeline, in the same order and the same
+  colours, as one editable draw.io page. Open it in draw.io to work on it or present it; regenerate it with
+  `make model-drawio` rather than editing it, because `make check-drawio` compares it byte for byte.
 
 ## Verification
 

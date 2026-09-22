@@ -108,7 +108,7 @@ class FlagReaderTest(FactoryTestCase):
             makefile = (repo / "Makefile").read_text()
             self.assertIn("check-flags check-speckit", makefile)
             self.assertIn("python3 scripts/check-flags.py", makefile)
-            self.assertIn("check-constitution check-benchmark test check-model check-flags", makefile)
+            self.assertIn("check-constitution check-benchmark test check-model check-drawio check-flags", makefile)
             self.assertTrue((repo / "scripts/check-flags.py").stat().st_mode & 0o111, "not executable")
 
             guidance = (repo / "AGENTS.md").read_text()

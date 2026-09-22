@@ -7,7 +7,9 @@ when the model and the repository disagree. Everything else in this directory is
 
 ```bash
 make model         # regenerate the diagram and the browsable page (PNG=1 also writes a raster copy)
-make check-model   # validate the model and prove the committed diagram is current — runs in CI
+make check-model   # validate the model and its links to the code — runs in CI, inside make verify
+make model-drawio  # write the committed draw.io canvas, docs/event-model/model.drawio
+make check-drawio  # fail when that canvas is missing or stale — runs in CI, inside make verify
 ```
 
 ## Why one model rather than one per feature
@@ -483,15 +485,54 @@ Generated artifacts:
 | `segments/model-N.svg` | the timeline in readable pieces — what the README embeds |
 | `slices/<id>.svg` | one slice with the events it consumes drawn in |
 | `model.png` | raster copy, only with `PNG=1` |
+| `model.drawio` | **the committed canvas** — the same timeline as one editable draw.io page, written by `make model-drawio` and held current by `make check-drawio`. See below |
 
-`model.mmd` and `model.svg` are committed so the diagram is reviewable and renders where Mermaid 11.16 is
-not available. **GitHub's Markdown renderer runs a Mermaid older than 11.15**, so a fenced `eventmodeling`
+Everything `make model` writes is generated on demand and not committed: it takes a headless browser to
+draw, so nothing that runs on every commit could prove a committed copy current, and a picture that can
+quietly stop matching the model is worse than none. The pages workflow redraws it all on every model
+change. **GitHub's Markdown renderer runs a Mermaid older than 11.15**, so a fenced `eventmodeling`
 block will not draw there — check what it runs today by putting a fenced `info` diagram in a comment, which
-renders as the version string. Reference the SVG instead:
+renders as the version string. Where the README needs a picture, `make model` embeds the segment SVGs
+inside its markers, or links the published page once `render.page` is set.
 
-```markdown
-![Global event model](docs/event-model/model.svg)
-```
+## The committed canvas
+
+`make model-drawio` writes the whole timeline as one draw.io page, `docs/event-model/model.drawio`, and that
+file **is committed**. It is the one rendering with that property, and the reason is what it takes to draw:
+a `.drawio` file is plain XML, so writing one is arithmetic and a string — no browser, no account, no
+credential, no network. That is what lets `make check-drawio` regenerate it in memory and compare it on every
+commit, inside `make verify`, which nothing driving a headless browser could ever do.
+
+| | Mermaid (`make model`) | draw.io (`make model-drawio`) |
+|---|---|---|
+| Produces | slice diagrams, README segments, the whole-timeline SVG, the browsable page | one editable canvas |
+| Lives | generated on demand, not committed | committed |
+| Needs | a headless browser | Node, and nothing else |
+| Currency | redrawn by the pages workflow | **`check-drawio`, inside `verify`** |
+| Good for | reading, embedding, GitHub | working on, annotating, presenting |
+
+Neither replaces the other, and both draw the same model: a box that sits fourth on the canvas sits fourth in
+`model.svg`, in the same swimlane, with the same arrows and the same colour. That is not a coincidence to
+maintain — which lane a box is in and which arrows exist are answered once, in `scripts/event-model/model.ts`,
+and both renderers ask it; the palette is one table both read.
+
+What the canvas looks like: one column per box, left to right in timeline order; rows are the notation's
+bands — UI and automation on top, commands and read models in the middle, events underneath — with a lane
+per actor or stream where the model groups them; a caption per slice above the bands; a legend above that.
+A step within a slice is a solid arrow. A read of an earlier event is dashed, and one that spans more than
+a column detours below the bands through a corridor rather than crossing every box in between, with every
+reader of one event sharing that event's corridor. Under each box that reads anything is a caption naming
+every event it reads, so a reader learns where an arrow came from without following it.
+
+Open it in draw.io — [app.diagrams.net](https://app.diagrams.net), the desktop app, or the VS Code
+extension — to present it, walk a stakeholder through it, or lay annotations over it. **Do not edit the
+committed file**: `make check-drawio` compares it byte for byte with what the model produces, so a hand
+edit fails the gate on the next commit. Copy it to annotate, and put what you learn back into `model.yaml`,
+where the next `make model-drawio` will draw it. A model with no slices has no canvas, and a canvas left
+behind by a model that was emptied is stale like any other.
+
+Fit-to-window on a model of any size shows boxes and no text: at a few percent zoom every label is
+sub-pixel. That is the viewer, not the file — zoom in.
 
 ## Publishing it
 
@@ -534,6 +575,11 @@ commits to an answer.
 not a project devDependency, so `npm install` stays fast and `make check-model` — the gate that runs in CI
 — needs no browser at all. The local prefix is so the renderer can patch mermaid's swimlane bug
 ([mermaid-js/mermaid#7925](https://github.com/mermaid-js/mermaid/issues/7925)) before the first diagram.
+
+**`check-drawio` needs Node and no browser.** It runs the same TypeScript pipeline `make model` does, minus
+the rendering, so `make verify` in an event-profile project installs `scripts/event-model`'s three
+dependencies on first run — about a second once the tree is there — whichever language the services are
+written in. CI is given a Node for it where the project has none of its own.
 
 **That download does not exist on linux/arm64.** Google ships no Chrome build for it, so on an ARM
 sandbox or container `make model` fails at the browser fetch. Nothing gates on this — `check-model` needs

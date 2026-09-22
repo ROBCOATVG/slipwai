@@ -312,6 +312,12 @@ command until it reports converged or reaches its bound, and `/gaps` over the sl
 acceptance, harden and finish the slice — `/adversary` when the slice changed attack surface or closed the
 split, then `/mutation` and `make verify` — then continue to the ready slices (not done, every `depends_on` done): every unclaimed one whose contract is settled runs concurrently, one delegate per slice on a `slice/<id>` branch, merged in split order (`commands/drive.md`, *Running ready slices concurrently*); where the harness cannot delegate, the earliest in split order, naming the rest.
 
+Under `/cruise` the same contract holds with nobody at the wheel: the two stops that were a person's — a
+product decision and the demo — are answered by `drive-skipper` and `drive-hand`, every answer is written where
+a person's would have been and again in `specs/<feature>/decisions.md`, and an iteration ends with one line
+(`cruise: continue | done | parked: <why> | stopped: human`) that the outer loop reads before it invokes the
+next. `commands/cruise.md` is exact; it runs `commands/drive.md` and adds nothing to what a stage produces.
+
 `commands/drive.md` is the resumable entry point at any point in the workflow. It derives the current stage
 from artifacts and never re-runs a completed stage merely to make sure. Invoked before the upstream stages
 exist — no ratified constitution, no specification, no modelled events, no split — it steps back to the

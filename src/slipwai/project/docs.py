@@ -97,6 +97,8 @@ before and after each increment; it is the same gate CI runs.
 
 Use `/drive` for the complete delivery loop and `/where-are-we` for the progress board at any point; both read
 artifacts on disk rather than memory, so one resumes safely and the other changes nothing. See `commands/`, `skills/` and `agents/`.
+`/cruise` runs the loop with nobody at the wheel — it decides product questions as the owner and runs each demo
+as the actor, and stops only for a person; it ships switched off, and `commands/cruise.md` says how to start it.
 """ + ("\nBefore implementation, update `docs/event-model/model.yaml`; commands, events, stream identity, and schemas are one contract.\n" if event else """
 When ratifying a constitution, do not paste an Event Modeling or event-sourcing mandate into this
 standard profile; `make check-speckit` checks that boundary. `make check-constitution` checks the
@@ -283,6 +285,11 @@ adds tests and mutation measures whatever exists when it runs.
 first stage still owing an artifact, stepping back out of the loop when an upstream stage has not been done.
 Demo feedback returns to the stage that owns the change before the path is demonstrated again. A real product decision is a stop; finishing an intermediate document is
 not.
+
+`/cruise` runs this same diagram with nobody at the wheel. A product decision is answered by `drive-skipper`
+and written in `specs/<feature>/decisions.md`; the demo is run by `drive-hand` and written in the slice's
+`demo-log.md`; the run ends only when the specification is satisfied, or when a person stops it. What each
+stage produces does not change. `commands/cruise.md` is exact.
 """
 
 

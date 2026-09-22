@@ -179,7 +179,10 @@ fi
 # python3. Never fatal to the rest of `./init`: Spec Kit and the agent projection are already in place by
 # here, so an extension whose own tool is missing or whose setup fails gets a message, not a failed
 # bootstrap. `scripts/extensions/<key>/init.py` is expected to be idempotent and non-fatal itself (see
-# docs/extensions.md); this loop only handles a key nothing shipped.
+# docs/extensions.md); this loop only handles a key nothing shipped. `SLIPWAI_INTEGRATION` carries the
+# harness chosen on this run to a hook that adds to `skills/` and has to re-project it: Spec Kit records
+# the integration for later runs, but a hook running inside the same `./init` cannot rely on that record
+# being there yet.
 #
 # Then one more projection pass, because that order has a cost: an extension points the agent at itself by
 # appending to `AGENTS.md`, and a harness whose `contextMode` is `copy` reads a file Spec Kit wrote from
@@ -191,7 +194,7 @@ RUN_EXTENSIONS = """
 for extension in $selected_extensions; do
   script="scripts/extensions/$extension/init.py"
   if [ -f "$script" ]; then
-    python3 "$script" || printf '%s\n' "$extension extension setup did not finish; see $script." >&2
+    SLIPWAI_INTEGRATION="$selected_integration" python3 "$script" || printf '%s\n' "$extension extension setup did not finish; see $script." >&2
   else
     printf '%s\n' "Unknown extension \\"$extension\\" (no $script in this project)." >&2
   fi

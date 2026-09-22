@@ -170,8 +170,8 @@ Spec Kit is deliberately absent until you ask for it. From inside the generated 
 ```
 
 That installs Spec Kit. It then asks which coding agent to project `skills/`, `commands/` and `agents/`
-into — any of [36 harnesses](docs/spec-kit.md). It then offers optional extensions as a checkbox menu, of
-which CodeGraph is the first.
+into — any of [36 harnesses](docs/spec-kit.md). It then offers optional extensions as a checkbox menu:
+CodeGraph, UI/UX Pro Max and the UX gates.
 
 `--integration <name>` and `--extension <key>` skip those questions. `--extension` also adds one later. See
 [Extensions](docs/extensions.md).
@@ -209,7 +209,7 @@ Everything below is in a generated repository from its first commit.
 | **[Generated documentation](docs/what-you-get.md#documentation-written-for-this-project)** | Thirteen pages written for this project's actual shape rather than copied, and an index built from the files that shipped |
 | **[Services and bounded contexts](docs/services.md)** | One list of applications, each with its own language, framework and answers. `add-service` and `add-frontend` grow it. Contexts are found rather than declared |
 | **[A path to production](docs/aws-target.md)** | `--target aws` or `--target azure` gives you `infra/` in OpenTofu, one deployable per application released blue/green, a pipeline from every push to `main` through staging to production, and a one-command rollback. The same promise on either cloud. [The Azure page](docs/azure-target.md) is where they are compared |
-| **[Extensions](docs/extensions.md)** | Optional dev tooling, adopted with `./init --extension <key>`. CodeGraph is the first. None of them changes the generated skeleton's code |
+| **[Extensions](docs/extensions.md)** | Optional dev tooling, adopted with `./init --extension <key>`: a code index, a design-system generator, and objective UX gates in `make verify`. None of them changes the generated skeleton's code |
 
 ### The commands a project gets
 
@@ -286,7 +286,7 @@ Beyond the profile, each role is a separate question, answered independently:
 | HTTP transport | `--http` | `none`, `fastify`, `fastapi`, `net-http`, `quarkus-rest`, `spring-web` |
 | Staff authentication | `--auth` | `none`, `keycloak` (local only), `cognito` (AWS), `entra` (Azure), `auth0` (either cloud) |
 | Customer authentication | `--users` | `none`, `keycloak` (local only), `cognito` (AWS), `auth0` (either cloud) |
-| Dev tooling | `--extension` | `codegraph` |
+| Dev tooling | `--extension` | `codegraph`, `uipro`, `ux-gates` |
 
 The default is `event-modelling` with `typescript`, the `react-vite` frontend, a Postgres event store, and
 the HTTP transport that backend has.

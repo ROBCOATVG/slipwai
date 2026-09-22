@@ -53,6 +53,9 @@
   --radius-large: 10px;
   --border: 1px solid var(--colour-border);
   --shadow: 0 1px 2px rgb(22 25 29 / 8%);
+  /* The one ring every focusable element shows: a token so no rule below carries a literal width. */
+  --focus-ring: 2px solid var(--colour-accent);
+  --focus-ring-offset: 2px;
 
   /* The reading column. Wider than this and prose stops being readable. */
   --measure: 68ch;

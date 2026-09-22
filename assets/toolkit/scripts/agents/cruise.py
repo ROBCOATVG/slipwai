@@ -605,8 +605,10 @@ def iterate(template: str, prompt: str, environment: dict[str, str], iteration: 
     try:
         if raw is not None:
             raw.write(f"# iteration {iteration} {now()}\n")
+        # Its own process group, so ending the iteration ends everything the session started — a dev server, a
+        # watcher — and not only the shell that started the session.
         with subprocess.Popen(command, shell=True, cwd=ROOT, text=True, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, env=environment) as process:
+                              stderr=subprocess.STDOUT, env=environment, start_new_session=True) as process:
             CURRENT = process
             assert process.stdout is not None
             for line in process.stdout:
@@ -797,10 +799,26 @@ def running_pid() -> tuple[int, str] | None:
 
 
 def terminated(_signal: int, _frame: object) -> None:
-    """A SIGTERM to the runner ends the iteration under way with it, so `stop --now` leaves no orphan session."""
+    """A SIGTERM to the runner ends the iteration under way with it, so `stop --now` leaves no orphan session —
+    and no benchmark entry left open by the session it ended."""
     if CURRENT is not None and CURRENT.poll() is None:
-        CURRENT.terminate()
+        try:
+            os.killpg(CURRENT.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        CURRENT.wait()
+    cut_off_brackets("the iteration was ended by `stop --now`")
     raise SystemExit(128 + signal.SIGTERM)
+
+
+def cut_off_brackets(reason: str) -> None:
+    """Close what the iteration's session left open in the benchmark records: nothing will `end` it now, and an
+    entry left open reads as a stage still running (`scripts/agents/benchmark.py cut-off`). Its lines go to the
+    run log like the feed's; a benchmark script that fails here fails nothing else."""
+    script = SCRIPT.with_name("benchmark.py")
+    if script.is_file():
+        subprocess.run([sys.executable, str(script), "cut-off", reason], cwd=ROOT, check=False)
+        sys.stdout.flush()
 
 
 def run_arguments(arguments: list[str]) -> tuple[str | None, str | None, bool, bool]:
@@ -877,6 +895,7 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
         print(f"cruise: iteration {iteration} started {started}, running `{ask}`", flush=True)
         began = time.monotonic()
         last = iterate(template, ask, environment, iteration, stream)
+        cut_off_brackets(f"iteration {iteration} ended with the entry open")
         iterations_this_run += 1
         seen = fingerprint()
         fingerprints.append(seen)

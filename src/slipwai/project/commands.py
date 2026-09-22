@@ -198,7 +198,8 @@ lock ref from `main`; that is not the implementation.
 
 ### After acceptance, and after Phase 4 clears
 
-After acceptance, run `/adversary` when the slice changed attack surface or closed the split. Close the
+After acceptance, run `/adversary`, which decides whether the slice changed attack surface or closed the
+split and records the attack or the skip — `make check-decisions` holds every done slice to that row. Close the
 adversary benchmark entry after its findings are triaged; implement confirmed defects through failing tests,
 each in an `implement` entry. Then run `/mutation`, then `make verify`. `commands/adversary.md` owns the
 trigger table; do not spawn before it is in the log. It records that decision in

@@ -4,10 +4,10 @@ Date: 2026-09-22
 
 ## Status
 
-Proposed. Two pieces of it are already on `main` and are named below as taken, because they stand on their
+Accepted. Two pieces of it are already on `main` and are named below as taken, because they stand on their
 own and the evidence for them was not in doubt: `slipwai adopt --next` and the shell-segment fix
 (`f68f70b`), and the coding agent established at adoption time rather than asked for by `./init`
-(`14d4ba1`). Everything under *Decision* that is not marked *taken* is what accepting this ADR decides.
+(`14d4ba1`). Everything under *Decision* that is not marked *taken* is what this ADR decided.
 Brownfield adoption is experimental as [`AGENTS.md`](../../AGENTS.md#versioning-is-not-optional) defines the
 word, so the shape this changes may change in a MINOR; this is the exemption being spent deliberately rather
 than drifted through.

@@ -248,7 +248,7 @@ adopted one records about the code that was already there.
   covers, and an event's identifying attributes are modelled while the tags derived from them are not.
   Completes the half `0001` recorded as owed.
 - [`0003-a-wrapped-application-begins-as-a-candidate.md`](adr/0003-a-wrapped-application-begins-as-a-candidate.md)
-  (**proposed**) — the terminal asks only what a terminal can answer and the coding agent confirms the rest
+  — the terminal asks only what a terminal can answer and the coding agent confirms the rest
   against the code; a buildable directory the survey finds is recorded as a candidate rather than a
   deployable, and `verify` refuses until somebody has confirmed one. Experimental with the rest of adoption
   (#74).

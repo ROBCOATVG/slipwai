@@ -147,6 +147,8 @@ A project ships with `/cruise` disabled. To start, in any harness's session:
 /cruise-settings enabled=true     # commits .specify/cruise.json
 /cruise                           # starts the runner, detached from this session, and watches it from here
 /cruise use the PRD in docs/prd.md   # the same, with a kick-off the first iteration is given
+/cruise-status                    # is a runner running, how the last iteration ended, the tail of the feed
+/cruise-stop                      # end the run after the iteration in flight; `/cruise-stop now` ends it now
 ```
 
 or from a terminal, `make cruise`, which runs the same loop in the foreground. Either way the runner is the
@@ -180,8 +182,10 @@ continues, and ends the turn when it says parked, ended or no runner. Watching i
 runner needs nothing from the session, so leaving the seat ends nothing, and `/cruise` typed again later
 finds the runner running and sits back down where the feed left off. A person typing into that session is
 talking to the agent, not stopping the run: it answers — the feed, the settings, the status, the decision log
-— changes a setting through `/cruise-settings` where asked, and watches again. From a terminal,
-`make cruise-watch` is the same seat.
+— changes a setting through `/cruise-settings` where asked, and watches again. Every line `watch` printed
+goes into the reply unchanged, because a harness folds a command's output to a few lines and the feed has to
+reach the person, not the transcript. From a terminal, `make cruise-watch` is the same seat, and
+`/cruise-status` in any session is the runner's state and the feed's tail without sitting down.
 
 The feed is the harness's own event stream, rendered. The registry's `headless` row names the stream where a
 harness has one — Claude Code's `--output-format stream-json --verbose`, Codex's `exec --json` — and the
@@ -213,9 +217,10 @@ deny rule fired when it should.
 To stop a run, do one of these. Each is safe in the middle of a slice, because the slice's commits are on
 its branch and the next iteration re-derives its stage from the artifacts.
 
-- Run `make cruise-stop`, or `touch .specify/cruise.stop`. The runner ends after the iteration in flight, and
-  the command checks between stages, finishes the stage's own writes, commits what is green, and ends.
-  `make cruise-stop CRUISE_FLAGS=--now` ends the iteration in flight too.
+- Type `/cruise-stop` in any session, run `make cruise-stop`, or `touch .specify/cruise.stop`. The runner ends
+  after the iteration in flight, and the command checks between stages, finishes the stage's own writes,
+  commits what is green, and ends. `/cruise-stop now` or `make cruise-stop CRUISE_FLAGS=--now` ends the
+  iteration in flight too.
 - Press Ctrl-C on a foreground runner. The harness session dies with it.
 
 ## The settings

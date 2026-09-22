@@ -243,6 +243,8 @@ the paths and toolchains named in them are real.
 | `/drive-settings` | Shows or changes how `/drive` hands implementation to a delegate |
 | `/model-delegation-settings` | Shows or changes which model runs each stage of `/drive` |
 | `/cruise-settings` | Shows or changes how `/cruise` runs: who decides, how it releases, what it demos with, when it parks |
+| `/cruise-status` | Says whether a `/cruise` runner is running, how its last iteration ended, and shows the tail of its feed |
+| `/cruise-stop` | Ends a `/cruise` run after the iteration in flight, or at once with `now` |
 
 [The delivery loop](docs/delivery-loop.md) describes each one in full, and the ladder they sit on.
 

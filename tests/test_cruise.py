@@ -101,11 +101,14 @@ class CruiseTest(FactoryTestCase):
                 self.assertIn("## Blocked: the bosun protocol", cruise)
                 seat = refuse.split("## The watch seat")[1]
                 self.assertIn(f"run `python3 {SCRIPT} watch`", seat)
-                self.assertIn("run `watch` again at once**", seat)
+                self.assertIn("**Put every line it printed in your reply, unchanged, in a\nfenced block, before "
+                              "anything else** — the harness folds a command's output", seat)
+                self.assertIn("run `watch` again\nat once**", seat)
                 self.assertIn("run a command in the background and re-invoke this session", seat)
-                self.assertIn("where it says parked, ended, or no runner, repeat what it said and end\nthe turn", seat)
-                self.assertIn("A watch the harness cut short — a tool timeout, with no last line from `watch` — is "
-                              "watched again,\nnot asked about.", seat)
+                self.assertIn("where it says parked, ended, or no runner, repeat what it said and end the turn", seat)
+                self.assertIn("A watch the\nharness cut short — a tool timeout, with no last line from `watch` — is "
+                              "watched again, not asked about. Where\nthe harness can run a command in the background",
+                              seat)
                 self.assertIn("never a reason to run a stage of the ladder in this session", seat)
                 self.assertIn("**A person typing here is talking to you, not stopping the run.**", seat)
                 self.assertIn(f"`python3 {SCRIPT}` prints every setting and what it controls", seat)

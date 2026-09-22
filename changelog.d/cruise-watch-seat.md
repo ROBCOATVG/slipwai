@@ -9,8 +9,11 @@ left off and returns at the iteration's end, a park, the run's end, once the fee
 seconds, or after a minute and a half with nothing new, saying which — on quiet, because a harness shows a
 command's output when it returns, and the feed has to reach a person as it happens; the command runs it after `start`, again while the run continues, and ends the turn when
 it says parked or ended, and a person typing into that session is answered — the feed, the settings, the status,
-the decision log, a setting changed through `/cruise-settings` — and then watched for again. `make cruise-watch`
-is the same seat from a terminal. The feed is the harness's own event stream rendered one line per command, file,
+the decision log, a setting changed through `/cruise-settings` — and then watched for again; every line `watch`
+printed goes into the reply unchanged, because a harness folds a command's output and the feed has to reach the
+person. `make cruise-watch` is the same seat from a terminal, and two commands sit beside it in every session:
+`/cruise-status` (the runner's state and the feed's tail) and `/cruise-stop` (after the iteration in flight, or
+`now`). The feed is the harness's own event stream rendered one line per command, file,
 and delegate out and back: the registry's `headless` row for Claude Code now runs `--output-format stream-json
 --verbose` and Codex's `exec --json`, each row saying so with its `stream`, the runner keeps the raw stream in
 `.specify/cruise-stream.jsonl` beside the log, and a refused permission is in the feed the moment it happens.

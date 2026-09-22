@@ -136,14 +136,15 @@ anything else. `unblock: <reason>` is the one argument the runner itself passes 
 After `start` — or where `start` said a runner is already running — run `python3 {SCRIPT} watch`. It prints
 what the iteration does as it happens, one line per command, file, and delegate out and back, and returns at
 the iteration's end, a park, the run's end, once the feed has gone quiet for a moment, or after a minute and a
-half with nothing new; its last line says which. **Where it says the run continues, or the iteration is in
-flight, run `watch` again at once** — the feed it printed is the report, and a sentence on top of it is
-enough where something happened; where it says parked, ended, or no runner, repeat what it said and end
-the turn. A watch the harness cut short — a tool timeout, with no last line from `watch` — is watched again,
-not asked about. Where the harness can run a command in the background and re-invoke this session with its
-output when it returns, run `watch` that way, so the turn ends between watches and a person can type in the
-gap. Watching is only ever reading — the runner needs nothing from this session, and a turn that ends here
-ends nothing else — so it is never a reason to run a stage of the ladder in this session.
+half with nothing new; its last line says which. **Put every line it printed in your reply, unchanged, in a
+fenced block, before anything else** — the harness folds a command's output, so the feed reaches a person only
+through your reply — **and where it says the run continues, or the iteration is in flight, run `watch` again
+at once**; where it says parked, ended, or no runner, repeat what it said and end the turn. A watch the
+harness cut short — a tool timeout, with no last line from `watch` — is watched again, not asked about. Where
+the harness can run a command in the background and re-invoke this session with its output when it returns,
+run `watch` that way, so the turn ends between watches and a person can type in the gap. Watching is only ever
+reading — the runner needs nothing from this session, and a turn that ends here ends nothing else — so it is
+never a reason to run a stage of the ladder in this session.
 
 **A person typing here is talking to you, not stopping the run.** Answer them — what the feed shows, what
 `{CONFIG}` says (`python3 {SCRIPT}` prints every setting and what it controls), what `python3 {SCRIPT} status`

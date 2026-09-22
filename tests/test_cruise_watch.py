@@ -233,3 +233,34 @@ tail -n +4 {fixtures}/claude-stream.jsonl | sed 's/cruise: continue/cruise: done
                               "git clean -fdx", "rm -rf apps"):
                     self.assertFalse(allows(rules, never), f"{language}: {never} is allowed")
                 self.assertEqual("Bash(python3 *)" in rules["allow"], language == "python")
+
+    def test_status_and_stop_are_commands_beside_the_seat_and_every_seat_command_repeats_its_output(self) -> None:
+        """A person beside a run types `/cruise-status` and `/cruise-stop` rather than remembering the script's
+        verbs, and each — the watch seat included — tells the session to put what the command printed into its
+        reply unchanged, because a harness folds a command's output and the words have to reach the person."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "seat", "standard", "python")
+            verbatim = ("Put every line it printed in your reply, unchanged, in a fenced block, before anything else: "
+                        "the harness folds a command's output, so what it said reaches a person only through your "
+                        "reply.")
+            status = (repo / "commands/cruise-status.md").read_text()
+            self.assertIn("description: Say whether a /cruise runner is running, how the last iteration ended, whether "
+                          "it is parked and why, and show the tail of its feed", status)
+            self.assertIn("python3 scripts/agents/cruise.py status\ntail -n ${ARGUMENTS:-40} .specify/cruise-run.log",
+                          status)
+            self.assertIn(verbatim, status)
+            self.assertIn("`python3 scripts/agents/cruise.py denials` lists those", status)
+            stop = (repo / "commands/cruise-stop.md").read_text()
+            self.assertIn("description: End a /cruise run after the iteration in flight, or at once with `now`", stop)
+            self.assertIn('python3 scripts/agents/cruise.py stop $(test "$ARGUMENTS" = now && echo --now)', stop)
+            self.assertIn(verbatim, stop)
+            self.assertIn("`rm .specify/cruise.stop` when they want one", stop)
+            self.assertIn("`make cruise-stop` is the same\nfrom a terminal, `CRUISE_FLAGS=--now` for the immediate "
+                          "form", stop)
+            cruise = (repo / "commands/cruise.md").read_text()
+            self.assertIn("**Put every line it printed in your reply, unchanged, in a\nfenced block, before anything "
+                          "else** — the harness folds a command's output, so the feed reaches a person only\nthrough "
+                          "your reply", cruise)
+            page = (repo / "docs/skills-and-commands.md").read_text()
+            self.assertIn("- `/cruise-settings` — `commands/cruise-settings.md`\n- `/cruise-status` — "
+                          "`commands/cruise-status.md`\n- `/cruise-stop` — `commands/cruise-stop.md`", page)

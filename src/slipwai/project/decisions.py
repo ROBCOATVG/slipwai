@@ -1,4 +1,4 @@
-"""`.specify/memory/product-owner.md`: the owner brief `/cruise`'s skipper decides from, and the record it keeps.
+"""`.specify/product-owner.md`: the owner brief `/cruise`'s skipper decides from, and the record it keeps.
 
 A run with nobody at the wheel still has an owner; what changes is where the owner's judgement lives. The
 constitution says what must never be violated and the specification says what to build, and between them sits

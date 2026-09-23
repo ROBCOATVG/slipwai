@@ -10,11 +10,16 @@ script says so and exits 0 — which is why `make verify` runs it everywhere.
 What a slice's change may contain — everything since the branch left `main`, committed or not:
 
 - **its own record**, `specs/<feature>/slices/<id>/**`, and the feature's cumulative artifacts — `spec.md`,
-  `story-split.md`, `contracts/`, `checklists/`, `adversary-log.md`, `slices/README.md` — which every slice
-  amends and the host merges in split order;
+  `story-split.md`, `contracts/`, `checklists/`, `adversary-log.md`, `decisions.md`, `slices/README.md` — which
+  every slice amends and the host merges in split order. `decisions.md` is among them because `/cruise` writes
+  a decision where the ladder took it, which during a slice's stages is the slice's branch, and `check-decisions`
+  wants every `Written to` path in the tree, which for a slice's artifacts is only true there;
 - **its own block of `docs/event-model/model.yaml`**: every other slice's block reads exactly as on `main`.
   Events, commands and read models are frames inside a slice's block, so the contract another slice builds
   against cannot move underneath it; `docs/event-model/mockups/` is per screen and open;
+- **the committed canvas, `docs/event-model/model.drawio`**, because it is rendered from the model the slice
+  just changed and `check-drawio` fails the branch until it is: that gate holds it to `model.yaml`, so it can
+  carry nothing of the slice's own. The host regenerates it again after each merge;
 - **code and tests of the service that owns it** — `service` in its model block, or any service where the
   model names none — and, where the block names a `context`, nothing under another context's directory in
   `domain/` or `application/`. A browser app is open to every slice: a white box is one screen;
@@ -30,8 +35,13 @@ Refused, each with what to do instead: the canonical slot at the feature root (`
 a regular file there is a record about to be lost, on every branch), another slice's directory or model
 block, another context's code, an edited or deleted migration, a numbered new migration, and anything else
 in the repository — `Makefile`, `project.json`, package manifests and locks, `scripts/`, `skills/`,
-`commands/`, `agents/`, CI, the docs other than the model — which is the host's: landed on `main` before the fan-out,
-or handed back as the question it is. A refusal is a hand-back, not something to work around.
+`commands/`, `agents/`, CI, the docs other than the model and its canvas — which is the host's: landed on `main`
+before the fan-out, or handed back as the question it is. A refusal is a hand-back, not something to work around.
+
+The base the branch is compared with is where it left `main`, or last merged it in. Every `main` the checkout
+knows is tried — `main`, `origin/main`, their `master` spellings — and the newest base wins: `origin/main` alone
+goes stale the moment `main` moves locally and is not yet pushed (a migration run there, then merged into the
+slice), and a stale base charges the slice with `main`'s own files.
 """
 
 from __future__ import annotations
@@ -59,9 +69,10 @@ ROOT = project_root(Path(__file__).resolve(), 1)
 DELIVERY = Path(__file__).resolve().parent.parent.relative_to(ROOT)
 DOCS = (DELIVERY / "docs").as_posix() + "/"
 MODEL = DELIVERY / "docs/event-model/model.yaml"
+CANVAS = DELIVERY / "docs/event-model/model.drawio"
 SLICE_BRANCH = re.compile(r"^slice/(?P<id>[A-Za-z0-9][A-Za-z0-9._-]*)$")
 CANONICAL_SLOTS = ("plan.md", "research.md", "data-model.md", "quickstart.md", "tasks.md")
-FEATURE_SHARED = ("spec.md", "story-split.md", "adversary-log.md")
+FEATURE_SHARED = ("spec.md", "story-split.md", "adversary-log.md", "decisions.md")
 FEATURE_SHARED_DIRECTORIES = ("contracts", "checklists")
 MIGRATION_DIRECTORIES = ("migrations", "migration")
 MIGRATION_NAME = re.compile(r"^(?:\d+_|V\d+__)")
@@ -92,11 +103,22 @@ def current_branch() -> str | None:
 
 
 def merge_base() -> str | None:
-    for base in ("origin/main", "main", "origin/master", "master"):
-        found = git("merge-base", "HEAD", base)
-        if found:
-            return found.strip()
-    return None
+    """Where the branch left `main`, or last merged it in: the newest base among every `main` the checkout has.
+    Trying `origin/main` alone is wrong on a machine where `main` has moved and not been pushed — the base is then
+    older than the merge the slice took, and `main`'s own files land in the slice's diff."""
+    bases: list[str] = []
+    for name in ("main", "origin/main", "master", "origin/master"):
+        found = git("merge-base", "HEAD", name)
+        if found and found.strip() not in bases:
+            bases.append(found.strip())
+    if not bases:
+        return None
+    newest = bases[0]
+    for candidate in bases[1:]:
+        # `--is-ancestor` exits 0, with nothing printed, when the first commit is an ancestor of the second.
+        if git("merge-base", "--is-ancestor", newest, candidate) is not None:
+            newest = candidate
+    return newest
 
 
 def changed_files(base: str) -> dict[str, str]:
@@ -217,7 +239,7 @@ class Scope:
             return None
         return (
             f"{path}: not a slice's to write. A slice amends `spec.md`, `story-split.md`, `contracts/`, "
-            f"`checklists/`, `adversary-log.md` and its own `slices/{self.slice_id}/`."
+            f"`checklists/`, `adversary-log.md`, `decisions.md` and its own `slices/{self.slice_id}/`."
         )
 
     def model_violations(self) -> list[str]:
@@ -296,6 +318,10 @@ class Scope:
         if path.startswith("specs/"):
             return self.spec_violation(path)
         if path == MODEL.as_posix():
+            return None
+        if path == CANVAS.as_posix():
+            # Rendered from the model, and `check-drawio` holds it to the model: a slice that advanced its own
+            # block has to regenerate it to pass `verify`, and can put nothing else in it.
             return None
         if path.startswith(DOCS + "event-model/mockups/"):
             return None

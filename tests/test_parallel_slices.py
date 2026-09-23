@@ -192,9 +192,14 @@ class SliceScopeGateTest(FactoryTestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("slice/S1 touches only what one slice may", result.stdout)
 
-            # Its own record, its own service's code, a new stamped migration, an added event: allowed.
+            # Its own record, its own service's code, a new stamped migration, an added event: allowed. So are
+            # the decision `/cruise` records during the slice — `check-decisions` wants its `Written to` paths in
+            # the tree, and `slices/S1/` is only there on this branch — and the canvas `check-drawio` holds to the
+            # model the slice just advanced.
             (feature / "slices/S1/plan.md").write_text("# Plan\n")
             (feature / "spec.md").write_text("# Ordering\n\nAmended by S1.\n")
+            (feature / "decisions.md").write_text("## D1 — Which reading\n- **Stage:** plan · **Slice:** S1\n")
+            (repo / "docs/event-model/model.drawio").write_text("<mxfile/>\n")
             decider = repo / "apps/service/src/domain/ordering/decider.ts"
             decider.write_text("export const decide = () => [];\n")
             migrations = repo / "apps/service/migrations"
@@ -233,6 +238,7 @@ class SliceScopeGateTest(FactoryTestCase):
                     "Add a new, timestamped migration instead")
             refused("Makefile", "all:\n", "outside every deployable", "Land it on `main` before the fan-out")
             refused("docs/event-model/README.md", "# mine\n", "the docs are the host's")
+            refused("specs/001-ordering/notes.md", "# mine\n", "not a slice's to write", "`decisions.md` and its own")
             refused("apps/service/src/domain/ordering/events.ts", "export const OrderPlaced = 'OrderPlaced';\n",
                     "the events module is the contract and grows additively", "a line was removed")
             refused("docs/event-model/model.yaml", MODEL.replace("name: See an order", "name: See an order, renamed"),
@@ -253,6 +259,50 @@ class SliceScopeGateTest(FactoryTestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("slice/S1 touches only", result.stdout)
+
+    def test_the_base_is_the_newest_main_the_checkout_knows(self) -> None:
+        """`origin/main` goes stale the moment `main` moves locally and is not pushed — a migration, say. A slice
+        that then merges `main` is compared with where it last took `main`, not the remote's older idea of it, so
+        `main`'s files never land in its diff; `check-migrations` reads the same base for what is new."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "base", "event-modelling", "typescript", event_store="postgres")
+            (repo / "docs/event-model/model.yaml").write_text(MODEL)
+            commit_all(repo, "generated")
+            git(repo, "init", "-q", "--bare", f"{directory}/origin.git")
+            git(repo, "remote", "add", "origin", f"{directory}/origin.git")
+            git(repo, "push", "-q", "origin", "main")
+            git(repo, "checkout", "-q", "-b", "slice/S1")
+            (repo / "specs/001-ordering/slices/S1").mkdir(parents=True)
+            (repo / "specs/001-ordering/slices/S1/plan.md").write_text("# Plan\n")
+            commit_all(repo, "S1 planned")
+
+            # `main` moves — the host's files, and an expand migration — and is not pushed.
+            git(repo, "checkout", "-q", "main")
+            (repo / "Makefile").write_text((repo / "Makefile").read_text() + "\n# migrated\n")
+            (repo / "scripts/new-gate.py").write_text("print('new')\n")
+            migrations = repo / "apps/service/migrations"
+            expand = migrations / "202609151030_orders_add_status.sql"
+            expand.write_text("ALTER TABLE orders ADD COLUMN status text;\n")
+            commit_all(repo, "migrated main")
+            git(repo, "checkout", "-q", "slice/S1")
+            git(repo, "merge", "-q", "--no-edit", "main")
+
+            result = self.check(repo)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("slice/S1 touches only what one slice may", result.stdout)
+
+            # `main`'s expand is not new in the slice's change, so the slice may ship its contract.
+            (migrations / "202609151031_orders_drop_state.sql").write_text(
+                "-- contract: 202609151030_orders_add_status\nALTER TABLE orders DROP COLUMN state;\n"
+            )
+            result = subprocess.run(["python3", "scripts/check-migrations.py"], cwd=repo, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            # And a host file the slice itself wrote after the merge is still refused: the base moved, not the rule.
+            (repo / "scripts/mine.py").write_text("print('mine')\n")
+            result = self.check(repo)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("scripts/mine.py: outside every deployable", result.stderr)
 
     def test_a_second_context_is_another_slices_code(self) -> None:
         """Where the owning service holds several bounded contexts, a slice writes under its own only."""

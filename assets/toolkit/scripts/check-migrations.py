@@ -121,14 +121,29 @@ def new_in_this_change() -> set[str] | None:
         return None
     changed = git("status", "--porcelain", "--untracked-files=all") or ""
     new = {line[3:] for line in changed.splitlines() if line[:2].strip() in {"A", "??", "AM", "?"}}
-    for base in ("origin/main", "main", "origin/master", "master"):
-        merge_base = git("merge-base", "HEAD", base)
-        if merge_base is None:
-            continue
-        added = git("diff", "--name-only", "--diff-filter=A", merge_base.strip(), "HEAD") or ""
+    base = merge_base()
+    if base is not None:
+        added = git("diff", "--name-only", "--diff-filter=A", base, "HEAD") or ""
         new.update(added.splitlines())
-        break
     return new
+
+
+def merge_base() -> str | None:
+    """Where the branch left `main`, or last merged it in: the newest base among every `main` the checkout has
+    — `origin/main` alone is stale where `main` moved locally and was not pushed, and would count `main`'s own
+    migrations as new in this change. On `main` itself the base is `HEAD`, and nothing committed counts."""
+    bases: list[str] = []
+    for name in ("main", "origin/main", "master", "origin/master"):
+        found = git("merge-base", "HEAD", name)
+        if found and found.strip() not in bases:
+            bases.append(found.strip())
+    if not bases:
+        return None
+    newest = bases[0]
+    for candidate in bases[1:]:
+        if git("merge-base", "--is-ancestor", newest, candidate) is not None:
+            newest = candidate
+    return newest
 
 
 def go_migrate_embeds() -> list[str]:

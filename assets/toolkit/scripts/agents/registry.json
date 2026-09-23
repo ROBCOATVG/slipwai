@@ -1,5 +1,5 @@
 {
-  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what `scripts/agents/cruise.py run` needs for each iteration — the command as a shell template with {prompt} and {permissions}, read the same way, or null with a `headlessReason` where none was verified, which the script reports rather than guessing a flag; the runner looks for the command's first word on PATH, and `prompt: \"slash\"` marks the one harness whose print mode is known to resolve `/cruise` itself (every other is asked to read the command file). `hooks` is the factory's fourth: whether this harness has a hook that fires when a turn ends and can refuse the end (`holds`), how, and the `projection` `scripts/agents/project.py` writes so that `scripts/agents/cruise.py stopping` runs there — or null with a `why` where the file's shape was not read, and null altogether where nothing was verified.",
+  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what `scripts/agents/cruise.py run` needs for each iteration — the command as a shell template with {prompt} and {permissions}, read the same way, or null with a `headlessReason` where none was verified, which the script reports rather than guessing a flag; the runner looks for the command's first word on PATH, and `prompt: \"slash\"` marks the one harness whose print mode is known to resolve `/cruise` itself (every other is asked to read the command file). `hooks` is the factory's fourth: whether this harness has a hook that fires when a turn ends and can refuse the end (`holds`), how, and the `projection` `scripts/agents/project.py` writes so that `scripts/agents/cruise.py stopping` runs there — or null with a `why` where the file's shape was not read, and null altogether where nothing was verified. `projectMcp` is the factory's fifth: the project-scoped file this harness reads an MCP server from, its shape, and the flags a headless iteration needs for that file to be honoured in a checkout nobody has trusted — read the same way, or null with a `projectMcpReason`; `scripts/extensions/guidance.py` writes an extension's server into every installed harness's file, and `scripts/agents/cruise.py` passes the flags when the file exists.",
   "speckitVersion": "0.16.1",
   "harnesses": [
     {
@@ -31,7 +31,9 @@
         "how": "hooks.json in the customization directory, workspace-level at <workspace>/.agents/hooks.json. Events seen in the changelog: PreToolUse, PostToolUse, PostInvocation, Stop; a Stop hook that blocks makes the agent continue, and stop hooks that always block are capped after a configurable number of consecutive continuations. The exact output schema is not verified (docs site blocked). Source: CHANGELOG.md in google-antigravity/antigravity-cli on main (1.1.9 and 1.2.x), read 2026-09-22.",
         "projection": null,
         "why": "the output schema of a Stop hook was not verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "alquimia",
@@ -52,7 +54,9 @@
       "usage": null,
       "compaction": null,
       "headlessReason": "Alquimia AI is an enterprise agent platform (Runtime, Studio, InsightHub; event-driven, Knative-based), not a terminal coding agent: its documentation repository README and the Alquimia-ai GitHub organisation show no CLI coding agent, and docs.alquimia.ai returned HTTP 403. Read 2026-09-22.",
-      "hooks": null
+      "hooks": null,
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "amp",
@@ -83,7 +87,9 @@
         "how": "Settings-file hooks (entries with compatibilityDate 2025-05-13, on.event tool:pre-execute or tool:post-execute) fire only around tool calls. End-of-turn continuation is the plugin API: a plugin under .amp/plugins/ receives `agent.end` and may return {action: \"continue\", userMessage: \"...\"}, which becomes a new user message on the thread. Source: dist/main.js in @sourcegraph/amp@0.0.1778732631-gc5875c, read 2026-09-22; the current plugin docs (ampcode.com/docs/plugin-api) returned HTTP 403, so the config path is not verified.",
         "projection": null,
         "why": "continuation is a plugin under `.amp/plugins/`, not a command hook"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "auggie",
@@ -114,7 +120,9 @@
         "how": "Hooks under the `hooks` key of .augment/settings.json or .augment/settings.local.json (workspace) and ~/.augment/settings.json; events PreToolUse, PostToolUse, Stop, SessionStart, SessionEnd, Notification, PromptSubmit (Cursor-style names such as `stop` are mapped onto them). A Stop hook's hookSpecificOutput {decision: \"block\", reason} is parsed, but triggerStopHook runs after the agent loop has returned end_turn and its result is discarded, so it cannot make the agent continue. Source: augment.mjs in @augmentcode/auggie@0.36.0, read 2026-09-22.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "bob",
@@ -135,7 +143,9 @@
       "usage": null,
       "compaction": null,
       "headlessReason": "Not verified from an official page: bob.ibm.com (including /docs/shell/getting-started/start-bobshell-non-interactive) and www.ibm.com returned HTTP 403 on 2026-09-22, and the npm package @ibm/bob@0.0.2 is a placeholder with no README or binary. Search snippets suggest `bob -p \"...\"`, `--yolo` and `--accept-license`, unseen on a fetched page.",
-      "hooks": null
+      "hooks": null,
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "claude",
@@ -157,15 +167,16 @@
         "source": "the Agent tool's own schema, read 2026-09-09"
       },
       "headless": {
-        "how": "`claude -p <prompt>` prints the response and exits; `--output-format text` keeps the last line readable; `--permission-mode` picks how tool calls are approved in a session nobody is watching; `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` keeps a print session waiting for its background delegates, which it otherwise terminates after 600s — mid-slice, with the story delegate still running; under `acceptEdits` the project's `.claude/settings.json` allowlist applies only once the workspace is trusted (`projects[<path>].hasTrustDialogAccepted` in ~/.claude.json); `-p /cruise` resolves the project's slash command, which is how every run so far was driven",
-        "command": "claude -p {prompt} --output-format text {permissions}",
-        "permissions": "--permission-mode acceptEdits",
+        "how": "`claude -p <prompt>` prints the response and exits; `--output-format stream-json --verbose` writes one JSON line per event — the assistant's text and tool calls, each tool's result, a delegate's own with `parent_tool_use_id` set, and one `result` at the end carrying the final text and every permission the session was refused — which the runner renders into its feed and reads the last line from; `--permission-mode` picks how tool calls are approved in a session nobody is watching; `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` keeps a print session waiting for its background delegates, which it otherwise terminates after 600s — mid-slice, with the story delegate still running; under `acceptEdits` alone a print session is refused every command its allowlist does not name — and the project's `.claude/settings.json` allow rules are ignored until the workspace is trusted (`projects[<path>].hasTrustDialogAccepted` in ~/.claude.json), a prefix rule never admits a compound command (`make verify; echo done` is \"shell syntax that cannot be statically analyzed\"), and a print session has nobody to ask — so the runner passes `--allowedTools` naming everything the ladder reaches for: `Bash`, the shell wholesale, while the settings file's `deny` rules still win over it, trusted or not; `Skill` and `Agent`, the project's commands and delegates, which a print session ran under `acceptEdits` alone; `WebFetch` and `WebSearch`, which it refused, and an unattended stage reading documentation has nobody to ask; and `mcp__codegraph__*`, the code index's tools, refused without the rule even with the server connected. `projectMcp` is the project's own MCP file, passed with `--mcp-config` when it exists, because a print session in an untrusted workspace ignores the project's settings and would otherwise fall back to text search without saying; `-p /cruise` resolves the project's slash command, which is how every run so far was driven",
+        "command": "claude -p {prompt} --output-format stream-json --verbose {permissions}",
+        "permissions": "--permission-mode acceptEdits --allowedTools 'Bash,Skill,Agent,WebFetch,WebSearch,mcp__codegraph__*'",
         "sandboxPermissions": "--dangerously-skip-permissions",
-        "source": "the installed Claude Code 2.1.278's --help (-p/--print, --output-format, --permission-mode with acceptEdits and bypassPermissions, --dangerously-skip-permissions), read 2026-09-22; the wait ceiling and the trust rule from the messages the same build printed during a /cruise run, read 2026-09-22",
+        "source": "the installed Claude Code 2.1.278's --help (-p/--print, --output-format, --permission-mode with acceptEdits and bypassPermissions, --dangerously-skip-permissions), read 2026-09-22; the stream-json event shapes from the stream 2.1.280 wrote for a tool call and a delegate, read 2026-09-22; the wait ceiling and the trust rule from the messages the same build printed during a /cruise run, read 2026-09-22; `--allowedTools Bash` running a compound command while a settings `deny` rule still refused `git clean -n`, and the allow rules ignored in an untrusted workspace, from a 2.1.280 print session run with exactly those flags, read 2026-09-22; every tool family the ladder names — `Skill` on a project command, `Agent` on a project delegate whose Bash ran, `Write`, `WebFetch` and `WebSearch` — tried from one 2.1.280 print session in a generated project under `acceptEdits --allowedTools Bash`, with the two web tools the only refusals; and `--mcp-config .mcp.json` connecting the file's server, `codegraph_explore` answering with `mcp__codegraph__*` allowed and refused without it, from three such sessions, all read 2026-09-22",
         "env": {
           "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "0"
         },
-        "prompt": "slash"
+        "prompt": "slash",
+        "stream": "claude"
       },
       "agentFile": {
         "dir": ".claude/agents",
@@ -206,6 +217,13 @@
         "how": "`Stop` runs when the model tries to end its turn; a hook printing {\"decision\": \"block\", \"reason\": \"...\"} refuses the end and the reason is read next; the event carries `last_assistant_message` and `transcript_path`. Hooks run in `-p` sessions. Source: the installed Claude Code 2.1.278's hook events and the Stop hook decision it acted on during /cruise runs, read 2026-09-22.",
         "projection": null,
         "why": "the factory writes `.claude/settings.json` itself, hooks included (Stop, PreCompact, SessionStart); Grok Build reads that file too"
+      },
+      "projectMcp": {
+        "file": ".mcp.json",
+        "format": "json-mcpServers",
+        "headlessFlags": "--mcp-config .mcp.json",
+        "how": "the project-scoped MCP file Claude Code reads (code.claude.com/docs/en/mcp, the scope table): `{\"mcpServers\": {\"<name>\": {\"type\": \"stdio\", \"command\", \"args\"}}}`. A print session loads it only once the workspace is trusted and the file's servers approved (`enabledMcpjsonServers` in the project's settings, which an untrusted workspace ignores), so the runner passes the file by name",
+        "source": "a 2.1.280 print session in an untrusted scratch checkout: `--mcp-config .mcp.json` listed the file's server as connected on its init event and the allowed tool answered; the same file without the flag, in the same checkout, was not loaded — read 2026-09-22; the file's shape also from CodeGraph 1.6.0's installer targets (`lib/dist/installer/targets/*.js` in the @colbymchenry/codegraph-linux-x64 bundle), which write the same file for `--location=local`, read 2026-09-22"
       }
     },
     {
@@ -237,7 +255,9 @@
         "how": "File hooks are executables named after the event, found in ~/Documents/Cline/Hooks/, ~/.cline/hooks/, <workspace>/.clinerules/hooks/ and <workspace>/.cline/hooks/. TaskComplete maps to agent_end, fired from afterRun when a run completes, but it runs detached and its output is not read, so it cannot continue the agent; only PreToolUse, PostToolUse and UserPromptSubmit can cancel or inject context, and `--yolo` disables runtime hooks. Sources: sdk/examples/hooks/README.md, sdk/packages/shared/src/storage/paths.ts, sdk/packages/core/src/hooks/hook-file-config.ts and hook-file-hooks.ts, apps/cli/src/utils/hooks.ts in cline/cline on main, read 2026-09-22.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "codebuddy",
@@ -268,7 +288,9 @@
         "how": "Hooks under the `hooks` key of ~/.codebuddy/settings.json, <project>/.codebuddy/settings.json or .codebuddy/settings.local.json. Events include PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStop, SessionStart, SessionEnd, Notification, PreCompact, PostCompact. A Stop command hook that prints {\"continue\": false, \"reason\": \"...\"} (or exits 2) prevents stopping and the agent keeps working with the reason injected; `stop_hook_active` is true when a stop hook already forced a continuation. Source: dist/web-ui/docs/en/cli/hooks.md in @tencent-ai/codebuddy-code@2.156.0, read 2026-09-22.",
         "projection": null,
         "why": "its Stop hook is held with `{\"continue\": false, \"reason\"}`, the opposite of every other harness's spelling, and the entry shape was not read"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "codex",
@@ -290,11 +312,12 @@
         "source": "developers.openai.com/codex/subagents, Custom agents, read 2026-09-09"
       },
       "headless": {
-        "how": "`codex exec <prompt>` runs one non-interactive session and prints the agent's messages; `--skip-git-repo-check` lets it run in a worktree",
-        "command": "codex exec --skip-git-repo-check {permissions} {prompt}",
+        "how": "`codex exec <prompt>` runs one non-interactive session and prints the agent's messages; `--skip-git-repo-check` lets it run in a worktree `--json` writes one JSON line per event instead — `thread.started`, `turn.*`, and `item.started|updated|completed` with a typed item: `command_execution`, `file_change`, `agent_message`, `collab_tool_call`, `mcp_tool_call`, `web_search`, `error` — which the runner renders into its feed, reading the last line from the final `agent_message`.",
+        "command": "codex exec --skip-git-repo-check --json {permissions} {prompt}",
         "permissions": "",
         "sandboxPermissions": "--dangerously-bypass-approvals-and-sandbox",
-        "source": "codex-rs/exec/src/cli.rs (the `codex exec [OPTIONS] [PROMPT]` usage, --json, --output-last-message, --skip-git-repo-check) and exec/src/lib.rs (dangerously_bypass_approvals_and_sandbox) on main, read 2026-09-22; the approval flag for a sandboxed-but-unattended run was not verified, so `permissions` is empty and the run takes Codex's own defaults"
+        "source": "codex-rs/exec/src/cli.rs (the `codex exec [OPTIONS] [PROMPT]` usage, --json, --output-last-message, --skip-git-repo-check) and exec/src/lib.rs (dangerously_bypass_approvals_and_sandbox) on main, read 2026-09-22; `--json` and the event shapes from exec/src/cli.rs and exec/src/exec_events.rs on main, read 2026-09-22; the approval flag for a sandboxed-but-unattended run was not verified, so `permissions` is empty and the run takes Codex's own defaults",
+        "stream": "codex"
       },
       "agentFile": {
         "dir": ".codex/agents",
@@ -318,7 +341,14 @@
       },
       "compaction": null,
       "compactionReason": "docs/config.md in openai/codex on main documents lifecycle hooks only as an admin setting, with no event around compaction found, read 2026-09-22",
-      "hooks": null
+      "hooks": null,
+      "projectMcp": {
+        "file": ".codex/config.toml",
+        "format": "toml-codex",
+        "headlessFlags": "-c 'projects.\"{root}\".trust_level=\"trusted\"'",
+        "how": "Codex reads project-scoped overrides from `.codex/config.toml` (a layer above the user config; `mcp_servers.<id>.command` and `.args` name a stdio server) — but only in a project the user has marked trusted: an untrusted project skips every project `.codex/` layer, config, hooks and rules alike. `-c key=value` overrides win over every file and take a dotted key with a TOML value, so the runner marks this checkout trusted for the one run, which loads the project file and the project hooks with it",
+        "source": "developers.openai.com/codex/config-basic (precedence: CLI and --config, then project `.codex/config.toml` for trusted projects only), config-advanced (`-c`/`--config` with dotted keys and TOML values; untrusted projects skip project `.codex/` layers) and config-reference (`projects.<path>.trust_level`, `mcp_servers.<id>.command`/`args`), read 2026-09-22; not run here, the CLI being absent from this sandbox"
+      }
     },
     {
       "key": "copilot",
@@ -368,7 +398,9 @@
         "how": "Hook files ({\"version\": 1, \"hooks\": {...}}) are loaded from ~/.copilot/hooks/*.json (or $COPILOT_HOME/hooks/), .github/hooks/*.json in the repository, the `hooks` field of ~/.copilot/settings.json or .github/copilot/settings.json, and plugin hooks.json files. `agentStop` fires when the main agent finishes a turn; a hook writing {\"decision\": \"block\", \"reason\": \"...\"} forces another turn with the reason as the prompt, `stop_hook_active` flags a forced continuation, and after 8 consecutive block continuations the CLI ends the turn. Source: docs.github.com/en/copilot/reference/hooks-reference, read 2026-09-22.",
         "projection": null,
         "why": "the entry shape of a `.github/hooks/*.json` file was not read, only the event and its output"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "the Copilot CLI reads MCP servers from `~/.copilot/mcp-config.json` only: CodeGraph 1.6.0's installer target for it declines a project-local install (`supportsLocation('local')` is false, citing github/copilot-cli#2528), read 2026-09-22; the index is reached through the `codegraph` CLI or `npx` from the shell"
     },
     {
       "key": "cursor-agent",
@@ -443,6 +475,13 @@
           },
           "how": "`stop` returns `followup_message`, which Cursor submits as the next user message; its event carries no text, so `afterAgentResponse` keeps the last message (`text`) for it; `loop_limit: null` lifts Cursor's cap of five follow-ups so that it is this script's three holds that decide. Grok Build reads this file too."
         }
+      },
+      "projectMcp": {
+        "file": ".cursor/mcp.json",
+        "format": "json-mcpServers",
+        "headlessFlags": "",
+        "how": "`.cursor/mcp.json` in the project holds project-specific MCP servers, in the same `mcpServers` shape as Claude Code's file; the CLI uses the servers configured in that file (`agent mcp login <identifier>` names one from it). No trust gate on the file was found, so nothing is passed",
+        "source": "cursor.com/docs/context/mcp (`.cursor/mcp.json` in your project for project-specific tools) and cursor.com/docs/cli/mcp, read 2026-09-22; the shape also from CodeGraph 1.6.0's installer targets (`lib/dist/installer/targets/*.js` in the @colbymchenry/codegraph-linux-x64 bundle), which write the same file for `--location=local`, read 2026-09-22"
       }
     },
     {
@@ -464,7 +503,9 @@
       "usage": null,
       "compaction": null,
       "headlessReason": "Not verified: every official page returned HTTP 403 on 2026-09-22 (docs.devin.ai/cli, docs.devin.ai/cli/reference/commands, devin.ai/cli, cli.devin.ai), and no official source repository exists. Third-party snippets mention `devin -p \"<prompt>\" --permission-mode dangerous`, unseen on an official page.",
-      "hooks": null
+      "hooks": null,
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "droid",
@@ -495,7 +536,9 @@
         "how": "Hooks under a top-level `hooks` key in `~/.factory/settings.json` or project `.factory/settings.json` (the reference page also names `.factory/hooks.json`). Events: PreToolUse, PostToolUse, UserPromptSubmit, Notification, Stop, SubagentStop, PreCompact, SessionStart, SessionEnd. `Stop` runs when the main Droid is about to finish responding; input has `stop_hook_active`, `tool_execution_count`, `elapsed_time`; output `decision: \"block\"` prevents stopping and requires `reason`; `continue: false` stops. Whether hooks fire under `droid exec` is not verified. Sources: docs.factory.ai/cli/configuration/hooks-guide and docs.factory.ai/reference/hooks-reference, read 2026-09-22.",
         "projection": null,
         "why": "the entry shape inside `.factory/settings.json` was not read, and whether hooks fire under `droid exec` is not verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "firebender",
@@ -517,7 +560,9 @@
       "usage": null,
       "compaction": null,
       "headlessReason": "No CLI found: docs.firebender.com and firebender.com returned HTTP 403 on 2026-09-22; search results describe Firebender only as a coding agent plugin for Android Studio and JetBrains IDEs, with no terminal binary or headless mode.",
-      "hooks": null
+      "hooks": null,
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "forge",
@@ -548,7 +593,9 @@
         "how": "No hook system in the README or crates/forge_main/src/cli.rs; forgecode.dev was unreachable (HTTP 403), so not fully verified. Read 2026-09-22.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "gemini",
@@ -619,6 +666,13 @@
           "stopEntry": {},
           "how": "`AfterAgent` carries the final text as `prompt_response` and takes `decision: \"block\"` (an alias of `deny`) with `reason`, which becomes the next prompt; the hook prints only the JSON object. Merged into the project's settings under `hooks`, the rest of the file left as it was."
         }
+      },
+      "projectMcp": {
+        "file": ".gemini/settings.json",
+        "format": "json-mcpServers",
+        "headlessFlags": "",
+        "how": "the project's `.gemini/settings.json` carries `mcpServers` in the same shape as Claude Code's file, and the CLI reads it itself. The one gate is Trusted Folders, off by default: turned on, an untrusted folder's `.gemini/settings.json` is not loaded, and nothing on the command line overrides that",
+        "source": "google-gemini/gemini-cli docs/tools/mcp-server.md (`mcpServers` in settings.json) and docs/cli/trusted-folders.md (disabled by default; an untrusted folder's project `.gemini/settings.json` is not loaded), read 2026-09-22; not run here"
       }
     },
     {
@@ -645,7 +699,9 @@
       "agentFile": null,
       "usage": null,
       "compaction": null,
-      "hooks": null
+      "hooks": null,
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "grok",
@@ -676,7 +732,9 @@
         "how": "Hooks are read from `~/.grok/config.toml` (plus managed config) and, for compatibility, from `~/.claude/settings.json`, `<project>/.claude/settings.json`, `~/.cursor/hooks.json` and `<project>/.cursor/hooks.json` (Cursor's camelCase `stop` maps to `Stop`). `Stop` fires when an agent turn ends on a genuine completion and can block the stop (Claude Code-compatible); input has `stopHookActive`, `lastAssistantMessage` (the final text, clipped at 32,768 chars) and `reason` (`end_turn`). Output {\"decision\": \"block\", \"reason\": \"...\"} feeds the reason back as a user message and the agent runs another round; {\"continue\": false, \"stopReason\": \"...\"} forces a stop; exit code 2 blocks with stderr as feedback. After 8 continuations in one turn the gate is overridden; Stop times out at 600 s and fails open. Whether Stop fires in `-p` mode is not stated. Source: docs/user-guide/10-hooks.md in xai-org/grok-build on main, read 2026-09-22.",
         "projection": null,
         "why": "reads `<project>/.claude/settings.json` and `<project>/.cursor/hooks.json`, both of which the factory writes, so nothing of its own is needed"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "hermes",
@@ -709,7 +767,9 @@
         "how": "Shell hooks in the `hooks:` block of ~/.hermes/config.yaml: each is a script given a JSON payload on stdin that answers JSON on stdout, consented to on first use. `post_llm_call` and `on_session_end` are observers whose return is ignored; the one directive that keeps a turn going is `pre_verify`, at the bounded edited-code verify gate, which accepts {\"action\": \"continue\", \"message\": \"...\"} or {\"decision\": \"block\", \"reason\": \"...\"} — continuation at that gate only, not an every-turn stop hook. Source: website/docs/user-guide/features/hooks.md in NousResearch/hermes-agent on main, read 2026-09-22.",
         "projection": null,
         "why": "continuation is only at the verify gate (`pre_verify`), not at the end of a turn"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "junie",
@@ -730,7 +790,9 @@
       "usage": null,
       "compaction": null,
       "headlessReason": "Not verified: jetbrains.com/help/junie and junie.jetbrains.com returned HTTP 403 on 2026-09-22, the GitHub README shows the `junie` binary in interactive use only, and the npm README is empty. JetBrains' own action.yml (JetBrains/junie-github-action on main) runs `junie --output-format=json --input-format=json --json-output-file=<file> --auth=<token> < input.json`, JSON in and out with an undocumented input schema; no plain-text prompt run or approval flag was seen.",
-      "hooks": null
+      "hooks": null,
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "kilocode",
@@ -761,7 +823,9 @@
         "how": "Kilo CLI (an opencode fork) has plugins, not shell hooks: JS/TS modules in ~/.config/kilo/plugin/, the `plugin` array of ~/.config/kilo/kilo.json, or the project's .kilo/ config. The `event` hook fires for every bus event including `session.idle`; no documented hook output makes the agent continue. Source: packages/kilo-docs/pages/automate/extending/plugins.md in Kilo-Org/kilocode on main, read 2026-09-22.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "kimi",
@@ -792,7 +856,9 @@
         "how": "Hooks are [[hooks]] entries (event, optional matcher, command) in ~/.kimi-code/config.toml; the CLI passes the event as JSON on stdin with `hook_event_name`. `Stop` is blockable: triggered when the model is about to end the turn, and if blocked a message can be appended to let the model continue — exit code 2 with stderr as the reason, or a JSON object on stdout; exit 0 allows. Fail-open on script error or timeout. Source: docs/en/customization/hooks.md in MoonshotAI/kimi-code on main, read 2026-09-22.",
         "projection": null,
         "why": "hooks live in `~/.kimi-code/config.toml`, a person's file, not the project's"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "kiro-cli",
@@ -813,7 +879,14 @@
       "usage": null,
       "compaction": null,
       "headlessReason": "Not verified: kiro.dev (docs/cli/chat, docs/cli/headless, docs/cli/hooks) and docs.aws.amazon.com returned HTTP 403 on 2026-09-22, and github.com/kirodotdev/Kiro is the issue tracker only. `kiro-cli chat --no-interactive \"prompt\"` and `--trust-all-tools` appear only in search snippets and in issue #7398 there, which also reports `--trust-all-tools` now showing an interactive confirmation before the session starts.",
-      "hooks": null
+      "hooks": null,
+      "projectMcp": {
+        "file": ".kiro/settings/mcp.json",
+        "format": "json-mcpServers",
+        "headlessFlags": "",
+        "how": "`.kiro/settings/mcp.json` in the project, in the `mcpServers` shape; read from CodeGraph's installer rather than Kiro's own documentation, which was unreachable (see `headlessReason`)",
+        "source": "CodeGraph 1.6.0's installer targets (`lib/dist/installer/targets/*.js` in the @colbymchenry/codegraph-linux-x64 bundle), which write the same file for `--location=local`, read 2026-09-22"
+      }
     },
     {
       "key": "lingma",
@@ -844,7 +917,9 @@
         "how": "From the published bundle/qodercli.js (1.1.61): hooks under `hooks` by event in settings.json (global <config dir>/settings.json, workspace settings.json or settings.local.json); events include PreToolUse, PostToolUse, PostToolUseFailure, UserPromptSubmit, Stop, SubagentStop, SessionStart, SessionEnd, Notification, PreCompact, PostCompact, StopFailure. A blocking Stop hook's text is injected as a continuation message and the turn goes on, mirroring Claude Code's `decision: block`. The docs page (docs.qoder.com/cli/hooks) returned HTTP 403, so the JSON shape is from source, read 2026-09-22.",
         "projection": null,
         "why": "hooks live in a settings.json the docs page for was unreachable; the shape is from source only"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "omp",
@@ -875,7 +950,9 @@
         "how": "Hooks are JS/TS factories under <cwd>/.omp/hooks/pre/*.ts and .omp/hooks/post/*.ts (and the config-root equivalents) registering handlers with pi.on(event, ...). Lifecycle events include `agent_end` and `turn_end`, and the docs list what a hook can mutate (context, tool args, tool output, an injected message on before_agent_start) with no return from agent_end or turn_end that re-prompts the agent. Source: docs/hooks.md in can1357/oh-my-pi on main, read 2026-09-22.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "opencode",
@@ -925,6 +1002,13 @@
         "how": "No shell hooks; plugins are JS/TS modules in .opencode/plugins/ (project) or ~/.config/opencode/plugins/ (global), or the `plugin` array in opencode.json. The `event` hook receives every bus event including `session.idle` (session completion), and `permission.ask` can auto-allow or auto-deny; no documented hook output makes the agent continue. Source: packages/web/src/content/docs/plugins.mdx and sdk.mdx in anomalyco/opencode on dev, read 2026-09-22.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
+      },
+      "projectMcp": {
+        "file": "opencode.json",
+        "format": "json-opencode",
+        "headlessFlags": "",
+        "how": "`opencode.json` (or `opencode.jsonc`) at the project root holds `mcp.<name>` with `type: \"local\"`, `command` as one array of binary and arguments, and `enabled: true`; the CLI reads it itself and no trust gate was found",
+        "source": "anomalyco/opencode packages/web/src/content/docs/mcp-servers.mdx (Local), read 2026-09-22; not run here"
       }
     },
     {
@@ -956,7 +1040,9 @@
         "how": "No settings-file hooks: Pi uses extensions (TypeScript files under ~/.pi/agent/extensions/ or the project's extensions directory, or `-e <path>`). Events include session_start, before_agent_start, turn_end, agent_before_settle, agent_settled, agent_end; `turn_end` and `agent_before_settle` handlers can return `continue: true` for one more model request. Source: packages/coding-agent/docs/extensions.md in badlogic/pi-mono on main, read 2026-09-22.",
         "projection": null,
         "why": "continuation is an extension written in TypeScript, not a command hook"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "qodercli",
@@ -987,7 +1073,9 @@
         "how": "From the published bundle/qodercli.js (1.1.61): hooks under `hooks` by event in settings.json (global <config dir>/settings.json, workspace settings.json or settings.local.json); events include PreToolUse, PostToolUse, PostToolUseFailure, UserPromptSubmit, Stop, SubagentStop, SessionStart, SessionEnd, Notification, PreCompact, PostCompact, StopFailure. A blocking Stop hook's text is injected as a continuation message and the turn goes on, mirroring Claude Code's `decision: block`. The docs page (docs.qoder.com/cli/hooks) returned HTTP 403, so the JSON shape is from source, read 2026-09-22.",
         "projection": null,
         "why": "hooks live in a settings.json the docs page for was unreachable; the shape is from source only"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "qwen",
@@ -1018,7 +1106,9 @@
         "how": "Hooks in the settings (project `.qwen/settings.json` or user settings). Events include PreToolUse, PostToolUse, Stop (before the turn ends), SubagentStop, SessionEnd. Stop returns {\"decision\": \"allow|deny|block|ask\", \"reason\": \"...\"}; `block` or `deny` with a mandatory reason makes the agent continue. Hooks fire in headless (-p) runs, save fire-and-forget events such as StopFailure. Source: docs/users/features/hooks.md in QwenLM/qwen-code on main, read 2026-09-22.",
         "projection": null,
         "why": "the entry shape inside `.qwen/settings.json` was not read, only the event and its output"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: QwenLM/qwen-code docs/tools/mcp-server.md returned HTTP 404, and a Gemini CLI fork reading `.qwen/settings.json` is a guess this column does not write; the index is reached through the `codegraph` CLI or `npx` from the shell"
     },
     {
       "key": "rovodev",
@@ -1044,7 +1134,9 @@
       "agentFile": null,
       "usage": null,
       "compaction": null,
-      "hooks": null
+      "hooks": null,
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "shai",
@@ -1075,7 +1167,9 @@
         "how": "No hook system in the README or the shai-cli source read, 2026-09-22.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "tabnine",
@@ -1106,7 +1200,9 @@
         "how": "Not verified: docs.tabnine.com/main/getting-started/tabnine-cli/features/hooks exists and search excerpts list events under a `hooks` settings key (BeforeAgent, AfterAgent, SessionStart, SessionEnd, BeforeTool, AfterTool, BeforeModel, AfterModel), but the page returned HTTP 403 on 2026-09-22, so the payloads and whether a hook can continue the agent are unconfirmed.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "trae",
@@ -1132,7 +1228,9 @@
         "how": "No hook system found in trae-agent's README or cli.py, read 2026-09-22.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "vibe",
@@ -1163,7 +1261,9 @@
         "how": "Hooks in <project>/.vibe/hooks.toml (trusted projects) and ~/.vibe/hooks.toml, types pre_tool, post_tool, post_agent. `post_agent` fires after an assistant turn ends with no pending tool calls and can return `decision: \"deny\"` with a reason to request a retry, capped at 3 retries per hook per user turn. Source: README.md in mistralai/mistral-vibe on main, read 2026-09-22.",
         "projection": null,
         "why": "`.vibe/hooks.toml` is TOML, which this factory writes nothing in, and `post_agent` caps retries at three"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "zcode",
@@ -1184,7 +1284,9 @@
       "usage": null,
       "compaction": null,
       "headlessReason": "ZCode (zcode.z.ai) is Z.ai's desktop coding agent; zcode.z.ai/en/docs/agents returned HTTP 403 on 2026-09-22 and no official CLI page was found. The CLIs found (kingsword09/zcode-cli, npm zcode-app-cli) say they are not affiliated with Z.ai.",
-      "hooks": null
+      "hooks": null,
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     },
     {
       "key": "zed",
@@ -1210,7 +1312,9 @@
         "how": "No CLI-level hook system; the agent lives in the GUI Agent Panel. docs/src/reference/cli.md in zed-industries/zed on main, read 2026-09-22.",
         "projection": null,
         "why": "no way for a hook's output to continue the agent was verified"
-      }
+      },
+      "projectMcp": null,
+      "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the index is reached through the `codegraph` CLI or `npx` from the shell, the route AGENTS.md's block names"
     }
   ]
 }

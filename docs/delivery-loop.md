@@ -244,6 +244,8 @@ project's profile, languages, frameworks and services, so the paths and toolchai
 | `/drive-settings` | Show how `/drive` delegates implementation — the boundary a delegate is handed and the cycle it runs — or change either, through the checked path |
 | `/benchmark` | Draw `specs/<feature>/benchmark.md` from the slice records — what each slice cost and how each stage did — and read it back: where the cost sits, what moved, whether the model split paid, what is unknown and why |
 | `/cruise-settings` | Show how `/cruise` runs on its own — who decides, how it releases, what it demos with, when it parks — or change any of it, through the checked path |
+| `/cruise-status` | Say whether a `/cruise` runner is running, how the last iteration ended, whether it is parked and why, and show the tail of its feed |
+| `/cruise-stop` | End a `/cruise` run after the iteration in flight, or at once with `now` |
 | `/add-service` | Add a service — its own language, framework and axis answers — without hand edits |
 | `/add-frontend` | Add a browser application the same way |
 | `/catch-up` | After `slipwai migrate`, work through what the newer factory now asks of code it did not write — the changelog notes for the versions crossed, and the gates that are now red because of them |

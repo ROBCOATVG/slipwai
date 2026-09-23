@@ -48,7 +48,10 @@ Nothing about what a stage produces changes. What changes is who answers.
 ```text
 outer loop — scripts/agents/cruise.py run: make cruise from a terminal, or what a typed /cruise starts (detached)
   a fresh harness session per iteration, through any CLI harness on PATH · the stop file · a stuck detector
-  · parks when blocked · a log
+  · parks when blocked · a log, which is the feed: one line per thing each iteration did
+  │
+  ├─ the watch seat — scripts/agents/cruise.py watch: the session that typed /cruise reads the feed as it is
+  │  written and returns at each boundary; a person there is answered, and the run does not depend on it
   │
   └─ one iteration — /cruise
        driver: runs commands/drive.md as written, stage by stage, delegating as it does
@@ -128,7 +131,7 @@ only in a context window. Four things are added to a project.
 
 | File | Holds | Who writes it |
 |---|---|---|
-| `specs/<feature>/decisions.md` | The decision log: one numbered entry per product answer, with the question, the options, the decision, the reason, who decided (the host, `drive-skipper` with its model, or a human), the confidence, the condition that would reverse it, the artifacts it was written into, and its status. Append-only, numbered by the driver before a delegate decides. | the driver; the skipper returns its entry and the driver appends it; a person overrides an entry by editing its status |
+| `specs/<feature>/decisions.md` | The decision log: one numbered entry per product answer, with the question, the options, the decision, the reason, who decided (the host, `drive-skipper` with its model, `drive-bosun`, or a human), the confidence, the condition that would reverse it, the artifacts it was written into, and its status. Append-only, numbered by the driver before a delegate decides. | the driver; the skipper returns its entry and the driver appends it; a person overrides an entry by editing its status |
 | `.specify/product-owner.md` | The owner brief: who the actor is, what the product is for, priorities, tie-breakers, taste, what is out of scope. The skipper reads it before every decision. Edit it to steer a run without stopping it. | a person |
 | `specs/<feature>/slices/<id>/demo-log.md` and `demo/` | One section per demo: what was started and how, each example walked and what happened, the verdict, the feedback, and the screenshots and responses under `demo/`. | `drive-hand` |
 | `specs/cruise-log.jsonl` and `specs/<feature>/cruise-report.md` | The outer loop's record, one line per iteration, and the completion audit's report. | the runner and the driver |
@@ -142,7 +145,10 @@ A project ships with `/cruise` disabled. To start, in any harness's session:
 
 ```sh
 /cruise-settings enabled=true     # commits .specify/cruise.json
-/cruise                           # starts the runner, detached from this session, and reports
+/cruise                           # starts the runner, detached from this session, and watches it from here
+/cruise use the PRD in docs/prd.md   # the same, with a kick-off the first iteration is given
+/cruise-status                    # is a runner running, how the last iteration ended, the tail of the feed
+/cruise-stop                      # end the run after the iteration in flight; `/cruise-stop now` ends it now
 ```
 
 or from a terminal, `make cruise`, which runs the same loop in the foreground. Either way the runner is the
@@ -152,12 +158,40 @@ every `poll_minutes` for a reason to resume: the stop file, or an artifact a per
 
 A `/cruise` typed into a session never runs the ladder itself. The command asks `python3
 scripts/agents/cruise.py loop` who is reading its last line; where nobody is, it runs `python3
-scripts/agents/cruise.py start`, repeats what that printed, and ends the turn. `start` checks everything that
-can refuse before it detaches — the settings, the stop file, a runner already running, no harness on the PATH
-it can run an iteration through — so the refusal is what you read. The runner then writes to
-`.specify/cruise-run.log`, keeps its pid in `.specify/cruise.pid`, and `make cruise-status` says whether it
-is running and what the log shows. This is the same on every harness, because it needs nothing of the
-session beyond a shell.
+scripts/agents/cruise.py start` with whatever was typed after `/cruise`, repeats what that printed, and takes
+the watch seat. `start` checks everything that can refuse before it detaches — the settings, the stop file, a
+runner already running, no harness on the PATH it can run an iteration through — so the refusal is what you
+read. The runner then writes to `.specify/cruise-run.log`, keeps its pid in `.specify/cruise.pid`, and
+`make cruise-status` says whether it is running and what the log shows. This is the same on every harness,
+because it needs nothing of the session beyond a shell.
+
+**The kick-off.** What you type after `/cruise` — what the run is for, where the brief or the PRD is, which
+feature — is the first iteration's argument and no later one's: every iteration after the first runs a bare
+`/cruise` and derives its stage from disk, the rule the whole ladder lives by. So the first iteration writes
+down whatever the kick-off says that must outlive it — a PRD it names becomes the specification through the
+ladder's own stages, a preference goes into the owner brief, a scope it sets is a decision entry — before it
+does anything else.
+
+**The watch seat.** The session that typed `/cruise` stays with the run. `python3 scripts/agents/cruise.py
+watch` prints the feed from where the last watch left off — one line per command, file, and delegate out and
+back, as the iteration does them — and returns at the iteration's end, a park, the run's end, once the feed
+has gone quiet for twenty seconds, or after a minute and a half with nothing new, saying which. It returns on
+quiet because a harness shows a command's output when the command returns: that is what puts the feed in
+front of a person every half minute or so while an iteration works, rather than in one lump at its end. The command runs it again while the run
+continues, and ends the turn when it says parked, ended or no runner. Watching is only ever reading: the
+runner needs nothing from the session, so leaving the seat ends nothing, and `/cruise` typed again later
+finds the runner running and sits back down where the feed left off. A person typing into that session is
+talking to the agent, not stopping the run: it answers — the feed, the settings, the status, the decision log
+— changes a setting through `/cruise-settings` where asked, and watches again. Every line `watch` printed
+goes into the reply unchanged, because a harness folds a command's output to a few lines and the feed has to
+reach the person, not the transcript. From a terminal, `make cruise-watch` is the same seat, and
+`/cruise-status` in any session is the runner's state and the feed's tail without sitting down.
+
+The feed is the harness's own event stream, rendered. The registry's `headless` row names the stream where a
+harness has one — Claude Code's `--output-format stream-json --verbose`, Codex's `exec --json` — and the
+runner keeps the raw stream in `.specify/cruise-stream.jsonl` beside the log it rendered into. A harness with
+no stream is echoed as it comes. In Claude Code a refused permission is in the feed the moment it happens,
+`denied Bash python3 …`, which is how a run that parks thirty seconds in is seen thirty seconds in.
 
 Which harness the runner drives is `scripts/agents/registry.json`'s business, under `headless`: for each
 harness, how it runs one prompt non-interactively and exits, read from its own documentation on the date the
@@ -168,12 +202,35 @@ machine has, and the log names which. Only Claude Code's print mode is known to 
 every other harness is asked, in the same words, to read `commands/cruise.md` and follow it.
 `CRUISE_HARNESS_COMMAND`, a shell template with `{prompt}`, overrides the choice.
 
+What an iteration may do is the row's `permissions`. A headless session has nobody to ask, so it is refused
+whatever its rules do not name, and no list names the compound commands an agent writes: Claude Code's row
+therefore runs `--permission-mode acceptEdits` with `--allowedTools` naming every tool family the ladder
+reaches for — `Bash`, the shell allowed wholesale, with the project's `.claude/settings.json` `deny` rules (a
+plain force-push, `reset --hard`, `clean`) still refusing what they name; `Skill` and `Agent`, the project's
+own commands and delegates; `WebFetch` and `WebSearch`, because a stage reading documentation has nobody to
+ask; and `mcp__codegraph__*`, the code index's tools. Each of those was tried from a print session before it
+was named, and the two web tools were the only refusals. Each harness's `projectMcp` row names the project
+file it reads an MCP server from — the file `./init --extension codegraph` commits with the index's server in
+it, `.mcp.json` on Claude Code, `.codex/config.toml` on Codex, and so on — and the flags that make a headless
+iteration honour it whenever the file exists: `--mcp-config` on Claude Code, whose print session in a checkout
+nobody has trusted ignores the project's settings, the servers they approve and the allow rules they carry
+(hooks still run); a one-run trust override on Codex, which skips every project `.codex/` layer in an
+untrusted project. What the iteration needs travels on its command line. Before the first iteration, `start` says how the index will be
+reached, or that it cannot be, and `status` says afterwards in how many iterations it was asked; an index
+kept fresh and never queried is the failure the block in `AGENTS.md` describes, and the count is what makes
+it visible. `--sandbox` on `run` or `start` swaps in the row's `sandboxPermissions`, which bypasses every
+check, and is for a container with nothing to lose. Which tools a whole build needs is measured, not
+guessed: every refusal is in the feed as it happens, and `python3 scripts/agents/cruise.py denials` lists
+them all afterwards from the raw stream, by tool and command, with the iterations each happened in — the
+list to read before widening a row or a rule, and the proof that a deny rule fired when it should.
+
 To stop a run, do one of these. Each is safe in the middle of a slice, because the slice's commits are on
 its branch and the next iteration re-derives its stage from the artifacts.
 
-- Run `make cruise-stop`, or `touch .specify/cruise.stop`. The runner ends after the iteration in flight, and
-  the command checks between stages, finishes the stage's own writes, commits what is green, and ends.
-  `make cruise-stop CRUISE_FLAGS=--now` ends the iteration in flight too.
+- Type `/cruise-stop` in any session, run `make cruise-stop`, or `touch .specify/cruise.stop`. The runner ends
+  after the iteration in flight, and the command checks between stages, finishes the stage's own writes,
+  commits what is green, and ends. `/cruise-stop now` or `make cruise-stop CRUISE_FLAGS=--now` ends the
+  iteration in flight too.
 - Press Ctrl-C on a foreground runner. The harness session dies with it.
 
 ## The settings

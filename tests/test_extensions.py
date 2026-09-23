@@ -18,6 +18,9 @@ from slipwai.extensions import known_extensions, validate_extensions
 FAKE_SPECIFY = "#!/bin/sh\nexit 0\n"
 # `j` once per row moves the cursor from the first extension to the Confirm row below the last.
 TO_CONFIRM = b"j" * len(known_extensions(CATALOG))
+# The server as `scripts/extensions/codegraph/init.py` names it, in the JSON shape most harnesses read and Codex's TOML.
+SERVER = {"type": "stdio", "command": "npx", "args": ["-y", "@colbymchenry/codegraph", "serve", "--mcp"]}
+CODEX_TABLE = '[mcp_servers.codegraph]\ncommand = "npx"\nargs = ["-y", "@colbymchenry/codegraph", "serve", "--mcp"]\n'
 
 
 def run_init_at_a_terminal(repo: Path, args: list[str], keys: bytes, environment: dict) -> str:
@@ -112,6 +115,14 @@ class ExtensionsTest(FactoryTestCase):
                 {"schemaVersion": 1, "extensions": ["codegraph"]},
             )
             self.assertIn(".codegraph/", (repo / ".gitignore").read_text())
+            # The connection travels with the checkout: the harness this run installs — recorded by Spec Kit in the
+            # same run, so learnt from `SLIPWAI_INTEGRATION` — gets the server in the project file it reads, Codex's
+            # TOML here, started through `npx` so a checkout with Node reaches the index without the CLI. The file
+            # is committed: only the projected `.codex/agents/` is ignored, never the directory.
+            self.assertEqual((repo / ".codex/config.toml").read_text(), CODEX_TABLE)
+            self.assertFalse((repo / ".mcp.json").exists(), "Claude Code is not installed here")
+            self.assertNotIn(".codex/\n", (repo / ".gitignore").read_text())
+            self.assertNotIn("config.toml", (repo / ".gitignore").read_text())
             self.assertIn(".slipwai/catch-up.md", (repo / ".gitignore").read_text())
             self.assertNotIn(".slipwai/\n", (repo / ".gitignore").read_text())
             # Agent projection still ran alongside the extension.

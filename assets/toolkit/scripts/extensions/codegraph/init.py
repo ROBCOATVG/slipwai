@@ -3,10 +3,12 @@
 
 CodeGraph (https://github.com/colbymchenry/codegraph) is a local, 100%-offline MCP code-knowledge graph.
 Its own installer already wires the MCP server into whichever coding agents it finds and appends its own
-instruction block to their context files — this script only does the two things that belong to the
-project rather than to CodeGraph itself: index this repository, and add one marker-fenced pointer to
-`AGENTS.md` so the primary agent reaches for the graph on a cross-file question instead of falling back to
-grep-and-read. The same block tells a delegated agent to probe its own session rather than assume it
+instruction block to their context files — but that config is the user's, on the one machine `./init` ran on,
+and never reaches a container, a CI runner or the fresh session a `/cruise` iteration is. So this script does the
+three things that belong to the project rather than to CodeGraph itself: index this repository, add one
+marker-fenced pointer to `AGENTS.md` so the primary agent reaches for the graph on a cross-file question instead
+of falling back to grep-and-read, and name the server in the committed project MCP file of every harness installed
+here, so the connection travels with the checkout. The same block tells a delegated agent to probe its own session rather than assume it
 inherited the primary agent's connection. The pointer says how to tell that an environment cannot reach
 the index at all, because a checkout travels into
 places its tooling does not, and `make check-codegraph` is what notices an index nothing is maintaining.
@@ -23,7 +25,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from guidance import record_extension, replace_block  # noqa: E402
+from guidance import record_extension, replace_block, write_project_mcp  # noqa: E402
 
 def project_root(script: Path, depth: int) -> Path:
     """The repository root: the nearest directory above this script holding `project.json`.
@@ -48,6 +50,13 @@ GUIDANCE = f"""
 This project is indexed by CodeGraph (`.codegraph/`). For any question about call paths, symbol usage, or
 the blast radius of a change, query it directly — `codegraph_explore` over MCP, or the `codegraph` CLI —
 before grep or reading files one at a time. Say which route you used when you report what you found.
+
+**The connection travels with the checkout.** The project-scoped MCP file of every harness installed here
+names the server, started through `npx` so a checkout with Node reaches the index whether or not the
+`codegraph` CLI was ever installed there: `.mcp.json` for Claude Code, `.codex/config.toml` for Codex,
+`.gemini/settings.json` for Gemini CLI, `.cursor/mcp.json` for Cursor, `opencode.json` for opencode. A `/cruise`
+iteration is started with that file honoured and its tools allowed, `make agents` writes it for a harness added
+later, and a harness with no known project file reaches the same index through the routes below.
 
 **Check you can reach it before you trust it.** The index is data in this checkout; the tooling that
 serves and maintains it is not, and a tree carried into a container, a sandbox or a CI runner routinely
@@ -80,10 +89,22 @@ keeps its focused stage brief. `commands/drive.md`, *Who runs each stage*, carri
 """
 
 
+# The server, started through `npx` rather than the `codegraph` binary because the file it goes into is committed
+# and travels: a checkout with Node reaches the index whether or not the CLI was installed there — a container, a
+# sandbox, a CI runner, the cases the block above describes. Written into the project MCP file of every harness
+# installed here (`scripts/agents/registry.json`, `projectMcp`; `guidance.write_project_mcp`). Proved 2026-09-22:
+# a Claude Code 2.1.280 print session given `.mcp.json` with `--mcp-config` connected this server and answered a
+# caller question through `codegraph_explore`.
+MCP_COMMAND = ["npx", "-y", "@colbymchenry/codegraph", "serve", "--mcp"]
+
+
 def project_guidance() -> None:
-    """Record this election and make its factory-owned guidance region current."""
+    """Record this election and make its factory-owned projections current: the guidance block, and the MCP file
+    each installed harness reads. Installation and indexing are `main`'s alone."""
     record_extension("codegraph")
     replace_block("codegraph", GUIDANCE)
+    for line in write_project_mcp("codegraph", MCP_COMMAND):
+        print(f"codegraph: {line}")
 
 
 def main() -> int:

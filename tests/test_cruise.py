@@ -77,20 +77,42 @@ class CruiseTest(FactoryTestCase):
                 cruise = (repo / "commands/cruise.md").read_text()
                 declared = frontmatter(cruise)
                 self.assertTrue(declared["description"].startswith("Run /drive as driver and product owner"))
-                self.assertEqual(declared["argument-hint"], "[feature] | unblock: <what the outer loop saw>")
+                self.assertEqual(declared["argument-hint"],
+                                 "[kick-off: what this run is for, where the brief or PRD is] | "
+                                 "unblock: <what the outer loop saw>")
                 self.assertIn("runs **that ladder — `commands/drive.md`,\nevery rule as written**", cruise)
                 self.assertIn("Run `commands/drive.md` from *Enter at the first incomplete stage* to its end", cruise)
                 # The refusals: a run has to be asked for, a person can always stop it, and a spec is theirs to bring.
                 refuse = cruise.split("## Before anything: refuse, or start")[1].split("## Run the ladder")[0]
                 self.assertIn(f"Read `{CONFIG}`. `enabled: false`, or `{STOP_FILE}` present, is a refusal", refuse)
                 self.assertIn("No\n`specs/<feature>/spec.md` is a refusal too", refuse)
-                # A typed /cruise starts the runner and ends; only a runner's session is an iteration.
+                # A typed /cruise starts the runner and watches it; only a runner's session is an iteration.
                 self.assertIn(f"Then run\n`python3 {SCRIPT} loop`: it says what is reading this session's last line. "
                               "**Where it says nobody is**", refuse)
-                self.assertIn(f"run\n`python3 {SCRIPT} start` (with `--feature <feature>` where one was given), repeat "
-                              "what it printed, and end\nthe turn there", refuse)
-                self.assertIn("**Where it says the outer\nloop started this session**, this is an iteration: read the "
-                              f"owner brief (`{OWNER_BRIEF}`) and every standing\nentry in `{DECISIONS}`", refuse)
+                self.assertIn(f"run\n`python3 {SCRIPT} start` with everything typed after `/cruise` as its arguments, "
+                              "verbatim, and repeat what it\nprinted", refuse)
+                self.assertIn("Then take the watch seat (*The watch seat*, below).", refuse)
+                self.assertIn("**Where\nit says the outer loop started this session**, this is an iteration: read the "
+                              f"owner brief (`{OWNER_BRIEF}`)\nand every standing entry in `{DECISIONS}`", refuse)
+                # The kick-off reaches the first iteration only; the watch seat reads, answers, and never drives.
+                self.assertIn("**The argument is the kick-off.** What a person typed after `/cruise`", refuse)
+                self.assertIn("reaches the first iteration of the run and no other", refuse)
+                self.assertIn("(*Blocked: the bosun protocol*, below)", refuse)
+                self.assertIn("## Blocked: the bosun protocol", cruise)
+                seat = refuse.split("## The watch seat")[1]
+                self.assertIn(f"run `python3 {SCRIPT} watch`", seat)
+                self.assertIn("**Put every line it printed in your reply, unchanged, in a\nfenced block, before "
+                              "anything else** — the harness folds a command's output", seat)
+                self.assertIn("run `watch` again\nat once**", seat)
+                self.assertIn("run a command in the background and re-invoke this session", seat)
+                self.assertIn("where it says parked, ended, or no runner, repeat what it said and end the turn", seat)
+                self.assertIn("A watch the\nharness cut short — a tool timeout, with no last line from `watch` — is "
+                              "watched again, not asked about. Where\nthe harness can run a command in the background",
+                              seat)
+                self.assertIn("never a reason to run a stage of the ladder in this session", seat)
+                self.assertIn("**A person typing here is talking to you, not stopping the run.**", seat)
+                self.assertIn(f"`python3 {SCRIPT}` prints every setting and what it controls", seat)
+                self.assertIn("change a setting through `/cruise-settings` where they ask", seat)
                 self.assertIn(f"the iteration number from `{LOG}`", refuse)
                 self.assertIn(f"`touch {STOP_FILE}`", refuse)
                 self.assertIn("pass `driver=cruise` to every `end` this iteration closes", refuse)

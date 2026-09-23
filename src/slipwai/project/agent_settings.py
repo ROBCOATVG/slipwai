@@ -36,6 +36,65 @@ def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
     }
 
 
+# What the delivery loop runs in every project whatever its language: the toolkit's own scripts — every verb of
+# `scripts/agents/cruise.py`, the projections, the gates — and the Git a slice is made of. A session that cannot
+# ask is refused every command its rules do not name, and one refused first command parks a `/cruise` run before
+# its first stage: a TypeScript project's first iteration could not run `python3 scripts/agents/cruise.py loop`,
+# its allowlist having no `python3` rule. The headless iteration is now given the shell wholesale by the
+# registry's row (`--allowedTools Bash`), because no list can name the compound commands an agent writes; these
+# rules are what keep a person's own session from prompting at every hook and gate, and the deny rules below
+# are what hold in both. Resets and cleans are absent, and a plain force-push is denied rather than merely
+# unlisted, because `git push *` would otherwise admit it: they destroy work.
+# `git push *` itself has to stay, because the ladder's own push after a rebase is the lease-guarded one,
+# `git push --force-with-lease=refs/heads/slice/<id>: origin HEAD:...`, which a narrower prefix could not name.
+TOOLKIT_PERMISSIONS = [
+    "python3 scripts/*",
+    "git status",
+    "git status *",
+    "git rev-parse *",
+    "git log",
+    "git log *",
+    "git diff",
+    "git diff *",
+    "git show *",
+    "git branch",
+    "git branch *",
+    "git fetch",
+    "git fetch *",
+    "git pull",
+    "git pull *",
+    "git checkout *",
+    "git switch *",
+    "git add *",
+    "git commit *",
+    "git merge *",
+    "git rebase *",
+    "git push",
+    "git push *",
+]
+# Denied whatever the allow rules say: a deny rule wins, and a prefix rule cannot say "but not this". A rule is
+# a prefix, so these catch the flag where it is written first — `git push --force origin main` — and leave the
+# lease-guarded form alone; a `--force` written after the remote is beyond what a prefix can see.
+# The MCP servers a project's extensions install, reached through the committed `.mcp.json` the extension writes
+# (`scripts/extensions/codegraph/init.py`): named here so a person's session in this project loads that file's
+# server without a first-use approval and calls its tools without a prompt. Unconditional, like the extension's
+# `.gitignore` line — inert until the file exists, and adopting the extension later needs no second edit here. A
+# headless `/cruise` iteration cannot rely on this file, which an untrusted workspace ignores, so the registry's
+# row passes the same file and allow rule on the command line. `scripts/agents/project.py` carries the same list
+# for the delegates' tool grants.
+EXTENSION_MCP_SERVERS = ["codegraph"]
+DENIED_PERMISSIONS = [
+    "git push --force",
+    "git push --force *",
+    "git push -f",
+    "git push -f *",
+    "git reset --hard",
+    "git reset --hard *",
+    "git clean",
+    "git clean *",
+]
+
+
 def claude_settings(apps: list[App], target: str = "none", layout: Layout = AT_ROOT) -> str:
     services = services_of(apps)
     per_backend = {
@@ -55,7 +114,7 @@ def claude_settings(apps: list[App], target: str = "none", layout: Layout = AT_R
         "make test",
         "make check-constitution",
         "make constitution-requirements",
-    ] + native
+    ] + TOOLKIT_PERMISSIONS + native
     # Of the family: whether npm is already approved is a property of the language, not of
     # whichever framework owns startup.
     web = web_apps(apps)
@@ -101,5 +160,8 @@ def claude_settings(apps: list[App], target: str = "none", layout: Layout = AT_R
         # `make rollback` are deliberately absent: they change an environment, and that is a prompt worth
         # answering every time.
         allowed += ["make build", "make build *", "make smoke-image", "make smoke-image *", "tofu fmt *", "tofu validate"]
-    return json.dumps({"permissions": {"allow": [f"Bash({command})" for command in allowed]},
+    return json.dumps({"permissions": {"allow": [f"Bash({command})" for command in allowed]
+                                       + [f"mcp__{server}__*" for server in EXTENSION_MCP_SERVERS],
+                                       "deny": [f"Bash({command})" for command in DENIED_PERMISSIONS]},
+                       "enabledMcpjsonServers": EXTENSION_MCP_SERVERS,
                        "hooks": compaction_hooks(layout)}, indent=2) + "\n"

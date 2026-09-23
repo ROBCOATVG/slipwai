@@ -14,8 +14,8 @@ What is held, one finding per line:
   Iteration), **Question**, **Options**, **Decision**, **Why**, **Decided by**, **Confidence** (with Would
   reverse if), **Written to**, **Status**;
 - entries are numbered contiguously from `D1`, in order;
-- **Decided by** is `host (stage recommendation)`, `host (standing decision D<m>)`, `drive-skipper (<model>)`
-  or `human`; **Status** is `standing`, `overridden by D<m>` or `overridden by human <date>`;
+- **Decided by** is `host (stage recommendation)`, `host (standing decision D<m>)`, `drive-skipper (<model>)`,
+  `drive-bosun` — with or without its `(<model>)` — or `human`; **Status** is `standing`, `overridden by D<m>` or `overridden by human <date>`;
 - every **Written to** path exists in the repository, and a path still carrying `<placeholders>` is a finding;
 - a demo entry is `## <instant> — <verdict> · iteration <n> · drive-hand (<model>)`, its verdict one of
   `accepted`, `behaviour`, `implementation`, followed by **Started with**, **Driven through**, **Examples**,
@@ -49,7 +49,10 @@ DEMO_FIELDS = ("Started with", "Driven through", "Examples", "Evidence", "Feedba
 VERDICTS = ("accepted", "behaviour", "implementation")
 DECISION_HEADING = re.compile(r"^## D(\d+) — (.+)$")
 DEMO_HEADING = re.compile(r"^## (\S+) — (\w+) · iteration (\d+) · drive-hand \((.+)\)$")
-DECIDED_BY = re.compile(r"^(host \(stage recommendation\)|host \(standing decision D\d+\)|drive-skipper \(.+\)|human)$")
+# The bosun's entries name the type alone or with the model, because the command tells it `Decided by: drive-bosun`
+# and the skipper's habit of naming its model is one it may share.
+DECIDED_BY = re.compile(r"^(host \(stage recommendation\)|host \(standing decision D\d+\)|drive-skipper \(.+\)|"
+                        r"drive-bosun( \(.+\))?|human)$")
 STATUS = re.compile(r"^(standing|overridden by D\d+|overridden by human \S+)$")
 FIELD = re.compile(r"^- \*\*([^*]+):\*\* ?(.*)$")
 PLACEHOLDER = re.compile(r"<[^>]*>")
@@ -111,7 +114,8 @@ def check_decisions(path: Path) -> list[str]:
             findings.append(f"{where}: D{number}'s fields are out of order; the shape is {', '.join(DECISION_FIELDS)}")
         if not DECIDED_BY.match(fields["Decided by"]):
             findings.append(f"{where}: D{number} `Decided by` is {fields['Decided by']!r}; it is host (stage "
-                            "recommendation), host (standing decision D<m>), drive-skipper (<model>) or human")
+                            "recommendation), host (standing decision D<m>), drive-skipper (<model>), drive-bosun "
+                            "or human")
         if not STATUS.match(fields["Status"]):
             findings.append(f"{where}: D{number} `Status` is {fields['Status']!r}; it is standing, overridden by "
                             "D<m> or overridden by human <date>")

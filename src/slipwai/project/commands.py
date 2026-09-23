@@ -11,6 +11,7 @@ from .adversary import adversary_command
 from .benchmark import benchmark_command, what_each_stage_costs
 from .converge_stage import convergence_stage
 from .cruise import cruise_command, cruise_settings_command
+from .cruise_seat import cruise_status_command, cruise_stop_command
 from .demo_stop import demo_stop
 from .drive_adoption import adoption_ladder
 from .drive_settings import drive_settings_command, implementation_section
@@ -150,7 +151,9 @@ Deliver one small vertical slice under `AGENTS.md`. Once the ladder below has pr
 Read artifacts from disk rather than conversation memory and walk this ladder from the top. The entry stage
 is the first one whose artifact is missing, empty, or still a placeholder — **including the stages upstream
 of the slice loop**. State the entry stage and the evidence that selected it before changing anything, then
-run that stage and every stage after it. Never rerun a completed stage merely to check.
+run that stage and every stage after it. Never rerun a completed stage merely to check. Where `.codegraph/` is in
+the tree, load `codegraph_explore` by name through this harness's tool-search step before the first stage, so a
+caller or blast-radius question later is one call and not a text search.
 
 **The checkout goes stale the way conversation memory does, so check the branch before the artifacts.**
 Every signal the ladder reads — a slice's `status`, whether `examples.md` or `tasks.md` exists, the slice
@@ -180,7 +183,10 @@ Start the slice from a green `make verify`. During implementation, take one RED-
 task — one rule of the example map with its examples, where the map numbers its rules — run only the quickest
 relevant tests in the same file or area, commit that increment locally, and keep
 task checkboxes truthful. A local commit is not a push: it does not run the full gate and it does not start
-CI. Do not push increment commits until the actor has accepted the demo.
+CI. Do not push increment commits until the actor has accepted the demo. Before an increment that changes a
+shared function, ask `codegraph_explore` what calls it and what the change reaches — loaded by name where the
+harness defers it — and name those callers in the delegate's manifest; a project without `.codegraph/` answers
+with a text search and says so.
 
 When the tasks are done, converge, then stop at the actor-visible demo from the unpushed slice branch. After
 acceptance — and only then — a project that has adopted CodeGraph runs `codegraph sync`, then the full
@@ -303,7 +309,7 @@ than an open question.
 # three reaching back out to the factory. One list, so the documentation and the files cannot disagree.
 BASE_COMMANDS = ("drive", "where-are-we", "whats-next", "gaps", "adversary", "mutation", "constitution-coverage",
                  "model-delegation-settings", "drive-settings", "benchmark", "cruise", "cruise-settings",
-                 "add-service", "add-frontend", "catch-up")
+                 "cruise-status", "cruise-stop", "add-service", "add-frontend", "catch-up")
 # Copied whole from `assets/profiles/event-modelling/commands/`; listed because the documentation names them in order.
 EVENT_COMMANDS = ("example-map", "validate-code-against-model")
 
@@ -321,6 +327,8 @@ def command_files(
         "commands/drive.md": drive_command(event, apps, target, layout, adoption),
         "commands/cruise.md": cruise_command(event, apps, target, layout, adoption),
         "commands/cruise-settings.md": cruise_settings_command(layout),
+        "commands/cruise-status.md": cruise_status_command(layout),
+        "commands/cruise-stop.md": cruise_stop_command(layout),
         "commands/where-are-we.md": where_are_we_command(event, target),
         "commands/whats-next.md": whats_next_command(event),
         "commands/gaps.md": gaps_command(event),

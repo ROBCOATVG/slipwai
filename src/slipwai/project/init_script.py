@@ -184,6 +184,11 @@ fi
 # the integration for later runs, but a hook running inside the same `./init` cannot rely on that record
 # being there yet.
 #
+# Before the agent projection, the extensions already adopted here are re-projected: an extension that names its
+# MCP server in each installed harness's project file has one more file to write when a harness is added later
+# (`./init --integration <agent>` on a project that adopted `codegraph` earlier), and Spec Kit has recorded the
+# new harness by this point. As non-fatal as everything below.
+#
 # Then one more projection pass, because that order has a cost: an extension points the agent at itself by
 # appending to `AGENTS.md`, and a harness whose `contextMode` is `copy` reads a file Spec Kit wrote from
 # `AGENTS.md` before any of this ran. Without the pass its copy never gains the pointer, and the extension
@@ -331,6 +336,9 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 """ + PYYAML_FOR_SPECKIT + """
+if [ -f .slipwai/extensions.json ]; then
+  python3 scripts/extensions/project.py || printf '%s\n' 'The adopted extensions were not re-projected; `make agents` retries it.' >&2
+fi
 if [ -n "$selected_integration" ]; then
   python3 scripts/agents/project.py "$selected_integration"
 else

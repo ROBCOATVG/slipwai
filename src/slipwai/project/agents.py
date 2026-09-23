@@ -135,6 +135,11 @@ The task, its contract and the files you may read and write are in the brief; no
 repository is yours to edit, including `tasks.md` — report which task you finished and the session that
 delegated you ticks the checkbox, because concurrent siblings would otherwise all write that one file.
 
+**Ask the index before you touch a shared symbol.** Where the tree has `.codegraph/`, `codegraph_explore` is the
+tool for *what calls this* and *what does a change here reach*: load it by name through the harness's
+tool-search step first where it arrives deferred, ask it, and name the route in your report. A grep is the
+fallback where no route answers, and the report says so then.
+
 **RED is observed before the code that satisfies it exists, and the report says so.** A failure reconstructed
 afterwards — implement, undo the implementation to watch the test fail, restore — proves the test fails without
 the change and not that it was written independently of it, and the two are indistinguishable in the diff.

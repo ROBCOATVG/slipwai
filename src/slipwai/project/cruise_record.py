@@ -9,7 +9,7 @@ in one small file and re-reads it, and the harnesses that can run a command afte
 """
 from __future__ import annotations
 
-from .cruise_agents import BROWSER, HAND, SKIPPER
+from .cruise_agents import BOSUN, BROWSER, HAND, SKIPPER
 
 CHECKPOINT = "specs/cruise-checkpoint.md"
 STOP_FILE = ".specify/cruise.stop"
@@ -17,6 +17,9 @@ STOP_FILE = ".specify/cruise.stop"
 # message a harness's after-response hook kept for a stop hook whose event does not carry it.
 RUNNER_PID = ".specify/cruise.pid"
 RUNNER_LOG = ".specify/cruise-run.log"
+# The harness's raw event stream the feed in the run log was rendered from, and how far the watch seat has read.
+RUNNER_STREAM = ".specify/cruise-stream.jsonl"
+WATCH_CURSOR = ".specify/cruise-watch.cursor"
 LAST_RESPONSE = ".specify/cruise-last-response.txt"
 DECISION_ENTRY = f"""## D<n> — <the question, in one line>
 - **Stage:** <stage> · **Slice:** <id> · **When:** <ISO instant> · **Iteration:** <n>
@@ -24,7 +27,7 @@ DECISION_ENTRY = f"""## D<n> — <the question, in one line>
 - **Options:** <each, marking the one the stage recommended>
 - **Decision:** <one>
 - **Why:** <in the actor's terms>
-- **Decided by:** host (stage recommendation) | host (standing decision D<m>) | {SKIPPER} (<model>) | human
+- **Decided by:** host (stage recommendation) | host (standing decision D<m>) | {SKIPPER} (<model>) | {BOSUN} | human
 - **Confidence:** high | medium | low · **Would reverse if:** <the one condition>
 - **Written to:** <the artifact paths the answer went into>
 - **Status:** standing | overridden by D<m> | overridden by human <date>"""

@@ -8,7 +8,7 @@ There are three:
 
 | Key | What it installs | Where | What it adds to `AGENTS.md` and `make verify` |
 |---|---|---|---|
-| `codegraph` | [CodeGraph](https://github.com/colbymchenry/codegraph), a local MCP code-knowledge graph, and indexes the tree | `.codegraph/` (ignored) | A pointer to query it before grep; `check-codegraph` fails when the index stops describing the source |
+| `codegraph` | [CodeGraph](https://github.com/colbymchenry/codegraph), a local MCP code-knowledge graph, and indexes the tree | `.codegraph/` (ignored); the server named in each installed harness's project MCP file (committed, started through `npx`, so the connection travels with the checkout) | A pointer to query it before grep; `check-codegraph` fails when the index stops describing the source; `/cruise` says before a run how the index will be reached and afterwards how often it was asked |
 | `uipro` | [UI/UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill), an offline design-system generator, as one skill in the root catalogue | `skills/ui-ux-pro-max/` (ignored; `make agents` projects it like any other) | When to generate a design system, where its `MASTER.md` goes, and that `docs/design.md` stays the page a slice reads first. Needs a browser app |
 | `ux-gates` | [ux-ui-agent-skills](https://github.com/plugin87/ux-ui-agent-skills), whose objective gates measure a screen | `tools/ux-gates/` (ignored) | `check-ux-gates` runs the kit's no-literal-values gate over each browser app's source, and its real-render contrast, focus, target-size, responsive and axe gates over `<app>/screens/*.html` when a browser is present — skipped, never passed, when it is not. Needs a browser app |
 
@@ -104,9 +104,28 @@ stdout. See `prompt_extensions` in `src/slipwai/project/init_script.py` for the 
 
    The markers around your own block are still load-bearing: they make the region replaceable. Successful
    adoption records its key in committed `.slipwai/extensions.json`; migration infers that record once from
-   markers in older projects. `scripts/extensions/<key>/init.py` must expose a side-effect-free
-   `project_guidance()` using `scripts/extensions/guidance.py`, so migration never reruns installation or
-   the interactive election.
+   markers in older projects. `scripts/extensions/<key>/init.py` must expose a `project_guidance()` using
+   `scripts/extensions/guidance.py` that makes every factory-owned projection current — the block, and any
+   committed config file — and never reruns installation or the interactive election, because migration and
+   `make agents` call it.
+
+   **Config that travels.** A tool reached over MCP is reached through a config file, and a file in the user's
+   home — which is what a tool's own installer writes — never leaves the machine `./init` ran on: a container,
+   a CI runner and the fresh session a `/cruise` iteration is all open the checkout with the index and no way
+   to ask it, and an agent there falls back to grep, mostly without saying so. So the extension names its server
+   in the project-scoped file of every harness installed here and commits it, with the server started through
+   `npx` so the file is true wherever Node is. Which file, and in what shape, is the registry's `projectMcp`
+   column — `.mcp.json` for Claude Code, `.codex/config.toml` for Codex, `.gemini/settings.json` for Gemini
+   CLI, `.cursor/mcp.json` for Cursor, `opencode.json` for opencode, `.kiro/settings/mcp.json` for Kiro — each
+   read from the harness's own documentation on the date the row names, or null with a reason, in which case
+   the harness reaches the tool through the CLI route the block describes. `scripts/extensions/guidance.py`'s
+   `write_project_mcp` is the one writer, called from `project_guidance()` so `make agents`, `slipwai migrate`
+   and a later `./init --integration <agent>` all write the file for a harness added afterwards. On Claude
+   Code, `.claude/settings.json` approves that server and allows its tools in every project, inert until the
+   file exists; and where a harness ignores the project file in a checkout nobody has trusted (Claude Code,
+   Codex), the row's `headlessFlags` are what the runner passes so an iteration honours it anyway.
+   `codegraph`'s `project_guidance()` is the reference; every file the writer touches is a merge target in the
+   sense of 6 below.
 
 4. **Gate whatever can go silently stale.** Local state an extension leaves in the tree — an index, a cache,
    a fingerprint — keeps answering after it stops being true, and a wrong answer that arrives confidently is

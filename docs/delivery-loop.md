@@ -246,6 +246,7 @@ project's profile, languages, frameworks and services, so the paths and toolchai
 | `/cruise-settings` | Show how `/cruise` runs on its own — who decides, how it releases, what it demos with, when it parks — or change any of it, through the checked path |
 | `/cruise-status` | Say whether a `/cruise` runner is running, how the last iteration ended, whether it is parked and why, and show the tail of its feed |
 | `/cruise-stop` | End a `/cruise` run after the iteration in flight, or at once with `now` |
+| `/cruise-tell` | Queue a message for a running `/cruise` — a steer, a fact it lacked, a scope — which the next iteration carries; `--now` ends the iteration in flight for it |
 | `/add-service` | Add a service — its own language, framework and axis answers — without hand edits |
 | `/add-frontend` | Add a browser application the same way |
 | `/catch-up` | After `slipwai migrate`, work through what the newer factory now asks of code it did not write — the changelog notes for the versions crossed, and the gates that are now red because of them |

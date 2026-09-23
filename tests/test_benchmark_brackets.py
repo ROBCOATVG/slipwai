@@ -28,6 +28,26 @@ def turn(request: str, model: str, tokens: tuple[int, int, int, int], agent: str
     return json.dumps(line) + "\n"
 
 
+def dead(pid: int, within: float = 5.0) -> bool:
+    """Whether a process has ended — gone, or a zombie nobody has reaped yet, which is what a killed child becomes
+    in a container whose pid 1 reaps nothing (the CI job's), and which still answers a signal-0 probe."""
+    deadline = time.monotonic() + within
+    while True:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        try:
+            state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+        except OSError:
+            return True
+        if state == "Z":
+            return True
+        if time.monotonic() > deadline:
+            return False
+        time.sleep(0.05)
+
+
 def tokens(entry: dict, part: str) -> dict[str, dict[str, int]]:
     return {model: {key: value for key, value in usage.items() if value}
             for model, usage in entry["usage"][part].items()}
@@ -173,9 +193,7 @@ class BenchmarkBracketsTest(FactoryTestCase):
                           (repo / RUNNER_LOG).read_text())
             demo = record(repo, "specs/f/slices/S1")["stages"][1]
             self.assertEqual(demo["cut_off"], "the iteration was ended by `stop --now`")
-            time.sleep(0.2)
-            with self.assertRaises(ProcessLookupError, msg="the session's background process outlived the iteration"):
-                os.kill(int(child.read_text()), 0)
+            self.assertTrue(dead(int(child.read_text())), "the session's background process outlived the iteration")
 
     def test_the_gate_fails_on_an_open_entry_a_done_slice_without_a_record_and_a_feature_without_one(self) -> None:
         """`check-benchmark` used to run the script's self-test and nothing about the project, so a slice was

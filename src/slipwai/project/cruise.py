@@ -55,6 +55,8 @@ SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
     ("max_iterations", "a whole number or null", None, "a budget on iterations; null is unbounded"),
     ("max_hours", "a whole number or null", None, "a budget on wall time; null is unbounded"),
     ("poll_minutes", "a whole number", 10, "how often a parked loop looks for a reason to resume"),
+    ("model", "a model identifier or null", None, "the model the iteration itself runs on — the driver, and every "
+     "stage `.specify/models.json` maps to `host`; null is the harness's default, which nobody at the wheel chooses"),
 )
 COMMENT = (
     "How /cruise runs /drive with nobody at the wheel. Change it with /cruise-settings (python3 "
@@ -339,7 +341,8 @@ message naming the change: it takes effect at the next iteration, and nothing al
 ## When the request is in words
 
 "Turn it on" is `enabled=true`; "stop after tonight" is `max_hours=<n>`; "ask me before every release" is
-`release=park`; "let the skipper decide everything" is `decide=skipper-always`; "back to the defaults" is
+`release=park`; "let the skipper decide everything" is `decide=skipper-always`; "drive on opus" is `model=opus`
+(an identifier the harness's own model flag takes; `null` is its default); "back to the defaults" is
 every key at the value the table shows. Stopping a run that is going is not a setting: it is `python3 {SCRIPT}
 stop` — `touch {STOP_FILE}`, which ends the run after the iteration in flight; `--now` ends that iteration too
 — and `commands/cruise.md` says how the run ends cleanly from either.

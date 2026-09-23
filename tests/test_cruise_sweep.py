@@ -6,7 +6,9 @@ findings changed are held beside the text they changed, in `test_cruise` and `te
 """
 from __future__ import annotations
 
+import json
 import os
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -92,3 +94,46 @@ echo "cruise: done\"""")
             clean = cruise(repo, "run", env=fake_harness(Path(directory), 'echo "cruise: done"'))
             self.assertEqual(clean.returncode, 0, clean.stderr)
             self.assertNotIn("left a process running", clean.stdout)
+
+    def test_the_iterations_own_model_is_a_setting_the_row_passes_with_its_flag(self) -> None:
+        """Under `/drive` a person chose the session's model when they opened it; under `/cruise` nobody did, and
+        `.specify/models.json` maps `host` to that unchosen default. `model` in `.specify/cruise.json` names it:
+        the runner appends the registry row's `modelFlag` with it on every iteration, reads it with the settings
+        so a change holds from the next iteration, says before the first which model runs, and says instead that
+        the default runs where a row records no flag — never leaving it to be inferred from a transcript."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "model", "standard", "python")
+            bare = Path(directory) / "bin"
+            bare.mkdir()
+            for tool in ("python3", "git", "sh"):
+                found = shutil.which(tool)
+                assert found is not None, tool
+                (bare / tool).symlink_to(found)
+            args = Path(directory) / "claude-args"
+            (bare / "claude").write_text(f'#!/bin/sh\necho "$*" >> {args}\n'
+                                         'case "$*" in *"--model opus"*) ;; *) exit 0 ;; esac\n'
+                                         'python3 scripts/agents/cruise.py --set model=null > /dev/null\n'
+                                         'echo "cruise: continue"\n')
+            (bare / "claude").chmod(0o755)
+            enable(repo, model="opus", max_iterations="2")
+            env = {"PATH": str(bare), "CRUISE_POLL_SECONDS": "0"}
+            run = cruise(repo, "run", env=env)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertIn("cruise: the iteration itself runs on `opus` (--model opus); every stage "
+                          "`.specify/models.json` maps to `host` runs there too", run.stdout)
+            lines = args.read_text().splitlines()
+            self.assertEqual(len(lines), 2)
+            self.assertTrue(lines[0].endswith(f"--add-dir {repo.parent} --model opus"), lines[0])
+            # The first iteration set it back to null, and the second ran without the flag.
+            self.assertNotIn("--model", lines[1])
+            self.assertTrue(lines[1].endswith(f"--add-dir {repo.parent}"), lines[1])
+            # A harness whose row records no flag runs its own default, and the runner says so rather than
+            # dropping the setting silently.
+            (repo / ".specify/integration.json").write_text(json.dumps({"installed_integrations": ["cursor-agent"]}))
+            (bare / "agent").write_text('#!/bin/sh\necho "cruise: done"\n')
+            (bare / "agent").chmod(0o755)
+            enable(repo, harness="cursor-agent", model="gpt-5")
+            unflagged = cruise(repo, "run", env=env)
+            self.assertEqual(unflagged.returncode, 0, unflagged.stderr)
+            self.assertIn("cruise: `model` is `gpt-5`, but the Cursor row records no `modelFlag`", unflagged.stdout)
+            self.assertIn("so the harness's own default runs", unflagged.stdout)

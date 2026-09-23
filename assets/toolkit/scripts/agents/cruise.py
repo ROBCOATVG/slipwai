@@ -134,10 +134,12 @@ CHOICES: dict[str, tuple[str, ...]] = {
 NUMBERS: dict[str, tuple[int, bool]] = {
     "stuck_after": (1, False), "max_iterations": (1, True), "max_hours": (1, True), "poll_minutes": (1, False),
 }
+# Free text, or null: the model the iteration itself runs on, passed through the harness row's own `modelFlag`.
+TEXTS = ("model",)
 DEFAULTS: dict[str, Any] = {
     "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
     "hand": "browser", "unblock": "bosun", "stuck_after": 3, "max_iterations": None, "max_hours": None,
-    "poll_minutes": 10,
+    "poll_minutes": 10, "model": None,
 }
 CONTROLS = {
     "enabled": "whether `/cruise` runs at all; `false` is a refusal that says so",
@@ -154,6 +156,8 @@ CONTROLS = {
     "max_iterations": "a budget on iterations; null is unbounded",
     "max_hours": "a budget on wall time; null is unbounded",
     "poll_minutes": "how often a parked loop looks for a reason to resume",
+    "model": "the model the iteration itself runs on — the driver, and every stage `.specify/models.json` maps to "
+             "`host`; null is the harness's default, which nobody at the wheel chooses",
 }
 # The one line of an iteration the loop reads, as `commands/cruise.md` spells it.
 LAST_LINE = re.compile(r"^cruise: (continue|done|parked: .+|stopped: human)\s*$")
@@ -196,6 +200,10 @@ def check(table: object) -> list[str]:
         if isinstance(value, bool) or not isinstance(value, int) or value < least:
             findings.append(f"`{key}` must be a whole number of at least {least}"
                             f"{', or null' if nullable else ''}, not {value!r}")
+    for key in TEXTS:
+        value = table.get(key)
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            findings.append(f"`{key}` must be a model identifier or null, not {value!r}")
     return findings
 
 
@@ -210,6 +218,8 @@ def assign(table: dict[str, Any], assignment: str) -> str:
         table[key] = value == "true"
     elif key in CHOICES:
         table[key] = value
+    elif key in TEXTS:
+        table[key] = None if value == "null" else value
     elif value == "null":
         table[key] = None
     else:
@@ -331,6 +341,35 @@ def harness_command(harness: dict[str, Any], sandbox: bool) -> tuple[str, str]:
     if worktrees:
         template = f"{template} {str(worktrees).replace('{parent}', shlex.quote(str(ROOT.parent)))}"
     return template, why
+
+
+def model_flags(harness: dict[str, Any] | None, model: str | None) -> str:
+    """What puts the iteration on the model `.specify/cruise.json` names: the harness row's `modelFlag` with the
+    identifier in it, appended to the command. Nothing where no model is named, where the template is the
+    override's (a person's to write whole), or where the row records no flag — `model_lines` says which."""
+    headless = headless_row(harness) if harness is not None else None
+    flag = headless.get("modelFlag") if headless is not None else None
+    if not model or os.environ.get("CRUISE_HARNESS_COMMAND") or not flag:
+        return ""
+    return " " + str(flag).replace("{model}", shlex.quote(model))
+
+
+def model_lines(harness: dict[str, Any] | None, model: str | None) -> list[str]:
+    """Said before the first iteration: which model the iteration itself runs on. Under `/drive` a person chose it
+    when they opened the session; here nobody did, so the file says, or the harness's default runs and is named
+    as such — never left to be inferred from a transcript afterwards."""
+    if not model:
+        return []
+    if os.environ.get("CRUISE_HARNESS_COMMAND"):
+        return [f"cruise: `model` is `{model}`, but CRUISE_HARNESS_COMMAND is the template as given; put the flag "
+                "in it yourself"]
+    flags = model_flags(harness, model).strip()
+    if flags:
+        return [f"cruise: the iteration itself runs on `{model}` ({flags}); every stage `.specify/models.json` maps "
+                "to `host` runs there too"]
+    name = str(harness.get("name", "the harness")) if harness is not None else "the harness"
+    return [f"cruise: `model` is `{model}`, but the {name} row records no `modelFlag` (scripts/agents/registry.json, "
+            "`headless`), so the harness's own default runs; add the flag to the row once its spelling is verified"]
 
 
 def index_lines(harness: dict[str, Any] | None) -> list[str]:
@@ -903,7 +942,7 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
     if first != prompt:
         print(f"cruise: the first iteration runs `{first}`, the kick-off; every later one runs `{prompt}`")
     print(f"cruise: each iteration runs `{prompt}` in a fresh session; `touch {relative(STOP)}` stops it")
-    for line in index_lines(harness):
+    for line in model_lines(harness, table["model"]) + index_lines(harness):
         print(line)
     sys.stdout.flush()
     stream = stream_of(harness)
@@ -934,7 +973,8 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
         LAST_RESPONSE.unlink(missing_ok=True)
         print(f"cruise: iteration {iteration} started {started}, running `{ask}`", flush=True)
         began = time.monotonic()
-        last = iterate(template, ask, environment, iteration, stream)
+        # The model flag is read with the settings, so `/cruise-settings model=…` holds from the next iteration.
+        last = iterate(template + model_flags(harness, table["model"]), ask, environment, iteration, stream)
         cut_off_brackets(f"iteration {iteration} ended with the entry open")
         iterations_this_run += 1
         seen = fingerprint()
@@ -977,7 +1017,7 @@ def start(arguments: list[str]) -> None:
     the ladder in a context nothing re-invokes. Everything that can refuse — the settings, the stop file, a
     runner already running, no harness to run through — is checked here, before the fork, so the refusal is
     read by whoever typed it; the runner's own output goes to the run log."""
-    enabled()
+    table = enabled()
     if os.environ.get(RUNNER_VARIABLE):
         raise RuntimeError(f"this session is iteration {os.environ.get(ITERATION_VARIABLE, '?')} of a run already "
                            "under way; the runner that started it re-invokes /cruise, nothing here has to")
@@ -994,8 +1034,9 @@ def start(arguments: list[str]) -> None:
     harness, _template, why = resolve_harness(sandbox)
     prompt = prompt_for(harness, feature)
     first = prompt_for(harness, " ".join(part for part in (feature, kickoff) if part))
-    # Said before the fork, so a runner that ends at once has still said how its iterations reach the index.
-    for line in index_lines(harness):
+    # Said before the fork, so a runner that ends at once has still said what its iterations run on and how they
+    # reach the index.
+    for line in model_lines(harness, table["model"]) + index_lines(harness):
         print(line)
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
     # The watch seat starts reading here, so the first `watch` shows this run from its first line.

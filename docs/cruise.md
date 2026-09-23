@@ -78,7 +78,10 @@ states its confidence and the one condition that would reverse the decision. It 
 writes nothing: it returns the whole entry, the driver appends it in number order and writes the decision
 into the artifact. Every other identifier a decision adds — a requirement, a criterion, an example — is the
 driver's to number after the delegates return, for the same reason. `skipper` is a role of its own in `.specify/models.json`, so a project can run a bigger model on
-deciding than on driving: `/model-delegation-settings claude.skipper=opus`.
+deciding than on driving: `/model-delegation-settings claude.skipper=opus`. The driver's own model is the one
+thing that table cannot choose, because `host` means "whatever the session runs", and under `/cruise` nobody
+opened the session: `/cruise-settings model=opus` names it, and the runner passes it with the harness's own
+flag on every iteration.
 
 **The hand** runs the demo. A fresh `drive-hand` delegate takes exactly what the demo stop hands a person:
 the board, the command or URL to run, the seed data, the expected result. It also takes the acceptance
@@ -259,6 +262,7 @@ effect at the next iteration. `make check-agents` holds the file's shape.
 | `max_iterations` | a whole number or `null` | `null` | a budget on iterations; `null` is unbounded |
 | `max_hours` | a whole number or `null` | `null` | a budget on wall time; `null` is unbounded |
 | `poll_minutes` | a whole number | `10` | how often a parked loop looks for a reason to resume |
+| `model` | a model identifier or `null` | `null` | the model the iteration itself runs on: the driver, and every stage `.specify/models.json` maps to `host`. `null` is the harness's default. The registry row's `modelFlag` carries it (`--model` on Claude Code, Codex and Gemini CLI); where a row has none, the runner says the default runs |
 
 ## What a person reviews afterwards
 

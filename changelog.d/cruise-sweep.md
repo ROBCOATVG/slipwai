@@ -20,7 +20,12 @@ refusal inside an iteration — `enabled` turned off mid-run, a missing specific
 runner reads, `cruise: stopped: human` or `cruise: parked: …`, rather than a plain sentence the runner counted
 as no progress. Along the way the runner now reads `.specify/cruise.json` before every iteration, which is
 what `/cruise-settings` always promised: a budget, the stuck window, the poll and `enabled` change at the next
-iteration, and a file a hand edit broke keeps the last good settings and says so.
+iteration, and a file a hand edit broke keeps the last good settings and says so. And the driver's own model
+is a setting: `.specify/cruise.json` gains `model` (`/cruise-settings model=opus`; `null`, the default, is the
+harness's own), which the runner passes through the registry row's new `modelFlag` — `--model` on Claude Code,
+Codex and Gemini CLI — on every iteration, saying before the first which model the iteration runs on or that
+the row has no flag for it. Under `/drive` a person chose that model when they opened the session; under
+`/cruise` nobody did, and every stage `.specify/models.json` maps to `host` ran on an unchosen default.
 
 **Catch-up.** `slipwai migrate` brings the runner, the registry rows, the command text and the hand's brief;
 `make agents` re-projects the delegate types. A project driven by Codex needs nothing else. A project whose

@@ -11,7 +11,7 @@ from .adversary import adversary_command
 from .benchmark import benchmark_command, what_each_stage_costs
 from .converge_stage import convergence_stage
 from .cruise import cruise_command, cruise_settings_command
-from .cruise_seat import cruise_status_command, cruise_stop_command
+from .cruise_seat import cruise_status_command, cruise_stop_command, cruise_tell_command
 from .demo_stop import demo_stop
 from .drive_adoption import adoption_ladder
 from .drive_settings import drive_settings_command, implementation_section
@@ -310,7 +310,7 @@ than an open question.
 # three reaching back out to the factory. One list, so the documentation and the files cannot disagree.
 BASE_COMMANDS = ("drive", "where-are-we", "whats-next", "gaps", "adversary", "mutation", "constitution-coverage",
                  "model-delegation-settings", "drive-settings", "benchmark", "cruise", "cruise-settings",
-                 "cruise-status", "cruise-stop", "add-service", "add-frontend", "catch-up")
+                 "cruise-status", "cruise-stop", "cruise-tell", "add-service", "add-frontend", "catch-up")
 # Copied whole from `assets/profiles/event-modelling/commands/`; listed because the documentation names them in order.
 EVENT_COMMANDS = ("example-map", "validate-code-against-model")
 
@@ -330,6 +330,7 @@ def command_files(
         "commands/cruise-settings.md": cruise_settings_command(layout),
         "commands/cruise-status.md": cruise_status_command(layout),
         "commands/cruise-stop.md": cruise_stop_command(layout),
+        "commands/cruise-tell.md": cruise_tell_command(layout),
         "commands/where-are-we.md": where_are_we_command(event, target),
         "commands/whats-next.md": whats_next_command(event),
         "commands/gaps.md": gaps_command(event),

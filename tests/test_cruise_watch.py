@@ -257,10 +257,21 @@ tail -n +4 {fixtures}/claude-stream.jsonl | sed 's/cruise: continue/cruise: done
             self.assertIn("`rm .specify/cruise.stop` when they want one", stop)
             self.assertIn("`make cruise-stop` is the same\nfrom a terminal, `CRUISE_FLAGS=--now` for the immediate "
                           "form", stop)
+            tell = (repo / "commands/cruise-tell.md").read_text()
+            self.assertIn("description: Queue a message for a running /cruise — a steer, a fact it lacked, a scope — "
+                          "which the next iteration carries; `--now` ends the iteration in flight for it", tell)
+            self.assertIn("argument-hint: [--now] <what the run should know or do next>", tell)
+            self.assertIn("It is queued, never pushed into the iteration in flight", tell)
+            self.assertIn("python3 scripts/agents/cruise.py tell <<'EOF'\n$ARGUMENTS\nEOF\n", tell)
+            self.assertIn(verbatim, tell)
+            self.assertIn("What was queued and not yet taken is in `.specify/cruise-inbox.jsonl`", tell)
+            self.assertIn("`make cruise-tell\nMSG=\"…\"` is the same from a terminal, `CRUISE_FLAGS=--now` for the "
+                          "immediate form", tell)
             cruise = (repo / "commands/cruise.md").read_text()
             self.assertIn("**Put every line it printed in your reply, unchanged, in a\nfenced block, before anything "
                           "else** — the harness folds a command's output, so the feed reaches a person only\nthrough "
                           "your reply", cruise)
             page = (repo / "docs/skills-and-commands.md").read_text()
             self.assertIn("- `/cruise-settings` — `commands/cruise-settings.md`\n- `/cruise-status` — "
-                          "`commands/cruise-status.md`\n- `/cruise-stop` — `commands/cruise-stop.md`", page)
+                          "`commands/cruise-status.md`\n- `/cruise-stop` — `commands/cruise-stop.md`\n"
+                          "- `/cruise-tell` — `commands/cruise-tell.md`", page)

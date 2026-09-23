@@ -21,6 +21,7 @@ from .cruise_agents import DECISIONS, OWNER_BRIEF, SKIPPER
 from .cruise_hand import hand_section
 from .cruise_record import CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, STOP_FILE
 from .cruise_stops import LOG, REPORT, stop_table
+from .cruise_told import boundary_asks, seat_queues, told_argument
 from .cruise_unblock import unblock_section
 
 CONFIG = ".specify/cruise.json"
@@ -96,7 +97,7 @@ def cruise_command(
     )
     return f"""---
 description: Run /drive as driver and product owner, iteration after iteration, until every specification is satisfied — stopping only for a human
-argument-hint: [--feature <name>] [kick-off: what this run is for, where the brief or PRD is] | unblock: <what the outer loop saw>
+argument-hint: [--feature <name>] [kick-off: what this run is for, where the brief or PRD is] | unblock: <what the outer loop saw> | told: <a person's message>
 ---
 
 # Cruise
@@ -142,7 +143,7 @@ states goes into the owner brief (`{OWNER_BRIEF}`), a scope it sets is a decisio
 anything else. Two things the runner passes itself recur: a feature named with `--feature` on `run` or `start`
 (`{layout.make} cruise FEATURE=<name>`) is the first word of every iteration's argument and scopes the run to that
 feature's specification — the ladder is entered for it and no other — and `unblock: <reason>` is what the runner
-says when a run makes no progress (*Blocked: the bosun protocol*, below).
+says when a run makes no progress (*Blocked: the bosun protocol*, below). {told_argument(SCRIPT)}
 
 ## The watch seat
 
@@ -162,7 +163,7 @@ never a reason to run a stage of the ladder in this session.
 **A person typing here is talking to you, not stopping the run.** Answer them — what the feed shows, what
 `{CONFIG}` says (`python3 {SCRIPT}` prints every setting and what it controls), what `python3 {SCRIPT} status`
 says, what `{DECISIONS}` records — and change a setting through `/cruise-settings` where they ask; it takes
-effect at the next iteration. Then watch again. Only `touch {STOP_FILE}`, `python3 {SCRIPT} stop`, or
+effect at the next iteration. {seat_queues(SCRIPT)} Then watch again. Only `touch {STOP_FILE}`, `python3 {SCRIPT} stop`, or
 `{layout.make} cruise-stop` ends the run, and only when they ask for that.
 
 ## Run the ladder, and answer at its stops
@@ -229,7 +230,7 @@ the unit is one slice through Phase 4 and its done marker, or one concurrent fan
 split order. `commands/drive.md` says *do not wait to be invoked again*; here the
 outer loop is what re-invokes, with a fresh context, which is the rule every delegate already lives by.
 Between stages, look for `{STOP_FILE}`: present, finish the stage's own writes, commit what is green, and end
-on `{LAST_LINES[3]}`.
+on `{LAST_LINES[3]}`. {boundary_asks(SCRIPT)}
 At every stage boundary and every delegation, rewrite the checkpoint (*Checkpoint*, below).
 Where nothing can move — every ready slice blocked and the bosun could not move one, or a blocker is on the
 catastrophic list — end with `parked` and the exact thing a person must provide or decide; the loop waits,

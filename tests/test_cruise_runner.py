@@ -18,7 +18,15 @@ from support import FactoryTestCase
 
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.project.cruise import CONFIG, LOG, SETTINGS, STOP_FILE, cruise_config
-from slipwai.project.cruise_record import CHECKPOINT, CHECKPOINT_ENTRY, LAST_RESPONSE, RUNNER_LOG, RUNNER_PID
+from slipwai.project.cruise_record import (
+    CHECKPOINT,
+    CHECKPOINT_ENTRY,
+    INBOX,
+    LAST_RESPONSE,
+    RUNNER_LOG,
+    RUNNER_PID,
+    TOLD,
+)
 
 REGISTRY = json.loads((TOOLKIT_ROOT / "scripts/agents/registry.json").read_text())["harnesses"]
 # A harness the loop can stand in for: one shell script, its behaviour chosen by the first word of its script.
@@ -34,7 +42,7 @@ echo "iteration $n of the fake harness"
 
 def cruise(repo: Path, *arguments: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
     return subprocess.run(["python3", "scripts/agents/cruise.py", *arguments], cwd=repo, text=True,
-                          capture_output=True, env={**os.environ, **(env or {})})
+                          capture_output=True, stdin=subprocess.DEVNULL, env={**os.environ, **(env or {})})
 
 
 def enable(repo: Path, harness: str = "claude", **settings: str) -> None:
@@ -212,6 +220,9 @@ echo "cruise: continue\"""")
                 self.assertIn("cruise-stop: ## End a /cruise run after the iteration in flight (CRUISE_FLAGS=--now "
                               "ends that iteration too)\n\tpython3 scripts/agents/cruise.py stop $(CRUISE_FLAGS)",
                               makefile)
+                self.assertIn("cruise-tell: ## Queue a message for the next /cruise iteration (MSG=\"…\"; "
+                              "CRUISE_FLAGS=--now ends the iteration in flight so it goes at once)\n"
+                              "\tpython3 scripts/agents/cruise.py tell $(CRUISE_FLAGS) $(MSG)", makefile)
                 self.assertIn("check-decisions: ## Fail when a decision log or demo log /cruise wrote has lost its "
                               "shape", makefile)
                 verify = re.search(r"^verify: (.*)$", makefile, re.MULTILINE)
@@ -234,7 +245,7 @@ echo "cruise: continue\"""")
             self.assertEqual(settings["hooks"]["PreCompact"][0]["hooks"][0]["command"],
                              "python3 scripts/agents/cruise.py compacting")
             ignored = (repo / ".gitignore").read_text()
-            for state in (CHECKPOINT, STOP_FILE, RUNNER_PID, RUNNER_LOG, LAST_RESPONSE):
+            for state in (CHECKPOINT, STOP_FILE, RUNNER_PID, RUNNER_LOG, LAST_RESPONSE, INBOX, TOLD):
                 self.assertIn(state + "\n", ignored)
             self.assertIn("## Checkpoint: what survives a compacted context", (repo / "commands/cruise.md").read_text())
             self.assertIn(CHECKPOINT_ENTRY, (repo / "commands/cruise.md").read_text())

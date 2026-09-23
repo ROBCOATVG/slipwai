@@ -154,6 +154,7 @@ A project ships with `/cruise` disabled. To start, in any harness's session:
 /cruise use the PRD in docs/prd.md   # the same, with a kick-off the first iteration is given
 /cruise-status                    # is a runner running, how the last iteration ended, the tail of the feed
 /cruise-stop                      # end the run after the iteration in flight; `/cruise-stop now` ends it now
+/cruise-tell take the payments feature next   # queued: the next iteration carries it; `--now` first ends the one in flight for it
 ```
 
 or from a terminal, `make cruise`, which runs the same loop in the foreground. Either way the runner is the
@@ -234,6 +235,29 @@ check, and is for a container with nothing to lose. Which tools a whole build ne
 guessed: every refusal is in the feed as it happens, and `python3 scripts/agents/cruise.py denials` lists
 them all afterwards from the raw stream, by tool and command, with the iterations each happened in — the
 list to read before widening a row or a rule, and the proof that a deny rule fired when it should.
+
+**Telling the run something.** A run under way is steered with `/cruise-tell <message>`, `make cruise-tell
+MSG="…"`, or `python3 scripts/agents/cruise.py tell …` from anywhere. The message is queued, never pushed into
+the iteration in flight: it goes to `.specify/cruise-inbox.jsonl`, and the runner reads the inbox before it
+starts each iteration and hands everything there over as `told: <message>` in that iteration's argument — the
+route the kick-off takes, one `told:` per message in the order they were sent. The command reads it before the
+first stage and acts on it first: a steer outranks what the artifacts alone would make the iteration do, a fact
+the run lacked is the answer to a block, and a scope or a preference is written into the owner brief or a
+decision entry so it outlives the iteration, the way the kick-off is. A message is not a setting; `/cruise-settings`
+is still how a rule of the run changes. Between stages an iteration runs `python3 scripts/agents/cruise.py told`,
+which prints what was queued since it started and takes it, so a message can land mid-iteration without cutting
+a stage; that read is the command's, and the runner's read before each iteration is the one nothing can skip. A
+parked run resumes with a message within the second — the inbox and the stop file are checked every second, the
+tree every `poll_minutes` — and a message waiting when a run is stuck goes in place of the bosun's `unblock:`
+iteration, since a person's word is the likelier thing to move it, with the bosun's iteration kept for after.
+`--now` as the message's first word interrupts instead: the runner ends the iteration in flight the way `stop
+--now` does — its increment commits are on the slice branch, the stage's uncommitted work is what it costs, and
+a benchmark entry it left open is cut off — and starts the next at once with the message; the log entry says
+the iteration was interrupted, and an interrupted iteration is not counted by the stuck detector. Every message
+an iteration was given, whichever read took it, is in that iteration's entry in `specs/cruise-log.jsonl` under
+`told`, and `/cruise-status` lists what is queued and not yet taken. From the watch seat, typing something that is
+for the run — an answer to the question it parked on, a steer — is queued the same way, and the seat repeats
+what the script said: whether it waits for the iteration in flight, resumes a parked run, or ended the iteration.
 
 To stop a run, do one of these. Each is safe in the middle of a slice, because the slice's commits are on
 its branch and the next iteration re-derives its stage from the artifacts.

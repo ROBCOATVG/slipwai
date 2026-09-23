@@ -79,7 +79,7 @@ class CruiseTest(FactoryTestCase):
                 self.assertTrue(declared["description"].startswith("Run /drive as driver and product owner"))
                 self.assertEqual(declared["argument-hint"],
                                  "[--feature <name>] [kick-off: what this run is for, where the brief or PRD is] | "
-                                 "unblock: <what the outer loop saw>")
+                                 "unblock: <what the outer loop saw> | told: <a person's message>")
                 self.assertIn("a feature named with `--feature` on `run` or `start`\n(`make cruise FEATURE=<name>`) is "
                               "the first word of every iteration's argument and scopes the run", cruise)
                 self.assertIn("runs **that ladder — `commands/drive.md`,\nevery rule as written**", cruise)

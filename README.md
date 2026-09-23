@@ -245,6 +245,7 @@ the paths and toolchains named in them are real.
 | `/cruise-settings` | Shows or changes how `/cruise` runs: who decides, how it releases, what it demos with, when it parks |
 | `/cruise-status` | Says whether a `/cruise` runner is running, how its last iteration ended, and shows the tail of its feed |
 | `/cruise-stop` | Ends a `/cruise` run after the iteration in flight, or at once with `now` |
+| `/cruise-tell` | Queues a message for a running `/cruise`, which the next iteration carries; `--now` ends the iteration in flight for it |
 
 [The delivery loop](docs/delivery-loop.md) describes each one in full, and the ladder they sit on.
 

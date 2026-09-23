@@ -21,6 +21,10 @@ RUNNER_LOG = ".specify/cruise-run.log"
 RUNNER_STREAM = ".specify/cruise-stream.jsonl"
 WATCH_CURSOR = ".specify/cruise-watch.cursor"
 LAST_RESPONSE = ".specify/cruise-last-response.txt"
+# What a person queued for the run through `tell`, until an iteration takes it; and what an iteration was given,
+# until the runner writes it into that iteration's log entry.
+INBOX = ".specify/cruise-inbox.jsonl"
+TOLD = ".specify/cruise-told.jsonl"
 DECISION_ENTRY = f"""## D<n> — <the question, in one line>
 - **Stage:** <stage> · **Slice:** <id> · **When:** <ISO instant> · **Iteration:** <n>
 - **Question:** <as the stage raised it>

@@ -16,6 +16,8 @@ with `start`, and the session that typed it runs no stage of the ladder.
     python3 scripts/agents/cruise.py start [--feature F] [--no-park] [--sandbox] [kick-off…] # the loop, detached
     python3 scripts/agents/cruise.py watch [--minutes M] [--quiet S]  # the watch seat: the feed since the last watch
     python3 scripts/agents/cruise.py stop [--now]  # end the run after the iteration in flight, or now
+    python3 scripts/agents/cruise.py tell [--now] <message…>  # queue a message for the next iteration; --now ends the one in flight
+    python3 scripts/agents/cruise.py told        # inside an iteration: what a person queued since it started, or nothing
     python3 scripts/agents/cruise.py status      # whether a runner is running, and what the log says it is doing
     python3 scripts/agents/cruise.py denials     # every command an iteration was refused, from the stream: what to allow
     python3 scripts/agents/cruise.py resume      # print the checkpoint into a compacted context; nothing when none
@@ -40,7 +42,11 @@ harness.
 
 A person stops a run with `touch .specify/cruise.stop` (`stop`), or by interrupting a foreground `run`: the
 iteration under way is killed, its increment commits are on the slice branch, and the next iteration re-derives
-from disk.
+from disk. A person steers a run with `tell`: the message is queued in `.specify/cruise-inbox.jsonl`, and the
+next iteration carries it as `told: <message>` in its argument — the route the kick-off takes — so nothing
+interrupts the iteration in flight unless `--now` says to, which ends that iteration the way `stop --now` does
+and starts the next at once with the message. An iteration can also ask for what was queued since it started
+(`told`), between stages, without waiting for its end. Every message delivered is in the iteration's log entry.
 """
 
 from __future__ import annotations
@@ -94,6 +100,11 @@ MCP_CONFIG = ROOT / ".mcp.json"
 WATCH_CURSOR = ROOT / ".specify/cruise-watch.cursor"
 # The last message a harness's after-response hook saw, for a stop hook whose event does not carry it.
 LAST_RESPONSE = ROOT / ".specify/cruise-last-response.txt"
+# What a person queued for the run (`tell`), one JSON line per message, until an iteration takes it: the runner
+# before it starts one, or the iteration itself between stages (`told`). What was taken waits in the second file
+# until the runner writes the iteration's log entry, so every message delivered is on the record whichever took it.
+INBOX = ROOT / ".specify/cruise-inbox.jsonl"
+TOLD = ROOT / ".specify/cruise-told.jsonl"
 LOG = ROOT / "specs/cruise-log.jsonl"
 # The iteration in flight, rewritten by `/cruise` at every stage boundary so a compacted context can resume.
 CHECKPOINT = ROOT / "specs/cruise-checkpoint.md"
@@ -168,6 +179,11 @@ ABSENT = f"no {CONFIG.relative_to(ROOT)}: /cruise is not enabled here; `slipwai 
 PARENT_SESSION_VARIABLES = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT")
 # The iteration under way, so a SIGTERM to the runner ends it too rather than orphaning a harness session.
 CURRENT: subprocess.Popen[str] | None = None
+# Set by the SIGUSR1 handler (`tell --now`) while an iteration was under way: it was ended for a person's message,
+# which the runner says in its log entry instead of reading its missing last line as no progress.
+INTERRUPTED = False
+# The word an iteration's argument carries a person's message under, beside `unblock:`, as `commands/cruise.md` spells it.
+TOLD_WORD = "told:"
 
 
 def now() -> str:
@@ -432,7 +448,7 @@ def fingerprint() -> str:
     status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT, text=True,
                             capture_output=True)
     own = tuple(path.relative_to(ROOT).as_posix()
-                for path in (LOG, CHECKPOINT, PID, RUN_LOG, STREAM, WATCH_CURSOR, LAST_RESPONSE))
+                for path in (LOG, CHECKPOINT, PID, RUN_LOG, STREAM, WATCH_CURSOR, LAST_RESPONSE, INBOX, TOLD))
     digest.update("\n".join(line for line in status.stdout.splitlines() if not line.endswith(own)).encode())
     specs = ROOT / "specs"
     for path in sorted(specs.rglob("*")) if specs.is_dir() else []:
@@ -678,15 +694,17 @@ def iterate(template: str, prompt: str, environment: dict[str, str], iteration: 
             raw.close()
     # What the session left running — the app its demo started, which the ladder leaves up for a person who
     # is not coming, a watcher — is ended with the iteration, or the next one finds the port taken. The group
-    # outlives its leader while any member does, so a signal that lands is the sign something was left.
+    # outlives its leader while any member does, so a signal that lands is the sign something was left — unless
+    # the group was ended for a person's message, in which case whatever is still dying was ended on purpose.
     try:
         os.killpg(process.pid, signal.SIGTERM)
     except ProcessLookupError:
         pass
     else:
-        sys.stdout.write(f"{time.strftime('%H:%M:%S')}  cruise: iteration {iteration} left a process running — "
-                         "a dev server, a watcher — and it was ended with the iteration\n")
-        sys.stdout.flush()
+        if not INTERRUPTED:
+            sys.stdout.write(f"{time.strftime('%H:%M:%S')}  cruise: iteration {iteration} left a process running — "
+                             "a dev server, a watcher — and it was ended with the iteration\n")
+            sys.stdout.flush()
     return feed.last
 
 
@@ -829,17 +847,26 @@ def stopping() -> None:
 
 
 def park(reason: str, no_park: bool, poll: float, seen: str) -> None:
-    """Wait for a person: the stop file ends the run, a change under specs/ resumes it, `--no-park` exits 3."""
+    """Wait for a person: the stop file ends the run, a change under specs/ or a message resumes it, `--no-park`
+    exits 3. The tree is re-read every poll; the stop file and the inbox every second, because a person who typed
+    something into a parked run is waiting for it and `poll_minutes` is sized for a tree nobody is touching."""
     print(f"cruise: parked — {reason}")
     if no_park:
         raise SystemExit(PARKED_EXIT)
-    print(f"cruise: waiting; `touch {relative(STOP)}` ends the run, a change under specs/ or a commit "
-          "resumes it", flush=True)
+    print(f"cruise: waiting; `touch {relative(STOP)}` ends the run, a change under specs/, a commit or a message "
+          "(`python3 scripts/agents/cruise.py tell …`) resumes it", flush=True)
     while True:
-        time.sleep(poll)
-        if STOP.is_file():
-            print("cruise: stopped by human")
-            raise SystemExit(0)
+        slept = 0.0
+        while slept < poll:
+            step = min(1.0, poll - slept)
+            time.sleep(step)
+            slept += step
+            if STOP.is_file():
+                print("cruise: stopped by human")
+                raise SystemExit(0)
+            if INBOX.is_file():
+                print("cruise: a person's message; resuming")
+                return
         if fingerprint() != seen:
             print("cruise: something changed; resuming")
             return
@@ -873,6 +900,124 @@ def terminated(_signal: int, _frame: object) -> None:
         CURRENT.wait()
     cut_off_brackets("the iteration was ended by `stop --now`")
     raise SystemExit(128 + signal.SIGTERM)
+
+
+def interrupted(_signal: int, _frame: object) -> None:
+    """A SIGUSR1 to the runner (`tell --now`) ends the iteration under way for a person's message, and nothing
+    else: the loop goes on, and the next iteration starts at once with the inbox as its argument. Between
+    iterations, or parked, there is nothing to end, and the inbox is read within the second anyway."""
+    global INTERRUPTED
+    if CURRENT is not None and CURRENT.poll() is None:
+        INTERRUPTED = True
+        try:
+            os.killpg(CURRENT.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
+
+def queued() -> list[dict[str, Any]]:
+    """What a person has queued and no iteration has taken yet, oldest first."""
+    if not INBOX.is_file():
+        return []
+    return [json.loads(line) for line in INBOX.read_text().splitlines() if line.strip()]
+
+
+def deliver() -> list[str]:
+    """Take everything queued, in order, and keep it for the iteration's log entry. The file is moved before it
+    is read, so a `tell` landing at this moment goes to a fresh inbox rather than being lost."""
+    if not INBOX.is_file():
+        return []
+    taken = INBOX.with_suffix(".taking")
+    try:
+        os.replace(INBOX, taken)
+    except FileNotFoundError:
+        return []
+    lines = [line for line in taken.read_text().splitlines() if line.strip()]
+    taken.unlink()
+    with TOLD.open("a") as handle:
+        handle.write("".join(f"{line}\n" for line in lines))
+    return [str(json.loads(line)["text"]) for line in lines]
+
+
+def delivered() -> list[dict[str, Any]]:
+    """Every message an iteration was given, by the runner or by `told`, and the file cleared for the next."""
+    if not TOLD.is_file():
+        return []
+    given = [json.loads(line) for line in TOLD.read_text().splitlines() if line.strip()]
+    TOLD.unlink()
+    return given
+
+
+def requeue(given: list[dict[str, Any]]) -> None:
+    """Put back, ahead of anything queued since, what an iteration was given and never got to act on — one
+    ended for a later message, or a run ended under it. A person's word is not spent by an iteration that died."""
+    if not given:
+        return
+    lines = [json.dumps(entry, ensure_ascii=False) for entry in given] + [
+        json.dumps(entry, ensure_ascii=False) for entry in queued()]
+    INBOX.parent.mkdir(parents=True, exist_ok=True)
+    INBOX.write_text("".join(f"{line}\n" for line in lines))
+
+
+def told_argument(texts: list[str]) -> str:
+    """The messages as an iteration's argument: `told: <one>`, or the several in order, each on its own `told:`."""
+    return " ".join(f"{TOLD_WORD} {' '.join(text.split())}" for text in texts)
+
+
+def tell(arguments: list[str]) -> None:
+    """Queue a message for the run: the next iteration carries it as `told: <message>` in its argument. With
+    `--now` — the first word, on the command line or in the text — the iteration in flight is ended for it and
+    the next starts at once. The message is the words given, or standard input when there are none, so a
+    command file can hand it over in a quoted heredoc and no quote inside it reaches the shell."""
+    # A bare `tell` at a terminal is a person who forgot the message, not one about to type it into a pipe.
+    text = " ".join(arguments).strip() if arguments else ("" if sys.stdin.isatty() else sys.stdin.read().strip())
+    now_flag = False
+    if text == "--now" or text.startswith("--now "):
+        now_flag, text = True, text.removeprefix("--now").strip()
+    if not text:
+        raise RuntimeError("tell takes the message as its words, or on standard input")
+    INBOX.parent.mkdir(parents=True, exist_ok=True)
+    with INBOX.open("a") as handle:
+        handle.write(json.dumps({"at": now(), "text": text, "now": now_flag}, ensure_ascii=False) + "\n")
+    waiting = len(queued())
+    count = f"{waiting} message(s) queued" if waiting > 1 else "queued"
+    running = running_pid()
+    if running is None:
+        print(f"cruise: {count}; no runner is running here — the first iteration of the next run carries it "
+              "(`/cruise` starts one)")
+        return
+    # A parked runner says so as the last line of its log; a foreground one prints it instead, so there the log
+    # entry is the evidence, and it cannot say whether something resumed the run since.
+    tail = RUN_LOG.read_text(errors="replace").rstrip().splitlines()[-1:] if RUN_LOG.is_file() else []
+    log = entries()
+    if tail and tail[-1].startswith("cruise: waiting;"):
+        print(f"cruise: {count}; the run is parked and resumes with it within the second")
+        return
+    if not tail and log and str(log[-1]["last_line"]).startswith("cruise: parked: "):
+        print(f"cruise: {count}; the run parked after iteration {log[-1]['iteration']} and resumes with it within "
+              "the second — unless something already resumed it, in which case the next iteration carries it")
+        return
+    if now_flag:
+        os.kill(running[0], signal.SIGUSR1)
+        print(f"cruise: {count}, and the runner (pid {running[0]}) was told to end the iteration in flight for it; "
+              "the next iteration starts at once with the message, and the ended iteration's increment commits "
+              "are on its branch")
+        return
+    print(f"cruise: {count} for the next iteration; the one in flight ends first — the runner (pid {running[0]}) "
+          "reads the inbox before each iteration, and the iteration itself between stages. "
+          "`python3 scripts/agents/cruise.py tell --now …` would end the one in flight for it")
+
+
+def told() -> None:
+    """Inside an iteration, between stages: what a person queued since the iteration started, one line each,
+    taken — so the next iteration is not given it again — and kept for this iteration's log entry."""
+    texts = deliver()
+    if not texts:
+        return
+    print(f"cruise: {len(texts)} message(s) from a person since this iteration started; act on each before the "
+          "next stage, and write down what must outlive this iteration")
+    for text in texts:
+        print(f"cruise: {TOLD_WORD} {text}")
 
 
 def cut_off_brackets(reason: str) -> None:
@@ -917,9 +1062,12 @@ def run(arguments: list[str]) -> None:
     first = prompt_for(harness, " ".join(part for part in (feature, kickoff) if part))
     PID.parent.mkdir(parents=True, exist_ok=True)
     PID.write_text(f"{os.getpid()} {now()}\n")
+    # What a run that ended under an iteration — `stop --now`, a killed runner — had given it is not spent.
+    requeue(delivered())
     signal.signal(signal.SIGTERM, terminated)
+    signal.signal(signal.SIGUSR1, interrupted)
     try:
-        drive(table, harness, template, why, environment, prompt, first, feature, no_park)
+        drive(table, harness, template, why, environment, prompt, first, feature, kickoff, no_park)
     finally:
         if PID.is_file() and PID.read_text().split()[:1] == [str(os.getpid())]:
             PID.unlink()
@@ -937,7 +1085,8 @@ def settings_now(table: dict[str, Any]) -> dict[str, Any]:
 
 
 def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, why: str,
-          environment: dict[str, str], prompt: str, first: str, feature: str | None, no_park: bool) -> None:
+          environment: dict[str, str], prompt: str, first: str, feature: str | None, kickoff: str | None,
+          no_park: bool) -> None:
     print(f"cruise: {why}")
     if first != prompt:
         print(f"cruise: the first iteration runs `{first}`, the kick-off; every later one runs `{prompt}`")
@@ -948,10 +1097,12 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
     stream = stream_of(harness)
     started_run = time.monotonic()
     iterations_this_run = 0
-    fingerprints = [entry["fingerprint"] for entry in entries()]
+    # An iteration a person ended for a message is not the run failing to move, so it is not in the stuck window.
+    fingerprints = [entry["fingerprint"] for entry in entries() if not entry.get("interrupted")]
     # The fingerprint a stuck run was already given its one unblocking iteration at, so it gets exactly one.
     unblocked_at: str | None = None
     ask, attempt = first, "kick-off" if first != prompt else None
+    global INTERRUPTED
     while True:
         table = settings_now(table)
         poll = float(os.environ.get("CRUISE_POLL_SECONDS", table["poll_minutes"] * 60))
@@ -968,27 +1119,55 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
         if table["max_hours"] is not None and time.monotonic() - started_run >= table["max_hours"] * 3600:
             print(f"cruise: budget spent — {table['max_hours']} hour(s)")
             return
+        # A person's message rides on this iteration's argument: after the kick-off on the first, in place of
+        # the bosun's `unblock:` — a person's word is the likelier thing to move a stuck run, and the bosun's one
+        # iteration is kept for after it — and alone on any other.
+        messages = deliver()
+        if messages:
+            if attempt == "unblock":
+                unblocked_at, attempt = None, None
+            ask = prompt_for(harness, " ".join(part for part in (
+                feature, kickoff if attempt == "kick-off" else None, told_argument(messages)) if part))
+            print(f"cruise: iteration {len(entries()) + 1} carries {len(messages)} message(s) from a person", flush=True)
         iteration = len(entries()) + 1
         started = now()
         LAST_RESPONSE.unlink(missing_ok=True)
+        INTERRUPTED = False
         print(f"cruise: iteration {iteration} started {started}, running `{ask}`", flush=True)
         began = time.monotonic()
         # The model flag is read with the settings, so `/cruise-settings model=…` holds from the next iteration.
         last = iterate(template + model_flags(harness, table["model"]), ask, environment, iteration, stream)
-        cut_off_brackets(f"iteration {iteration} ended with the entry open")
+        if INTERRUPTED:
+            last = "interrupted: a person's message"
+            cut_off_brackets("the iteration was ended by `tell --now`")
+        else:
+            cut_off_brackets(f"iteration {iteration} ended with the entry open")
         iterations_this_run += 1
         seen = fingerprint()
-        fingerprints.append(seen)
+        if not INTERRUPTED:
+            fingerprints.append(seen)
         entry: dict[str, Any] = {"iteration": iteration, "started": started, "ended": now(),
                                  "harness": harness["key"] if harness is not None else "override",
                                  "last_line": last or "no last line", "fingerprint": seen}
         if attempt is not None:
             entry["attempt"] = attempt
+        given = delivered()
+        if given:
+            entry["told"] = [str(each["text"]) for each in given]
+        if INTERRUPTED:
+            # The entry says what the iteration was given; the next is given it again, ahead of the message that
+            # ended this one, since nothing says this one acted on it.
+            entry["interrupted"] = True
+            requeue(given)
         ask, attempt = prompt, None
         record(entry)
         # The boundary `watch` returns on: the iteration, what it ended on, and how long it took.
         print(f"cruise: iteration {iteration} ended — {last or 'no last line'} ({duration(time.monotonic() - began)})",
               flush=True)
+        if INTERRUPTED:
+            # Ended for a message, not by its own last line: the next iteration is where the message goes, and it
+            # starts now — there is nothing to park on and nothing to count.
+            continue
         if last in ("cruise: done", "cruise: stopped: human"):
             # The iteration is over for good; a checkpoint left behind would read as state to resume.
             CHECKPOINT.unlink(missing_ok=True)
@@ -1036,7 +1215,7 @@ def start(arguments: list[str]) -> None:
     first = prompt_for(harness, " ".join(part for part in (feature, kickoff) if part))
     # Said before the fork, so a runner that ends at once has still said what its iterations run on and how they
     # reach the index.
-    for line in model_lines(harness, table["model"]) + index_lines(harness):
+    for line in model_lines(harness, table["model"]) + index_lines(harness) + queued_lines():
         print(line)
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
     # The watch seat starts reading here, so the first `watch` shows this run from its first line.
@@ -1302,12 +1481,25 @@ def denials() -> None:
               f"{', '.join(str(each) for each in where)})")
 
 
+def queued_lines() -> list[str]:
+    """What `status` and `start` say of the inbox: each message waiting for the next iteration, or nothing."""
+    waiting = queued()
+    if not waiting:
+        return []
+    return [f"cruise: {len(waiting)} message(s) queued for the next iteration ({relative(INBOX)}):"] + [
+        f"cruise:   {first_line(entry['text'])}" + (" (asked to end the iteration in flight)" if entry.get("now") else "")
+        for entry in waiting
+    ]
+
+
 def status() -> None:
     running = running_pid()
     if running is not None:
         print(f"cruise: the runner is running (pid {running[0]}, since {running[1]}); its log is {relative(RUN_LOG)}")
     else:
         print("cruise: no runner is running here")
+    for line in queued_lines():
+        print(line)
     log = entries()
     if not log:
         print("cruise: no iteration has run here")
@@ -1339,6 +1531,7 @@ def main() -> None:
         return
     verbs = {"run": lambda: run(arguments[1:]), "start": lambda: start(arguments[1:]),
              "watch": lambda: watch(arguments[1:]), "stop": lambda: stop(arguments[1:]), "status": status,
+             "tell": lambda: tell(arguments[1:]), "told": told,
              "denials": denials, "resume": resume, "compacting": compacting, "loop": loop, "stopping": stopping,
              "responded": responded}
     if arguments and arguments[0] in verbs:

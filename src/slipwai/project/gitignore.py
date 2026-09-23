@@ -8,7 +8,17 @@ from ..catalog import CATALOG
 from ..extensions import known_extensions
 from ..services import App, backends_of, families_of, needs_environment, services_of, web_apps
 from ..targets import managed
-from .cruise_record import CHECKPOINT, LAST_RESPONSE, RUNNER_LOG, RUNNER_PID, RUNNER_STREAM, STOP_FILE, WATCH_CURSOR
+from .cruise_record import (
+    CHECKPOINT,
+    INBOX,
+    LAST_RESPONSE,
+    RUNNER_LOG,
+    RUNNER_PID,
+    RUNNER_STREAM,
+    STOP_FILE,
+    TOLD,
+    WATCH_CURSOR,
+)
 from .openapi import API_CLIENT
 from .shared_packages import PACKAGES, node_workspace
 
@@ -150,8 +160,10 @@ def build_artifacts(event: bool, apps: list[App], target: str = "none") -> str:
         + f"{CHECKPOINT}\n"
         # The runner's own state beside it: a person's stop signal, the pid of the runner, where a detached runner
         # writes what a foreground one prints, the raw stream that feed was rendered from, how far the watch seat
-        # has read it, and the last message a harness's after-response hook kept.
+        # has read it, the last message a harness's after-response hook kept, and what a person queued for the run
+        # and an iteration was given — each of which is in the iteration log once delivered.
         + f"{STOP_FILE}\n{RUNNER_PID}\n{RUNNER_LOG}\n{RUNNER_STREAM}\n{WATCH_CURSOR}\n{LAST_RESPONSE}\n"
+        + f"{INBOX}\n{TOLD}\n"
         # The agent projections: derived from `skills/`, `commands/` and `agents/`, rewritten by `./init`, `make agents` and
         # `slipwai migrate`, and never the place to edit — so never committed, whichever harness the project uses.
         + projection_artifacts()

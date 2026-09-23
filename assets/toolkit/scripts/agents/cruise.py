@@ -29,11 +29,14 @@ with `start`, and the session that typed it runs no stage of the ladder.
 command starts the runner instead of running the ladder itself.
 
 Which harness an iteration runs through is the registry's `headless` column (`scripts/agents/registry.json`):
-the first installed harness with a verified headless command whose binary is on PATH, else any harness in the
-registry whose binary is, so a `/cruise` typed into an editor with no command line of its own still runs
-through whichever CLI harness the machine has. `CRUISE_HARNESS_COMMAND` (a shell template with `{prompt}`)
-overrides all of that, and `CRUISE_POLL_SECONDS` how long a parked loop waits, so a run can be rehearsed
-against a fake harness.
+the first installed harness (`.specify/integration.json`) with a verified headless command whose binary is on
+PATH. A harness on PATH that was never initialised here is not used: its commands, delegate types and hook
+files are not projected, so an iteration through it would run the ladder with none of them — `/cruise` itself
+unknown to it — and the run would spend its stuck budget on that before parking with the wrong reason. An
+editor with no command line of its own is paired with a CLI harness by `./init --integration <cli>`, which
+Spec Kit installs beside the editor. `CRUISE_HARNESS_COMMAND` (a shell template with `{prompt}`) overrides
+all of that, and `CRUISE_POLL_SECONDS` how long a parked loop waits, so a run can be rehearsed against a fake
+harness.
 
 A person stops a run with `touch .specify/cruise.stop` (`stop`), or by interrupting a foreground `run`: the
 iteration under way is killed, its increment commits are on the slice branch, and the next iteration re-derives
@@ -131,10 +134,12 @@ CHOICES: dict[str, tuple[str, ...]] = {
 NUMBERS: dict[str, tuple[int, bool]] = {
     "stuck_after": (1, False), "max_iterations": (1, True), "max_hours": (1, True), "poll_minutes": (1, False),
 }
+# Free text, or null: the model the iteration itself runs on, passed through the harness row's own `modelFlag`.
+TEXTS = ("model",)
 DEFAULTS: dict[str, Any] = {
     "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
     "hand": "browser", "unblock": "bosun", "stuck_after": 3, "max_iterations": None, "max_hours": None,
-    "poll_minutes": 10,
+    "poll_minutes": 10, "model": None,
 }
 CONTROLS = {
     "enabled": "whether `/cruise` runs at all; `false` is a refusal that says so",
@@ -151,6 +156,8 @@ CONTROLS = {
     "max_iterations": "a budget on iterations; null is unbounded",
     "max_hours": "a budget on wall time; null is unbounded",
     "poll_minutes": "how often a parked loop looks for a reason to resume",
+    "model": "the model the iteration itself runs on — the driver, and every stage `.specify/models.json` maps to "
+             "`host`; null is the harness's default, which nobody at the wheel chooses",
 }
 # The one line of an iteration the loop reads, as `commands/cruise.md` spells it.
 LAST_LINE = re.compile(r"^cruise: (continue|done|parked: .+|stopped: human)\s*$")
@@ -193,6 +200,10 @@ def check(table: object) -> list[str]:
         if isinstance(value, bool) or not isinstance(value, int) or value < least:
             findings.append(f"`{key}` must be a whole number of at least {least}"
                             f"{', or null' if nullable else ''}, not {value!r}")
+    for key in TEXTS:
+        value = table.get(key)
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            findings.append(f"`{key}` must be a model identifier or null, not {value!r}")
     return findings
 
 
@@ -207,6 +218,8 @@ def assign(table: dict[str, Any], assignment: str) -> str:
         table[key] = value == "true"
     elif key in CHOICES:
         table[key] = value
+    elif key in TEXTS:
+        table[key] = None if value == "null" else value
     elif value == "null":
         table[key] = None
     else:
@@ -265,11 +278,12 @@ def binary_of(harness: dict[str, Any]) -> str:
 def choose_harness() -> tuple[dict[str, Any], str]:
     """The harness an iteration runs through, and a sentence saying why that one.
 
-    The first installed harness with a verified headless command whose binary is on PATH. Failing that, any
-    harness in the registry whose binary is on PATH — a `/cruise` typed into an editor that has no command
-    line, or into a CLI nobody has verified a print mode for, still runs through whichever CLI harness this
-    machine has, and the sentence says so. Failing that, a refusal that names what is installed, which
-    harnesses would do, and the override.
+    The first installed harness with a verified headless command whose binary is on PATH. Nothing else: a
+    harness on PATH that `./init` never initialised here has no projected commands, delegate types or hook
+    files, so `/cruise` is unknown to it and the ladder's delegates and holds are absent — an iteration through
+    it ends with no last line, and the run spends its stuck budget before parking for the wrong reason. So a
+    CLI harness that is on PATH but not initialised is named in the refusal, with the `./init` that adds it
+    beside whatever is installed, rather than driven.
     """
     rows = registry()
     installed = [key for key in installed_keys() if key in rows]
@@ -277,24 +291,28 @@ def choose_harness() -> tuple[dict[str, Any], str]:
         harness = rows[key]
         if headless_row(harness) is not None and shutil.which(binary_of(harness)):
             return harness, f"harness: {harness['name']}"
-    for harness in rows.values():
-        if headless_row(harness) is not None and shutil.which(binary_of(harness)):
-            if installed:
-                why = (f"{rows[installed[0]]['name']} is the installed harness, and "
-                       + ("the registry records no way to run it headless"
-                          if headless_row(rows[installed[0]]) is None
-                          else f"`{binary_of(rows[installed[0]])}` is not on PATH"))
-            else:
-                why = "no harness is initialised here (`./init --integration <agent>` records one)"
-            return harness, f"harness: {harness['name']}, found on PATH — {why}"
+    on_path = [harness for key, harness in rows.items()
+               if key not in installed and headless_row(harness) is not None and shutil.which(binary_of(harness))]
     able = ", ".join(f"{harness['name']} (`{binary_of(harness)}`)" for harness in rows.values()
                      if headless_row(harness) is not None)
     named = ", ".join(rows[key]["name"] for key in installed) or "no harness is initialised here"
-    raise RuntimeError(f"no harness this loop can run an iteration through is on PATH: {named}"
-                       f"{' is installed' if len(installed) == 1 else ' are installed' if installed else ''}, "
+    installed_words = ' is installed' if len(installed) == 1 else ' are installed' if installed else ''
+    if installed and headless_row(rows[installed[0]]) is None:
+        installed_words += ", and the registry records no way to run it headless"
+    elif installed:
+        installed_words += f", and `{binary_of(rows[installed[0]])}` is not on PATH"
+    if on_path:
+        found = ", ".join(f"{harness['name']} (`./init --integration {harness['key']}`)" for harness in on_path)
+        raise RuntimeError(f"no initialised harness this loop can run an iteration through is on PATH: {named}"
+                           f"{installed_words}. On PATH but never initialised here, so its commands, delegate "
+                           f"types and hooks are not projected: {found} — that init adds it beside what is "
+                           "installed; then run again. Or set CRUISE_HARNESS_COMMAND to a shell template with "
+                           "{prompt}")
+    raise RuntimeError(f"no harness this loop can run an iteration through is on PATH: {named}{installed_words}, "
                        "and none of the harnesses the registry records a headless command for is on PATH — "
-                       f"{able} (scripts/agents/registry.json, `headless`). Install one of those, or set "
-                       "CRUISE_HARNESS_COMMAND to a shell template with {prompt}")
+                       f"{able} (scripts/agents/registry.json, `headless`). Install one of those and "
+                       "`./init --integration <key>` it, or set CRUISE_HARNESS_COMMAND to a shell template with "
+                       "{prompt}")
 
 
 def harness_command(harness: dict[str, Any], sandbox: bool) -> tuple[str, str]:
@@ -316,7 +334,42 @@ def harness_command(harness: dict[str, Any], sandbox: bool) -> tuple[str, str]:
     project = harness.get("projectMcp")
     if isinstance(project, dict) and project.get("headlessFlags") and (ROOT / str(project["file"])).is_file():
         template = f"{template} {str(project['headlessFlags']).replace('{root}', str(ROOT))}"
+    # The ladder's concurrent slices work in worktrees beside the checkout (`../<project>-<id>`), which a print
+    # session under `acceptEdits` is refused every edit in; the row's `worktreeFlags` name the directory the
+    # checkout sits in as a second working directory, so a slice delegate's first edit is not its last.
+    worktrees = headless.get("worktreeFlags")
+    if worktrees:
+        template = f"{template} {str(worktrees).replace('{parent}', shlex.quote(str(ROOT.parent)))}"
     return template, why
+
+
+def model_flags(harness: dict[str, Any] | None, model: str | None) -> str:
+    """What puts the iteration on the model `.specify/cruise.json` names: the harness row's `modelFlag` with the
+    identifier in it, appended to the command. Nothing where no model is named, where the template is the
+    override's (a person's to write whole), or where the row records no flag — `model_lines` says which."""
+    headless = headless_row(harness) if harness is not None else None
+    flag = headless.get("modelFlag") if headless is not None else None
+    if not model or os.environ.get("CRUISE_HARNESS_COMMAND") or not flag:
+        return ""
+    return " " + str(flag).replace("{model}", shlex.quote(model))
+
+
+def model_lines(harness: dict[str, Any] | None, model: str | None) -> list[str]:
+    """Said before the first iteration: which model the iteration itself runs on. Under `/drive` a person chose it
+    when they opened the session; here nobody did, so the file says, or the harness's default runs and is named
+    as such — never left to be inferred from a transcript afterwards."""
+    if not model:
+        return []
+    if os.environ.get("CRUISE_HARNESS_COMMAND"):
+        return [f"cruise: `model` is `{model}`, but CRUISE_HARNESS_COMMAND is the template as given; put the flag "
+                "in it yourself"]
+    flags = model_flags(harness, model).strip()
+    if flags:
+        return [f"cruise: the iteration itself runs on `{model}` ({flags}); every stage `.specify/models.json` maps "
+                "to `host` runs there too"]
+    name = str(harness.get("name", "the harness")) if harness is not None else "the harness"
+    return [f"cruise: `model` is `{model}`, but the {name} row records no `modelFlag` (scripts/agents/registry.json, "
+            "`headless`), so the harness's own default runs; add the flag to the row once its spelling is verified"]
 
 
 def index_lines(harness: dict[str, Any] | None) -> list[str]:
@@ -623,6 +676,17 @@ def iterate(template: str, prompt: str, environment: dict[str, str], iteration: 
         CURRENT = None
         if raw is not None:
             raw.close()
+    # What the session left running — the app its demo started, which the ladder leaves up for a person who
+    # is not coming, a watcher — is ended with the iteration, or the next one finds the port taken. The group
+    # outlives its leader while any member does, so a signal that lands is the sign something was left.
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    else:
+        sys.stdout.write(f"{time.strftime('%H:%M:%S')}  cruise: iteration {iteration} left a process running — "
+                         "a dev server, a watcher — and it was ended with the iteration\n")
+        sys.stdout.flush()
     return feed.last
 
 
@@ -851,25 +915,34 @@ def run(arguments: list[str]) -> None:
     environment = child_environment(harness)
     prompt = prompt_for(harness, feature)
     first = prompt_for(harness, " ".join(part for part in (feature, kickoff) if part))
-    poll = float(os.environ.get("CRUISE_POLL_SECONDS", table["poll_minutes"] * 60))
     PID.parent.mkdir(parents=True, exist_ok=True)
     PID.write_text(f"{os.getpid()} {now()}\n")
     signal.signal(signal.SIGTERM, terminated)
     try:
-        drive(table, harness, template, why, environment, prompt, first, feature, no_park, poll)
+        drive(table, harness, template, why, environment, prompt, first, feature, no_park)
     finally:
         if PID.is_file() and PID.read_text().split()[:1] == [str(os.getpid())]:
             PID.unlink()
 
 
+def settings_now(table: dict[str, Any]) -> dict[str, Any]:
+    """The settings as they are at this iteration, not as they were when the run started: `/cruise-settings`
+    promises a change takes effect at the next iteration, and the budgets, the stuck window, the poll and
+    `unblock` are the runner's to honour. A file a hand edit broke keeps the last good table, and says so."""
+    try:
+        return load()
+    except (RuntimeError, ValueError, OSError) as error:
+        print(f"cruise: {error}; keeping the settings the last iteration ran under", flush=True)
+        return table
+
+
 def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, why: str,
-          environment: dict[str, str], prompt: str, first: str, feature: str | None, no_park: bool,
-          poll: float) -> None:
+          environment: dict[str, str], prompt: str, first: str, feature: str | None, no_park: bool) -> None:
     print(f"cruise: {why}")
     if first != prompt:
         print(f"cruise: the first iteration runs `{first}`, the kick-off; every later one runs `{prompt}`")
     print(f"cruise: each iteration runs `{prompt}` in a fresh session; `touch {relative(STOP)}` stops it")
-    for line in index_lines(harness):
+    for line in model_lines(harness, table["model"]) + index_lines(harness):
         print(line)
     sys.stdout.flush()
     stream = stream_of(harness)
@@ -880,8 +953,14 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
     unblocked_at: str | None = None
     ask, attempt = first, "kick-off" if first != prompt else None
     while True:
+        table = settings_now(table)
+        poll = float(os.environ.get("CRUISE_POLL_SECONDS", table["poll_minutes"] * 60))
         if STOP.is_file():
             print("cruise: stopped by human")
+            return
+        if not table["enabled"]:
+            print("cruise: `enabled` is now false (/cruise-settings); the run ends here, and /cruise refuses to "
+                  "start until it is true again")
             return
         if table["max_iterations"] is not None and iterations_this_run >= table["max_iterations"]:
             print(f"cruise: budget spent — {table['max_iterations']} iteration(s)")
@@ -894,7 +973,8 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
         LAST_RESPONSE.unlink(missing_ok=True)
         print(f"cruise: iteration {iteration} started {started}, running `{ask}`", flush=True)
         began = time.monotonic()
-        last = iterate(template, ask, environment, iteration, stream)
+        # The model flag is read with the settings, so `/cruise-settings model=…` holds from the next iteration.
+        last = iterate(template + model_flags(harness, table["model"]), ask, environment, iteration, stream)
         cut_off_brackets(f"iteration {iteration} ended with the entry open")
         iterations_this_run += 1
         seen = fingerprint()
@@ -937,7 +1017,7 @@ def start(arguments: list[str]) -> None:
     the ladder in a context nothing re-invokes. Everything that can refuse — the settings, the stop file, a
     runner already running, no harness to run through — is checked here, before the fork, so the refusal is
     read by whoever typed it; the runner's own output goes to the run log."""
-    enabled()
+    table = enabled()
     if os.environ.get(RUNNER_VARIABLE):
         raise RuntimeError(f"this session is iteration {os.environ.get(ITERATION_VARIABLE, '?')} of a run already "
                            "under way; the runner that started it re-invokes /cruise, nothing here has to")
@@ -954,8 +1034,9 @@ def start(arguments: list[str]) -> None:
     harness, _template, why = resolve_harness(sandbox)
     prompt = prompt_for(harness, feature)
     first = prompt_for(harness, " ".join(part for part in (feature, kickoff) if part))
-    # Said before the fork, so a runner that ends at once has still said how its iterations reach the index.
-    for line in index_lines(harness):
+    # Said before the fork, so a runner that ends at once has still said what its iterations run on and how they
+    # reach the index.
+    for line in model_lines(harness, table["model"]) + index_lines(harness):
         print(line)
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
     # The watch seat starts reading here, so the first `watch` shows this run from its first line.

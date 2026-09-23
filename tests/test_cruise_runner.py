@@ -65,20 +65,24 @@ class CruiseRunnerTest(FactoryTestCase):
             # Every setting a run honours, by name: a watch seat, a feed or a kick-off adds none and drops none.
             self.assertEqual([k for k, *_ in SETTINGS], ["enabled", "decide", "release", "constitution", "hand",
                                                           "unblock", "stuck_after", "max_iterations", "max_hours",
-                                                          "poll_minutes"])
+                                                          "poll_minutes", "model"])
             shown = cruise(repo)
             self.assertEqual(shown.returncode, 0, shown.stderr)
             for key, _, default, controls in SETTINGS:
                 self.assertIn(f"{key}: {json.dumps(default)} — {controls}", shown.stdout)
             check = cruise(repo, "--check")
             self.assertIn(f"check-cruise: {CONFIG} is well-formed; /cruise is not enabled", check.stdout)
-            written = cruise(repo, "--set", "enabled=true", "stuck_after=2", "max_hours=null", "hand=http")
+            written = cruise(repo, "--set", "enabled=true", "stuck_after=2", "max_hours=null", "hand=http",
+                             "model=opus")
             self.assertEqual(written.returncode, 0, written.stderr)
-            self.assertIn("enabled = true\nstuck_after = 2\nmax_hours = null\nhand = \"http\"", written.stdout)
+            self.assertIn("enabled = true\nstuck_after = 2\nmax_hours = null\nhand = \"http\"\nmodel = \"opus\"",
+                          written.stdout)
             self.assertIn("Commit it", written.stdout)
             table = json.loads((repo / CONFIG).read_text())
-            self.assertEqual((table["enabled"], table["stuck_after"], table["max_hours"], table["hand"]),
-                             (True, 2, None, "http"))
+            self.assertEqual((table["enabled"], table["stuck_after"], table["max_hours"], table["hand"],
+                              table["model"]), (True, 2, None, "http", "opus"))
+            self.assertIn("model = null", cruise(repo, "--set", "model=null").stdout)
+            table["model"] = None
             for arguments, reason in (
                 (("decide=nope",), "`decide` must be one of recommended-first, skipper-always, not 'nope'"),
                 (("stuck_after=zero",), "`stuck_after` takes a whole number, not 'zero'"),
@@ -91,10 +95,11 @@ class CruiseRunnerTest(FactoryTestCase):
                 self.assertEqual(refused.returncode, 1, arguments)
                 self.assertIn(reason, refused.stderr, arguments)
             self.assertEqual(json.loads((repo / CONFIG).read_text()), table, "a refusal wrote the file")
-            (repo / CONFIG).write_text(json.dumps({**table, "release": "ask", "max_iterations": True}))
+            (repo / CONFIG).write_text(json.dumps({**table, "release": "ask", "max_iterations": True, "model": 5}))
             broken = cruise(repo, "--check")
             self.assertEqual(broken.returncode, 1)
             self.assertIn("`release` must be one of flagged, park, not 'ask'", broken.stderr)
+            self.assertIn("`model` must be a model identifier or null, not 5", broken.stderr)
             self.assertIn("`max_iterations` must be a whole number of at least 1, or null, not True", broken.stderr)
             self.assertIn("python3 scripts/agents/cruise.py --check", (repo / "Makefile").read_text())
 

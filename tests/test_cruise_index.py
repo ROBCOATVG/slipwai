@@ -80,7 +80,8 @@ class CruiseIndexTest(FactoryTestCase):
                           "iteration is started with it (--mcp-config .mcp.json)", over_mcp.stdout)
             # The file is passed by name, after the row's own flags, only now that it exists.
             self.assertTrue((here / "claude-args").read_text().splitlines()[-1].endswith(
-                "--allowedTools Bash,Skill,Agent,WebFetch,WebSearch,mcp__codegraph__* --mcp-config .mcp.json"))
+                "--allowedTools Bash,Skill,Agent,WebFetch,WebSearch,mcp__codegraph__* --mcp-config .mcp.json "
+                f"--add-dir {repo.parent}"))
             started = cruise(repo, "start", env=env)
             self.assertEqual(started.returncode, 0, started.stderr)
             self.assertIn("cruise: the code index is reached over MCP", started.stdout)

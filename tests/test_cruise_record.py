@@ -13,8 +13,9 @@ from pathlib import Path
 
 from support import FactoryTestCase
 
-from slipwai.project.cruise import DECISION_ENTRY, DEMO_ENTRY
+from slipwai.project.cruise import DECISION_ENTRY
 from slipwai.project.cruise_agents import DECISIONS, DEMO_LOG, OWNER_BRIEF
+from slipwai.project.cruise_record import DEMO_ENTRY
 from slipwai.project.decisions import PAGE
 
 DECISION = """## D1 — Which capability flag holds S4 back

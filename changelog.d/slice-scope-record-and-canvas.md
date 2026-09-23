@@ -18,6 +18,14 @@ before pushed* rule forbids while it is red. Every `main` is now tried and the b
 `/catch-up` and the upgrading page also say where a migration runs: on `main`, on a clean tree, never on a
 `slice/<id>` branch.
 
+**A decision `/cruise` takes that would cost a migration to reverse is also an ADR.** `commands/cruise.md`
+now puts the `architecture-decisions` skill's one question to every decision entry — an event's schema or
+name, stream identity, tenancy, the store, personal data, identity, a dependency, a contract — and where the
+answer is a migration, the driver writes `docs/adr/NNNN-<title>.md` at `Proposed`, numbered the way `D<n>`
+is, and names it in the entry's `Written to`. The skipper returns the five sections with its entry, or says
+in a line why the decision is reversible. The owner brief and the cruise report say a person accepts them.
+`check-slice-scope` allows a new ADR on a slice branch, and refuses an edit to one that stands.
+
 **Catch-up.** `slipwai migrate` brings the two gates and the command text. A slice branch red on
 `decisions.md` or `model.drawio` passes as it stands after the merge; a migration already run on a slice
 branch is undone with `git reset --hard ORIG_HEAD` there and run again on `main`.

@@ -20,6 +20,9 @@ What a slice's change may contain — everything since the branch left `main`, c
 - **the committed canvas, `docs/event-model/model.drawio`**, because it is rendered from the model the slice
   just changed and `check-drawio` fails the branch until it is: that gate holds it to `model.yaml`, so it can
   carry nothing of the slice's own. The host regenerates it again after each merge;
+- **a new ADR under `docs/adr/`**: a decision taken during the slice whose reversal would be a migration is
+  written there at `Proposed`, by `/cruise` or by the slice's own planning. New files only — an ADR that exists
+  is never edited; superseding one is the host's, on `main`;
 - **code and tests of the service that owns it** — `service` in its model block, or any service where the
   model names none — and, where the block names a `context`, nothing under another context's directory in
   `domain/` or `application/`. A browser app is open to every slice: a white box is one screen;
@@ -70,6 +73,7 @@ DELIVERY = Path(__file__).resolve().parent.parent.relative_to(ROOT)
 DOCS = (DELIVERY / "docs").as_posix() + "/"
 MODEL = DELIVERY / "docs/event-model/model.yaml"
 CANVAS = DELIVERY / "docs/event-model/model.drawio"
+ADRS = (DELIVERY / "docs/adr").as_posix() + "/"
 SLICE_BRANCH = re.compile(r"^slice/(?P<id>[A-Za-z0-9][A-Za-z0-9._-]*)$")
 CANONICAL_SLOTS = ("plan.md", "research.md", "data-model.md", "quickstart.md", "tasks.md")
 FEATURE_SHARED = ("spec.md", "story-split.md", "adversary-log.md", "decisions.md")
@@ -325,6 +329,13 @@ class Scope:
             return None
         if path.startswith(DOCS + "event-model/mockups/"):
             return None
+        if path.startswith(ADRS) and path.endswith(".md"):
+            if status == "A":
+                return None
+            return (
+                f"{path}: an ADR that exists was {'deleted' if status == 'D' else 'edited'} on a slice branch. A "
+                f"slice adds an ADR at `Proposed`; superseding or accepting one that stands is the host's, on `main`."
+            )
         if path.startswith(DOCS):
             return f"{path}: the docs are the host's; a slice writes its record under `specs/` and the model."
         parent = Path(path).parent.name

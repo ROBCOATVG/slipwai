@@ -115,7 +115,8 @@ with the committed canvas `model.drawio` regenerated from it (`{layout.make} mod
 holds the canvas to the model, so a slice that advanced its block cannot pass `verify` without it), the
 mockups, the code and tests of the service that owns it — one bounded context where the service holds
 several — the context's events module *additively*, **new** migration files named by a timestamp
-(`date -u +%Y%m%d%H%M`, so two slices never mint the same name), and the composition root. Nothing else —
+(`date -u +%Y%m%d%H%M`, so two slices never mint the same name), a **new** ADR under `docs/adr/` at
+`Proposed` (never an edit to one that stands), and the composition root. Nothing else —
 `Makefile`, `project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/`, the other docs —
 is a slice's to write: a delegate that needs one of them hands the need back here, and it lands on `main`
 before the fan-out or between merges. The canonical slot at the feature root is a link, never committed.

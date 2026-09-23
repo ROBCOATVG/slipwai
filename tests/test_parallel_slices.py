@@ -193,12 +193,12 @@ class SliceScopeGateTest(FactoryTestCase):
             self.assertIn("slice/S1 touches only what one slice may", result.stdout)
 
             # Its own record, its own service's code, a new stamped migration, an added event: allowed. So are
-            # the decision `/cruise` records during the slice — `check-decisions` wants its `Written to` paths in
-            # the tree, and `slices/S1/` is only there on this branch — and the canvas `check-drawio` holds to the
-            # model the slice just advanced.
+            # `/cruise`'s decision log (its `Written to` paths exist only here), a new ADR at `Proposed`, and the
+            # canvas `check-drawio` holds to the model the slice just advanced.
             (feature / "slices/S1/plan.md").write_text("# Plan\n")
             (feature / "spec.md").write_text("# Ordering\n\nAmended by S1.\n")
             (feature / "decisions.md").write_text("## D1 — Which reading\n- **Stage:** plan · **Slice:** S1\n")
+            (repo / "docs/adr/0002-order-stream-identity.md").write_text("# 0002. Order stream identity\n")
             (repo / "docs/event-model/model.drawio").write_text("<mxfile/>\n")
             decider = repo / "apps/service/src/domain/ordering/decider.ts"
             decider.write_text("export const decide = () => [];\n")
@@ -238,6 +238,7 @@ class SliceScopeGateTest(FactoryTestCase):
                     "Add a new, timestamped migration instead")
             refused("Makefile", "all:\n", "outside every deployable", "Land it on `main` before the fan-out")
             refused("docs/event-model/README.md", "# mine\n", "the docs are the host's")
+            refused("docs/adr/0001-record-architecture-decisions.md", "# edited\n", "an ADR that exists was edited")
             refused("specs/001-ordering/notes.md", "# mine\n", "not a slice's to write", "`decisions.md` and its own")
             refused("apps/service/src/domain/ordering/events.ts", "export const OrderPlaced = 'OrderPlaced';\n",
                     "the events module is the contract and grows additively", "a line was removed")

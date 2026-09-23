@@ -1,14 +1,12 @@
 """`/cruise`: `/drive` with nobody at the wheel — the agent as driver and product owner, until the specs are satisfied.
 
-`/drive` stops for four things: a product decision, an input that is genuinely unavailable, a split with no
-ready slice left, and the next slice's demo. Three of those belong to a person and are why the command stops.
-`/cruise` runs the same ladder — not a copy of it — and at each of those stops does what the owner or the actor
-would have done: decides, on the host where the stage recommends an answer or a standing decision covers it
-and through `drive-skipper` where the question is open; runs the demo through `drive-hand`; and, where the
-split is exhausted, audits the specification against what shipped rather than declaring the product done.
-Every answer is written where `/drive` would have written a person's, and once more in `decisions.md`, so
-a person can read every decision the machine took in one place and overturn any of them. It stops for a human
-and for nothing else; the outer loop that re-invokes it with a fresh context is `scripts/agents/cruise.py run`.
+`/drive` stops for a product decision, an unavailable input, an exhausted split and the next demo. `/cruise` runs
+the same ladder — not a copy — and at each stop does what the owner or the actor would have: decides, on the host
+where the stage recommends or a standing decision covers it and through `drive-skipper` where the question is
+open; demos through `drive-hand`; and audits the specification against what shipped where the split runs out.
+Every answer goes where `/drive` would have written a person's, and once more in `decisions.md` — and, where
+reversing it would be a migration, into an ADR at `Proposed` — so a person can read and overturn every one. It
+stops for a human and nothing else; `scripts/agents/cruise.py run` is the outer loop that re-invokes it.
 """
 from __future__ import annotations
 
@@ -19,7 +17,7 @@ from ..origin import Adoption
 from ..services import App
 from .cruise_agents import DECISIONS, OWNER_BRIEF, SKIPPER
 from .cruise_hand import hand_section
-from .cruise_record import CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, STOP_FILE
+from .cruise_record import ADR_RULE, CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, STOP_FILE
 from .cruise_stops import LOG, REPORT, stop_table
 from .cruise_told import boundary_asks, seat_queues, told_argument
 from .cruise_unblock import unblock_section
@@ -208,6 +206,8 @@ A fact nobody here has — a credential, a third party's behaviour, an approval 
 skipper's brief says which those are: it is never decided, whatever `decide` says. A person overrides a
 decision by editing its `Status` and writing the answer they want into the artifact; the next iteration
 re-derives the entry stage from that artifact, the way demo feedback re-enters the ladder.
+
+{ADR_RULE.replace('{REPORT}', REPORT)}
 
 {hand_section(layout.make)}
 ## When the ready set is empty: the completion audit

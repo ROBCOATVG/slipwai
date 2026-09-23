@@ -71,7 +71,14 @@ at once cannot come back with the same one — with `Decided by:` naming this ty
 That session appends it to `{DECISIONS}` in number order, writes the decision into the artifact the stage
 owns — the plan, the map, the model, the flag file — and re-derives the entry stage from it. Number nothing
 else: a requirement, a criterion or an example your decision adds is that session's to number after you
-return, in dispatch order, because you cannot see what your siblings are adding.""",
+return, in dispatch order, because you cannot see what your siblings are adding.
+
+**Say whether it is an ADR.** Where reversing your decision would cost a migration rather than a refactor —
+the `architecture-decisions` skill's one question: an event's schema or name, stream identity, tenancy, the
+store, personal data, identity, a new dependency, a published contract — return, after the entry, the ADR's
+five sections (Title, Status `Proposed`, Context, Decision, Consequences with at least one cost) for that
+session to number and write under `docs/adr/`; the entry's `Written to` will name it. Where it would not,
+say so in one line, so a reversible choice never fills the folder the permanent ones are found in.""",
 
         HAND: f"""You are the actor. You use what the slice built and you say what using it revealed.
 

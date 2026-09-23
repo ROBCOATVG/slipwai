@@ -209,7 +209,9 @@ changes. What changes is who answers.
 - **Every answer is written down twice.** Once where `/drive` would have written yours, and once in one
   decision log per feature, `specs/<feature>/decisions.md`: the question, the options, the decision, the
   reason, who decided, and what it was written into. Overturn any entry by changing its status and writing
-  the answer you want into the artifact it names. The next iteration re-enters the ladder from there.
+  the answer you want into the artifact it names. The next iteration re-enters the ladder from there. A
+  decision that would cost a migration to reverse — an event's schema, stream identity, tenancy, the store,
+  personal data — is also an ADR at `Proposed` under `docs/adr/`, for you to accept or supersede.
 - **It never invents a fact.** A credential, an external system, a person's approval: the slice is marked
   blocked, the run takes the next ready slice, and a strong delegate works around the block — a fake behind
   the port, recorded as a fake, or the narrower reading that keeps every rule — and writes down what it did.

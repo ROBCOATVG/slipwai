@@ -26,7 +26,9 @@ Nothing about what a stage produces changes. What changes is who answers.
    finished slice, a demo, a product question, a stale checkout or a full context does not.
 2. **It writes every answer down twice.** Each answer goes where `/drive` would have written a person's
    answer, and again into one log per feature. A person can read every decision the machine took in one
-   place, and can overturn any of them.
+   place, and can overturn any of them. A decision that would cost a migration to reverse — an event's
+   schema, stream identity, tenancy, the store, personal data, identity, a dependency, a contract — is also
+   an ADR at `Proposed`, where the next slice looks for the reason; the run never accepts its own.
 3. **It never invents an input, and it does not stop for one either.** A product *decision* is the owner's
    to make, and the machine makes it. A *fact* it does not have, such as a credential or a third party's
    behaviour, is never invented: the slice is marked blocked, the run takes the next ready slice, and a
@@ -137,6 +139,7 @@ only in a context window. Four things are added to a project.
 | File | Holds | Who writes it |
 |---|---|---|
 | `specs/<feature>/decisions.md` | The decision log: one numbered entry per product answer, with the question, the options, the decision, the reason, who decided (the host, `drive-skipper` with its model, `drive-bosun`, or a human), the confidence, the condition that would reverse it, the artifacts it was written into, and its status. Append-only, numbered by the driver before a delegate decides. | the driver; the skipper returns its entry and the driver appends it; a person overrides an entry by editing its status |
+| `docs/adr/NNNN-<title>.md` | One ADR, in Nygard's five sections, for each decision whose reversal would be a migration rather than a refactor — the `architecture-decisions` skill's test. Status `Proposed`; the decision entry's `Written to` names it. | the driver, from the skipper's draft or its own; a person accepts or supersedes it |
 | `.specify/product-owner.md` | The owner brief: who the actor is, what the product is for, priorities, tie-breakers, taste, what is out of scope. The skipper reads it before every decision. Edit it to steer a run without stopping it. | a person |
 | `specs/<feature>/slices/<id>/demo-log.md` and `demo/` | One section per demo: what was started and how, each example walked and what happened, the verdict, the feedback, and the screenshots and responses under `demo/`. | `drive-hand` |
 | `specs/cruise-log.jsonl` and `specs/<feature>/cruise-report.md` | The outer loop's record, one line per iteration, and the completion audit's report. | the runner and the driver |
@@ -297,9 +300,11 @@ Read these, in this order.
 2. `specs/<feature>/decisions.md`: every decision, with its reason. To overturn one, change its `Status` and
    write the answer you want into the artifact it names. The next iteration re-enters the ladder from that
    artifact.
-3. Each slice's `demo-log.md` and `demo/`: the evidence behind every `accepted-by: drive-hand`.
-4. The constitution, if the run ratified it: the line `pending human review` is yours to remove.
-5. The flags: nothing the run merged is visible to a real actor until you turn a key on.
+3. `docs/adr/`: every ADR the run left at `Proposed`. Accept it, or write the superseding one; an agent never
+   accepts its own architecture decision.
+4. Each slice's `demo-log.md` and `demo/`: the evidence behind every `accepted-by: drive-hand`.
+5. The constitution, if the run ratified it: the line `pending human review` is yours to remove.
+6. The flags: nothing the run merged is visible to a real actor until you turn a key on.
 
 ## The browser
 

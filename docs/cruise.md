@@ -230,7 +230,8 @@ its branch and the next iteration re-derives its stage from the artifacts.
 - Type `/cruise-stop` in any session, run `make cruise-stop`, or `touch .specify/cruise.stop`. The runner ends
   after the iteration in flight, and the command checks between stages, finishes the stage's own writes,
   commits what is green, and ends. `/cruise-stop now` or `make cruise-stop CRUISE_FLAGS=--now` ends the
-  iteration in flight too.
+  iteration in flight too. Either way, a benchmark entry the iteration left open is cut off by the runner, with
+  the reason and no tokens, so `make check-benchmark` does not find it still running.
 - Press Ctrl-C on a foreground runner. The harness session dies with it.
 
 ## The settings

@@ -25,8 +25,8 @@ check-agents: ## Fail when an initialized agent projection has drifted, or .spec
 \tpython3 scripts/agents/models.py --check && python3 scripts/agents/drive.py --check && python3 scripts/agents/cruise.py --check
 models: ## Show which model runs each stage of /drive for the installed harness, and why
 \tpython3 scripts/agents/models.py
-check-benchmark: ## Fail when benchmark boundary and rendering behaviour regresses
-\tpython3 scripts/test_benchmark.py
+check-benchmark: ## Fail when a benchmark entry is left open, a done slice has no record, or the script's own behaviour regresses
+\tpython3 scripts/test_benchmark.py && python3 scripts/agents/benchmark.py check
 benchmark: ## Show what each slice cost and how each stage of /drive did, from the records under specs/
 \tpython3 scripts/agents/benchmark.py
 cruise: ## Run /drive with nobody at the wheel, a fresh session per iteration, until the specs are satisfied or a person stops it (FEATURE=<name> to scope it)

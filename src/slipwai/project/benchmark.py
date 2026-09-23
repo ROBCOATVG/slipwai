@@ -61,7 +61,14 @@ delegated, and to which agent type where the transcript names one (Claude Code a
 to the type that ran it, so an adversary pass on this slice is comparable with the same type on another); the tasks a converge pass appended; how many converge passes there were; a stage re-entered after
 implementation. A delegated stage is started and ended here, by the host: the sub-agent's transcript is found from
 this session's. A number the script could not read is `null` with its reason and stays that way — never fill one
-in, and never pass `model=` when the record already names one. Start and end must bracket the work itself. Close
+in, and never pass `model=` when the record already names one. Start and end must bracket the work itself. Two
+brackets open at once are told apart: a line goes to the innermost bracket covering it, and a delegate's lines to
+the bracket whose stage owns the type that ran them, so a skipper round during implementation costs the skipper
+and not the implementers. An entry a session leaves open is cut off — by the `/cruise` runner when the iteration
+ends, and by the next `start` in the same record — with the reason, its tokens read from the transcript it left,
+and no signals: nothing will close it truthfully afterwards. `{layout.make}
+check-benchmark`, in `{layout.make} verify`, fails on an entry still open, on a slice the ladder calls done with no
+record or an unclosed one, and on a feature with done slices and no record above the slice loop. Close
 `adversary` after its findings are triaged and before any fix, passing `findings=N` and `seams=N`; each
 failing test and fix belongs to a new
 `implement` entry. Bracket `demo` around the actor's session, not the note afterwards, and `mutation` around the

@@ -239,11 +239,11 @@ two agents, and a RED-GREEN-REFACTOR increment starts from a green, committed su
 type of their own, and say which ran what.
 
 Your commits touch this slice's own `specs/<feature>/slices/<id>/`, the feature's cumulative artifacts, its
-block of `model.yaml`, the code and tests of the service that owns it, the context's events module
-*additively*, new timestamped migrations and the composition root. The shared-surface rule in
-`commands/drive.md` is exact and `{layout.make} check-slice-scope` holds it on your branch; `Makefile`,
-`project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/` and the docs are not a slice's
-to write, and needing one is a stop rather than a small exception.
+block of `model.yaml` and the canvas regenerated from it, the code and tests of the service that owns it, the
+context's events module *additively*, new timestamped migrations and the composition root. The shared-surface
+rule in `commands/drive.md` is exact and `{layout.make} check-slice-scope` holds it on your branch; `Makefile`,
+`project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/` and the other docs are not a
+slice's to write, and needing one is a stop rather than a small exception.
 
 Return the converged verdict, what you built, and anything you left. A product question, an ambiguity the
 artifacts do not settle, or a need outside that scope goes back to the session that delegated you — recorded

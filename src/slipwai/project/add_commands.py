@@ -264,9 +264,8 @@ def catch_up_command(apps: list[App], target: str = "none") -> str:
     is one command to forget, and the half that would be forgotten is this one — the merge is visible in
     `git status` and the obligations are not. So the factory verb writes its notes into the project as it
     finishes and this reads them there, which also means an agent never has to reach the factory's own
-    `CHANGELOG.md`: it has no copy of it, and where `slipwai` is the frozen executable there is no copy to
-    reach. The verb writes the file before it returns, conflicts or not, and writes it even when the versions
-    crossed cannot be told — saying why — so this command never has to read an absent file as "nothing owed".
+    `CHANGELOG.md`: it has no copy, and the frozen executable has none to reach. The verb writes the file before it
+    returns, conflicts or not, and says why when the versions crossed cannot be told: no absent file means "none owed".
     """
     first = (services_of(apps) or wrapped_of(apps))[0]
     return f"""---
@@ -280,7 +279,8 @@ cannot do is change code the factory never wrote — so a gate that arrived with
 correct on the day it was written, and a rule that arrived with it can contradict a decision this project
 already made and recorded. Neither is a mistake by anyone. Both are this command.
 
-Run it after every migration, before the merge is pushed.
+Run it after every migration, before the merge is pushed. A migration runs on `main`, on a clean tree — never on a
+`slice/<id>` branch, where the host's files it rewrites fall into the slice's diff and `check-slice-scope` refuses them.
 
 ## Read what the migration left
 

@@ -109,13 +109,17 @@ slice is marked blocked, never guessed past.
 
 **The shared-surface rule**, which the delegates cannot infer and `{layout.make} check-slice-scope` holds on
 every `slice/<id>` branch: a slice's commits touch its own `specs/<feature>/slices/<id>/`, the feature's
-cumulative artifacts (`spec.md`, `story-split.md`, `contracts/`, `checklists/`, `adversary-log.md`), its own
-block of `model.yaml`, the mockups, the code and tests of the service that owns it — one bounded context
-where the service holds several — the context's events module *additively*, **new** migration files named
-by a timestamp (`date -u +%Y%m%d%H%M`, so two slices never mint the same name), and the composition root.
-Nothing else — `Makefile`, `project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/`, the
-docs — is a slice's to write: a delegate that needs one of them hands the need back here, and it lands on `main` before
-the fan-out or between merges. The canonical slot at the feature root is a link, never committed.
+cumulative artifacts (`spec.md`, `story-split.md`, `contracts/`, `checklists/`, `adversary-log.md`, and
+`decisions.md`, where `/cruise` records a decision taken during the slice), its own block of `model.yaml`
+with the committed canvas `model.drawio` regenerated from it (`{layout.make} model-drawio` — `check-drawio`
+holds the canvas to the model, so a slice that advanced its block cannot pass `verify` without it), the
+mockups, the code and tests of the service that owns it — one bounded context where the service holds
+several — the context's events module *additively*, **new** migration files named by a timestamp
+(`date -u +%Y%m%d%H%M`, so two slices never mint the same name), a **new** ADR under `docs/adr/` at
+`Proposed` (never an edit to one that stands), and the composition root. Nothing else —
+`Makefile`, `project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/`, the other docs —
+is a slice's to write: a delegate that needs one of them hands the need back here, and it lands on `main`
+before the fan-out or between merges. The canonical slot at the feature root is a link, never committed.
 
 **Demo on the slice branch, then verify, then push.** As delegates report converged, demo each slice from
 its unpushed worktree in split order — never from `main`, never by pushing increment commits first. A
@@ -124,7 +128,8 @@ accepts. After acceptance: `codegraph sync` if the project has adopted a code in
 green, then push the slice's commits and merge into `main` in split order — never in finishing order.
 That is the first implementation push, and it is what starts CI. The composition root and the cumulative
 artifacts are where two merges meet, and split order is what makes those resolutions predictable;
-regenerate the model diagram after a merge, never in a branch. No slice's Phase 4 runs until its demo is
+regenerate the Mermaid diagrams (`{layout.make} model`) after a merge, never in a branch, and the canvas
+(`{layout.make} model-drawio`) after each merge as well, taking both sides' blocks. No slice's Phase 4 runs until its demo is
 accepted, and a sibling's demo never waits on another's Phase 4. Phase 4 itself — adversary, mutation,
 `{layout.make} verify`, marking the slice done — runs here, on `main`, one slice at a time. Delete the
 `slice/<id>` branch once its Phase 4 clears: the claim is spent.

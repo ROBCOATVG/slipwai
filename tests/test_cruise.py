@@ -145,6 +145,8 @@ class CruiseTest(FactoryTestCase):
                 blocks = fenced(cruise)
                 self.assertIn(DECISION_ENTRY, blocks)
                 self.assertIn(DEMO_ENTRY, blocks)
+                self.assertIn("**A decision that outlives its slice is also an ADR.**", cruise)
+                self.assertIn("`specs/<feature>/cruise-report.md` lists every ADR still `Proposed`", cruise)
                 self.assertIn(f"one fresh `{SKIPPER}` delegate with the\nquestion", cruise)
                 self.assertIn("`decide: skipper-always`, every question goes to the delegate", cruise)
                 # The `hand` setting reaches the delegate only through the brief, and the app the ladder leaves up
@@ -263,6 +265,7 @@ class CruiseTest(FactoryTestCase):
             self.assertIn("You write nothing. Return the whole entry, in the shape", skipper)
             self.assertIn("`D<n>` is allocated by the session that delegated you, before dispatch", skipper)
             self.assertIn("Number nothing\nelse:", skipper)
+            self.assertIn("**Say whether it is an ADR.**", skipper)
             self.assertIn("You are the actor. You use what the slice built and you say what using it revealed.", hand)
             self.assertIn("**The brief names the rung your ladder starts at** — `.specify/cruise.json`'s `hand`: "
                           "`browser`, `http` or\n`cli` — and you never climb above it.", hand)

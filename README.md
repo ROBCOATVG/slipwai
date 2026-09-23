@@ -20,8 +20,8 @@ make verify                 # the gate, the same one CI runs
 ```
 
 **Jump to** — [New to this](#new-to-this--start-here) · [What it is](#what-it-is) ·
-[Getting started](#getting-started) · [What you get](#what-you-get) ·
-[The answers you give](#the-answers-you-give) · [Documentation](#documentation)
+[Getting started](#getting-started) · [Cruise](#cruise-drive-with-nobody-at-the-wheel) ·
+[What you get](#what-you-get) · [The answers you give](#the-answers-you-give) · [Documentation](#documentation)
 
 ---
 
@@ -189,11 +189,67 @@ make demo        # the whole thing in containers, printing the addresses once it
 Then open an agent session and type `/drive`. It walks the ladder from principles to a demo the actor can
 see, and enters at the first stage whose artifact is missing. See [The delivery loop](docs/delivery-loop.md).
 
-`/drive` stops when it needs a person: for a product decision, and at every demo. `/cruise` runs the same
-ladder and answers those stops itself. It decides as the product owner, runs each demo as the actor, and
-writes every answer down where you can read it and overturn it. It keeps going until the specification is
-satisfied, and it stops only for you. The session you type it in watches the run — what each iteration does,
-as it does it — and answers you while it watches. It ships switched off. See [Cruise](docs/cruise.md).
+`/drive` stops when it needs a person: for a product decision, and at every demo. `/cruise` answers those
+stops itself and keeps going until the specification is satisfied. It has
+[a section of its own](#cruise-drive-with-nobody-at-the-wheel), next.
+
+---
+
+## Cruise: `/drive` with nobody at the wheel
+
+`/cruise` is the same ladder as `/drive`, with the two stops that wait for a person answered by the machine.
+It decides as the product owner. It runs each demo as the actor. It goes on, one iteration after another,
+until the specification is satisfied, and it stops only for you. Nothing about what a stage produces
+changes. What changes is who answers.
+
+**What it promises.**
+
+- **It stops only for a human.** A stop file, Ctrl-C, or you typing into the session ends a run. A finished
+  slice, a demo, a product question, a stale checkout or a full context does not.
+- **Every answer is written down twice.** Once where `/drive` would have written yours, and once in one
+  decision log per feature, `specs/<feature>/decisions.md`: the question, the options, the decision, the
+  reason, who decided, and what it was written into. Overturn any entry by changing its status and writing
+  the answer you want into the artifact it names. The next iteration re-enters the ladder from there. A
+  decision that would cost a migration to reverse — an event's schema, stream identity, tenancy, the store,
+  personal data — is also an ADR at `Proposed` under `docs/adr/`, for you to accept or supersede.
+- **It never invents a fact.** A credential, an external system, a person's approval: the slice is marked
+  blocked, the run takes the next ready slice, and a strong delegate works around the block — a fake behind
+  the port, recorded as a fake, or the narrower reading that keeps every rule — and writes down what it did.
+- **Every merge is dark.** Under the default release setting each slice ships behind a flag seeded off.
+  Nothing the run merged reaches a real actor until you turn a key on.
+- **Done means the specification is satisfied.** When the split runs out, an audit reads the specification
+  against what shipped. Each finding becomes a new slice, or a recorded decision that it is out of scope.
+  Only an audit with nothing left ends the run.
+
+**How to run one.** It ships switched off.
+
+```sh
+/cruise-settings enabled=true            # switch it on; commits .specify/cruise.json
+/cruise use the PRD in docs/prd.md       # start the runner, detached, and watch it from this session
+/cruise-status                           # is it running, how the last iteration ended, the feed's tail
+/cruise-tell take the payments feature next   # queued for the next iteration; --now ends the one in flight
+/cruise-stop                             # end the run after the iteration in flight; `now` ends it now
+```
+
+Or `make cruise` from a terminal. Either way the runner is the one thing that continues a run: one fresh
+headless session per iteration, through any coding-agent CLI on the PATH, until the last line says `done`.
+The session you typed in takes the watch seat. It shows the feed as the iteration works — each command, file
+and delegate — answers you while it watches, and changes a setting when you ask. Leaving the seat ends
+nothing; `/cruise` typed again later sits back down where the feed left off.
+
+**Steer it without stopping it.** `.specify/product-owner.md` is the owner brief: who the actor is, what the
+product is for, priorities and tie-breakers, taste, what is out of scope, and what must always ask a person.
+The skipper reads it before every decision, so editing it steers the next one. `/cruise-settings` sets who
+decides, how it releases, what a demo is driven with, which model the iteration runs on, and the budgets —
+iterations, hours, and how many unchanged iterations count as stuck.
+
+**Afterwards, read** `specs/<feature>/cruise-report.md` for what shipped and what was ruled out, then
+`decisions.md` for every decision and its reason, then each slice's `demo-log.md` and the evidence under
+`demo/`, then the flags: nothing is visible until you turn one on.
+
+**Run it in a sandbox.** An unattended loop runs with the permissions a normal run has; bypassing them all
+needs the runner's `--sandbox` flag, and a container around the run. [Cruise](docs/cruise.md) has the whole
+of it: the three roles, what it does at each of `/drive`'s stops, every setting, and the limits.
 
 ---
 

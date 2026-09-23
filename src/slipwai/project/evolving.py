@@ -21,7 +21,8 @@ assumptions. No source checkout or remote is required.
 `project.json` records the answers this repository was generated from and, under `generator`, which factory
 version did it (`generatedWith`) and which last wrote a file here (`updatedWith`); the factory's own
 `CHANGELOG.md` read against those two says what later versions bring. To take them, run the newer factory
-from this directory on a clean tree:
+from this directory, on `main` and on a clean tree — never on a `slice/<id>` branch, whose gate refuses the
+host's files a migration rewrites:
 
 ```sh
 slipwai migrate                  # one merge commit; `git reset --hard ORIG_HEAD` undoes it

@@ -83,9 +83,11 @@ deciding than on driving: `/model-delegation-settings claude.skipper=opus`.
 **The hand** runs the demo. A fresh `drive-hand` delegate takes exactly what the demo stop hands a person:
 the board, the command or URL to run, the seed data, the expected result. It also takes the acceptance
 script: the slice's `examples.md`, or its acceptance criteria in `spec.md`. It walks every example as the
-actor would. It gives its verdict in the three words the benchmark already knows: `accepted`, `behaviour`
-or `implementation`. The driver then re-enters the ladder at the stage that owns the change, exactly as
-`commands/drive.md` says demo feedback does.
+actor would, starting at the rung `hand` names in `.specify/cruise.json` — `browser`, `http` or `cli` — and
+never climbing above it. It gives its verdict in the three words the benchmark already knows: `accepted`,
+`behaviour` or `implementation`. The driver then re-enters the ladder at the stage that owns the change,
+exactly as `commands/drive.md` says demo feedback does, and stops what the demo started: the ladder leaves the
+app running for a person's first action, and here that person was the hand.
 
 **The inner loop** is one `/cruise` invocation. It spends its context on one unit of work. Before the split
 exists, the unit is the upstream stages together: principles, the specification, the event model where there

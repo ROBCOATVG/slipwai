@@ -78,8 +78,10 @@ class CruiseTest(FactoryTestCase):
                 declared = frontmatter(cruise)
                 self.assertTrue(declared["description"].startswith("Run /drive as driver and product owner"))
                 self.assertEqual(declared["argument-hint"],
-                                 "[kick-off: what this run is for, where the brief or PRD is] | "
+                                 "[--feature <name>] [kick-off: what this run is for, where the brief or PRD is] | "
                                  "unblock: <what the outer loop saw>")
+                self.assertIn("a feature named with `--feature` on `run` or `start`\n(`make cruise FEATURE=<name>`) is "
+                              "the first word of every iteration's argument and scopes the run", cruise)
                 self.assertIn("runs **that ladder — `commands/drive.md`,\nevery rule as written**", cruise)
                 self.assertIn("Run `commands/drive.md` from *Enter at the first incomplete stage* to its end", cruise)
                 # The refusals: a run has to be asked for, a person can always stop it, and a spec is theirs to bring.

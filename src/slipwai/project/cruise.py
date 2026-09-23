@@ -94,7 +94,7 @@ def cruise_command(
     )
     return f"""---
 description: Run /drive as driver and product owner, iteration after iteration, until every specification is satisfied — stopping only for a human
-argument-hint: [kick-off: what this run is for, where the brief or PRD is] | unblock: <what the outer loop saw>
+argument-hint: [--feature <name>] [kick-off: what this run is for, where the brief or PRD is] | unblock: <what the outer loop saw>
 ---
 
 # Cruise
@@ -137,7 +137,10 @@ or the PRD is, which feature — reaches the first iteration of the run and no o
 runs bare and derives its stage from disk. So the first iteration writes down whatever the kick-off says that
 must outlive it — a PRD it names becomes the specification through the ladder's own stages, a preference it
 states goes into the owner brief (`{OWNER_BRIEF}`), a scope it sets is a decision entry — before it does
-anything else. `unblock: <reason>` is the one argument the runner itself passes (*Blocked: the bosun protocol*, below).
+anything else. Two things the runner passes itself recur: a feature named with `--feature` on `run` or `start`
+(`{layout.make} cruise FEATURE=<name>`) is the first word of every iteration's argument and scopes the run to that
+feature's specification — the ladder is entered for it and no other — and `unblock: <reason>` is what the runner
+says when a run makes no progress (*Blocked: the bosun protocol*, below).
 
 ## The watch seat
 

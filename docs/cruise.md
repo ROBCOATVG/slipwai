@@ -105,7 +105,7 @@ with no production target has no release rows. An adopted repository has three m
 
 | # | Where `/drive` stops | What `/cruise` does there | Recorded in |
 |---|---|---|---|
-| 1 | The checkout is behind trunk, or the fetch failed | Fetch and fast-forward where the tree is clean. Rebase a `slice/<id>` branch that has local commits. A conflict parks. A fetch that cannot run parks and says so. | `specs/cruise-log.jsonl` |
+| 1 | The checkout is behind trunk, or the fetch failed | Fetch and fast-forward where the tree is clean. Rebase a `slice/<id>` branch that has local commits. A conflict parks. A fetch that could not run, because there is no remote or it cannot be reached, is said in the evidence line the way `/drive` says it, and the run goes on: without a remote the local branch is the claim. | `specs/cruise-log.jsonl` |
 | 2 | The constitution is not ratified | With `constitution: ratify`, the skipper drafts it with `/speckit-constitution` from the spec and the owner brief, answers `/constitution-coverage`, and ratifies it with the line `ratified by cruise (skipper) — pending human review`. With `park`, the run stops here. | `constitution.md`, a decision entry |
 | 3 | There is no product specification | Refuse to start. A specification is the one thing a person brings. | — |
 | 4 | Which service or bounded context owns a slice | Decide against each service's recorded `purpose`. Where none covers it, record the purpose the spec implies with `slipwai describe-service <name> --purpose`, then decide. Contexts are recorded the same way, with `--context`. | the model or plan, `project.json`, a decision entry |
@@ -196,10 +196,12 @@ no stream is echoed as it comes. In Claude Code a refused permission is in the f
 Which harness the runner drives is `scripts/agents/registry.json`'s business, under `headless`: for each
 harness, how it runs one prompt non-interactively and exits, read from its own documentation on the date the
 row names — 27 of the 36 have a row; the nine that do not say why, editor-only or unreachable docs. The runner
-takes the first installed harness with a row whose binary is on the PATH, and otherwise any harness in the
-registry whose binary is, so a `/cruise` typed into Zed or Antigravity runs through whichever CLI harness the
-machine has, and the log names which. Only Claude Code's print mode is known to resolve `/cruise` itself;
-every other harness is asked, in the same words, to read `commands/cruise.md` and follow it.
+takes the first installed harness with a row whose binary is on the PATH, and the log names which. A CLI that
+is on the PATH but was never initialised here is not used: its commands, delegate types and hook files are not
+projected, so `/cruise` is unknown to it and the ladder's delegates and holds are absent. The refusal names it
+with the `./init --integration <key>` that adds it beside what is installed, which is how a `/cruise` typed
+into Zed or Antigravity comes to run through a CLI harness. Only Claude Code's print mode is known to resolve
+`/cruise` itself; every other harness is asked, in the same words, to read `commands/cruise.md` and follow it.
 `CRUISE_HARNESS_COMMAND`, a shell template with `{prompt}`, overrides the choice.
 
 What an iteration may do is the row's `permissions`. A headless session has nobody to ask, so it is refused
@@ -209,7 +211,11 @@ reaches for — `Bash`, the shell allowed wholesale, with the project's `.claude
 plain force-push, `reset --hard`, `clean`) still refusing what they name; `Skill` and `Agent`, the project's
 own commands and delegates; `WebFetch` and `WebSearch`, because a stage reading documentation has nobody to
 ask; and `mcp__codegraph__*`, the code index's tools. Each of those was tried from a print session before it
-was named, and the two web tools were the only refusals. Each harness's `projectMcp` row names the project
+was named, and the two web tools were the only refusals. The same session is refused an edit outside its
+working directory, and the ladder's concurrent slices work in worktrees beside the checkout, so the row's
+`worktreeFlags` pass `--add-dir` for the directory the checkout sits in. Codex's row runs
+`--sandbox workspace-write`, because `codex exec` is read-only by default and an iteration run bare could edit
+nothing. Each harness's `projectMcp` row names the project
 file it reads an MCP server from — the file `./init --extension codegraph` commits with the index's server in
 it, `.mcp.json` on Claude Code, `.codex/config.toml` on Codex, and so on — and the flags that make a headless
 iteration honour it whenever the file exists: `--mcp-config` on Claude Code, whose print session in a checkout

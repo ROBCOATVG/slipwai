@@ -17,8 +17,9 @@ import json
 from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
 from ..services import App
-from .cruise_agents import DECISIONS, DEMO_LOG, EVIDENCE, HAND, OWNER_BRIEF, SKIPPER
-from .cruise_record import CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, DEMO_ENTRY, STOP_FILE
+from .cruise_agents import DECISIONS, OWNER_BRIEF, SKIPPER
+from .cruise_hand import hand_section
+from .cruise_record import CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, STOP_FILE
 from .cruise_stops import LOG, REPORT, stop_table
 from .cruise_unblock import unblock_section
 
@@ -111,7 +112,11 @@ the runner is the one thing that continues a run, whatever the harness.{adopted}
 ## Before anything: refuse, or start
 
 Read `{CONFIG}`. `enabled: false`, or `{STOP_FILE}` present, is a refusal in one line that says which. No
-`specs/<feature>/spec.md` is a refusal too: a specification is the one thing a person brings. Then run
+`specs/<feature>/spec.md` is a refusal too: a specification is the one thing a person brings. In an iteration a
+refusal still ends on a last line, because the runner reads nothing else and would spend its stuck budget on a
+plain one: `enabled: false` or the stop file ends on `{LAST_LINES[3]}` — a person turned it off — and a missing
+specification on `cruise: parked: a specification under specs/<feature>/spec.md`; typed in a session, the
+refusal is plain, since nothing reads it. Then run
 `python3 {SCRIPT} loop`: it says what is reading this session's last line. **Where it says nobody is** — this
 command was typed in a session, and no runner set `CRUISE_RUNNER` and `CRUISE_ITERATION` — run
 `python3 {SCRIPT} start` with everything typed after `/cruise` as its arguments, verbatim, and repeat what it
@@ -123,7 +128,7 @@ and every standing entry in `{DECISIONS}`, and say the iteration number from `{L
 distance from trunk, and that a person stops this run with `touch {STOP_FILE}`. Where `.codegraph/` is in the
 tree, load `codegraph_explore` by name through this harness's tool-search step now, before the first stage: a
 caller or blast-radius question later is then one call and not a text search, and `python3 {SCRIPT} status`
-counts the iterations that asked. Open a `skipper` or `hand`
+counts the iterations that asked. Open a `skipper`, `hand` or `bosun`
 benchmark entry around each delegation the way every stage is bracketed, and
 pass `driver=cruise` to every `end` this iteration closes.
 
@@ -198,22 +203,7 @@ skipper's brief says which those are: it is never decided, whatever `decide` say
 decision by editing its `Status` and writing the answer they want into the artifact; the next iteration
 re-derives the entry stage from that artifact, the way demo feedback re-enters the ladder.
 
-## Demonstrating: the hand protocol
-
-At the demo stop, compose everything `commands/drive.md` says the stop must contain — the board, the literal
-command or URL, the seed data, the expected result, the running process — and hand it, with the slice's
-acceptance script, to one fresh `{HAND}` delegate instead of a person. `hand: {SETTINGS[4][2]}` is the top of
-its ladder: `agent-browser` where the slice has a screen, then a browser tool the harness exposes, then HTTP, then
-the CLI, each falling through where it cannot run and saying so. Its verdict is the actor's: `accepted`
-continues to *After acceptance*, `behaviour` re-enters the ladder at the stage that owns the change with the
-example that shows it, `implementation` is a task. Record `outcome=` on the demo entry from the verdict, and
-write `accepted-by: {HAND}` beside the register row or status flip, so a person can tell which demos a person
-has seen. The hand's writes are `{DEMO_LOG}` — one section per demo — and its evidence under `{EVIDENCE}`:
-
-```markdown
-{DEMO_ENTRY}
-```
-
+{hand_section(layout.make)}
 ## When the ready set is empty: the completion audit
 
 An exhausted split is where `/drive` stops and where this command does its last stage. Delegate `/gaps` over
@@ -233,7 +223,8 @@ iteration does not end inside them; it ends when the split is written, or at a p
 the unit is one slice through Phase 4 and its done marker, or one concurrent fan-out through its merges in
 split order. `commands/drive.md` says *do not wait to be invoked again*; here the
 outer loop is what re-invokes, with a fresh context, which is the rule every delegate already lives by.
-Between stages, look for `{STOP_FILE}`: present, finish the stage's own writes, commit what is green, and end.
+Between stages, look for `{STOP_FILE}`: present, finish the stage's own writes, commit what is green, and end
+on `{LAST_LINES[3]}`.
 At every stage boundary and every delegation, rewrite the checkpoint (*Checkpoint*, below).
 Where nothing can move — every ready slice blocked and the bosun could not move one, or a blocker is on the
 catastrophic list — end with `parked` and the exact thing a person must provide or decide; the loop waits,
@@ -286,7 +277,11 @@ does the stop hook; one that ends `continue` or `parked` leaves it for the next.
 - **Parallelism is inherited and widened.** Everything *Running ready slices concurrently* allows runs the
   same way here. What no longer serialises the fan-out are the two stops that were a person's: a delegate's
   product question is answered while its siblings keep running, and a slice's demo runs in the hand while
-  the next slice's delegate is still converging. Phase 4 stays one slice at a time on `main`.
+  the next slice's delegate is still converging. Phase 4 stays one slice at a time on `main`. The worktrees
+  beside the checkout are writable on Claude Code because the runner starts every iteration with `--add-dir`
+  for the directory the checkout sits in (`scripts/agents/registry.json`, `headless.worktreeFlags`); on a
+  harness whose row has no such flag, make the worktree inside the tree where the harness offers one, or run
+  the ready slices one at a time here and say so, as the ladder does where the harness cannot delegate.
 - **Flags stay off.** Under `release: flagged` nothing this run merges is visible to a real actor until a
   person flips a key. Turning a flag on is never a decision the log can contain.
 - **The constitution's MUSTs are the floor.** No decision waives one; a question whose every option breaks

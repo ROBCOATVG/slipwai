@@ -21,7 +21,10 @@ def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
     rows = [
         ("The checkout is behind trunk, or the fetch failed",
          "Fetch and fast-forward where the tree is clean; rebase a `slice/<id>` branch that has local commits. "
-         "A conflict parks; a fetch that cannot run parks and says so. Never derive from a stale tree",
+         "A conflict parks. A fetch that could not run — no remote, or one this environment cannot reach — is "
+         "what the ladder says it is, *could not verify this checkout is current*, said in the evidence line, "
+         "and the run goes on: without a remote the local branch is the claim, as the ladder says. Never derive "
+         "from a tree known to be stale",
          f"`{LOG}`"),
         ("Principles: the constitution is unratified",
          "`constitution: ratify` — the skipper drafts it with `/speckit-constitution` from the spec and the "

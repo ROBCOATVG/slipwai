@@ -19,7 +19,6 @@ from test_drive_adoption import adopted, wrapped
 from slipwai.project.cruise import (
     CONFIG,
     DECISION_ENTRY,
-    DEMO_ENTRY,
     LAST_LINES,
     LOG,
     REPORT,
@@ -29,6 +28,7 @@ from slipwai.project.cruise import (
     UNREAD,
 )
 from slipwai.project.cruise_agents import BOSUN, BROWSER, DECISIONS, DEMO_LOG, HAND, OWNER_BRIEF, SKIPPER
+from slipwai.project.cruise_record import DEMO_ENTRY
 from slipwai.project.cruise_unblock import CATASTROPHIC
 from slipwai.project.stage_models import STAGES, switchable_harnesses
 
@@ -145,8 +145,27 @@ class CruiseTest(FactoryTestCase):
                 self.assertIn(DEMO_ENTRY, blocks)
                 self.assertIn(f"one fresh `{SKIPPER}` delegate with the\nquestion", cruise)
                 self.assertIn("`decide: skipper-always`, every question goes to the delegate", cruise)
-                self.assertIn(f"`{BROWSER}` where the slice has a screen, then a browser tool the harness exposes, "
-                              "then HTTP, then\nthe CLI", cruise)
+                # The `hand` setting reaches the delegate only through the brief, and the app the ladder leaves up
+                # for a person is stopped once the hand has finished with it.
+                self.assertIn(f"which is `{CONFIG}`'s `hand` and nothing the delegate can read for itself: `browser` is"
+                              f"\n`{BROWSER}` where the slice has a screen, then a browser tool the harness exposes, "
+                              "then HTTP, then the CLI;\n`http` starts at HTTP; `cli` at the CLI", cruise)
+                self.assertIn("**Then stop what the demo started.**", cruise)
+                self.assertIn("`make demo-down` or `make services-down` where the demo used them", cruise)
+                # A refusal inside an iteration, and a stop between stages, still end on a last line the loop reads.
+                self.assertIn(f"`enabled: false` or the stop file ends on `{LAST_LINES[3]}`", refuse)
+                self.assertIn("a missing\nspecification on `cruise: parked: a specification under "
+                              "specs/<feature>/spec.md`", refuse)
+                self.assertIn(f"commit what is green, and end\non `{LAST_LINES[3]}`", cruise)
+                self.assertIn("Open a `skipper`, `hand` or `bosun`\nbenchmark entry", refuse)
+                # A fetch that could not run is what the ladder says it is, not a park: a project with no remote
+                # would otherwise park on its first iteration and never resume.
+                self.assertIn("A fetch that could not run — no remote, or one this environment cannot reach — is what "
+                              "the ladder says it is, *could not verify this checkout is current*, said in the "
+                              "evidence line, and the run goes on: without a remote the local branch is the claim",
+                              cruise)
+                self.assertNotIn("a fetch that cannot run parks", cruise)
+                self.assertIn("`headless.worktreeFlags`", cruise)
                 self.assertIn("Only an audit with nothing left to build ends with `cruise: done`.", cruise)
                 # The iteration contract ends with the four lines, listed as the only things the loop reads.
                 for last in LAST_LINES:
@@ -243,7 +262,12 @@ class CruiseTest(FactoryTestCase):
             self.assertIn("`D<n>` is allocated by the session that delegated you, before dispatch", skipper)
             self.assertIn("Number nothing\nelse:", skipper)
             self.assertIn("You are the actor. You use what the slice built and you say what using it revealed.", hand)
-            self.assertIn(f"**Where the slice has a screen, use a browser.** `{BROWSER}` first", hand)
+            self.assertIn("**The brief names the rung your ladder starts at** — `.specify/cruise.json`'s `hand`: "
+                          "`browser`, `http` or\n`cli` — and you never climb above it.", hand)
+            self.assertIn(f"`{BROWSER}` first", hand)
+            self.assertIn("Under `http` start there, and under `cli` at the CLI", hand)
+            self.assertIn("Leave the app the brief started running when you finish and say that it is up: the "
+                          "session that delegated\nyou stops it once your verdict is recorded", hand)
             for word in ("`accepted`", "`behaviour`", "`implementation`"):
                 self.assertIn(word, hand)
             self.assertIn("you edit no code, no test and no artifact of\nthe slice", hand)

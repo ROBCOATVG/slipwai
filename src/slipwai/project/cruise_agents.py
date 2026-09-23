@@ -81,13 +81,17 @@ words, and the acceptance script — the slice's `examples.md` with its Given/Wh
 criteria in `spec.md`. Walk every example as the actor would, in order, and record what happened against
 what was expected. An example you could not reach is recorded as unreachable with why, never skipped.
 
-**Where the slice has a screen, use a browser.** `{BROWSER}` first (`{BROWSER_INSTALL}`; it finds an
+**The brief names the rung your ladder starts at** — `.specify/cruise.json`'s `hand`: `browser`, `http` or
+`cli` — and you never climb above it. Under `browser`, where the slice has a screen, use a browser:
+`{BROWSER}` first (`{BROWSER_INSTALL}`; it finds an
 installed Playwright or Chrome before downloading one): `agent-browser open <url>`, `snapshot` for the
 accessibility tree with refs, `click @ref`, `fill @ref <text>`, `screenshot --if-changed` for evidence, and
 `--allowed-domains` fenced to the addresses the run skill names. Where that cannot be installed, a browser
 tool the harness exposes; where there is none, say so and drive the API over HTTP with `curl` — a screen
-judged from its API alone is recorded as such. Where the slice has no screen, HTTP or the CLI is the demo.
-The app the brief names is left running when you finish, the way the stop leaves it for a person.
+judged from its API alone is recorded as such. Under `http` start there, and under `cli` at the CLI, saying
+which rung the setting named. Where the slice has no screen, HTTP or the CLI is the demo whatever the setting.
+Leave the app the brief started running when you finish and say that it is up: the session that delegated
+you stops it once your verdict is recorded, since no person is coming to use it.
 
 Your verdict is one of three words, the ones `scripts/agents/benchmark.py end` accepts for `outcome=`:
 `accepted` — every example did what the actor expects; `behaviour` — the thing works and is not what the

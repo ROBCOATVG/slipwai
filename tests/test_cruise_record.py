@@ -13,8 +13,9 @@ from pathlib import Path
 
 from support import FactoryTestCase
 
-from slipwai.project.cruise import DECISION_ENTRY, DEMO_ENTRY
+from slipwai.project.cruise import DECISION_ENTRY
 from slipwai.project.cruise_agents import DECISIONS, DEMO_LOG, OWNER_BRIEF
+from slipwai.project.cruise_record import DEMO_ENTRY
 from slipwai.project.decisions import PAGE
 
 DECISION = """## D1 — Which capability flag holds S4 back
@@ -111,13 +112,39 @@ class CruiseRecordTest(FactoryTestCase):
             passed = gate(repo)
             self.assertEqual(passed.returncode, 0, passed.stderr)
             self.assertIn("check-decisions: 2 decision(s) in 1 file(s), 1 demo(s) in 1 log(s), every field present "
-                          "and every path in the tree", passed.stdout)
+                          "and every path in the tree, every done slice in the adversary log", passed.stdout)
             # The bosun writes `Decided by: drive-bosun`, as the command tells it to, with or without its model:
             # a run's first workaround left `make verify` failing on exactly the entry it had been told to write.
             for signed in ("drive-bosun", "drive-bosun (opus)"):
                 record(repo, DECISION.replace("host (stage recommendation)", signed) + SECOND)
                 bosun = gate(repo)
                 self.assertEqual(bosun.returncode, 0, (signed, bosun.stdout, bosun.stderr))
+
+    def test_a_finished_slice_with_no_row_in_the_adversary_log_is_a_finding(self) -> None:
+        """`/adversary` runs after every acceptance and writes a row either way — the attack, or the skip with the
+        rows it relied on — and says an unwritten row is a pass that has to be run again. A slice was delivered
+        with none, through a gate that held the decision and demo logs and never looked here. Done is what the
+        ladder calls done: a register row, or `status: implemented` in the event model."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "attacked", "standard", "python")
+            (repo / "specs/f/slices/S1").mkdir(parents=True)
+            (repo / "specs/f/slices/README.md").write_text("| Slice | Accepted |\n|---|---|\n| S1 | 2026-09-22 |\n")
+            refused = gate(repo)
+            self.assertEqual(refused.returncode, 1)
+            self.assertIn("specs/f/adversary-log.md: no row for S1, which is done — `/adversary` runs after every "
+                          "acceptance and records the attack or the skip", refused.stderr)
+            (repo / "specs/f/adversary-log.md").write_text("# Adversary log\n\n## S1 · abc1234 · 2026-09-22\n\n"
+                                                           "| Trigger | Status | Evidence |\n|---|---|---|\n"
+                                                           "| new endpoint | not present | prior row |\n\n"
+                                                           "Spawned:\nOmitted: none\nFindings: none\n")
+            self.assertEqual(gate(repo).returncode, 0)
+            (repo / "docs/event-model").mkdir(parents=True)
+            (repo / "docs/event-model/model.yaml").write_text(
+                "version: 1\nslices:\n  - id: S2\n    status: implemented\n  - id: S3\n    status: planned\n")
+            refused = gate(repo)
+            self.assertEqual(refused.returncode, 1)
+            self.assertIn("no row for S2, which is done", refused.stderr)
+            self.assertNotIn("S3", refused.stderr)
 
     def test_the_gate_refuses_every_shape_a_run_could_write_wrong(self) -> None:
         """Each malformation is one finding naming the file, the line and what the shape is — a decision nobody

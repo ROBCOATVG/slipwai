@@ -94,7 +94,8 @@ class BenchmarkTest(FactoryTestCase):
                           "check-decisions test check-model",
                           makefile)
             self.assertIn(
-                "check-benchmark: ## Fail when benchmark boundary and rendering behaviour regresses", makefile,
+                "check-benchmark: ## Fail when a benchmark entry is left open, a done slice has no record, or the "
+                "script's own behaviour regresses", makefile,
             )
             self.assertTrue((repo / "scripts/test_benchmark.py").is_file())
             checked = subprocess.run(["make", "check-benchmark"], cwd=repo, text=True, capture_output=True)

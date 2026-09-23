@@ -11,6 +11,8 @@ slice loop, `specs/<feature>/benchmark.json`. `/drive` opens an entry before a s
     python3 scripts/agents/benchmark.py                                   # the aggregate; `make benchmark`
     python3 scripts/agents/benchmark.py overview [shop]                   # writes specs/<feature>/benchmark.md; `/benchmark`
     python3 scripts/agents/benchmark.py --json
+    python3 scripts/agents/benchmark.py cut-off "<why>"                   # close what an iteration left open; the runner's
+    python3 scripts/agents/benchmark.py check                             # the gate: nothing open, every done slice recorded
 
 Everything that a transcript, `tasks.md`, git or the record itself can say is read from there, never asked:
 wall time; the agent type each delegate ran as, where the transcript attributes one; tokens by model, from the
@@ -70,6 +72,11 @@ COMMENT = (
     "docs/agent-harnesses.md says what the numbers can and cannot be compared with."
 )
 USAGE_KEYS = ("input", "output", "cache_read", "cache_creation")
+# Which stage a delegate type's lines belong to, whatever bracket was open when they were written: a skipper round
+# opened while the implementers run must not count their tokens, and the implement entry must not lose them to it.
+OWNERS = {"drive-implement": ("implement",), "drive-converge": ("converge",), "drive-gaps": ("gaps",),
+          "drive-adversary": ("adversary",), "drive-mutation": ("mutation",), "drive-tasks": ("tasks",),
+          "drive-hand": ("demo", "hand"), "drive-skipper": ("skipper",), "drive-bosun": ("bosun",)}
 
 
 def now() -> str:
@@ -187,21 +194,87 @@ def cursor() -> dict[str, Any]:
     return {"source": None, "reason": f"the registry records no transcript to read for {named}"}
 
 
-def lines_after(path: Path, offset: int) -> list[dict[str, Any]]:
+def lines_with_offsets(path: Path, offset: int) -> list[tuple[int, dict[str, Any]]]:
+    """Each JSON line after `offset` with the byte offset it starts at — the coordinate a bracket's window is in."""
     if not path.is_file():
         return []
     with path.open("rb") as handle:
         handle.seek(offset)
         raw = handle.read()
     items = []
-    for line in raw.decode("utf-8", errors="replace").splitlines():
+    position = offset
+    for line in raw.split(b"\n"):
+        start, position = position, position + len(line) + 1
         try:
-            item = json.loads(line)
+            item = json.loads(line.decode("utf-8", errors="replace"))
         except ValueError:
             continue
         if isinstance(item, dict):
-            items.append(item)
+            items.append((start, item))
     return items
+
+
+def lines_after(path: Path, offset: int) -> list[dict[str, Any]]:
+    return [item for _, item in lines_with_offsets(path, offset)]
+
+
+class Window:
+    """Where one bracket sits in the transcripts: a byte range per file, open-ended while the entry is. A line is
+    counted by the innermost bracket covering it, except that a delegate's lines go to the bracket whose stage owns
+    the type that ran them, so two brackets open at once — a skipper round during implementation — never both
+    count the same request, and neither loses what is its own."""
+
+    def __init__(self, stage: str, started: str, from_: dict[str, int], to: dict[str, int] | None) -> None:
+        self.stage, self.started, self.from_, self.to = stage, started, from_, to
+        # Which of two brackets started later: the clock, then — two starts in one second — where the transcripts
+        # stood, which only ever grows.
+        self.order = (started, sum(from_.values()))
+
+    def later_than(self, other: "Window") -> bool:
+        return self.order > other.order
+
+    def covers(self, path: str, offset: int) -> bool:
+        if offset < self.from_.get(path, 0):
+            return False
+        return self.to is None or offset < self.to.get(path, 0)
+
+    def owns(self, agent: str | None) -> bool:
+        return self.stage in OWNERS.get(agent or "", ())
+
+    def counts(self, path: str, offset: int, agent: str | None, others: list["Window"]) -> bool:
+        covering = [other for other in others if other.covers(path, offset)]
+        if agent is not None and self.owns(agent) and not any(other.owns(agent) and other.later_than(self)
+                                                                for other in covering):
+            return True
+        if any(other.owns(agent) for other in covering):
+            return False
+        return not any(other.later_than(self) for other in covering)
+
+
+def window_of(entry: dict[str, Any]) -> Window | None:
+    """An entry's window, from its closed `span` or, while it is open, its start cursor; none for an entry from
+    before spans were recorded, which is not held against any other."""
+    span = entry.get("span")
+    if isinstance(span, dict):
+        return Window(entry["stage"], entry.get("started", ""), dict(span.get("from", {})), dict(span.get("to", {})))
+    mark = entry.get("cursor")
+    if isinstance(mark, dict) and mark.get("source"):
+        return Window(entry["stage"], entry.get("started", ""), {**mark.get("files", {}), **mark.get("subagents", {})},
+                      None)
+    return None
+
+
+def other_windows(except_path: Path, except_index: int) -> list[Window]:
+    """Every other bracket in the project's records, open or closed, that could overlap this one."""
+    found = []
+    for path, record in records():
+        for index, entry in enumerate(record.get("stages", [])):
+            if path == except_path and index == except_index:
+                continue
+            window = window_of(entry)
+            if window is not None:
+                found.append(window)
+    return found
 
 
 def empty_usage() -> dict[str, int]:
@@ -222,7 +295,8 @@ CODEX_FIELDS = {"input": "input_tokens", "output": "output_tokens", "cache_read"
 
 
 def claude_usage(items: list[dict[str, Any]], by_model: dict[str, dict[str, int]], seen: set[str],
-                 agents: set[str] | None = None) -> None:
+                 agents: set[str] | None = None, keep: Callable[[int, str | None], bool] | None = None,
+                 offsets: list[int] | None = None) -> None:
     """One API response is written as one line per content block, each carrying the same usage: count a
     request once (592 of 1090 assistant lines on this machine's transcripts were repeats).
 
@@ -231,7 +305,7 @@ def claude_usage(items: list[dict[str, Any]], by_model: dict[str, dict[str, int]
     particular. That is read rather than asked, the way the model is, so a record can only claim a type that
     actually ran (the transcripts Claude Code 2.1.268 wrote on this machine, read 2026-09-15).
     """
-    for item in items:
+    for position, item in enumerate(items):
         if item.get("type") != "assistant":
             continue
         message = item.get("message") or {}
@@ -239,9 +313,12 @@ def claude_usage(items: list[dict[str, Any]], by_model: dict[str, dict[str, int]
         key = item.get("requestId") or message.get("id") or item.get("uuid")
         if not isinstance(usage, dict) or not key or key in seen:
             continue
+        agent = item.get("attributionAgent") if isinstance(item.get("attributionAgent"), str) else None
+        if keep is not None and offsets is not None and not keep(offsets[position], agent):
+            continue
         seen.add(str(key))
-        if agents is not None and isinstance(item.get("attributionAgent"), str):
-            agents.add(item["attributionAgent"])
+        if agents is not None and agent is not None:
+            agents.add(agent)
         add_usage(by_model.setdefault(str(message.get("model") or "unknown"), empty_usage()), usage, CLAUDE_FIELDS)
 
 
@@ -259,12 +336,13 @@ def codex_total(path: Path, offset: int) -> dict[str, int] | None:
     return total
 
 
-def codex_usage(path: Path, offset: int, start_total: dict[str, int] | None) -> tuple[dict[str, dict[str, int]], str]:
+def codex_usage(path: Path, offset: int, start_total: dict[str, int] | None,
+                keep: Callable[[int], bool] | None = None, shared: bool = False) -> tuple[dict[str, dict[str, int]], str]:
     by_model: dict[str, dict[str, int]] = {}
     seen: set[str] = set()
     model = "unknown"
-    records = False
-    for item in lines_after(path, offset):
+    records_seen = False
+    for position, item in lines_with_offsets(path, offset):
         payload = item.get("payload") if isinstance(item.get("payload"), dict) else item
         if item.get("type") == "turn_context" and isinstance(payload.get("model"), str):
             model = payload["model"]
@@ -273,40 +351,82 @@ def codex_usage(path: Path, offset: int, start_total: dict[str, int] | None) -> 
             if key in seen:
                 continue
             seen.add(key)
-            records = True
+            records_seen = True
+            if keep is not None and not keep(position):
+                continue
             add_usage(by_model.setdefault(model, empty_usage()), payload["usage"], CODEX_FIELDS)
-    if records:
+    if records_seen:
         return by_model, "token_usage_record lines, one per response"
     end_total = codex_total(path, offset)
     if start_total is None or end_total is None:
         return {}, "no token_count event either side of the stage"
-    return {model: {key: end_total[key] - start_total[key] for key in USAGE_KEYS}}, "the difference between token_count totals"
+    return ({model: {key: end_total[key] - start_total[key] for key in USAGE_KEYS}},
+            "the difference between token_count totals"
+            + (", which a bracket open at the same time shares" if shared else ""))
 
 
-def usage_since(mark: dict[str, Any]) -> dict[str, Any]:
-    """Tokens by model between the cursor and now, split host/sub-agents, or why there are none."""
+def span_now(mark: dict[str, Any]) -> dict[str, dict[str, int]]:
+    """The window this bracket closes with: from its cursor to the transcripts' present ends."""
+    from_ = {**mark.get("files", {}), **mark.get("subagents", {})}
+    if mark.get("source") == "claude":
+        main, subagents = claude_transcripts(mark["session"])
+        to = sizes([path for path in [main, *subagents] if path is not None])
+    elif mark.get("source") == "codex":
+        rollout = codex_rollout(mark["session"])
+        to = sizes([rollout]) if rollout is not None else {}
+    else:
+        to = {}
+    return {"from": from_, "to": to}
+
+
+def usage_since(mark: dict[str, Any], own: Window | None = None, others: list[Window] | None = None,
+                live: bool = True) -> dict[str, Any]:
+    """Tokens by model between the cursor and now, split host/sub-agents, or why there are none. With the bracket's
+    own window and every other bracket's, a line another bracket owns — one nested inside this one, or one whose
+    stage owns the delegate type that wrote it — is left to that bracket. `live` is `end`'s reading, in the session
+    that opened the bracket; a cut-off reads the transcript the cursor names after that session is gone."""
     if mark.get("source") is None:
         return {"source": None, "reason": mark.get("reason", "no transcript")}
+    overlapping = [other for other in (others or []) if own is not None]
     if mark["source"] == "claude":
-        if os.environ.get("CLAUDE_CODE_SESSION_ID") != mark["session"]:
+        if live and os.environ.get("CLAUDE_CODE_SESSION_ID") != mark["session"]:
             return {"source": None, "reason": f"the session changed since the stage started ({mark['session']})"}
         main, subagents = claude_transcripts(mark["session"])
         host: dict[str, dict[str, int]] = {}
         delegated: dict[str, dict[str, int]] = {}
         seen: set[str] = set()
         types: set[str] = set()
+        shared = 0
+
+        def reader(path: Path) -> Callable[[int, str | None], bool]:
+            def keep(offset: int, agent: str | None) -> bool:
+                nonlocal shared
+                kept = own is None or own.counts(str(path), offset, agent, overlapping)
+                shared += not kept
+                return kept
+            return keep
+
         for path in [main] if main else []:
-            claude_usage(lines_after(path, mark["files"].get(str(path), 0)), host, seen)
+            lines = lines_with_offsets(path, mark["files"].get(str(path), 0))
+            claude_usage([item for _, item in lines], host, seen, keep=reader(path), offsets=[o for o, _ in lines])
         for path in subagents:
-            claude_usage(lines_after(path, mark["subagents"].get(str(path), 0)), delegated, seen, types)
-        return {"source": "claude", "session": mark["session"], "read": "message.usage on each assistant line, once per "
-                "requestId", "host": host, "subagents": delegated, "agents": sorted(types)}
-    if os.environ.get("CODEX_THREAD_ID") != mark["session"]:
+            lines = lines_with_offsets(path, mark["subagents"].get(str(path), 0))
+            claude_usage([item for _, item in lines], delegated, seen, types, keep=reader(path),
+                         offsets=[o for o, _ in lines])
+        read = "message.usage on each assistant line, once per requestId"
+        if shared:
+            read += f"; {shared} request(s) left to a bracket open at the same time"
+        return {"source": "claude", "session": mark["session"], "read": read, "host": host, "subagents": delegated,
+                "agents": sorted(types)}
+    if live and os.environ.get("CODEX_THREAD_ID") != mark["session"]:
         return {"source": None, "reason": f"the thread changed since the stage started ({mark['session']})"}
     rollout = codex_rollout(mark["session"])
     if rollout is None:
         return {"source": None, "reason": "the rollout disappeared"}
-    by_model, how = codex_usage(rollout, mark["files"].get(str(rollout), 0), mark.get("total"))
+    keep_codex = (lambda offset: own.counts(str(rollout), offset, None, overlapping)) if own is not None else None
+    shared = any(other.covers(str(rollout), mark["files"].get(str(rollout), 0)) or other.later_than(own)
+                 for other in overlapping) if own is not None else False
+    by_model, how = codex_usage(rollout, mark["files"].get(str(rollout), 0), mark.get("total"), keep_codex, shared)
     return {"source": "codex", "session": mark["session"], "read": how, "host": by_model, "subagents": {}}
 
 
@@ -345,15 +465,20 @@ def parse_signals(arguments: list[str]) -> dict[str, Any]:
 
 
 def start(directory: Path, stage: str) -> None:
+    """Open an entry — after closing any this record still has open, as cut off: the stages of one record run one
+    after another, so an entry still open at the next `start` was left by a session that ended without ending it,
+    and a second one stacked on top would leave the first open for good with its hours uncounted."""
     record = load(directory)
-    left_open = [entry["stage"] for entry in record["stages"] if "ended" not in entry]
+    for index, entry in enumerate(record["stages"]):
+        if "ended" not in entry:
+            cut_off_entry(directory / RECORD, index, entry, f"a new `{stage}` entry started while it was open")
+            print(f"benchmark: {record.get('slice') or '(feature)'} {entry['stage']}: cut off — {entry['cut_off']}")
     mark = cursor()
     record["stages"].append({"stage": stage, "started": now(), "planned": planned(stage),
                              "tasks": {"start": task_counts(directory)}, "cursor": mark})
     save(directory, record)
     where = f"usage from {mark['source']}" if mark.get("source") else f"no usage: {mark.get('reason')}"
-    note = f"; left open: {', '.join(left_open)}" if left_open else ""
-    print(f"benchmark: {stage} started ({(directory / RECORD).relative_to(ROOT)}; {where}{note})")
+    print(f"benchmark: {stage} started ({(directory / RECORD).relative_to(ROOT)}; {where})")
 
 
 def end(directory: Path, stage: str, arguments: list[str], clock: Callable[[], str] = now) -> None:
@@ -361,12 +486,19 @@ def end(directory: Path, stage: str, arguments: list[str], clock: Callable[[], s
     start and the end in the same moment on purpose, without a mocking framework replacing this module."""
     record = load(directory)
     signals = parse_signals(arguments)
-    entry = next((entry for entry in reversed(record["stages"]) if entry["stage"] == stage and "ended" not in entry), None)
-    if entry is None:
+    index = next((index for index in range(len(record["stages"]) - 1, -1, -1)
+                  if record["stages"][index]["stage"] == stage and "ended" not in record["stages"][index]), None)
+    if index is None:
         raise RuntimeError(f"no open `{stage}` entry in {(directory / RECORD).relative_to(ROOT)}; `start` it first")
+    entry = record["stages"][index]
     entry["ended"] = clock()
     entry["seconds"] = int((moment(entry["ended"]) - moment(entry["started"])).total_seconds())
-    usage = usage_since(entry.pop("cursor", {"source": None, "reason": "no cursor was recorded"}))
+    mark = entry.pop("cursor", {"source": None, "reason": "no cursor was recorded"})
+    own = None
+    if mark.get("source"):
+        entry["span"] = span_now(mark)
+        own = Window(stage, entry["started"], entry["span"]["from"], entry["span"]["to"])
+    usage = usage_since(mark, own, other_windows(directory / RECORD, index))
     entry["usage"] = usage
     ran = models_that_ran(usage)
     entry["ran"] = ran or ([signals["model"]] if "model" in signals else None)
@@ -429,6 +561,100 @@ def close(directory: Path) -> None:
         print(f"benchmark: {page.relative_to(ROOT)} redrawn")
     print()
     print(aggregate())
+
+
+def cut_off_entry(path: Path, index: int, entry: dict[str, Any], reason: str) -> None:
+    """Close an entry nothing will `end`: the session that opened it is gone. Its wall is real, and its tokens are
+    read from the transcript the cursor names — a file on this machine, whoever's session it was — up to where
+    that transcript stopped, so the hours before the interruption still count; its signals were never reported,
+    and the record says so rather than guessing. The window is kept, so a bracket that enclosed it leaves it its
+    lines."""
+    entry["ended"] = now()
+    entry["seconds"] = int((moment(entry["ended"]) - moment(entry["started"])).total_seconds())
+    mark = entry.pop("cursor", {"source": None, "reason": "no cursor was recorded"})
+    own = None
+    if mark.get("source"):
+        entry["span"] = span_now(mark)
+        own = Window(entry["stage"], entry["started"], entry["span"]["from"], entry["span"]["to"])
+    usage = usage_since(mark, own, other_windows(path, index), live=False)
+    if usage.get("source"):
+        usage["read"] += "; read after the session that opened the entry had ended"
+    else:
+        usage = {"source": None, "reason": f"cut off — {reason}"}
+    entry["usage"] = usage
+    entry["ran"] = models_that_ran(usage) or None
+    entry["agents"] = types_that_ran(usage) or None
+    entry["delegated"] = any(any(tokens.values()) for tokens in (usage.get("subagents") or {}).values())
+    entry.setdefault("tasks", {})["end"] = task_counts(path.parent)
+    entry["signals"] = {}
+    entry["cut_off"] = reason
+
+
+def cut_off(reason: str) -> None:
+    """Close every entry still open in any record: the runner's iteration ended, or was ended, so nothing will
+    `end` them, and an entry left open reads as a stage still running."""
+    for path, record in records():
+        changed = False
+        for index, entry in enumerate(record.get("stages", [])):
+            if "ended" in entry:
+                continue
+            cut_off_entry(path, index, entry, reason)
+            changed = True
+            print(f"benchmark: {record.get('slice') or '(feature)'} {entry['stage']}: cut off — {reason}")
+        if changed:
+            save(path.parent, record)
+
+
+def done_slices(feature: Path) -> set[str]:
+    """The slices this feature has finished, as the ladder marks them: a row in the register at
+    `slices/README.md`, or `status: implemented` in the event model (`commands/drive.md`, *Ready-set selection*)."""
+    done: set[str] = set()
+    register = feature / "slices/README.md"
+    if register.is_file():
+        for line in register.read_text().splitlines():
+            if not line.strip().startswith("|"):
+                continue
+            first = line.strip().strip("|").split("|")[0].strip().strip("`")
+            found = re.match(r"([A-Za-z]+\d+)\b", first)
+            if found:
+                done.add(found.group(1))
+    model = ROOT / "docs/event-model/model.yaml"
+    if model.is_file():
+        for block in re.split(r"^\s*- id:\s*", model.read_text(), flags=re.M)[1:]:
+            ident = block.split("\n", 1)[0].strip().strip("'\"")
+            if ident and re.search(r"^\s*status:\s*implemented\s*$", block, re.M):
+                done.add(ident)
+    return done
+
+
+def check() -> list[str]:
+    """What the gate holds: no entry left open, a record for every slice the ladder calls done, that record
+    closed, and a feature record once any slice is done — because a delivered slice with no benchmark cannot say
+    what it cost, and the brackets can only be taken at the time."""
+    findings = []
+    for path, record in records():
+        for entry in record.get("stages", []):
+            if "ended" not in entry:
+                findings.append(f"{path.relative_to(ROOT)}: `{entry['stage']}` has been open since {entry['started']} — "
+                                "`benchmark.py end` closes it, and the runner cuts an entry off when its iteration ends")
+    specs = ROOT / "specs"
+    for feature in sorted(specs.iterdir()) if specs.is_dir() else []:
+        if not (feature / "slices").is_dir():
+            continue
+        done = done_slices(feature)
+        for ident in sorted(done):
+            record_path = feature / "slices" / ident / RECORD
+            where = f"specs/{feature.name}/slices/{ident}"
+            if not record_path.is_file():
+                findings.append(f"{where} is done but has no {RECORD}: no stage of it was bracketed "
+                                "(commands/drive.md, *What each stage costs*)")
+            elif "shape" not in json.loads(record_path.read_text()):
+                findings.append(f"{where} is done but its record was never closed — "
+                                f"`python3 scripts/agents/benchmark.py close {where}`")
+        if done and not (feature / RECORD).is_file():
+            findings.append(f"specs/{feature.name}/{RECORD} is missing while {len(done)} slice(s) are done: the stages "
+                            "above the slice loop were not bracketed")
+    return findings
 
 
 # --- the aggregate ---------------------------------------------------------------------------------------------
@@ -619,6 +845,10 @@ def notes(summaries: list[dict[str, Any]], records_: list[dict[str, Any]]) -> li
             usage = entry.get("usage")
             if "ended" in entry and usage is not None and not usage.get("source"):
                 lines.append(f"{record.get('slice') or '(feature)'} {entry['stage']}: tokens unknown — {usage.get('reason')}")
+            if entry.get("cut_off"):
+                lines.append(f"{record.get('slice') or '(feature)'} {entry['stage']}: cut off — {entry['cut_off']}; "
+                             "its wall is real, its signals were never reported"
+                             + ("" if (entry.get("usage") or {}).get("source") else ", its tokens unknown"))
             if is_unbracketed(entry):
                 lines.append(
                     f"{record.get('slice') or '(feature)'} {entry['stage']}: not bracketed around its work — "
@@ -723,9 +953,23 @@ def main() -> None:
         for page in overview(rest[0] if rest else None):
             print(f"benchmark: {page.relative_to(ROOT)} written")
         return
+    if command == "cut-off":
+        if not rest:
+            raise RuntimeError("cut-off takes the reason, in words")
+        cut_off(" ".join(rest))
+        return
+    if command == "check":
+        findings = check()
+        if findings:
+            print("\n".join(f"check-benchmark: {finding}" for finding in findings), file=sys.stderr)
+            raise SystemExit(1)
+        held = records()
+        print(f"check-benchmark: {len(held)} record(s), nothing open, every done slice recorded and closed"
+              if held else "check-benchmark: no record and no done slice yet — nothing to hold")
+        return
     if command not in ("start", "end", "close") or not rest:
         raise RuntimeError("usage: benchmark.py start|end <dir> <stage> [key=value ...] | close <dir> | overview "
-                           "[feature] | [--json]")
+                           "[feature] | cut-off <why> | check | [--json]")
     directory = (ROOT / rest[0]).resolve()
     if ROOT not in directory.parents:
         raise RuntimeError(f"{rest[0]} is outside the repository")

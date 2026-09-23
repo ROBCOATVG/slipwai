@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import re
 import shutil
 import tempfile
@@ -74,21 +75,35 @@ class CruiseStartTest(FactoryTestCase):
             enable(repo, harness="zed")
             unknown = cruise(repo, "run", env={"PATH": str(bare)})
             self.assertEqual(unknown.returncode, 1)
-            self.assertIn("no harness this loop can run an iteration through is on PATH: Zed is installed, and none "
-                          "of the harnesses the registry records a headless command for is on PATH", unknown.stderr)
+            self.assertIn("no harness this loop can run an iteration through is on PATH: Zed is installed, and the "
+                          "registry records no way to run it headless, and none of the harnesses the registry records "
+                          "a headless command for is on PATH", unknown.stderr)
             self.assertIn("Cursor (`agent`)", unknown.stderr)
             self.assertIn("set CRUISE_HARNESS_COMMAND", unknown.stderr)
-            # An editor with no command line still runs: through whichever CLI harness is on PATH, asked to read
-            # the command file — the same words on every harness — and the log names the harness that ran.
+            # A CLI on PATH that `./init` never initialised here is refused, not driven: nothing is projected for
+            # it — no `/cruise`, no delegate types, no hook file — so an iteration through it would end with no
+            # last line and the run would spend its stuck budget before parking for the wrong reason. The refusal
+            # names the init that adds it beside what is installed.
             fake_cursor = Path(directory) / "cursor-bin"
             fake_cursor.mkdir()
             (fake_cursor / "agent").write_text(f'#!/bin/sh\necho "$*" >> {Path(directory) / "agent-args"}\n'
                                                'echo "cruise: done"\n')
             (fake_cursor / "agent").chmod(0o755)
             fallen = cruise(repo, "run", "--feature", "S1", env={"PATH": f"{fake_cursor}:{bare}"})
-            self.assertEqual(fallen.returncode, 0, fallen.stderr)
-            self.assertIn("cruise: harness: Cursor, found on PATH — Zed is the installed harness, and the registry "
-                          "records no way to run it headless; edits are accepted", fallen.stdout)
+            self.assertEqual(fallen.returncode, 1, fallen.stdout)
+            self.assertIn("no initialised harness this loop can run an iteration through is on PATH: Zed is "
+                          "installed, and the registry records no way to run it headless. On PATH but never "
+                          "initialised here, so its commands, delegate types and hooks are not projected: Cursor "
+                          "(`./init --integration cursor-agent`) — that init adds it beside what is installed",
+                          fallen.stderr)
+            self.assertFalse((Path(directory) / "agent-args").exists(), "the uninitialised harness was not run")
+            self.assertFalse((repo / LOG).exists())
+            # The same CLI, initialised beside the editor, is the one the run goes through.
+            (repo / ".specify/integration.json").write_text(json.dumps({"installed_integrations": ["zed",
+                                                                                                    "cursor-agent"]}))
+            paired = cruise(repo, "run", "--feature", "S1", env={"PATH": f"{fake_cursor}:{bare}"})
+            self.assertEqual(paired.returncode, 0, paired.stderr)
+            self.assertIn("cruise: harness: Cursor; edits are accepted", paired.stdout)
             self.assertEqual((Path(directory) / "agent-args").read_text(),
                              "-p --output-format text --force Run the /cruise command: read commands/cruise.md and "
                              "follow it exactly as written, with `S1` as its argument.\n")
@@ -116,12 +131,15 @@ class CruiseStartTest(FactoryTestCase):
             sandboxed = cruise(repo, "run", "--sandbox", "--feature", "S1", env=env)
             self.assertEqual(sandboxed.returncode, 0, sandboxed.stderr)
             self.assertIn("--sandbox: every permission check is bypassed", sandboxed.stdout)
+            # `--add-dir` names the directory the checkout sits in on every iteration, sandboxed or not: a print
+            # session is refused an edit outside its working directory, and the ladder's concurrent slices work
+            # in worktrees beside the checkout.
             self.assertEqual((Path(directory) / "claude-args").read_text(),
                              "-p /cruise --output-format stream-json --verbose --permission-mode acceptEdits "
                              "--allowedTools Bash,Skill,Agent,WebFetch,WebSearch,mcp__codegraph__* "
-                             "wait=0 session=none nested=none\n"
+                             f"--add-dir {repo.parent} wait=0 session=none nested=none\n"
                              "-p /cruise S1 --output-format stream-json --verbose --dangerously-skip-permissions "
-                             "wait=0 session=none nested=none\n")
+                             f"--add-dir {repo.parent} wait=0 session=none nested=none\n")
             self.assertNotIn("session", logged(repo)[-1])
             # An iteration whose output carries no last line is logged as such and treated as `continue` —
             # and this is the third iteration in a row that changed nothing, so the run parks as stuck.
@@ -136,7 +154,8 @@ class CruiseStartTest(FactoryTestCase):
             self.assertEqual((Path(directory) / "claude-args").read_text().splitlines()[-1],
                              "-p /cruise unblock: no progress since iteration 1 --output-format stream-json --verbose "
                              "--permission-mode acceptEdits "
-                             "--allowedTools Bash,Skill,Agent,WebFetch,WebSearch,mcp__codegraph__*")
+                             f"--allowedTools Bash,Skill,Agent,WebFetch,WebSearch,mcp__codegraph__* "
+                             f"--add-dir {repo.parent}")
 
     def test_a_typed_cruise_starts_the_runner_detached_and_a_person_stops_it_from_anywhere(self) -> None:
         """A `/cruise` typed into a session has nobody to re-invoke it, on any harness, so the command starts

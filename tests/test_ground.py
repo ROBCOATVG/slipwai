@@ -95,3 +95,50 @@ class GroundTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+def with_candidates(candidates: list[dict]) -> str:
+    """The command as it reads while buildable directories are still candidates (ADR 0003)."""
+    adoption = Adoption(candidates=candidates, release={"path": "unknown", "evidence": [], "provenance": "unrecorded"})
+    adoption = Adoption(**{**adoption.__dict__, "convergence": detected([], adoption)})
+    return project_files("shop", "standard", "existing", [], DELIVERY, adoption)["delivery/commands/ground.md"]
+
+
+class QuestionDisciplineTest(unittest.TestCase):
+    """How a question is *put*, which is a different thing from which questions are asked.
+
+    The first real run of this command produced a page of sound reasoning per candidate and then collapsed it
+    into option labels — `Yes — hold its lint`, `Yes, as recommended` — and the person answering said "Not
+    sure, what do you think?" and, once, "check yourself". A person reads the options, not the paragraph above
+    them, so the options are where the consequence has to be.
+    """
+
+    def test_every_option_has_to_say_what_it_does(self) -> None:
+        ground = adopted([wrapped("shop", ".")])["delivery/commands/ground.md"]
+        self.assertIn("**Every answer on offer says what it does.**", ground)
+        self.assertIn("is a label, and a label is what gets picked by", ground)
+        self.assertIn("Never offer one whose consequence you have not stated", ground)
+
+    def test_a_readable_question_goes_back_to_the_tree_rather_than_to_the_person(self) -> None:
+        ground = adopted([wrapped("shop", ".")])["delivery/commands/ground.md"]
+        self.assertIn("**Settle from the tree whatever the tree settles", ground)
+        self.assertIn("asks somebody to guess at their own repository", ground)
+
+    def test_not_knowing_is_offered_rather_than_merely_accepted(self) -> None:
+        ground = adopted([wrapped("shop", ".")])["delivery/commands/ground.md"]
+        self.assertIn("is one of the answers, every time, and offered as one.", ground)
+        self.assertIn("manufactures an answer", ground)
+
+    def test_a_recommendation_comes_with_its_reasoning_and_never_a_bare_menu(self) -> None:
+        ground = adopted([wrapped("shop", ".")])["delivery/commands/ground.md"]
+        self.assertIn("**Say what you think, and why, from what you read.**", ground)
+        self.assertIn("Never a bare menu.", ground)
+
+    def test_the_candidate_section_holds_its_options_to_the_same_standard(self) -> None:
+        ground = with_candidates([
+            {"name": "themes", "path": "themes", "language": "javascript", "kind": "application",
+             "commands": {"lint": "cd themes && npm run lint"}, "evidence": "themes/package.json"},
+        ])
+        self.assertIn("Each answer on offer says what confirming it does", ground)
+        self.assertIn("*Yes* and *No* are not.", ground)

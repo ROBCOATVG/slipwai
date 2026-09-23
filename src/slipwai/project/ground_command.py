@@ -182,6 +182,11 @@ def candidate_section(adoption: Adoption, layout: Layout) -> str:
         "reading, not answering a quiz. Where it is one: what should it be called (the directory's name is what\n"
         "the record proposes, and `default` or `ui` is rarely what anybody calls it), what does it own in a\n"
         "sentence or two, and are the commands the survey read the ones that matter?\n\n"
+        "Each answer on offer says what confirming it does: which commands join the gate and what running\n"
+        "them needs, what a red one would stop, and what declining forfeits instead. *Held as a `library` for\n"
+        "its lint \u2014 `make verify` gains `npm run lint` here, which needs only Node* and *declined \u2014 its\n"
+        "lint stays in the repository's own CI, which already runs it, and the delivery gate says nothing\n"
+        "about this directory* are answers somebody can choose between. *Yes* and *No* are not.\n\n"
         "**Write:** one `slipwai adopt --confirm <name>` per application — with `--as <name>=<new>` where the\n"
         "directory's name is not its name, and `--kind`, `--purpose` and `--command` for what you established —\n"
         "and `--decline <name>` for each that is not one. The command builds the record and regenerates\n"
@@ -213,6 +218,23 @@ axes to ask about; empty means every row a person has not yet placed.
   (`skills/find-gaps/SKILL.md` has the discipline).
 - **Evidence and rungs first.** Before asking, show the row as it stands — the evidence the survey found and each
   rung's meaning — so the person places themselves on a ladder rather than answering a quiz.
+- **Settle from the tree whatever the tree settles, and say you did.** A question you can answer by reading a
+  file is not a question to put: read it, say what you found and where, and record it. Ask only what reading
+  cannot reach — what a person intends, what they would ship on, what they know about how the work is done. A
+  menu offered for something the tree already states asks somebody to guess at their own repository.
+- **Every answer on offer says what it does.** The person reads the options, not the paragraph above them, so
+  each one names what it writes, what moves because of it, and what it costs. *`library`, and the gate holds
+  its lint: `make verify` runs `npm run lint` here from now on, and a red one stops every change until it is
+  fixed or quarantined* is an answer. *Yes — hold its lint* is a label, and a label is what gets picked by
+  somebody who does not yet know what they are picking. Where two options differ only in a word, say what
+  turns on that word. Never offer one whose consequence you have not stated: if you cannot say what an answer
+  does, you are not ready to ask it.
+- **Say what you think, and why, from what you read.** A recommendation with its reasoning is what makes an
+  answer a confirmation rather than a guess, and it is what lets somebody disagree with you on the evidence
+  rather than on authority. Never a bare menu.
+- **"I don't know" is one of the answers, every time, and offered as one.** It is the honest state of most
+  rows in most repositories on the first pass, and a question that does not offer it is a question that
+  manufactures an answer.
 - **A rung is claimed only from a fact.** Here the person is the fact for what only they can know (how work is
   integrated, whether they would ship on the tests). Where the tree can contradict a rung — a release path, a
   quarantined suite, a template constitution, an application's role, no accepted ADR — the tree wins:

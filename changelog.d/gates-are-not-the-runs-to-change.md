@@ -20,6 +20,11 @@ retries the kit's `channel: 'chrome'` launch without the channel, so `verify_res
 resolvable, the render gates are counted skipped without running one, and a gate that still fails on its launch
 is reported skipped rather than as a finding; `UX_GATES_REQUIRE=1` still makes every skip a failure.
 
+**`stop --now` returns once the runner has gone, not once it was told to go.** The runner ends the iteration's
+session before it exits, which takes a moment, and a `start` typed the moment `stop --now` returned found the old
+runner still alive and declined to start one — after which nobody was running and the watch seat found nobody to
+watch. It now waits for the runner to be gone, up to thirty seconds, and says so if it is still ending after that.
+
 **Catch-up.** `slipwai migrate` brings the hook, the runner, the gate and the command text. A run that already
 carries a patched gate is found by `git log -- scripts/` and reverted by hand; the runner parks on the next
 change, not on the standing one.

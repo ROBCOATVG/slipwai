@@ -129,6 +129,9 @@ WATCH_QUIET_SECONDS = 20.0
 # checkpoint at every stage boundary, so a checkpoint held this often without a rewrite is a session that is
 # not moving, and a hook that never let go would spend tokens forever on it.
 HOLD_LIMIT = 3
+# How long `stop --now` waits for the runner it signalled to be gone before it returns: the runner ends the
+# iteration's session first, and a harness session shutting down takes a moment.
+STOP_WAIT_SECONDS = 30.0
 REGISTRY = SCRIPT.with_name("registry.json")
 INTEGRATION = ROOT / ".specify/integration.json"
 # What a run may never change to get moving — the gates that judge it and the controls that hold it: `make
@@ -1478,6 +1481,18 @@ def stop(arguments: list[str]) -> None:
         return
     if "--now" in arguments:
         os.kill(running[0], signal.SIGTERM)
+        # Said once it has ended, not once it was told to. The runner ends the iteration's session before it goes,
+        # and a `start` typed the moment this returned found the old runner still alive and declined to start one
+        # — after which nobody was running, and the watch seat found nobody to watch.
+        for _ in range(int(STOP_WAIT_SECONDS / 0.05)):
+            if running_pid() is None:
+                break
+            time.sleep(0.05)
+        else:
+            print(f"cruise: {relative(STOP)} written and the runner (pid {running[0]}) told to end; it is still ending "
+                  f"the iteration in flight after {STOP_WAIT_SECONDS:g}s — `python3 scripts/agents/cruise.py status` "
+                  "says when it has gone")
+            return
         print(f"cruise: {relative(STOP)} written and the runner (pid {running[0]}) terminated with the iteration "
               "in flight; its increment commits are on the slice branch, and the next run re-derives from disk")
         return

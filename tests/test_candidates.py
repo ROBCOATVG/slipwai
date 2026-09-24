@@ -134,7 +134,8 @@ class RefusingGateTest(FactoryTestCase):
             repo = adopted(Path(directory))
             self.assertEqual(slipwai(repo, "adopt", "--confirm", "shop").returncode, 0)
             makefile = (repo / "delivery/Makefile").read_text()
-            self.assertIn("verify: $(VERIFY_GATES_FACTORY)", makefile)
+            self.assertIn("## Full deterministic pre-commit gate", makefile)
+            self.assertIn("verify: all gates passed", makefile)
             self.assertNotIn("nothing is confirmed as an application here", makefile)
 
 

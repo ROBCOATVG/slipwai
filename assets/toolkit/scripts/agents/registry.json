@@ -216,7 +216,7 @@
       },
       "hooks": {
         "holds": true,
-        "how": "`Stop` runs when the model tries to end its turn; a hook printing {\"decision\": \"block\", \"reason\": \"...\"} refuses the end and the reason is read next; the event carries `last_assistant_message` and `transcript_path`. Hooks run in `-p` sessions. Source: the installed Claude Code 2.1.278's hook events and the Stop hook decision it acted on during /cruise runs, read 2026-09-22.",
+        "how": "`Stop` runs when the model tries to end its turn; a hook printing {\"decision\": \"block\", \"reason\": \"...\"} refuses the end and the reason is read next; the event carries `last_assistant_message` and `transcript_path`. Hooks run in `-p` sessions. Source: the installed Claude Code 2.1.278's hook events and the Stop hook decision it acted on during /cruise runs, read 2026-09-22. `PreToolUse` runs before a tool call, with `tool_name` and `tool_input` (`file_path` for Edit, Write and MultiEdit, `notebook_path` for NotebookEdit) in the event; a hook command that exits 2 refuses the call, its stderr is the tool's result the model reads, and the refusal is listed under `permission_denials` in the final `result` event — from a 2.1.281 print session under `acceptEdits --allowedTools Bash` in an untrusted workspace, where the project's `.claude/settings.json` hook still ran with the runner's environment variables inherited, probed 2026-09-24; `scripts/agents/cruise.py guard` runs there.",
         "projection": null,
         "why": "the factory writes `.claude/settings.json` itself, hooks included (Stop, PreCompact, SessionStart); Grok Build reads that file too"
       },

@@ -33,6 +33,11 @@ def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
         "PreCompact": [{"hooks": [{"type": "command", "command": f"python3 {script} compacting"}]}],
         "SessionStart": [{"matcher": "compact", "hooks": [{"type": "command", "command": f"python3 {script} resume"}]}],
         "Stop": [{"hooks": [{"type": "command", "command": f"python3 {script} stopping"}]}],
+        # The editing tools, in a session the runner started: an edit to a gate or a control of the run —
+        # `scripts/`, the Makefile, `tools/`, CI, this file — is refused before it lands; the runner compares the
+        # controls after every iteration for what the shell wrote (`docs/cruise.md`, *When it is blocked*).
+        "PreToolUse": [{"matcher": "Edit|Write|MultiEdit|NotebookEdit",
+                        "hooks": [{"type": "command", "command": f"python3 {script} guard"}]}],
     }
 
 

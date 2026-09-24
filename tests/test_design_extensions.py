@@ -54,6 +54,23 @@ printf '%s\\n' '# Design review' > "$dest/workflows/design-review.md"
 """
 
 
+# `node` as the gate sees it: the probe (`--input-type=module`) answers with the browser the test names, and a kit
+# script behaves as `FAKE_GATE` says — passes, fails, skips in the kit's own word, or crashes the way Playwright does
+# where no browser opens. Every call is logged — the probe as one word — and the preload a call was started
+# with is kept once.
+FAKE_NODE = """#!/bin/sh
+if [ "$1" = "--input-type=module" ]; then echo "probe" >> "$NODE_LOG"; echo "$FAKE_BROWSER"; exit 0; fi
+echo "$*" >> "$NODE_LOG"
+if [ "$1" = "--require" ]; then cp "$2" "$NODE_LOG.preload"; fi
+case "$FAKE_GATE" in
+  crash) echo "browserType.launch: Chromium distribution 'chrome' is not found at /opt/google/chrome" >&2; exit 1;;
+  fail) echo "gate: FAIL — 1 finding"; exit 1;;
+  skipped) echo "gate: playwright not installed — SKIPPED"; exit 0;;
+  *) echo "gate: OK"; exit 0;;
+esac
+"""
+
+
 def without(directory: str, tools: tuple[str, ...]) -> str:
     """A PATH on which none of `tools` resolves — arranged, not assumed, because the machine running the
     suite may have the real thing installed. A directory holding one of them is not dropped, since `npx`
@@ -257,3 +274,73 @@ class DesignExtensionsTest(FactoryTestCase):
             )
             self.assertEqual(required.returncode, 1)
             self.assertIn("REQUIRED, FAILING", required.stdout)
+
+    def test_the_render_gates_open_the_browser_they_can_and_a_crash_is_a_skip_and_never_a_pass(self) -> None:
+        """The kit launches Chrome, and two of its scripts crash where Chrome is absent instead of falling back to
+        Playwright's Chromium as the other three do. So the gate asks once which browser opens: `bundled` runs every
+        render gate with a preload that retries a launch without the channel, `chrome` runs them plainly, and
+        `none` or `no-playwright` counts them skipped without running one. A gate that still crashes on its launch
+        is a skip, not a pass and not a failure; a gate that fails is a failure; `UX_GATES_REQUIRE=1` makes every
+        skip the failure it is where a browser is expected."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "rendered", frontend="react-vite")
+            fake_bin = self.fake_bin(directory, npx=FAKE_NPX, node=FAKE_NODE)
+            log = Path(directory) / "node-calls"
+            environment = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}", "NPX_LOG": f"{directory}/n",
+                                        "NODE_LOG": str(log)}
+            subprocess.run(["./init", "--integration", "codex", "--extension", "ux-gates"], cwd=repo, check=True,
+                           env=environment)
+            (repo / "apps/web/screens").mkdir()
+            (repo / "apps/web/screens/one.html").write_text("<!doctype html><button>Go</button>\n")
+
+            def gate(**more: str) -> subprocess.CompletedProcess:
+                log.unlink(missing_ok=True)
+                return subprocess.run(["python3", "scripts/check-ux-gates.py"], cwd=repo, text=True,
+                                      capture_output=True, env=environment | more)
+
+            for word, why in (("none", "no browser opens — neither Chrome nor Playwright's Chromium "
+                                       "(`npx playwright install chromium`)"),
+                              ("no-playwright", "playwright is not resolvable from the kit")):
+                unopened = gate(FAKE_BROWSER=word)
+                self.assertEqual(unopened.returncode, 0, unopened.stdout + unopened.stderr)
+                self.assertIn(f"apps/web/screens/ — {why}; 8 render gate(s) SKIPPED, not passed", unopened.stdout)
+                self.assertNotIn("every gate passed", unopened.stdout)
+                self.assertEqual(len(log.read_text().splitlines()), 1, "only the probe ran")
+                self.assertEqual(gate(FAKE_BROWSER=word, UX_GATES_REQUIRE="1").returncode, 1)
+
+            bundled = gate(FAKE_BROWSER="bundled")
+            self.assertEqual(bundled.returncode, 0, bundled.stdout + bundled.stderr)
+            self.assertIn("1 preview(s) through the render gates on Playwright's Chromium, Chrome not being installed",
+                          bundled.stdout)
+            self.assertIn("check-ux-gates: every gate passed", bundled.stdout)
+            calls = log.read_text().splitlines()
+            self.assertEqual(len(calls), 9, calls)
+            self.assertTrue(all(call.startswith("--require ") and "/preload.cjs " in call for call in calls[1:]), calls)
+            self.assertEqual([call.split("/scripts/")[-1] for call in calls[1:]],
+                             ["verify_responsive.mjs " + str(repo / "apps/web/screens"),
+                              "verify_target_size.mjs " + str(repo / "apps/web/screens"),
+                              "measure_render.mjs " + str(repo / "apps/web/screens"),
+                              "measure_render.mjs " + str(repo / "apps/web/screens") + " --dark",
+                              "axe_audit.mjs " + str(repo / "apps/web/screens/one.html"),
+                              "axe_audit.mjs " + str(repo / "apps/web/screens/one.html") + " --dark",
+                              "verify_states.mjs " + str(repo / "apps/web/screens/one.html"),
+                              "verify_states.mjs " + str(repo / "apps/web/screens/one.html") + " --dark"])
+            preload = Path(f"{log}.preload").read_text()
+            self.assertIn(f'createRequire("{repo / "tools/ux-gates/scripts/preload.cjs"}")("playwright")', preload)
+            self.assertIn("if (!options.channel) throw error;", preload)
+
+            chrome = gate(FAKE_BROWSER="chrome")
+            self.assertEqual(chrome.returncode, 0, chrome.stdout)
+            self.assertIn("check-ux-gates: every gate passed", chrome.stdout)
+            self.assertNotIn("Playwright's Chromium", chrome.stdout)
+            self.assertFalse(any("--require" in call for call in log.read_text().splitlines()))
+
+            crashed = gate(FAKE_BROWSER="chrome", FAKE_GATE="crash")
+            self.assertEqual(crashed.returncode, 0, crashed.stdout + crashed.stderr)
+            self.assertIn("check-ux-gates: verify_responsive.mjs could not open a browser — SKIPPED, not passed",
+                          crashed.stdout)
+            self.assertIn("8 render gate(s) SKIPPED, not passed", crashed.stdout)
+            self.assertNotIn("FAILED", crashed.stdout)
+            self.assertEqual(gate(FAKE_BROWSER="chrome", FAKE_GATE="crash", UX_GATES_REQUIRE="1").returncode, 1)
+            self.assertIn("check-ux-gates: FAILED\n  - apps/web/screens: verify_responsive.mjs",
+                          gate(FAKE_BROWSER="chrome", FAKE_GATE="fail").stdout)

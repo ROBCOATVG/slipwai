@@ -22,7 +22,7 @@ from . import next_steps, resurvey
 from .adopt import Answers, adopt, candidates_of, check_repository, proposed, report
 from .catalog import CATALOG
 from .cli_confirm import confirmations
-from .cli_init import agent_line, run_init
+from .cli_init import agent_line, projection_line, reproject, run_init
 from .cli_interview import NOTHING_TO_ASK, interview, shape, with_override
 from .cli_prompts import validate_project_name
 from .ecosystems import EXTRA, TARGETS
@@ -153,9 +153,13 @@ def adopt_main(argv: list[str]) -> None:
         return
     if args.confirm or args.decline:
         try:
-            print(confirming.report(confirming.confirm(root, confirmations(args), args.decline)))
+            settled = confirming.confirm(root, confirmations(args), args.decline)
         except GenerationError as error:
             parser.error(str(error))
+        print(confirming.report(settled))
+        # Confirming changes which languages the record names, which rewrites the skills the harness copies.
+        where = layout_of(read_manifest(root)).delivery
+        print(projection_line(reproject(root, where), where), end="")
         return
     if args.refresh:
         try:
@@ -163,6 +167,8 @@ def adopt_main(argv: list[str]) -> None:
         except GenerationError as error:
             parser.error(str(error))
         print(resurvey.report(refreshed))
+        where = layout_of(read_manifest(root)).delivery
+        print(projection_line(reproject(root, where), where), end="")
         return
     try:
         name = args.name or root.name.lower()

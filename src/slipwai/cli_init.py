@@ -81,3 +81,46 @@ def run_init(root: Path, delivery: str, agent: Agent) -> None:
         f"a step of its own, which is why it runs after. Run it again when whatever stopped it is fixed — "
         f"`slipwai adopt --next` will keep saying that it is the step you are on."
     )
+
+
+# The project's own projectors, named rather than reached through `make`, so this cannot pick up an
+# unrelated target a project has since defined. `.specify/integration.json` is what `./init` writes once a
+# harness is installed: absent, nothing has been projected and there is nothing that could be out of step.
+PROJECTORS = ("scripts/extensions/project.py", "scripts/agents/project.py")
+PROJECTED = ".specify/integration.json"
+
+
+def reproject(root: Path, delivery: str) -> str | None:
+    """Re-derive the harness projections after the files they copy have been rewritten.
+
+    Confirming a candidate changes which languages the record names, which changes the skills' prose, which
+    makes every copy under `.claude/skills/` differ from its canonical source — and `check-agents` fails, so
+    `make verify` is red the moment `/ground` finishes. Both real adoptions hit it and fixed it by hand. The
+    factory writes the canonical files, so the factory re-derives what copies them, exactly as `migrate`
+    does after a merge.
+
+    A projector that cannot run is returned, not raised: the record is written and good either way, and
+    losing it to a failure in a follow-up step would be much the worse outcome. Returns None when it ran, or
+    when there was nothing to run.
+    """
+    if not (root / PROJECTED).is_file():
+        return None
+    for relative in PROJECTORS:
+        script = f"{delivery}/{relative}" if delivery != "." else relative
+        if not (root / script).is_file():
+            continue
+        done = subprocess.run(["python3", script], cwd=root, text=True, capture_output=True, check=False)
+        if done.returncode != 0:
+            return done.stderr.strip() or done.stdout.strip() or "no reason given"
+    return None
+
+
+def projection_line(failure: str | None, delivery: str) -> str:
+    """What the report says about the projections, which is nothing where there was nothing to project."""
+    make = "make" if delivery == "." else f"make -f {delivery}/Makefile"
+    if failure is None:
+        return ""
+    return (
+        f"  The harness projections could not be re-derived, so `{make} check-agents` will fail until they "
+        f"are: {failure}. `{make} agents` re-runs it."
+    )

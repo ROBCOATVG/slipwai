@@ -104,8 +104,11 @@ def node(root: Path, directory: str) -> Detected | None:
         "node", "typescript" if typescript else "javascript", prefixed(directory, "package.json"),
         complete(
             install=in_dir(directory, install),
+            # `--skipLibCheck`, or the check is red before the project writes a line: a real adoption gave
+            # seventeen errors under a bare `tsc --noEmit`, all inside `node_modules`, which the ratchet then
+            # baselines as a blanket excuse. Skipping lib types, that tree is green. Its own script wins.
             typecheck=run(typecheck) if typecheck else (
-                in_dir(directory, f"{tool} exec -- tsc --noEmit") if typescript else None
+                in_dir(directory, f"{tool} exec -- tsc --noEmit --skipLibCheck") if typescript else None
             ),
             lint=run("lint") if "lint" in scripts else None,
             test=run("test") if test and "no test specified" not in test else None,

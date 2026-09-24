@@ -760,7 +760,11 @@ def main() -> None:
         if harness is None:
             raise RuntimeError(f'unknown Spec Kit integration "{key}"')
         if harness.get("projectable") is False:
-            raise RuntimeError(f'{harness["name"]} keeps its skills outside the repository and cannot be projected')
+            # The registry's own reason, not a paraphrase of it: a person told "outside the repository" still
+            # has to go and find out *where*, and the row already says. `~/.hermes/skills` is the whole
+            # answer to what to do instead.
+            reason = harness.get("unprojectableReason") or "it cannot be projected into a repository"
+            raise RuntimeError(f'{harness["name"]} cannot be projected: {reason}')
         project(harness)
         if not CHECK:
             done = ("Extension pointers projected" if CONTEXT_ONLY

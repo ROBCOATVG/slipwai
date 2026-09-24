@@ -3,10 +3,11 @@
 > **Experimental.** This page arrived with brownfield adoption and will change as real programmes teach it
 > what it gets wrong. What surprised you belongs on the public issue tracker.
 
-The delivery method is installed. `make verify` is green, the survey says what is here, and `/characterise`
-can pin any behaviour before it changes. Nothing on this page had to be decided for that to happen, and that
-was the point: the method makes every later step safe for an agent to attempt, and only now is the question
-*which* step. This page is the Choose and Slice stages — three strategies, the order to change in, what
+The delivery method is installed. The survey says what is here, `/characterise` can pin any behaviour before
+it changes, and `make verify` runs the build's own commands — green on the day it arrives where the ratchet
+has a baseline to hold them to, and saying plainly what is red where it does not. Nothing on this page had to
+be decided for that to happen, and that was the point: the method makes every later step safe for an agent to
+attempt, and only now is the question *which* step. This page is the Choose and Slice stages — three strategies, the order to change in, what
 to do about data and infrastructure, and the one rule that holds all of it together.
 
 ## Three strategies, not two

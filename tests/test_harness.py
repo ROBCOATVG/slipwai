@@ -227,6 +227,11 @@ class EveryHarnessReachesTest(FactoryTestCase):
                         said = done.stdout + done.stderr
                         self.assertIn("cannot be projected", said, f"{key} refused without saying why")
                         self.assertIn(row["name"], said, f"{key} refused without saying which harness")
+                        self.assertIn(
+                            row["unprojectableReason"], said,
+                            f"{key} paraphrased its reason; the registry already says where its skills live, "
+                            "and a person told only 'outside the repository' still has to go and find out",
+                        )
                         continue
                     self.assertEqual(done.returncode, 0, f"{key}: {done.stderr}")
                     places = [row[field] for field in ("commandsDir", "skillsDir") if row.get(field)]

@@ -41,6 +41,37 @@ NOTHING_FOUND = (
     "A build this repository does have and the survey cannot read is a gap in the factory: raise it, naming the file."
 )
 NOTHING_LEFT = "every application the survey found was skipped or left unwrapped; nothing is left to install around"
+# What `--confirm` and `--decline` have no use for: every flag that describes the adoption itself rather than
+# the candidate being settled. Passed alongside one, each was read, ignored and never mentioned — `adopt
+# --confirm shop --integration cursor` looked like it recorded a harness and recorded nothing. A flag that
+# silently does nothing is worse than one that is refused, which is the rule the reshaped intro already
+# applies to the flags that describe an application.
+SETTLING_IGNORES = (
+    "yes", "refresh", "next_steps", "experimental_intro", "integration", "run_init", "name", "profile",
+    "target", "delivery", "why", "skip", "database", "database_repository", "infrastructure",
+    "infrastructure_repository", "forge", "release",
+)
+
+
+def ignored_by_settling(args: argparse.Namespace, parser: argparse.ArgumentParser) -> list[str]:
+    """The adoption's own flags a `--confirm` or `--decline` run was given and would have thrown away."""
+    # The *first* declared default per dest, not the last: two actions can share one (`--init` / `--no-init`),
+    # and a later one's default would otherwise decide what "unset" means for both.
+    defaults: dict[str, object] = {}
+    for action in parser._actions:
+        defaults.setdefault(action.dest, action.default)
+    given = []
+    for dest in SETTLING_IGNORES:
+        if not hasattr(args, dest) or getattr(args, dest) == defaults.get(dest):
+            continue
+        option = next(
+            (action.option_strings[0] for action in parser._actions if action.dest == dest),
+            f"--{dest.replace('_', '-')}",
+        )
+        given.append(option)
+    return given
+
+
 def next_report(root: Path) -> str:
     """`--next` in a repository the method was installed around: the sequence, as the tree has it now."""
     document = read_manifest(root, "slipwai adopt --next")
@@ -99,7 +130,11 @@ def adopt_main(argv: list[str]) -> None:
         "It reaches Spec Kit's source, so it needs the network; what it writes is left for you to commit",
     )
     init.add_argument(
-        "--no-init", action="store_false", dest="run_init", help="do not run ./<delivery>/init (default)"
+        # `default=None` on both halves, so that "nobody said" is one value rather than two: a store_false
+        # defaulting to True and a store_true defaulting to None share `run_init`, and whichever argparse
+        # applied last decided what unset looked like.
+        "--no-init", action="store_false", dest="run_init", default=None,
+        help="do not run ./<delivery>/init (default)",
     )
     parser.add_argument("--name", default=None, help="the project's name (default: the directory's)")
     parser.add_argument("--profile", choices=CATALOG["profiles"], default="standard")
@@ -152,6 +187,13 @@ def adopt_main(argv: list[str]) -> None:
             parser.error(str(error))
         return
     if args.confirm or args.decline:
+        stray = ignored_by_settling(args, parser)
+        if stray:
+            parser.error(
+                f"{', '.join(stray)} describe(s) the adoption itself, and this run settles a candidate that "
+                "was already recorded — it would be read and thrown away. `slipwai adopt` takes them when "
+                "the method is installed; `--integration` afterwards belongs to `./init`."
+            )
         try:
             settled = confirming.confirm(root, confirmations(args), args.decline)
         except GenerationError as error:

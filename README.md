@@ -231,6 +231,7 @@ changes. What changes is who answers.
 /cruise-settings enabled=true            # switch it on; commits .specify/cruise.json
 /cruise use the PRD in docs/prd.md       # start the runner, detached, and watch it from this session
 /cruise-status                           # is it running, how the last iteration ended, the feed's tail
+/cruise-watch                            # sit back down at the watch seat, where the feed left off
 /cruise-tell take the payments feature next   # queued for the next iteration; --now ends the one in flight
 /cruise-stop                             # end the run after the iteration in flight; `now` ends it now
 ```
@@ -306,6 +307,7 @@ the paths and toolchains named in them are real.
 | `/cruise-status` | Says whether a `/cruise` runner is running, how its last iteration ended, and shows the tail of its feed |
 | `/cruise-stop` | Ends a `/cruise` run after the iteration in flight, or at once with `now` |
 | `/cruise-tell` | Queues a message for a running `/cruise`, which the next iteration carries; `--now` ends the iteration in flight for it |
+| `/cruise-watch` | Takes the watch seat beside a running `/cruise`: prints the feed as it is written and watches again, starting nothing |
 
 [The delivery loop](docs/delivery-loop.md) describes each one in full, and the ladder they sit on.
 

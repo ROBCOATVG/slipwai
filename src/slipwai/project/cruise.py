@@ -17,13 +17,12 @@ from ..origin import Adoption
 from ..services import App
 from .cruise_agents import DECISIONS, OWNER_BRIEF, SKIPPER
 from .cruise_hand import hand_section
-from .cruise_record import ADR_RULE, CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, STOP_FILE
+from .cruise_record import ADR_RULE, CHECKPOINT, CHECKPOINT_ENTRY, CONFIG, DECISION_ENTRY, SCRIPT, STOP_FILE
+from .cruise_seat import watch_seat_body
 from .cruise_stops import LOG, REPORT, stop_table
-from .cruise_told import boundary_asks, seat_queues, seat_stands, told_argument
+from .cruise_told import boundary_asks, told_argument
 from .cruise_unblock import unblock_section
 
-CONFIG = ".specify/cruise.json"
-SCRIPT = "scripts/agents/cruise.py"
 # The last line of every iteration: the one thing the outer loop reads.
 LAST_LINES = ("cruise: continue", "cruise: done", "cruise: parked: <what a person must provide>",
               "cruise: stopped: human")
@@ -145,25 +144,7 @@ says when a run makes no progress (*Blocked: the bosun protocol*, below). {told_
 
 ## The watch seat
 
-After `start` — or where `start` said a runner is already running — run `python3 {SCRIPT} watch`. It prints
-what the iteration does as it happens, one line per command, file, and delegate out and back, and returns at
-the iteration's end, a park, the run's end, once the feed has gone quiet for a moment, or after a minute and a
-half with nothing new; its last line says which. **Put every line it printed in your reply, unchanged, in a
-fenced block, before anything else** — the harness folds a command's output, so the feed reaches a person only
-through your reply — **and where it says the run continues, or the iteration is in flight, run `watch` again
-at once**; where it says parked, ended, or no runner, repeat what it said and end the turn. A watch the
-harness cut short — a tool timeout, with no last line from `watch` — is watched again, not asked about. Where
-the harness can run a command in the background and re-invoke this session with its output when it returns,
-run `watch` that way, so the turn ends between watches and a person can type in the gap. Watching is only ever
-reading — the runner needs nothing from this session, and a turn that ends here ends nothing else — so it is
-never a reason to run a stage of the ladder in this session.
-
-**A person typing here is talking to you, not stopping the run.** Answer them — what the feed shows, what
-`{CONFIG}` says (`python3 {SCRIPT}` prints every setting and what it controls), what `python3 {SCRIPT} status`
-says, what `{DECISIONS}` records — and change a setting through `/cruise-settings` where they ask; it takes
-effect at the next iteration. {seat_queues(SCRIPT)} Then watch again. Only `touch {STOP_FILE}`, `python3 {SCRIPT} stop`, or
-`{layout.make} cruise-stop` ends the run, and only when they ask for that. {seat_stands()}
-
+After `start` — or where `start` said a runner is already running — {watch_seat_body(layout)}
 ## Run the ladder, and answer at its stops
 
 Run `commands/drive.md` from *Enter at the first incomplete stage* to its end, exactly as written — the entry

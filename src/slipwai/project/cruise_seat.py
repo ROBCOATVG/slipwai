@@ -1,4 +1,5 @@
-"""The three commands a person types beside a running `/cruise`: `/cruise-status`, `/cruise-stop` and `/cruise-tell`.
+"""The commands a person types beside a running `/cruise` — `/cruise-watch`, `/cruise-status`, `/cruise-stop`,
+`/cruise-tell` — and the watch seat itself, whose words `commands/cruise.md` and `/cruise-watch` both render.
 
 Each is a shell command and the rule for what to do with what it printed. The rule matters more than the
 command: a harness folds a command's output to a few lines, so a status or a feed reaches a person only through
@@ -7,8 +8,9 @@ the reply, and each of these says so in the same words the watch seat in `comman
 from __future__ import annotations
 
 from ..layout import AT_ROOT, Layout
-from .cruise import SCRIPT
-from .cruise_record import INBOX, RUNNER_LOG, STOP_FILE
+from .cruise_agents import DECISIONS
+from .cruise_record import CONFIG, INBOX, RUNNER_LOG, SCRIPT, STOP_FILE
+from .cruise_told import seat_queues, seat_stands
 
 # The rule every seat command shares: the harness folds a command's output, so the reply carries it.
 VERBATIM = ("Put every line it printed in your reply, unchanged, in a fenced block, before anything else: the harness "
@@ -112,4 +114,42 @@ from here: `/cruise` watches the run, `/cruise-tell` steers it, `/cruise-stop` e
 the run is parked, the step is what the park names, and `/cruise-tell` with it resumes the run. Nothing else
 changes: the board is read from the same artifacts, and a slice the runner holds is one in progress, never
 one to take.
+"""
+
+
+def watch_seat_body(layout: Layout = AT_ROOT) -> str:
+    """The watch seat's rules, from the words `run watch` on: what the seat prints, when it watches again, when it
+    ends the turn, and how a person typing there is answered. One text, so `commands/cruise.md` — which leads into
+    it after `start` — and `/cruise-watch` — the seat on its own — cannot say two different things."""
+    return f"""run `python3 {SCRIPT} watch`. It prints
+what the iteration does as it happens, one line per command, file, and delegate out and back, and returns at
+the iteration's end, a park, the run's end, once the feed has gone quiet for a moment, or after a minute and a
+half with nothing new; its last line says which. **Put every line it printed in your reply, unchanged, in a
+fenced block, before anything else** — the harness folds a command's output, so the feed reaches a person only
+through your reply — **and where it says the run continues, or the iteration is in flight, run `watch` again
+at once**; where it says parked, ended, or no runner, repeat what it said and end the turn. A watch the
+harness cut short — a tool timeout, with no last line from `watch` — is watched again, not asked about. Where
+the harness can run a command in the background and re-invoke this session with its output when it returns,
+run `watch` that way, so the turn ends between watches and a person can type in the gap. Watching is only ever
+reading — the runner needs nothing from this session, and a turn that ends here ends nothing else — so it is
+never a reason to run a stage of the ladder in this session.
+
+**A person typing here is talking to you, not stopping the run.** Answer them — what the feed shows, what
+`{CONFIG}` says (`python3 {SCRIPT}` prints every setting and what it controls), what `python3 {SCRIPT} status`
+says, what `{DECISIONS}` records — and change a setting through `/cruise-settings` where they ask; it takes
+effect at the next iteration. {seat_queues(SCRIPT)} Then watch again. Only `touch {STOP_FILE}`, `python3 {SCRIPT} stop`, or
+`{layout.make} cruise-stop` ends the run, and only when they ask for that. {seat_stands()}"""
+
+
+def cruise_watch_command(layout: Layout = AT_ROOT) -> str:
+    """`/cruise-watch`: the watch seat on its own, without starting anything."""
+    return f"""---
+description: Take the watch seat beside a running /cruise — print the feed as the runner writes it, return at each boundary and watch again, answer a person typing here — without starting anything
+---
+# Cruise watch
+
+The watch seat on its own. `/cruise` takes it after starting the runner, and a `/cruise-status` between reads it
+once and stops; this sits back down where the feed left off, in this session, and starts nothing — where no
+runner is running, `watch` says so and this ends. `{layout.make} cruise-watch` is the same seat from a terminal.
+To take it: {watch_seat_body(layout)}
 """

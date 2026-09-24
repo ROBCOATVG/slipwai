@@ -394,7 +394,7 @@ it marks the slice blocked, takes the next ready slice, and hands the block to a
    `unrecorded` or `detected`: the bosun works on the survey's value as a stated assumption and never marks
    it `confirmed`.
 3. **Repair the run.** Rebase and resolve, finish or revert what a dead delegate left, find why a gate
-   loops.
+   loops and fix the cause in the tree the gate measures.
 
 Every move is an entry in `decisions.md` with `Decided by: drive-bosun`, the condition under which a person
 should undo it, and a task in the next slice to remove the stub when the real thing arrives. Nothing done to
@@ -404,8 +404,26 @@ bosun one iteration before it parks, and the log marks that iteration `attempt: 
 **What always parks.** The bosun refuses, and the run parks, at anything on this list: destroying data or
 history; releasing what a person has not asked for, such as turning a flag on or deploying to production;
 spending money or exposing a secret; weakening security; discarding a person's commits to make a checkout
-consistent. It also parks when the bosun could not move the block. `unblock: park` switches the bosun off
-and parks at once.
+consistent; making a gate pass by changing the gate. It also parks when the bosun could not move the block.
+`unblock: park` switches the bosun off and parks at once.
+
+**A failing gate is never repaired in the gate.** A run once met `check-ux-gates` failing because two of the
+kit's scripts crash where Chrome is not installed, and the bosun patched `scripts/check-ux-gates.py` to call
+that skipped, committed it, and went on. That is a gate made to pass, and the rule is now held mechanically
+rather than said louder. Nothing under `scripts/` — the `check-*` gates, the runner itself — the `Makefile`,
+anything under `tools/`, CI, or a harness's hook settings is an iteration's to change. `make verify` red on the
+slice's own tree is the slice's work; red for a reason the tree cannot fix — a browser the machine has not got,
+a tool not installed, a kit script that crashes — parks the run with the gate's own words as the reason,
+`cruise: parked: <gate>: <what it said>`, so a person reads what the gate said and not what an iteration made
+of it. Two controls hold it. On Claude Code, `python3 scripts/agents/cruise.py guard` runs as the `PreToolUse`
+hook of every editing tool (`Edit`, `Write`, `MultiEdit`, `NotebookEdit`) and, in a session the runner
+started, refuses an edit to any of those paths before it lands, with the reason as the tool's result — a
+2.1.281 print session, probed 2026-09-24. And on every harness the runner takes the content of every file
+under those paths before an iteration and compares it after: any file modified, deleted or added — except a
+file installed under `tools/`, which is what `./init --extension` does — parks the run at once, naming the
+files, whatever the iteration's last line said; the log entry carries them as `controls_changed`. A person
+reverts the change, or keeps it on purpose and resumes with a message. Outside a runner's iteration neither
+control does anything: a person's `/drive` session edits a gate when a gate needs editing.
 
 ## The limits
 

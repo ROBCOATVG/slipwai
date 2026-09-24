@@ -129,8 +129,26 @@ WATCH_QUIET_SECONDS = 20.0
 # checkpoint at every stage boundary, so a checkpoint held this often without a rewrite is a session that is
 # not moving, and a hook that never let go would spend tokens forever on it.
 HOLD_LIMIT = 3
+# How long `stop --now` waits for the runner it signalled to be gone before it returns: the runner ends the
+# iteration's session first, and a harness session shutting down takes a moment.
+STOP_WAIT_SECONDS = 30.0
 REGISTRY = SCRIPT.with_name("registry.json")
 INTEGRATION = ROOT / ".specify/integration.json"
+# What a run may never change to get moving — the gates that judge it and the controls that hold it: `make
+# verify`'s scripts and everything beside them, the Makefile that runs them, the tools they run (`tools/`, ignored by
+# Git and installed by an extension), CI, and the hook files the harnesses read this script from. A gate is
+# satisfied in the tree it measures; an iteration that changed one of these instead has the run parked with the
+# change as the reason (`controls_changed` on its log entry), and Claude Code's `PreToolUse` hook (`guard`) refuses
+# the edit before it lands. Under `tools/` a file added is an install, which `./init --extension` does; a file
+# changed or removed is an edit.
+CONTROL_PATHS = (DELIVERY / "Makefile", DELIVERY / "scripts", ROOT / "Makefile", ROOT / "tools",
+                 ROOT / ".github/workflows", ROOT / ".gitea/workflows", ROOT / ".claude/settings.json")
+INSTALLED = ROOT / "tools"
+SKIPPED_DIRECTORIES = {".git", "__pycache__", "node_modules"}
+GUARD_REASON = ("cruise: `{path}` is a gate or a control of this run, and an iteration never edits one — a gate is "
+                "satisfied in the tree it measures, or the run parks with the gate's own output as the reason "
+                "(`cruise: parked: <gate>: <what it said>`). The bosun's brief and commands/cruise.md, *Blocked: the "
+                "bosun protocol*, say so; the runner parks the run at the end of an iteration that changed one anyway.")
 # Every setting: the values it takes — a tuple of words, or a kind — its default, and what it controls. The
 # factory writes the same list into `.specify/cruise.json` and `commands/cruise-settings.md`.
 CHOICES: dict[str, tuple[str, ...]] = {
@@ -486,6 +504,82 @@ def child_environment(harness: dict[str, Any] | None) -> dict[str, str]:
     if headless is not None and isinstance(headless.get("env"), dict):
         environment.update({str(key): str(value) for key, value in headless["env"].items()})
     return environment
+
+
+def control_paths() -> list[Path]:
+    """Every gate and control the run is held by, present or not: the fixed ones, and the hook file of every harness
+    whose registry row projects one."""
+    paths = list(CONTROL_PATHS)
+    for row in registry().values():
+        projection = (row.get("hooks") or {}).get("projection") if isinstance(row.get("hooks"), dict) else None
+        if isinstance(projection, dict) and projection.get("where"):
+            paths.append(ROOT / str(projection["where"]))
+    return list(dict.fromkeys(paths))
+
+
+def controls_signature() -> dict[str, str]:
+    """Every file under the controls by its content, taken before an iteration and compared after it."""
+    signature: dict[str, str] = {}
+    for control in control_paths():
+        if control.is_file():
+            files = [control]
+        elif control.is_dir():
+            files = []
+            for directory, names, filenames in os.walk(control):
+                names[:] = sorted(name for name in names if name not in SKIPPED_DIRECTORIES)
+                files += [Path(directory) / name for name in sorted(filenames)]
+        else:
+            continue
+        for path in files:
+            try:
+                if path.is_file():
+                    signature[path.relative_to(ROOT).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+            except OSError:
+                continue
+    return signature
+
+
+def controls_changed(before: dict[str, str], after: dict[str, str]) -> list[str]:
+    """What an iteration did to the controls, each with its kind — except a file installed under `tools/`."""
+    installed = INSTALLED.relative_to(ROOT).as_posix() + "/"
+    changes = []
+    for path in sorted(set(before) | set(after)):
+        if path in before and path in after:
+            if before[path] != after[path]:
+                changes.append(f"{path} (modified)")
+        elif path in before:
+            changes.append(f"{path} (deleted)")
+        elif not path.startswith(installed):
+            changes.append(f"{path} (added)")
+    return changes
+
+
+def guard() -> None:
+    """Claude Code's `PreToolUse` hook on the editing tools — Edit, Write, MultiEdit, NotebookEdit: in a session the
+    runner started, refuse an edit to a gate or a control before it lands, with the reason on stderr and exit 2,
+    which is how that harness reads a refusal (a 2.1.281 print session, probed 2026-09-24: the tool result carries
+    the reason, the model reads it, the file is not written). Outside a runner's iteration the hook does nothing, so
+    a person's `/drive` session edits what it likes. The shell is not covered here — a command can write anything —
+    which is why the runner compares the controls after every iteration too."""
+    if not os.environ.get(RUNNER_VARIABLE):
+        return
+    event = read_event()
+    given = event.get("tool_input") if isinstance(event.get("tool_input"), dict) else {}
+    target = given.get("file_path") or given.get("notebook_path")
+    if not target:
+        return
+    path = Path(str(target))
+    if not path.is_absolute():
+        path = Path(str(event.get("cwd") or ROOT)) / path
+    path = path.resolve()
+    for control in control_paths():
+        if path == control or control in path.parents:
+            try:
+                shown = path.relative_to(ROOT).as_posix()
+            except ValueError:
+                shown = str(path)
+            print(GUARD_REASON.format(path=shown), file=sys.stderr)
+            raise SystemExit(2)
 
 
 def stream_of(harness: dict[str, Any] | None) -> str | None:
@@ -1135,6 +1229,7 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
         INTERRUPTED = False
         print(f"cruise: iteration {iteration} started {started}, running `{ask}`", flush=True)
         began = time.monotonic()
+        controls_before = controls_signature()
         # The model flag is read with the settings, so `/cruise-settings model=…` holds from the next iteration.
         last = iterate(template + model_flags(harness, table["model"]), ask, environment, iteration, stream)
         if INTERRUPTED:
@@ -1151,6 +1246,9 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
                                  "last_line": last or "no last line", "fingerprint": seen}
         if attempt is not None:
             entry["attempt"] = attempt
+        changed = controls_changed(controls_before, controls_signature())
+        if changed:
+            entry["controls_changed"] = changed
         given = delivered()
         if given:
             entry["told"] = [str(each["text"]) for each in given]
@@ -1164,6 +1262,13 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
         # The boundary `watch` returns on: the iteration, what it ended on, and how long it took.
         print(f"cruise: iteration {iteration} ended — {last or 'no last line'} ({duration(time.monotonic() - began)})",
               flush=True)
+        if changed:
+            # A gate made to pass is no pass, whatever the last line says: the run parks on the change itself, and a
+            # person reverts it, or keeps it on purpose and resumes with a message.
+            park(f"iteration {iteration} changed a gate or a control of the run — {', '.join(changed)} — and a gate "
+                 "is satisfied in the tree it measures, never edited; revert the change, or keep it on purpose and "
+                 "resume with a message", no_park, poll, seen)
+            continue
         if INTERRUPTED:
             # Ended for a message, not by its own last line: the next iteration is where the message goes, and it
             # starts now — there is nothing to park on and nothing to count.
@@ -1376,6 +1481,18 @@ def stop(arguments: list[str]) -> None:
         return
     if "--now" in arguments:
         os.kill(running[0], signal.SIGTERM)
+        # Said once it has ended, not once it was told to. The runner ends the iteration's session before it goes,
+        # and a `start` typed the moment this returned found the old runner still alive and declined to start one
+        # — after which nobody was running, and the watch seat found nobody to watch.
+        for _ in range(int(STOP_WAIT_SECONDS / 0.05)):
+            if running_pid() is None:
+                break
+            time.sleep(0.05)
+        else:
+            print(f"cruise: {relative(STOP)} written and the runner (pid {running[0]}) told to end; it is still ending "
+                  f"the iteration in flight after {STOP_WAIT_SECONDS:g}s — `python3 scripts/agents/cruise.py status` "
+                  "says when it has gone")
+            return
         print(f"cruise: {relative(STOP)} written and the runner (pid {running[0]}) terminated with the iteration "
               "in flight; its increment commits are on the slice branch, and the next run re-derives from disk")
         return
@@ -1533,7 +1650,7 @@ def main() -> None:
              "watch": lambda: watch(arguments[1:]), "stop": lambda: stop(arguments[1:]), "status": status,
              "tell": lambda: tell(arguments[1:]), "told": told,
              "denials": denials, "resume": resume, "compacting": compacting, "loop": loop, "stopping": stopping,
-             "responded": responded}
+             "responded": responded, "guard": guard}
     if arguments and arguments[0] in verbs:
         verbs[arguments[0]]()
         return

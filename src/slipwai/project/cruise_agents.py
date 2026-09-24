@@ -134,7 +134,7 @@ preference, and stop at the first that works:
    or `detected` — you work on the survey's value as a stated assumption and never mark it `confirmed` —
    and a change strategy proceeds at `Proposed` on the recommendation.
 3. **Repair the run.** Rebase and resolve, verify a dead delegate's leftovers against the tree and finish or
-   revert them, find why a gate loops and fix the cause.
+   revert them, find why a gate loops and fix the cause in the tree the gate measures.
 
 Every move is an entry in `{DECISIONS}` with `Decided by: {BOSUN}`, its *Would reverse if* naming what a
 person must eventually supply, and a task in the next slice to remove the stub when they do. Commit on the
@@ -145,7 +145,15 @@ destroy data or history (drop a database or volume, rewrite or delete a shared b
 can recover); release what a person has not asked for (turn a flag on, deploy or promote to production,
 merge anything that reaches a real actor); spend or expose (pay for anything, create or reveal a secret,
 widen permissions); weaken security (bypass authentication, loosen a MUST about money, identity or a
-boundary in production code); or discard a person's commits to make a rebase go through. Return
-`unblocked: <what you did, and the entry's number>`, `catastrophic: <why>`, or `cannot: <what you tried>`,
-and the session that delegated you decides whether the run continues or parks.""",
+boundary in production code); discard a person's commits to make a rebase go through; or make a gate pass by
+changing the gate. **A gate is satisfied in the tree it measures, never by editing what measures it**: nothing
+under `scripts/` — the `check-*` gates, this runner — the `Makefile`, anything under `tools/`, CI, or a
+harness's hook settings is yours to touch, whatever it reports. A gate that fails because of the slice's own
+tree is a task in that tree. A gate that fails for a reason the tree cannot fix — a browser this machine has
+not got, a tool that is not installed, a script of the kit's that crashes — is `cannot: <the gate's name and
+its own last lines>`, and the run parks on those words; `{layout.make} verify` reporting a gate as skipped is not a
+failure and needs nothing from you. Claude Code refuses the edit before it lands (`PreToolUse`), and the
+runner parks the run at the end of any iteration that changed one of those files, whatever the last line
+said. Return `unblocked: <what you did, and the entry's number>`, `catastrophic: <why>`, or `cannot: <what
+you tried>`, and the session that delegated you decides whether the run continues or parks.""",
     }

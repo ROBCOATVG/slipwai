@@ -54,12 +54,15 @@ the gates in it that are objective: a screen either passes or it does not.
 - **Always:** `{KIT_DIR}/scripts/lint_hardcodes.py` over each browser app's `src/`. A literal colour,
   pixel size or duration outside `tokens.css` fails the build; it is the rule `docs/design.md` already
   states, now measured. A justified exception carries a `ds-allow-hardcode` comment on its line.
-- **Where a browser is present** (`node`, and `playwright` resolvable from the project root): the render
-  gates over every `*.html` under each browser app's `screens/` — contrast in light and dark across
-  default, hover and focus states, visible focus, target size, no overflow at 280/320/414px, and axe. A
-  screen preview under `screens/` is what puts a screen under those gates; the live routes are not
-  rendered, because the gates read files and the app needs its API. With no browser the render gates are
-  reported as skipped, never as passed.
+- **Where a browser is present** (`node`, `playwright` resolvable from the project root, and Chrome or
+  Playwright's own Chromium — `npx playwright install chromium`): the render gates over every `*.html`
+  under each browser app's `screens/` — contrast in light and dark across default, hover and focus states,
+  visible focus, target size, no overflow at 280/320/414px, and axe. A screen preview under `screens/` is
+  what puts a screen under those gates; the live routes are not rendered, because the gates read files and
+  the app needs its API. With no browser the render gates are reported as skipped, never as passed, and the
+  gate says which browser it ran on. A gate that fails or crashes is never made to pass by editing
+  `scripts/check-ux-gates.py` or anything under `{KIT_DIR}/`: fix the screen, install the browser, or
+  report the gate's own words.
 
 **Run `make check-ux-gates` before the demo stop of any slice with a screen**, and fix what it finds
 rather than carrying it as a note. For the judgement the gates cannot make, the kit's checklists are files:

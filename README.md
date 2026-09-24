@@ -215,6 +215,10 @@ changes. What changes is who answers.
 - **It never invents a fact.** A credential, an external system, a person's approval: the slice is marked
   blocked, the run takes the next ready slice, and a strong delegate works around the block — a fake behind
   the port, recorded as a fake, or the narrower reading that keeps every rule — and writes down what it did.
+- **It never makes a gate pass by changing the gate.** `scripts/`, the `Makefile`, `tools/`, CI and the hook
+  settings are not an iteration's to edit: Claude Code refuses the edit before it lands, and the runner parks
+  the run on any change to them, on every harness. A gate the tree cannot satisfy parks the run with the
+  gate's own words as the reason.
 - **Every merge is dark.** Under the default release setting each slice ships behind a flag seeded off.
   Nothing the run merged reaches a real actor until you turn a key on.
 - **Done means the specification is satisfied.** When the split runs out, an audit reads the specification

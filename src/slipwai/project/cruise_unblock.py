@@ -20,6 +20,9 @@ CATASTROPHIC = (
     "weakening security — bypassing authentication, loosening a MUST about money, identity or a boundary in "
     "production code",
     "discarding a person's commits to make a checkout consistent",
+    "making a gate pass by changing the gate — anything under `scripts/`, the `Makefile`, anything under `tools/`, CI, "
+    "a harness's hook settings: a gate is satisfied in the tree it measures, or the run parks with the gate's own "
+    "output as the reason",
     "a run the bosun could not move — the blocker survived its attempt, or the attempt itself would need one of the above",
 )
 
@@ -52,4 +55,14 @@ and parks at once.
 
 A park is therefore rare, and it says which of those it met, or what the bosun tried. `python3 {script}
 status` shows a parked run's reason beside its checkpoint.
+
+**A failing gate is never repaired in the gate.** `make verify` red on the slice's own tree is the slice's
+work. Red for a reason the tree cannot fix — a browser this machine has not got, a tool not installed, a
+script of a kit's that crashes — is a park: `cruise: parked: <gate>: <its own last lines>`, so a person
+reads what the gate said and not what an iteration made of it. A gate reported as skipped is neither. This is
+not left to the text: on Claude Code, `python3 {script} guard` runs as the `PreToolUse` hook of every editing
+tool and refuses, in a runner's session, an edit under `scripts/`, `tools/`, the `Makefile`, CI or the hook
+settings before it lands; and the runner compares those files before and after every iteration, on every
+harness, and parks the run on any change — `controls_changed` on the log entry names the files — whatever
+the iteration's last line said. A file installed under `tools/` by `./init --extension` is not a change.
 """

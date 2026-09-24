@@ -9,6 +9,7 @@ derives its entry stage. It runs nothing, edits nothing, and never invents a sli
 """
 from __future__ import annotations
 
+from .cruise_seat import under_cruise_section
 from .demo_stop import board_sources
 
 
@@ -64,4 +65,5 @@ verified as current.
 - **Invents nothing.** No slice the split does not name, no stage the artifacts do not select. Where the
   artifacts cannot say, the line reads `unknown` with the artifact that would have said, and **Run:** is
   `/where-are-we`.
-"""
+
+{under_cruise_section()}"""

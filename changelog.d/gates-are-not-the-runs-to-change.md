@@ -25,6 +25,13 @@ session before it exits, which takes a moment, and a `start` typed the moment `s
 runner still alive and declined to start one — after which nobody was running and the watch seat found nobody to
 watch. It now waits for the runner to be gone, up to thirty seconds, and says so if it is still ending after that.
 
+**`/where-are-we` and `/whats-next` answer beside a running `/cruise`.** Both used to answer as if the person's
+session were about to take the next slice — "Run: /drive S13" while the runner was on S13. Each now runs
+`scripts/agents/cruise.py where` first, a read that prints the runner's iteration, the checkpoint's slice, stage
+and next step, and a park's reason, and puts those lines in the reply; the step for a person is then the runner's,
+with `/cruise`, `/cruise-tell` and `/cruise-stop` as what they can do. Where no runner is running the verb prints
+nothing and both commands answer exactly as before, so nothing changes outside a run.
+
 **Catch-up.** `slipwai migrate` brings the hook, the runner, the gate and the command text. A run that already
 carries a patched gate is found by `git log -- scripts/` and reverted by hand; the runner parks on the next
 change, not on the standing one.

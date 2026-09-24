@@ -19,7 +19,7 @@ from .cruise_agents import DECISIONS, OWNER_BRIEF, SKIPPER
 from .cruise_hand import hand_section
 from .cruise_record import ADR_RULE, CHECKPOINT, CHECKPOINT_ENTRY, DECISION_ENTRY, STOP_FILE
 from .cruise_stops import LOG, REPORT, stop_table
-from .cruise_told import boundary_asks, seat_queues, told_argument
+from .cruise_told import boundary_asks, seat_queues, seat_stands, told_argument
 from .cruise_unblock import unblock_section
 
 CONFIG = ".specify/cruise.json"
@@ -162,7 +162,7 @@ never a reason to run a stage of the ladder in this session.
 `{CONFIG}` says (`python3 {SCRIPT}` prints every setting and what it controls), what `python3 {SCRIPT} status`
 says, what `{DECISIONS}` records — and change a setting through `/cruise-settings` where they ask; it takes
 effect at the next iteration. {seat_queues(SCRIPT)} Then watch again. Only `touch {STOP_FILE}`, `python3 {SCRIPT} stop`, or
-`{layout.make} cruise-stop` ends the run, and only when they ask for that.
+`{layout.make} cruise-stop` ends the run, and only when they ask for that. {seat_stands()}
 
 ## Run the ladder, and answer at its stops
 

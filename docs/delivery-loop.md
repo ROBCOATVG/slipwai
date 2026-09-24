@@ -234,7 +234,7 @@ project's profile, languages, frameworks and services, so the paths and toolchai
 |---|---|
 | `/drive` | The ladder above: one slice from wherever it currently stands to an actor-visible demo |
 | `/cruise` | The same ladder with nobody at the wheel: the agent decides as the product owner and runs each demo as the actor, iteration after iteration, until the specification is satisfied — stopping only for a human ([Cruise](cruise.md)) |
-| `/whats-next` | One slice, one stage, one command and the reason, in at most six lines — the board's ➡️ *Next* line on its own, for the start of a session or after an interruption |
+| `/whats-next` | One slice, one stage, one command and the reason, in at most six lines — the board's ➡️ *Next* line on its own, for the start of a session or after an interruption. Beside a running `/cruise` (`scripts/agents/cruise.py where` prints its state, and nothing where there is no runner) the step is the runner's, not a command to type |
 | `/where-are-we` | The demo stop's progress board on demand — ✅ works now · 🔧 in progress, and the ladder stage it has reached · ⬜ still to come, `N of M slices accepted` · ⚠️ not working yet · 🔀 ready (parallel) · ➡️ next (this session) · ⛔ blocked — read off the same artifacts, running nothing |
 | `/gaps` | Adversarially review a written artifact — spec, criteria, examples, a slice diff — for holes before they become rewritten tests |
 | `/adversary` | Direct an independent agent to try to break a finished slice: hostile inputs, replays, interleavings, authorisation paths |

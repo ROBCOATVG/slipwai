@@ -191,7 +191,12 @@ continues, and ends the turn when it says parked, ended or no runner. Watching i
 runner needs nothing from the session, so leaving the seat ends nothing, and `/cruise` typed again later
 finds the runner running and sits back down where the feed left off. A person typing into that session is
 talking to the agent, not stopping the run: it answers — the feed, the settings, the status, the decision log
-— changes a setting through `/cruise-settings` where asked, and watches again. Every line `watch` printed
+— changes a setting through `/cruise-settings` where asked, and watches again. Where the person asks where the
+run stands or what is next, `/where-are-we` and `/whats-next` answer from disk beside the run: each first
+runs `python3 scripts/agents/cruise.py where`, which prints the runner's iteration, the checkpoint's slice,
+stage and next step, and a park's reason — and prints nothing where no runner is running, so outside a run
+both commands answer exactly as they always did. Under a run their step for a person is never a command to
+type: the runner is on it, and `/cruise-tell` is how to steer it. Every line `watch` printed
 goes into the reply unchanged, because a harness folds a command's output to a few lines and the feed has to
 reach the person, not the transcript. From a terminal, `make cruise-watch` is the same seat, and
 `/cruise-status` in any session is the runner's state and the feed's tail without sitting down.

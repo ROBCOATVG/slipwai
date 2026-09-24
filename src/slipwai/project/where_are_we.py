@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from ..catalog import CATALOG
 from ..targets import managed
+from .cruise_seat import under_cruise_section
 from .demo_stop import board_sources
 
 
@@ -90,4 +91,5 @@ specification, {"event model, " if event else ""}split — and what the next sta
 - **Does not demo.** It hands over no command to paste and asks no question: that is the demo stop's job,
   and it belongs to `/drive`. Where the board shows a converged slice waiting for its demo, say so, and say
   that `/drive` is what runs it.
-"""
+
+{under_cruise_section()}"""

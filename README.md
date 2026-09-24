@@ -288,8 +288,8 @@ the paths and toolchains named in them are real.
 |---|---|
 | `/drive` | Takes one slice from wherever it stands to a demo the actor can see |
 | `/cruise` | Runs `/drive` on its own, deciding as the product owner and demoing as the actor, until the specification is satisfied. Stops only for a person. `/cruise <kick-off>` gives the first iteration a brief; the session then watches the run and answers you |
-| `/whats-next` | Says what is next — one slice, one stage, one command. Reads the disk and changes nothing |
-| `/where-are-we` | Shows the progress board: what works, what is in progress, what is still to come |
+| `/whats-next` | Says what is next — one slice, one stage, one command. Reads the disk and changes nothing; beside a running `/cruise`, says what the runner is on instead |
+| `/where-are-we` | Shows the progress board: what works, what is in progress, what is still to come; beside a running `/cruise`, the next row is the runner's |
 | `/gaps` | Reviews an artifact for holes, before they become rewritten tests |
 | `/example-map` | *Event profile.* Turns one slice of the event model into rules, examples and executable scenarios |
 | `/validate-code-against-model` | *Event profile.* Checks that the code and the event model still agree |

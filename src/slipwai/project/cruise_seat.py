@@ -96,3 +96,20 @@ lists it, and every message an iteration was given is in that iteration's entry 
 is not a setting: `/cruise-settings` is still how a rule of the run changes. `{layout.make} cruise-tell
 MSG="…"` is the same from a terminal, `CRUISE_FLAGS=--now` for the immediate form.
 """
+
+
+def under_cruise_section() -> str:
+    """The section `/where-are-we` and `/whats-next` end with: how the answer changes while a `/cruise` runner is
+    going, and — by the verb printing nothing otherwise — how it does not change at all where none is."""
+    return f"""## Under a `/cruise` run
+
+Run `python3 {SCRIPT} where` first. It reads the run's pid file, log and checkpoint, changes nothing, and
+prints **nothing where no runner is running** — then everything above stands exactly as written, and this
+section does not apply. Where it printed lines, a run is going. {VERBATIM} Then the answer changes in one
+place: the step for a person — **Run:** here, the board's ➡️ *Next* row there — is not a command to type,
+because the runner is on it, at the slice and stage those lines name. Say so, and say what a person can do
+from here: `/cruise` watches the run, `/cruise-tell` steers it, `/cruise-stop` ends it; where the lines say
+the run is parked, the step is what the park names, and `/cruise-tell` with it resumes the run. Nothing else
+changes: the board is read from the same artifacts, and a slice the runner holds is one in progress, never
+one to take.
+"""

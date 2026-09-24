@@ -39,3 +39,9 @@ def boundary_asks(script: str) -> str:
 `/cruise-tell` since this iteration started, one `told:` line each, or nothing — and what it printed is acted on
 before the next stage, exactly as a `told:` argument would have been; it is taken as it is printed, so the next
 iteration is not given it again, and the runner puts it in this iteration's log entry."""
+
+
+def seat_stands() -> str:
+    """The sentence the watch seat carries about the two questions a person asks most, answered from disk."""
+    return ("Where they ask where the run stands or what is next, `/where-are-we` and `/whats-next` read the "
+            "runner's state first (`where`) and answer from it — never by sending the question down to the iteration.")

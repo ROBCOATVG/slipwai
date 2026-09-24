@@ -2,6 +2,89 @@
 
 No public releases yet. Release notes are recorded here newest first.
 
+## 1.2.1 — PATCH
+
+**`make check-imports` no longer reads a test of the domain as domain code.** The gate took any file with a
+`domain/` or `application/` segment in its path for that layer, so a Decider spec at
+`tests/domain/<context>.spec.ts` — exactly where `adversarial-testing` and `docs/event-modeling-to-code.md`
+send it — was refused for importing its test runner ("domain imports 'vitest' — only zod may be imported
+here"), and so was a test beside the Decider (`decider.test.ts`, `decider_test.go`, `test_decider.py`,
+`DeciderTest.java`) that named a fake adapter. Test directories (`test/`, `tests/`, `__tests__/`) and test
+files are now left to the level they are; the layer itself is held exactly as before. The path is also read
+relative to `apps/` and `packages/`, so a checkout that happens to sit under a directory called `domain` no
+longer turns every file into domain code.
+
+**A `/cruise` run can no longer make a gate pass by changing the gate.** A run met `check-ux-gates` failing
+because two of the kit's scripts crash where Chrome is not installed, and the bosun patched
+`scripts/check-ux-gates.py` to report that as skipped, committed it, and went on. Its brief now forbids
+touching anything under `scripts/`, the `Makefile`, anything under `tools/`, CI or a harness's hook settings,
+and says what a gate the tree cannot satisfy becomes: a park with the gate's own words as the reason. The rule
+is held in two places rather than said louder. `.claude/settings.json` runs `scripts/agents/cruise.py guard`
+as Claude Code's `PreToolUse` hook on every editing tool, and in a session the runner started it refuses an
+edit to any of those paths before it lands. And the runner takes the content of every gate and control before
+each iteration and compares it after, on every harness: a file modified, deleted or added — a file installed
+under `tools/` excepted — parks the run at once, names the files on the log entry as `controls_changed`, and
+counts the iteration's last line for nothing. A person's own session meets neither.
+
+**`check-ux-gates` runs on Playwright's own Chromium where Chrome is not installed, and never reports a
+crash as a pass or a failure.** The gate now asks once which browser Playwright can open — Chrome, its bundled
+Chromium, or neither — and where only the bundled one opens, starts every render gate with a Node preload that
+retries the kit's `channel: 'chrome'` launch without the channel, so `verify_responsive.mjs` and
+`verify_target_size.mjs` run there like the kit's other three. Where no browser opens, or Playwright is not
+resolvable, the render gates are counted skipped without running one, and a gate that still fails on its launch
+is reported skipped rather than as a finding; `UX_GATES_REQUIRE=1` still makes every skip a failure.
+
+**`stop --now` returns once the runner has gone, not once it was told to go.** The runner ends the iteration's
+session before it exits, which takes a moment, and a `start` typed the moment `stop --now` returned found the old
+runner still alive and declined to start one — after which nobody was running and the watch seat found nobody to
+watch. It now waits for the runner to be gone, up to thirty seconds, and says so if it is still ending after that.
+
+**`/where-are-we` and `/whats-next` answer beside a running `/cruise`.** Both used to answer as if the person's
+session were about to take the next slice — "Run: /drive S13" while the runner was on S13. Each now runs
+`scripts/agents/cruise.py where` first, a read that prints the runner's iteration, the checkpoint's slice, stage
+and next step, and a park's reason, and puts those lines in the reply; the step for a person is then the runner's,
+with `/cruise`, `/cruise-tell` and `/cruise-stop` as what they can do. Where no runner is running the verb prints
+nothing and both commands answer exactly as before, so nothing changes outside a run.
+
+**`/cruise-watch` takes the watch seat on its own.** `/cruise-status` reads once and stops, and a session that
+typed it to answer a question had left the seat; the way back was `/cruise`, which reads as starting a run.
+`/cruise-watch` sits back down where the feed left off and starts nothing, with the seat's rules — its words
+and `commands/cruise.md`'s are one text — and `make cruise-watch` stays the same seat from a terminal.
+
+**Catch-up.** `slipwai migrate` brings the hook, the runner, the gate and the command text. A run that already
+carries a patched gate is found by `git log -- scripts/` and reverted by hand; the runner parks on the next
+change, not on the standing one.
+
+**A slice branch run by `/cruise` can pass `make verify` again.** `check-slice-scope` refused two files that
+two other gates require on a slice branch. `specs/<feature>/decisions.md`, which `/cruise` writes where the
+ladder took the decision — during a slice's stages, that is the slice's branch — and which `check-decisions`
+holds to `Written to` paths that exist only there, so the record could pass on neither branch. And
+`docs/event-model/model.drawio`, which `check-drawio` requires to match the `model.yaml` block the slice is
+allowed to advance, and which the scope gate refused as the host's docs. Both are now a slice's to write:
+`decisions.md` beside the other cumulative artifacts the host merges in split order, and the canvas because
+its own gate holds it to the model, so it can carry nothing of the slice's own. `commands/drive.md` and the
+`drive-slice` brief say so, and say the canvas is regenerated again after each merge.
+
+**A slice is compared with the newest `main` the checkout knows, not with `origin/main` first.** Both
+`check-slice-scope` and `check-migrations` took `origin/main` as the base whenever it existed, so a `main`
+that had moved locally and not been pushed — a migration run there, then merged into the slice — put its own
+files into the slice's diff, and the slice stayed red until `main` was pushed, which `/catch-up`'s *green
+before pushed* rule forbids while it is red. Every `main` is now tried and the base that is newest wins.
+`/catch-up` and the upgrading page also say where a migration runs: on `main`, on a clean tree, never on a
+`slice/<id>` branch.
+
+**A decision `/cruise` takes that would cost a migration to reverse is also an ADR.** `commands/cruise.md`
+now puts the `architecture-decisions` skill's one question to every decision entry — an event's schema or
+name, stream identity, tenancy, the store, personal data, identity, a dependency, a contract — and where the
+answer is a migration, the driver writes `docs/adr/NNNN-<title>.md` at `Proposed`, numbered the way `D<n>`
+is, and names it in the entry's `Written to`. The skipper returns the five sections with its entry, or says
+in a line why the decision is reversible. The owner brief and the cruise report say a person accepts them.
+`check-slice-scope` allows a new ADR on a slice branch, and refuses an edit to one that stands.
+
+**Catch-up.** `slipwai migrate` brings the two gates and the command text. A slice branch red on
+`decisions.md` or `model.drawio` passes as it stands after the merge; a migration already run on a slice
+branch is undone with `git reset --hard ORIG_HEAD` there and run again on `main`.
+
 ## 1.2.0 — MINOR
 
 **A benchmark bracket now counts only its own lines, an entry a session leaves open is cut off rather than left

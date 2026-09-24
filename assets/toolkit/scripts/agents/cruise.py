@@ -1641,8 +1641,63 @@ def status() -> None:
         print(line)
 
 
+def checkpoint_fields() -> dict[str, str]:
+    """The checkpoint's labelled fields — Feature, Slice, Stage, Written, Delegates out, Open question, Next — as
+    the command writes them (`CHECKPOINT_ENTRY`), or nothing where no checkpoint is written."""
+    if not CHECKPOINT.is_file():
+        return {}
+    fields: dict[str, str] = {}
+    label: str | None = None
+    for line in CHECKPOINT.read_text().splitlines():
+        found = re.findall(r"\*\*([A-Za-z ]+):\*\* (.*?)(?= · \*\*|$)", line)
+        if found:
+            for label, value in found:
+                fields[label] = value.strip()
+        elif label is not None and line.startswith("  ") and label in ("Delegates out", "Open question", "Next"):
+            fields[label] = f"{fields[label]} {line.strip()}"
+    return fields
+
+
+def where() -> None:
+    """Where a run stands, for `/where-are-we` and `/whats-next` typed beside it — and nothing at all where no runner
+    is running, so that both commands answer exactly as they do without `/cruise`. With a runner alive: the run,
+    the iteration in flight or the park it waits in, the checkpoint's slice, stage and next step, and what a
+    person can do from here, which is never to run a stage themselves."""
+    running = running_pid()
+    if running is None:
+        return
+    log = entries()
+    tail = RUN_LOG.read_text(errors="replace").rstrip().splitlines()[-2:] if RUN_LOG.is_file() else []
+    parked = next((line.removeprefix("cruise: parked — ") for line in tail if line.startswith("cruise: parked — ")),
+                  None) if tail and tail[-1].startswith("cruise: waiting;") else None
+    print(f"cruise: a run is going here — runner pid {running[0]} since {running[1]}, {len(log)} iteration(s) logged, "
+          + (f"parked after iteration {len(log)}" if parked else f"iteration {len(log) + 1} in flight"))
+    fields = checkpoint_fields()
+    if fields:
+        print(f"cruise: feature {fields.get('Feature', '?')} · slice {fields.get('Slice', '?')} · stage "
+              f"{fields.get('Stage', '?')} · checkpoint written {fields.get('Written', '?')}")
+        for label in ("Open question", "Delegates out"):
+            if fields.get(label) and fields[label].lower() != "none":
+                print(f"cruise: {label.lower()} — {fields[label]}")
+        print(f"cruise: next — {fields.get('Next', '(the checkpoint names no next step)')}")
+    else:
+        print("cruise: no checkpoint written yet — the iteration has not reached its first stage boundary")
+    if parked:
+        print(f"cruise: parked — {parked}")
+        print("cruise: nothing to run from here — a person provides what the park names; `/cruise-tell` with it resumes "
+              "the run, `/cruise-stop` ends it")
+    else:
+        print("cruise: nothing to run from here — the runner is on it; `/cruise` watches it, `/cruise-tell` steers it, "
+              "`/cruise-stop` ends it")
+
+
 def main() -> None:
     arguments = sys.argv[1:]
+    if arguments[:1] == ["where"]:
+        # Before the settings check: a project with no `/cruise` settings has no run, and the commands that ask
+        # this read silence as "answer as without /cruise".
+        where()
+        return
     if not CONFIG.is_file():
         print(ABSENT)
         return

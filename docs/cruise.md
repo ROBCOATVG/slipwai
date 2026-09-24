@@ -156,6 +156,7 @@ A project ships with `/cruise` disabled. To start, in any harness's session:
 /cruise                           # starts the runner, detached from this session, and watches it from here
 /cruise use the PRD in docs/prd.md   # the same, with a kick-off the first iteration is given
 /cruise-status                    # is a runner running, how the last iteration ended, the tail of the feed
+/cruise-watch                     # sit back down at the watch seat, where the feed left off, starting nothing
 /cruise-stop                      # end the run after the iteration in flight; `/cruise-stop now` ends it now
 /cruise-tell take the payments feature next   # queued: the next iteration carries it; `--now` first ends the one in flight for it
 ```
@@ -191,10 +192,17 @@ continues, and ends the turn when it says parked, ended or no runner. Watching i
 runner needs nothing from the session, so leaving the seat ends nothing, and `/cruise` typed again later
 finds the runner running and sits back down where the feed left off. A person typing into that session is
 talking to the agent, not stopping the run: it answers — the feed, the settings, the status, the decision log
-— changes a setting through `/cruise-settings` where asked, and watches again. Every line `watch` printed
+— changes a setting through `/cruise-settings` where asked, and watches again. Where the person asks where the
+run stands or what is next, `/where-are-we` and `/whats-next` answer from disk beside the run: each first
+runs `python3 scripts/agents/cruise.py where`, which prints the runner's iteration, the checkpoint's slice,
+stage and next step, and a park's reason — and prints nothing where no runner is running, so outside a run
+both commands answer exactly as they always did. Under a run their step for a person is never a command to
+type: the runner is on it, and `/cruise-tell` is how to steer it. Every line `watch` printed
 goes into the reply unchanged, because a harness folds a command's output to a few lines and the feed has to
-reach the person, not the transcript. From a terminal, `make cruise-watch` is the same seat, and
-`/cruise-status` in any session is the runner's state and the feed's tail without sitting down.
+reach the person, not the transcript. `/cruise-watch` is the seat on its own — a session that read a
+`/cruise-status` and stopped watching sits back down with it, starting nothing — and `make cruise-watch` is
+the same seat from a terminal; `/cruise-status` in any session is the runner's state and the feed's tail
+without sitting down.
 
 The feed is the harness's own event stream, rendered. The registry's `headless` row names the stream where a
 harness has one — Claude Code's `--output-format stream-json --verbose`, Codex's `exec --json` — and the

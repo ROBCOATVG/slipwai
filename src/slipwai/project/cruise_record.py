@@ -20,6 +20,9 @@ RUNNER_LOG = ".specify/cruise-run.log"
 # The harness's raw event stream the feed in the run log was rendered from, and how far the watch seat has read.
 RUNNER_STREAM = ".specify/cruise-stream.jsonl"
 WATCH_CURSOR = ".specify/cruise-watch.cursor"
+# Where `/cruise` is configured, and the runner every seat command speaks to; `cruise.py` re-exports both.
+CONFIG = ".specify/cruise.json"
+SCRIPT = "scripts/agents/cruise.py"
 LAST_RESPONSE = ".specify/cruise-last-response.txt"
 # What a person queued for the run through `tell`, until an iteration takes it; and what an iteration was given,
 # until the runner writes it into that iteration's log entry.

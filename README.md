@@ -231,6 +231,7 @@ changes. What changes is who answers.
 /cruise-settings enabled=true            # switch it on; commits .specify/cruise.json
 /cruise use the PRD in docs/prd.md       # start the runner, detached, and watch it from this session
 /cruise-status                           # is it running, how the last iteration ended, the feed's tail
+/cruise-watch                            # sit back down at the watch seat, where the feed left off
 /cruise-tell take the payments feature next   # queued for the next iteration; --now ends the one in flight
 /cruise-stop                             # end the run after the iteration in flight; `now` ends it now
 ```
@@ -288,8 +289,8 @@ the paths and toolchains named in them are real.
 |---|---|
 | `/drive` | Takes one slice from wherever it stands to a demo the actor can see |
 | `/cruise` | Runs `/drive` on its own, deciding as the product owner and demoing as the actor, until the specification is satisfied. Stops only for a person. `/cruise <kick-off>` gives the first iteration a brief; the session then watches the run and answers you |
-| `/whats-next` | Says what is next — one slice, one stage, one command. Reads the disk and changes nothing |
-| `/where-are-we` | Shows the progress board: what works, what is in progress, what is still to come |
+| `/whats-next` | Says what is next — one slice, one stage, one command. Reads the disk and changes nothing; beside a running `/cruise`, says what the runner is on instead |
+| `/where-are-we` | Shows the progress board: what works, what is in progress, what is still to come; beside a running `/cruise`, the next row is the runner's |
 | `/gaps` | Reviews an artifact for holes, before they become rewritten tests |
 | `/example-map` | *Event profile.* Turns one slice of the event model into rules, examples and executable scenarios |
 | `/validate-code-against-model` | *Event profile.* Checks that the code and the event model still agree |
@@ -306,6 +307,7 @@ the paths and toolchains named in them are real.
 | `/cruise-status` | Says whether a `/cruise` runner is running, how its last iteration ended, and shows the tail of its feed |
 | `/cruise-stop` | Ends a `/cruise` run after the iteration in flight, or at once with `now` |
 | `/cruise-tell` | Queues a message for a running `/cruise`, which the next iteration carries; `--now` ends the iteration in flight for it |
+| `/cruise-watch` | Takes the watch seat beside a running `/cruise`: prints the feed as it is written and watches again, starting nothing |
 
 [The delivery loop](docs/delivery-loop.md) describes each one in full, and the ladder they sit on.
 

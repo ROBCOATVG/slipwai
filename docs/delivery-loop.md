@@ -234,7 +234,7 @@ project's profile, languages, frameworks and services, so the paths and toolchai
 |---|---|
 | `/drive` | The ladder above: one slice from wherever it currently stands to an actor-visible demo |
 | `/cruise` | The same ladder with nobody at the wheel: the agent decides as the product owner and runs each demo as the actor, iteration after iteration, until the specification is satisfied — stopping only for a human ([Cruise](cruise.md)) |
-| `/whats-next` | One slice, one stage, one command and the reason, in at most six lines — the board's ➡️ *Next* line on its own, for the start of a session or after an interruption |
+| `/whats-next` | One slice, one stage, one command and the reason, in at most six lines — the board's ➡️ *Next* line on its own, for the start of a session or after an interruption. Beside a running `/cruise` (`scripts/agents/cruise.py where` prints its state, and nothing where there is no runner) the step is the runner's, not a command to type |
 | `/where-are-we` | The demo stop's progress board on demand — ✅ works now · 🔧 in progress, and the ladder stage it has reached · ⬜ still to come, `N of M slices accepted` · ⚠️ not working yet · 🔀 ready (parallel) · ➡️ next (this session) · ⛔ blocked — read off the same artifacts, running nothing |
 | `/gaps` | Adversarially review a written artifact — spec, criteria, examples, a slice diff — for holes before they become rewritten tests |
 | `/adversary` | Direct an independent agent to try to break a finished slice: hostile inputs, replays, interleavings, authorisation paths |
@@ -247,6 +247,7 @@ project's profile, languages, frameworks and services, so the paths and toolchai
 | `/cruise-status` | Say whether a `/cruise` runner is running, how the last iteration ended, whether it is parked and why, and show the tail of its feed |
 | `/cruise-stop` | End a `/cruise` run after the iteration in flight, or at once with `now` |
 | `/cruise-tell` | Queue a message for a running `/cruise` — a steer, a fact it lacked, a scope — which the next iteration carries; `--now` ends the iteration in flight for it |
+| `/cruise-watch` | Take the watch seat beside a running `/cruise` — print the feed as the runner writes it, return at each boundary and watch again, answer a person typing here — without starting anything |
 | `/add-service` | Add a service — its own language, framework and axis answers — without hand edits |
 | `/add-frontend` | Add a browser application the same way |
 | `/catch-up` | After `slipwai migrate`, work through what the newer factory now asks of code it did not write — the changelog notes for the versions crossed, and the gates that are now red because of them |

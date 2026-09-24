@@ -243,6 +243,43 @@ class ConfirmTest(FactoryTestCase):
             self.assertIn("no outstanding candidates", again.stderr)
 
 
+class RefreshCarriesTheRecordTest(FactoryTestCase):
+    """A re-survey reads the tree, and neither the outstanding candidates nor the chosen agent is a fact about
+    the tree. Rebuilding the record without them left `project.json` holding two candidates while the
+    `/ground` it regenerated in the same run had dropped the section that asks about them — a generated file
+    disagreeing with the record it is generated from."""
+
+    def test_a_refresh_keeps_the_candidates_and_the_command_that_asks_about_them(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            self.assertEqual(slipwai(repo, "adopt", "--confirm", "shop").returncode, 0)
+            commit(repo)
+            self.assertEqual(slipwai(repo, "adopt", "--refresh", environment=BARE).returncode, 0)
+            written = record(repo)
+            self.assertEqual(
+                sorted(row["name"] for row in written["candidates"]), ["tests-ui", "themes"],
+                "a candidate is a question nobody has answered; a re-survey does not answer it",
+            )
+            ground = (repo / "delivery/commands/ground.md").read_text()
+            self.assertIn("## What is an application here", ground)
+            self.assertIn("`themes` at `themes`", ground)
+
+    def test_a_refresh_keeps_the_agent_the_record_names(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            self.assertEqual(
+                slipwai(repo, "adopt", "--confirm", "shop", "--decline", "themes", "--decline", "tests-ui",
+                        ).returncode, 0
+            )
+            commit(repo)
+            (repo / ".specify").mkdir(exist_ok=True)
+            (repo / ".specify/integration.json").write_text('{"integration": "gemini"}')
+            before = record(repo).get("agent", {})
+            commit(repo)
+            self.assertEqual(slipwai(repo, "adopt", "--refresh", environment=BARE).returncode, 0)
+            self.assertEqual(record(repo).get("agent", {}), before, "which agent gets the material is not the tree's")
+
+
 class CandidateSequenceTest(FactoryTestCase):
     def test_next_names_confirming_before_the_rows_and_the_gate(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

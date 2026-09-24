@@ -196,9 +196,15 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
     release = reconciled_home(recorded_release, "path", release_path, "release", done)
     # The evidence lists are the tree's own and follow it; the homes above are the answers.
     refreshed_facts = facts(found, _answers(document, database, infrastructure, ci, release), layout)
+    # `candidates` and `agent` are carried, not re-derived: a re-survey reads the tree, and neither is a fact
+    # about the tree. A candidate is a question nobody has answered yet and an answered one is gone from the
+    # list; which agent gets the material is `./init`'s. Rebuilding the record without them left `project.json`
+    # holding two candidates while the `/ground` it regenerated had dropped the section that asks about them —
+    # a generated file disagreeing with the record it is generated from, which is the one thing this must not do.
     after_adoption = Adoption(
         adoption.why, refreshed_facts.database, refreshed_facts.infrastructure, refreshed_facts.survey,
         ci=refreshed_facts.ci, release=refreshed_facts.release,
+        candidates=list(adoption.candidates), agent=dict(adoption.agent),
     )
     # Quick wins are read from the tree again: what was fixed is said, and what remains stays on the survey page.
     was = {w.get("where") for w in (adoption.survey or {}).get("quickWins") or []}

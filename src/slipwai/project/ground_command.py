@@ -182,11 +182,13 @@ def candidate_section(adoption: Adoption, layout: Layout) -> str:
         "reading, not answering a quiz. Where it is one: what should it be called (the directory's name is what\n"
         "the record proposes, and `default` or `ui` is rarely what anybody calls it), what does it own in a\n"
         "sentence or two, and are the commands the survey read the ones that matter?\n\n"
-        "Each answer on offer says what confirming it does: which commands join the gate and what running\n"
-        "them needs, what a red one would stop, and what declining forfeits instead. *Held as a `library` for\n"
-        "its lint \u2014 `make verify` gains `npm run lint` here, which needs only Node* and *declined \u2014 its\n"
-        "lint stays in the repository's own CI, which already runs it, and the delivery gate says nothing\n"
-        "about this directory* are answers somebody can choose between. *Yes* and *No* are not.\n\n"
+        "Where they asked for the long form, each answer says what confirming it does: which commands join\n"
+        "the gate and what running them needs, what a red one would stop, and what declining forfeits\n"
+        "instead. *Held as a `library` for its lint \u2014 `make verify` gains `npm run lint` here, which needs\n"
+        "only Node* and *declined \u2014 its lint stays in the repository's own CI, which already runs it, and\n"
+        "the delivery gate says nothing about this directory* are answers somebody can choose between. *Yes*\n"
+        "and *No* are not. Where they asked for the short form, the labels stand alone and your reading above\n"
+        "them carries the reasoning.\n\n"
         "**Write:** one `slipwai adopt --confirm <name>` per application — with `--as <name>=<new>` where the\n"
         "directory's name is not its name, and `--kind`, `--purpose` and `--command` for what you established —\n"
         "and `--decline <name>` for each that is not one. The command builds the record and regenerates\n"
@@ -222,13 +224,24 @@ axes to ask about; empty means every row a person has not yet placed.
   file is not a question to put: read it, say what you found and where, and record it. Ask only what reading
   cannot reach — what a person intends, what they would ship on, what they know about how the work is done. A
   menu offered for something the tree already states asks somebody to guess at their own repository.
-- **Every answer on offer says what it does.** The person reads the options, not the paragraph above them, so
-  each one names what it writes, what moves because of it, and what it costs. *`library`, and the gate holds
-  its lint: `make verify` runs `npm run lint` here from now on, and a red one stops every change until it is
-  fixed or quarantined* is an answer. *Yes — hold its lint* is a label, and a label is what gets picked by
-  somebody who does not yet know what they are picking. Where two options differ only in a word, say what
-  turns on that word. Never offer one whose consequence you have not stated: if you cannot say what an answer
-  does, you are not ready to ask it.
+- **Ask how much to explain, first, and hold to the answer.** The opening question is not about this
+  repository: it is whether they want each answer's consequence spelled out — what it writes, what moves,
+  what it costs — or the short form. Somebody who knows this codebase and this method does not need to be
+  told what webpack does, and being told anyway is how a question set becomes a wall to skim; somebody
+  meeting either for the first time cannot answer safely without it. Offer both, say which you would pick
+  for them and why, and take the answer as standing for the rest of the run unless they change it — which
+  they may, at any question, in either direction.
+- **In full, every answer on offer says what it does.** The person reads the options, not the paragraph above
+  them, so each one names what it writes, what moves because of it, and what it costs. *`library`, and the
+  gate holds its lint: `make verify` runs `npm run lint` here from now on, and a red one stops every change
+  until it is fixed or quarantined* is an answer. *Yes — hold its lint* is a label, and a label is what gets
+  picked by somebody who does not yet know what they are picking. Where two options differ only in a word,
+  say what turns on that word. Never offer one whose consequence you have not stated: if you cannot say what
+  an answer does, you are not ready to ask it.
+- **In short, the labels stand alone — and two things never go.** The short form drops the elaboration, not
+  the honesty: what you think and why, from what you read, stays (the next rule), and *I don't know* stays an
+  answer on offer. What a short answer costs is a sentence away whenever they ask, and offering that once —
+  *say the word and I will spell any of these out* — costs a line.
 - **Say what you think, and why, from what you read.** A recommendation with its reasoning is what makes an
   answer a confirmation rather than a guess, and it is what lets somebody disagree with you on the evidence
   rather than on authority. Never a bare menu.
@@ -248,6 +261,23 @@ axes to ask about; empty means every row a person has not yet placed.
   `planned` where they name the slice that will move it. Where the answer is a fact under another key — the
   release path, an application's `kind`, a home, `why` — write it there with `confirmed` provenance; the row
   follows when `/survey` re-reads the record.
+
+## The first question
+
+Asked before anything about this repository, once, and answered for the rest of the run:
+
+**Ask:** how much should each answer explain itself? *Long* spells out, for every option, what it writes to
+the record, what moves because of it, and what it costs — which is what somebody meeting this repository or
+this method for the first time needs in order to answer safely. *Short* gives you the reading, the
+recommendation and the answers as labels, on the understanding that you already know what confirming an
+application or placing a rung does. Say which you would pick for this person and why, from what you can see:
+a repository whose record is entirely `unrecorded` and whose person has not met the method suggests long; a
+second or third adoption by the same hands suggests short.
+
+Then say, once: *say the word at any question and I will spell that one out* — and mean it, in either
+direction, at any point.
+
+**Write:** nothing. It is how you talk, not a fact about the repository, and it is not a row.
 
 {candidate_section(adoption, layout)}## The rows, as they stand
 

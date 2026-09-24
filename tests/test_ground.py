@@ -40,8 +40,10 @@ class GroundTest(unittest.TestCase):
                 self.assertIn(f"`{rung}` — {axis.means[rung]}", ground, f"{axis.key}: every rung says what it means")
         self.assertIn("Not asked. The constitution is established by `/speckit-constitution`", ground)
         # Every axis but the constitution, and one question that is not a row: how each application starts.
-        self.assertEqual(ground.count("**Ask:**"), len(AXES))
-        self.assertEqual(ground.count("**Write:**"), len(AXES))
+        # Every axis but the constitution, plus the opening question about how much to explain, and one
+        # question that is not a row: how each application starts.
+        self.assertEqual(ground.count("**Ask:**"), len(AXES) + 1)
+        self.assertEqual(ground.count("**Write:**"), len(AXES) + 1)
         starts = ground.split("## How each application starts")[1].split("## Then")[0]
         self.assertIn("the floor beside the build", starts)
         self.assertIn("`/drive`'s Pin stage refuses to change one", starts)
@@ -116,8 +118,8 @@ class QuestionDisciplineTest(unittest.TestCase):
 
     def test_every_option_has_to_say_what_it_does(self) -> None:
         ground = adopted([wrapped("shop", ".")])["delivery/commands/ground.md"]
-        self.assertIn("**Every answer on offer says what it does.**", ground)
-        self.assertIn("is a label, and a label is what gets picked by", ground)
+        self.assertIn("**In full, every answer on offer says what it does.**", ground)
+        self.assertIn("is a label, and a label is what gets", ground)
         self.assertIn("Never offer one whose consequence you have not stated", ground)
 
     def test_a_readable_question_goes_back_to_the_tree_rather_than_to_the_person(self) -> None:
@@ -135,10 +137,33 @@ class QuestionDisciplineTest(unittest.TestCase):
         self.assertIn("**Say what you think, and why, from what you read.**", ground)
         self.assertIn("Never a bare menu.", ground)
 
+    def test_how_much_to_explain_is_asked_first_and_is_not_a_row(self) -> None:
+        """Somebody who knows the codebase and the method does not need webpack explained, and being told
+        anyway is how a question set becomes a wall to skim. Asked once, before anything about the
+        repository, and it writes nothing: it is how the agent talks, not a fact about the tree."""
+        ground = adopted([wrapped("shop", ".")])["delivery/commands/ground.md"]
+        self.assertIn("## The first question", ground)
+        self.assertIn("**Ask:** how much should each answer explain itself?", ground)
+        self.assertIn("**Write:** nothing. It is how you talk, not a fact about the repository", ground)
+        self.assertIn("**Ask how much to explain, first, and hold to the answer.**", ground)
+        self.assertLess(
+            ground.index("## The first question"), ground.index("## The rows, as they stand"),
+            "asked before any row",
+        )
+        self.assertEqual(ground.count("**Ask:**"), len(AXES) + 1, "the axes, plus this one")
+
+    def test_the_short_form_drops_the_elaboration_and_not_the_honesty(self) -> None:
+        ground = adopted([wrapped("shop", ".")])["delivery/commands/ground.md"]
+        self.assertIn("**In short, the labels stand alone — and two things never go.**", ground)
+        self.assertIn("drops the elaboration, not", ground)
+        self.assertIn("the honesty", ground)
+        self.assertIn("**In full, every answer on offer says what it does.**", ground)
+
     def test_the_candidate_section_holds_its_options_to_the_same_standard(self) -> None:
         ground = with_candidates([
             {"name": "themes", "path": "themes", "language": "javascript", "kind": "application",
              "commands": {"lint": "cd themes && npm run lint"}, "evidence": "themes/package.json"},
         ])
-        self.assertIn("Each answer on offer says what confirming it does", ground)
-        self.assertIn("*Yes* and *No* are not.", ground)
+        self.assertIn("each answer says what confirming it does", ground)
+        self.assertIn("Where they asked for the short form, the labels stand alone", ground)
+        self.assertIn("and *No* are not.", ground, "a bare yes/no is not an answer")

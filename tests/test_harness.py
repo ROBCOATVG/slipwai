@@ -10,6 +10,7 @@ a terminal can ask well and a tree that reads for two harnesses names neither.
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from support import FactoryTestCase
 from test_adopt import repository, slipwai
 from test_adopt_next import BARE, NODE
 from test_replay import git
+
+from slipwai.harness import registry
 
 
 class HarnessTest(FactoryTestCase):
@@ -162,3 +165,78 @@ class HarnessTest(FactoryTestCase):
             for written in ("not json at all", '{"integration": "no-such-harness"}', '{"integration": 7}', "{}"):
                 (root / ".specify/integration.json").write_text(written)
                 self.assertIsNone(from_spec_kit(root), written)
+
+
+class EveryHarnessReachesTest(FactoryTestCase):
+    """Whether an adopted repository's own commands reach a harness that is not Claude Code.
+
+    Thirty-six harnesses are declared and nobody is going to install thirty-six coding agents to find out.
+    The registry is the contract they are held to, so the registry is what this asks: project an adoption
+    into every harness it declares and require `/ground` to land somewhere a person can invoke it. Fifteen
+    harnesses declare no `commandsDir` at all — Codex, Zed, Cursor and a dozen others — and for those a
+    command is projected as a skill instead, which is the branch that had never been exercised for an
+    adoption's own commands.
+    """
+
+    def adopted_repo(self, directory: str) -> Path:
+        repo = repository(Path(directory), "shop", {
+            "package.json": json.dumps({"name": "shop", "scripts": {"lint": "eslint ."}}),
+        })
+        done = slipwai(repo, "adopt", "--yes", "--experimental-intro", "--no-init", environment=BARE)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return repo
+
+    def test_every_harness_either_has_somewhere_for_a_command_or_says_why_not(self) -> None:
+        """The cheap half, and the one that catches a harness added tomorrow: the projector puts a command
+        under `commandsDir`, or — where there is none — as a skill under `skillsDir`. A harness declaring
+        neither would take the second branch with nowhere to write and lose the command set silently, so
+        one declaring neither has to say so outright: `projectable: false` with the reason, which today is
+        Hermes keeping its skills at `~/.hermes/skills`, outside any repository."""
+        for row in registry():
+            with self.subTest(harness=row["key"]):
+                if row.get("projectable") is False:
+                    self.assertTrue(
+                        (row.get("unprojectableReason") or "").strip(),
+                        f"{row['key']} is not projectable and does not say why",
+                    )
+                    continue
+                self.assertTrue(
+                    row.get("commandsDir") or row.get("skillsDir"),
+                    f"{row['key']} declares neither, so a command has nowhere to go",
+                )
+
+    def test_ground_lands_for_every_harness_the_registry_knows(self) -> None:
+        """The behavioural half: not an assertion about the table, but thirty-six projections that have to
+        put the command on disk where that harness reads it."""
+        description = "Ask the person what the tree cannot say"
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.adopted_repo(directory)
+            projector = repo / "delivery/scripts/agents/project.py"
+            self.assertTrue(projector.is_file(), "adopt writes the projector")
+            for row in registry():
+                key = row["key"]
+                with self.subTest(harness=key):
+                    done = subprocess.run(
+                        ["python3", "delivery/scripts/agents/project.py", key],
+                        cwd=repo, text=True, capture_output=True, check=False,
+                    )
+                    if row.get("projectable") is False:
+                        # The declared exception is exercised rather than skipped: it has to refuse, and the
+                        # refusal has to carry the reason the registry gives, or the exemption is a comment.
+                        self.assertNotEqual(done.returncode, 0, f"{key} claims it cannot be projected")
+                        said = done.stdout + done.stderr
+                        self.assertIn("cannot be projected", said, f"{key} refused without saying why")
+                        self.assertIn(row["name"], said, f"{key} refused without saying which harness")
+                        continue
+                    self.assertEqual(done.returncode, 0, f"{key}: {done.stderr}")
+                    places = [row[field] for field in ("commandsDir", "skillsDir") if row.get(field)]
+                    landed = [
+                        found for place in places
+                        for found in (repo / place).rglob("*")
+                        if found.is_file() and description in found.read_text(errors="replace")
+                    ]
+                    self.assertTrue(
+                        landed,
+                        f"{key}: /ground reached none of {places} — a harness this factory says it supports "
+                        f"whose person has no way to run the adoption's own question set",
+                    )

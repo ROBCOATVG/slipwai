@@ -165,18 +165,33 @@ SPECIFIER_PATTERNS = (
 )
 
 
+# Test code is not the layer it tests. A Decider's spec lives in `tests/domain/` — the level
+# `adversarial-testing` and `event-modeling-to-code.md` send it to — or beside the Decider, as Go's
+# `_test.go` must, and either way it names the test runner and the fakes the layer itself may not.
+TEST_DIRECTORIES = {"test", "tests", "__tests__"}
+TEST_FILE = re.compile(r"(?:_test\.(?:go|py)|\.(?:test|spec)\.tsx?|Tests?\.java)$|^test_\w*\.py$")
+
+
+def is_test(path: Path) -> bool:
+    return bool(TEST_DIRECTORIES.intersection(path.parts)) or bool(TEST_FILE.search(path.name))
+
+
 def source_files(layer: str) -> list[Path]:
     """Every source file under a `layer/` directory at any depth, in any deployable or package.
 
     One service holds `src/domain/`; the same service holds `src/<context>/domain/` once it has more than
-    one bounded context. Both are the same layer.
+    one bounded context. Both are the same layer. A test of the layer is not in it (`is_test`).
     """
     found: list[Path] = []
     for source_root in (ROOT / "apps", ROOT / "packages"):
         if not source_root.exists():
             continue
         for path in sorted(source_root.rglob("*")):
-            if path.is_file() and path.suffix in SOURCE_SUFFIXES and layer in path.parts and ruled(path):
+            relative = path.relative_to(source_root)
+            if (
+                path.is_file() and path.suffix in SOURCE_SUFFIXES and layer in relative.parts
+                and not is_test(relative) and ruled(path)
+            ):
                 found.append(path)
     return found
 

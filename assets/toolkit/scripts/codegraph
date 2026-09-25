@@ -17,12 +17,12 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent / "agents"))
-from code_index import ROOT, route  # noqa: E402
+from code_index import NO_ROUTE, ROOT, route  # noqa: E402
 
 command = route()
 if command is None:
-    sys.exit("scripts/codegraph: neither `npx` nor `codegraph` is on PATH, so the index cannot be asked here; install "
-             "Node, and say that the answer you give instead is a text search")
+    sys.exit(f"scripts/codegraph: {NO_ROUTE}. The index cannot be asked here; install Node (or put the one you have "
+             "on PATH), and say that the answer you give instead is a text search")
 os.chdir(ROOT)
 os.environ.setdefault("CODEGRAPH_NO_UPDATE_CHECK", "1")
 os.execvp(command[0], [*command, *sys.argv[1:]])

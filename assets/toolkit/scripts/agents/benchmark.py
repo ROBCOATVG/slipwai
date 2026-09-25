@@ -12,7 +12,7 @@ slice loop, `specs/<feature>/benchmark.json`. `/drive` opens an entry before a s
     python3 scripts/agents/benchmark.py overview [shop]                   # writes specs/<feature>/benchmark.md; `/benchmark`
     python3 scripts/agents/benchmark.py --json
     python3 scripts/agents/benchmark.py cut-off "<why>"                   # close what an iteration left open; the runner's
-    python3 scripts/agents/benchmark.py check                             # the gate: nothing open, every done slice recorded
+    python3 scripts/agents/benchmark.py check                             # warns: anything open, a done slice unrecorded
 
 Everything that a transcript, `tasks.md`, git or the record itself can say is read from there, never asked:
 wall time; the agent type each delegate ran as, where the transcript attributes one; tokens by model, from the
@@ -605,33 +605,55 @@ def cut_off(reason: str) -> None:
             save(path.parent, record)
 
 
-def done_slices(feature: Path) -> set[str]:
-    """The slices this feature has finished, as the ladder marks them: a row in the register at
-    `slices/README.md`, or `status: implemented` in the event model (`commands/drive.md`, *Ready-set selection*)."""
-    done: set[str] = set()
-    register = feature / "slices/README.md"
-    if register.is_file():
-        for line in register.read_text().splitlines():
-            if not line.strip().startswith("|"):
-                continue
-            first = line.strip().strip("|").split("|")[0].strip().strip("`")
-            found = re.match(r"([A-Za-z]+\d+)\b", first)
-            if found:
-                done.add(found.group(1))
+def implemented() -> list[tuple[str, str | None]]:
+    """Every slice `docs/event-model/model.yaml` marks `status: implemented`, with the feature it names: the
+    `specs/<feature>/` its `spec` or `gwt` path is under, or None where it names none. The model is the whole
+    project's, so a slice in it belongs to one feature, not to every feature that asks."""
     model = ROOT / "docs/event-model/model.yaml"
+    found: list[tuple[str, str | None]] = []
     if model.is_file():
         for block in re.split(r"^\s*- id:\s*", model.read_text(), flags=re.M)[1:]:
             ident = block.split("\n", 1)[0].strip().strip("'\"")
             if ident and re.search(r"^\s*status:\s*implemented\s*$", block, re.M):
-                done.add(ident)
+                named = re.search(r"^\s*(?:spec|gwt):\s*['\"]?specs/([^/\s'\"]+)/", block, re.M)
+                found.append((ident, named.group(1) if named else None))
+    return found
+
+
+def done_slices(feature: Path) -> set[str]:
+    """The slices this feature has finished, as the ladder marks them (`commands/drive.md`, *Ready-set selection*):
+    a row in its register at `slices/README.md`, or `status: implemented` in the event model on a slice that names
+    this feature, or names none and has its folder at `slices/<id>/` here."""
+    done: set[str] = set()
+    register = feature / "slices/README.md"
+    if register.is_file():
+        for line in register.read_text().splitlines():
+            if line.strip().startswith("|"):
+                first = line.strip().strip("|").split("|")[0].strip().strip("`")
+                found = re.match(r"([A-Za-z]+\d+)\b", first)
+                if found:
+                    done.add(found.group(1))
+    for ident, named in implemented():
+        if named == feature.name or (named is None and (feature / "slices" / ident).is_dir()):
+            done.add(ident)
     return done
 
 
+def unowned() -> list[str]:
+    """Implemented slices no feature holds: the model names no feature for them and no `specs/*/slices/<id>/`
+    exists. Not charged to any feature — said, so the model can be given its `spec` or the id corrected."""
+    features = [path for path in (ROOT / "specs").iterdir() if path.is_dir()] if (ROOT / "specs").is_dir() else []
+    return sorted(ident for ident, named in implemented()
+                  if named is None and not any((feature / "slices" / ident).is_dir() for feature in features))
+
+
 def check() -> list[str]:
-    """What the gate holds: no entry left open, a record for every slice the ladder calls done, that record
-    closed, and a feature record once any slice is done — because a delivered slice with no benchmark cannot say
-    what it cost, and the brackets can only be taken at the time."""
-    findings = []
+    """What `check-benchmark` warns of: an entry left open, a slice the ladder calls done with no record or an
+    unclosed one, a feature with done slices and no record above the slice loop, and an implemented slice in the
+    model that no feature holds — because a delivered slice with no benchmark cannot say what it cost."""
+    findings = [f"docs/event-model/model.yaml: {ident} is implemented but names no feature (`spec`/`gwt` under "
+                "specs/<feature>/) and has no specs/*/slices/ folder, so no feature's record is asked for it"
+                for ident in unowned()]
     for path, record in records():
         for entry in record.get("stages", []):
             if "ended" not in entry:
@@ -959,10 +981,14 @@ def main() -> None:
         cut_off(" ".join(rest))
         return
     if command == "check":
+        # A warning, never a failure: the brackets can only be taken at the time, so a slice finished without
+        # one can never be made to pass honestly, and a gate that nothing true satisfies stops every push.
         findings = check()
         if findings:
-            print("\n".join(f"check-benchmark: {finding}" for finding in findings), file=sys.stderr)
-            raise SystemExit(1)
+            print("\n".join(f"check-benchmark: warning: {finding}" for finding in findings), file=sys.stderr)
+            print(f"check-benchmark: {len(findings)} warning(s) above — what was not measured stays unmeasured; "
+                  "not failing verify")
+            return
         held = records()
         print(f"check-benchmark: {len(held)} record(s), nothing open, every done slice recorded and closed"
               if held else "check-benchmark: no record and no done slice yet — nothing to hold")

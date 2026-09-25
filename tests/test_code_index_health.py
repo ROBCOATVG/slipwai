@@ -71,23 +71,27 @@ DONE = json.dumps({"type": "result", "subtype": "success", "is_error": False, "r
                    "permission_denials": []})
 
 
+def indexed(case: FactoryTestCase, directory: str, name: str) -> tuple[Path, dict[str, str], Path]:
+    """A project with an index built by the fake CLI, and a PATH on which that CLI is the only route."""
+    repo = case.generate(directory, name, "standard", "python")
+    here = Path(directory)
+    tools = here / "tools"
+    tools.mkdir()
+    (tools / "codegraph").write_text(FAKE_CODEGRAPH)
+    (tools / "codegraph").chmod(0o755)
+    log = here / "codegraph-calls"
+    # No `npx`, so the fake is the route; the few tools the fake harness itself runs.
+    env = {"PATH": f"{tools}:{bare_path(here, 'dirname', 'cat', 'mkdir', 'touch')}", "FAKE_CODEGRAPH_LOG": str(log)}
+    built = subprocess.run(["scripts/codegraph", "init", "-y", "."], cwd=repo, env={**os.environ, **env},
+                           text=True, capture_output=True)
+    case.assertEqual(built.returncode, 0, built.stderr)
+    log.unlink()
+    return repo, env, log
+
+
 class CodeIndexHealthTest(FactoryTestCase):
     def indexed(self, directory: str, name: str) -> tuple[Path, dict[str, str], Path]:
-        """A project with an index built by the fake CLI, and a PATH on which that CLI is the only route."""
-        repo = self.generate(directory, name, "standard", "python")
-        here = Path(directory)
-        tools = here / "tools"
-        tools.mkdir()
-        (tools / "codegraph").write_text(FAKE_CODEGRAPH)
-        (tools / "codegraph").chmod(0o755)
-        log = here / "codegraph-calls"
-        # No `npx`, so the fake is the route; the few tools the fake harness itself runs.
-        env = {"PATH": f"{tools}:{bare_path(here, 'dirname', 'cat', 'mkdir', 'touch')}", "FAKE_CODEGRAPH_LOG": str(log)}
-        built = subprocess.run(["scripts/codegraph", "init", "-y", "."], cwd=repo, env={**os.environ, **env},
-                               text=True, capture_output=True)
-        self.assertEqual(built.returncode, 0, built.stderr)
-        log.unlink()
-        return repo, env, log
+        return indexed(self, directory, name)
 
     def guard(self, repo: Path, env: dict[str, str], tool: str, given: dict, agent: str | None = None):
         happened = {"session_id": "s1", "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": given,
@@ -186,11 +190,29 @@ class CodeIndexHealthTest(FactoryTestCase):
             self.assertIn("code-index: at session start the index was rebuilt — the database failed its integrity "
                           "check", said.stdout)
             self.assertEqual(log.read_text().splitlines(), ["init -y ."])
-            # No route: said, and the session still opens.
-            bare = {**os.environ, "PATH": str(bare_path(Path(directory)))}
+            # No route: said, with the likely reason, and the session still opens.
+            home = Path(directory) / "home"
+            bare = {**os.environ, "PATH": str(bare_path(Path(directory))), "HOME": str(home), "NVM_DIR": "",
+                    "VOLTA_HOME": "", "FNM_DIR": ""}
             unreachable = subprocess.run(session, cwd=repo, env=bare, text=True, capture_output=True)
             self.assertEqual(unreachable.returncode, 0)
             self.assertIn("at session start the index was unreachable", unreachable.stdout)
+            self.assertIn("nor under nvm, volta or fnm — a hook's or non-interactive shell sources no profile",
+                          unreachable.stdout)
+            # A hook's shell sources no nvm, so a Node 24 under ~/.nvm is not on PATH: it is found where nvm keeps
+            # it, the newest version first, with its `bin/` put on PATH for `npx`'s own `node`.
+            for version in ("v18.20.0", "v24.1.0"):
+                bin_ = home / ".nvm/versions/node" / version / "bin"
+                bin_.mkdir(parents=True)
+                (bin_ / "npx").write_text(f"#!/bin/sh\necho \"{version} $* | $PATH\" >> {log}\n")
+                (bin_ / "npx").chmod(0o755)
+            (repo / ".codegraph/codegraph.db").write_bytes(b"garbage " * 1000)
+            found = subprocess.run(session, cwd=repo, env={**bare, "FAKE_CODEGRAPH_LOG": str(log)}, text=True,
+                                   capture_output=True)
+            self.assertEqual(found.returncode, 0, found.stderr)
+            called = log.read_text().splitlines()[-1]
+            self.assertTrue(called.startswith("v24.1.0 -y @colbymchenry/codegraph@"), called)
+            self.assertIn(" init -y . | " + str(home / ".nvm/versions/node/v24.1.0/bin") + ":", called)
 
     def test_a_symbol_search_of_the_source_waits_for_the_index_and_a_search_for_words_does_not(self) -> None:
         """Claude Code's PreToolUse hook, per asker: the session and each delegate (`agent_id`). A search of the

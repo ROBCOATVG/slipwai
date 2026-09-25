@@ -140,11 +140,59 @@ class CruiseRecordTest(FactoryTestCase):
             self.assertEqual(gate(repo).returncode, 0)
             (repo / "docs/event-model").mkdir(parents=True)
             (repo / "docs/event-model/model.yaml").write_text(
-                "version: 1\nslices:\n  - id: S2\n    status: implemented\n  - id: S3\n    status: planned\n")
+                "version: 1\nslices:\n  - id: S2\n    status: implemented\n    spec: specs/f/spec.md\n"
+                "  - id: S3\n    status: planned\n")
             refused = gate(repo)
             self.assertEqual(refused.returncode, 1)
             self.assertIn("no row for S2, which is done", refused.stderr)
             self.assertNotIn("S3", refused.stderr)
+
+    def test_the_one_model_charges_a_slice_to_its_own_feature_and_no_other(self) -> None:
+        """The event model is the whole project's. A project's second feature was failed for every slice its first
+        had implemented, and nothing done inside the second could pass it. A slice counts for the feature its `spec`
+        or `gwt` path is under or, naming none, the one holding its folder; one no feature holds is noted."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "scoped", "standard", "python")
+            for feature, ident in (("001-first", "S1"), ("018-second", "GS1")):
+                (repo / f"specs/{feature}/slices/{ident}").mkdir(parents=True)
+                (repo / f"specs/{feature}/adversary-log.md").write_text(f"# Adversary log\n\n## {ident} · abc · d\n")
+            (repo / "docs/event-model").mkdir(parents=True)
+            (repo / "docs/event-model/model.yaml").write_text(
+                "version: 1\nslices:\n"
+                "  - id: S1\n    status: implemented\n"
+                "  - id: S2\n    status: implemented\n    gwt: specs/001-first/slices/S2.md\n"
+                "  - id: GS1\n    status: implemented\n"
+                "  - id: S12Q\n    status: implemented\n")
+            refused = gate(repo)
+            self.assertEqual(refused.returncode, 1)
+            self.assertIn("specs/001-first/adversary-log.md: no row for S2, which is done", refused.stderr)
+            self.assertNotIn("018-second", refused.stderr)
+            self.assertIn("check-decisions: note: S12Q is implemented in docs/event-model/model.yaml but names no "
+                          "feature and has no specs/*/slices/ folder", refused.stdout)
+
+    def test_a_project_that_migrated_across_the_gate_baselines_its_history_once(self) -> None:
+        """Slices finished before the gate held them to the log cannot be attacked honestly after the fact.
+        `--adversary-baseline` writes a row for each that says so, which the gate accepts, and is refused a second
+        time, so a slice finished afterwards still needs the row `/adversary` writes."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "baselined", "standard", "python")
+            (repo / "specs/f/slices/S1").mkdir(parents=True)
+            (repo / "specs/f/slices/README.md").write_text("| Slice | Accepted |\n|---|---|\n| S1 | 2026-09-01 |\n")
+            self.assertEqual(gate(repo).returncode, 1)
+            baseline = ["python3", "scripts/check-decisions.py", "--adversary-baseline"]
+            taken = subprocess.run(baseline, cwd=repo, text=True, capture_output=True)
+            self.assertEqual(taken.returncode, 0, taken.stderr)
+            self.assertIn("check-decisions: baselined 1 done slice(s)", taken.stdout)
+            log = (repo / "specs/f/adversary-log.md").read_text()
+            self.assertRegex(log, r"\n## S1 · predates the adversary gate · \d{4}-\d{2}-\d{2}\n")
+            self.assertIn("no slice may cite this row as coverage", log)
+            self.assertEqual(gate(repo).returncode, 0)
+            (repo / "specs/f/slices/README.md").write_text(
+                "| Slice | Accepted |\n|---|---|\n| S1 | 2026-09-01 |\n| S2 | 2026-09-26 |\n")
+            again = subprocess.run(baseline, cwd=repo, text=True, capture_output=True)
+            self.assertEqual(again.returncode, 1)
+            self.assertIn("a baseline was already taken", again.stderr)
+            self.assertIn("no row for S2, which is done", gate(repo).stderr)
 
     def test_the_gate_refuses_every_shape_a_run_could_write_wrong(self) -> None:
         """Each malformation is one finding naming the file, the line and what the shape is — a decision nobody

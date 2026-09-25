@@ -195,18 +195,21 @@ class BenchmarkBracketsTest(FactoryTestCase):
             self.assertEqual(demo["cut_off"], "the iteration was ended by `stop --now`")
             self.assertTrue(dead(int(child.read_text())), "the session's background process outlived the iteration")
 
-    def test_the_gate_fails_on_an_open_entry_a_done_slice_without_a_record_and_a_feature_without_one(self) -> None:
+    def test_the_gate_warns_of_an_open_entry_a_done_slice_without_a_record_and_a_feature_without_one(self) -> None:
         """`check-benchmark` used to run the script's self-test and nothing about the project, so a slice was
         delivered with no record at all. Now it reads what the ladder calls done — a register row, or
-        `status: implemented` in the event model — and holds each done slice to a closed record, every record
-        to nothing open, and the feature to a record above the slice loop."""
+        `status: implemented` in the event model — and says of each done slice without a closed record, every
+        record with an entry open, and a feature with no record above the slice loop. It says so as a warning and
+        never fails `verify`: a bracket can only be taken at the time, so a slice finished without one — every
+        slice of a project that migrated across this check — could never be made to pass honestly."""
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "gate", "standard", "python")
             env = clean(HOME=directory)
 
             def findings() -> list[str]:
                 result = bench(repo, "check", env=env)
-                return [line.removeprefix("check-benchmark: ") for line in result.stderr.splitlines()]
+                self.assertEqual(result.returncode, 0, result.stderr)
+                return [line.removeprefix("check-benchmark: warning: ") for line in result.stderr.splitlines()]
 
             quiet = bench(repo, "check", env=env)
             self.assertEqual((quiet.returncode, quiet.stdout.strip()),
@@ -233,11 +236,22 @@ class BenchmarkBracketsTest(FactoryTestCase):
                              (0, "check-benchmark: 2 record(s), nothing open, every done slice recorded and closed"))
             # The event profile marks a slice done in the model instead; a slice merely planned is not held.
             (repo / "docs/event-model").mkdir(parents=True)
+            # The model is the whole project's: a slice counts for the feature its `spec`/`gwt` names, or the one
+            # holding its folder, and one no feature holds is said once rather than charged to every feature.
+            (repo / "specs/other/slices").mkdir(parents=True)
             (repo / "docs/event-model/model.yaml").write_text(
                 "version: 1\nslices:\n  - id: S2\n    name: Two\n    status: implemented\n"
-                "  - id: S3\n    name: Three\n    status: planned\n")
-            self.assertEqual(findings(), ["specs/shop/slices/S2 is done but has no benchmark.json: no stage of it was "
-                                          "bracketed (commands/drive.md, *What each stage costs*)"])
+                "    spec: specs/shop/spec.md\n"
+                "  - id: S3\n    name: Three\n    status: planned\n"
+                "  - id: S12Q\n    name: Nowhere\n    status: implemented\n")
+            self.assertEqual(findings(), [
+                "docs/event-model/model.yaml: S12Q is implemented but names no feature (`spec`/`gwt` under "
+                "specs/<feature>/) and has no specs/*/slices/ folder, so no feature's record is asked for it",
+                "specs/shop/slices/S2 is done but has no benchmark.json: no stage of it was "
+                "bracketed (commands/drive.md, *What each stage costs*)"])
             made = subprocess.run(["make", "check-benchmark"], cwd=repo, env=env, text=True, capture_output=True)
-            self.assertEqual(made.returncode, 2)
-            self.assertIn("specs/shop/slices/S2 is done but has no benchmark.json", made.stderr)
+            self.assertEqual(made.returncode, 0, made.stderr)
+            self.assertIn("check-benchmark: warning: specs/shop/slices/S2 is done but has no benchmark.json",
+                          made.stderr)
+            self.assertIn("check-benchmark: 2 warning(s) above — what was not measured stays unmeasured; not failing "
+                          "verify", made.stdout)

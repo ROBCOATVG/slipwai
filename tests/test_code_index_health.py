@@ -64,7 +64,8 @@ _connect = sqlite3.connect
 def connect(database, *args, **kwargs):
     path = str(database).removeprefix("file://").removeprefix("file:").split("?")[0]
     wal = os.path.isfile(path) and open(path, "rb").read(20)[18:20] == b"\\x02\\x02"
-    if os.environ.get("REFUSE_EVERY_OPEN") or ("mode=ro" in str(database) and wal and not os.path.exists(path + "-shm")):
+    apple = "mode=ro" in str(database) and wal and not os.path.exists(path + "-shm")
+    if os.environ.get("REFUSE_EVERY_OPEN") or apple:
         raise sqlite3.OperationalError("unable to open database file")
     return _connect(database, *args, **kwargs)
 sqlite3.connect = connect
@@ -204,9 +205,10 @@ class CodeIndexHealthTest(FactoryTestCase):
             (apple / "sitecustomize.py").write_text(APPLE_SQLITE)
             refusing = {**os.environ, **env, "PYTHONPATH": str(apple)}
             health = ["python3", "scripts/agents/code_index.py", "health"]
-            refused = subprocess.run(["python3", "-c", "import sqlite3, sys\nsqlite3.connect(f'file:{sys.argv[1]}?mode=ro', "
-                                      "uri=True).execute('PRAGMA quick_check')", str(database)],
-                                     env=refusing, text=True, capture_output=True)
+            probe = ("import sqlite3, sys\n"
+                     "sqlite3.connect(f'file:{sys.argv[1]}?mode=ro', uri=True).execute('PRAGMA quick_check')")
+            refused = subprocess.run(["python3", "-c", probe, str(database)], env=refusing, text=True,
+                                     capture_output=True)
             self.assertIn("sqlite3.OperationalError: unable to open database file", refused.stderr)
             sound = subprocess.run(health, cwd=repo, env=refusing, text=True, capture_output=True)
             self.assertEqual(sound.returncode, 0, sound.stdout + sound.stderr)

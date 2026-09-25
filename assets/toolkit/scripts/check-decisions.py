@@ -23,7 +23,13 @@ an unwritten row is a pass that has to be run again, and until now nothing notic
   **Evidence**, **Feedback**; every **Evidence** path exists, beside the log or from the root, or is `none`;
 - every slice the ladder calls done — a row in `specs/<feature>/slices/README.md`, or `status: implemented` in
   `docs/event-model/model.yaml` — has a `## <slice-id> · …` row in `specs/<feature>/adversary-log.md`: the attack,
-  or the recorded skip, that `/adversary` writes after every acceptance.
+  or the recorded skip, that `/adversary` writes after every acceptance. The model is the whole project's, so a
+  slice in it counts for the feature its `spec` or `gwt` path is under, or, naming none, the one holding
+  `slices/<id>/`; an implemented slice no feature holds is noted, not charged to every feature.
+
+`python3 scripts/check-decisions.py --adversary-baseline` is for a project that migrated across that last rule: it
+writes, once, a `## <id> · predates the adversary gate · <date>` row for every done slice without one, which the gate accepts
+and which says the slice was never attacked. A second baseline is refused.
 
 A project with no record anywhere passes and says so: the gate runs in `make verify` from the first commit.
 """
@@ -32,6 +38,7 @@ from __future__ import annotations
 
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 
@@ -149,8 +156,25 @@ def check_demo_log(path: Path) -> list[str]:
     return findings
 
 
+def implemented() -> list[tuple[str, str | None]]:
+    """Every slice `docs/event-model/model.yaml` marks `status: implemented`, with the feature it names: the
+    `specs/<feature>/` its `spec` or `gwt` path is under, or None where it names none. The model is the whole
+    project's, so a slice in it belongs to one feature, not to every feature that asks."""
+    model = ROOT / "docs/event-model/model.yaml"
+    found: list[tuple[str, str | None]] = []
+    if model.is_file():
+        for block in re.split(r"^\s*- id:\s*", model.read_text(), flags=re.M)[1:]:
+            ident = block.split("\n", 1)[0].strip().strip("'\"")
+            if ident and re.search(r"^\s*status:\s*implemented\s*$", block, re.M):
+                named = re.search(r"^\s*(?:spec|gwt):\s*['\"]?specs/([^/\s'\"]+)/", block, re.M)
+                found.append((ident, named.group(1) if named else None))
+    return found
+
+
 def done_slices(feature: Path) -> set[str]:
-    """The slices this feature has finished, as the ladder marks them (`commands/drive.md`, *Ready-set selection*)."""
+    """The slices this feature has finished, as the ladder marks them (`commands/drive.md`, *Ready-set selection*):
+    a row in its register at `slices/README.md`, or `status: implemented` in the event model on a slice that names
+    this feature, or names none and has its folder at `slices/<id>/` here."""
     done: set[str] = set()
     register = feature / "slices/README.md"
     if register.is_file():
@@ -160,13 +184,18 @@ def done_slices(feature: Path) -> set[str]:
                 found = re.match(r"([A-Za-z]+\d+)\b", first)
                 if found:
                     done.add(found.group(1))
-    model = ROOT / "docs/event-model/model.yaml"
-    if model.is_file():
-        for block in re.split(r"^\s*- id:\s*", model.read_text(), flags=re.M)[1:]:
-            ident = block.split("\n", 1)[0].strip().strip("'\"")
-            if ident and re.search(r"^\s*status:\s*implemented\s*$", block, re.M):
-                done.add(ident)
+    for ident, named in implemented():
+        if named == feature.name or (named is None and (feature / "slices" / ident).is_dir()):
+            done.add(ident)
     return done
+
+
+def unowned() -> list[str]:
+    """Implemented slices no feature holds: the model names no feature for them and no `specs/*/slices/<id>/`
+    exists. Not charged to any feature — said, so the model can be given its `spec` or the id corrected."""
+    features = [path for path in (ROOT / "specs").iterdir() if path.is_dir()] if (ROOT / "specs").is_dir() else []
+    return sorted(ident for ident, named in implemented()
+                  if named is None and not any((feature / "slices" / ident).is_dir() for feature in features))
 
 
 def check_adversary_rows() -> list[str]:
@@ -185,7 +214,47 @@ def check_adversary_rows() -> list[str]:
     return findings
 
 
+PREDATES = "predates the adversary gate"
+
+
+def baseline() -> int:
+    """Write, once, a row for every done slice the adversary log lacks, saying it was finished before this gate held
+    finished slices to the log — which is true, and which no later slice may cite as an attack. For a project that
+    migrated across the gate, whose history cannot be attacked honestly after the fact; refused where any log
+    already carries a baseline row, so it is the done set at one moment and not a way past the gate afterwards."""
+    logs = sorted(SPECS.glob(f"*/{ADVERSARY_LOG}")) if SPECS.is_dir() else []
+    taken = [log for log in logs if f"· {PREDATES}" in log.read_text()]
+    if taken:
+        print(f"check-decisions: a baseline was already taken ({taken[0].relative_to(ROOT).as_posix()}); a slice "
+              "finished since is held to a row `/adversary` writes", file=sys.stderr)
+        return 1
+    written = 0
+    today = date.today().isoformat()
+    for feature in sorted(SPECS.iterdir()) if SPECS.is_dir() else []:
+        if not (feature / "slices").is_dir():
+            continue
+        log = feature / ADVERSARY_LOG
+        text = log.read_text() if log.is_file() else f"# Adversary log — {feature.name}\n"
+        missing = sorted(done_slices(feature) - set(re.findall(r"^## (\S+) · ", text, re.M)))
+        if not missing:
+            continue
+        rows = "".join(f"\n## {ident} · {PREDATES} · {today}\n\nFinished before `check-decisions` held every done "
+                       "slice to a row here. Never attacked by `/adversary`, so no slice may cite this row as "
+                       "coverage.\n" for ident in missing)
+        log.write_text(text.rstrip("\n") + "\n" + rows)
+        written += len(missing)
+        print(f"check-decisions: {log.relative_to(ROOT).as_posix()}: {len(missing)} baseline row(s)")
+    print(f"check-decisions: baselined {written} done slice(s)" if written
+          else "check-decisions: every done slice already has a row — nothing to baseline")
+    return 0
+
+
 def main() -> int:
+    if sys.argv[1:] == ["--adversary-baseline"]:
+        return baseline()
+    for ident in unowned():
+        print(f"check-decisions: note: {ident} is implemented in docs/event-model/model.yaml but names no feature "
+              "and has no specs/*/slices/ folder, so no adversary log is asked for it")
     decisions = sorted(SPECS.glob(f"*/{DECISIONS}")) if SPECS.is_dir() else []
     logs = sorted(SPECS.glob(f"*/slices/*/{DEMO_LOG}")) if SPECS.is_dir() else []
     findings: list[str] = check_adversary_rows()

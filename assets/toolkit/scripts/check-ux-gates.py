@@ -47,8 +47,8 @@ import sys
 import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 KEY = "ux-gates"
 KIT = "tools/ux-gates"
@@ -156,9 +156,10 @@ def say(line: str) -> None:
         print(line, flush=True)
 
 
-@dataclass(frozen=True)
-class Gate:
-    """One run of one kit script: over an app's `src/`, its `screens/` directory, or one preview in it."""
+class Gate(NamedTuple):
+    """One run of one kit script: over an app's `src/`, its `screens/` directory, or one preview in it. A tuple
+    rather than a dataclass, which looks its module up in `sys.modules`: a project's test that loads this file with
+    `importlib` and does not register it there would crash on the class instead of testing it."""
 
     app: Path
     script: str
@@ -340,7 +341,8 @@ def main() -> int:
     if spec:
         sharded = shard(gates, spec)
         if sharded is None:
-            say(f"check-ux-gates: UX_GATES_SHARD={spec} is not k/n with 1 <= k <= n — FAILING rather than guessing")
+            say(f"check-ux-gates: UX_GATES_SHARD={spec} is not k/n with 1 <= k <= n — FAILING rather than guessing; "
+                "leave it unset to run every gate")
             return 1
         gates = sharded
         say(f"check-ux-gates: shard {spec} — {len(gates)} of {whole} gate(s)")

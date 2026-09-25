@@ -92,19 +92,48 @@ def adopted() -> bool:
         return False
 
 
+# Why a machine with Node can still have no `npx` on PATH: a hook's shell, and any non-interactive one, sources no
+# profile, so a Node that nvm, volta or fnm put there is not found by name.
+NO_ROUTE = ("neither `npx` nor `codegraph` is on PATH, nor under nvm, volta or fnm — a hook's or non-interactive "
+            "shell sources no profile, so a Node one of those manages is found only where it keeps its versions")
+
+
+def version_of(directory: Path) -> tuple[int, ...]:
+    return tuple(int(part) for part in re.findall(r"\d+", directory.name)[:3])
+
+
+def managed_node() -> Path | None:
+    """The `bin/` holding `npx` of the newest Node that nvm, volta or fnm installed, or None where none did."""
+    home = Path.home()
+    nvm = Path(os.environ.get("NVM_DIR") or home / ".nvm") / "versions/node"
+    fnm = [Path(os.environ["FNM_DIR"])] if os.environ.get("FNM_DIR") else []
+    fnm += [home / ".local/share/fnm", home / "Library/Application Support/fnm", home / ".fnm"]
+    candidates = sorted(nvm.glob("*/bin"), key=lambda found: version_of(found.parent), reverse=True)
+    candidates.append(Path(os.environ.get("VOLTA_HOME") or home / ".volta") / "bin")
+    for root in fnm:
+        candidates += sorted((root / "node-versions").glob("*/installation/bin"),
+                             key=lambda found: version_of(found.parent.parent), reverse=True)
+    return next((found for found in candidates if (found / "npx").is_file()), None)
+
+
 def route() -> list[str] | None:
-    """How to run the pinned CLI: through `npx` where Node is, or an installed `codegraph` where it is not."""
+    """How to run the pinned CLI: through `npx` where Node is, or an installed `codegraph` where it is not. A Node
+    that nvm, volta or fnm manages counts: its `bin/` goes on this process's PATH, so `npx` finds its `node`."""
     if shutil.which("npx"):
         return ["npx", "-y", CODEGRAPH]
     if shutil.which("codegraph"):
         return ["codegraph"]
-    return None
+    found = managed_node()
+    if found is None:
+        return None
+    os.environ["PATH"] = f"{found}{os.pathsep}{os.environ.get('PATH', '')}"
+    return ["npx", "-y", CODEGRAPH]
 
 
 def cli(*arguments: str, seconds: int = SYNC_SECONDS) -> tuple[bool, str]:
     command = route()
     if command is None:
-        return False, "neither `npx` nor `codegraph` is on PATH"
+        return False, NO_ROUTE
     try:
         done = subprocess.run([*command, *arguments], cwd=ROOT, text=True, capture_output=True, timeout=seconds,
                               stdin=subprocess.DEVNULL, env={**os.environ, "CODEGRAPH_NO_UPDATE_CHECK": "1"})
@@ -116,13 +145,30 @@ def cli(*arguments: str, seconds: int = SYNC_SECONDS) -> tuple[bool, str]:
     return done.returncode == 0, said[-1].strip("│└● ").strip() if said else ""
 
 
+class Unopened(Exception):
+    """The database could not be opened to be checked at all — which says nothing about whether it is sound."""
+
+
 def damage() -> str | None:
-    """Why the database cannot be trusted — it does not open, or SQLite's integrity check fails — or None."""
-    try:
-        with sqlite3.connect(f"{DATABASE.as_uri()}?mode=ro", uri=True) as connection:
-            verdict = connection.execute("PRAGMA integrity_check").fetchone()
-    except sqlite3.Error as error:
-        return str(error)
+    """Why the database cannot be trusted — SQLite's integrity check fails, or the file is not a database — or None.
+    Raises `Unopened` when no read-only open succeeds: that is the environment, not the index.
+
+    A WAL database left with no `-shm` beside it — how CodeGraph leaves one once its daemon exits — is refused by
+    some SQLite builds on a plain read-only open (macOS's system Python: "unable to open database file"), and by any
+    build where the directory is not writable. `immutable=1` reads it without the `-shm`, so the check tries that
+    before it concludes anything; an open failure alone never has a sound database moved aside."""
+    refused: list[str] = []
+    for mode in ("mode=ro", "immutable=1"):
+        try:
+            with sqlite3.connect(f"{DATABASE.as_uri()}?{mode}", uri=True) as connection:
+                verdict = connection.execute("PRAGMA integrity_check").fetchone()
+            break
+        except sqlite3.OperationalError as error:  # cannot open, cannot lock, read-only: no reading of the file
+            refused.append(f"{mode}: {error}")
+        except sqlite3.Error as error:  # the file was read, and it is not a sound database
+            return str(error)
+    else:
+        raise Unopened("; ".join(refused))
     if verdict and verdict[0] == "ok":
         return None
     # SQLite reports every damaged cell on its own line; the first says what kind of damage, the count how much.
@@ -160,6 +206,14 @@ def set_aside() -> str:
     return (ASIDE.relative_to(ROOT)).as_posix()
 
 
+def checked() -> str | Unopened | None:
+    """`damage()`, with an open failure returned rather than raised."""
+    try:
+        return damage()
+    except Unopened as error:
+        return error
+
+
 def health() -> dict[str, Any]:
     """Make the index one an iteration can query, and say what that took: `current`, `synced`, `built`, `rebuilt`,
     `unreachable` (no route to the CLI) or `failed` (the step ran and the index is still not right). Nothing where
@@ -169,14 +223,16 @@ def health() -> dict[str, Any]:
     began = time.monotonic()
     result: dict[str, Any] = {}
     if route() is None:
-        result = {"state": "unreachable", "detail": "neither `npx` nor `codegraph` is on PATH, so nothing can "
-                                                    "maintain or query the index"}
+        result = {"state": "unreachable", "detail": f"{NO_ROUTE}; so nothing can maintain or query the index"}
     elif not DATABASE.is_file():
         done, said = cli("init", "-y", ".", seconds=BUILD_SECONDS)
         result = {"state": "built", "detail": "there was no database; built it with `codegraph init`"}
         if not done:
             result = {"state": "failed", "detail": f"no database, and `codegraph init` failed: {said}"}
-    elif (problem := damage()) is not None:
+    elif isinstance(problem := checked(), Unopened):
+        result = {"state": "failed", "detail": f"the database could not be opened to be checked ({problem}); left "
+                                               "it where it is, since an open failure says nothing about the index"}
+    elif problem is not None:
         where = set_aside()
         done, said = cli("init", "-y", ".", seconds=BUILD_SECONDS)
         result = {"state": "rebuilt", "detail": f"the database failed its integrity check ({problem}); moved it "
@@ -195,7 +251,7 @@ def health() -> dict[str, Any]:
         else:
             result = {"state": "current", "detail": "opens, passes its integrity check, and describes the tree"}
     if result["state"] in ("built", "rebuilt", "synced"):
-        problem, stale = (damage() if DATABASE.is_file() else "no database was written"), None
+        problem, stale = (checked() if DATABASE.is_file() else "no database was written"), None
         if problem is None:
             stale = behind()
         if problem is not None or stale:
@@ -212,13 +268,16 @@ def symbols(names: list[str]) -> set[str]:
     """Which of these names the index holds a definition of."""
     if not names or not DATABASE.is_file():
         return set()
-    try:
-        with sqlite3.connect(f"{DATABASE.as_uri()}?mode=ro", uri=True) as connection:
-            marks = ",".join("?" * len(names))
-            return {row[0] for row in connection.execute(
-                f"SELECT DISTINCT name FROM nodes WHERE kind NOT IN ('file', 'import') AND name IN ({marks})", names)}
-    except sqlite3.Error:
-        return set()
+    marks = ",".join("?" * len(names))
+    for mode in ("mode=ro", "immutable=1"):  # the second for a WAL database with no `-shm`, as `damage()` says
+        try:
+            with sqlite3.connect(f"{DATABASE.as_uri()}?{mode}", uri=True) as connection:
+                return {row[0] for row in connection.execute(
+                    f"SELECT DISTINCT name FROM nodes WHERE kind NOT IN ('file', 'import') AND name IN ({marks})",
+                    names)}
+        except sqlite3.Error:
+            continue
+    return set()
 
 
 def symbol_of(pattern: str) -> str | None:

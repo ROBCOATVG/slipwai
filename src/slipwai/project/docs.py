@@ -108,7 +108,7 @@ other direction \u2014 that minimum CD and the practices the skills teach are st
 
 `make verify` is the deterministic local and CI entry point. It runs {gate}{(" plus Biome, TypeScript and React component tests for " + web_paths if web else "")}, architecture direction,
 agent-projection and Spec Kit manifest drift, constitution coverage, event-model validation in the event profile,
-and `check-benchmark`, which fails on a benchmark entry left open or a done slice with no record, and
+and `check-benchmark`, which warns of a benchmark entry left open or a done slice with no record, and
 keeps missing measurements visibly unbracketed. `make help` lists integration,
 adversarial, mutation, model, benchmark and dependency-audit targets. Mutation and dependency audit remain
 explicit end-of-phase/CI operations, not hidden costs in every local increment.

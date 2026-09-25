@@ -177,7 +177,11 @@ def write_project_mcp_entry(spec: dict, name: str, command: list[str]) -> str | 
         if jsonc.is_file() and not path.is_file():
             path = jsonc
         return write_json_entry(path, "mcp", name, {"type": "local", "command": command, "enabled": True})
-    return write_json_entry(path, "mcpServers", name, {"type": "stdio", "command": command[0], "args": command[1:]})
+    # What the harness's row adds to the entry beyond how the server starts: Claude Code's `alwaysLoad`, which
+    # loads this server's tools at session start rather than behind its tool-search step (registry `serverFields`).
+    fields = spec.get("serverFields") if isinstance(spec.get("serverFields"), dict) else {}
+    return write_json_entry(path, "mcpServers", name,
+                            {"type": "stdio", "command": command[0], "args": command[1:], **fields})
 
 
 def write_json_entry(path: Path, key: str, name: str, entry: dict) -> str | None:

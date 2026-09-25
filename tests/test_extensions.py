@@ -19,8 +19,9 @@ FAKE_SPECIFY = "#!/bin/sh\nexit 0\n"
 # `j` once per row moves the cursor from the first extension to the Confirm row below the last.
 TO_CONFIRM = b"j" * len(known_extensions(CATALOG))
 # The server as `scripts/extensions/codegraph/init.py` names it, in the JSON shape most harnesses read and Codex's TOML.
-SERVER = {"type": "stdio", "command": "npx", "args": ["-y", "@colbymchenry/codegraph", "serve", "--mcp"]}
-CODEX_TABLE = '[mcp_servers.codegraph]\ncommand = "npx"\nargs = ["-y", "@colbymchenry/codegraph", "serve", "--mcp"]\n'
+SERVER = {"type": "stdio", "command": "npx", "args": ["-y", "@colbymchenry/codegraph@1.6.0", "serve", "--mcp"]}
+CODEX_TABLE = ('[mcp_servers.codegraph]\ncommand = "npx"\n'
+               'args = ["-y", "@colbymchenry/codegraph@1.6.0", "serve", "--mcp"]\n')
 
 
 def run_init_at_a_terminal(repo: Path, args: list[str], keys: bytes, environment: dict) -> str:

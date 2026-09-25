@@ -76,6 +76,12 @@ def project_root(script: Path, depth: int) -> Path:
 
 SCRIPT = Path(__file__).resolve()
 ROOT = project_root(SCRIPT, 2)
+# The code index's health, freshness and per-delegate use live beside this script, shared with the hooks. No bytecode:
+# a `__pycache__/` written beside the scripts is an untracked directory in the project, which `add-service` refuses
+# to start over and the run's fingerprint would read as progress.
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(SCRIPT.parent))
+import code_index  # noqa: E402
 # The delivery toolkit this script is part of: `commands/`, `scripts/`, `skills/` beside each other, at the root
 # or under the delivery directory of an adopted repository.
 DELIVERY = SCRIPT.parents[2]
@@ -91,10 +97,6 @@ STREAM = ROOT / ".specify/cruise-stream.jsonl"
 # The code index `./init --extension codegraph` leaves, and the project MCP file that carries its server: what the
 # runner says it can expect of them before the first iteration, rather than a feed that fell back to grep without saying.
 CODE_INDEX = ROOT / ".codegraph/codegraph.db"
-# A shell command that asks the index something, as against one that maintains it: `codegraph sync` keeps the gate
-# green and answers nothing, and counting it once let a run claim the index was asked when every answer was grep
-# (the CLI's query subcommands, `codegraph help` in the 1.6.0 bundle, read 2026-09-22).
-INDEX_QUERY = re.compile(r"\bcodegraph\s+(query|explore|node|files|callers|callees|impact|affected)\b")
 MCP_CONFIG = ROOT / ".mcp.json"
 # How far into the run log the watching session has read.
 WATCH_CURSOR = ROOT / ".specify/cruise-watch.cursor"
@@ -1224,6 +1226,12 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
                 feature, kickoff if attempt == "kick-off" else None, told_argument(messages)) if part))
             print(f"cruise: iteration {len(entries()) + 1} carries {len(messages)} message(s) from a person", flush=True)
         iteration = len(entries()) + 1
+        # The index an iteration starts against is the runner's to make sound, not the iteration's: a corrupt one is
+        # moved aside and rebuilt, a stale one synced, and the entry says which — before the clock starts.
+        index = code_index.health()
+        if index:
+            print(f"cruise: code index before iteration {iteration} — {index['state']}: {index['detail']} "
+                  f"({index['seconds']}s)", flush=True)
         started = now()
         LAST_RESPONSE.unlink(missing_ok=True)
         INTERRUPTED = False
@@ -1246,6 +1254,13 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
                                  "last_line": last or "no last line", "fingerprint": seen}
         if attempt is not None:
             entry["attempt"] = attempt
+        if index:
+            entry["index"] = index
+        use = code_index.delegate_use(STREAM, iteration).get(iteration) if index and stream else None
+        if use:
+            entry["index_use"] = use
+            for line in code_index.use_lines(iteration, use):
+                print(line, flush=True)
         changed = controls_changed(controls_before, controls_signature())
         if changed:
             entry["controls_changed"] = changed
@@ -1531,36 +1546,9 @@ def refusals() -> dict[tuple[str, str], list[int]]:
 def index_queries() -> dict[int, int]:
     """How many times each iteration in the stream asked the code index — an MCP tool of the codegraph server, or a
     query subcommand of the CLI through the shell; never `sync`, `init` or `serve`, which maintain it — so `status`
-    can say whether the index was used rather than only kept fresh."""
-    asked: dict[int, int] = {}
-    if not STREAM.is_file():
-        return asked
-    iteration = 0
-    for line in STREAM.read_text(errors="replace").splitlines():
-        if line.startswith("# iteration "):
-            iteration = int(line.split()[2])
-            asked.setdefault(iteration, 0)
-            continue
-        try:
-            event = json.loads(line)
-        except ValueError:
-            continue
-        if not isinstance(event, dict):
-            continue
-        message = event.get("message") if isinstance(event.get("message"), dict) else {}
-        for block in message.get("content") if isinstance(message.get("content"), list) else []:
-            if not isinstance(block, dict) or block.get("type") != "tool_use":
-                continue
-            given = block.get("input") if isinstance(block.get("input"), dict) else {}
-            if str(block.get("name", "")).startswith("mcp__codegraph__") or (
-                    block.get("name") == "Bash" and INDEX_QUERY.search(str(given.get("command", "")))):
-                asked[iteration] = asked.get(iteration, 0) + 1
-        item = event.get("item") if isinstance(event.get("item"), dict) else {}
-        if event.get("type") == "item.started" and (
-                (item.get("type") == "mcp_tool_call" and item.get("server") == "codegraph")
-                or (item.get("type") == "command_execution" and INDEX_QUERY.search(str(item.get("command", ""))))):
-            asked[iteration] = asked.get(iteration, 0) + 1
-    return asked
+    can say whether the index was used rather than only kept fresh. Summed over the host and every delegate."""
+    return {iteration: sum(agent["queries"] for agent in agents)
+            for iteration, agents in code_index.delegate_use(STREAM).items()}
 
 
 def index_use_lines() -> list[str]:
@@ -1578,6 +1566,18 @@ def index_use_lines() -> list[str]:
     return [f"cruise: the code index was never asked in the {len(asked)} iteration(s) the stream holds — every answer "
             "about callers and blast radius was a text search; `python3 scripts/agents/cruise.py denials` says whether "
             "it was refused, and `start` says whether it can be reached at all"]
+
+
+def delegate_lines(last: int = 5) -> list[str]:
+    """`status`'s per-delegate account of the last few iterations the stream holds: each agent's queries, and each
+    that searched the source for a symbol before asking the index."""
+    if not CODE_INDEX.is_file():
+        return []
+    used = code_index.delegate_use(STREAM)
+    lines: list[str] = []
+    for iteration in sorted(used)[-last:]:
+        lines += code_index.use_lines(iteration, used[iteration])
+    return lines
 
 
 def denials() -> None:
@@ -1637,7 +1637,7 @@ def status() -> None:
     if found:
         print(f"cruise: {sum(len(its) for its in found.values())} permission refusal(s) in the stream; "
               "`python3 scripts/agents/cruise.py denials` lists them")
-    for line in index_use_lines():
+    for line in index_use_lines() + delegate_lines():
         print(line)
 
 

@@ -135,10 +135,9 @@ The task, its contract and the files you may read and write are in the brief; no
 repository is yours to edit, including `tasks.md` — report which task you finished and the session that
 delegated you ticks the checkbox, because concurrent siblings would otherwise all write that one file.
 
-**Ask the index before you touch a shared symbol.** Where the tree has `.codegraph/`, `codegraph_explore` is the
-tool for *what calls this* and *what does a change here reach*: load it by name through the harness's
-tool-search step first where it arrives deferred, ask it, and name the route in your report. A grep is the
-fallback where no route answers, and the report says so then.
+**Ask the index before you touch a shared symbol.** Where the tree has `.codegraph/`, `scripts/codegraph callers
+<symbol>` and `scripts/codegraph impact <symbol>` answer *what calls this* and *what does a change here reach*, and
+name the route in your report.
 
 **RED is observed before the code that satisfies it exists, and the report says so.** A failure reconstructed
 afterwards — implement, undo the implementation to watch the test fail, restore — proves the test fails without
@@ -275,14 +274,13 @@ long-lived processes alone, never sending a state-changing request to a running 
 branches, commits, tags, remotes or credentials. This file is the standing part of your brief and that page
 is the standing part of this file; the per-call brief adds only the task, its contract and the file manifest.
 
-Where `AGENTS.md` says this project is indexed by CodeGraph, ask that index before you grep or read files
-to find what calls something, where a symbol is used, or what a change would break — then name the
-MCP, CLI or `npx` route that answered. Follow its availability order, and treat a bare tool name as
-not loaded yet rather than unavailable: a harness that defers MCP tools lists `codegraph_explore`
-with no schema and refuses the call until you load it by name through that harness's own tool-search
-step. A delegate does not inherit the parent session's connection, but it can use any route its own tools
-provide. Locating a file by name or path — a script, a template, a config — is a `find`, not a question
-for the index.
+Where the tree has `.codegraph/`, a question about a symbol — what calls it, where it is used, what a change
+would break — goes to the index first: `scripts/codegraph callers <symbol>`, `scripts/codegraph impact <symbol>`
+or `scripts/codegraph explore <names or a question>` through the shell, which works in every session, or
+`codegraph_explore` where your tools list it. Name the route that answered. Text search is for words in documents
+— `spec.md`, `decisions.md`, the PRD, `model.yaml`, a test's string — and finding a file by name is a `find`, not a
+question for the index. In Claude Code a hook refuses a symbol search of the source until you have asked the
+index, and a `/cruise` run's log counts which delegate asked it.
 
 `writes: {agent.writes}` and `commands: {agent.commands}` above are the scope, and the projection of this file
 into your harness enforces as much of it as that harness can express — the stamp on the projection says what

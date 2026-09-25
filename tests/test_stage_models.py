@@ -128,15 +128,18 @@ class StageModelsTest(FactoryTestCase):
             self.assertIn("reference it, restate none of it", section)
             self.assertTrue((repo / "docs/delegated-agent-safety.md").is_file())
 
-            self.assertIn("A delegate does not inherit this session's code-index connection", section)
-            self.assertIn("`drive-converge`, `drive-gaps` and `drive-adversary`", section)
-            self.assertIn("probe its own MCP, installed\nCLI and `npx` routes", section)
-            self.assertIn("A delegate with the CLI on `PATH` can\nquery the same project index", section)
-            self.assertIn("Never pass\nthe parent conversation", section)
+            flat = " ".join(section.split())
+            self.assertIn("A delegate does not inherit this session's code-index connection, and needs none", flat)
+            self.assertIn("`drive-converge`, `drive-gaps` and `drive-adversary`", flat)
+            # The route a delegate has whatever its session was given, rather than an order of routes to probe.
+            self.assertIn("every delegate's shell has `scripts/codegraph`", flat)
+            self.assertNotIn("Prefer to run those here", flat)
+            self.assertIn("Never pass the parent conversation", flat)
             for agent in (repo / "agents").glob("drive-*.md"):
-                body = agent.read_text()
-                self.assertIn("indexed by CodeGraph", body)
-                self.assertIn("MCP, CLI or `npx` route", body)
+                body = " ".join(agent.read_text().split())
+                self.assertIn("Where the tree has `.codegraph/`", body)
+                self.assertIn("`scripts/codegraph callers <symbol>`", body)
+                self.assertIn("Name the route that answered", body)
 
     def test_the_registry_says_per_harness_what_is_possible_and_a_no_is_written(self) -> None:
         """Harnesses differ in how a sub-task gets its model, so the registry is where that is said — read

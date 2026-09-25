@@ -17,7 +17,8 @@ MAVEN_PERMISSIONS = ["./mvnw *"]
 
 def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
     """What Claude Code runs around compaction and at the end of a turn, so a `/cruise` iteration resumes
-    from its checkpoint and cannot end anywhere but on one of its four last lines.
+    from its checkpoint and cannot end anywhere but on one of its four last lines — and around a search and a
+    delegate, so the code index is asked before the source is grepped for a symbol and is current after.
 
     `SessionStart` with the `compact` matcher runs when the session continues after compaction and its
     stdout is added to the context; `PreCompact` runs just before. `Stop` runs when the model tries to end
@@ -29,6 +30,7 @@ def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
     registry's `compaction` and `hooks` rows, and `scripts/agents/project.py` writes those hook files.
     """
     script = layout.under("scripts/agents/cruise.py")
+    index = layout.under("scripts/agents/code_index.py")
     return {
         "PreCompact": [{"hooks": [{"type": "command", "command": f"python3 {script} compacting"}]}],
         "SessionStart": [{"matcher": "compact", "hooks": [{"type": "command", "command": f"python3 {script} resume"}]}],
@@ -37,7 +39,17 @@ def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
         # `scripts/`, the Makefile, `tools/`, CI, this file — is refused before it lands; the runner compares the
         # controls after every iteration for what the shell wrote (`docs/cruise.md`, *When it is blocked*).
         "PreToolUse": [{"matcher": "Edit|Write|MultiEdit|NotebookEdit",
-                        "hooks": [{"type": "command", "command": f"python3 {script} guard"}]}],
+                        "hooks": [{"type": "command", "command": f"python3 {script} guard"}]},
+                       # The code index asked first: a search of the source for a symbol, from a session or a
+                       # delegate (the event carries `agent_id`) that has not asked the index yet, is refused with
+                       # the command that answers it. Inert without `.codegraph/`, and in every session, not only
+                       # the runner's, because the rule is the project's and not the run's.
+                       {"matcher": "Grep|Bash|mcp__codegraph__.*",
+                        "hooks": [{"type": "command", "command": f"python3 {index} guard"}]}],
+        # A delegate came back having edited what it edited, and CodeGraph's own watcher is off wherever it decides
+        # it is sandboxed: the index is synced here rather than trusted to have followed.
+        "PostToolUse": [{"matcher": "Agent|Task",
+                         "hooks": [{"type": "command", "command": f"python3 {index} sync"}]}],
     }
 
 
@@ -54,6 +66,7 @@ def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
 # `git push --force-with-lease=refs/heads/slice/<id>: origin HEAD:...`, which a narrower prefix could not name.
 TOOLKIT_PERMISSIONS = [
     "python3 scripts/*",
+    "scripts/codegraph *",
     "git status",
     "git status *",
     "git rev-parse *",

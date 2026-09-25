@@ -78,6 +78,19 @@ class UxGatesScaleTest(FactoryTestCase):
             self.assertEqual(refused.returncode, 1)
             self.assertIn("UX_GATES_SHARD=4/3 is not k/n", refused.stdout)
 
+    def test_a_project_test_can_load_the_script_without_registering_it(self) -> None:
+        """A project's own test loaded the script with `importlib` and did not put it in `sys.modules`; a
+        dataclass there crashed on its class before the test could run. Loaded that way, it now loads."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "loaded", frontend="react-vite")
+            loaded = subprocess.run(
+                ["python3", "-c", "import importlib.util, sys\n"
+                 "spec = importlib.util.spec_from_file_location('gates', 'scripts/check-ux-gates.py')\n"
+                 "module = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(module)\n"
+                 "assert 'gates' not in sys.modules\nprint(module.Gate.__name__)"],
+                cwd=repo, text=True, capture_output=True)
+            self.assertEqual((loaded.returncode, loaded.stdout.strip()), (0, "Gate"), loaded.stderr)
+
     def test_since_renders_only_what_a_change_can_move(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo, environment, log = self.adopted(directory)

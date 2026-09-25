@@ -88,14 +88,14 @@ class BenchmarkTest(FactoryTestCase):
             self.assertIn("`make\nbenchmark` prints the same aggregate", section)
 
             makefile = (repo / "Makefile").read_text()
-            self.assertIn("verify: lint typecheck check-imports check-migrations check-slice-scope "
+            self.assertIn("verify: check-python lint typecheck check-imports check-migrations check-slice-scope "
                           "check-extensions check-agents "
                           "check-speckit check-codegraph check-ux-gates check-constitution check-benchmark "
                           "check-decisions test check-model",
                           makefile)
             self.assertIn(
-                "check-benchmark: ## Fail when a benchmark entry is left open, a done slice has no record, or the "
-                "script's own behaviour regresses", makefile,
+                "check-benchmark: ## Fail when the benchmark script's own behaviour regresses; warn of an entry "
+                "left open or a done slice with no record", makefile,
             )
             self.assertTrue((repo / "scripts/test_benchmark.py").is_file())
             checked = subprocess.run(["make", "check-benchmark"], cwd=repo, text=True, capture_output=True)

@@ -14,4 +14,8 @@ on a pull request and whole on `main`. Until now the generated CI never installe
 were reported skipped there on every run; they are now measured before a deploy, which waits on `verify`.
 
 **Catch-up.** Run `./init --extension ux-gates` once in a project that adopted the gates, and commit the job it
-adds to `.github/workflows/verify.yml`. A project that wrote its own UX-gate job should remove it first.
+adds to `.github/workflows/verify.yml`. A project that wrote its own UX-gate job should remove it first. A project that patched the gate should know
+what the upstream script no longer takes: `UX_GATES_SHARD` accepts only `k/n` (`1 <= k <= n`), and any other
+value — `none` included — fails the gate, so unset it to run every gate; and `check-ux-gates.py`'s entry points
+are `main()` and the `UX_GATES_*` variables, its helpers are not a contract, and a test that loads it with
+`importlib` should call `main()` with the environment set rather than reach into them.

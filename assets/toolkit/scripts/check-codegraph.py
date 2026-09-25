@@ -190,7 +190,13 @@ def main() -> int:
               "check")
         return 0
     tooling = code_index()
-    problem = tooling.damage()
+    try:
+        problem = tooling.damage()
+    except tooling.Unopened as error:
+        print(f"check-codegraph: .codegraph/codegraph.db could not be opened to be checked ({error}). That is "
+              "this environment's SQLite or the directory's permissions, not damage, so the database was left "
+              "alone; `codegraph status` says whether the index itself is current", file=sys.stderr)
+        return 1
     repairing = os.environ.get("CODEGRAPH_GATE_NO_SYNC") != "1" and tooling.route() is not None
     repaired = ""
     if problem is not None and repairing:

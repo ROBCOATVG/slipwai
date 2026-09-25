@@ -158,7 +158,7 @@ def makefile(project_name: str, profile: str, apps: list[App], target: str = "no
     if formatting:
         formatting = f"format: ## Rewrite this project's own code the way `make lint` expects to find it\n\t{formatting}\n"
     verify_dependencies = (
-        "lint typecheck check-imports check-migrations check-slice-scope check-extensions check-agents check-speckit "
+        "check-python lint typecheck check-imports check-migrations check-slice-scope check-extensions check-agents check-speckit "
         "check-codegraph check-ux-gates check-constitution check-benchmark check-decisions test"
     )
     style_target = ""

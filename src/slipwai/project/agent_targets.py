@@ -2,7 +2,9 @@
 
 Its own module because `makefile.py` sits at the line budget `scripts/check-structure.py` holds every module
 to, and because these targets are about the method rather than any service's toolchain: nothing here is per
-backend. `check-agents` is where every settings file the ladder reads is held to its shape — the models table,
+backend. `check-python` comes first on `verify` because every gate is a `python3 scripts/…` line, and which
+interpreter a shell finds first decides whether they run: one older than the scripts is named once, rather than
+as whichever gate first uses a newer feature. `check-agents` is where every settings file the ladder reads is held to its shape — the models table,
 `drive.json` and `cruise.json` — so a hand edit that would leave `/drive` or `/cruise` reading nonsense fails
 the gate rather than the run. `check-decisions` holds the decision log and demo log `/cruise` writes to their
 shape, and sits on `verify` because a person overrides a decision by editing that file.
@@ -12,7 +14,9 @@ from __future__ import annotations
 
 def agent_targets() -> str:
     """The `.PHONY` block between the npm workspace targets and the native gate targets."""
-    return """.PHONY: agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell check-decisions
+    return """.PHONY: check-python agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell check-decisions
+check-python: ## Fail, first, when python3 is older than the 3.10 every gate script is written for
+\t@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 'check-python: ' + sys.executable + ' is Python ' + sys.version.split()[0] + ', and the gate scripts need 3.10 or newer; put a newer python3 first on PATH (a non-interactive macOS shell finds /usr/bin/python3, which is 3.9, before Homebrew)')"
 agents: ## Refresh elected extensions, then skills, commands and agent types in every installed agent harness
 \tpython3 scripts/extensions/project.py
 \tpython3 scripts/agents/project.py
@@ -25,7 +29,7 @@ check-agents: ## Fail when an initialized agent projection has drifted, or .spec
 \tpython3 scripts/agents/models.py --check && python3 scripts/agents/drive.py --check && python3 scripts/agents/cruise.py --check
 models: ## Show which model runs each stage of /drive for the installed harness, and why
 \tpython3 scripts/agents/models.py
-check-benchmark: ## Fail when a benchmark entry is left open, a done slice has no record, or the script's own behaviour regresses
+check-benchmark: ## Fail when the benchmark script's own behaviour regresses; warn of an entry left open or a done slice with no record
 \tpython3 scripts/test_benchmark.py && python3 scripts/agents/benchmark.py check
 benchmark: ## Show what each slice cost and how each stage of /drive did, from the records under specs/
 \tpython3 scripts/agents/benchmark.py

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import subprocess
 import tempfile
 from pathlib import Path
@@ -168,6 +169,49 @@ class CodeIndexHealthTest(FactoryTestCase):
                 self.assertIn("fails SQLite's integrity check", corrupt.stderr)
                 self.assertIn("python3 scripts/agents/code_index.py health", corrupt.stderr)
 
+    def test_a_database_the_check_cannot_open_is_not_called_corrupt_and_is_never_moved_aside(self) -> None:
+        """A project on macOS's system Python found `check-codegraph` calling CodeGraph's sound WAL database corrupt:
+        that SQLite refuses a read-only open with no `-shm` beside the file, `health` moved the database aside,
+        rebuilt the same one, and failed again. A read-only open refused is the environment, not the index. The
+        same refusal is reproduced here the portable way — a WAL database with no `-shm` in a directory nobody may
+        write — and read through `immutable=1`; a database no open reaches is left where it is and said so."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo, env, log = self.indexed(directory, "unopened")
+            index = repo / ".codegraph"
+            database = index / "codegraph.db"
+            with sqlite3.connect(database) as connection:
+                connection.execute("PRAGMA journal_mode=wal")
+            connection.close()
+            self.assertEqual(database.read_bytes()[18:20], b"\x02\x02")
+            self.assertFalse((index / "codegraph.db-shm").exists())
+            health = ["python3", "scripts/agents/code_index.py", "health"]
+            index.chmod(0o555)
+            try:
+                with self.assertRaises(sqlite3.OperationalError):
+                    sqlite3.connect(f"{database.as_uri()}?mode=ro", uri=True).execute("PRAGMA quick_check")
+                sound = subprocess.run(health, cwd=repo, env={**os.environ, **env}, text=True, capture_output=True)
+                self.assertEqual(sound.returncode, 0, sound.stdout + sound.stderr)
+                self.assertIn("code-index: current", sound.stdout)
+                self.assertFalse((index / "corrupt").exists())
+            finally:
+                index.chmod(0o755)
+            database.chmod(0o000)
+            try:
+                unopened = subprocess.run(health, cwd=repo, env={**os.environ, **env}, text=True, capture_output=True)
+                gated = subprocess.run(["python3", "scripts/check-codegraph.py"], cwd=repo, env={**os.environ, **env},
+                                       text=True, capture_output=True)
+            finally:
+                database.chmod(0o644)
+            self.assertEqual(unopened.returncode, 1)
+            self.assertIn("could not be opened to be checked", unopened.stdout)
+            self.assertIn("left it where it is", unopened.stdout)
+            self.assertEqual(gated.returncode, 1)
+            self.assertIn("could not be opened to be checked", gated.stderr)
+            self.assertNotIn("integrity check", gated.stderr)
+            self.assertTrue(database.is_file())
+            self.assertFalse((index / "corrupt").exists())
+            self.assertFalse(log.exists(), "nothing rebuilt an index that was never shown to be damaged")
+
     def test_a_drive_session_opens_on_a_sound_index_and_hears_only_what_was_done(self) -> None:
         """A person's `/drive` has no runner in front of it, so Claude Code's `SessionStart` hook (`startup`) takes
         the runner's step: a corrupt index is rebuilt before the session's first question, and the line saying so
@@ -186,11 +230,29 @@ class CodeIndexHealthTest(FactoryTestCase):
             self.assertIn("code-index: at session start the index was rebuilt — the database failed its integrity "
                           "check", said.stdout)
             self.assertEqual(log.read_text().splitlines(), ["init -y ."])
-            # No route: said, and the session still opens.
-            bare = {**os.environ, "PATH": str(bare_path(Path(directory)))}
+            # No route: said, with the likely reason, and the session still opens.
+            home = Path(directory) / "home"
+            bare = {**os.environ, "PATH": str(bare_path(Path(directory))), "HOME": str(home), "NVM_DIR": "",
+                    "VOLTA_HOME": "", "FNM_DIR": ""}
             unreachable = subprocess.run(session, cwd=repo, env=bare, text=True, capture_output=True)
             self.assertEqual(unreachable.returncode, 0)
             self.assertIn("at session start the index was unreachable", unreachable.stdout)
+            self.assertIn("nor under nvm, volta or fnm — a hook's or non-interactive shell sources no profile",
+                          unreachable.stdout)
+            # A hook's shell sources no nvm, so a Node 24 under ~/.nvm is not on PATH: it is found where nvm keeps
+            # it, the newest version first, with its `bin/` put on PATH for `npx`'s own `node`.
+            for version in ("v18.20.0", "v24.1.0"):
+                bin_ = home / ".nvm/versions/node" / version / "bin"
+                bin_.mkdir(parents=True)
+                (bin_ / "npx").write_text(f"#!/bin/sh\necho \"{version} $* | $PATH\" >> {log}\n")
+                (bin_ / "npx").chmod(0o755)
+            (repo / ".codegraph/codegraph.db").write_bytes(b"garbage " * 1000)
+            found = subprocess.run(session, cwd=repo, env={**bare, "FAKE_CODEGRAPH_LOG": str(log)}, text=True,
+                                   capture_output=True)
+            self.assertEqual(found.returncode, 0, found.stderr)
+            called = log.read_text().splitlines()[-1]
+            self.assertTrue(called.startswith("v24.1.0 -y @colbymchenry/codegraph@"), called)
+            self.assertIn(" init -y . | " + str(home / ".nvm/versions/node/v24.1.0/bin") + ":", called)
 
     def test_a_symbol_search_of_the_source_waits_for_the_index_and_a_search_for_words_does_not(self) -> None:
         """Claude Code's PreToolUse hook, per asker: the session and each delegate (`agent_id`). A search of the

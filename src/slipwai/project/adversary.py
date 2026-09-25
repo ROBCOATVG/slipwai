@@ -113,7 +113,9 @@ Findings: none | …
 
 Each selected seam records its file manifest, the type that ran it, its model, and `delegated, fresh
 context`; each omitted seam records why it was not spawned. A skip is a row too, naming the rows it relied
-on, with `Spawned:` empty. Findings include **no findings**, since an empty result is exactly what makes the
+on, with `Spawned:` empty. A `predates the adversary gate` row — written once by `check-decisions.py
+--adversary-baseline` for slices finished before the log was held — records that nothing was attacked, and is
+never a row a skip may rely on. Findings include **no findings**, since an empty result is exactly what makes the
 next slice's skip decidable.
 
 Once every adversary has reported, triage each finding as confirmed, question, duplicate or declined, then

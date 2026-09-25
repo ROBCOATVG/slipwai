@@ -316,7 +316,8 @@ class DesignExtensionsTest(FactoryTestCase):
             calls = log.read_text().splitlines()
             self.assertEqual(len(calls), 9, calls)
             self.assertTrue(all(call.startswith("--require ") and "/preload.cjs " in call for call in calls[1:]), calls)
-            self.assertEqual([call.split("/scripts/")[-1] for call in calls[1:]],
+            # In any order: the gates run side by side, one per processor.
+            self.assertEqual(sorted(call.split("/scripts/")[-1] for call in calls[1:]), sorted(
                              ["verify_responsive.mjs " + str(repo / "apps/web/screens"),
                               "verify_target_size.mjs " + str(repo / "apps/web/screens"),
                               "measure_render.mjs " + str(repo / "apps/web/screens"),
@@ -324,7 +325,7 @@ class DesignExtensionsTest(FactoryTestCase):
                               "axe_audit.mjs " + str(repo / "apps/web/screens/one.html"),
                               "axe_audit.mjs " + str(repo / "apps/web/screens/one.html") + " --dark",
                               "verify_states.mjs " + str(repo / "apps/web/screens/one.html"),
-                              "verify_states.mjs " + str(repo / "apps/web/screens/one.html") + " --dark"])
+                              "verify_states.mjs " + str(repo / "apps/web/screens/one.html") + " --dark"]))
             preload = Path(f"{log}.preload").read_text()
             self.assertIn(f'createRequire("{repo / "tools/ux-gates/scripts/preload.cjs"}")("playwright")', preload)
             self.assertIn("if (!options.channel) throw error;", preload)

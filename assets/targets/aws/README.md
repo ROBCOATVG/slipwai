@@ -227,6 +227,41 @@ when it starts a task and the task role is untouched, while the agent runs insid
 task role. `infra/service/flags.tf` has the whole argument, including why the stack owns the AppConfig
 profile but not the document in it.
 
+## Changing the stacks
+
+### Adding IAM to the service stack
+
+The deploy role applies `service/`, and it may create and delete only what `bootstrap/main.tf` grants it:
+PowerUserAccess, which excludes IAM, and IAM back on roles named `<project>-*`. An IAM user, a managed
+policy, an instance profile or anything else outside roles is refused by AWS at the production apply,
+part-way, after the apply has changed what it reached first. `make check-deploy-role` — part of `make
+verify` — reads both stacks and fails first, naming each `aws_iam_*` resource whose create or delete action
+the role is not granted on that kind of resource. The fix is never in `service/` and never in the IAM
+console: add the actions to a statement of `data.aws_iam_policy_document.deploy_iam` in `bootstrap/main.tf`,
+scoped to this project's names the way the role statement is, and have a person with administrator
+credentials run `make bootstrap` before the change merges. A deploy refused on an `iam:` action anyway says
+the same thing.
+
+### Renaming or retiring a resource
+
+OpenTofu keys state by address, so renaming a resource block, or moving it into a `for_each` or a module,
+reads as destroying the old address and creating a new one — unless a `moved` block says the two are one:
+
+```hcl
+moved {
+  from = aws_cloudfront_response_headers_policy.web_noindex
+  to   = aws_cloudfront_response_headers_policy.web
+}
+```
+
+With it, the rename is an in-place update. Without it the apply creates the new resource, then destroys the
+old one — and the old one's destroy is not ordered after the in-place update of whatever still uses it, so a
+provider that refuses to delete something in use (CloudFront answers 409) fails the apply part-way, in every
+environment it reaches. A block that is only being dropped from the code, while what it made carries on
+existing or is removed by hand, is a `removed` block (`removed { from = … lifecycle { destroy = false } }`),
+which forgets it rather than deleting it. Both stay in the stack until every environment has been applied
+past them; `tofu plan` showing `has moved to` or `will no longer be managed`, and no destroy, is the check.
+
 ## What lives where
 
 - **Environment variables the services are given** — `service/main.tf`, composed from what each answer

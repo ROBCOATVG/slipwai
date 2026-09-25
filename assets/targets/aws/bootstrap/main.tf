@@ -240,7 +240,9 @@ resource "aws_iam_role" "deploy" {
 
 # PowerUserAccess is everything but IAM, and the service stack has to create the three roles ECS runs under
 # — so the deploy role gets IAM back, scoped to roles carrying this project's name. Narrow this further once
-# the service stack has settled: `tofu plan` lists exactly what it touches.
+# the service stack has settled: `tofu plan` lists exactly what it touches. `make check-deploy-role` holds
+# every `aws_iam_*` resource in infra/service/ to the statements below; IAM of another kind (a user, a
+# policy) is a statement added here and a `make bootstrap`, which the pipeline cannot do for itself.
 resource "aws_iam_role_policy_attachment" "deploy_power_user" {
   role       = aws_iam_role.deploy.name
   policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"

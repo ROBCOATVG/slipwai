@@ -9,6 +9,23 @@ from __future__ import annotations
 
 from ..images import IMAGE_BUILDERS, MIGRATIONS_IN_PRODUCTION, spelled
 from ..services import App, services_of
+from ..targets import TARGET_ROOT
+
+# The gate between the two stacks that meet at the deploy role, where a target ships one: a static read of
+# what the bootstrap stack grants that role against what the service stack declares, so a slice that adds
+# IAM the pipeline cannot create is a red `verify` on its pull request and not a half-applied production.
+DEPLOY_ROLE_GATE = "scripts/check-deploy-role.py"
+
+
+def deploy_role_gate(target: str) -> tuple[str, str]:
+    """`check-deploy-role` for `verify`'s prerequisites and its recipe, or two empty strings for a target that
+    ships no such gate — never a target that always passes."""
+    if target not in REGISTRY or not (TARGET_ROOT / target / DEPLOY_ROLE_GATE).is_file():
+        return "", ""
+    return " check-deploy-role", (
+        "check-deploy-role: ## Fail when infra/service/ declares IAM the deploy role cannot create or delete\n"
+        f"\tpython3 {DEPLOY_ROLE_GATE}\n"
+    )
 
 # Per target: the cloud a person signs in to, the registry the images go to, one of its addresses as an
 # example, and whose CPU architecture the default `PLATFORM` is. Four words in one comment block — the verbs

@@ -192,7 +192,11 @@ PRODUCTION_GUIDANCE = {
   PLATFORM=linux/arm64` proves an image locally; a bad release is undone by starting
   `.github/workflows/rollback.yml` by hand with the environment to roll back; `make deploy` and `make
   rollback` are for a person with credentials, from a checkout of `main`. `infra/` is OpenTofu; edit it as code, `tofu fmt` and `tofu
-  validate` before committing, and record a changed decision in `docs/adr/0002-production-target.md`.
+  validate` before committing, and record a changed decision in `docs/adr/0002-production-target.md`. A
+  renamed or moved resource gets a `moved` block and one dropped from the code a `removed` block, so the
+  apply updates or forgets it rather than destroying it (`infra/README.md`). IAM the service stack declares
+  beyond this project's roles is a grant in `infra/bootstrap/main.tf` and a `make bootstrap` by a person
+  before it merges — `make check-deploy-role` says which.
   Never put a credential in this repository: the pipeline authenticates with OIDC and carries identifiers.
 """,
     "azure": """- This project deploys to Azure from `.github/workflows/deploy.yml`, and a pipeline is the only path to
@@ -206,7 +210,9 @@ PRODUCTION_GUIDANCE = {
   PLATFORM=linux/arm64` proves an image locally; a bad release is undone by starting
   `.github/workflows/rollback.yml` by hand with the environment to roll back; `make deploy` and `make
   rollback` are for a person with credentials, from a checkout of `main`. `infra/` is OpenTofu; edit it as code, `tofu fmt` and `tofu
-  validate` before committing, and record a changed decision in `docs/adr/0002-production-target.md`.
+  validate` before committing, and record a changed decision in `docs/adr/0002-production-target.md`. A
+  renamed or moved resource gets a `moved` block and one dropped from the code a `removed` block, so the
+  apply updates or forgets it rather than destroying it (`infra/README.md`).
   Never put a credential in this repository: the pipeline authenticates with a federated identity and carries identifiers.
 """,
 }

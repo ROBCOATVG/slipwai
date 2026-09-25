@@ -275,6 +275,28 @@ the platform resolves the values before the process starts and the app never tal
 free tier of App Configuration allows **one store per subscription per region**, so a second environment
 opting in needs the standard tier at roughly $36 a month. `infra/service/flags.tf` has the whole argument.
 
+## Changing the stacks
+
+### Renaming or retiring a resource
+
+OpenTofu keys state by address, so renaming a resource block, or moving it into a `for_each` or a module,
+reads as destroying the old address and creating a new one — unless a `moved` block says the two are one:
+
+```hcl
+moved {
+  from = azurerm_container_app.api
+  to   = azurerm_container_app.service
+}
+```
+
+With it, the rename is an in-place update. Without it the apply creates the new resource, then destroys the
+old one — and the old one's destroy is not ordered after the in-place update of whatever still uses it, so a
+provider that refuses to delete something in use fails the apply part-way, in every
+environment it reaches. A block that is only being dropped from the code, while what it made carries on
+existing or is removed by hand, is a `removed` block (`removed { from = … lifecycle { destroy = false } }`),
+which forgets it rather than deleting it. Both stay in the stack until every environment has been applied
+past them; `tofu plan` showing `has moved to` or `will no longer be managed`, and no destroy, is the check.
+
 ## What lives where
 
 - **Environment variables the services are given** — `service/main.tf`, composed from what each answer

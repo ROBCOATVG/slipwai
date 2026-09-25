@@ -189,12 +189,12 @@ def toolkit_files_from_assets(profile: str, apps: list[App]) -> dict[str, str]:
 
 
 def executable_paths(profile: str, apps: list[App]) -> set[str]:
-    # `scripts/deploy.py`, `scripts/bootstrap.py` and `scripts/check-flags.py` arrive only with a
-    # production target; naming a path that is not written costs nothing, since the mode is set on the
-    # files that exist.
+    # `scripts/deploy.py`, `scripts/bootstrap.py`, `scripts/check-flags.py` and `scripts/check-deploy-role.py`
+    # arrive only with a production target; naming a path that is not written costs nothing, since the mode
+    # is set on the files that exist.
     executables = {
         "init", "scripts/verify", "scripts/backing-services.py", "scripts/ratchet.py", "scripts/check-convergence.py",
-        "scripts/deploy.py", "scripts/bootstrap.py", "scripts/check-flags.py",
+        "scripts/deploy.py", "scripts/bootstrap.py", "scripts/check-flags.py", "scripts/check-deploy-role.py",
     }
     executables |= {verify_path(family, apps) for family in families_of(apps)}
     for service in services_of(apps):

@@ -126,9 +126,9 @@ harness on PATH it can run an iteration through. Then take the watch seat (*The 
 it says the outer loop started this session**, this is an iteration: read the owner brief (`{OWNER_BRIEF}`)
 and every standing entry in `{DECISIONS}`, and say the iteration number from `{LOG}`, the branch and its
 distance from trunk, and that a person stops this run with `touch {STOP_FILE}`. Where `.codegraph/` is in the
-tree, load `codegraph_explore` by name through this harness's tool-search step now, before the first stage: a
-caller or blast-radius question later is then one call and not a text search, and `python3 {SCRIPT} status`
-counts the iterations that asked. Open a `skipper`, `hand` or `bosun`
+tree, the runner has already opened, checked and synced it for this iteration: a caller or blast-radius question
+is one call — `scripts/codegraph callers <symbol>`, or `codegraph_explore` — and `python3 {SCRIPT} status`
+counts, per delegate, who asked it and who searched the source for a symbol first. Open a `skipper`, `hand` or `bosun`
 benchmark entry around each delegation the way every stage is bracketed, and
 pass `driver=cruise` to every `end` this iteration closes.
 

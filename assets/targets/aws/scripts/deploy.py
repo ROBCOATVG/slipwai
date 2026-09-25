@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -52,6 +53,10 @@ HEALTH_PATH = "/health"
 # How long a migrate task may run before it is stopped and the deploy fails. Generous for a real migration
 # on the smallest RDS instance; short enough that a task that is serving instead of migrating is caught.
 MIGRATION_MINUTES = 15
+# How AWS words a call the deploy role has no grant for, as `tofu apply` prints it. An IAM action refused
+# here is not the pipeline's to fix: the role's grants are `infra/bootstrap/`, applied by `make bootstrap`
+# with admin credentials, and the console is where somebody reading the error will otherwise go looking.
+DENIED_IAM = re.compile(r"not authorized to perform: (iam:[A-Za-z]+)")
 # How many times a failed task's log stream is read before it is called empty. A task reported STOPPED has
 # usually flushed, but not always, and the lines that explain the failure are the last ones written.
 LOG_ATTEMPTS = 4
@@ -265,12 +270,30 @@ def outputs() -> dict:
 
 
 def apply(environment: str, images: dict[str, str], *targets: str) -> dict:
-    tofu(
-        "apply", "-input=false", "-auto-approve",
+    """The service stack applied, its stderr passed through as it comes and read for an IAM refusal, which is
+    turned into the one thing that fixes it: `make bootstrap`, by a person, with admin credentials."""
+    command = [
+        "tofu", f"-chdir={INFRA}", "apply", "-input=false", "-auto-approve",
         f"-var-file={environment}.tfvars",
         f"-var=images={json.dumps(images)}",
         *(f"-target={target}" for target in targets),
-    )
+    ]
+    print("+", " ".join(command), file=sys.stderr, flush=True)
+    process = subprocess.Popen(command, text=True, stdout=sys.stderr, stderr=subprocess.PIPE)
+    denied: list[str] = []
+    for line in process.stderr or ():
+        sys.stderr.write(line)
+        denied += [action for action in DENIED_IAM.findall(line) if action not in denied]
+    if process.wait() != 0 and denied:
+        raise Failure(
+            f"the apply was refused {', '.join(denied)}, which the deploy role is not granted. The role's grants "
+            "are infra/bootstrap/main.tf (`data.aws_iam_policy_document.deploy_iam`), not the service stack and not "
+            "the IAM console: add the action there, scoped to this project's names, and have someone with admin "
+            "AWS credentials run `make bootstrap`; then re-run the deploy. The apply stopped part-way, so this "
+            "environment is between releases until it does."
+        )
+    if process.returncode != 0:
+        raise Failure(f"`tofu apply` exited {process.returncode}")
     return outputs()
 
 

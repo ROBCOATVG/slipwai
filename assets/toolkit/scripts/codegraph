@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""`scripts/codegraph <verb> …`: the code index's CLI by a route that exists wherever a shell and Node do.
+
+The one command a brief, a refusal and a person can name without first finding out which of CodeGraph's routes this
+session has: the MCP tool may arrive deferred, the `codegraph` binary is usually not installed, and `npx` needs the
+package spelled with the version the MCP server runs. This runs that pinned version (`scripts/agents/code_index.py`,
+`CODEGRAPH`) through `npx`, or an installed `codegraph` where there is no Node, from the repository root:
+
+    scripts/codegraph callers decideCue          # who calls it
+    scripts/codegraph impact decideCue           # what a change to it reaches
+    scripts/codegraph explore "decideCue submitCue"   # the source of both and the path between them
+    scripts/codegraph sync                       # bring the index up to the tree
+"""
+import os
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent / "agents"))
+from code_index import ROOT, route  # noqa: E402
+
+command = route()
+if command is None:
+    sys.exit("scripts/codegraph: neither `npx` nor `codegraph` is on PATH, so the index cannot be asked here; install "
+             "Node, and say that the answer you give instead is a text search")
+os.chdir(ROOT)
+os.environ.setdefault("CODEGRAPH_NO_UPDATE_CHECK", "1")
+os.execvp(command[0], [*command, *sys.argv[1:]])

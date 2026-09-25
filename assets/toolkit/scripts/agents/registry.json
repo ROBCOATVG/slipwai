@@ -224,8 +224,11 @@
         "file": ".mcp.json",
         "format": "json-mcpServers",
         "headlessFlags": "--mcp-config .mcp.json",
-        "how": "the project-scoped MCP file Claude Code reads (code.claude.com/docs/en/mcp, the scope table): `{\"mcpServers\": {\"<name>\": {\"type\": \"stdio\", \"command\", \"args\"}}}`. A print session loads it only once the workspace is trusted and the file's servers approved (`enabledMcpjsonServers` in the project's settings, which an untrusted workspace ignores), so the runner passes the file by name",
-        "source": "a 2.1.280 print session in an untrusted scratch checkout: `--mcp-config .mcp.json` listed the file's server as connected on its init event and the allowed tool answered; the same file without the flag, in the same checkout, was not loaded — read 2026-09-22; the file's shape also from CodeGraph 1.6.0's installer targets (`lib/dist/installer/targets/*.js` in the @colbymchenry/codegraph-linux-x64 bundle), which write the same file for `--location=local`, read 2026-09-22"
+        "serverFields": {
+          "alwaysLoad": true
+        },
+        "how": "the project-scoped MCP file Claude Code reads (code.claude.com/docs/en/mcp, the scope table): `{\"mcpServers\": {\"<name>\": {\"type\": \"stdio\", \"command\", \"args\"}}}`. A print session loads it only once the workspace is trusted and the file's servers approved (`enabledMcpjsonServers` in the project's settings, which an untrusted workspace ignores), so the runner passes the file by name; `alwaysLoad: true` on the entry loads the server's tools at session start, delegates' included, rather than behind the tool-search step a delegate otherwise has to take by name before its first call",
+        "source": "a 2.1.280 print session in an untrusted scratch checkout: `--mcp-config .mcp.json` listed the file's server as connected on its init event and the allowed tool answered; the same file without the flag, in the same checkout, was not loaded — read 2026-09-22; the file's shape also from CodeGraph 1.6.0's installer targets (`lib/dist/installer/targets/*.js` in the @colbymchenry/codegraph-linux-x64 bundle), which write the same file for `--location=local`, read 2026-09-22; `alwaysLoad`: three 2.1.281 print sessions in a scratch checkout, each sending a delegate to find a function's callers — without the key the delegate's first call was the tool-search step selecting `codegraph_explore`, with it (two sessions) its first call was `codegraph_explore` itself — read 2026-09-25"
       }
     },
     {

@@ -17,10 +17,19 @@ fresh clone, a CI runner — is what `check-ux-gates` reports as skipped rather 
 A project with no browser app has nothing to gate, so it is refused politely with the command that would
 change that. Never fails `./init`: a missing `npx`, a failed install or an unexpected layout is reported,
 not fatal. See docs/extensions.md for what every extension's `init.py` owes.
+
+It also writes the one place the kit is expected: a `ux-gates` job in `.github/workflows/verify.yml`, between
+markers so a second run rewrites it and nothing else. The render gates launch a browser per preview, so what
+they cost is linear in `screens/`; the job spreads them over `SHARDS` runners from the first screen rather
+than after a project has crossed its time budget, and on a pull request renders only the previews the change
+can move (`UX_GATES_SINCE`, which `scripts/check-ux-gates.py` explains). Every shard installs the kit and a
+browser and sets `UX_GATES_REQUIRE=1`, so a shard that could not measure is red, never a skipped green. It
+sits inside `verify.yml` rather than beside it because a deploy is a `workflow_run` of `verify`.
 """
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -81,6 +90,66 @@ actually ran when you report a screen as checked.
 before claiming a screen passed.
 {MARKER_END}
 """
+
+
+SHARDS = 6
+WORKFLOW = ".github/workflows/verify.yml"
+CI_BEGIN = "  # extension:ux-gates:begin"
+CI_END = "  # extension:ux-gates:end"
+
+
+def ci_job(node: str) -> str:
+    """The sharded job, naming this checkout's own paths so a delivery layout's `scripts/` is found too."""
+    here = Path(__file__).resolve()
+    install = here.relative_to(ROOT).as_posix()
+    gate = (here.parents[2] / "check-ux-gates.py").relative_to(ROOT).as_posix()
+    shards = ", ".join(str(shard) for shard in range(1, SHARDS + 1))
+    return f"""{CI_BEGIN}
+  # The render gates, over {SHARDS} runners. `make verify` above reports them skipped, not passed,
+  # because `{KIT_DIR}/` is ignored by Git; these jobs install the pinned kit and a browser, and
+  # require both. On a pull request each renders only the previews the change can move; on `main` all
+  # of them, since `main` deploys and a browser upgrade arrives without a diff. Written by
+  # `./init --extension ux-gates`, which rewrites this block and nothing else.
+  ux-gates:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [{shards}]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: {node}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: python3 {install}
+      - run: npx playwright install --with-deps chromium
+      - run: python3 {gate}
+        env:
+          UX_GATES_REQUIRE: '1'
+          UX_GATES_SHARD: ${{{{ matrix.shard }}}}/{SHARDS}
+          UX_GATES_SINCE: ${{{{ github.event.pull_request.base.sha }}}}
+{CI_END}
+"""
+
+
+def ci_gates() -> str:
+    """Put the sharded job in `verify.yml`, or replace the one there; say where it went, or why it did not."""
+    workflow = ROOT / WORKFLOW
+    if not workflow.is_file():
+        return f"there is no {WORKFLOW}, so CI runs no render gates; `make check-ux-gates` is the gate to run"
+    text = workflow.read_text()
+    found = re.search(r"^\s*node-version: *(\S+)", text, re.MULTILINE)
+    job = ci_job(found.group(1) if found else "lts/*")
+    block = re.compile(rf"\n*{re.escape(CI_BEGIN)}\n.*?{re.escape(CI_END)}\n?", re.DOTALL)
+    updated = block.sub(lambda _: "\n" + job, text, count=1) if block.search(text) else text.rstrip("\n") + "\n" + job
+    if updated != text:
+        workflow.write_text(updated)
+    return f"{WORKFLOW} runs the render gates in a `ux-gates` job over {SHARDS} shards"
 
 
 def browser_apps() -> list[str]:
@@ -151,7 +220,7 @@ def main() -> int:
         )
         return 0
     project_guidance()
-    print(f"UX gates installed at {KIT_DIR}/ (ignored by Git); `make check-ux-gates` now runs them.")
+    print(f"UX gates installed at {KIT_DIR}/ (ignored by Git); `make check-ux-gates` now runs them, and {ci_gates()}.")
     return 0
 
 

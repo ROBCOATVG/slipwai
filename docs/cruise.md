@@ -239,9 +239,20 @@ iteration honour it whenever the file exists: `--mcp-config` on Claude Code, who
 nobody has trusted ignores the project's settings, the servers they approve and the allow rules they carry
 (hooks still run); a one-run trust override on Codex, which skips every project `.codex/` layer in an
 untrusted project. What the iteration needs travels on its command line. Before the first iteration, `start` says how the index will be
-reached, or that it cannot be, and `status` says afterwards in how many iterations it was asked; an index
-kept fresh and never queried is the failure the block in `AGENTS.md` describes, and the count is what makes
-it visible. `--sandbox` on `run` or `start` swaps in the row's `sandboxPermissions`, which bypasses every
+reached, or that it cannot be. Before every iteration the runner makes the index one it can query
+(`scripts/agents/code_index.py health`): it opens the database and runs SQLite's integrity check, moves a
+corrupt one to `.codegraph/corrupt/` and rebuilds it — the database is ignored by Git and derived from the
+source, and CodeGraph's own `status` and `sync` call a malformed one up to date — and syncs one the tree has
+moved past; the entry's `index` says which, and the feed says it before the iteration starts. Inside the
+iteration, on Claude Code, a `PostToolUse` hook syncs the index each time a delegate returns (CodeGraph's watcher
+is off wherever it decides it is sandboxed, so the index is not trusted to follow), and a `PreToolUse` hook
+refuses a search of the source for a symbol from any session or delegate — told apart by the event's `agent_id`
+— that has not asked the index yet, naming `scripts/codegraph callers <symbol>` instead; words, phrases and
+searches confined to documents are never refused. After it, the entry's `index_use` and the feed count index
+queries per agent, the host and each delegate in the order it was sent, and name the one that searched the
+source for a symbol first, which `status` repeats for the last five iterations. A harness whose stream does not
+mark a delegate's events is counted as the host alone; there the hooks do not exist either, and the count and
+`make check-codegraph` are what is left. `--sandbox` on `run` or `start` swaps in the row's `sandboxPermissions`, which bypasses every
 check, and is for a container with nothing to lose. Which tools a whole build needs is measured, not
 guessed: every refusal is in the feed as it happens, and `python3 scripts/agents/cruise.py denials` lists
 them all afterwards from the raw stream, by tool and command, with the iterations each happened in — the

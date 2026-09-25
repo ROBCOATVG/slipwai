@@ -39,9 +39,9 @@ class CruiseGuardTest(FactoryTestCase):
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "guarded", "standard", "python")
             settings = json.loads((repo / ".claude/settings.json").read_text())
-            self.assertEqual(settings["hooks"]["PreToolUse"], [{
+            self.assertEqual(settings["hooks"]["PreToolUse"][0], {
                 "matcher": "Edit|Write|MultiEdit|NotebookEdit",
-                "hooks": [{"type": "command", "command": "python3 scripts/agents/cruise.py guard"}]}])
+                "hooks": [{"type": "command", "command": "python3 scripts/agents/cruise.py guard"}]})
             enable(repo)
             for path in GUARDED:
                 for spelled in (path, str(repo / path)):

@@ -33,7 +33,12 @@ def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
     index = layout.under("scripts/agents/code_index.py")
     return {
         "PreCompact": [{"hooks": [{"type": "command", "command": f"python3 {script} compacting"}]}],
-        "SessionStart": [{"matcher": "compact", "hooks": [{"type": "command", "command": f"python3 {script} resume"}]}],
+        "SessionStart": [{"matcher": "compact", "hooks": [{"type": "command", "command": f"python3 {script} resume"}]},
+                         # A person's `/drive` has no runner in front of it, so the index is made sound and current
+                         # when the session opens, the step the runner takes before every iteration. A rebuild is
+                         # as long as a first index, hence the timeout; it says something only when it acted.
+                         {"matcher": "startup", "hooks": [{"type": "command", "command": f"python3 {index} session",
+                                                           "timeout": 900}]}],
         "Stop": [{"hooks": [{"type": "command", "command": f"python3 {script} stopping"}]}],
         # The editing tools, in a session the runner started: an edit to a gate or a control of the run —
         # `scripts/`, the Makefile, `tools/`, CI, this file — is refused before it lands; the runner compares the

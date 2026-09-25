@@ -133,10 +133,11 @@ class CodeIndexHealthTest(FactoryTestCase):
                           synced.stdout)
             self.assertEqual(log.read_text().splitlines()[0], "sync .")
 
-    def test_the_gate_fails_a_corrupt_index_and_syncs_a_stale_one_before_it_judges(self) -> None:
+    def test_the_gate_repairs_a_corrupt_or_stale_index_before_it_judges_and_fails_one_it_cannot(self) -> None:
         """`codegraph status` and `sync` call a malformed database up to date, and the gate used to skip one whose
-        schema it could not read; it now fails it and says how to repair it. A stale one it syncs first where the
-        CLI is reachable, and passes only once the index describes the tree."""
+        schema it could not read. Now, where the CLI is reachable, it rebuilds a corrupt one and syncs a stale one
+        before comparing — the database is derived and ignored, so a `/drive` verify never goes red on a broken
+        index it could have mended — and fails, saying how to repair it, where it cannot."""
         with tempfile.TemporaryDirectory() as directory:
             repo, env, log = self.indexed(directory, "gated")
             gate = ["python3", "scripts/check-codegraph.py"]
@@ -152,11 +153,44 @@ class CodeIndexHealthTest(FactoryTestCase):
             unsynced = subprocess.run(gate, cwd=repo, env={**os.environ, **env, "CODEGRAPH_GATE_NO_SYNC": "1"},
                                       text=True, capture_output=True)
             self.assertEqual(unsynced.returncode, 1)
+            database = repo / ".codegraph/codegraph.db"
+            database.write_bytes(b"garbage " * 1000)
+            rebuilt = subprocess.run(gate, cwd=repo, env={**os.environ, **env}, text=True, capture_output=True)
+            self.assertEqual(rebuilt.returncode, 0, rebuilt.stderr)
+            self.assertRegex(rebuilt.stdout,
+                             r"check-codegraph: rebuilt a corrupt database first \([\d.]+s\); index current")
+            self.assertEqual(log.read_text().splitlines()[-1], "init -y .")
+            for unrepaired in ({"CODEGRAPH_GATE_NO_SYNC": "1"}, {"PATH": str(bare_path(Path(directory)))}):
+                database.write_bytes(b"garbage " * 1000)
+                corrupt = subprocess.run(gate, cwd=repo, env={**os.environ, **env, **unrepaired}, text=True,
+                                         capture_output=True)
+                self.assertEqual(corrupt.returncode, 1, unrepaired)
+                self.assertIn("fails SQLite's integrity check", corrupt.stderr)
+                self.assertIn("python3 scripts/agents/code_index.py health", corrupt.stderr)
+
+    def test_a_drive_session_opens_on_a_sound_index_and_hears_only_what_was_done(self) -> None:
+        """A person's `/drive` has no runner in front of it, so Claude Code's `SessionStart` hook (`startup`) takes
+        the runner's step: a corrupt index is rebuilt before the session's first question, and the line saying so
+        is the only thing the hook adds to the session's context — a sound one adds nothing."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo, env, log = self.indexed(directory, "opened")
+            settings = json.loads((repo / ".claude/settings.json").read_text())
+            hook = {"type": "command", "timeout": 900, "command": "python3 scripts/agents/code_index.py session"}
+            self.assertIn({"matcher": "startup", "hooks": [hook]}, settings["hooks"]["SessionStart"])
+            session = ["python3", "scripts/agents/code_index.py", "session"]
+            quiet = subprocess.run(session, cwd=repo, env={**os.environ, **env}, text=True, capture_output=True)
+            self.assertEqual((quiet.returncode, quiet.stdout), (0, ""))
             (repo / ".codegraph/codegraph.db").write_bytes(b"garbage " * 1000)
-            corrupt = subprocess.run(gate, cwd=repo, env={**os.environ, **env}, text=True, capture_output=True)
-            self.assertEqual(corrupt.returncode, 1)
-            self.assertIn("fails SQLite's integrity check", corrupt.stderr)
-            self.assertIn("python3 scripts/agents/code_index.py health", corrupt.stderr)
+            said = subprocess.run(session, cwd=repo, env={**os.environ, **env}, text=True, capture_output=True)
+            self.assertEqual(said.returncode, 0, said.stderr)
+            self.assertIn("code-index: at session start the index was rebuilt — the database failed its integrity "
+                          "check", said.stdout)
+            self.assertEqual(log.read_text().splitlines(), ["init -y ."])
+            # No route: said, and the session still opens.
+            bare = {**os.environ, "PATH": str(bare_path(Path(directory)))}
+            unreachable = subprocess.run(session, cwd=repo, env=bare, text=True, capture_output=True)
+            self.assertEqual(unreachable.returncode, 0)
+            self.assertIn("at session start the index was unreachable", unreachable.stdout)
 
     def test_a_symbol_search_of_the_source_waits_for_the_index_and_a_search_for_words_does_not(self) -> None:
         """Claude Code's PreToolUse hook, per asker: the session and each delegate (`agent_id`). A search of the

@@ -68,8 +68,9 @@ index yet, and names the commands above; once it has, grep is its own business. 
 time a delegate returns. A `/cruise` runner opens the database before every iteration, integrity-checks it, moves a
 corrupt one aside and rebuilds it (it is derived from the source and ignored by Git), and syncs a stale one; its
 log says what it did, and `python3 scripts/agents/cruise.py status` says how often each delegate asked the index
-and which searched the source for a symbol first. `python3 scripts/agents/code_index.py health` is the same repair
-by hand.
+and which searched the source for a symbol first. A Claude Code session takes the same step when it opens, so a
+`/drive` starts on a sound index too, and says so only when it had to act; `python3
+scripts/agents/code_index.py health` is the same repair by hand.
 
 **The connection travels with the checkout.** The project-scoped MCP file of every harness installed here
 names the server, started through `npx` at the same pinned version: `.mcp.json` for Claude Code (with
@@ -80,9 +81,9 @@ unavailable — load it by name through that harness's tool-search step, or use 
 
 **It is only current while a client is attached.** CodeGraph's watcher runs in a daemon that starts with an MCP
 client or a `codegraph` command, shuts down on an idle timeout, and turns itself off where CodeGraph decides it
-is sandboxed — so the syncs above do the keeping, and `make check-codegraph`, part of `make verify`, fails a
-corrupt database, syncs a stale one, and fails with the date it was last written where the tree still cannot be
-brought current. A corrupt database is the one CodeGraph's own `status` and `sync` call up to date.
+is sandboxed — so the syncs above do the keeping, and `make check-codegraph`, part of `make verify`, rebuilds a
+corrupt database, syncs a stale one, and fails with the date it was last written where the index still cannot be
+made sound and current. A corrupt database is the one CodeGraph's own `status` and `sync` call up to date.
 
 **A sub-agent does not inherit this session's connection**, and needs none: `scripts/codegraph` is in its shell.
 Do not pass the parent conversation merely to carry that fact — every harness receives this `AGENTS.md` block,

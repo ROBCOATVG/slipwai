@@ -22,11 +22,13 @@ timestamp is still reported: `files.indexed_at` is the last moment anything was 
 the last moment a client was attached, and that is the number that says *why* it is behind.
 
 Two more things make it worth running before it judges. A database that does not pass SQLite's
-integrity check is a failure, not a skip: CodeGraph's own `status` and `sync` report a malformed
-index as up to date, and only a query finds out. And where the pinned CLI is reachable
-(`scripts/agents/code_index.py`), an index behind the tree is synced first and then compared, so
-the gate fails only where the tree cannot be brought current — the tooling absent, or the sync
-not taking — which is the state it exists to report. `CODEGRAPH_GATE_NO_SYNC=1` compares without.
+integrity check is never a pass: CodeGraph's own `status` and `sync` report a malformed index as
+up to date, and only a query finds out. Where the pinned CLI is reachable
+(`scripts/agents/code_index.py`), a corrupt database is moved aside and rebuilt, and an index
+behind the tree is synced, before it is compared — the database is derived from the source and
+ignored by Git — so the gate fails only where the index cannot be made sound and current: the
+tooling absent, or the rebuild or sync not taking, which is the state it exists to report.
+`CODEGRAPH_GATE_NO_SYNC=1` compares without repairing anything.
 
 No `.codegraph/` is not a failure: the code index is an optional extension (`./init --extension
 codegraph`), and a project that never adopted one has nothing to keep fresh. Standard library
@@ -189,6 +191,14 @@ def main() -> int:
         return 0
     tooling = code_index()
     problem = tooling.damage()
+    repairing = os.environ.get("CODEGRAPH_GATE_NO_SYNC") != "1" and tooling.route() is not None
+    repaired = ""
+    if problem is not None and repairing:
+        # Derived from the source and ignored by Git: a corrupt database loses nothing by being rebuilt, so the
+        # gate rebuilds it and judges what that leaves, rather than failing every `make verify` until a person does.
+        said = tooling.health()
+        problem = None if said.get("state") != "failed" else f"{problem}; the rebuild failed too: {said['detail']}"
+        repaired = f"rebuilt a corrupt database first ({said.get('seconds', 0)}s); "
     if problem is not None:
         print(f"check-codegraph: .codegraph/codegraph.db fails SQLite's integrity check ({problem}). "
               "CodeGraph's own `status` and `sync` do not notice this; its queries fail. The database is "
@@ -205,10 +215,10 @@ def main() -> int:
         return 0
     found = drift()
     assert found is not None
-    synced = ""
-    if (found[1] or found[2]) and os.environ.get("CODEGRAPH_GATE_NO_SYNC") != "1" and tooling.route() is not None:
+    synced = repaired
+    if (found[1] or found[2]) and repairing:
         done, said = tooling.cli("sync", ".")
-        synced = (f"synced {len(found[1]) + len(found[2])} file(s) first; " if done
+        synced += (f"synced {len(found[1]) + len(found[2])} file(s) first; " if done
                   else f"`codegraph sync` did not take ({said}); ")
         found = drift()
         assert found is not None

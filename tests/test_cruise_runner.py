@@ -241,7 +241,7 @@ echo "cruise: continue\"""")
             repo = self.generate(directory, "compact", "standard", "python")
             settings = json.loads((repo / ".claude/settings.json").read_text())
             resume_hook = {"type": "command", "command": "python3 scripts/agents/cruise.py resume"}
-            self.assertEqual(settings["hooks"]["SessionStart"], [{"matcher": "compact", "hooks": [resume_hook]}])
+            self.assertEqual(settings["hooks"]["SessionStart"][0], {"matcher": "compact", "hooks": [resume_hook]})
             self.assertEqual(settings["hooks"]["PreCompact"][0]["hooks"][0]["command"],
                              "python3 scripts/agents/cruise.py compacting")
             ignored = (repo / ".gitignore").read_text()

@@ -11,11 +11,14 @@ which delegate asked it. Each of those is a place a sentence in a brief was the 
 So this script holds the index at the points the harness and the runner already own:
 
     python3 scripts/agents/code_index.py health   # open it, integrity-check it, rebuild a corrupt one, sync a stale one
+    python3 scripts/agents/code_index.py session  # Claude Code's SessionStart hook: `health`, said only when it acted
     python3 scripts/agents/code_index.py sync     # Claude Code's PostToolUse hook: a delegate came back; sync
     python3 scripts/agents/code_index.py guard    # Claude Code's PreToolUse hook: a symbol search before the index
 
-`health` is what `scripts/agents/cruise.py` runs before every iteration, and what a person runs to repair an index
-by hand. The database is ignored by Git and derived from the source, so a corrupt one loses nothing by being moved
+`health` is what `scripts/agents/cruise.py` runs before every iteration, what `make check-codegraph` runs on a corrupt
+database before it judges one, and what a person runs to repair an index by hand. `session` is the same step at the
+start of a Claude Code session — a person's `/drive` has no runner in front of it — and prints only what it did or
+could not do, since a hook's output lands in the session's context. The database is ignored by Git and derived from the source, so a corrupt one loses nothing by being moved
 aside (to `.codegraph/corrupt/`, the latest only) and rebuilt. `sync` keeps the index current while an iteration is
 still editing: after each delegate returns rather than on CodeGraph's watcher, because the watcher is what was off.
 `guard` refuses a search of the source for a symbol — the Grep tool, or `grep`, `rg`, `ag`, `ack`, `git grep` or a
@@ -461,6 +464,11 @@ def main(argv: list[str]) -> int:
         said = health()
         print(f"code-index: {said['state']} — {said['detail']}" if said else "code-index: no index adopted here")
         return 1 if said.get("state") in ("failed", "unreachable") else 0
+    if verb == "session":
+        said = health()
+        if said and said["state"] != "current":
+            print(f"code-index: at session start the index was {said['state']} — {said['detail']}")
+        return 0
     if verb == "guard":
         return guard()
     if verb == "sync":

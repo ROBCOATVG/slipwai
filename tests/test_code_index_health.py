@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import os
-import sqlite3
 import subprocess
 import tempfile
 from pathlib import Path
@@ -57,21 +56,6 @@ elif verb in ("explore", "callers", "impact"):
 """
 
 
-# macOS's system SQLite as far as this goes: a read-only open of a WAL database with no `-shm` beside it fails with
-# "unable to open database file", where other builds create the `-shm` themselves; `REFUSE_EVERY_OPEN` fails them all.
-APPLE_SQLITE = """import os, sqlite3
-_connect = sqlite3.connect
-def connect(database, *args, **kwargs):
-    path = str(database).removeprefix("file://").removeprefix("file:").split("?")[0]
-    wal = os.path.isfile(path) and open(path, "rb").read(20)[18:20] == b"\\x02\\x02"
-    apple = "mode=ro" in str(database) and wal and not os.path.exists(path + "-shm")
-    if os.environ.get("REFUSE_EVERY_OPEN") or apple:
-        raise sqlite3.OperationalError("unable to open database file")
-    return _connect(database, *args, **kwargs)
-sqlite3.connect = connect
-"""
-
-
 def tool_result(identifier: str, text: str, parent: str | None, error: bool) -> str:
     return json.dumps({"type": "user", "message": {"role": "user", "content": [
         {"type": "tool_result", "tool_use_id": identifier, "content": text, "is_error": error}]},
@@ -87,23 +71,27 @@ DONE = json.dumps({"type": "result", "subtype": "success", "is_error": False, "r
                    "permission_denials": []})
 
 
+def indexed(case: FactoryTestCase, directory: str, name: str) -> tuple[Path, dict[str, str], Path]:
+    """A project with an index built by the fake CLI, and a PATH on which that CLI is the only route."""
+    repo = case.generate(directory, name, "standard", "python")
+    here = Path(directory)
+    tools = here / "tools"
+    tools.mkdir()
+    (tools / "codegraph").write_text(FAKE_CODEGRAPH)
+    (tools / "codegraph").chmod(0o755)
+    log = here / "codegraph-calls"
+    # No `npx`, so the fake is the route; the few tools the fake harness itself runs.
+    env = {"PATH": f"{tools}:{bare_path(here, 'dirname', 'cat', 'mkdir', 'touch')}", "FAKE_CODEGRAPH_LOG": str(log)}
+    built = subprocess.run(["scripts/codegraph", "init", "-y", "."], cwd=repo, env={**os.environ, **env},
+                           text=True, capture_output=True)
+    case.assertEqual(built.returncode, 0, built.stderr)
+    log.unlink()
+    return repo, env, log
+
+
 class CodeIndexHealthTest(FactoryTestCase):
     def indexed(self, directory: str, name: str) -> tuple[Path, dict[str, str], Path]:
-        """A project with an index built by the fake CLI, and a PATH on which that CLI is the only route."""
-        repo = self.generate(directory, name, "standard", "python")
-        here = Path(directory)
-        tools = here / "tools"
-        tools.mkdir()
-        (tools / "codegraph").write_text(FAKE_CODEGRAPH)
-        (tools / "codegraph").chmod(0o755)
-        log = here / "codegraph-calls"
-        # No `npx`, so the fake is the route; the few tools the fake harness itself runs.
-        env = {"PATH": f"{tools}:{bare_path(here, 'dirname', 'cat', 'mkdir', 'touch')}", "FAKE_CODEGRAPH_LOG": str(log)}
-        built = subprocess.run(["scripts/codegraph", "init", "-y", "."], cwd=repo, env={**os.environ, **env},
-                               text=True, capture_output=True)
-        self.assertEqual(built.returncode, 0, built.stderr)
-        log.unlink()
-        return repo, env, log
+        return indexed(self, directory, name)
 
     def guard(self, repo: Path, env: dict[str, str], tool: str, given: dict, agent: str | None = None):
         happened = {"session_id": "s1", "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": given,
@@ -183,50 +171,6 @@ class CodeIndexHealthTest(FactoryTestCase):
                 self.assertEqual(corrupt.returncode, 1, unrepaired)
                 self.assertIn("fails SQLite's integrity check", corrupt.stderr)
                 self.assertIn("python3 scripts/agents/code_index.py health", corrupt.stderr)
-
-    def test_a_database_the_check_cannot_open_is_not_called_corrupt_and_is_never_moved_aside(self) -> None:
-        """A project on macOS's system Python found `check-codegraph` calling CodeGraph's sound WAL database corrupt:
-        that SQLite refuses a read-only open with no `-shm` beside the file, `health` moved the database aside,
-        rebuilt the same one, and failed again. A read-only open refused is the environment, not the index. That
-        SQLite is stood in for here, whoever runs the suite: a `sitecustomize` makes every `mode=ro` open of a WAL
-        database with no `-shm` beside it fail as Apple's does, and `REFUSE_EVERY_OPEN` fails every open. The first
-        is read through `immutable=1`; a database no open reaches is left where it is and said so."""
-        with tempfile.TemporaryDirectory() as directory:
-            repo, env, log = self.indexed(directory, "unopened")
-            index = repo / ".codegraph"
-            database = index / "codegraph.db"
-            with sqlite3.connect(database) as connection:
-                connection.execute("PRAGMA journal_mode=wal")
-            connection.close()
-            self.assertEqual(database.read_bytes()[18:20], b"\x02\x02")
-            self.assertFalse((index / "codegraph.db-shm").exists())
-            apple = Path(directory) / "apple-sqlite"
-            apple.mkdir()
-            (apple / "sitecustomize.py").write_text(APPLE_SQLITE)
-            refusing = {**os.environ, **env, "PYTHONPATH": str(apple)}
-            health = ["python3", "scripts/agents/code_index.py", "health"]
-            probe = ("import sqlite3, sys\n"
-                     "sqlite3.connect(f'file:{sys.argv[1]}?mode=ro', uri=True).execute('PRAGMA quick_check')")
-            refused = subprocess.run(["python3", "-c", probe, str(database)], env=refusing, text=True,
-                                     capture_output=True)
-            self.assertIn("sqlite3.OperationalError: unable to open database file", refused.stderr)
-            sound = subprocess.run(health, cwd=repo, env=refusing, text=True, capture_output=True)
-            self.assertEqual(sound.returncode, 0, sound.stdout + sound.stderr)
-            self.assertIn("code-index: current", sound.stdout)
-            self.assertFalse((index / "corrupt").exists())
-            closed = {**refusing, "REFUSE_EVERY_OPEN": "1"}
-            unopened = subprocess.run(health, cwd=repo, env=closed, text=True, capture_output=True)
-            gated = subprocess.run(["python3", "scripts/check-codegraph.py"], cwd=repo, env=closed, text=True,
-                                   capture_output=True)
-            self.assertEqual(unopened.returncode, 1)
-            self.assertIn("could not be opened to be checked", unopened.stdout)
-            self.assertIn("left it where it is", unopened.stdout)
-            self.assertEqual(gated.returncode, 1)
-            self.assertIn("could not be opened to be checked", gated.stderr)
-            self.assertNotIn("integrity check", gated.stderr)
-            self.assertTrue(database.is_file())
-            self.assertFalse((index / "corrupt").exists())
-            self.assertFalse(log.exists(), "nothing rebuilt an index that was never shown to be damaged")
 
     def test_a_drive_session_opens_on_a_sound_index_and_hears_only_what_was_done(self) -> None:
         """A person's `/drive` has no runner in front of it, so Claude Code's `SessionStart` hook (`startup`) takes

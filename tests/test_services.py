@@ -199,7 +199,7 @@ class ServicesTest(FactoryTestCase):
                 # The gate loops inside Make, so the verify job is unchanged; only the caches know the list.
                 workflow = files[".github/workflows/verify.yml"]
                 self.assertEqual(workflow.count("make verify"), 1)
-                if apps[0].language in ("python", "java"):
+                if apps[0].language in ("python", "java", "go"):
                     self.assertIn("apps/payments/", workflow)
 
     def test_each_language_has_a_shape_for_a_second_service(self) -> None:

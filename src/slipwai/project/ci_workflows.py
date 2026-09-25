@@ -68,7 +68,15 @@ def toolchain_setup(family: str, services: list[App]) -> str:
         + ", ".join(f"'{s.path}/uv.lock'" for s in services)
         + ") }}\n",
         # One Go version for the workspace, read from the first Go service's module; `go.work` pins the rest.
-        "go": f"      - uses: actions/setup-go@v7\n        with:\n          go-version-file: {services[0].path}/go.mod\n",
+        # The cache is keyed on every module's `go.sum` and the workspace's `go.work.sum` by name, because
+        # setup-go's default key is a `go.sum` at the root, which a workspace does not have: it restores
+        # nothing, saves nothing, says so only as a warning, and the run stays green and downloads and
+        # compiles every module from cold each time — a cache that never hits looks like one that does.
+        "go": "      - uses: actions/setup-go@v7\n        with:\n"
+        f"          go-version-file: {services[0].path}/go.mod\n"
+        "          cache-dependency-path: "
+        + dependency_paths([*(f"{s.path}/go.sum" for s in services), "go.work.sum"])
+        + "\n",
         "java": (
             "      - uses: actions/setup-java@v5\n        with:\n          distribution: temurin\n"
             "          java-version: '25'\n          cache: maven\n"

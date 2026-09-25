@@ -21,6 +21,15 @@ without changing a line, and a gate that cries stale over those is a gate that g
 timestamp is still reported: `files.indexed_at` is the last moment anything was indexed, which is
 the last moment a client was attached, and that is the number that says *why* it is behind.
 
+Two more things make it worth running before it judges. A database that does not pass SQLite's
+integrity check is never a pass: CodeGraph's own `status` and `sync` report a malformed index as
+up to date, and only a query finds out. Where the pinned CLI is reachable
+(`scripts/agents/code_index.py`), a corrupt database is moved aside and rebuilt, and an index
+behind the tree is synced, before it is compared — the database is derived from the source and
+ignored by Git — so the gate fails only where the index cannot be made sound and current: the
+tooling absent, or the rebuild or sync not taking, which is the state it exists to report.
+`CODEGRAPH_GATE_NO_SYNC=1` compares without repairing anything.
+
 No `.codegraph/` is not a failure: the code index is an optional extension (`./init --extension
 codegraph`), and a project that never adopted one has nothing to keep fresh. Standard library
 only, like every gate script here.
@@ -28,6 +37,8 @@ only, like every gate script here.
 from __future__ import annotations
 
 import hashlib
+import importlib.util
+import os
 import sqlite3
 import subprocess
 import sys
@@ -61,8 +72,8 @@ tooling is absent — a container, a sandbox, a CI runner, a machine where the C
 never installed — keeps this database and never writes to it again.
 
 Attaching a client once catches the backlog up on its own. From a terminal, in this
-directory: `codegraph sync`, or `npx -y @colbymchenry/codegraph sync` where the CLI is
-not installed. From an agent session: configure the CodeGraph MCP server for this
+directory: `scripts/codegraph sync`, which runs the pinned CLI through `npx` or an
+installed `codegraph`. From an agent session: configure the CodeGraph MCP server for this
 project. To put the tooling back for good, install it and re-adopt the extension, which
 is also what re-points the agent at the index:
 
@@ -132,20 +143,15 @@ def listing(label: str, paths: list[str]) -> list[str]:
     return lines
 
 
-def main() -> int:
+def drift() -> tuple[dict[str, tuple[str, float]], list[str], list[str]] | None:
+    """What the index holds, and the tracked files it has never seen or read before they changed; None where
+    there is no index, no `files` table to read, or no checkout to compare it with."""
     if not INDEX.is_file():
-        print("check-codegraph: no .codegraph/ — this project carries no code index; nothing to "
-              "check")
-        return 0
+        return None
     rows = indexed()
-    if rows is None:
-        print("check-codegraph: .codegraph/codegraph.db does not carry the `files` table this "
-              "check reads; CodeGraph's schema may have moved on — skipped")
-        return 0
     paths = tracked()
-    if paths is None:
-        print("check-codegraph: not a checkout — nothing to compare the index against; skipped")
-        return 0
+    if rows is None or paths is None:
+        return None
     # Which files belong in the index is CodeGraph's decision, not this script's: it parses the
     # languages it supports and ignores the rest. Taking the set of suffixes it has actually
     # indexed here as the answer keeps this check from inventing a language table of its own — and
@@ -163,6 +169,61 @@ def main() -> int:
             missing.append(path)
         elif row[0] and digest(absolute) != row[0]:
             changed.append(path)
+    return rows, missing, changed
+
+
+def code_index():
+    """`scripts/agents/code_index.py`, loaded: the pinned route, the integrity check, the sync — without writing a
+    `__pycache__/` into the project beside it."""
+    sys.dont_write_bytecode = True
+    specification = importlib.util.spec_from_file_location(
+        "code_index", Path(__file__).resolve().parent / "agents/code_index.py")
+    assert specification is not None and specification.loader is not None
+    module = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(module)
+    return module
+
+
+def main() -> int:
+    if not INDEX.is_file():
+        print("check-codegraph: no .codegraph/ — this project carries no code index; nothing to "
+              "check")
+        return 0
+    tooling = code_index()
+    problem = tooling.damage()
+    repairing = os.environ.get("CODEGRAPH_GATE_NO_SYNC") != "1" and tooling.route() is not None
+    repaired = ""
+    if problem is not None and repairing:
+        # Derived from the source and ignored by Git: a corrupt database loses nothing by being rebuilt, so the
+        # gate rebuilds it and judges what that leaves, rather than failing every `make verify` until a person does.
+        said = tooling.health()
+        problem = None if said.get("state") != "failed" else f"{problem}; the rebuild failed too: {said['detail']}"
+        repaired = f"rebuilt a corrupt database first ({said.get('seconds', 0)}s); "
+    if problem is not None:
+        print(f"check-codegraph: .codegraph/codegraph.db fails SQLite's integrity check ({problem}). "
+              "CodeGraph's own `status` and `sync` do not notice this; its queries fail. The database is "
+              "derived from the source and ignored by Git, so nothing is lost by rebuilding it: "
+              "`python3 scripts/agents/code_index.py health` moves it aside and rebuilds it (a /cruise "
+              "runner does that before every iteration)", file=sys.stderr)
+        return 1
+    if indexed() is None:
+        print("check-codegraph: .codegraph/codegraph.db does not carry the `files` table this "
+              "check reads; CodeGraph's schema may have moved on — skipped")
+        return 0
+    if tracked() is None:
+        print("check-codegraph: not a checkout — nothing to compare the index against; skipped")
+        return 0
+    found = drift()
+    assert found is not None
+    synced = repaired
+    if (found[1] or found[2]) and repairing:
+        done, said = tooling.cli("sync", ".")
+        synced += (f"synced {len(found[1]) + len(found[2])} file(s) first; " if done
+                  else f"`codegraph sync` did not take ({said}); ")
+        found = drift()
+        assert found is not None
+    rows, missing, changed = found
+    paths = tracked() or []
     last = max((at for _, at in rows.values()), default=0.0)
     # An index holding nothing describes nothing, and cannot say which files it should hold — the
     # suffixes above come from what it has read. In a checkout with tracked files that is the same
@@ -173,9 +234,9 @@ def main() -> int:
         print(RESTORE, file=sys.stderr)
         return 1
     if not missing and not changed:
-        print(f"check-codegraph: index current — {len(rows)} file(s), indexed {moment(last)}")
+        print(f"check-codegraph: {synced}index current — {len(rows)} file(s), indexed {moment(last)}")
         return 0
-    report = ["check-codegraph: the code index no longer describes this working tree",
+    report = [f"check-codegraph: {synced}the code index no longer describes this working tree",
               f"  last indexed: {moment(last)}"]
     if missing:
         report += listing("the index has never seen", missing)

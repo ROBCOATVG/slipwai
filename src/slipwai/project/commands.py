@@ -152,8 +152,8 @@ Read artifacts from disk rather than conversation memory and walk this ladder fr
 is the first one whose artifact is missing, empty, or still a placeholder — **including the stages upstream
 of the slice loop**. State the entry stage and the evidence that selected it before changing anything, then
 run that stage and every stage after it. Never rerun a completed stage merely to check. Where `.codegraph/` is in
-the tree, load `codegraph_explore` by name through this harness's tool-search step before the first stage, so a
-caller or blast-radius question later is one call and not a text search.
+the tree, a caller or blast-radius question is one index call — `scripts/codegraph callers <symbol>`, or
+`codegraph_explore` — and not a text search; grep is for words in documents.
 
 **The checkout goes stale the way conversation memory does, so check the branch before the artifacts.**
 Every signal the ladder reads — a slice's `status`, whether `examples.md` or `tasks.md` exists, the slice

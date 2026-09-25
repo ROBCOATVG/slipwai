@@ -25,6 +25,8 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "agents"))
+from code_index import CODEGRAPH  # noqa: E402
 from guidance import record_extension, replace_block, write_project_mcp  # noqa: E402
 
 def project_root(script: Path, depth: int) -> Path:
@@ -47,44 +49,52 @@ MARKER_END = "<!-- extension:codegraph:end -->"
 GUIDANCE = f"""
 {MARKER_BEGIN}
 ## CodeGraph
-This project is indexed by CodeGraph (`.codegraph/`). For any question about call paths, symbol usage, or
-the blast radius of a change, query it directly — `codegraph_explore` over MCP, or the `codegraph` CLI —
-before grep or reading files one at a time. Say which route you used when you report what you found.
+This project is indexed by CodeGraph (`.codegraph/`). **The index answers symbol questions; text search answers
+questions about words.** Who calls a function, what it calls, where a type is used, what a change would reach:
+ask the index first —
+
+    scripts/codegraph callers <symbol>        scripts/codegraph impact <symbol>
+    scripts/codegraph explore <names or a question>
+
+`scripts/codegraph` runs the pinned CLI through `npx`, or an installed `codegraph`, so it answers in every session
+with a shell — a delegate's included — whatever MCP tools that session was given; `codegraph_explore` over MCP is
+the same index where your tools list it. A search of `spec.md`, `decisions.md`, the PRD, `model.yaml` or a test's
+string literal ("done for the day") is a text search, and grep is right for it; locating a file by name is a
+`find`, not a question for the index. Say which route you used when you report what you found.
+
+**What holds this, so nobody has to remember it.** In Claude Code a hook refuses a search of the source for a
+symbol — a name the index defines, or one shaped like one — from any session or delegate that has not asked the
+index yet, and names the commands above; once it has, grep is its own business. Another hook syncs the index each
+time a delegate returns. A `/cruise` runner opens the database before every iteration, integrity-checks it, moves a
+corrupt one aside and rebuilds it (it is derived from the source and ignored by Git), and syncs a stale one; its
+log says what it did, and `python3 scripts/agents/cruise.py status` says how often each delegate asked the index
+and which searched the source for a symbol first. A Claude Code session takes the same step when it opens, so a
+`/drive` starts on a sound index too, and says so only when it had to act; `python3
+scripts/agents/code_index.py health` is the same repair by hand.
 
 **The connection travels with the checkout.** The project-scoped MCP file of every harness installed here
-names the server, started through `npx` so a checkout with Node reaches the index whether or not the
-`codegraph` CLI was ever installed there: `.mcp.json` for Claude Code, `.codex/config.toml` for Codex,
-`.gemini/settings.json` for Gemini CLI, `.cursor/mcp.json` for Cursor, `opencode.json` for opencode. A `/cruise`
-iteration is started with that file honoured and its tools allowed, `make agents` writes it for a harness added
-later, and a harness with no known project file reaches the same index through the routes below.
+names the server, started through `npx` at the same pinned version: `.mcp.json` for Claude Code (with
+`alwaysLoad`, so its tool is loaded at session start rather than behind the tool-search step), `.codex/config.toml`
+for Codex, `.gemini/settings.json` for Gemini CLI, `.cursor/mcp.json` for Cursor, `opencode.json` for opencode.
+Where a harness still lists `codegraph_explore` as a bare name with no schema, it is not loaded yet rather than
+unavailable — load it by name through that harness's tool-search step, or use `scripts/codegraph`.
 
-**Check you can reach it before you trust it.** The index is data in this checkout; the tooling that
-serves and maintains it is not, and a tree carried into a container, a sandbox or a CI runner routinely
-has one without the other. Probe the available routes in order: use `codegraph_explore` when this session
-offers it — treating a bare tool name as not loaded yet rather than unavailable, because a harness that
-defers MCP tools lists `codegraph_explore` with no schema and refuses the call until you load it by name
-through that harness's own tool-search step; otherwise use the installed CLI when
-`command -v codegraph` succeeds; otherwise, when
-`command -v npm` succeeds, use `npx -y @colbymchenry/codegraph explore <query>` to reach the same index
-without installing the CLI globally. Only when all three routes are unavailable should you say so in as
-many words ("the database is here, the tooling is not, so this answer is a text search"). Then work as a
-project with no index would. Restore a durable connection by configuring the CodeGraph MCP server for this
-project, or by installing the CLI and re-adopting the extension, which is what re-points the agent:
-`curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh` then
+**It is only current while a client is attached.** CodeGraph's watcher runs in a daemon that starts with an MCP
+client or a `codegraph` command, shuts down on an idle timeout, and turns itself off where CodeGraph decides it
+is sandboxed — so the syncs above do the keeping, and `make check-codegraph`, part of `make verify`, rebuilds a
+corrupt database, syncs a stale one, and fails with the date it was last written where the index still cannot be
+made sound and current. A corrupt database is the one CodeGraph's own `status` and `sync` call up to date.
+
+**A sub-agent does not inherit this session's connection**, and needs none: `scripts/codegraph` is in its shell.
+Do not pass the parent conversation merely to carry that fact — every harness receives this `AGENTS.md` block,
+while a delegate keeps its focused stage brief. `commands/drive.md`, *Who runs each stage*, carries the same
+boundary.
+
+**Where no route exists** — no Node and no `codegraph` — `scripts/codegraph` says so; then say in as many words
+that the answer is a text search ("the database is here, the tooling is not"), and work as a project with no
+index would. Install Node, or the CLI
+(`curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh`), and re-adopt with
 `./init --extension codegraph`.
-
-**It is only current while a client is attached.** CodeGraph's watcher runs in a daemon that starts with
-an MCP client or a `codegraph` command and shuts down on an idle timeout, so wherever the tooling is
-absent the database stops being written to and nothing says so: it answers *nothing calls that* for code
-it has never read, which is the failure it exists to prevent. `make check-codegraph`, part of `make
-verify`, compares the index with the tracked source and fails with the date it was last written.
-Attaching a client once — an MCP session, or `codegraph sync` in this directory — catches it up itself.
-
-**A sub-agent does not inherit this session's connection.** A fresh delegate checks its own tools before
-exploring and follows the same MCP, installed-CLI, then `npx` order. It says the index is unavailable
-before falling back to text search only when none of those routes exists. Do not pass the parent
-conversation merely to carry that fact — every harness receives this `AGENTS.md` block, while a delegate
-keeps its focused stage brief. `commands/drive.md`, *Who runs each stage*, carries the same boundary.
 {MARKER_END}
 """
 
@@ -95,7 +105,9 @@ keeps its focused stage brief. `commands/drive.md`, *Who runs each stage*, carri
 # installed here (`scripts/agents/registry.json`, `projectMcp`; `guidance.write_project_mcp`). Proved 2026-09-22:
 # a Claude Code 2.1.280 print session given `.mcp.json` with `--mcp-config` connected this server and answered a
 # caller question through `codegraph_explore`.
-MCP_COMMAND = ["npx", "-y", "@colbymchenry/codegraph", "serve", "--mcp"]
+# Pinned to the release every other route runs (`scripts/agents/code_index.py`), so the server and the CLI never
+# write one database from two versions of its schema.
+MCP_COMMAND = ["npx", "-y", CODEGRAPH, "serve", "--mcp"]
 
 
 def project_guidance() -> None:

@@ -41,7 +41,10 @@ class ProjectMcpTest(FactoryTestCase):
             adopt = ["./init", "--integration", "codex", "--extension", "codegraph"]
             said = subprocess.run(adopt, cwd=repo, check=True, env=environment, capture_output=True, text=True)
             self.assertEqual(json.loads((repo / ".mcp.json").read_text()),
-                             {"mcpServers": {"docs": docs, "codegraph": SERVER}, "note": "kept"})
+                             {"mcpServers": {"docs": docs, "codegraph": {**SERVER, "alwaysLoad": True}},
+                              "note": "kept"})
+            # Claude Code's entry alone carries `alwaysLoad`: the registry row's `serverFields`, so a delegate is
+            # given the tool at session start rather than a bare name to load first; the other files are unchanged.
             self.assertEqual(json.loads((repo / ".gemini/settings.json").read_text()),
                              {"mcpServers": {"codegraph": SERVER}})
             self.assertEqual(json.loads((repo / ".cursor/mcp.json").read_text()), {"mcpServers": {"codegraph": SERVER}})

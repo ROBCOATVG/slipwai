@@ -93,7 +93,7 @@ class CodeIndexTest(FactoryTestCase):
             self.assertNotIn("codegraph", body, f"{path.name} is vendored and must not name the index")
             self.assertNotIn(NAMED, body, f"{path.name} is vendored and must not name the index")
 
-    def test_the_block_tries_every_route_before_declaring_the_index_unreachable(self) -> None:
+    def test_the_block_names_the_route_that_always_exists_before_declaring_the_index_unreachable(self) -> None:
         """The block used to be unconditional: query the index, do not delegate the exploration. In a
         checkout opened where the tooling never was — no `codegraph_explore` offered, nothing on `PATH` —
         that instruction cannot be followed, and agents either ignored it silently or reported that the
@@ -106,14 +106,11 @@ class CodeIndexTest(FactoryTestCase):
         source = (ROOT / "assets/toolkit/scripts/extensions/codegraph/init.py").read_text()
         block = source.split("MARKER_BEGIN}\n")[1].split("{MARKER_END")[0]
 
-        self.assertIn("Check you can reach it before you trust it", block)
-        mcp = block.index("use `codegraph_explore`")
-        cli = block.index("`command -v codegraph` succeeds")
-        npx = block.index("`npx -y @colbymchenry/codegraph explore <query>`")
-        fallback = block.index("Only when all three routes are unavailable")
-        self.assertLess(mcp, cli)
-        self.assertLess(cli, npx)
-        self.assertLess(npx, fallback)
+        # The route that exists wherever a shell does comes first, ahead of the MCP tool a session may have been
+        # given deferred or not at all — the availability order was followed and still ended in grep.
+        self.assertLess(block.index("scripts/codegraph callers <symbol>"), block.index("`codegraph_explore` over MCP"))
+        self.assertIn("answers in every session\nwith a shell", block)
+        self.assertIn("Where no route exists", block)
         self.assertIn("work as a project with no index would", " ".join(block.lower().split()))
         self.assertIn("./init --extension codegraph", block)
         self.assertIn("Say which route you used", block)
@@ -133,9 +130,7 @@ class CodeIndexTest(FactoryTestCase):
         # A delegate gets the repository instruction, not the parent's live connection or conversation:
         # probe its own tools, use the index when reachable, and say when it is not.
         self.assertIn("A sub-agent does not inherit this session's connection", source)
-        self.assertIn("checks its own tools", source)
-        self.assertIn("follows the same MCP, installed-CLI, then `npx` order", source)
-        self.assertIn("only when none of those routes exists", source)
+        self.assertIn("`scripts/codegraph` is in its shell", source)
         self.assertIn("Do not pass the parent", source)
         self.assertIn("keeps its focused stage brief", source)
 
@@ -148,9 +143,11 @@ class CodeIndexTest(FactoryTestCase):
         Bash calls and a single CLI call. Both halves must say that a name with no schema means not loaded
         yet, or the first route silently drops on every harness that defers MCP tools."""
         source = (ROOT / "assets/toolkit/scripts/extensions/codegraph/init.py").read_text()
-        self.assertIn("defers MCP tools", source)
         self.assertIn("not loaded yet", source)
         self.assertIn("tool-search step", source)
+        # And the two things that took the loading step out of the delegate's hands: Claude Code's `alwaysLoad` on
+        # the server entry, and a shell route no session has to discover.
+        self.assertIn("alwaysLoad", source)
 
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "deferred", "event-modelling", "go")
@@ -158,14 +155,12 @@ class CodeIndexTest(FactoryTestCase):
             self.assertTrue(briefs, "no agent briefs generated, so this boundary tests nothing")
             for brief in briefs:
                 body = brief.read_text()
-                self.assertIn("defers MCP tools", body, f"{brief.name} treats a deferred tool as absent")
-                self.assertIn("not loaded yet", body, f"{brief.name} does not say a deferred tool loads")
-                self.assertIn("tool-search", body, f"{brief.name} does not name the loading step")
+                self.assertIn("`scripts/codegraph callers <symbol>`", body, f"{brief.name} names no shell route")
                 # The loophole the old wording left: "before a repository-wide text search" reads as
                 # permission for a targeted grep, which is what the delegate used it for.
                 self.assertNotIn("before a repository-wide text search", body)
                 # And the line the index cannot answer, so a delegate stops apologising for `find`.
-                self.assertIn("is a `find`, not a question", body)
+                self.assertIn("is a `find`, not a\nquestion for the index", body)
 
     def test_the_extension_still_writes_a_marker_fenced_block_into_agents(self) -> None:
         """What the section's conditional wording depends on: the block is what a project checks for, and
@@ -186,11 +181,12 @@ class CodeIndexTest(FactoryTestCase):
         self.assertIn("The connection travels with the checkout", block)
         self.assertIn("The project-scoped MCP file of every harness installed here\nnames the server, started through "
                       "`npx`", block)
+        flat = " ".join(block.split())
         for named in ("`.mcp.json` for Claude Code", "`.codex/config.toml` for Codex", "`.gemini/settings.json` for "
                       "Gemini CLI", "`.cursor/mcp.json` for Cursor", "`opencode.json` for opencode"):
-            self.assertIn(named, block)
-        self.assertLess(block.index("The connection travels"), block.index("Check you can reach it"))
-        self.assertIn('MCP_COMMAND = ["npx", "-y", "@colbymchenry/codegraph", "serve", "--mcp"]', source)
+            self.assertIn(named, flat)
+        self.assertLess(block.index("The connection travels"), block.index("It is only current"))
+        self.assertIn('MCP_COMMAND = ["npx", "-y", CODEGRAPH, "serve", "--mcp"]', source)
         self.assertIn('write_project_mcp("codegraph", MCP_COMMAND)', source)
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "ready", "standard", "typescript")

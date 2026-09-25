@@ -86,8 +86,10 @@ project with no index. Both lists name the route back (`mcp_*` on Gemini, one `<
 this project's extensions install on Copilot), which costs nothing that was being held, because both already
 carry the whole shell. The other four reach the session's servers whatever the file says — Claude Code and
 Codex inherit them, Cursor inherits every tool, opencode's `permission` map is a denylist — and on Claude Code
-the tool arrives *deferred*, a bare name the delegate has to load through the harness's own tool-search step
-before it can call it. `registry.json` records all of that under `agentFile.mcp`, with the source and the date
+an MCP tool arrives *deferred*, a bare name the delegate has to load through the harness's own tool-search step
+before it can call it — unless the server's `.mcp.json` entry carries `alwaysLoad: true`, which the registry's
+`projectMcp.serverFields` has the CodeGraph extension write, so its tool is loaded at session start. Every
+harness also has `scripts/codegraph`, the pinned CLI, through the shell. `registry.json` records all of that under `agentFile.mcp`, with the source and the date
 it was read, and every projection's stamp carries it, so a route a harness withholds is one somebody can read.
 
 Because the model lives in these files on five of the six harnesses, `/model-delegation-settings` rewrites them as part of the

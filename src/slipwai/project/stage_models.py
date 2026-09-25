@@ -191,14 +191,13 @@ mode that has it, even at the price of a repeated paragraph: a fresh delegate re
 and the conservative reading is the expensive one. The page each type is written on is `docs/delegated-agent-safety.md`, the standing boundary every
 delegation is held to: reference it, restate none of it (`AGENTS.md`, *Delegated agents*).
 
-**A delegate does not inherit this session's code-index connection.** Where `AGENTS.md` carries the
-CodeGraph extension block, three of the types above — `drive-converge`, `drive-gaps` and `drive-adversary` —
-are exploration-heavy, and *what does this code not yet do* is a blast-radius question the index answers.
-Prefer to run those here when this session has the MCP connection: a fresh delegate does not inherit it.
-Delegation is still valid. Its brief says to follow the block in `AGENTS.md`, probe its own MCP, installed
-CLI and `npx` routes in that order, and name which route answered. A delegate with the CLI on `PATH` can
-query the same project index; it falls back to text search only when all routes are unavailable. Never pass
-the parent conversation merely to carry the connection.
+**A delegate does not inherit this session's code-index connection, and needs none.** Where `AGENTS.md`
+carries the CodeGraph extension block, three of the types above — `drive-converge`, `drive-gaps` and
+`drive-adversary` — are exploration-heavy, and *what does this code not yet do* is a blast-radius question the
+index answers. Delegate them as the table says: every delegate's shell has `scripts/codegraph`, the pinned CLI
+through `npx`, and on Claude Code the server's tool is loaded at the delegate's start, so its brief's first
+route to the index is one it has. It names the route that answered, and falls back to text search only when
+`scripts/codegraph` says there is no route. Never pass the parent conversation merely to carry the connection.
 
 Delegate both when the line names another model and when the same strong model can run in a fresh context.
 On a harness whose agent file names a model (`scripts/agents/registry.json`, `agentFile`) the type already

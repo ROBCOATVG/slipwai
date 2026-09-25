@@ -21,7 +21,7 @@ class CheckPythonTest(FactoryTestCase):
             repo = self.generate(directory, "interpreter", "standard", "python")
             makefile = (repo / "Makefile").read_text()
             self.assertRegex(makefile, r"\nverify: check-python ")
-            passed = subprocess.run(["make", "check-python"], cwd=repo, text=True, capture_output=True)
+            passed = subprocess.run(["make", "--no-print-directory", "check-python"], cwd=repo, text=True, capture_output=True)
             self.assertEqual((passed.returncode, passed.stdout, passed.stderr), (0, "", ""))
             # An interpreter that reports 3.9.6, the way macOS's system Python does: the version is the only thing
             # the check reads, and `sitecustomize` sets it before the command line runs.
@@ -29,7 +29,7 @@ class CheckPythonTest(FactoryTestCase):
             older.mkdir()
             (older / "sitecustomize.py").write_text(
                 "import sys\nsys.version_info = (3, 9, 6, 'final', 0)\nsys.version = '3.9.6 (default)'\n")
-            failed = subprocess.run(["make", "check-python"], cwd=repo, text=True, capture_output=True,
+            failed = subprocess.run(["make", "--no-print-directory", "check-python"], cwd=repo, text=True, capture_output=True,
                                     env={**os.environ, "PYTHONPATH": str(older)})
             self.assertEqual(failed.returncode, 2)
             self.assertIn("is Python 3.9.6, and the gate scripts need 3.10 or newer", failed.stderr)

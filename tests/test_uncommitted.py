@@ -9,6 +9,7 @@ is still for: a person's uncommitted change to a file the run is about to write 
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -65,3 +66,22 @@ class GroundSequenceTest(FactoryTestCase):
             settle_a_row(repo)
             self.assertEqual(slipwai(repo, "adopt", "--confirm", "themes").returncode, 0)
             self.assertEqual(slipwai(repo, "adopt", "--refresh").returncode, 0)
+
+    def test_answers_are_recorded_one_at_a_time_where_git_is_read_only(self) -> None:
+        """Codex runs an agent's commands in a sandbox that makes `.git` read-only. The record of what slipwai
+        left was kept there, so it was silently never written, and the second answer was refused as if a
+        person had edited the first answer's files. It is kept under `.delivery-tools/` now, already ignored."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            dirs = [repo / ".git", *(path for path in (repo / ".git").rglob("*") if path.is_dir())]
+            try:
+                for path in dirs:
+                    os.chmod(path, 0o555)
+                for step in (("--confirm", "shop"), ("--decline", "themes"), ("--confirm", "tests-ui")):
+                    result = slipwai(repo, "adopt", *step)
+                    self.assertEqual(result.returncode, 0, f"{step}: {result.stderr}")
+            finally:
+                for path in dirs:
+                    os.chmod(path, 0o755)
+            self.assertTrue((repo / ".delivery-tools/written.json").is_file())
+            self.assertNotIn(".delivery-tools", git(repo, "status", "--porcelain").stdout, "it is ignored")

@@ -10,7 +10,8 @@ every answer, which is the history nobody asked for, and by an agent deciding on
 What the refusal protects is a person's work, and a run can only lose that where it writes. So it looks at the
 paths this run writes — the factory's listing in `.written` and the survey's pages — and refuses only where one of
 those holds an uncommitted change that is not what slipwai itself last left there. What slipwai left is recorded,
-path by digest, inside the Git directory, where it belongs to this clone and is never committed. Everything else
+path by digest, in `.delivery-tools/written.json` — ignored, so it belongs to this checkout and is never
+committed, and outside `.git`, which an agent's sandbox can make read-only (Codex's does). Everything else
 uncommitted — `project.json`, which is the input, what `./init` wrote, and a person's own source — is left alone,
 because nothing here touches it.
 """
@@ -23,6 +24,7 @@ import subprocess
 from collections.abc import Iterable
 from pathlib import Path
 
+from .assets import WRITTEN_RECORD
 from .errors import GenerationError
 
 
@@ -43,12 +45,8 @@ def changed(root: Path) -> list[str] | None:
     return paths
 
 
-def record_path(root: Path) -> Path | None:
-    found = subprocess.run(
-        ["git", "rev-parse", "--git-path", "slipwai-written.json"], cwd=root, capture_output=True, text=True,
-        check=False,
-    )
-    return (root / found.stdout.strip()) if found.returncode == 0 and found.stdout.strip() else None
+def record_path(root: Path) -> Path:
+    return root / WRITTEN_RECORD
 
 
 def digest(path: Path) -> str | None:
@@ -56,9 +54,8 @@ def digest(path: Path) -> str | None:
 
 
 def recorded(root: Path) -> dict[str, str | None]:
-    where = record_path(root)
     try:
-        read = json.loads(where.read_text()) if where else {}
+        read = json.loads(record_path(root).read_text())
     except (OSError, ValueError):
         return {}
     return read if isinstance(read, dict) else {}
@@ -67,11 +64,12 @@ def recorded(root: Path) -> dict[str, str | None]:
 def stamp(root: Path, paths: Iterable[str]) -> None:
     """Record what slipwai has just left at each of these paths, keeping only what is still uncommitted."""
     where, now = record_path(root), changed(root)
-    if where is None or now is None:
+    if now is None:
         return
     kept = {path: value for path, value in recorded(root).items() if path in now}
     kept.update({path: digest(root / path) for path in paths if path in now})
     with contextlib.suppress(OSError):
+        where.parent.mkdir(parents=True, exist_ok=True)
         where.write_text(json.dumps(dict(sorted(kept.items())), indent=2) + "\n")
 
 

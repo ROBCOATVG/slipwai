@@ -6,7 +6,9 @@ by what `./init` had just left for the person to read, the second by the first, 
 exists to follow — and the first repository taken end to end got through by committing after every answer. They
 now refuse only where they would write over somebody's work: a path they write, from the factory's `.written`
 listing or the survey's pages, holding an uncommitted change that is not what slipwai last left there. What
-slipwai left is recorded by digest inside the Git directory, so it belongs to the clone and is never committed.
+slipwai left is recorded by digest in `.delivery-tools/written.json`, which every `.gitignore` the factory has
+written already ignores, so it belongs to the checkout and is never committed. It is kept out of `.git` on purpose: Codex runs an agent's
+commands in a sandbox that makes `.git` read-only, and a record there was silently never written.
 `project.json`, what `./init` wrote and a person's own source no longer stop anything, because none of them is
 written. `slipwai adopt` itself still refuses an unclean tree: it commits, and the `git reset --hard HEAD^` it
 offers as the undo would take uncommitted work with it.

@@ -29,6 +29,14 @@ VERSION = (ROOT / "VERSION").read_text().strip()
 # three of them need it — the module that writes the page, the `.gitignore` that keeps it out of the history,
 # and the command file that tells an agent where to look.
 NOTES = ".slipwai/catch-up.md"
+# What slipwai last left at each path it writes and has not seen committed, by digest, so that the next answer
+# `/ground` records can write over its own regeneration and still refuse a person's edit (`uncommitted.py`).
+# It is this checkout's state, never a record, so it lives under `.delivery-tools/`, which every `.gitignore`
+# the factory has ever written ignores — a repository adopted before this needs no new line to keep it out of
+# a `git add -A`. Not inside `.git`, where it was first: Codex runs an agent's commands in a sandbox that
+# makes `.git` read-only, the record was silently never written, and the second answer was refused as if a
+# person had edited the first answer's files.
+WRITTEN_RECORD = ".delivery-tools/written.json"
 TOOLKIT_ROOT = ROOT / "assets/toolkit"
 PROFILE_ROOT = ROOT / "assets/profiles"
 FRONTEND_ROOT = ROOT / "assets/frontends"

@@ -10,6 +10,11 @@ Where you type each command:
 - **terminal**: a shell at the repository root
 - **agent**: a session of your coding agent (Claude Code, Codex, Cursor, …), opened at the repository root
 
+Commands are written the way Claude Code spells them: `/ground`, `/drive`. Other agents differ. Codex takes
+them as skills, so you type `$ground` and `$drive`. Codex also runs commands in a sandbox that cannot rewrite
+its own skills, so when slipwai reports that *the harness projections could not be re-derived*, run
+`make agents` in a terminal.
+
 ---
 
 ## Phase 0: once per machine

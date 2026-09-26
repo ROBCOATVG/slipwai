@@ -15,3 +15,5 @@ the same however the tool that printed it spelled it.
 `typecheck` entry in `baseline.json` is almost certainly `{"exit": N, "findings": []}`, which excused the whole
 command. `make ratchet-tighten` after reading what the command actually reports replaces it with the findings
 that are really there, and the gate holds to no new ones from then on.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.

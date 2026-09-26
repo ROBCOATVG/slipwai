@@ -22,3 +22,5 @@ because a person told "outside the repository" still has to go and find out wher
 any gate has run, and on a repository whose build tool is not on the machine it is not true. The page says what
 the gate actually does instead: runs the build's own commands, green where the ratchet has a baseline to hold
 them to and plainly red where it does not.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.

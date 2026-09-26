@@ -16,3 +16,5 @@ that already names a harness is left alone, and one a person overrode is never m
 Found by running the reshaped intro over PrestaShop, whose tree reads for Claude Code, GitHub Copilot and
 Gemini CLI at once — which is the case the ambiguity rule was written for, and the first time it has been met
 in the wild.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.

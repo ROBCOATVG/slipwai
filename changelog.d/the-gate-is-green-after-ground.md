@@ -14,3 +14,5 @@ either way.
 baselines the whole failure as a blanket excuse for the check. With lib types skipped the same tree is green,
 and a type error the project actually wrote is what turns it red. A directory with its own `typecheck` script
 keeps it, whatever it says.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.

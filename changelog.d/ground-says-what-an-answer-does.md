@@ -14,3 +14,5 @@ because a question that does not offer it manufactures an answer.
 holds a row per application per product, so a repository whose four npm packages all run Node 20 had the same
 sentence four times under the strategy's `because` and four more under its `before`. The reader needs the
 products; a product is its title and its version.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.

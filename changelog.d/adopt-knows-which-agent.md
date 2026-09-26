@@ -25,3 +25,5 @@ inside the commit, so an unreachable source costs the adoption nothing — the c
 failure says so, and `slipwai adopt --next` keeps naming `./init` as the step you are on. What it writes is
 left uncommitted and yours to read, exactly as in a project the factory generated. `--no-init` is the default
 said out loud.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.

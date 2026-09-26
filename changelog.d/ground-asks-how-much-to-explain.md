@@ -14,3 +14,5 @@ answered yet, and which coding agent gets the material is `./init`'s. Rebuilding
 `project.json` holding two candidates while the `/ground` regenerated in the same run had lost the section
 that asks about them: a generated file disagreeing with the record it is generated from, which is the one
 thing this must not do. Found by running the command over a real adoption mid-way through.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.

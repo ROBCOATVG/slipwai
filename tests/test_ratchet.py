@@ -102,6 +102,44 @@ class RatchetTest(FactoryTestCase):
             self.assertIn("has no baseline for it", ci.stderr)
             self.assertFalse((repo / "delivery/baseline.json").exists())
 
+    def test_a_finding_in_an_application_below_the_root_is_named_rather_than_excused(self) -> None:
+        """A tool prints paths relative to the directory it ran in, and a wrapped application's build runs in
+        its own: `cd sub && npm run lint`. Resolving those against the repository root alone found nothing,
+        so every finding in every application below the root was invisible and the run fell back to comparing
+        the exit code — which passes a second finding tomorrow exactly as it passed the first. The ratchet not
+        doing the one thing it exists for, silently, on precisely the repositories it was written for.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            repo = repository(Path(directory), "shop", {
+                "package.json": json.dumps({"name": "shop", "scripts": {"lint": "node lint.js"}}),
+                "lint.js": LINTER,
+                "src/a.js": "exports.a = 1;\n",
+                "sub/package.json": json.dumps({"name": "sub", "scripts": {"lint": "node lint.js"}}),
+                "sub/lint.js": LINTER,
+                "sub/src/b.js": "// FOO lives here\nexports.b = 1;\n",
+            })
+            self.assertEqual(slipwai(repo, "adopt", "--yes").returncode, 0)
+
+            first = make(repo, "verify")
+            self.assertEqual(first.returncode, 0, first.stdout[-3000:] + first.stderr[-3000:])
+            self.assertIn("ratchet: baseline recorded for sub lint — 1 finding(s)", first.stdout)
+            self.assertNotIn("no finding names a file or a test", first.stdout)
+            baseline = json.loads((repo / "delivery/baseline.json").read_text())
+            self.assertEqual(
+                baseline["sub"]["lint"]["findings"], ["sub/src/b.js: no-foo: FOO is not allowed"],
+                "recorded root-relative, so the key reads the same however the tool spelled it",
+            )
+            git(repo, "add", "-A")
+            git(repo, "-c", "user.name=t", "-c", "user.email=t@local", "commit", "-q", "-m", "baseline")
+
+            # A second finding in the same application is new, named, and red — which the exit-code
+            # fallback could never say, because the exit code is 1 either way.
+            (repo / "sub/src/c.js").write_text("// FOO here too\nexports.c = 2;\n")
+            second = make(repo, "verify")
+            self.assertEqual(second.returncode, 2, "a new finding below the root fails the gate")
+            self.assertIn("1 new finding(s) in sub lint", second.stdout + second.stderr)
+            self.assertIn("sub/src/c.js: no-foo", second.stdout + second.stderr)
+
     def test_a_tool_that_is_not_on_this_machine_is_named_and_never_baselined(self) -> None:
         """`mvn` on a laptop that builds from the IDE: the shell's `command not found` is not a red linter, so it is
         refused rather than recorded — a baseline of "exit 127" would pass forever on every machine without the

@@ -157,6 +157,7 @@ def drift() -> tuple[dict[str, tuple[str, float]], list[str], list[str]] | None:
     # indexed here as the answer keeps this check from inventing a language table of its own — and
     # from reporting every committed PNG as a hole in the graph.
     suffixes = {Path(path).suffix for path in rows} - {""}
+    last = max((at for _, at in rows.values()), default=0.0)
     missing, changed = [], []
     for path in paths:
         if Path(path).suffix not in suffixes:
@@ -166,6 +167,14 @@ def drift() -> tuple[dict[str, tuple[str, float]], list[str], list[str]] | None:
             continue
         row = rows.get(path)
         if row is None:
+            # A file the index has never seen is a hole only where it appeared *after* the index last ran.
+            # Matching the suffix is not enough: CodeGraph declines files of a language it indexes — a
+            # vendored `bootstrap.min.js` beside a `src/app.js` it read — and which ones is its decision,
+            # not this script's. Reported anyway, a real repository's vendored bundles failed a gate that
+            # `codegraph sync` said was already up to date, and the two tools called each other wrong. The
+            # index records milliseconds and the filesystem seconds.
+            if last and absolute.stat().st_mtime * 1000 <= last:
+                continue
             missing.append(path)
         elif row[0] and digest(absolute) != row[0]:
             changed.append(path)

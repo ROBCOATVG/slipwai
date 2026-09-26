@@ -145,6 +145,12 @@ it of, so `adopt` refuses rather than guessing.
 |---|---|
 | `--yes` | Everything, as the survey found it — nothing is asked, and each fact is recorded `detected` |
 | `--refresh` | In an adopted repository: survey again, refresh what was only detected, report what disagrees with what a person decided, and regenerate what the record drives. This is what `/survey` runs |
+| `--confirm NAME` | In an adopted repository: a candidate that is an application, recorded as one with `confirmed` provenance. `--as NAME=NEW` names it something other than its directory; `--kind`, `--purpose`, `--command` and `--hexagonal` describe it. Everything the record drives is regenerated. Repeatable |
+| `--decline NAME` | In an adopted repository: a candidate that is not an application. Dropped, with nothing recorded in its place. Repeatable |
+| `--next` | In an adopted repository: where it stands in the sequence this report names — what is done, what is next, and why. Read off the tree, not remembered: `./init` leaves `.specify/integration.json`, the first gate run leaves the baseline, `/ground` moves a row off `unrecorded`, a strategy is an accepted ADR |
+| `--experimental-intro` | Use the reshaped intro rather than the interview this version asks by default (or `SLIPWAI_EXPERIMENTAL_INTRO=1`): the terminal asks only what a terminal can answer, and the rest is the agent's to confirm against the code. Experimental within an experiment; its shape is still moving |
+| `--integration AGENT` | Which coding agent `./init` projects the skills and commands into, by its key in the agent registry. Default: the harness this ran from, or the one the tree already reads; where neither says, nothing is recorded and `./init` keeps its own question |
+| `--init` / `--no-init` | Run `./<delivery>/init` once the adoption is committed, or do not (default). It reaches Spec Kit's source, so it is the one step that needs the network, and what it writes is left uncommitted for you to read |
 | `--name NAME` | The project's name. Default: the directory's |
 | `--profile` | `standard` or `event-modelling`. Default: `standard` |
 | `--target` | `existing` — this deploys to infrastructure it does not own — or `none`. Default: `existing`, unless the infrastructure is `none` |
@@ -162,6 +168,51 @@ it of, so `adopt` refuses rather than guessing.
 | `--infrastructure-repository URL` | Likewise, and likewise implying `elsewhere` |
 | `--forge` | Where CI runs — `github`, `gitea`, `gitlab`, `other`, `none` — which decides what shape the gate's CI configuration can take. Default: what the tree or the remote says |
 | `--release` | How a change reaches production today: `pipeline`, `scripted`, `manual`, `unknown`. Default: what the tree says, and `unknown` recorded as `unrecorded` where it says nothing |
+
+## What is an application here
+
+Under `--experimental-intro`, `adopt` wraps nothing. Every buildable directory the survey finds is recorded
+under `candidates` in `project.json` — its path, language, the commands its build answers, and the file that
+found it — and `deployables` starts empty. That is [ADR 0003](adr/0003-a-wrapped-application-begins-as-a-candidate.md),
+and the reason is that `Wrap it as the application …? [Y/n]` is a question a terminal cannot ask well: which
+of these directories the gate should hold, what each is called and what it owns are things the *code* says,
+and the person answering has not read it. On the first real monorepo this met, pressing Enter — which is what
+you do when you have no basis to do otherwise — wrapped three asset bundles and a test suite as applications,
+under names taken from their directories, with every `purpose` blank.
+
+So the record gained the state it was missing. `deployables` says what somebody has established; `candidates`
+says what was merely found. It is the distinction `unrecorded` already draws for every row of the convergence
+map, and the reason no un-wrap command exists: nothing was wrapped, so nothing needs unwrapping.
+
+`make verify` refuses while nothing is confirmed, naming what confirms one. A gate with nothing to hold is
+not a gate that passes — it is one that has not been given its subject yet, and a green run over zero
+applications is exactly the false assurance the candidate state exists to prevent.
+
+`/ground` asks, with the code in front of it: what each directory is, and why, from what it read — then what
+it should be called and what it owns. It records each answer with `slipwai adopt --confirm`, which builds the
+entry and regenerates everything that reads it, so `deployables` is never edited by hand. A directory nobody
+is sure of stays a candidate, which is an honest answer where a guess is not.
+
+`--yes` is the unattended path it has always been: it confirms every candidate as found, and the report says
+plainly that nobody looked.
+
+## Which coding agent
+
+`./init` projects the canonical `skills/`, `commands/` and `agents/` into one harness's native locations —
+`assets/toolkit/scripts/agents/registry.json` declares the thirty-six it knows, and where each reads them
+from. That has always been `./init`'s question, asked after `adopt` had finished, which is one step too late
+to help the adoption: the questions worth handing to a coding agent are the ones asked before there is one.
+
+So `adopt` establishes it, and mostly without asking. A run started from inside a harness is told so by its
+environment. A repository whose team already uses one says so in the tree — `.claude/skills`, `.gemini/commands`,
+`.github/copilot-instructions.md`. Either way the answer is recorded in `project.json` under `agent`, with the
+evidence and `detected` provenance, and `./init` then asks nothing. `--integration` names it outright and is
+recorded `overridden`.
+
+What nothing says is left `unrecorded`, and said out loud: a directory two harnesses read — `.agents/skills`,
+which Codex, Zed and Antigravity all use — names neither, a tree that reads for two records neither because
+that is a decision, and a thirty-six-row list is not a question a terminal has any good way to ask. `./init`
+still has its own, and an empty record is that question still open.
 
 ## The map
 

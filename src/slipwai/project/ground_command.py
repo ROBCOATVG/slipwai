@@ -150,6 +150,53 @@ def question_sections(apps: list[App]) -> str:
     return "\n\n".join(sections)
 
 
+def candidate_section(adoption: Adoption, layout: Layout) -> str:
+    """The candidates, asked about before any row of the map.
+
+    First because nothing else can be answered without it: a Structure row is about applications, and until
+    somebody says which of the directories the survey found *are* applications there is nothing for the rows
+    to be about — and `verify` refuses (ADR 0003). This is the question the terminal used to ask once per
+    directory with `[Y/n]` and a default of yes, which is how asset bundles and a test suite were wrapped as
+    applications on the first real monorepo it met.
+    """
+    candidates = [row for row in (adoption.candidates or []) if isinstance(row, dict)]
+    if not candidates:
+        return ""
+    rows = "\n".join(
+        f"   - `{row.get('name')}` at `{row.get('path')}` — {row.get('language')}, from `{row.get('evidence')}`"
+        + (f"; the tree says {row.get('kind')} ({row.get('roleEvidence')})" if row.get("roleEvidence")
+           else "; nothing in the tree says what it is for")
+        for row in candidates
+    )
+    return (
+        "## What is an application here\n\n"
+        "Asked first, and before any row: until one of these is confirmed there is nothing for the rows to be\n"
+        f"about, and `{layout.make} verify` refuses rather than passing over nothing. `adopt` recorded them and\n"
+        "wrapped none of them, because which of them the gate should hold is a question the code answers and a\n"
+        "terminal cannot ask.\n\n"
+        "   The directories the survey found that build:\n\n"
+        f"{rows}\n\n"
+        "**Ask, one at a time, having read the directory first:** is this an application the gate should hold —\n"
+        "or is it an asset bundle, a test suite for something else here, a sample, a vendored dependency? Say\n"
+        "which you think it is *and why, from what you read*, before asking; the person is confirming your\n"
+        "reading, not answering a quiz. Where it is one: what should it be called (the directory's name is what\n"
+        "the record proposes, and `default` or `ui` is rarely what anybody calls it), what does it own in a\n"
+        "sentence or two, and are the commands the survey read the ones that matter?\n\n"
+        "Where they asked for the long form, each answer says what confirming it does: which commands join\n"
+        "the gate and what running them needs, what a red one would stop, and what declining forfeits\n"
+        "instead. *Held as a `library` for its lint \u2014 `make verify` gains `npm run lint` here, which needs\n"
+        "only Node* and *declined \u2014 its lint stays in the repository's own CI, which already runs it, and\n"
+        "the delivery gate says nothing about this directory* are answers somebody can choose between. *Yes*\n"
+        "and *No* are not. Where they asked for the short form, the labels stand alone and your reading above\n"
+        "them carries the reasoning.\n\n"
+        "**Write:** one `slipwai adopt --confirm <name>` per application — with `--as <name>=<new>` where the\n"
+        "directory's name is not its name, and `--kind`, `--purpose` and `--command` for what you established —\n"
+        "and `--decline <name>` for each that is not one. The command builds the record and regenerates\n"
+        "everything that reads it, so never edit `deployables` by hand. A directory you are unsure of stays a\n"
+        "candidate: that is what the state is for, and leaving it is an honest answer where guessing is not.\n\n"
+    )
+
+
 def ground_command(apps: list[App], layout: Layout, adoption: Adoption) -> str:
     page = layout.under("docs/convergence.md")
     return f"""---
@@ -173,6 +220,34 @@ axes to ask about; empty means every row a person has not yet placed.
   (`skills/find-gaps/SKILL.md` has the discipline).
 - **Evidence and rungs first.** Before asking, show the row as it stands — the evidence the survey found and each
   rung's meaning — so the person places themselves on a ladder rather than answering a quiz.
+- **Settle from the tree whatever the tree settles, and say you did.** A question you can answer by reading a
+  file is not a question to put: read it, say what you found and where, and record it. Ask only what reading
+  cannot reach — what a person intends, what they would ship on, what they know about how the work is done. A
+  menu offered for something the tree already states asks somebody to guess at their own repository.
+- **Ask how much to explain, first, and hold to the answer.** The opening question is not about this
+  repository: it is whether they want each answer's consequence spelled out — what it writes, what moves,
+  what it costs — or the short form. Somebody who knows this codebase and this method does not need to be
+  told what webpack does, and being told anyway is how a question set becomes a wall to skim; somebody
+  meeting either for the first time cannot answer safely without it. Offer both, say which you would pick
+  for them and why, and take the answer as standing for the rest of the run unless they change it — which
+  they may, at any question, in either direction.
+- **In full, every answer on offer says what it does.** The person reads the options, not the paragraph above
+  them, so each one names what it writes, what moves because of it, and what it costs. *`library`, and the
+  gate holds its lint: `make verify` runs `npm run lint` here from now on, and a red one stops every change
+  until it is fixed or quarantined* is an answer. *Yes — hold its lint* is a label, and a label is what gets
+  picked by somebody who does not yet know what they are picking. Where two options differ only in a word,
+  say what turns on that word. Never offer one whose consequence you have not stated: if you cannot say what
+  an answer does, you are not ready to ask it.
+- **In short, the labels stand alone — and two things never go.** The short form drops the elaboration, not
+  the honesty: what you think and why, from what you read, stays (the next rule), and *I don't know* stays an
+  answer on offer. What a short answer costs is a sentence away whenever they ask, and offering that once —
+  *say the word and I will spell any of these out* — costs a line.
+- **Say what you think, and why, from what you read.** A recommendation with its reasoning is what makes an
+  answer a confirmation rather than a guess, and it is what lets somebody disagree with you on the evidence
+  rather than on authority. Never a bare menu.
+- **"I don't know" is one of the answers, every time, and offered as one.** It is the honest state of most
+  rows in most repositories on the first pass, and a question that does not offer it is a question that
+  manufactures an answer.
 - **A rung is claimed only from a fact.** Here the person is the fact for what only they can know (how work is
   integrated, whether they would ship on the tests). Where the tree can contradict a rung — a release path, a
   quarantined suite, a template constitution, an application's role, no accepted ADR — the tree wins:
@@ -187,7 +262,24 @@ axes to ask about; empty means every row a person has not yet placed.
   release path, an application's `kind`, a home, `why` — write it there with `confirmed` provenance; the row
   follows when `/survey` re-reads the record.
 
-## The rows, as they stand
+## The first question
+
+Asked before anything about this repository, once, and answered for the rest of the run:
+
+**Ask:** how much should each answer explain itself? *Long* spells out, for every option, what it writes to
+the record, what moves because of it, and what it costs — which is what somebody meeting this repository or
+this method for the first time needs in order to answer safely. *Short* gives you the reading, the
+recommendation and the answers as labels, on the understanding that you already know what confirming an
+application or placing a rung does. Say which you would pick for this person and why, from what you can see:
+a repository whose record is entirely `unrecorded` and whose person has not met the method suggests long; a
+second or third adoption by the same hands suggests short.
+
+Then say, once: *say the word at any question and I will spell that one out* — and mean it, in either
+direction, at any point.
+
+**Write:** nothing. It is how you talk, not a fact about the repository, and it is not a row.
+
+{candidate_section(adoption, layout)}## The rows, as they stand
 
 {row_table(adoption)}
 

@@ -1,10 +1,15 @@
-"""`slipwai adopt`: the questions, asked with the survey's answers as their defaults, or taken from flags.
+"""`slipwai adopt`: the verb's flags, and what it does with the answers however they arrive.
 
 Experimental (`AGENTS.md` says what the word means here). Run at the root of a repository the factory
 did not make. Bare, in a terminal, it surveys the tree and asks about each thing it found with the found
-value as the default — Enter confirms it (`confirmed`), another answer overrides it (`overridden`). With
-`--yes` nothing is asked and every proposal stands as `detected`; flags override single answers either way,
-and a flag is always `overridden`. Outside a terminal without `--yes` it refuses rather than guessing.
+value as the default — `cli_interview` is those questions — where Enter confirms it (`confirmed`) and another
+answer overrides it (`overridden`). With `--yes` nothing is asked and every proposal stands as `detected`;
+flags override single answers either way, and a flag is always `overridden`. Outside a terminal without
+`--yes` it refuses rather than guessing.
+
+Two readings of an adoption that has already happened share the verb, because they are the same record read
+again rather than a second thing to learn: `--refresh` reconciles a fresh survey with what was recorded, and
+`--next` says where the repository stands in the sequence the adoption report named.
 """
 from __future__ import annotations
 
@@ -12,19 +17,23 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import resurvey
-from .adopt import Answers, adopt, proposed, report
+from . import confirm as confirming
+from . import next_steps, resurvey
+from .adopt import Answers, adopt, candidates_of, check_repository, proposed, report
 from .catalog import CATALOG
-from .cli_prompts import prompt_choice, prompt_yes_no, validate_project_name
+from .cli_confirm import confirmations
+from .cli_init import agent_line, projection_line, reproject, run_init
+from .cli_interview import NOTHING_TO_ASK, interview, shape, with_override
+from .cli_prompts import validate_project_name
 from .ecosystems import EXTRA, TARGETS
 from .errors import GenerationError
-from .layout import Layout
-from .origin import FORGES, HOMES, RELEASE_PATHS, WRAPPED_KINDS
-from .services import App
+from .experimental import FLAG, HELP, reshaped_intro
+from .harness import chosen, detect, keys
+from .layout import layout_of
+from .manifest import apps_from_manifest, read_manifest
+from .origin import FORGES, HOMES, RELEASE_PATHS, WRAPPED_KINDS, adoption_of
 from .survey import survey
-from .wrappers import WRAPPERS, missing_wrapper
 
-NOTHING_TO_ASK = "nothing to ask on; pass --yes to accept the survey, with flags for what to change"
 NOTHING_FOUND = (
     "nothing here starts a build the survey can read — a package.json, pyproject.toml or requirements.txt, go.mod, "
     "pom.xml, build.gradle, build.xml, a .sln or .csproj, composer.json or Gemfile, at the root or up to three "
@@ -32,163 +41,47 @@ NOTHING_FOUND = (
     "A build this repository does have and the survey cannot read is a gap in the factory: raise it, naming the file."
 )
 NOTHING_LEFT = "every application the survey found was skipped or left unwrapped; nothing is left to install around"
-HOME_DESCRIPTIONS = {
-    "here": "versioned in this repository",
-    "elsewhere": "owned by another repository, which you name",
-    "unmanaged": "applied by hand, a DBA or a console — versioned nowhere",
-    "none": "not part of this system",
-}
-HOME_QUESTIONS = {
-    "schema": "Where is the database schema versioned? (the tables and migrations the code expects)",
-    "home": "Where is the deployment infrastructure described? (Terraform, CDK, Compose, Kubernetes — whatever "
-    "puts this system on a machine)",
-}
-KIND_DESCRIPTIONS = {
-    "service": "runs somewhere and serves requests or jobs",
-    "library": "code other applications import; ships as a package, not a process",
-    "tool": "run by hand or in CI — a CLI, a build helper, a migration runner",
-    "tests": "a test suite of its own, against something else here",
-    "application": "not established — leave it open rather than guess; the record says so",
-}
-FORGE_DESCRIPTIONS = {
-    "github": "GitHub — the gate is an Actions workflow under .github/workflows",
-    "gitea": "Gitea or Forgejo — the same Actions workflow, which they run too",
-    "gitlab": "GitLab — the gate is a job to include from .gitlab-ci.yml",
-    "other": "Jenkins, Azure, Bitbucket, CircleCI or another — nothing is written; your CI runs the gate's command",
-    "none": "no CI runs this repository — nothing is written until one does",
-}
-RELEASE_DESCRIPTIONS = {
-    "pipeline": "a CI job deploys it, on some trigger",
-    "scripted": "somebody runs a script that deploys it",
-    "manual": "by hand: files copied, a console clicked, a package installed",
-    "unknown": "not established — recorded as such, and /drive asks before the first slice",
-}
+# What `--confirm` and `--decline` have no use for: every flag that describes the adoption itself rather than
+# the candidate being settled. Passed alongside one, each was read, ignored and never mentioned — `adopt
+# --confirm shop --integration cursor` looked like it recorded a harness and recorded nothing. A flag that
+# silently does nothing is worse than one that is refused, which is the rule the reshaped intro already
+# applies to the flags that describe an application.
+SETTLING_IGNORES = (
+    "yes", "refresh", "next_steps", "experimental_intro", "integration", "run_init", "name", "profile",
+    "target", "delivery", "why", "skip", "database", "database_repository", "infrastructure",
+    "infrastructure_repository", "forge", "release",
+)
 
 
-def where(path: str) -> str:
-    """A directory as the interview names it: the repository root is `.` to the survey and nothing to a reader."""
-    return "the repository root (.)" if path == "." else f"`{path}`"
-
-
-def ask(question: str, default: str | None = None) -> str | None:
-    """One free-text question; Enter keeps the default (None for a blank one)."""
-    try:
-        answer = input(f"{question}{f' [{default}]' if default else ''}: ").strip()
-    except EOFError as error:
-        raise GenerationError(NOTHING_TO_ASK) from error
-    return answer or default
-
-
-def with_override(app: App, **changes: object) -> App:
-    """The application with some fields changed, and those fields' provenance saying so."""
-    provenance = {**app.provenance, **{name: "overridden" for name in changes}}
-    return App(
-        app.name, app.path, str(changes.get("kind", app.kind)), str(changes.get("language", app.language)), None, 0,
-        generated=False, commands=changes.get("commands", app.commands),  # type: ignore[arg-type]
-        toolchain=app.toolchain, purpose=changes.get("purpose", app.purpose),  # type: ignore[arg-type]
-        structure=changes.get("structure", app.structure),  # type: ignore[arg-type]
-        provenance=provenance,
-    )
-
-
-def confirmed(app: App, *fields: str) -> App:
-    return App(
-        app.name, app.path, app.kind, app.language, None, 0, generated=False, commands=app.commands,
-        toolchain=app.toolchain, purpose=app.purpose, structure=app.structure,
-        provenance={**app.provenance, **{name: "confirmed" for name in fields if name in app.provenance}},
-    )
-
-
-def interview(
-    root: Path, apps: list[App], proposal: dict[str, str | None], delivery: str
-) -> tuple[list[App], dict, dict, dict, dict, str | None]:
-    """The questions, in order, each with the survey's answer as its default, every one saying what its answer
-    does; `delivery` is where the method's files will go, so the gate is spelled the way the report will."""
-    # `make` where adopt will write the root Makefile, `make -f` where the repository has one of its own — the
-    # rule `adopt.report` applies afterwards, applied here so the interview and the report agree.
-    verify = "make" if not (root / "Makefile").is_file() else Layout(delivery).make
-    print(
-        "Adopt the delivery method here (experimental). Each question shows what the survey found as its default:\n"
-        "Enter accepts it, another answer replaces it, and project.json records which. In a list, ↑/↓ move and\n"
-        "Enter chooses."
-    )
-    kept: list[App] = []
-    for app in apps:
-        ecosystem = app.toolchain.get("ecosystem") if app.toolchain else None
-        print(f"\nFound a {ecosystem or 'buildable'} build at {where(app.path)}: {app.language}.")
-        if not prompt_yes_no(
-            f"Wrap it as the application `{app.name}`? (its build joins the gate; n leaves it out entirely)", True
-        ):
+def ignored_by_settling(args: argparse.Namespace, parser: argparse.ArgumentParser) -> list[str]:
+    """The adoption's own flags a `--confirm` or `--decline` run was given and would have thrown away."""
+    # The *first* declared default per dest, not the last: two actions can share one (`--init` / `--no-init`),
+    # and a later one's default would otherwise decide what "unset" means for both.
+    defaults: dict[str, object] = {}
+    for action in parser._actions:
+        defaults.setdefault(action.dest, action.default)
+    given = []
+    for dest in SETTLING_IGNORES:
+        if not hasattr(args, dest) or getattr(args, dest) == defaults.get(dest):
             continue
-        language = ask("Language", app.language)
-        app = confirmed(app, "language") if language == app.language else with_override(app, language=language)
-        kind = prompt_choice(
-            "Kind", list(WRAPPED_KINDS), app.kind, lambda k: KIND_DESCRIPTIONS[k],
-            question=f"What is `{app.name}`? (the survey "
-            + (f"says {app.kind}" if app.provenance.get("kind") == "detected" else "could not tell")
-            + "; Enter keeps that)",
+        option = next(
+            (action.option_strings[0] for action in parser._actions if action.dest == dest),
+            f"--{dest.replace('_', '-')}",
         )
-        # Keeping `application` confirms only that nobody knows, so the record stays `unrecorded`, not `confirmed`.
-        if kind != app.kind:
-            app = with_override(app, kind=kind)
-        elif app.provenance.get("kind") == "detected":
-            app = confirmed(app, "kind")
-        print(f"`{verify} verify` would run these for `{app.name}`, one per Make target:")
-        for target, command in (app.commands or {}).items():
-            print(f"  {target:<12} {command or '(none recorded)'}")
-        if not all((app.commands or {}).values()):
-            print("  A target with none recorded is a written no: verify passes it with a line saying so.")
-        missing = missing_wrapper(root, app)
-        if missing:
-            tool, script, _ = WRAPPERS[missing]
-            print(
-                f"  (there is no {script} here: adopt writes the {tool} Wrapper beside the build file, so these run "
-                f"with a JDK and no {tool} installed)"
-            )
-        if prompt_yes_no("Keep these commands? (n asks about each target in turn)", True):
-            app = confirmed(app, "commands")
-        else:
-            commands = {}
-            for target in TARGETS:
-                current = (app.commands or {}).get(target) or None
-                answer = ask(f"  {target} command (Enter keeps what is shown, `-` records none)", current)
-                commands[target] = None if answer in (None, "-") else answer
-            app = with_override(app, commands=commands)
-        purpose = ask(
-            f"What does `{app.name}` own? (a sentence or two, for the docs and the agent; Enter leaves it blank)"
+        given.append(option)
+    return given
+
+
+def next_report(root: Path) -> str:
+    """`--next` in a repository the method was installed around: the sequence, as the tree has it now."""
+    document = read_manifest(root, "slipwai adopt --next")
+    adoption = adoption_of(document)
+    if adoption is None:
+        raise GenerationError(
+            "this project was generated, not adopted, so there is no adoption sequence to stand in: a generated "
+            "project's next steps are its README, and every row of its map is at the top by construction"
         )
-        if purpose:
-            app = with_override(app, purpose=purpose)
-        kept.append(app)
-    print()
-    database: dict = {}
-    infrastructure: dict = {}
-    homes = (("Database schema", "schema", database), ("Deployment infrastructure", "home", infrastructure))
-    for label, key, record in homes:
-        chosen = prompt_choice(
-            label, list(HOMES), str(proposal[key]), lambda home: HOME_DESCRIPTIONS[home], question=HOME_QUESTIONS[key]
-        )
-        record[key] = chosen
-        record["provenance"] = "confirmed" if chosen == proposal[key] else "overridden"
-        if chosen == "elsewhere":
-            record["repository"] = ask("Which repository owns it? (URL or path)")
-    forge = prompt_choice(
-        "CI forge", list(FORGES), str(proposal["forge"]), lambda f: FORGE_DESCRIPTIONS[f],
-        question="Where does this repository's CI run? (decides what shape the gate's CI configuration can take)",
-    )
-    ci = {"forge": forge, "provenance": "confirmed" if forge == proposal["forge"] else "overridden"}
-    release = prompt_choice(
-        "Release path", list(RELEASE_PATHS), proposal["release"] or "unknown", lambda r: RELEASE_DESCRIPTIONS[r],
-        question="How does a change reach production today? (the survey "
-        + (f"says {proposal['release']}" if proposal["release"] else "found nothing that says") + ")",
-    )
-    if release == "unknown":
-        release_record = {"path": "unknown", "provenance": "unrecorded"}
-    else:
-        provenance = "confirmed" if release == proposal["release"] else "overridden"
-        release_record = {"path": release, "provenance": provenance}
-    why = ask("Why is this work happening? (the business trigger, recorded in docs/adoption.md; Enter to skip)")
-    return kept, database, infrastructure, ci, release_record, why
+    return next_steps.report(root, layout_of(document), adoption, apps_from_manifest(document, True))
 
 
 def adopt_main(argv: list[str]) -> None:
@@ -203,6 +96,45 @@ def adopt_main(argv: list[str]) -> None:
         "--refresh", action="store_true",
         help="in an adopted repository: survey again, refresh what was only detected, report what disagrees with "
         "what a person decided, and regenerate what the record drives (what /survey runs)",
+    )
+    parser.add_argument(
+        "--next", action="store_true", dest="next_steps",
+        help="in an adopted repository: say where it stands in the sequence adopt started — what is done, what is "
+        "next, and why — read off the tree rather than remembered from the report",
+    )
+    parser.add_argument(FLAG, action="store_true", dest="experimental_intro", help=HELP)
+    parser.add_argument(
+        "--confirm", action="append", default=[], metavar="NAME",
+        help="in an adopted repository: a candidate the survey found that is an application, recorded as one "
+        "with `confirmed` provenance; the describing flags below apply to it, and everything the record "
+        "drives is regenerated. Repeatable (what /ground calls once it has read the directory)",
+    )
+    parser.add_argument(
+        "--decline", action="append", default=[], metavar="NAME",
+        help="in an adopted repository: a candidate that is not an application. It is dropped, and nothing is "
+        "recorded in its place. Repeatable",
+    )
+    parser.add_argument(
+        "--as", action="append", default=[], dest="renamed", metavar="NAME=NEW",
+        help="confirm a candidate under a name of your own, rather than the directory's",
+    )
+    parser.add_argument(
+        "--integration", default=None, metavar="AGENT",
+        help="which coding agent gets the skills and commands, by its key in the agent registry (default: the "
+        "harness this ran from, or the one the tree already reads; neither, and ./init keeps its own question)",
+    )
+    init = parser.add_mutually_exclusive_group()
+    init.add_argument(
+        "--init", action="store_true", dest="run_init", default=None,
+        help="run ./<delivery>/init once the adoption is committed, rather than leaving it as the next step. "
+        "It reaches Spec Kit's source, so it needs the network; what it writes is left for you to commit",
+    )
+    init.add_argument(
+        # `default=None` on both halves, so that "nobody said" is one value rather than two: a store_false
+        # defaulting to True and a store_true defaulting to None share `run_init`, and whichever argparse
+        # applied last decided what unset looked like.
+        "--no-init", action="store_false", dest="run_init", default=None,
+        help="do not run ./<delivery>/init (default)",
     )
     parser.add_argument("--name", default=None, help="the project's name (default: the directory's)")
     parser.add_argument("--profile", choices=CATALOG["profiles"], default="standard")
@@ -247,16 +179,48 @@ def adopt_main(argv: list[str]) -> None:
     )
     args = parser.parse_args(argv)
     root = Path.cwd()
+    reshaped = reshaped_intro(args.experimental_intro)
+    if args.next_steps:
+        try:
+            print(next_report(root))
+        except GenerationError as error:
+            parser.error(str(error))
+        return
+    if args.confirm or args.decline:
+        stray = ignored_by_settling(args, parser)
+        if stray:
+            parser.error(
+                f"{', '.join(stray)} describe(s) the adoption itself, and this run settles a candidate that "
+                "was already recorded — it would be read and thrown away. `slipwai adopt` takes them when "
+                "the method is installed; `--integration` afterwards belongs to `./init`."
+            )
+        try:
+            settled = confirming.confirm(root, confirmations(args), args.decline)
+        except GenerationError as error:
+            parser.error(str(error))
+        print(confirming.report(settled))
+        # Confirming changes which languages the record names, which rewrites the skills the harness copies.
+        where = layout_of(read_manifest(root)).delivery
+        print(projection_line(reproject(root, where), where), end="")
+        return
     if args.refresh:
         try:
             refreshed = resurvey.refresh(root)
         except GenerationError as error:
             parser.error(str(error))
         print(resurvey.report(refreshed))
+        where = layout_of(read_manifest(root)).delivery
+        print(projection_line(reproject(root, where), where), end="")
         return
     try:
         name = args.name or root.name.lower()
         validate_project_name(name)
+        # Before the survey and before a single question: this refuses a directory that is not a Git
+        # repository, one already holding a `project.json`, and one with uncommitted changes. `adopt` checks
+        # again when it writes, because it is a library function and its contract is its own — but finding
+        # out afterwards meant surveying twelve thousand files and answering the interview first, and then
+        # being told none of it could be kept. A refusal belongs before the work it refuses, not after.
+        check_repository(root)
         found = survey(root)
         apps = proposed(found, name)
         if not apps:
@@ -270,15 +234,46 @@ def adopt_main(argv: list[str]) -> None:
         ci: dict = {}
         release: dict = {}
         why = args.why
-        if not args.yes:
+        # Under the reshaped intro nothing is wrapped by this command: the directories the survey found are
+        # recorded as candidates, and what each of them is stays a question until somebody with the code in
+        # front of them answers it (ADR 0003). `--yes` is the exception it has always been — it confirms every
+        # one of them unlooked-at, which is what an unattended run is for, and the report says so out loud.
+        candidates: list[dict] = []
+        if reshaped and not args.yes:
             if not sys.stdin.isatty():
                 raise GenerationError(NOTHING_TO_ASK)
-            apps, database, infrastructure, ci, release, asked_why = interview(root, apps, proposal, args.delivery)
+            candidates = candidates_of(found, name)
+            ci = shape(candidates, proposal)
+            apps = []
+        elif not args.yes:
+            if not sys.stdin.isatty():
+                raise GenerationError(NOTHING_TO_ASK)
+            apps, database, infrastructure, ci, release, asked_why = interview(
+                root, apps, proposal, args.delivery, reshaped
+            )
             why = why or asked_why
         apps = [app for app in apps if app.name not in args.skip]
-        if not apps:
+        candidates = [row for row in candidates if row["name"] not in args.skip]
+        if not apps and not candidates:
             raise GenerationError(NOTHING_LEFT)
-        known = {app.name for app in apps}
+        known = {app.name for app in apps} or {row["name"] for row in candidates}
+        # A flag that describes an application has nothing to describe while every directory is a candidate:
+        # it would be read, validated against the candidate names, and then quietly do nothing, because the
+        # loops below walk `apps`. Refused by name instead, pointing at the command that does take them.
+        if candidates:
+            describing = [
+                flag for flag, given in
+                (("--language", args.language), ("--purpose", args.purpose), ("--kind", args.kind),
+                 ("--command", args.command), ("--hexagonal", args.hexagonal))
+                if given
+            ]
+            if describing:
+                raise GenerationError(
+                    f"{', '.join(describing)} describe(s) an application, and under the reshaped intro this "
+                    "command records what the survey found as candidates rather than wrapping any of them. "
+                    "`slipwai adopt --confirm <name>` takes the same flags and makes a candidate an "
+                    "application; `--yes` here confirms every candidate as found."
+                )
         given_names = (
             *(("language", g) for g in args.language), *(("purpose", g) for g in args.purpose),
             *(("command", g) for g in args.command), *(("hexagonal", g) for g in args.hexagonal),
@@ -331,8 +326,25 @@ def adopt_main(argv: list[str]) -> None:
             release = {"path": args.release, "provenance": "overridden" if args.release != "unknown" else "unrecorded"}
         home = (infrastructure or {}).get("home", proposal["home"])
         target = args.target or ("none" if home == "none" else "existing")
-        answers = Answers(name, args.profile, target, args.delivery, why, apps, database, infrastructure, ci, release)
+        if args.integration is not None and args.integration not in keys():
+            raise GenerationError(
+                f"--integration names `{args.integration}`, and the agent registry has no such harness; "
+                f"`python3 {args.delivery}/scripts/agents/project.py --list` lists them once the method is here"
+            )
+        agent = chosen(args.integration) if args.integration else detect(root)
+        answers = Answers(
+            name, args.profile, target, args.delivery, why, apps, database, infrastructure, ci, release,
+            agent=agent.record(), candidates=candidates,
+        )
         done = adopt(root, answers, found)
     except GenerationError as error:
         parser.error(str(error))
-    print(report(done))
+    # `./init` reaches Spec Kit's source, so it is the one step that needs the network, and it leaves files for
+    # the person to commit. Off unless asked, and asked for by default only where somebody is sitting at the
+    # terminal under the reshaped intro — which is the case the wall of `Next:` lines was written for. Decided
+    # before the report is printed, because the report says something different when it is about to happen.
+    running_init = args.run_init if args.run_init is not None else (reshaped and not args.yes)
+    print(report(done, running_init))
+    print(agent_line(agent))
+    if running_init:
+        run_init(root, args.delivery, agent)

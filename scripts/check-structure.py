@@ -33,15 +33,15 @@ PACKAGE = ROOT / "src/slipwai"
 # a hand-kept sub-tier list would be a second place to update every time a part is added.
 TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # Where the factory's own material is, how a refusal is raised, how a version string reads, what the
-    # entry for the release in flight is made of, and what a project's name becomes in each ecosystem's
-    # namespace.
-    ("foundation", ("assets", "errors", "versions", "changelog", "naming")),
+    # entry for the release in flight is made of, what a project's name becomes in each ecosystem's
+    # namespace, and which half-built shape a run has opted into.
+    ("foundation", ("assets", "errors", "versions", "changelog", "naming", "experimental")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what a snippet resolves to, what differs
-    # per backend language and where each backend answers its two probes — and what a build ecosystem's
-    # files say, for a repository the factory did not make.
+    # per backend language and where each backend answers its two probes — what a build ecosystem's
+    # files say, for a repository the factory did not make, and which coding agent reads what is written.
     ("contract", ("catalog", "axes", "features", "extensions", "targets", "examples", "backends", "images",
-                  "ecosystems", "probes")),
+                  "ecosystems", "probes", "harness")),
     # One validated answer per axis, which applications a project has, what they add up to being able to do,
     # how a written manifest reads back into that list, how a canonical toolkit file reaches a project, where
     # the delivery material lives — and the build wrapper a wrapped Java application runs through, written
@@ -52,12 +52,13 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # One module per part of the repository being generated.
     ("parts", ("project",)),
     # The whole of a project, assembled and written — one more service added to one that exists — and the
-    # whole of it again, from a newer factory, as a commit the existing one can merge, that merge made, and
-    # what the merge could not do said out loud.
+    # whole of it again, from a newer factory, as a commit the existing one can merge, that merge made, what
+    # the merge could not do said out loud, and where an adoption stands in the sequence it was given.
     ("assembly", ("scaffold", "add_service", "replay", "migrate", "catch_up", "adopt", "adopt_report", "resurvey",
-                  "converge")),
+                  "converge", "next_steps", "confirm")),
     # The command line, and the entry point the executable is built from.
-    ("edge", ("cli", "cli_add", "cli_adopt", "cli_prompts", "preflight", "upgrade", "__main__")),
+    ("edge", ("cli", "cli_add", "cli_adopt", "cli_confirm", "cli_init", "cli_interview", "cli_prompts", "preflight",
+              "upgrade", "__main__")),
     # The package's own `__init__`: last, so it may name anything and nothing may name it.
     ("package", ("__init__",)),
 )

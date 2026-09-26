@@ -61,3 +61,25 @@ ratchet-tighten: ## Re-record the lint, typecheck and test baselines from the cu
 .PHONY: smoke
 smoke: ## Start each application by its recorded smoke command and prove it answers (ci runs it; verify does not)
 {smoke_lines(wrapped, layout)}{test_full}"""
+
+
+GATE = """verify: {dependencies} ## Full deterministic pre-commit gate
+\t@echo
+\t@echo 'verify: all gates passed'"""
+# An adopted repository between `adopt` and its first confirmed candidate holds no application at all
+# (ADR 0003), and a gate with nothing to hold is not a gate that passes — it is one that has not been given
+# its subject yet. A green `verify` over zero applications is the false assurance the candidate state exists
+# to prevent, so it refuses and names what turns a candidate into an application. No generated project
+# reaches this: `generate` makes a service.
+NOTHING_CONFIRMED = """verify: ## Refuses until a candidate has been confirmed as an application
+\t@echo 'verify: nothing is confirmed as an application here, so there is nothing to hold to a gate.'
+\t@echo '  project.json lists what the survey found under `candidates`; confirming one makes it an'
+\t@echo '  application and regenerates this Makefile with its build in the gate.'
+\t@echo '  /ground, in the agent, asks about each; `slipwai adopt --confirm <name>` does it without one.'
+\t@exit 1"""
+
+
+def gate_target(apps: list[App], dependencies: str) -> str:
+    """The `verify` rule: the gate over `dependencies`, or the refusal that stands in for it while nothing
+    is confirmed."""
+    return GATE.format(dependencies=dependencies) if apps else NOTHING_CONFIRMED

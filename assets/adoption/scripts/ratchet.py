@@ -13,7 +13,9 @@ never makes anything else fail, and `make ratchet-tighten` re-records the curren
 A finding is a line of the command's output that names a file in this repository *at a position* — `src/a.js:3:7`,
 `Foo.cs(3,7)` — which is how every linter and type checker reports one; the position is then dropped, so that
 editing above a known finding does not make it look new, and a line that merely mentions a file (`> node
-lint.js`) is not a finding. A test runner names the test rather than a file — `--- FAIL: TestX`, `not ok 3 - adds`,
+lint.js`) is not a finding. A path is resolved against the directory the build runs in as well as the root —
+`project.json` records it, and a wrapped application's commands usually start `cd <its directory> &&` — and
+recorded root-relative either way, so a finding compares the same however the tool that printed it spelled it. A test runner names the test rather than a file — `--- FAIL: TestX`, `not ok 3 - adds`,
 `FAILED tests/test_a.py::test_b`, Surefire's `[ERROR]   ShopTest.adds:42` — and each of those is a finding too,
 `test: <name>`, so that a second failure beside a known one is new and named. Where a red command's output has
 neither, this cannot tell new findings from old: the exit code is compared instead, and the report says so. A
@@ -88,9 +90,37 @@ ROOT = project_root(SCRIPT)
 BASELINE = SCRIPT.parents[1] / "baseline.json"
 
 
-def findings_in(output: str, root: Path) -> list[str]:
+def application_directory(application: str) -> Path:
+    """Where this application's build runs, as `project.json` records it — the repository root for one at `.`.
+
+    A tool prints the paths it found relative to the directory it ran in, and a wrapped application's build
+    usually runs in its own: `cd admin-dev/themes/new-theme && npm exec -- tsc`. Resolving those against the
+    repository root alone found nothing, so every finding in every application not at the root was invisible
+    and the run fell back to comparing the exit code — which passes a second error tomorrow exactly as it
+    passed the first. That is the ratchet not doing the one thing it exists for, silently, on precisely the
+    repositories it was written for.
+    """
+    manifest = ROOT / "project.json"
+    if not manifest.is_file():
+        return ROOT
+    try:
+        recorded = json.loads(manifest.read_text()).get("deployables", {}).get(application, {}).get("path")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return ROOT
+    if not isinstance(recorded, str) or recorded in ("", "."):
+        return ROOT
+    directory = (ROOT / recorded).resolve()
+    return directory if directory.is_dir() else ROOT
+
+
+def findings_in(output: str, root: Path, where: Path | None = None) -> list[str]:
     """Every line of `output` that names a file in the repository at a position, positions dropped, and every failed
-    test a runner names (`test: <name>`), once each."""
+    test a runner names (`test: <name>`), once each.
+
+    `where` is the directory the command ran in, where that is not the root. A path is looked for under the
+    root first and under `where` second, and either way the key is written root-relative, so a finding reads
+    and compares the same however the tool that reported it spelled it.
+    """
     found: list[str] = []
     for line in output.splitlines():
         if NOT_A_FINDING.match(line):
@@ -100,9 +130,18 @@ def findings_in(output: str, root: Path) -> list[str]:
         def replace(match: re.Match[str]) -> str:
             nonlocal names_a_file
             path = match.group("path")
-            if match.group("position") and (root / path).is_file():
+            if not match.group("position"):
+                return match.group(0)
+            if (root / path).is_file():
                 names_a_file = True
                 return path
+            if where is not None and (where / path).is_file():
+                try:
+                    spelled = (where / path).resolve().relative_to(root).as_posix()
+                except ValueError:  # the command reached outside the repository; not ours to hold
+                    return match.group(0)
+                names_a_file = True
+                return spelled
             return match.group(0)
 
         key = " ".join(LOCATION.sub(replace, line).split())
@@ -172,7 +211,7 @@ def main(argv: list[str]) -> int:
             write_baseline(baseline)
         return 0
 
-    findings = findings_in(output, ROOT)
+    findings = findings_in(output, ROOT, application_directory(application))
     baseline = read_baseline()
     entry = baseline.get(application, {}).get(target)
     if entry is None or os.environ.get("RATCHET_TIGHTEN"):

@@ -62,7 +62,12 @@ class SurveyTest(unittest.TestCase):
             self.assertEqual(shop.commands["install"], "npm ci")
             self.assertEqual(shop.commands["lint"], "npm run lint")
             self.assertEqual(shop.commands["test"], "npm run test")
-            self.assertEqual(shop.commands["typecheck"], "npm exec -- tsc --noEmit", "TypeScript with no script: tsc")
+            self.assertEqual(
+                shop.commands["typecheck"], "npm exec -- tsc --noEmit --skipLibCheck",
+                "TypeScript with no script of its own gets tsc — and `--skipLibCheck`, because a bare run is "
+                "red on dependencies that ship disagreeing types, which the project cannot fix and the "
+                "ratchet would baseline as a blanket excuse for the whole check",
+            )
             self.assertEqual(shop.commands["audit"], "npm audit --audit-level=critical")
             for target in ("integration", "adversarial", "mutation"):
                 self.assertIsNone(shop.commands[target], f"{target} has no answer here, and none is invented")

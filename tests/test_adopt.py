@@ -31,9 +31,14 @@ OWN = {
 }
 
 
-def slipwai(repo: Path, *arguments: str) -> subprocess.CompletedProcess:
+def slipwai(repo: Path, *arguments: str, environment: dict | None = None) -> subprocess.CompletedProcess:
+    """The command, run in `repo`. `environment` replaces this process's own, for the suites that care what a
+    run was started from — which harness set what is how `harness.py` tells."""
+    # `env=None` is subprocess's own word for "inherit this process's", which is what every caller but the
+    # harness-detection suite wants.
     return subprocess.run(
-        [str(ROOT / "slipwai"), *arguments], cwd=repo, text=True, capture_output=True, stdin=subprocess.DEVNULL
+        [str(ROOT / "slipwai"), *arguments], cwd=repo, text=True, capture_output=True, stdin=subprocess.DEVNULL,
+        env=environment,
     )
 
 

@@ -91,12 +91,27 @@ def preconditions(rows: list[dict], strategy: str) -> list[str]:
     return found
 
 
+def expired_products(products: list[dict]) -> list[dict]:
+    """Each product past its end of life, once.
+
+    The platform record holds a row per *application* per product, so a repository whose four npm packages all
+    run the same Node has four rows saying the same thing — and the strategy page listed the same sentence four
+    times, under `because` and again under `before`. What the reader needs is the products, and a product is
+    its title and version however many applications run it.
+    """
+    seen: dict[tuple[str, str], dict] = {}
+    for product in products:
+        if product.get("status") != "end-of-life":
+            continue
+        seen.setdefault((str(product.get("title")), str(product.get("version"))), product)
+    return list(seen.values())
+
+
 def platform_before(products: list[dict]) -> list[str]:
     """What the tree says about the platform, as a precondition: every product past its end of life, and the essay's
     option for each. Rungs 1 and 2 of the ladder come first whatever the strategy, so this leads the `before` list."""
     return [
-        f"the platform in support — {phrase(p)}; the way up is {option(p)}" for p in products
-        if p.get("status") == "end-of-life"
+        f"the platform in support — {phrase(p)}; the way up is {option(p)}" for p in expired_products(products)
     ]
 
 
@@ -105,8 +120,7 @@ def recommend(why: str | None, rows: list[dict], products: list[dict] = ()) -> d
     `products` is the platform record's list: a product out of support is a platform problem the tree names, which
     goes before any strategy `why` names, and is the recommendation itself where `why` names none."""
     behind = platform_before(list(products))
-    tree_says = [f"the tree names a platform problem: {phrase(p)}" for p in products
-                 if p.get("status") == "end-of-life"]
+    tree_says = [f"the tree names a platform problem: {phrase(p)}" for p in expired_products(list(products))]
     platform_stop = next(stop for kind, _, _, stop in TRIGGERS if kind == "platform")
     if not why:
         if behind:

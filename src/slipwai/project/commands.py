@@ -9,6 +9,7 @@ from ..targets import managed
 from .add_commands import add_command_files
 from .adversary import adversary_command
 from .benchmark import benchmark_command, what_each_stage_costs
+from .catch_up_command import catch_up_files
 from .converge_stage import convergence_stage
 from .cruise import cruise_command, cruise_settings_command
 from .cruise_seat import cruise_status_command, cruise_stop_command, cruise_tell_command, cruise_watch_command
@@ -344,4 +345,5 @@ def command_files(
         "commands/benchmark.md": benchmark_command(layout),
     }
     files.update(add_command_files(apps, target))
+    files.update(catch_up_files(apps, target))
     return files

@@ -14,7 +14,7 @@ from ..probes import HEALTH_PATH
 from ..services import App, containers_of, services_of, web_apps, wrapped_of
 from ..targets import managed
 from ..tooling import app_tooling, service_qualifier, verify_path
-from .adopted_targets import adoption_targets
+from .adopted_targets import adoption_targets, gate_target
 from .agent_targets import agent_targets
 from .compose import composed
 from .flags import flag_gate, flag_gate_dependency
@@ -176,6 +176,7 @@ def makefile(project_name: str, profile: str, apps: list[App], target: str = "no
     verify_dependencies += flag_gate_dependency(target) + role_dependency
     if wrapped_of(apps):
         verify_dependencies += " check-convergence"
+    verify_target = gate_target(apps, verify_dependencies)
     # Which of each service's answers brings a suite the Docker-free gate cannot run, and which one has
     # migrations to apply, are traits the options declare in `catalog.json` and are read per service.
     integrating = any(s.selection.integration_feature is not None for s in services)
@@ -321,7 +322,5 @@ audit: ## Run the ecosystem-native dependency vulnerability audit
 \t{native['audit']}
 
 .PHONY: verify ci
-verify: {verify_dependencies} ## Full deterministic pre-commit gate
-\t@echo
-\t@echo 'verify: all gates passed'
+{verify_target}
 {document_gate}{ci_targets}{production_section}{adoption_targets(apps, layout)}"""

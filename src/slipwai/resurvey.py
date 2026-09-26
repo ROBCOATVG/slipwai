@@ -154,14 +154,19 @@ def reconciled_home(record: dict, key: str, proposed: str, what: str, done: Refr
     return record
 
 
-def refresh(root: Path) -> Refreshed:
-    """Survey again, reconcile, regenerate what the record drives, and rewrite the survey page."""
+def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
+    """Survey again, reconcile, regenerate what the record drives, and rewrite the survey page.
+
+    `clean_checked` is for a caller that has already refused an unclean tree and has since written to it on
+    purpose — `confirm`, which edits `project.json` and then needs every file the record drives to follow.
+    """
     document = read_manifest(root, verb="adopt --refresh")
     adoption = adoption_of(document)
     if adoption is None:
         raise GenerationError("this project was generated, not adopted, so there is nothing to re-survey")
-    refuse_uncommitted(root)
-    apps = apps_from_manifest(document)
+    if not clean_checked:
+        refuse_uncommitted(root)
+    apps = apps_from_manifest(document, allow_empty=True)
     layout = layout_of(document)
     found = survey(root)
     done = Refreshed()
@@ -191,9 +196,15 @@ def refresh(root: Path) -> Refreshed:
     release = reconciled_home(recorded_release, "path", release_path, "release", done)
     # The evidence lists are the tree's own and follow it; the homes above are the answers.
     refreshed_facts = facts(found, _answers(document, database, infrastructure, ci, release), layout)
+    # `candidates` and `agent` are carried, not re-derived: a re-survey reads the tree, and neither is a fact
+    # about the tree. A candidate is a question nobody has answered yet and an answered one is gone from the
+    # list; which agent gets the material is `./init`'s. Rebuilding the record without them left `project.json`
+    # holding two candidates while the `/ground` it regenerated had dropped the section that asks about them —
+    # a generated file disagreeing with the record it is generated from, which is the one thing this must not do.
     after_adoption = Adoption(
         adoption.why, refreshed_facts.database, refreshed_facts.infrastructure, refreshed_facts.survey,
         ci=refreshed_facts.ci, release=refreshed_facts.release,
+        candidates=list(adoption.candidates), agent=dict(adoption.agent),
     )
     # Quick wins are read from the tree again: what was fixed is said, and what remains stays on the survey page.
     was = {w.get("where") for w in (adoption.survey or {}).get("quickWins") or []}
@@ -306,6 +317,9 @@ def _answers(document: dict, database: dict, infrastructure: dict, ci: dict, rel
     return Answers(
         document["name"], document["profile"], document["target"], layout_of(document).delivery,
         document.get("why"), [], database, infrastructure, ci, release,
+        # Which coding agent the material is projected into is not a fact about the tree, so a re-survey does
+        # not re-read it: it is carried exactly as recorded, and `./init --integration` is what changes it.
+        agent=document.get("agent", {}),
     )
 
 

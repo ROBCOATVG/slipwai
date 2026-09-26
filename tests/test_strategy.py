@@ -215,3 +215,51 @@ class StrategyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OneProductOneLineTest(unittest.TestCase):
+    """The platform record holds a row per application per product, so a repository whose four npm packages
+    all run the same Node produced four identical sentences under `because` and four more under `before` —
+    seen on the first real monorepo this met. A reader needs the products, not the applications running them."""
+
+    def test_one_runtime_four_applications_is_one_reason_and_one_precondition(self) -> None:
+        from slipwai.strategy import expired_products, platform_before, recommend
+
+        products = [
+            {"app": name, "title": "Node.js", "version": "20", "product": "node", "cycle": "20",
+             "status": "end-of-life", "eol": "2026-04-30"}
+            for name in ("legacy-bo-theme", "new-theme", "ui-tests", "core-theme-js")
+        ]
+        self.assertEqual([(p["title"], p["version"]) for p in expired_products(products)], [("Node.js", "20")])
+        self.assertEqual(len(platform_before(products)), 1)
+        recommended = recommend(None, [], products)
+        self.assertEqual(
+            sum(1 for line in recommended["because"] if "Node.js 20" in line), 1,
+            "the reason is the runtime, however many applications run it",
+        )
+        self.assertEqual(sum(1 for line in recommended["before"] if "Node.js 20" in line), 1)
+
+    def test_two_runtimes_past_their_end_of_life_are_still_two_lines(self) -> None:
+        from slipwai.strategy import expired_products
+
+        products = [
+            {"app": "web", "title": "Node.js", "version": "20", "product": "node", "cycle": "20",
+             "status": "end-of-life", "eol": "2026-04-30"},
+            {"app": "api", "title": "PHP", "version": "8.1", "product": "php", "cycle": "8.1",
+             "status": "end-of-life", "eol": "2025-12-31"},
+            {"app": "web2", "title": "Node.js", "version": "20", "product": "node", "cycle": "20",
+             "status": "end-of-life", "eol": "2026-04-30"},
+        ]
+        self.assertEqual(
+            [(p["title"], p["version"]) for p in expired_products(products)],
+            [("Node.js", "20"), ("PHP", "8.1")],
+            "deduped by product and version, in the order the record first names them",
+        )
+
+    def test_a_runtime_only_nearing_its_end_of_life_is_not_a_precondition(self) -> None:
+        from slipwai.strategy import expired_products
+
+        self.assertEqual(expired_products([
+            {"app": "api", "title": "PHP", "version": "8.2", "product": "php", "cycle": "8.2",
+             "status": "ending", "eol": "2026-12-31"},
+        ]), [], "`ending` is a date to watch, not a rung the tree says is below")

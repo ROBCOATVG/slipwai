@@ -236,8 +236,9 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_catalog.py' -v   #
 [`architecture-decisions`](../assets/toolkit/skills/architecture-decisions/SKILL.md) skill asks of a generated
 project: Nygard's five sections, one file per decision, numbered in order and never renumbered, and superseded
 rather than edited once accepted. The test is the skill's — a decision is recorded when reversing it would cost
-a migration rather than a refactor — and here that mostly means the shape of something a generated project
-persists, because a project's log is the one thing no version of this factory can migrate for it.
+a migration rather than a refactor — and here that mostly means the shape of something a project persists:
+a generated project's log, which is the one thing no version of this factory can migrate for it, and what an
+adopted one records about the code that was already there.
 
 - [`0001-a-dcb-capable-log.md`](adr/0001-a-dcb-capable-log.md) — the log records tags in a derived index, so a
   Dynamic Consistency Boundary stays available to a project that later wants one; stream-per-aggregate stays
@@ -246,6 +247,11 @@ persists, because a project's log is the one thing no version of this factory ca
   declares what its append is guarded by (`stream` or a tag `guard`), what it folds must be what that guard
   covers, and an event's identifying attributes are modelled while the tags derived from them are not.
   Completes the half `0001` recorded as owed.
+- [`0003-a-wrapped-application-begins-as-a-candidate.md`](adr/0003-a-wrapped-application-begins-as-a-candidate.md)
+  — the terminal asks only what a terminal can answer and the coding agent confirms the rest
+  against the code; a buildable directory the survey finds is recorded as a candidate rather than a
+  deployable, and `verify` refuses until somebody has confirmed one. Experimental with the rest of adoption
+  (#74).
 
 ## Browse the starters
 

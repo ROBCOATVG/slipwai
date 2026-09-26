@@ -25,10 +25,12 @@ from . import resurvey
 from .adopt import wrapped_app
 from .ecosystems import EXTRA, TARGETS
 from .errors import GenerationError
+from .layout import layout_of
 from .manifest import read_manifest
 from .origin import WRAPPED_KINDS, adoption_of
 from .services import App
 from .survey import toolchain_as
+from .uncommitted import refuse_foreign
 
 
 @dataclass(frozen=True)
@@ -119,7 +121,7 @@ def confirm(root: Path, confirming: dict[str, dict], declining: list[str]) -> Co
             "this repository has no outstanding candidates — every buildable directory the survey found has "
             "been confirmed or declined. `slipwai adopt --refresh` reports one that has appeared since."
         )
-    resurvey.refuse_uncommitted(root)
+    refuse_foreign(root, resurvey.writes(root, layout_of(document)), "`slipwai adopt --confirm`")
     named = [*confirming, *declining]
     for name in named:
         candidate_named(candidates, name)

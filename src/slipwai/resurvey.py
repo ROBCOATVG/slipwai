@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -24,7 +23,7 @@ from .adopt import STRUCTURE_PAGE, SURVEY_PAGE, facts
 from .adopt_report import survey_page
 from .convergence import reconciled
 from .errors import GenerationError
-from .layout import layout_of
+from .layout import Layout, layout_of
 from .manifest import apps_from_manifest, read_manifest, wrote_here
 from .origin import Adoption, adoption_of
 from .platform import with_platform
@@ -37,6 +36,7 @@ from .strategy import with_recommendation
 from .structure import structure
 from .survey import Survey, survey
 from .toolkit import executable_paths
+from .uncommitted import refuse_foreign, stamp
 from .wrappers import wrapper_lines, write_wrappers
 
 
@@ -56,13 +56,11 @@ class Refreshed:
     wrappers: list[str] = field(default_factory=list)
 
 
-def refuse_uncommitted(root: Path) -> None:
-    status = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True, check=False)
-    if status.returncode == 0 and status.stdout.strip():
-        raise GenerationError(
-            "this repository has uncommitted changes; commit or stash them first, so that `git checkout .` and "
-            "`git clean -fd` undo exactly what the re-survey wrote and nothing else"
-        )
+def writes(root: Path, layout: Layout) -> set[str]:
+    """Every path a refresh may write or remove: the factory's listing, and the pages the record drives."""
+    listing = root / layout.under(WRITTEN)
+    listed = set(listing.read_text().split()) if listing.is_file() else set()
+    return listed | {layout.under(page) for page in (SURVEY_PAGE, STRUCTURE_PAGE, "docs/convergence.md")}
 
 
 def reconciled_app(app: App, found: Survey, done: Refreshed) -> App:
@@ -157,17 +155,17 @@ def reconciled_home(record: dict, key: str, proposed: str, what: str, done: Refr
 def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
     """Survey again, reconcile, regenerate what the record drives, and rewrite the survey page.
 
-    `clean_checked` is for a caller that has already refused an unclean tree and has since written to it on
+    `clean_checked` is for a caller that has already made the check and has since written to the tree on
     purpose — `confirm`, which edits `project.json` and then needs every file the record drives to follow.
     """
     document = read_manifest(root, verb="adopt --refresh")
     adoption = adoption_of(document)
     if adoption is None:
         raise GenerationError("this project was generated, not adopted, so there is nothing to re-survey")
-    if not clean_checked:
-        refuse_uncommitted(root)
-    apps = apps_from_manifest(document, allow_empty=True)
     layout = layout_of(document)
+    if not clean_checked:
+        refuse_foreign(root, writes(root, layout), "`slipwai adopt --refresh`")
+    apps = apps_from_manifest(document, allow_empty=True)
     found = survey(root)
     done = Refreshed()
     updated = [reconciled_app(app, found, done) if not app.generated else app for app in apps]
@@ -307,6 +305,7 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
         done.rewritten.append(relative)
+    stamp(root, (set(after) - owned) | writes(root, layout))  # what a later answer may write over as its own
     return done
 
 

@@ -103,9 +103,6 @@ class PinTest(FactoryTestCase):
             (repo / "infra/main.tf").write_text("# tf\n")
             (repo / "tools/reports").mkdir(parents=True)
             (repo / "tools/reports/go.mod").write_text("module reports\n\ngo 1.22\n")
-            dirty = slipwai(repo, "adopt", "--refresh")
-            self.assertNotEqual(dirty.returncode, 0)
-            self.assertIn("uncommitted changes", dirty.stderr)
             git(repo, "add", "-A")
             git(repo, "-c", "user.name=t", "-c", "user.email=t@local", "commit", "-q", "-m", "grows")
 

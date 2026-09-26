@@ -12,6 +12,7 @@ from pathlib import Path
 from support import FactoryTestCase
 from test_adopt import slipwai
 from test_candidates import adopted, commit, record
+from test_replay import git
 
 
 class ConfirmTest(FactoryTestCase):
@@ -136,13 +137,21 @@ class ConfirmTest(FactoryTestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("one of them is the answer", result.stderr)
 
-    def test_it_refuses_an_unclean_tree_so_that_what_it_wrote_can_be_undone(self) -> None:
+    def test_it_refuses_only_where_it_would_write_over_somebodys_uncommitted_change(self) -> None:
+        """A stray file of the person's own is nothing this writes, so it does not stop the answer; a hand edit
+        to the gate it regenerates would be lost, so that does — and the refusal names the file."""
         with tempfile.TemporaryDirectory() as directory:
             repo = adopted(Path(directory))
-            (repo / "stray.txt").write_text("mine\n")
+            with (repo / "delivery/Makefile").open("a") as makefile:
+                makefile.write("# mine\n")
             result = slipwai(repo, "adopt", "--confirm", "shop")
             self.assertEqual(result.returncode, 2)
-            self.assertIn("uncommitted changes", result.stderr)
+            self.assertIn("`delivery/Makefile`", result.stderr)
+            self.assertIn("not what slipwai left there", result.stderr)
+            git(repo, "checkout", "delivery/Makefile")
+            (repo / "stray.txt").write_text("mine\n")
+            self.assertEqual(slipwai(repo, "adopt", "--confirm", "shop").returncode, 0)
+            self.assertEqual((repo / "stray.txt").read_text(), "mine\n")
 
     def test_a_generated_project_has_no_candidates_to_confirm(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

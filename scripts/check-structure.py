@@ -48,7 +48,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # where its repository has none.
     ("answers", ("selection", "services", "capabilities", "manifest", "tooling", "toolkit", "layout", "survey",
                  "delivery_facts", "origin", "wrappers", "convergence", "structure", "platform", "strategy",
-                 "quick_wins", "programme")),
+                 "quick_wins", "programme", "uncommitted")),
     # One module per part of the repository being generated.
     ("parts", ("project",)),
     # The whole of a project, assembled and written — one more service added to one that exists — and the

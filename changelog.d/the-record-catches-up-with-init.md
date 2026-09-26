@@ -13,7 +13,7 @@ own, and the strongest one: a person answered `./init`, so it is recorded `confi
 the environment a run started in and what the tree reads, which are readings rather than answers. A record
 that already names a harness is left alone, and one a person overrode is never moved by a later step.
 
-Found by running the reshaped intro over PrestaShop, whose tree reads for Claude Code, GitHub Copilot and
+Found by running the candidate intro over PrestaShop, whose tree reads for Claude Code, GitHub Copilot and
 Gemini CLI at once — which is the case the ambiguity rule was written for, and the first time it has been met
 in the wild.
 

@@ -33,9 +33,9 @@ PACKAGE = ROOT / "src/slipwai"
 # a hand-kept sub-tier list would be a second place to update every time a part is added.
 TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # Where the factory's own material is, how a refusal is raised, how a version string reads, what the
-    # entry for the release in flight is made of, what a project's name becomes in each ecosystem's
-    # namespace, and which half-built shape a run has opted into.
-    ("foundation", ("assets", "errors", "versions", "changelog", "naming", "experimental")),
+    # entry for the release in flight is made of, and what a project's name becomes in each ecosystem's
+    # namespace.
+    ("foundation", ("assets", "errors", "versions", "changelog", "naming")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what a snippet resolves to, what differs
     # per backend language and where each backend answers its two probes — what a build ecosystem's

@@ -1,11 +1,11 @@
 """`slipwai adopt`: the verb's flags, and what it does with the answers however they arrive.
 
 Experimental (`AGENTS.md` says what the word means here). Run at the root of a repository the factory
-did not make. Bare, in a terminal, it surveys the tree and asks about each thing it found with the found
-value as the default — `cli_interview` is those questions — where Enter confirms it (`confirmed`) and another
-answer overrides it (`overridden`). With `--yes` nothing is asked and every proposal stands as `detected`;
-flags override single answers either way, and a flag is always `overridden`. Outside a terminal without
-`--yes` it refuses rather than guessing.
+did not make. Bare, in a terminal, it surveys the tree, shows every directory that builds as a candidate, asks
+the one thing a terminal can answer — where CI runs — and leaves which candidate is an application to `/ground`,
+which asks with the code in front of it (ADR 0003; `cli_interview.shape`). With `--yes` nothing is asked and
+every proposal is wrapped as `detected`, unlooked-at, and flags override single answers, always `overridden`.
+Outside a terminal without `--yes` it refuses rather than guessing.
 
 Two readings of an adoption that has already happened share the verb, because they are the same record read
 again rather than a second thing to learn: `--refresh` reconciles a fresh survey with what was recorded, and
@@ -23,11 +23,10 @@ from .adopt import Answers, adopt, candidates_of, check_repository, proposed, re
 from .catalog import CATALOG
 from .cli_confirm import confirmations
 from .cli_init import agent_line, projection_line, reproject, run_init
-from .cli_interview import NOTHING_TO_ASK, interview, shape, with_override
+from .cli_interview import NOTHING_TO_ASK, shape, with_override
 from .cli_prompts import validate_project_name
 from .ecosystems import EXTRA, TARGETS
 from .errors import GenerationError
-from .experimental import FLAG, HELP, reshaped_intro
 from .harness import chosen, detect, keys
 from .layout import layout_of
 from .manifest import apps_from_manifest, read_manifest
@@ -44,7 +43,7 @@ NOTHING_LEFT = "every application the survey found was skipped or left unwrapped
 # What `--confirm` and `--decline` have no use for: every flag that describes the adoption itself rather than
 # the candidate being settled. Passed alongside one, each was read, ignored and never mentioned — `adopt
 # --confirm shop --integration cursor` looked like it recorded a harness and recorded nothing. A flag that
-# silently does nothing is worse than one that is refused, which is the rule the reshaped intro already
+# silently does nothing is worse than one that is refused, which is the rule the intro already
 # applies to the flags that describe an application.
 SETTLING_IGNORES = (
     "yes", "refresh", "next_steps", "experimental_intro", "integration", "run_init", "name", "profile",
@@ -102,7 +101,10 @@ def adopt_main(argv: list[str]) -> None:
         help="in an adopted repository: say where it stands in the sequence adopt started — what is done, what is "
         "next, and why — read off the tree rather than remembered from the report",
     )
-    parser.add_argument(FLAG, action="store_true", dest="experimental_intro", help=HELP)
+    # The switch the candidate intro arrived behind, before it was the only one: accepted and ignored for one
+    # release, so a script or a habit that still passes it keeps working. Hidden, because it now chooses nothing.
+    parser.add_argument("--experimental-intro", action="store_true", dest="experimental_intro",
+                        help=argparse.SUPPRESS)
     parser.add_argument(
         "--confirm", action="append", default=[], metavar="NAME",
         help="in an adopted repository: a candidate the survey found that is an application, recorded as one "
@@ -126,15 +128,16 @@ def adopt_main(argv: list[str]) -> None:
     init = parser.add_mutually_exclusive_group()
     init.add_argument(
         "--init", action="store_true", dest="run_init", default=None,
-        help="run ./<delivery>/init once the adoption is committed, rather than leaving it as the next step. "
-        "It reaches Spec Kit's source, so it needs the network; what it writes is left for you to commit",
+        help="run ./<delivery>/init once the adoption is committed (the default in a terminal; under --yes it is "
+        "the next step instead). It reaches Spec Kit's source, so it needs the network; what it writes is left "
+        "for you to commit",
     )
     init.add_argument(
         # `default=None` on both halves, so that "nobody said" is one value rather than two: a store_false
         # defaulting to True and a store_true defaulting to None share `run_init`, and whichever argparse
         # applied last decided what unset looked like.
         "--no-init", action="store_false", dest="run_init", default=None,
-        help="do not run ./<delivery>/init (default)",
+        help="do not run ./<delivery>/init; leave it as the next step (the default under --yes)",
     )
     parser.add_argument("--name", default=None, help="the project's name (default: the directory's)")
     parser.add_argument("--profile", choices=CATALOG["profiles"], default="standard")
@@ -179,7 +182,6 @@ def adopt_main(argv: list[str]) -> None:
     )
     args = parser.parse_args(argv)
     root = Path.cwd()
-    reshaped = reshaped_intro(args.experimental_intro)
     if args.next_steps:
         try:
             print(next_report(root))
@@ -234,24 +236,17 @@ def adopt_main(argv: list[str]) -> None:
         ci: dict = {}
         release: dict = {}
         why = args.why
-        # Under the reshaped intro nothing is wrapped by this command: the directories the survey found are
+        # Nothing is wrapped by this command: the directories the survey found are
         # recorded as candidates, and what each of them is stays a question until somebody with the code in
         # front of them answers it (ADR 0003). `--yes` is the exception it has always been — it confirms every
         # one of them unlooked-at, which is what an unattended run is for, and the report says so out loud.
         candidates: list[dict] = []
-        if reshaped and not args.yes:
+        if not args.yes:
             if not sys.stdin.isatty():
                 raise GenerationError(NOTHING_TO_ASK)
             candidates = candidates_of(found, name)
             ci = shape(candidates, proposal)
             apps = []
-        elif not args.yes:
-            if not sys.stdin.isatty():
-                raise GenerationError(NOTHING_TO_ASK)
-            apps, database, infrastructure, ci, release, asked_why = interview(
-                root, apps, proposal, args.delivery, reshaped
-            )
-            why = why or asked_why
         apps = [app for app in apps if app.name not in args.skip]
         candidates = [row for row in candidates if row["name"] not in args.skip]
         if not apps and not candidates:
@@ -269,7 +264,7 @@ def adopt_main(argv: list[str]) -> None:
             ]
             if describing:
                 raise GenerationError(
-                    f"{', '.join(describing)} describe(s) an application, and under the reshaped intro this "
+                    f"{', '.join(describing)} describe(s) an application, and this "
                     "command records what the survey found as candidates rather than wrapping any of them. "
                     "`slipwai adopt --confirm <name>` takes the same flags and makes a candidate an "
                     "application; `--yes` here confirms every candidate as found."
@@ -341,9 +336,9 @@ def adopt_main(argv: list[str]) -> None:
         parser.error(str(error))
     # `./init` reaches Spec Kit's source, so it is the one step that needs the network, and it leaves files for
     # the person to commit. Off unless asked, and asked for by default only where somebody is sitting at the
-    # terminal under the reshaped intro — which is the case the wall of `Next:` lines was written for. Decided
+    # terminal — which is the case the wall of `Next:` lines was written for. Decided
     # before the report is printed, because the report says something different when it is about to happen.
-    running_init = args.run_init if args.run_init is not None else (reshaped and not args.yes)
+    running_init = args.run_init if args.run_init is not None else not args.yes
     print(report(done, running_init))
     print(agent_line(agent))
     if running_init:

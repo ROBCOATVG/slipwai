@@ -1,8 +1,8 @@
 """`commands/ground.md`: the questions the tree cannot answer, asked by the agent of the person, one row at a time.
 
 Brownfield adoption (experimental as `AGENTS.md` defines the word). The survey places every row of the
-convergence map it can from a file, and leaves the rest `unrecorded` — a question, not a default. `adopt`'s own
-interview asks a few of those questions in the terminal, and `adopt --yes` asks none. This is the question set
+convergence map it can from a file, and leaves the rest `unrecorded` — a question, not a default. `adopt` asks
+only where CI runs in the terminal, and `adopt --yes` asks nothing. This is the question set
 proper, run by the coding agent after `./init` and before the first slice, and again whenever `/drive` enters at
 Ground with a row it needs unplaced: the rung meanings and the survey's evidence in front of the person, one
 question at a time, the answer written where the record keeps it with `confirmed` provenance and the person's

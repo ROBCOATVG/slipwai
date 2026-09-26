@@ -1,8 +1,8 @@
 MINOR
 
-**Under `--experimental-intro`, `slipwai adopt` no longer wraps anything: every buildable directory the survey
-finds is recorded as a candidate, and which of them is an application is answered by the coding agent, with
-the code in front of it.** [ADR 0003](docs/adr/0003-a-wrapped-application-begins-as-a-candidate.md) has the reasoning and
+**`slipwai adopt` no longer wraps anything in a terminal: every buildable directory the survey finds is
+recorded as a candidate, and which of them is an application is answered by the coding agent, with the code in
+front of it.** [ADR 0003](docs/adr/0003-a-wrapped-application-begins-as-a-candidate.md) has the reasoning and
 the evidence. `Wrap it as the application …? [Y/n]` defaults to yes and is asked of somebody who has not read
 the directory; on the first real monorepo this met, that wrapped three asset bundles and a test suite as
 applications, under names taken from their directories, with every `purpose` left blank — and there was no way
@@ -26,8 +26,11 @@ a candidate with nothing recorded in its place. **`--next`** names confirming as
 `--yes` stays the unattended path it has always been: it confirms every candidate as found, and the report now
 says plainly that nobody looked.
 
-Default off. Without `--experimental-intro` (or `SLIPWAI_EXPERIMENTAL_INTRO=1`) `adopt` asks exactly what it
-asked before, wraps what it always wrapped, and writes no `candidates` key.
+This is the only intro. The per-directory interview it replaces — wrap it? language? kind? these commands?
+what does it own? the schema, the infrastructure, the release path, why — is gone, and in a terminal `adopt`
+now runs `./<delivery>/init` once its commit is made unless `--no-init` says otherwise. It arrived behind
+`--experimental-intro` and `SLIPWAI_EXPERIMENTAL_INTRO=1` while it was being built; the flag is still accepted
+and chooses nothing, so a script that passes it keeps working, and the variable is no longer read.
 
 **Catch-up.** Nothing. A repository adopted before this has its applications in `deployables` already, which is
 confirmation by an earlier factory and is left alone; it has no `candidates` key, which reads as an adoption

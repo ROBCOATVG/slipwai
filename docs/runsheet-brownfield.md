@@ -37,14 +37,12 @@ runs. The gate runs the commands your build already has, so it needs what those 
 | # | Where | Command | Done when |
 |---|---|---|---|
 | 1.1 | terminal | `git status` | nothing to commit. `adopt` refuses a tree that is not clean |
-| 1.2 | terminal | `slipwai adopt --experimental-intro --integration claude --init` | it prints the list of directories that build, and asks the one question about your CI |
+| 1.2 | terminal | `slipwai adopt --integration claude` | it prints the list of directories that build, and asks the one question about your CI |
 | 1.3 | terminal | `git add -A && git commit -m "Install Spec Kit"` | `git status` is clean |
 
 - **1.2: the flags.**
-  - `--experimental-intro` is the adopt flow this runsheet describes. It stays needed until that flow
-    becomes the default.
   - `--integration claude` names your coding agent. Use the key for yours.
-  - `--init` runs `./delivery/init` once the adoption is committed. That needs the network.
+  - It then runs `./delivery/init` for you, which needs the network. `--no-init` leaves that to you.
 - **1.2: what it writes.** The adoption is one commit, and `git reset --hard HEAD^` undoes exactly that
   commit.
   - The method lives under `delivery/`.

@@ -87,7 +87,7 @@ class ConfirmTest(FactoryTestCase):
 
     def test_a_flag_that_describes_the_adoption_is_refused_rather_than_thrown_away(self) -> None:
         """`adopt --confirm shop --integration cursor` looked like it recorded a harness and recorded
-        nothing: the flag was read, ignored, and never mentioned. The same rule the reshaped intro already
+        nothing: the flag was read, ignored, and never mentioned. The same rule the intro already
         applies to flags that describe an application."""
         with tempfile.TemporaryDirectory() as directory:
             repo = adopted(Path(directory))

@@ -33,7 +33,7 @@ flowchart TB
 
   subgraph A["Adopted — installed around code that existed"]
     direction TB
-    A1["slipwai adopt<br/>survey, ask with findings as defaults — what each directory is, which forge, how a release ships — wrap under delivery/, never over their files"]
+    A1["slipwai adopt<br/>survey, show every directory that builds as a candidate, ask which forge — write under delivery/, never over their files"]
     A2["./delivery/init<br/>Spec Kit for the agent; the convergence map is already written, by adopt"]
     A3["make verify<br/>green on day one through the ratchet baseline; a red test suite is quarantined and said"]
     subgraph AL["once per slice — /drive, with adoption phases"]
@@ -74,10 +74,9 @@ flowchart TB
 ## Adopted
 
 1. **`slipwai adopt`** at the root of a clean Git repository. The survey finds every buildable directory with
-   its commands, the CI, containers, schema and infrastructure the tree carries; each finding is a question
-   with the finding as its default, and the three the tree only sometimes answers — what each directory is,
-   which forge runs CI, how a change reaches production today — are asked, proposed only from a file that says,
-   and recorded as `unrecorded` where nothing does. The gate's CI configuration is written for the forge found,
+   its commands, the CI, containers, schema and infrastructure the tree carries. Each buildable directory is
+   recorded as a candidate, not an application — `/ground` asks which is one, with the code read — and the
+   terminal asks only which forge runs CI; what the tree does not say is recorded as `unrecorded`. The gate's CI configuration is written for the forge found,
    or not at all. Beside the survey it writes the architecture view, `delivery/survey/structure.md`: where
    anything starts, what depends on what (from CodeGraph's index where there is one), where change happens.
    [Adopt an existing repository](adopting.md).

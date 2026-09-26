@@ -17,9 +17,7 @@ was told `` `cd` is not on PATH here `` above a list of all fifteen of their tar
 really was missing a line among them. The tools a command runs are now every shell segment's program, past
 any leading `VAR=value`, and never one of the shell's own words.
 
-**`slipwai adopt --experimental-intro` turns on the reshaped adoption intro while it is being built.** The
-questions a terminal cannot answer well — what a directory is, what it is called, what it owns — are being
-moved to the coding agent, which can read the code before asking. The switch (or `SLIPWAI_EXPERIMENTAL_INTRO=1`)
-is how to walk that shape before it is the only one; today it removes the first of them, the language, which
-the line above it has already printed and which `--language NAME=LANGUAGE` still corrects. Default off:
-without it the interview asks exactly what it asked before. Experimental within an experiment (#74).
+**The questions a terminal cannot answer well move to the coding agent, which can read the code before
+asking.** What a directory is, what it is called, what it owns, and first of all the language, which the line
+above it had already printed. The candidate state is what finished the move; see the entry that introduces
+it.

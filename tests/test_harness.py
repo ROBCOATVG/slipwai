@@ -182,7 +182,7 @@ class EveryHarnessReachesTest(FactoryTestCase):
         repo = repository(Path(directory), "shop", {
             "package.json": json.dumps({"name": "shop", "scripts": {"lint": "eslint ."}}),
         })
-        done = slipwai(repo, "adopt", "--yes", "--experimental-intro", "--no-init", environment=BARE)
+        done = slipwai(repo, "adopt", "--yes", "--no-init", environment=BARE)
         self.assertEqual(done.returncode, 0, done.stderr)
         return repo
 

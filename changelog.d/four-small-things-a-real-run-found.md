@@ -3,7 +3,7 @@ PATCH
 **A flag that describes the adoption is refused on a `--confirm` or `--decline` run, rather than read and
 thrown away.** `slipwai adopt --confirm shop --integration cursor` looked like it recorded a coding agent and
 recorded nothing: the settling path never reads those flags. It now names each one and says where it belongs —
-`--integration` after the method is installed is `./init`'s. The same rule the reshaped intro already applies
+`--integration` after the method is installed is `./init`'s. The same rule the intro already applies
 to flags that describe an application, and nothing that previously worked stops working: a flag that did
 nothing now says so.
 

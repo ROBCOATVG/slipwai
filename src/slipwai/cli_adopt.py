@@ -293,7 +293,7 @@ def adopt_main(argv: list[str]) -> None:
                     raise GenerationError(f"--{flag} takes NAME={field.upper()}, not {given!r}")
                 if field == "kind" and value not in WRAPPED_KINDS:
                     raise GenerationError(f"--kind takes one of {', '.join(WRAPPED_KINDS)}, not {value!r}")
-                apps = [with_override(app, **{field: value}) if app.name == target else app for app in apps]
+                apps = [with_override(root, app, **{field: value}) if app.name == target else app for app in apps]
         for given in args.command:
             named, separator, command = given.partition("=")
             app_name, colon, target = named.partition(":")
@@ -302,12 +302,12 @@ def adopt_main(argv: list[str]) -> None:
                     f"--command takes NAME:TARGET=COMMAND with a target among {', '.join((*TARGETS, *EXTRA))}"
                 )
             apps = [
-                with_override(app, commands={**(app.commands or {}), target: None if command == "-" else command})
+                with_override(root, app, commands={**(app.commands or {}), target: None if command == "-" else command})
                 if app.name == app_name else app
                 for app in apps
             ]
         for declared in args.hexagonal:
-            apps = [with_override(app, structure="hexagonal") if app.name == declared else app for app in apps]
+            apps = [with_override(root, app, structure="hexagonal") if app.name == declared else app for app in apps]
         if args.database:
             database = {"schema": args.database, "provenance": "overridden"}
         if args.database_repository:

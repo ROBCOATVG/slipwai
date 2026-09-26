@@ -92,18 +92,18 @@ def reconciled_app(app: App, found: Survey, done: Refreshed) -> App:
     if fresh.found.packaging:
         toolchain["packaging"] = fresh.found.packaging
     recorded = dict(app.toolchain or {})
-    # The ecosystem, kind and packaging are the tree's. The version is the one fact a person can know and the tree
-    # not — the first real adoption's Spring 3.2 WAR pinned nothing, and every refresh reset a confirmed `8` to
-    # nothing — so under `provenance.toolchain` it stands, and a tree that later pins another is a disagreement.
-    if app.provenance.get("toolchain", "detected") != "detected":
-        pinned = toolchain.get("version", "")
-        toolchain["version"] = recorded.get("version", "")
-        if pinned and pinned != toolchain["version"]:
-            done.disagreements.append(
-                f"{app.name}: toolchain.version was {app.provenance['toolchain']} as "
-                f"{json.dumps(toolchain['version'])}, and `{fresh.found.evidence}` now pins {json.dumps(pinned)}; "
-                "the record stands until you decide"
-            )
+    # A settled toolchain stands whole, as `language` and `commands` do — keeping only its version left a
+    # directory confirmed `python` with `kind: node` for ever — and a settled language brings its own.
+    settled, said = app.provenance.get("toolchain", "detected"), app.provenance.get("language", "detected")
+    if settled != "detected" or (said != "detected" and app.language != fresh.found.language):
+        for field in sorted({*toolchain, *recorded}):
+            read, stands = toolchain.get(field, ""), recorded.get(field, "")
+            if read and read != stands:  # a field the tree newly reads differently, named on its own
+                done.disagreements.append(
+                    f"{app.name}: toolchain.{field} was {settled if settled != 'detected' else said} as "
+                    f"{json.dumps(stands)}, and `{fresh.found.evidence}` now says {json.dumps(read)}"
+                )
+        toolchain = recorded or toolchain
     if recorded != toolchain:
         changes["toolchain"] = toolchain
         done.refreshed.append(f"{app.name}: toolchain refreshed from `{fresh.found.evidence}`")

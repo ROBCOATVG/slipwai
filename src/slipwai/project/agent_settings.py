@@ -29,8 +29,14 @@ def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
     starts the runner and ends), never see them. The other harnesses' equivalents, where one exists, are the
     registry's `compaction` and `hooks` rows, and `scripts/agents/project.py` writes those hook files.
     """
-    script = layout.under("scripts/agents/cruise.py")
-    index = layout.under("scripts/agents/code_index.py")
+    # `$CLAUDE_PROJECT_DIR` because a hook runs with whatever directory the session happens to be in, and
+    # these paths are relative to the repository root. A session opened in a subdirectory — or one whose
+    # tools changed directory — ran `python3 delivery/scripts/agents/cruise.py` against a path that is not
+    # there, and the hook failed silently rather than doing its job. The scripts already find the root from
+    # their own location; it was only the command that launches them that assumed one.
+    here = "$CLAUDE_PROJECT_DIR/"
+    script = here + layout.under("scripts/agents/cruise.py")
+    index = here + layout.under("scripts/agents/code_index.py")
     return {
         "PreCompact": [{"hooks": [{"type": "command", "command": f"python3 {script} compacting"}]}],
         "SessionStart": [{"matcher": "compact", "hooks": [{"type": "command", "command": f"python3 {script} resume"}]},
@@ -70,7 +76,6 @@ def compaction_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
 # `git push *` itself has to stay, because the ladder's own push after a rebase is the lease-guarded one,
 # `git push --force-with-lease=refs/heads/slice/<id>: origin HEAD:...`, which a narrower prefix could not name.
 TOOLKIT_PERMISSIONS = [
-    "python3 scripts/*",
     "scripts/codegraph *",
     "git status",
     "git status *",
@@ -137,6 +142,11 @@ def claude_settings(apps: list[App], target: str = "none", layout: Layout = AT_R
         "make test",
         "make check-constitution",
         "make constitution-requirements",
+        # The toolkit's own scripts, by both the paths they are reached by: the one a session in the root
+        # types, and the `$CLAUDE_PROJECT_DIR` one this file's own hooks issue. Under `delivery/` where the
+        # method was installed beside an existing codebase — a flat `python3 scripts/*` named nothing there.
+        f"python3 {layout.under('scripts')}/*",
+        f"python3 $CLAUDE_PROJECT_DIR/{layout.under('scripts')}/*",
     ] + TOOLKIT_PERMISSIONS + native
     # Of the family: whether npm is already approved is a property of the language, not of
     # whichever framework owns startup.

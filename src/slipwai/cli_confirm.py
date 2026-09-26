@@ -40,7 +40,10 @@ def confirmations(args: argparse.Namespace) -> dict[str, dict]:
         app_name, colon, target = named.partition(":")
         if not separator or not colon:
             raise GenerationError("--command takes NAME:TARGET=COMMAND")
-        commands.setdefault(app_name, {})[target] = None if command == "-" else command
+        # `-` and an empty value both mean "record none": `--command app:test=` is what a shell leaves when
+        # a variable is unset, and recording the empty string there wrote a command that runs nothing and
+        # reads as one somebody chose.
+        commands.setdefault(app_name, {})[target] = None if command in ("-", "") else command
     described = {*languages, *purposes, *kinds, *renames, *commands, *args.hexagonal}
     stray = sorted(described - set(args.confirm))
     if stray:

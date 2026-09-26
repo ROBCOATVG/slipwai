@@ -139,6 +139,33 @@ class RefusingGateTest(FactoryTestCase):
             self.assertNotIn("nothing is confirmed as an application here", makefile)
 
 
+    def test_a_command_that_needs_an_application_names_the_candidates_instead_of_the_generic_refusal(self) -> None:
+        """`./init` says to run `slipwai add-frontend web`, and between `adopt` and the first confirmed
+        candidate there is nothing for a frontend to sit beside. "project.json names no deployables, so
+        there is nothing to add a service to" is true and useless: it is the same sentence a manifest that
+        names none gets, and nothing in it says that confirming is the step that was missed."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            result = slipwai(repo, "add-frontend", "web")
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("records no application yet", result.stderr)
+            self.assertIn("3 buildable directories", result.stderr)
+            self.assertIn("shop", result.stderr)
+            self.assertIn("slipwai adopt --confirm", result.stderr)
+            self.assertNotIn("nothing to add a service to", result.stderr)
+
+    def test_the_generic_refusal_still_stands_where_there_are_no_candidates_either(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            manifest = repo / "project.json"
+            document = json.loads(manifest.read_text())
+            document.pop("candidates")
+            manifest.write_text(json.dumps(document, indent=2))
+            result = slipwai(repo, "add-frontend", "web")
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("nothing to add a service to", result.stderr)
+
+
 class RefreshCarriesTheRecordTest(FactoryTestCase):
     """A re-survey reads the tree, and neither the outstanding candidates nor the chosen agent is a fact about
     the tree. Rebuilding the record without them left `project.json` holding two candidates while the

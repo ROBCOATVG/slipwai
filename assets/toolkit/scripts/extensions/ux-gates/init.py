@@ -52,6 +52,13 @@ def project_root(script: Path, depth: int) -> Path:
 
 
 ROOT = project_root(Path(__file__).resolve(), 3)
+
+# Where `./init` actually is, from the repository root: beside this script's own tree at the root in a
+# generated project, and under `layout.delivery` where the method was installed beside an existing codebase.
+# Derived rather than written, because "run `./init --extension …`" is advice nobody can follow when the
+# file is `./delivery/init` — the first real adoption to meet it typed `./init` four times.
+DELIVERY = Path(__file__).resolve().parents[3]
+INIT = "./init" if DELIVERY == ROOT else f"./{DELIVERY.relative_to(ROOT).as_posix()}/init"
 MARKER_BEGIN = "<!-- extension:ux-gates:begin -->"
 MARKER_END = "<!-- extension:ux-gates:end -->"
 GUIDANCE = f"""
@@ -182,7 +189,7 @@ def main() -> int:
             "installed and AGENTS.md is unchanged.\n"
             "Add one first, then adopt it here:\n"
             "  slipwai add-frontend web\n"
-            "  ./init --extension ux-gates",
+            f"  {INIT} --extension ux-gates",
             file=sys.stderr,
         )
         return 0
@@ -191,7 +198,7 @@ def main() -> int:
             "`npx` was not found, so the ux-ui-agent-skills kit was not installed and AGENTS.md is "
             "unchanged.\n"
             "Install Node.js, then adopt it here, which is what points the agent at it:\n"
-            "  ./init --extension ux-gates",
+            f"  {INIT} --extension ux-gates",
             file=sys.stderr,
         )
         return 0
@@ -206,7 +213,7 @@ def main() -> int:
         print(
             f"`npx ux-ui-agent-skills@{KIT_VERSION} init` exited {installed.returncode}: AGENTS.md is "
             "unchanged.\nFix what it reported, then adopt it here:\n"
-            "  ./init --extension ux-gates",
+            f"  {INIT} --extension ux-gates",
             file=sys.stderr,
         )
         return 0
@@ -215,7 +222,7 @@ def main() -> int:
             f"The installer did not write {KIT_DIR}/scripts/lint_hardcodes.py, so AGENTS.md is unchanged.\n"
             f"This script knows ux-ui-agent-skills {KIT_VERSION}; a newer kit may lay its files out "
             "differently. Pin the version, or update this script, then:\n"
-            "  ./init --extension ux-gates",
+            f"  {INIT} --extension ux-gates",
             file=sys.stderr,
         )
         return 0

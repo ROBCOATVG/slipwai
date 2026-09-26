@@ -179,7 +179,8 @@ class CodeIndexHealthTest(FactoryTestCase):
         with tempfile.TemporaryDirectory() as directory:
             repo, env, log = self.indexed(directory, "opened")
             settings = json.loads((repo / ".claude/settings.json").read_text())
-            hook = {"type": "command", "timeout": 900, "command": "python3 scripts/agents/code_index.py session"}
+            hook = {"type": "command", "timeout": 900,
+                    "command": "python3 $CLAUDE_PROJECT_DIR/scripts/agents/code_index.py session"}
             self.assertIn({"matcher": "startup", "hooks": [hook]}, settings["hooks"]["SessionStart"])
             session = ["python3", "scripts/agents/code_index.py", "session"]
             quiet = subprocess.run(session, cwd=repo, env={**os.environ, **env}, text=True, capture_output=True)
@@ -223,10 +224,11 @@ class CodeIndexHealthTest(FactoryTestCase):
             repo, env, _ = self.indexed(directory, "guarded")
             settings = json.loads((repo / ".claude/settings.json").read_text())
             self.assertIn({"matcher": "Grep|Bash|mcp__codegraph__.*", "hooks": [
-                {"type": "command", "command": "python3 scripts/agents/code_index.py guard"}]},
+                {"type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/scripts/agents/code_index.py guard"}]},
                 settings["hooks"]["PreToolUse"])
             self.assertEqual(settings["hooks"]["PostToolUse"], [{"matcher": "Agent|Task", "hooks": [
-                {"type": "command", "command": "python3 scripts/agents/code_index.py sync"}]}])
+                {"type": "command",
+                 "command": "python3 $CLAUDE_PROJECT_DIR/scripts/agents/code_index.py sync"}]}])
             self.assertIn("Bash(scripts/codegraph *)", settings["permissions"]["allow"])
 
             refused = self.guard(repo, env, "Bash", {"command": 'grep -rn "decideCue" apps/'}, agent="a1")

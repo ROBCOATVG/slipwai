@@ -42,8 +42,10 @@ class CruiseStopHookTest(FactoryTestCase):
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "stopping", "standard", "python")
             settings = json.loads((repo / ".claude/settings.json").read_text())
-            self.assertEqual(settings["hooks"]["Stop"],
-                             [{"hooks": [{"type": "command", "command": "python3 scripts/agents/cruise.py stopping"}]}])
+            # `$CLAUDE_PROJECT_DIR`: a hook runs in whatever directory the session is in, and this path is
+            # the repository root's. A session opened in a subdirectory ran it against a path that is not there.
+            self.assertEqual(settings["hooks"]["Stop"], [{"hooks": [
+                {"type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/scripts/agents/cruise.py stopping"}]}])
             enable(repo)
             checkpoint = repo / CHECKPOINT
             transcript = Path(directory) / "transcript.jsonl"

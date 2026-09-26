@@ -138,6 +138,38 @@ class NextStepsTest(FactoryTestCase):
             self.assertIn("2 of 2 application(s) have no `smoke` recorded", result.stdout)
             self.assertIn("shop, sub", result.stdout)
 
+    def test_the_sequence_runs_to_the_loop_rather_than_stopping_at_a_ready_repository(self) -> None:
+        """It used to end at the strategy ADR — a repository wrapped, gated and asked to do nothing. The
+        first person to take it end to end had to be told the rest in chat. The constitution comes before
+        the first spec, because `check-constitution` fails the moment `specs/` exists over the template."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = repository(Path(directory), "shop", NODE)
+            self.assertEqual(slipwai(repo, "adopt", "--yes").returncode, 0)
+            lines = [line.strip() for line in slipwai(repo, "adopt", "--next").stdout.splitlines()]
+            named = [line.split(": ", 1)[1].split(" —")[0] for line in lines if line[:5] in ("now: ", "then:", "done:")]
+            for step in ("/speckit-constitution, in the agent", "/speckit-specify, in the agent",
+                         "/drive, in the agent", "`make -f delivery/Makefile cruise`"):
+                self.assertIn(step, named)
+            self.assertLess(named.index("/speckit-constitution, in the agent"),
+                            named.index("/speckit-specify, in the agent"), "the template fails the gate after")
+            self.assertLess(named.index("/drive, in the agent"), named.index("`make -f delivery/Makefile cruise`"),
+                            "worth watching once before anything runs it unattended")
+
+    def test_a_constitution_is_not_ratified_in_a_repository_that_has_no_spec_kit_yet(self) -> None:
+        """The template is gone when it has been written over — and also when `./init` has never run, which
+        is how the first reading of this reported a constitution ratified in a tree with no `.specify/`."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = repository(Path(directory), "shop", NODE)
+            self.assertEqual(slipwai(repo, "adopt", "--yes", "--no-init").returncode, 0)
+            self.assertFalse((repo / ".specify").exists() and (repo / ".specify/memory").exists())
+            before = slipwai(repo, "adopt", "--next").stdout
+            self.assertNotIn("done: /speckit-constitution", before)
+            (repo / ".specify/memory").mkdir(parents=True, exist_ok=True)
+            (repo / ".specify/memory/constitution.md").write_text("# Constitution\n\n[PRINCIPLE_1_NAME]\n")
+            self.assertNotIn("done: /speckit-constitution", slipwai(repo, "adopt", "--next").stdout)
+            (repo / ".specify/memory/constitution.md").write_text("# Constitution\n\nI. Every change is tested.\n")
+            self.assertIn("done: /speckit-constitution", slipwai(repo, "adopt", "--next").stdout)
+
     def test_a_generated_project_is_refused_because_it_stands_in_no_such_sequence(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = self.generate(Path(directory), "shop")

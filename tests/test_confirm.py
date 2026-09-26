@@ -107,6 +107,28 @@ class ConfirmTest(FactoryTestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("storefront", record(repo)["deployables"])
 
+    def test_an_empty_command_records_none_rather_than_a_command_that_runs_nothing(self) -> None:
+        """`--command shop:test=` is what a shell leaves behind when a variable is unset, and `/ground`
+        builds these lines from what it read. Recording `""` wrote a target that runs nothing and reads as
+        one somebody chose; `-` and empty are the same written no."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            result = slipwai(repo, "adopt", "--confirm", "shop", "--command", "shop:test=")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIsNone(record(repo)["deployables"]["shop"]["commands"]["test"])
+            self.assertIn("(none recorded — a written no)", result.stdout)
+
+    def test_the_report_says_which_command_each_target_was_vouched_for_with(self) -> None:
+        """Confirming takes the survey's reading of every command not named on the command line and records
+        it as somebody's word. What was just vouched for is said out loud rather than left in project.json."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            result = slipwai(repo, "adopt", "--confirm", "shop")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("install      npm install", result.stdout)
+            self.assertIn("lint         npm run lint", result.stdout)
+            self.assertIn("typecheck    (none recorded — a written no)", result.stdout)
+
     def test_confirming_and_declining_the_same_candidate_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = adopted(Path(directory))

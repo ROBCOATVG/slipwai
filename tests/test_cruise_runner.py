@@ -240,10 +240,10 @@ echo "cruise: continue\"""")
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "compact", "standard", "python")
             settings = json.loads((repo / ".claude/settings.json").read_text())
-            resume_hook = {"type": "command", "command": "python3 scripts/agents/cruise.py resume"}
+            here = "python3 $CLAUDE_PROJECT_DIR/scripts/agents/cruise.py"  # a hook's directory is not the root's
+            resume_hook = {"type": "command", "command": f"{here} resume"}
             self.assertEqual(settings["hooks"]["SessionStart"][0], {"matcher": "compact", "hooks": [resume_hook]})
-            self.assertEqual(settings["hooks"]["PreCompact"][0]["hooks"][0]["command"],
-                             "python3 scripts/agents/cruise.py compacting")
+            self.assertEqual(settings["hooks"]["PreCompact"][0]["hooks"][0]["command"], f"{here} compacting")
             ignored = (repo / ".gitignore").read_text()
             for state in (CHECKPOINT, STOP_FILE, RUNNER_PID, RUNNER_LOG, LAST_RESPONSE, INBOX, TOLD):
                 self.assertIn(state + "\n", ignored)

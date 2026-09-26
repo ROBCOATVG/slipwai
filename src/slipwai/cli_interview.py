@@ -15,6 +15,7 @@ from .errors import GenerationError
 from .layout import Layout
 from .origin import FORGES, HOMES, RELEASE_PATHS, WRAPPED_KINDS
 from .services import App
+from .survey import toolchain_as
 from .wrappers import WRAPPERS, missing_wrapper
 
 NOTHING_TO_ASK = "nothing to ask on; pass --yes to accept the survey, with flags for what to change"
@@ -66,13 +67,23 @@ def ask(question: str, default: str | None = None) -> str | None:
     return answer or default
 
 
-def with_override(app: App, **changes: object) -> App:
-    """The application with some fields changed, and those fields' provenance saying so."""
+def with_override(root: Path, app: App, **changes: object) -> App:
+    """The application with some fields changed, and those fields' provenance saying so.
+
+    A spoken language brings its own toolchain, where the tree has one to bring: the survey reads a directory
+    once, by the first ecosystem that recognises it, and saying the language is Python says which of the builds
+    there is the application's. Leaving the toolchain as read left `kind: node` under `language: python`, and
+    `kind` is what CI installs.
+    """
+    brought = toolchain_as(root, app.path, str(changes["language"])) if "language" in changes else None
+    if brought and brought != dict(app.toolchain or {}):  # unchanged is nobody's word, and stays the tree's
+        changes.setdefault("toolchain", brought)
     provenance = {**app.provenance, **{name: "overridden" for name in changes}}
     return App(
         app.name, app.path, str(changes.get("kind", app.kind)), str(changes.get("language", app.language)), None, 0,
         generated=False, commands=changes.get("commands", app.commands),  # type: ignore[arg-type]
-        toolchain=app.toolchain, purpose=changes.get("purpose", app.purpose),  # type: ignore[arg-type]
+        toolchain=changes.get("toolchain", app.toolchain),  # type: ignore[arg-type]
+        purpose=changes.get("purpose", app.purpose),  # type: ignore[arg-type]
         structure=changes.get("structure", app.structure),  # type: ignore[arg-type]
         provenance=provenance,
     )
@@ -117,7 +128,8 @@ def interview(
             continue
         if not reshaped:
             language = ask("Language", app.language)
-            app = confirmed(app, "language") if language == app.language else with_override(app, language=language)
+            said = language != app.language
+            app = with_override(root, app, language=language) if said else confirmed(app, "language")
         kind = prompt_choice(
             "Kind", list(WRAPPED_KINDS), app.kind, lambda k: KIND_DESCRIPTIONS[k],
             question=f"What is `{app.name}`? (the survey "
@@ -126,7 +138,7 @@ def interview(
         )
         # Keeping `application` confirms only that nobody knows, so the record stays `unrecorded`, not `confirmed`.
         if kind != app.kind:
-            app = with_override(app, kind=kind)
+            app = with_override(root, app, kind=kind)
         elif app.provenance.get("kind") == "detected":
             app = confirmed(app, "kind")
         print(f"`{verify} verify` would run these for `{app.name}`, one per Make target:")
@@ -149,12 +161,12 @@ def interview(
                 current = (app.commands or {}).get(target) or None
                 answer = ask(f"  {target} command (Enter keeps what is shown, `-` records none)", current)
                 commands[target] = None if answer in (None, "-") else answer
-            app = with_override(app, commands=commands)
+            app = with_override(root, app, commands=commands)
         purpose = ask(
             f"What does `{app.name}` own? (a sentence or two, for the docs and the agent; Enter leaves it blank)"
         )
         if purpose:
-            app = with_override(app, purpose=purpose)
+            app = with_override(root, app, purpose=purpose)
         kept.append(app)
     print()
     database: dict = {}

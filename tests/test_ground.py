@@ -167,3 +167,23 @@ class QuestionDisciplineTest(unittest.TestCase):
         self.assertIn("each answer says what confirming it does", ground)
         self.assertIn("Where they asked for the short form, the labels stand alone", ground)
         self.assertIn("and *No* are not.", ground, "a bare yes/no is not an answer")
+
+    def test_the_long_form_says_what_being_an_application_commits_the_person_to(self) -> None:
+        """"Is `themes` an application?" was answered by somebody who took the word to mean "gets deployed",
+        and agreed to put its lint in front of every change without knowing that was the question. The long
+        form says what the word means here, and what confirming, declining and leaving each do, before the
+        first candidate — including that neither answer can be taken back by a command yet."""
+        ground = with_candidates([
+            {"name": "themes", "path": "themes", "language": "javascript", "kind": "application",
+             "commands": {"lint": "cd themes && npm run lint"}, "evidence": "themes/package.json"},
+        ])
+        explained = ground[ground.index("say what the word means"):ground.index("**Ask, one at a time")]
+        self.assertIn("a directory whose build this gate holds", explained)
+        self.assertIn("join `make -f delivery/Makefile verify`, which every change has to", explained)
+        self.assertIn("`/drive`'s and `/cruise`'s", explained)
+        self.assertIn("a red one is a red check on the pull request", explained)
+        self.assertIn("Declining records nothing", explained)
+        self.assertIn("Leaving it a candidate is *not yet decided*", explained)
+        self.assertIn("can be taken back by a command today", explained)
+        self.assertLess(ground.index("say what the word means"), ground.index("**Ask, one at a time"),
+                        "before the first candidate is put, not after")

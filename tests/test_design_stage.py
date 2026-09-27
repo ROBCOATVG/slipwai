@@ -3,6 +3,7 @@ the extension steps that reach those rungs only through the extension's own `AGE
 from __future__ import annotations
 
 import importlib.util
+import sys
 import tempfile
 
 from support import FactoryTestCase
@@ -16,7 +17,12 @@ def guidance(key: str) -> str:
     spec = importlib.util.spec_from_file_location(f"guidance_{key}", TOOLKIT_ROOT / f"scripts/extensions/{key}/init.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # Loaded from the factory's own tree, which `test_toolkit` reads file by file: no `__pycache__` left in it.
+    written, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = written
     return str(module.GUIDANCE)
 
 

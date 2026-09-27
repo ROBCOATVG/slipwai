@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from ..layout import AT_ROOT, Layout
 from .converge_stage import levels
 from .cruise_agents import cruise_body, cruise_summary
+from .design_stage import tasks_brief as design_tasks_brief
 from .stage_models import AGENT, ANY, MANIFEST, NO_STAGE, STAGES
 
 # Where the canonical types live, beside `skills/` and `commands/`.
@@ -86,7 +87,7 @@ def summary(agent: Type) -> str:
 def body(agent: Type, layout: Layout) -> str:
     """The standing brief: what this type is for, what it may touch, what it returns, and what it hands back."""
     return {
-        "drive-tasks": """You turn one slice's finished plan into the ordered tasks that build it.
+        "drive-tasks": f"""You turn one slice's finished plan into the ordered tasks that build it.
 
 The plan, example map, data model and contracts are already written and authoritative. Add no requirement,
 resolve no open question and change no decision. Report a contradiction between them; never reconcile one.
@@ -104,8 +105,10 @@ the moment it is written.
 
 Cover **every layer the slice's patterns require** — domain logic alone is a component, not a vertical
 slice. Where the slice puts anything on a screen, its styling is a task here, naming the screen and where
-its styles come from. Writing each white box's states back as committed mockups is a task too, because
-`check-model` refuses an implemented slice without them.
+its styles come from. {design_tasks_brief()}
+
+Writing each white box's states back as committed mockups is a task too, because `check-model` refuses an
+implemented slice without them.
 
 Mark `[P]` wherever a task's files are disjoint from its siblings' — whether or not it adds production code —
 and nowhere else, and write the *Parallel opportunities* section that

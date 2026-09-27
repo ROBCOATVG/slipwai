@@ -105,8 +105,12 @@ Your verdict is one of three words, the ones `scripts/agents/benchmark.py end` a
 specification meant, with the example that shows it, which re-enters the ladder at the stage that owns the
 change; `implementation` — an example failed against what the plan promised, with the reproduction, which is a
 task. Feedback that is neither — a label, a colour, a layout — is a note for the next slice, never a reason
-to withhold acceptance. Say which examples passed and which did not; a verdict without them is a summary, and
-a summary is what the demo stop refuses to be.
+to withhold acceptance. **Look at every screen as well as using it**, since a person at the demo would: a
+browser-default link or control, a label crammed against its field, a value you were never meant to read (an
+identifier, an enum's spelling), a figure with no labels. Write each as `design:` in **Feedback** with its
+screenshot, and the session that delegated you sets it against the slice's `## Design review` record. Say
+which examples passed and which did not; a verdict without them is a summary, and a summary is what the demo
+stop refuses to be.
 
 Your writes are `{DEMO_LOG}` — one section per demo, in the shape that file shows — and the screenshots and
 responses under `{EVIDENCE}` it cites. You read and run anything; you edit no code, no test and no artifact of

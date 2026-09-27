@@ -80,11 +80,14 @@ the gates in it that are objective: a screen either passes or it does not.
   `scripts/check-ux-gates.py` or anything under `{KIT_DIR}/`: fix the screen, install the browser, or
   report the gate's own words.
 
-**Run `make check-ux-gates` before the demo stop of any slice with a screen**, and fix what it finds
-rather than carrying it as a note. For the judgement the gates cannot make, the kit's checklists are files:
-`{KIT_DIR}/accessibility/wcag-checklist.md` (POUR-organised, P0 first) and
-`{KIT_DIR}/workflows/design-review.md` (six weighted dimensions and Nielsen's heuristics), read alongside
-`skills/web-interface-guidelines`. Never state a contrast ratio you did not measure; the gates print theirs.
+**What this adds to `/drive`'s *Design review* rung.** Run `make check-ux-gates` first and fix what it
+finds rather than carrying it as a note. Then the review itself, which the gates are not: render the screen
+from its preview under `screens/` where it has one, and read the screenshots against
+`{KIT_DIR}/workflows/design-review.md` (six weighted dimensions and Nielsen's heuristics) and
+`{KIT_DIR}/accessibility/wcag-checklist.md` (POUR-organised, P0 first) as well as
+`skills/web-interface-guidelines`, and name all three on the screen's `Reviewed:` line. Every gate green is
+the objective half: screens have passed all of them and still shipped browser-default links and a raw
+identifier. Never state a contrast ratio you did not measure; the gates print theirs.
 
 **Check you can reach it before you trust it.** `{KIT_DIR}/` is ignored by Git and installed by this
 extension, so a fresh clone, a container or a CI runner has the pointer and not the kit. When

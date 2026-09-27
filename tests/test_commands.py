@@ -196,8 +196,10 @@ class CommandsTest(FactoryTestCase):
             stop = drive.split("### What the demo stop has to contain")[1].split("###")[0]
             self.assertIn("check every screen this slice adds or changes is styled", stop)
             self.assertIn("A screen still on browser defaults is a reason not to demo yet", stop)
-            self.assertIn("Record both checks with the others", stop)
+            self.assertIn("Record both\nchecks with the others", stop)
             self.assertIn("against `skills/web-interface-guidelines`", stop)
+            # The stop reads the design record rather than running a review of its own.
+            self.assertIn("a `Designed:` and a `Reviewed:` line for every screen", stop)
 
             bare = (self.generate(directory, "unstyled", "event-modelling", "typescript")
                     / "commands/drive.md").read_text()

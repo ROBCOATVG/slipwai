@@ -58,9 +58,11 @@ the evidence that selected it, and runs from there.
 | 6 | **Slice gaps** | A recorded gaps review — otherwise `/gaps`. A missing state is a paper edit here and a rewritten test later |
 | 7 | **Release constraint** *(production target)* | The flag that holds this slice back from the actor, named in the plan: the key of the releasable capability the slice belongs to, declared in `infra/service/flags.auto.tfvars` seeded `off`. One flag covers a capability, not a slice — the stage says to recommend which, and to ask only where it is genuinely a product question |
 | 8 | **Plan and tasks** | `plan.md` and `tasks.md`, whose *Structure Decision* names the owning service and bounded context |
-| 9 | **Implementation** | Spec Kit's implement command, one RED-GREEN-REFACTOR increment per task — one rule of the example map with its examples — starting from a green `make verify` |
-| 10 | **Convergence** | A converged verdict for the current commit, then `/gaps` over the slice diff |
-| 11 | **Demo** | The actor-visible path, ready to show — a stop for feedback, not a report. It opens with a progress board in the actor's words (✅ works now · 🆕 new in this demo · ⬜ still to come, `N of M slices accepted` · ⚠️ not working yet · 🔀 ready (parallel) · ➡️ next (this session) · ⛔ blocked) and ends with the command to paste and a question only the actor can answer. Slices are counted, tasks are not: a slice is a thing the actor can use. `/where-are-we` draws the same board on demand between demos |
+| 9 | **Screen design** *(browser app)* | A `Designed:` line per screen under `tasks.md`'s `## Design review` — `docs/design.md`, then `frontend-design`'s second pass over the plan, before any code |
+| 10 | **Implementation** | Spec Kit's implement command, one RED-GREEN-REFACTOR increment per task — one rule of the example map with its examples — starting from a green `make verify` |
+| 11 | **Design review** *(browser app)* | A `Reviewed:` line per screen — the rendered screens, screenshot per state, read against `web-interface-guidelines`, every finding fixed or given its reason. A green gate is evidence for it, never the stage |
+| 12 | **Convergence** | A converged verdict for the current commit, then `/gaps` over the slice diff |
+| 13 | **Demo** | The actor-visible path, ready to show — a stop for feedback, not a report. It opens with a progress board in the actor's words (✅ works now · 🆕 new in this demo · ⬜ still to come, `N of M slices accepted` · ⚠️ not working yet · 🔀 ready (parallel) · ➡️ next (this session) · ⛔ blocked) and ends with the command to paste and a question only the actor can answer. Slices are counted, tasks are not: a slice is a thing the actor can use. `/where-are-we` draws the same board on demand between demos |
 
 It never invents a principle, event, or slice to skip a stage: a missing artifact is work to do with the
 user, and a stage needing a real product decision is a stop.
@@ -71,6 +73,12 @@ Principles — the convergence map exists and is green, and an `unrecorded` row 
 question before anything else; **Pin** before Implementation — wrapped code is changed only once `/characterise`
 has recorded what it does at the seam; and **Convergence** re-checks the map after the slice, flips the row a rung
 was reached on, and offers the next unplanned row as a *method slice* for the split.
+
+The two design rungs name only what every browser app ships with. An extension adds to them in its own
+`AGENTS.md` block, written when it is adopted: `uipro` puts its search into *Screen design* for a screen
+`docs/design.md` has no decision for, and `ux-gates` puts `make check-ux-gates` and the kit's
+`design-review.md` and `wcag-checklist.md` into *Design review*. A project that adopted neither reads about
+neither ([Extensions](extensions.md)).
 
 Stages 3 and 8 are also where a project's **bounded contexts** get decided, because that is where the
 question actually arrives — which service owns this slice, and which context inside it. Neither is defaulted

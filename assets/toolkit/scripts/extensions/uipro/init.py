@@ -61,9 +61,9 @@ GUIDANCE = f"""
 ## UI/UX Pro Max
 `skills/{SKILL}/` is a design-system generator that runs offline: a search over local data that answers
 which pattern, style, palette, type pairing, chart types and UX rules fit a product of this kind. Reach for
-it **before the first screen of a slice that `docs/design.md` has no decision for**, and for one focused
-question — a component, a chart, a stack rule — with a single `--domain` or `--stack` search. Read the
-skill's own `SKILL.md` for the query contract; the short form is:
+it **at `/drive`'s *Screen design* rung, for a screen `docs/design.md` has no decision for**, and for
+one focused question — a component, a chart, a stack rule — with a single `--domain` or `--stack` search.
+Read the skill's own `SKILL.md` for the query contract; the short form is:
 
     python3 skills/{SKILL}/scripts/search.py "<product type> <industry> <keywords>" --design-system \\
         -p "<project name>" --persist --output-dir .
@@ -73,7 +73,8 @@ made from, and the input the browser app's `tokens.css` is filled from — but i
 `docs/design.md` stays the page every slice with a screen reads first: write what was chosen and why
 there, in the same commit as the tokens, link the `MASTER.md` it came from, and where the two disagree the
 page wins. Then take the plan through `skills/frontend-design`'s second pass — the review against the
-brief for defaults that would appear whatever the product — before writing any code.
+brief for defaults that would appear whatever the product — before writing any code, and say on the screen's
+`Designed:` line which search the decision came from.
 
 **Check you can reach it before you trust it.** The search is standard-library Python 3 and travels with
 the skill, so the only two ways it is unreachable are a checkout without the skill and a machine without

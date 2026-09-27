@@ -14,6 +14,7 @@ from .converge_stage import convergence_stage
 from .cruise import cruise_command, cruise_settings_command
 from .cruise_seat import cruise_status_command, cruise_stop_command, cruise_tell_command, cruise_watch_command
 from .demo_stop import demo_stop
+from .design_stage import PLAN_STYLING, with_design_rungs
 from .drive_adoption import adoption_ladder
 from .drive_settings import drive_settings_command, implementation_section
 from .existing import release_stage
@@ -35,12 +36,6 @@ def drive_command(
     # project whose browser app is `apps/portal` has no `apps/web` for this to point at.
     web = web_apps(apps)
     baseline = ", ".join(f"`{app.path}`" for app in web)
-    styling = (
-        """ Where the slice puts anything on a screen, its styling is one of the tasks written here rather
-   than a follow-on: name the screens it adds or changes and where each takes its styles from."""
-        if web
-        else ""
-    )
     stages = [
         """**Principles** — `.specify/memory/constitution.md` is ratified rather than absent, unfilled, or
    still the template `./init` installed, and `make check-constitution` passes. A passing gate alone is not
@@ -121,7 +116,7 @@ def drive_command(
    version's requirement — cites the artefact it was read from: the library's documentation at the pinned
    version, its source, a run against it. A statement with no citation reads *assumed*, and a plan does not
    rest on it."""
-        + context_decision + styling,
+        + context_decision + (PLAN_STYLING if web else ""),
         """**Implementation** — tasks remain unchecked. Run the installed Spec Kit implement command."""
         + (
             f""" A screen this slice
@@ -134,6 +129,7 @@ def drive_command(
         convergence_stage(),
         """**Demo** — the actor-visible path is ready to show.""",
     ]
+    stages = with_design_rungs(stages, baseline) if web else stages
     if adoption is not None:
         stages = adoption_ladder(stages, apps, layout)
     ladder = "\n".join(f"{index}. {stage}" for index, stage in enumerate(stages, start=1))

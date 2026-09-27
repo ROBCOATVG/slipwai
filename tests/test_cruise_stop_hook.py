@@ -184,16 +184,16 @@ class CruiseStopHookTest(FactoryTestCase):
                                      text=True, capture_output=True)
             self.assertEqual(written.returncode, 0, written.stderr)
             cursor_hooks = json.loads((repo / ".cursor/hooks.json").read_text())
+            here = 'cd "$(git rev-parse --show-toplevel)" && python3 scripts/agents/cruise.py'  # from the root
             self.assertEqual(cursor_hooks, {"version": 1, "hooks": {
-                "stop": [{"command": "python3 scripts/agents/cruise.py stopping", "loop_limit": None}],
-                "afterAgentResponse": [{"command": "python3 scripts/agents/cruise.py responded"}],
-                "preCompact": [{"command": "python3 scripts/agents/cruise.py compacting"}]}})
+                "stop": [{"command": f"{here} stopping", "loop_limit": None}],
+                "afterAgentResponse": [{"command": f"{here} responded"}],
+                "preCompact": [{"command": f"{here} compacting"}]}})
             gemini_settings = json.loads((repo / ".gemini/settings.json").read_text())
             self.assertEqual(gemini_settings["theme"], "Dracula")
             self.assertEqual(gemini_settings["hooks"]["BeforeTool"], [{"type": "command", "command": "./mine.sh"}])
             self.assertEqual(gemini_settings["hooks"]["AfterAgent"],
-                             [{"type": "command", "command": "python3 scripts/agents/cruise.py stopping",
-                               "name": "cruise"}])
+                             [{"type": "command", "command": f"{here} stopping", "name": "cruise"}])
             check = subprocess.run(["python3", "scripts/agents/project.py", "--check"], cwd=repo, text=True,
                                    capture_output=True)
             self.assertEqual(check.returncode, 0, check.stdout + check.stderr)

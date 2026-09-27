@@ -11,7 +11,10 @@ invented, and a refresh holds what a person settled and says what the tree now r
 **Claude Code's hooks find their scripts from any directory.** They were written as repository-relative paths
 and run with whatever directory the session is in, so a session opened in a subdirectory ran
 `python3 delivery/scripts/agents/cruise.py` against a path that is not there — and a hook that fails is silent.
-They are written from `$CLAUDE_PROJECT_DIR` now.
+They are written from `$CLAUDE_PROJECT_DIR` now, and the two other harnesses the factory writes hooks for —
+Cursor's `.cursor/hooks.json` and Gemini CLI's `.gemini/settings.json` — change to the root Git names
+(`cd "$(git rev-parse --show-toplevel)" && …`) before they run, since neither harness shares a variable
+for it. `make agents` rewrites them; nothing else is asked of a repository already generated.
 
 **A command that needs an application says that confirming one is the missing step.** Between `adopt` and the
 first confirmed candidate there is nothing for a frontend to sit beside, and `slipwai add-frontend web` — which

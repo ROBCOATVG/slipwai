@@ -10,6 +10,7 @@ a terminal can ask well and a tree that reads for two harnesses names neither.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -245,3 +246,31 @@ class EveryHarnessReachesTest(FactoryTestCase):
                         f"{key}: /ground reached none of {places} — a harness this factory says it supports "
                         f"whose person has no way to run the adoption's own question set",
                     )
+
+    def test_every_hook_a_harness_is_given_runs_from_a_subdirectory(self) -> None:
+        """A hook runs in whatever directory the session is in, and the commands were written relative to the
+        repository root: a session opened in a subdirectory ran `python3 delivery/scripts/agents/cruise.py`
+        against a path that is not there, and a hook that fails is silent. Claude Code's are written from
+        `$CLAUDE_PROJECT_DIR`; every other harness's ask Git for the root. Each projected hook command is run
+        here from a subdirectory of an adopted repository, and has to reach its script."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.adopted_repo(directory)
+            deep = repo / "src/deep"
+            deep.mkdir(parents=True)
+            for row in registry():
+                projection = (row.get("hooks") or {}).get("projection") if isinstance(row.get("hooks"), dict) else None
+                if not isinstance(projection, dict):
+                    continue
+                with self.subTest(harness=row["key"]):
+                    done = subprocess.run(["python3", "delivery/scripts/agents/project.py", row["key"]],
+                                          cwd=repo, text=True, capture_output=True, check=False)
+                    self.assertEqual(done.returncode, 0, done.stderr)
+                    written = (repo / str(projection["where"])).read_text()
+                    commands = sorted(set(re.findall(r'"command": "((?:[^"\\]|\\.)*)"', written)))
+                    ours = [json.loads(f'"{command}"') for command in commands if "cruise.py" in command]
+                    self.assertTrue(ours, f"{row['key']}: no hook reaches cruise.py")
+                    for command in ours:
+                        ran = subprocess.run(["sh", "-c", command], cwd=deep, text=True, capture_output=True,
+                                             input="{}", check=False)
+                        self.assertNotIn("No such file", ran.stderr, f"{row['key']}: {command}")
+                        self.assertEqual(ran.returncode, 0, f"{row['key']}: {command}: {ran.stderr}")

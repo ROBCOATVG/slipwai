@@ -26,7 +26,8 @@ still editing: after each delegate returns rather than on CodeGraph's watcher, b
 the route that answers instead. A symbol is a name the index holds a definition for, or a name shaped like one
 (camelCase, PascalCase with a second hump, snake_case). Words and phrases are prose, and a search confined to
 documents is text search, which is right for them: `spec.md`, `decisions.md`, the PRD, `model.yaml`, a test's string.
-Once the agent has asked the index, its greps are its own business.
+Once the agent has asked the index, its greps are its own business, and a search of another checkout — where the
+hook's `cwd`, a Grep `path` or a `cd` puts it outside this repository — is never this index's to answer.
 
 Every route here runs the version the MCP server runs (`CODEGRAPH`), so two versions never write one database.
 Standard library only, like every script the toolkit ships. Nothing here fails a command it hooks: a hook that
@@ -319,11 +320,17 @@ def commands_of(command: str) -> list[list[list[str]]]:
     return [[words for words in pipeline if words] for pipeline in pipelines if any(pipeline)]
 
 
-def shell_searches(command: str) -> list[tuple[str, list[str], list[str]]]:
-    """Each search the command runs over files: its pattern, the paths it names and its include patterns. A search
-    reading another command's output — `git ls-files | grep Cue` — is over names, not source, and is not one."""
+def shell_searches(command: str) -> list[tuple[str, list[str], list[str], str]]:
+    """Each search the command runs over files: its pattern, the paths it names, its include patterns and the
+    directory it runs in — `.` until a `cd` moves it. A search reading another command's output — `git ls-files |
+    grep Cue` — is over names, not source, and is not one."""
     found = []
+    where = "."
     for pipeline in commands_of(command):
+        first = pipeline[0] if pipeline else []
+        if len(first) == 2 and first[0] in ("cd", "pushd"):
+            where = str(Path(where) / os.path.expandvars(os.path.expanduser(first[1])))
+            continue
         for position, words in enumerate(pipeline):
             while words and "=" in words[0] and not words[0].startswith("-"):
                 words = words[1:]
@@ -336,7 +343,7 @@ def shell_searches(command: str) -> list[tuple[str, list[str], list[str]]]:
                 scripts = [word for word in words[1:] if not word.startswith("-")]
                 address = re.match(r"^/((?:\\.|[^/])+)/", scripts[0]) if scripts else None
                 if address:
-                    found.append((address.group(1), scripts[1:], []))
+                    found.append((address.group(1), scripts[1:], [], where))
                 continue
             if program not in SEARCHERS:
                 continue
@@ -360,20 +367,37 @@ def shell_searches(command: str) -> list[tuple[str, list[str], list[str]]]:
                     paths.append(word)
                 index += 1
             if pattern is not None and (paths or position == 0):
-                found.append((pattern, paths, globs))
+                found.append((pattern, paths, globs, where))
     return found
 
 
-def symbol_search(tool: str, given: dict[str, Any]) -> str | None:
-    """The symbol a tool call searches the source for, or None where it searches documents, words, or nothing."""
+def outside(cwd: str | None, where: str, paths: list[str]) -> bool:
+    """Whether a search runs wholly outside this repository, so this index is not the one that could answer it.
+    A session opened here can search another checkout — `cd ~/other && grep -rn version src` — and a name this
+    repository happens to define is no reason to hold that search to an index of code it does not read."""
+    base = Path(cwd) if cwd else ROOT
+    targets = [base / where / os.path.expanduser(path) for path in paths] or [base / where]
+    try:
+        root = ROOT.resolve()
+        return all(not target.resolve().is_relative_to(root) for target in targets)
+    except (OSError, ValueError):
+        return False
+
+
+def symbol_search(tool: str, given: dict[str, Any], cwd: str | None = None) -> str | None:
+    """The symbol a tool call searches this repository's source for, or None where it searches documents, words,
+    nothing, or another directory than this repository. `cwd` is where the call runs, as the hook's event says."""
     if tool == "Grep":
         glob = given.get("glob") or (f"*.{given['type']}" if given.get("type") else "")
-        if documents_only([str(given.get("path") or "")], [str(glob)]):
+        path = str(given.get("path") or "")
+        if documents_only([path], [str(glob)]) or outside(cwd, ".", [path] if path else []):
             return None
         return symbol_of(str(given.get("pattern", "")))
     if tool == "Bash":
-        for pattern, paths, globs in shell_searches(str(given.get("command", ""))):
-            if not documents_only(paths, globs) and (symbol := symbol_of(pattern)):
+        for pattern, paths, globs, where in shell_searches(str(given.get("command", ""))):
+            if documents_only(paths, globs) or outside(cwd, where, paths):
+                continue
+            if symbol := symbol_of(pattern):
                 return symbol
     return None
 
@@ -424,7 +448,7 @@ def guard() -> int:
         return 0
     if who in asked:
         return 0
-    symbol = symbol_search(tool, given)
+    symbol = symbol_search(tool, given, str(happened.get("cwd") or "") or None)
     if symbol is None:
         return 0
     first = symbol.split("|")[0]

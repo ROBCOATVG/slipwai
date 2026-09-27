@@ -105,7 +105,8 @@ Four steps. You install a `slipwai` command and run it. You do not clone this re
 
 New here? Use the [generate learning path](docs/learn-generate.md), or
 [adopt](docs/learn-adopt.md) for an existing tree. Both cover install, first session, upgrade, migrate and
-`/catch-up`, with terminal screenshots.
+`/catch-up`, with terminal screenshots. The runsheets — [new project](docs/runsheet-greenfield.md) and
+[existing repository](docs/runsheet-brownfield.md) — are the same journeys as one ordered list of commands.
 
 [Scaffold a new project](docs/generating.md) is the full reference.
 [Tools required](docs/requirements.md) lists what each toolchain and `make` target needs.
@@ -399,9 +400,11 @@ is which, what each answer brings, and how a project answers a question again la
 |---|---|
 | [Generate a new project — learning path](docs/learn-generate.md) | Install, generate, upgrade, migrate and `/catch-up`, with terminal screenshots |
 | [Adopt an existing repository — learning path](docs/learn-adopt.md) — **experimental** | Install, adopt, upgrade, migrate and `/catch-up`, with terminal screenshots |
+| [Runsheet: a new project](docs/runsheet-greenfield.md) | Every command in order, from `slipwai generate` to `/cruise`, and the three steps that keep the project in tune with each slipwai release |
+| [Runsheet: an existing repository](docs/runsheet-brownfield.md) — **experimental** | Every command in order, from `slipwai adopt` through `/ground` to `/cruise`, how to revisit an answer, and how to take each slipwai release |
 | [Scaffold a new project](docs/generating.md) | The interactive and argument forms, one-shot semantics, the generated repository layout, and the event-sourcing boundary between the services and `apps/web` |
 | [Bring a generated project forward](docs/upgrading.md) | `slipwai migrate`: a newer factory's output merged over a project already generated. What comes through clean, what conflicts and should, the catch-up notes it leaves for what a merge cannot do, and the gate that proves it |
-| [Adopt an existing repository](docs/adopting.md) — **experimental** | `slipwai adopt`: the method installed around a repository the factory did not make. The survey, the questions with the findings as defaults, what is written beside the code and never over it, what `project.json` records with provenance, and what it forfeits for a language the factory cannot generate |
+| [Adopt an existing repository](docs/adopting.md) — **experimental** | `slipwai adopt`: the method installed around a repository the factory did not make. The survey, the candidates `/ground` confirms, what is written beside the code and never over it, what `project.json` records with provenance, and what it forfeits for a language the factory cannot generate |
 | [The two workflows](docs/two-workflows.md) | Generated and adopted side by side: the same delivery loop, where each starts on its ladders, the adoption phases woven into `/drive`, the convergence map, and `slipwai converge` as the point where the distinction ends |
 | [Project shape](docs/axes.md) | Profiles, target, language, frontend and the axes. What each answer brings, why an unimplementable combination is refused, and how a project answers an axis again later |
 | [Tools required](docs/requirements.md) | What scaffolding needs, and what each generated toolchain and `make` target needs |

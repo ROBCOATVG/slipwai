@@ -4,8 +4,8 @@ The adoption report names a sequence — `./init`, `/ground`, the gate, the root
 that takes longer than one sitting, and prints it once, at the end of the longest output the factory
 produces. What is gated here is that the sequence is *derived* rather than remembered: every step leaves a
 mark on the tree, so `--next` reads the marks and says where somebody is, and keeps saying it correctly as
-the marks appear. Gated beside it is the first question to leave the terminal interview under
-`--experimental-intro`: the language, which the line above it has already printed.
+the marks appear. Gated beside it is the terminal intro that asks nothing per directory, and the switch it
+arrived behind, which is still accepted and now chooses nothing.
 """
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ class NextStepsTest(FactoryTestCase):
             self.assertIn("then: make -f delivery/Makefile verify", result.stdout)
             self.assertIn("then: add `-include delivery/Makefile` to the root Makefile", result.stdout)
             self.assertIn("then: an accepted ADR with a `Strategy:` line", result.stdout)
-            # `--yes` without the reshaped intro wraps what it found, so the one step that *is* done here is
+            # `--yes` wraps what it found, so the one step that *is* done here is
             # the confirming — by the person who typed `--yes`. Nothing else has happened yet.
             self.assertEqual(result.stdout.count("done:"), 1)
             self.assertIn("done: confirm what the survey found", result.stdout)
@@ -138,6 +138,38 @@ class NextStepsTest(FactoryTestCase):
             self.assertIn("2 of 2 application(s) have no `smoke` recorded", result.stdout)
             self.assertIn("shop, sub", result.stdout)
 
+    def test_the_sequence_runs_to_the_loop_rather_than_stopping_at_a_ready_repository(self) -> None:
+        """It used to end at the strategy ADR — a repository wrapped, gated and asked to do nothing. The
+        first person to take it end to end had to be told the rest in chat. The constitution comes before
+        the first spec, because `check-constitution` fails the moment `specs/` exists over the template."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = repository(Path(directory), "shop", NODE)
+            self.assertEqual(slipwai(repo, "adopt", "--yes").returncode, 0)
+            lines = [line.strip() for line in slipwai(repo, "adopt", "--next").stdout.splitlines()]
+            named = [line.split(": ", 1)[1].split(" —")[0] for line in lines if line[:5] in ("now: ", "then:", "done:")]
+            for step in ("/speckit-constitution, in the agent", "/speckit-specify, in the agent",
+                         "/drive, in the agent", "`make -f delivery/Makefile cruise`"):
+                self.assertIn(step, named)
+            self.assertLess(named.index("/speckit-constitution, in the agent"),
+                            named.index("/speckit-specify, in the agent"), "the template fails the gate after")
+            self.assertLess(named.index("/drive, in the agent"), named.index("`make -f delivery/Makefile cruise`"),
+                            "worth watching once before anything runs it unattended")
+
+    def test_a_constitution_is_not_ratified_in_a_repository_that_has_no_spec_kit_yet(self) -> None:
+        """The template is gone when it has been written over — and also when `./init` has never run, which
+        is how the first reading of this reported a constitution ratified in a tree with no `.specify/`."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = repository(Path(directory), "shop", NODE)
+            self.assertEqual(slipwai(repo, "adopt", "--yes", "--no-init").returncode, 0)
+            self.assertFalse((repo / ".specify").exists() and (repo / ".specify/memory").exists())
+            before = slipwai(repo, "adopt", "--next").stdout
+            self.assertNotIn("done: /speckit-constitution", before)
+            (repo / ".specify/memory").mkdir(parents=True, exist_ok=True)
+            (repo / ".specify/memory/constitution.md").write_text("# Constitution\n\n[PRINCIPLE_1_NAME]\n")
+            self.assertNotIn("done: /speckit-constitution", slipwai(repo, "adopt", "--next").stdout)
+            (repo / ".specify/memory/constitution.md").write_text("# Constitution\n\nI. Every change is tested.\n")
+            self.assertIn("done: /speckit-constitution", slipwai(repo, "adopt", "--next").stdout)
+
     def test_a_generated_project_is_refused_because_it_stands_in_no_such_sequence(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = self.generate(Path(directory), "shop")
@@ -152,33 +184,31 @@ class NextStepsTest(FactoryTestCase):
             self.assertIn("`slipwai adopt --next` says where you are in it", result.stdout)
 
 
-class ReshapedIntroTest(FactoryTestCase):
-    def test_the_interview_asks_the_language_it_has_just_printed(self) -> None:
+class IntroTest(FactoryTestCase):
+    def test_the_intro_shows_the_language_rather_than_asking_about_it(self) -> None:
+        """The language was the first question to leave the terminal, and the rest followed it (ADR 0003):
+        `adopt` asks nothing per application, because nothing is an application yet."""
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            output = in_terminal(repo, "adopt")
-            self.assertIn("Found a node build at the repository root (.): javascript.", output)
-            self.assertIn("Language [javascript]", output, "today it asks again; the switch is what removes it")
+            output = in_terminal(repo, "adopt", "--no-init")
+            self.assertNotIn("Language [javascript]", output)
+            self.assertNotIn("Wrap it as the application", output)
+            self.assertIn("1 directory that builds", output)
+            self.assertIn("javascript", output, "it is shown in the table of what builds")
+            written = json.loads((repo / "project.json").read_text())
+            self.assertEqual(written["deployables"], {})
+            self.assertEqual(written["candidates"][0]["language"], "javascript")
 
-    def test_the_reshaped_intro_shows_the_language_rather_than_asking_about_it(self) -> None:
-        """The language was the first question to leave the terminal, and the rest followed it (ADR 0003):
-        the reshaped intro asks nothing per application, because nothing is an application yet."""
+    def test_the_switch_it_arrived_behind_is_accepted_and_changes_nothing(self) -> None:
+        """`--experimental-intro` chose this intro before it was the only one. A script or a habit that still
+        passes it gets the same adoption rather than an unrecognised-argument error, and `--help` no longer
+        offers it, since it chooses nothing."""
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
             output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
-            self.assertNotIn("Language [javascript]", output)
-            self.assertNotIn("Found a node build at the repository root (.)", output)
-            self.assertIn("javascript", output, "it is shown in the table of what builds")
-            self.assertEqual(json.loads((repo / "project.json").read_text())["candidates"][0]["language"],
-                             "javascript")
-
-    def test_the_switch_is_the_environment_too_so_a_test_run_does_not_retype_it(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = repository(Path(directory), "shop", {"package.json": NODE["package.json"]})
-            output = in_terminal(repo, "adopt", "--no-init", environment={"SLIPWAI_EXPERIMENTAL_INTRO": "1"})
-            self.assertNotIn("Language [javascript]", output)
             self.assertIn("1 directory that builds", output)
             self.assertEqual(json.loads((repo / "project.json").read_text())["deployables"], {})
+            self.assertNotIn("--experimental-intro", slipwai(repo, "adopt", "--help").stdout)
 
 
 class RunInitTest(FactoryTestCase):

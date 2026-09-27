@@ -300,3 +300,23 @@ def survey(root: Path) -> Survey:
         release_evidence=release_evidence_in(root, paths, ci, makefile),
         quick_wins=tuple(finding.record() for finding in quick_wins(root, paths, written, delivery)),
     )
+
+
+def toolchain_as(root: Path, directory: str, language: str) -> dict[str, str] | None:
+    """The directory's toolchain as the ecosystem for `language` reads it — what a spoken language brings.
+
+    `ECOSYSTEMS` is tried in order, so a directory with a `package.json` beside a `requirements.txt` is read as
+    Node and its toolchain says `kind: node`. Somebody who says that directory is Python is saying which build
+    is the application's, and the toolchain has to follow: it is what CI installs, and a Python service whose
+    record asks for a Node runtime is a pipeline that fails for a reason nothing in the record explains.
+
+    `None` where no recognised ecosystem for that language builds here, so a toolchain is never invented: the
+    record keeps what it had, and a later `/survey` reports the disagreement between the two.
+    """
+    for detect in ECOSYSTEMS:
+        found = detect(root, directory)
+        if found is None or found.language != language:
+            continue
+        toolchain = {**found.toolchain, "ecosystem": found.ecosystem}
+        return {**toolchain, "packaging": found.packaging} if found.packaging else toolchain
+    return None

@@ -47,6 +47,13 @@ def project_root(script: Path, depth: int) -> Path:
 
 
 ROOT = project_root(Path(__file__).resolve(), 3)
+
+# Where `./init` actually is, from the repository root: beside this script's own tree at the root in a
+# generated project, and under `layout.delivery` where the method was installed beside an existing codebase.
+# Derived rather than written, because "run `./init --extension …`" is advice nobody can follow when the
+# file is `./delivery/init` — the first real adoption to meet it typed `./init` four times.
+DELIVERY = Path(__file__).resolve().parents[3]
+INIT = "./init" if DELIVERY == ROOT else f"./{DELIVERY.relative_to(ROOT).as_posix()}/init"
 MARKER_BEGIN = "<!-- extension:uipro:begin -->"
 MARKER_END = "<!-- extension:uipro:end -->"
 GUIDANCE = f"""
@@ -160,7 +167,7 @@ def main() -> int:
             "was installed and AGENTS.md is unchanged.\n"
             "Add one first, then adopt it here:\n"
             "  slipwai add-frontend web\n"
-            "  ./init --extension uipro",
+            f"  {INIT} --extension uipro",
             file=sys.stderr,
         )
         return 0
@@ -171,7 +178,7 @@ def main() -> int:
             "Install one:\n"
             f"  npm install -g ui-ux-pro-max-cli@{CLI_VERSION}\n"
             "Then adopt it here, which is what points the agent at it:\n"
-            "  ./init --extension uipro",
+            f"  {INIT} --extension uipro",
             file=sys.stderr,
         )
         return 0
@@ -183,7 +190,7 @@ def main() -> int:
             print(
                 f"`{' '.join(command)} init` exited {installed.returncode}: AGENTS.md is unchanged.\n"
                 "Fix what it reported, then adopt it here:\n"
-                "  ./init --extension uipro",
+                f"  {INIT} --extension uipro",
                 file=sys.stderr,
             )
             return 0
@@ -194,7 +201,7 @@ def main() -> int:
                 "AGENTS.md is unchanged.\n"
                 f"This script knows ui-ux-pro-max-cli {CLI_VERSION}; a newer CLI may lay its files out "
                 "differently. Pin the version, or update this script, then:\n"
-                "  ./init --extension uipro",
+                f"  {INIT} --extension uipro",
                 file=sys.stderr,
             )
             return 0

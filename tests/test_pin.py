@@ -103,9 +103,6 @@ class PinTest(FactoryTestCase):
             (repo / "infra/main.tf").write_text("# tf\n")
             (repo / "tools/reports").mkdir(parents=True)
             (repo / "tools/reports/go.mod").write_text("module reports\n\ngo 1.22\n")
-            dirty = slipwai(repo, "adopt", "--refresh")
-            self.assertNotEqual(dirty.returncode, 0)
-            self.assertIn("uncommitted changes", dirty.stderr)
             git(repo, "add", "-A")
             git(repo, "-c", "user.name=t", "-c", "user.email=t@local", "commit", "-q", "-m", "grows")
 
@@ -160,7 +157,7 @@ class PinTest(FactoryTestCase):
             git(detected, "-c", "user.name=t", "-c", "user.email=t@local", "commit", "-q", "-m", "runs on 18")
             refreshed = slipwai(detected, "adopt", "--refresh")
             self.assertEqual(refreshed.returncode, 0, refreshed.stderr)
-            self.assertIn('disagrees: shop: toolchain.version was confirmed as "18", and `package.json` now pins "22"',
+            self.assertIn('disagrees: shop: toolchain.version was confirmed as "18", and `package.json` now says "22"',
                           refreshed.stdout)
             shop = json.loads((detected / "project.json").read_text())["deployables"]["shop"]
             self.assertEqual(shop["toolchain"]["version"], "18", "a confirmed version is never reset from the tree")

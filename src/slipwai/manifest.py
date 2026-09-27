@@ -104,6 +104,22 @@ def apps_from_manifest(document: dict, allow_empty: bool = False) -> list[App]:
         )
     deployables = document.get("deployables")
     if not isinstance(deployables, dict) or (not deployables and not allow_empty):
+        # An adopted repository between `adopt` and its first confirmed candidate has no deployable *yet*,
+        # which is a different thing from a manifest that names none — and the difference is what somebody
+        # has to do next. The first real adoption to hit this was told to "add a service" by `add-frontend`,
+        # having just been told by `./init` to run `slipwai add-frontend web`, with no way to know that
+        # confirming a candidate was the missing step.
+        outstanding = document.get("candidates")
+        if isinstance(outstanding, list) and outstanding:
+            named = ", ".join(
+                str(row.get("name")) for row in outstanding if isinstance(row, dict) and row.get("name")
+            )
+            raise GenerationError(
+                "project.json records no application yet — the survey found "
+                f"{len(outstanding)} buildable director{'y' if len(outstanding) == 1 else 'ies'} and nobody "
+                f"has said which of them is one: {named}. `/ground` asks, and `slipwai adopt --confirm "
+                "<name>` records the answer; this command needs an application to sit beside."
+            )
         raise GenerationError("project.json names no deployables, so there is nothing to add a service to")
     apps: list[App] = []
     for name, record in deployables.items():

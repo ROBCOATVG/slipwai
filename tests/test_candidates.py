@@ -26,9 +26,9 @@ MONOREPO = {
 
 
 def adopted(parent: Path, name: str = "shop", files: dict | None = None) -> Path:
-    """A repository adopted under the reshaped intro, so its directories are candidates and nothing else."""
+    """A repository adopted in a terminal, so its directories are candidates and nothing else."""
     repo = repository(parent, name, files or MONOREPO)
-    output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
+    output = in_terminal(repo, "adopt", "--no-init")
     assert (repo / "project.json").is_file(), output
     return repo
 
@@ -65,7 +65,7 @@ class CandidateRecordTest(FactoryTestCase):
     def test_the_terminal_asks_the_forge_and_nothing_about_any_application(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", MONOREPO)
-            output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
+            output = in_terminal(repo, "adopt", "--no-init")
             self.assertIn("Where does this repository's CI run?", output)
             for asked in ("Wrap it as the application", "What is `", "Keep these commands?", "What does `",
                           "Where is the database schema versioned?", "Why is this work happening?"):
@@ -74,7 +74,7 @@ class CandidateRecordTest(FactoryTestCase):
     def test_the_survey_is_shown_as_facts_rather_than_asked_about(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", MONOREPO)
-            output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
+            output = in_terminal(repo, "adopt", "--no-init")
             self.assertIn("3 directories that build", output)
             self.assertIn("themes", output)
             self.assertIn("from themes/package.json", output)
@@ -82,7 +82,7 @@ class CandidateRecordTest(FactoryTestCase):
     def test_yes_confirms_every_candidate_unlooked_at_and_says_so(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", MONOREPO)
-            result = slipwai(repo, "adopt", "--yes", "--experimental-intro", "--no-init", environment=BARE)
+            result = slipwai(repo, "adopt", "--yes", "--no-init", environment=BARE)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(len(record(repo)["deployables"]), 3)
             self.assertNotIn("candidates", record(repo))
@@ -91,7 +91,7 @@ class CandidateRecordTest(FactoryTestCase):
     def test_a_describing_flag_is_refused_rather_than_silently_doing_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", MONOREPO)
-            result = in_terminal(repo, "adopt", "--experimental-intro", "--no-init", "--kind", "themes=library")
+            result = in_terminal(repo, "adopt", "--no-init", "--kind", "themes=library")
             self.assertIn("--kind describe(s) an application", result)
             self.assertIn("slipwai adopt --confirm", result)
 
@@ -105,7 +105,7 @@ class RefusesBeforeTheWorkTest(FactoryTestCase):
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", MONOREPO)
             (repo / "untracked.txt").write_text("mine\n")
-            output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
+            output = in_terminal(repo, "adopt", "--no-init")
             self.assertIn("uncommitted changes", output)
             self.assertNotIn("directories that build", output, "nothing is shown before the refusal")
             self.assertNotIn("Where does this repository's CI run?", output, "and nothing is asked")
@@ -113,7 +113,7 @@ class RefusesBeforeTheWorkTest(FactoryTestCase):
     def test_a_repository_already_adopted_is_refused_the_same_way(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = adopted(Path(directory))  # `adopt` commits its own work, so the tree is already clean
-            output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
+            output = in_terminal(repo, "adopt", "--no-init")
             self.assertIn("already has a project.json", output)
             self.assertNotIn("directories that build", output)
 
@@ -137,6 +137,33 @@ class RefusingGateTest(FactoryTestCase):
             self.assertIn("## Full deterministic pre-commit gate", makefile)
             self.assertIn("verify: all gates passed", makefile)
             self.assertNotIn("nothing is confirmed as an application here", makefile)
+
+
+    def test_a_command_that_needs_an_application_names_the_candidates_instead_of_the_generic_refusal(self) -> None:
+        """`./init` says to run `slipwai add-frontend web`, and between `adopt` and the first confirmed
+        candidate there is nothing for a frontend to sit beside. "project.json names no deployables, so
+        there is nothing to add a service to" is true and useless: it is the same sentence a manifest that
+        names none gets, and nothing in it says that confirming is the step that was missed."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            result = slipwai(repo, "add-frontend", "web")
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("records no application yet", result.stderr)
+            self.assertIn("3 buildable directories", result.stderr)
+            self.assertIn("shop", result.stderr)
+            self.assertIn("slipwai adopt --confirm", result.stderr)
+            self.assertNotIn("nothing to add a service to", result.stderr)
+
+    def test_the_generic_refusal_still_stands_where_there_are_no_candidates_either(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            manifest = repo / "project.json"
+            document = json.loads(manifest.read_text())
+            document.pop("candidates")
+            manifest.write_text(json.dumps(document, indent=2))
+            result = slipwai(repo, "add-frontend", "web")
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("nothing to add a service to", result.stderr)
 
 
 class RefreshCarriesTheRecordTest(FactoryTestCase):
@@ -224,7 +251,7 @@ class CandidateSequenceTest(FactoryTestCase):
     def test_the_report_names_the_candidates_rather_than_claiming_none_was_found(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = repository(Path(directory), "shop", MONOREPO)
-            output = in_terminal(repo, "adopt", "--experimental-intro", "--no-init")
+            output = in_terminal(repo, "adopt", "--no-init")
             self.assertNotIn("no buildable directory was found", output)
             self.assertIn("none of them recorded as an application yet", output)
             self.assertIn("`verify` refuses rather than passing over nothing", output)

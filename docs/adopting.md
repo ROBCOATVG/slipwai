@@ -31,21 +31,20 @@ the ecosystem has no answer for is `null`: a written no, never a guess. It also 
 and infrastructure code are here, whether a database schema is versioned here and with what, and which
 database drivers the dependency manifests name. Every fact carries the file that said so.
 
-**Ask.** In a terminal, each finding is a question with the finding as its default: wrap this directory as
-an application — its build joins the gate? what is it — a `service`, a `library`, a `tool`, a `tests` suite,
-or an `application` whose role nobody has established? this language? these commands, one per Make target?
-what does it own? where is the database schema versioned — `here`, `elsewhere`, `unmanaged` or `none`? where
-is the deployment infrastructure described? where does CI run — `github`, `gitea`, `gitlab`, `other`, `none`?
-how does a change reach production today — `pipeline`, `scripted`, `manual`, `unknown`? why is this work
-happening? Every question says what the answer does, and a list question stands above its rows while they
-are live. Enter accepts (`confirmed`), another answer overrides (`overridden`). Three of those the tree only
-sometimes answers — what a directory is for, which forge, how a release happens — and where it does not, the
-default is the honest one: `application`, and `unknown`, recorded as `unrecorded` rather than guessed. The
-survey proposes them only from a file that says so: a `Dockerfile` or a start script makes a service, a `bin` a
-tool, a `main` a library, a `tests/` name a suite; a CI file or the remote's host names the forge; a CI job
-that deploys, or a deploy script, says how a change ships. `--yes` asks nothing and takes every proposal as
-`detected`; a flag overrides one answer either way and is always `overridden`. Outside a terminal without
-`--yes` it refuses rather than guessing.
+**Show, and ask one thing.** In a terminal, every directory that builds is shown — its path, its language,
+the file that found it, how many of the eight targets have a command — and recorded as a *candidate*, not an
+application ([What is an application here](#what-is-an-application-here)). The terminal asks one question:
+where CI runs — `github`, `gitea`, `gitlab`, `other`, `none` — because that is a fact about the forge, not the
+code, and it decides what shape the gate's CI configuration can take. Enter over what the tree or the remote
+says is `confirmed`; another answer is `overridden`. Everything else — which candidate is an application, what
+it is called and owns, which of its commands matter, where the schema and the infrastructure live, how a change
+reaches production, why the work is happening — needs the code read or a conversation, so it is `/ground`'s,
+asked by the coding agent with the code in front of it. Where the tree answers one of them, the survey
+proposes it only from a file that says so: a `Dockerfile` or a start script makes a service, a `bin` a tool, a
+`main` a library, a `tests/` name a suite; a CI job that deploys, or a deploy script, says how a change ships;
+where nothing says, it is `unrecorded` rather than guessed. `--yes` asks nothing and wraps every directory that
+builds as an application unlooked-at, each fact `detected`; a flag overrides one answer and is always
+`overridden`. Outside a terminal without `--yes` it refuses rather than guessing.
 
 **Wrap.** It writes the method's material under `delivery/` (`--delivery` names another directory), beside the
 code, exactly as a generated project would have it at the root ([`layout.delivery`](services.md)): the
@@ -134,9 +133,12 @@ came from; `delivery/survey/survey.md` is the survey with its evidence.
 
 ## Every flag
 
-Bare, in a terminal, `slipwai adopt` asks with the survey's findings as defaults. Every question it asks has
-a flag that answers it instead, which is the form for a script, for CI, and for the second repository that
-gets the same three corrections as the first. A flag is recorded `overridden`, whether or not it agrees with
+Bare, in a terminal, `slipwai adopt` shows what the survey found and asks where CI runs; the rest is
+`/ground`'s. Every fact it records has a flag that answers it instead, which is the form for a script, for
+CI, and for the second repository that gets the same three corrections as the first. The flags that describe
+an application — `--skip`, `--language`, `--kind`, `--purpose`, `--command`, `--hexagonal` — apply with
+`--yes`, which wraps what it found; in a terminal nothing is wrapped yet, so they are refused there and
+`--confirm` takes them instead. A flag is recorded `overridden`, whether or not it agrees with
 what the survey found — it is a person's answer either way, and the record says so. Outside a terminal,
 `--yes` is required whatever else is passed: without it there is a question left to ask and nothing to ask
 it of, so `adopt` refuses rather than guessing.
@@ -148,9 +150,8 @@ it of, so `adopt` refuses rather than guessing.
 | `--confirm NAME` | In an adopted repository: a candidate that is an application, recorded as one with `confirmed` provenance. `--as NAME=NEW` names it something other than its directory; `--kind`, `--purpose`, `--command` and `--hexagonal` describe it. Everything the record drives is regenerated. Repeatable |
 | `--decline NAME` | In an adopted repository: a candidate that is not an application. Dropped, with nothing recorded in its place. Repeatable |
 | `--next` | In an adopted repository: where it stands in the sequence this report names — what is done, what is next, and why. Read off the tree, not remembered: `./init` leaves `.specify/integration.json`, the first gate run leaves the baseline, `/ground` moves a row off `unrecorded`, a strategy is an accepted ADR |
-| `--experimental-intro` | Use the reshaped intro rather than the interview this version asks by default (or `SLIPWAI_EXPERIMENTAL_INTRO=1`): the terminal asks only what a terminal can answer, and the rest is the agent's to confirm against the code. Experimental within an experiment; its shape is still moving |
 | `--integration AGENT` | Which coding agent `./init` projects the skills and commands into, by its key in the agent registry. Default: the harness this ran from, or the one the tree already reads; where neither says, nothing is recorded and `./init` keeps its own question |
-| `--init` / `--no-init` | Run `./<delivery>/init` once the adoption is committed, or do not (default). It reaches Spec Kit's source, so it is the one step that needs the network, and what it writes is left uncommitted for you to read |
+| `--init` / `--no-init` | Run `./<delivery>/init` once the adoption is committed, or do not. Default: run it in a terminal, and not under `--yes`. It reaches Spec Kit's source, so it is the one step that needs the network, and what it writes is left uncommitted for you to read |
 | `--name NAME` | The project's name. Default: the directory's |
 | `--profile` | `standard` or `event-modelling`. Default: `standard` |
 | `--target` | `existing` — this deploys to infrastructure it does not own — or `none`. Default: `existing`, unless the infrastructure is `none` |
@@ -171,10 +172,10 @@ it of, so `adopt` refuses rather than guessing.
 
 ## What is an application here
 
-Under `--experimental-intro`, `adopt` wraps nothing. Every buildable directory the survey finds is recorded
+In a terminal, `adopt` wraps nothing. Every buildable directory the survey finds is recorded
 under `candidates` in `project.json` — its path, language, the commands its build answers, and the file that
 found it — and `deployables` starts empty. That is [ADR 0003](adr/0003-a-wrapped-application-begins-as-a-candidate.md),
-and the reason is that `Wrap it as the application …? [Y/n]` is a question a terminal cannot ask well: which
+and the reason is that `Wrap it as the application …? [Y/n]`, which `adopt` used to ask per directory, is a question a terminal cannot ask well: which
 of these directories the gate should hold, what each is called and what it owns are things the *code* says,
 and the person answering has not read it. On the first real monorepo this met, pressing Enter — which is what
 you do when you have no basis to do otherwise — wrapped three asset bundles and a test suite as applications,
@@ -244,8 +245,8 @@ security, versioning, ADRs, quality gates, governance — are asked for in full 
 
 ## The question set
 
-The survey reads what a file says; `adopt`'s interview asks about the rest in the terminal, and `--yes` asks
-nothing and records `unrecorded`. The question set proper is `/ground`, run by the coding agent — on its own
+The survey reads what a file says; `adopt` asks only where CI runs, and `--yes` asks nothing and records
+`unrecorded`. The question set proper is `/ground`, run by the coding agent — on its own
 after `./init` and before the first slice, or by `/drive`, whose Ground stage *is* this command for the rows a
 slice touches: the ladder asks, records, and continues in the same run rather than stopping. It walks the
 map one row at a time: the survey's evidence and every rung's meaning first, so the person places themselves on a

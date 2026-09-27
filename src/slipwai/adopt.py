@@ -70,9 +70,9 @@ class Answers:
     # `{"harness": ..., "evidence": ..., "provenance": ...}` from `harness.py`: which coding agent `./init`
     # projects into. Empty means nobody said and nothing showed, and `./init` keeps its own question.
     agent: dict = field(default_factory=dict)
-    # Buildable directories found and not yet confirmed (ADR 0003). Under the reshaped intro this carries
-    # every one of them and `applications` is empty; under the interview it is empty and `applications`
-    # carries what the person confirmed in the terminal.
+    # Buildable directories found and not yet confirmed (ADR 0003). In a terminal this carries every one of
+    # them and `applications` is empty; under `--yes` it is empty and `applications` carries every one of
+    # them, wrapped unlooked-at.
     candidates: list = field(default_factory=list)
 
 

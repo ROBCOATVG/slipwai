@@ -187,7 +187,7 @@ has a target of its own. {ci_paragraph(adoption, layout)}
 2. `/ground`, in the agent — the question set the tree could not answer: one row of
    `{where(layout)}docs/convergence.md` at a time, the evidence and the rungs shown first, each answer written
    with `confirmed` provenance; then `/survey` so the pages and the strategy recommendation follow. What
-   `adopt` asked in the terminal, or `--yes` left `unrecorded`, is settled here rather than one slice at a time —
+   the tree could not say, or `--yes` left `unrecorded`, is settled here rather than one slice at a time —
    or skip straight to `/drive`, whose Ground stage runs the same questions for the rows a slice touches.
 3. `{make} verify` — green on day one is the promise for a linter or type checker that arrived after the
    code, and the first run records the ratchet baseline: commit `{where(layout)}baseline.json` with what `init`

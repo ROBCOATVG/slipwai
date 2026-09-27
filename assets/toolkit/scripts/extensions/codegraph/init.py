@@ -44,6 +44,13 @@ def project_root(script: Path, depth: int) -> Path:
 
 
 ROOT = project_root(Path(__file__).resolve(), 3)
+
+# Where `./init` actually is, from the repository root: beside this script's own tree at the root in a
+# generated project, and under `layout.delivery` where the method was installed beside an existing codebase.
+# Derived rather than written, because "run `./init --extension …`" is advice nobody can follow when the
+# file is `./delivery/init` — the first real adoption to meet it typed `./init` four times.
+DELIVERY = Path(__file__).resolve().parents[3]
+INIT = "./init" if DELIVERY == ROOT else f"./{DELIVERY.relative_to(ROOT).as_posix()}/init"
 MARKER_BEGIN = "<!-- extension:codegraph:begin -->"
 MARKER_END = "<!-- extension:codegraph:end -->"
 GUIDANCE = f"""
@@ -129,7 +136,7 @@ def main() -> int:
             "Install it:\n"
             "  curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh\n"
             "Then adopt it here, which is what points the agent at it:\n"
-            "  ./init --extension codegraph",
+            f"  {INIT} --extension codegraph",
             file=sys.stderr,
         )
         return 0
@@ -141,7 +148,7 @@ def main() -> int:
         print(
             f"`codegraph install` exited {installed.returncode}: AGENTS.md is unchanged.\n"
             "Fix what it reported, then adopt it here:\n"
-            "  ./init --extension codegraph",
+            f"  {INIT} --extension codegraph",
             file=sys.stderr,
         )
         return 0

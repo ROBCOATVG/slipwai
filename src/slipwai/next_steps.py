@@ -73,8 +73,10 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
         ),
         Step(
             "confirm what the survey found",
-            f"{len(outstanding)} buildable director{'y' if len(outstanding) == 1 else 'ies'} "
-            f"({', '.join(outstanding)}) are recorded as candidates and none as an application — /ground asks "
+            (f"1 buildable directory ({outstanding[0]}) is recorded as a candidate"
+             if len(outstanding) == 1 else
+             f"{len(outstanding)} buildable directories ({', '.join(outstanding)}) are recorded as candidates")
+            + " and none as an application — /ground asks "
             "which of them is one, with the code in front of it, and `slipwai adopt --confirm <name>` records "
             "the answer. `verify` refuses until one is confirmed"
             if outstanding else "every buildable directory the survey found has been answered for",
@@ -110,7 +112,51 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
          "recommendation is made from that"),
         decided,
     ))
+    # The sequence used to stop here, at a repository that is ready and has been asked to do nothing. The
+    # first person to take it end to end had to be told the rest in chat — ratify, specify, drive, cruise —
+    # and the order matters: `check-constitution` fails the moment `specs/` exists over a template
+    # constitution, which takes `verify`, and `/drive` with it.
+    # Absent entirely means `./init` has not run, which is pending rather than done — the first reading of
+    # this reported a constitution as ratified in a repository that had no `.specify/` at all.
+    ratified = template_gone(root)
+    specified = any((root / "specs").glob("*/spec.md")) if (root / "specs").is_dir() else False
+    found.append(Step(
+        "/speckit-constitution, in the agent",
+        "the principles the gate holds this repository to. Before the first spec, not after: "
+        "`check-constitution` fails once `specs/` exists over the template it installed, and takes `verify` "
+        "and `/drive` with it",
+        ratified,
+    ))
+    found.append(Step(
+        "/speckit-specify, in the agent",
+        "the first feature, as a specification under `specs/<feature>/spec.md` — what `/drive` and `/cruise` "
+        "work from, and what they refuse to start without",
+        specified,
+    ))
+    found.append(Step(
+        "/drive, in the agent",
+        "the loop, once by hand: it enters at the stage this map is weakest on and stops at every question "
+        "only a person can answer. Worth watching before anything runs it unattended",
+        False,
+    ))
+    found.append(Step(
+        f"`{layout.make} cruise`",
+        "the same loop with nobody at the wheel, off until a project asks for it: "
+        "`python3 " + layout.under("scripts/agents/cruise.py") + " --set enabled=true`, and "
+        "`--set max_iterations=<n>` bounds it while you watch. `cruise-watch`, `cruise-status`, "
+        "`cruise-tell` and `cruise-stop` are the seat beside it",
+        False,
+    ))
     return found
+
+
+def template_gone(root: Path) -> bool:
+    """Whether the constitution has been written — `/speckit-constitution` replaces the template's markers."""
+    page = root / ".specify/memory/constitution.md"
+    if not page.is_file():
+        return False
+    text = page.read_text(errors="replace")
+    return "[PRINCIPLE_1_NAME]" not in text and "<!-- journey:" not in text
 
 
 def report(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> str:

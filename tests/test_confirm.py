@@ -12,6 +12,7 @@ from pathlib import Path
 from support import FactoryTestCase
 from test_adopt import slipwai
 from test_candidates import adopted, commit, record
+from test_replay import git
 
 
 class ConfirmTest(FactoryTestCase):
@@ -86,7 +87,7 @@ class ConfirmTest(FactoryTestCase):
 
     def test_a_flag_that_describes_the_adoption_is_refused_rather_than_thrown_away(self) -> None:
         """`adopt --confirm shop --integration cursor` looked like it recorded a harness and recorded
-        nothing: the flag was read, ignored, and never mentioned. The same rule the reshaped intro already
+        nothing: the flag was read, ignored, and never mentioned. The same rule the intro already
         applies to flags that describe an application."""
         with tempfile.TemporaryDirectory() as directory:
             repo = adopted(Path(directory))
@@ -107,6 +108,28 @@ class ConfirmTest(FactoryTestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("storefront", record(repo)["deployables"])
 
+    def test_an_empty_command_records_none_rather_than_a_command_that_runs_nothing(self) -> None:
+        """`--command shop:test=` is what a shell leaves behind when a variable is unset, and `/ground`
+        builds these lines from what it read. Recording `""` wrote a target that runs nothing and reads as
+        one somebody chose; `-` and empty are the same written no."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            result = slipwai(repo, "adopt", "--confirm", "shop", "--command", "shop:test=")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIsNone(record(repo)["deployables"]["shop"]["commands"]["test"])
+            self.assertIn("(none recorded — a written no)", result.stdout)
+
+    def test_the_report_says_which_command_each_target_was_vouched_for_with(self) -> None:
+        """Confirming takes the survey's reading of every command not named on the command line and records
+        it as somebody's word. What was just vouched for is said out loud rather than left in project.json."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = adopted(Path(directory))
+            result = slipwai(repo, "adopt", "--confirm", "shop")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("install      npm install", result.stdout)
+            self.assertIn("lint         npm run lint", result.stdout)
+            self.assertIn("typecheck    (none recorded — a written no)", result.stdout)
+
     def test_confirming_and_declining_the_same_candidate_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = adopted(Path(directory))
@@ -114,13 +137,21 @@ class ConfirmTest(FactoryTestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("one of them is the answer", result.stderr)
 
-    def test_it_refuses_an_unclean_tree_so_that_what_it_wrote_can_be_undone(self) -> None:
+    def test_it_refuses_only_where_it_would_write_over_somebodys_uncommitted_change(self) -> None:
+        """A stray file of the person's own is nothing this writes, so it does not stop the answer; a hand edit
+        to the gate it regenerates would be lost, so that does — and the refusal names the file."""
         with tempfile.TemporaryDirectory() as directory:
             repo = adopted(Path(directory))
-            (repo / "stray.txt").write_text("mine\n")
+            with (repo / "delivery/Makefile").open("a") as makefile:
+                makefile.write("# mine\n")
             result = slipwai(repo, "adopt", "--confirm", "shop")
             self.assertEqual(result.returncode, 2)
-            self.assertIn("uncommitted changes", result.stderr)
+            self.assertIn("`delivery/Makefile`", result.stderr)
+            self.assertIn("not what slipwai left there", result.stderr)
+            git(repo, "checkout", "delivery/Makefile")
+            (repo / "stray.txt").write_text("mine\n")
+            self.assertEqual(slipwai(repo, "adopt", "--confirm", "shop").returncode, 0)
+            self.assertEqual((repo / "stray.txt").read_text(), "mine\n")
 
     def test_a_generated_project_has_no_candidates_to_confirm(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

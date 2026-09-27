@@ -93,9 +93,11 @@ class CodeIndexHealthTest(FactoryTestCase):
     def indexed(self, directory: str, name: str) -> tuple[Path, dict[str, str], Path]:
         return indexed(self, directory, name)
 
-    def guard(self, repo: Path, env: dict[str, str], tool: str, given: dict, agent: str | None = None):
+    def guard(self, repo: Path, env: dict[str, str], tool: str, given: dict, agent: str | None = None,
+              cwd: Path | None = None):
         happened = {"session_id": "s1", "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": given,
-                    **({"agent_id": agent, "agent_type": "drive-tasks"} if agent else {})}
+                    **({"agent_id": agent, "agent_type": "drive-tasks"} if agent else {}),
+                    **({"cwd": str(cwd)} if cwd else {})}
         return subprocess.run(["python3", "scripts/agents/code_index.py", "guard"], cwd=repo, text=True,
                               capture_output=True, env={**os.environ, **env}, input=json.dumps(happened))
 
@@ -179,7 +181,8 @@ class CodeIndexHealthTest(FactoryTestCase):
         with tempfile.TemporaryDirectory() as directory:
             repo, env, log = self.indexed(directory, "opened")
             settings = json.loads((repo / ".claude/settings.json").read_text())
-            hook = {"type": "command", "timeout": 900, "command": "python3 scripts/agents/code_index.py session"}
+            hook = {"type": "command", "timeout": 900,
+                    "command": "python3 $CLAUDE_PROJECT_DIR/scripts/agents/code_index.py session"}
             self.assertIn({"matcher": "startup", "hooks": [hook]}, settings["hooks"]["SessionStart"])
             session = ["python3", "scripts/agents/code_index.py", "session"]
             quiet = subprocess.run(session, cwd=repo, env={**os.environ, **env}, text=True, capture_output=True)
@@ -223,10 +226,11 @@ class CodeIndexHealthTest(FactoryTestCase):
             repo, env, _ = self.indexed(directory, "guarded")
             settings = json.loads((repo / ".claude/settings.json").read_text())
             self.assertIn({"matcher": "Grep|Bash|mcp__codegraph__.*", "hooks": [
-                {"type": "command", "command": "python3 scripts/agents/code_index.py guard"}]},
+                {"type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/scripts/agents/code_index.py guard"}]},
                 settings["hooks"]["PreToolUse"])
             self.assertEqual(settings["hooks"]["PostToolUse"], [{"matcher": "Agent|Task", "hooks": [
-                {"type": "command", "command": "python3 scripts/agents/code_index.py sync"}]}])
+                {"type": "command",
+                 "command": "python3 $CLAUDE_PROJECT_DIR/scripts/agents/code_index.py sync"}]}])
             self.assertIn("Bash(scripts/codegraph *)", settings["permissions"]["allow"])
 
             refused = self.guard(repo, env, "Bash", {"command": 'grep -rn "decideCue" apps/'}, agent="a1")
@@ -264,6 +268,29 @@ class CodeIndexHealthTest(FactoryTestCase):
                                         {"pattern": "decideCue"}, agent="a3").returncode, 0)
             (repo / ".codegraph/codegraph.db").unlink()
             self.assertEqual(self.guard(repo, env, "Grep", {"pattern": "decideCue"}, agent="a4").returncode, 0)
+
+    def test_a_search_of_another_checkout_is_not_held_to_this_repositorys_index(self) -> None:
+        """A session opened in one repository searched another — `grep -rn version` in the factory's own
+        checkout — and was refused because `version` is a name this repository's index defines. That index
+        cannot answer a question about code it never read. Where the search runs is the hook's `cwd`, a Grep
+        `path`, or a `cd` earlier in the command, and only a search inside this repository is held to it."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo, env, _ = self.indexed(directory, "guarded-here")
+            elsewhere = Path(directory) / "elsewhere"
+            (elsewhere / "src").mkdir(parents=True)
+            for tool, given, cwd in (("Bash", {"command": f'cd {elsewhere} && grep -rn "decideCue" src'}, None),
+                                     ("Bash", {"command": f'grep -rn "decideCue" {elsewhere}/src'}, None),
+                                     ("Grep", {"pattern": "decideCue", "path": str(elsewhere)}, None),
+                                     ("Bash", {"command": 'grep -rn "decideCue" src'}, elsewhere),
+                                     ("Grep", {"pattern": "decideCue"}, elsewhere)):
+                allowed = self.guard(repo, env, tool, given, cwd=cwd)
+                self.assertEqual(allowed.returncode, 0, f"{given} in {cwd}: {allowed.stderr}")
+            # The same searches inside this repository are still held, however they get there.
+            back = f'cd {elsewhere} && cd {repo} && grep -rn "decideCue" .'
+            for tool, given, cwd in (("Bash", {"command": back}, None),
+                                     ("Grep", {"pattern": "decideCue", "path": "apps"}, repo),
+                                     ("Bash", {"command": f'grep -rn "decideCue" {repo}/apps'}, elsewhere)):
+                self.assertEqual(self.guard(repo, env, tool, given, cwd=cwd).returncode, 2, f"{given} in {cwd}")
 
     def test_the_log_the_feed_and_status_count_index_queries_per_delegate_and_name_who_grepped_first(self) -> None:
         """`status` used to count the iterations that asked. Per delegate now, from the stream Claude Code tags with

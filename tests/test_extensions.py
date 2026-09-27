@@ -284,6 +284,18 @@ class ExtensionsCatalogTest(FactoryTestCase):
             self.assertIn("project_guidance()\n", source, key)
             self.assertIn(f'replace_block("{key}", GUIDANCE)', source, key)
 
+    def test_no_extension_tells_a_wrapped_repository_to_run_a_script_that_is_not_there(self) -> None:
+        """An adoption puts `init` under `delivery/`, and these messages said `./init --extension <key>` —
+        advice nobody can follow, typed four times by the first adoption to meet it. The path is derived
+        from where the script itself is, so it reads `./delivery/init` there and `./init` in a project the
+        factory generated."""
+        for key in known_extensions(CATALOG):
+            source = (
+                Path(__file__).parents[1] / f"assets/toolkit/scripts/extensions/{key}/init.py"
+            ).read_text()
+            self.assertIn("INIT = ", source, key)
+            self.assertNotIn(f"  ./init --extension {key}", source, f"{key}: written rather than derived")
+
     def test_an_extension_must_declare_a_name_and_a_description(self) -> None:
         for field in ("name", "description"):
             broken = json.loads(json.dumps(CATALOG))

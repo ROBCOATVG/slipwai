@@ -40,91 +40,79 @@ git status   # nothing to commit
 slipwai adopt
 ```
 
-It surveys the tree, then asks with each finding as the default. Enter accepts; another answer overrides;
-`project.json` records which. In a list, ↑/↓ move and Enter chooses:
+It surveys the tree, shows every directory that builds, and asks one question — where your CI runs, a fact
+about your forge rather than your code. In the list, ↑/↓ move and Enter chooses:
 
 ```text
-Adopt the delivery method here (experimental). Each question shows what the survey found as its default:
-Enter accepts it, another answer replaces it, and project.json records which. In a list, ↑/↓ move and
-Enter chooses.
+Adopt the delivery method here (experimental). The survey read the tree; what it
+found is below. Nothing here is recorded as an application yet: which of these the gate should hold,
+what each is called and what it owns are questions the code answers, and the agent asks them with the
+code in front of it. This asks the one thing the tree cannot settle on its own.
 
-Found a python build at the repository root (.): python.
-Wrap it as the application `legacy-worker`? (its build joins the gate; n leaves it out entirely) [Y/n]:
-Language [python]:
-What is `legacy-worker`? (the survey could not tell; Enter keeps that)
-    service — runs somewhere and serves requests or jobs
-    library — code other applications import; ships as a package, not a process
-    tool — run by hand or in CI — a CLI, a build helper, a migration runner
-    tests — a test suite of its own, against something else here
-  ❯ application — not established — leave it open rather than guess; the record says so
-Kind: tool
-`make verify` would run these for `legacy-worker`, one per Make target:
-  install      python3 -m pip install -r requirements.txt
-  typecheck    (none recorded)
-  lint         (none recorded)
-  test         python3 -m pytest
-  integration  (none recorded)
-  adversarial  (none recorded)
-  audit        pip-audit -r requirements.txt
-  mutation     (none recorded)
-  A target with none recorded is a written no: verify passes it with a line saying so.
-Keep these commands? (n asks about each target in turn) [Y/n]:
-What does `legacy-worker` own? (a sentence or two, for the docs and the agent; Enter leaves it blank): batch jobs
+2 directories that build:
+  .   python      from requirements.txt  (2 of 8 targets have a command)
+  ui  javascript  from ui/package.json  (3 of 8 targets have a command)
 
-Database schema: …
-Deployment infrastructure: …
-Where does this repository's CI run? …
-How does a change reach production today? …
-Why is this work happening? …
-```
-
-`slipwai adopt --experimental-intro` (or `SLIPWAI_EXPERIMENTAL_INTRO=1`) walks a shorter version of this: the
-questions a terminal cannot answer well are not asked in one. The language is the first of them — the line
-above it has already printed what the build file says, and `--language NAME=LANGUAGE` is where to correct it —
-and the rest follow as issue #74 reshapes the intro. What that switch turns on is experimental within an
-experiment, and the default interview is exactly the one transcribed here until it is not.
-
-
-`--yes` takes every survey proposal without asking (recorded as `detected`). A flag overrides one answer
-either way. Outside a terminal without `--yes`, `adopt` refuses rather than guessing.
-
-When it finishes:
-
-```text
-adopted legacy-worker with slipwai 1.1.0 — experimental: this path is new, its shape may change in a MINOR,
-and what surprised you belongs on the public issue tracker
-261 files written under delivery/ and beside it; nothing of the repository's own was written over.
-One commit by the factory; `git reset --hard HEAD^` undoes all of it.
-  legacy-worker: . (python; a tool), 3 of 8 targets have a command; the rest are written no's
+Where does this repository's CI run? (decides what shape the gate's CI
+configuration can take, which is a fact about your forge and not about your
+code)
+    github — GitHub — the gate is an Actions workflow under .github/workflows
+    gitea — Gitea or Forgejo — the same Actions workflow, which they run too
+    gitlab — GitLab — the gate is a job to include from .gitlab-ci.yml
+    other — Jenkins, Azure, Bitbucket, CircleCI or another — nothing is written;
+    your CI runs the gate's command
+  ❯ none — no CI runs this repository — nothing is written until one does
+CI forge: none
+adopted legacy-worker with slipwai 1.3.0 — experimental: this path is new, its shape may change in a MINOR, …
+291 files written under delivery/ and beside it; nothing of the repository's own was written over. One
+commit by the factory; `git reset --hard HEAD^` undoes all of it.
+  2 buildable directories, none of them recorded as an application yet — what each is, what it is called
+  and what it owns are questions the code answers:
+    . (python, from requirements.txt), 2 of 8 targets have a command
+    ui (javascript, from ui/package.json), 3 of 8 targets have a command
+  Until one is confirmed, `verify` refuses rather than passing over nothing: /ground asks about each with
+  the code in front of it, and `slipwai adopt --confirm <name>` records the answer.
 …
-Next: ./delivery/init — installs Spec Kit and asks which coding agent gets the skills and commands
-Then: /ground, in the agent — it asks what the tree could not say, one row of the map at a time
-Then: make verify — the gate. Its first run records the lint and typecheck findings as the baseline
+Next: ./delivery/init is running now — it installs Spec Kit and projects the skills and commands …
+Then: /ground, in the agent — it asks what the tree could not say, starting with which of the directories
+above is an application …
+Then: make verify — the gate, once a candidate above has been confirmed …
 ```
+
+**Nothing is wrapped yet.** Every directory that builds is recorded in `project.json` as a *candidate*, and
+which of them is an application — a directory whose build the gate holds — is `/ground`'s first question,
+asked by your coding agent after it has read the code ([ADR 0003](adr/0003-a-wrapped-application-begins-as-a-candidate.md)).
+Until one is confirmed, `make verify` refuses rather than passing over nothing.
 
 Your `README.md` is left alone. `AGENTS.md` and `.gitignore` each get a marked block, appended once. The
-method lives under `delivery/` by default (`--delivery` names another directory).
+method lives under `delivery/` by default (`--delivery` names another directory). `--integration <agent>`
+names your coding agent; it is taken from the agent you ran `adopt` inside, where there is one.
+
+`--yes` is the unattended path: nothing is asked, and every directory that builds is wrapped as an
+application unlooked-at, each fact recorded `detected`. Flags override one answer either way. Outside a
+terminal without `--yes`, `adopt` refuses rather than guessing.
 
 That closing list takes longer than one sitting, and it scrolls away. `slipwai adopt --next` says where you
-are in it whenever you come back — done, now, then — read off the tree rather than remembered: `./init`
-leaves `.specify/integration.json` behind it, the first gate run leaves `delivery/baseline.json`, `/ground`
-moves a row of the map off `unrecorded`, and a strategy is an accepted ADR. The same sequence in prose, with
-what each step forfeits, is `delivery/docs/adoption.md`.
+are in it whenever you come back — done, now, then — read off the tree rather than remembered. The same
+sequence in prose, with what each step forfeits, is `delivery/docs/adoption.md`; [the brownfield
+runsheet](runsheet-brownfield.md) is every command in order.
 
-### Bootstrap and prove the gate
+### Bootstrap, ground, and prove the gate
+
+In a terminal, `adopt` runs `./delivery/init` for you once the adoption is committed (`--no-init` leaves it
+to you). It is the same prompt as generate: agent first, then optional extensions as a checkbox menu (Escape
+skips; `--extension <key>` names one or adds one later). What it writes is left uncommitted for you to read.
+
+Then, in your coding agent, `/ground`: which candidates are applications, then one row of the map at a time,
+then how each application is started. It records answers one at a time and asks you to commit once. Then:
 
 ```sh
-./delivery/init
 make verify
 ```
 
-`./delivery/init` is the same prompt as generate: agent first, then optional extensions as a checkbox
-menu (Escape skips; `--extension <key>` names one or adds one later).
-
 A red test suite stops that first run and says so: read the failures, then `make ratchet-tighten`
-quarantines it deliberately. Commit `delivery/baseline.json` with what init wrote. Next in the agent:
-`/ground` (what the tree could not say), then `/drive`. [The two workflows](two-workflows.md) places this
-beside generate.
+quarantines it deliberately. Commit `delivery/baseline.json`. Next in the agent: `/speckit-constitution`,
+`/speckit-specify`, then `/drive`. [The two workflows](two-workflows.md) places this beside generate.
 
 ---
 

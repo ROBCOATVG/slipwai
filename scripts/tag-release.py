@@ -8,10 +8,12 @@ release is three commits' worth of work and one push:
     Open 1.3.1.dev0      VERSION 1.3.0 → 1.3.1.dev0, marked `[skip ci]`
     git push --atomic <remote> main v1.3.0
 
-The tag is the trigger — `.github/workflows/package.yml` builds and attaches the Linux executable,
-`.github/workflows/publish-package.yml` builds the wheel, proves it scaffolds and uploads it to the forge's
-PyPI registry — and the push of `main` is what makes the next green snapshot `1.3.1.dev1` rather than a
-second `1.3.0`. Nothing here builds anything; the whole job of this script is to refuse the pushes that
+The tag is the trigger: it runs the complete `verify.yml` gate against the tagged commit, and only once every
+gate job has passed does that run's `release` job build the Linux executable and attach it to the forge's
+release, then build the wheel, prove it scaffolds and upload it to PyPI. (`package.yml` and
+`publish-package.yml` are hand-dispatched retries of those two uploads, for a gate that passed and an upload
+that did not.) The push of `main` is what makes the next green snapshot `1.3.1.dev1` rather than a second
+`1.3.0`. Nothing here builds anything; the whole job of this script is to refuse the pushes that
 would be wrong.
 
     python3 scripts/tag-release.py --dry-run    # every check, and what it would do
@@ -298,11 +300,12 @@ def report(forge: str, remote: str, tag: str, release: str, opened: str) -> str:
     return (
         f"pushed: main and {tag} to {remote}\n"
         f"main now carries {opened}; its next green push publishes the first snapshot of it.\n"
-        f"\nThe forge builds the artifacts from here — watch {forge}/actions:\n"
-        f"  package executables   → the Linux archive and its .sha256, attached to {forge}/releases/"
-        f"tag/{tag}\n"
-        f"  publish package       → the wheel, proved to scaffold, uploaded to this forge's PyPI registry\n"
-        f"\nWhen both are green, `slipwai upgrade` finds {release} and every installed copy can take it."
+        f"\n{tag} now runs the complete verify gate; once every gate job passes, its release job publishes —"
+        f" watch {forge}/actions:\n"
+        f"  executable  → the Linux archive and its .sha256, attached to {forge}/releases/tag/{tag}\n"
+        f"  wheel       → proved to scaffold, uploaded to PyPI: https://pypi.org/project/slipwai/{release}/\n"
+        f"\nNothing is published behind a red gate. When the release job is green, `slipwai upgrade` finds"
+        f" {release} and every installed copy can take it."
     )
 
 

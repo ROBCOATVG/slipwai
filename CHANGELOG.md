@@ -2,6 +2,61 @@
 
 No public releases yet. Release notes are recorded here newest first.
 
+## 1.4.0 — MINOR
+
+**`slipwai generate` runs the project's `./init` as its last step, and every missing tool is named with the
+command that installs it on your machine.** Answering the questions at a terminal now ends the way
+`slipwai adopt` does: `./init` runs from inside the new project, so Spec Kit and the agent's skills are in
+place without a second command. `--integration <agent>` passes the agent through; `--init` asks for the run
+from the argument form, which otherwise leaves it as the next step as before; `--no-init` skips it anywhere.
+
+The machine is now detected — macOS, Linux, WSL or Windows, and which of Homebrew, MacPorts, apt, dnf,
+pacman, zypper, apk, winget, Scoop or Chocolatey it has — so a production target's refusal says
+`brew install opentofu` or `winget install --exact --id OpenTofu.Tofu` beside the install page, and
+`./init` without uv or Python says the line that installs uv there. On native Windows, where a `/bin/sh`
+script cannot run as it is, `generate` and `adopt` (experimental) run `./init` through Git for Windows' `sh`
+when it is installed and otherwise say to use WSL or Git Bash; neither starts `./init` on a machine with no
+`python3`, and both name the command that installs it.
+
+**`./init` has uv make PyYAML importable by the `python3` Spec Kit's scripts call, with nothing to
+activate.** Spec Kit's scripts need PyYAML on the bare `python3` they take off the PATH. On a Python that
+refuses pip outside a venv (PEP 668: Homebrew's on macOS, Debian's and Ubuntu's), `./init` used to build a
+venv at `.delivery-tools/venv` and ask you to `export PATH="$PWD/.delivery-tools/venv/bin:$PATH"` before
+starting the agent — in every shell, and in no agent session unless it was started from one. It now runs
+`uv pip install --python python3`, into that `python3`'s venv if it is a venv's and otherwise `--target`
+its user site, which it already reads: uv is what slipwai is installed with, needs no pip on that Python,
+and writes a directory rather than the managed environment, so PEP 668 has nothing to refuse and the
+system's packages are never touched. Without uv, `./init` says the line that installs it on that machine.
+No venv is made, and no `PATH` line is printed.
+
+**Catch-up.** If `./init` gave you the `export PATH=…/.delivery-tools/venv/bin…` line, run `./init` once
+more — with no arguments it leaves Spec Kit alone and only repeats this step — then drop that line from
+your shell profile and `rm -rf .delivery-tools/venv`.
+
+**`slipwai generate` works in PowerShell, and a generated repository's scripts stay runnable in a Windows
+clone.** Every file slipwai reads or writes, and every one the Python scripts a project ships read or write,
+is now opened as UTF-8 by name. Before, they took the locale's encoding, which is cp1252 on Windows, so the
+first `slipwai generate` there stopped with `UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d`
+reading slipwai's own skill files; setting `PYTHONUTF8=1` was the workaround, and is no longer needed. A
+test now holds every text-mode `open`, `read_text` and `write_text` to it. Every text file they *write*
+is also written with LF (`newline="\n"`): on Windows a write without it turns each line ending into CRLF,
+so the pruner `generate` runs left the new project's files, `./init` among them, CRLF on disk.
+
+A generated repository gets a root `.gitattributes`: `* text=auto eol=lf`, with CRLF kept for `.bat` and
+`.cmd`. Git for Windows defaults `core.autocrlf` to `true`, which checked every file out with CRLF, and a
+`#!/bin/sh` script with CRLF does not run (`/bin/sh^M: bad interpreter`), which made `./init` and the gate
+unrunnable under Git Bash and printed an "LF will be replaced by CRLF" warning per file on every commit. An
+adopted repository keeps its own root `.gitattributes` untouched and gets one scoped to the delivery
+directory (experimental), which decides only for the files under it.
+
+A generated project's `make verify` also runs on native Windows now (from Git Bash, with GNU Make and Node
+installed). It failed at one recipe, `check-drawio`, which called `node_modules/.bin/tsx`: npm's POSIX shim,
+which a Windows `make` cannot run. The event-model recipes now run tsx's entry point with `node`.
+
+**Catch-up.** `slipwai migrate` brings the `.gitattributes`. In a Windows clone whose files were already
+checked out with CRLF, re-check them out once so they take it: with a clean tree,
+`git rm -r --cached -q . && git reset --hard`.
+
 ## 1.3.0 — MINOR
 
 **`slipwai adopt` refuses an unclean tree, a directory that is not a Git repository, or one already holding a

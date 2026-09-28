@@ -37,7 +37,7 @@ Fragment = tuple[Path, str | None, str]
 
 def read(path: Path) -> Fragment:
     """One fragment: its level off the first line, and everything after it as the entry's prose."""
-    level, _, body = path.read_text().strip().partition("\n")
+    level, _, body = path.read_text(encoding="utf-8").strip().partition("\n")
     return path, level.strip() if level.strip() in LEVELS else None, body.strip()
 
 

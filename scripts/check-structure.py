@@ -111,7 +111,7 @@ def main() -> int:
 
     for path in modules:
         relative = path.relative_to(ROOT).as_posix()
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         name = module_name(path)
         length = len(text.splitlines())
         budget = FACADE_BUDGET if path.name == "__init__.py" else MODULE_BUDGET
@@ -148,7 +148,7 @@ def main() -> int:
                     stack.append((target, [*route, target]))
 
     for path in sorted((ROOT / "tests").glob("*.py")):
-        length = len(path.read_text().splitlines())
+        length = len(path.read_text(encoding="utf-8").splitlines())
         if length > MODULE_BUDGET:
             relative = path.relative_to(ROOT).as_posix()
             violations.append(f"{relative}: {length} lines in one suite, over the {MODULE_BUDGET}-line budget")

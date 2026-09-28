@@ -170,7 +170,7 @@ def read_manifest(root: Path, verb: str = "add-service") -> dict:
             f"generated — run {verb} from that directory"
         )
     try:
-        document = json.loads(manifest.read_text())
+        document = json.loads(manifest.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
         raise GenerationError(f"project.json is not valid JSON: {error}") from error
     if not isinstance(document, dict):

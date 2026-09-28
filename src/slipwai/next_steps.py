@@ -103,7 +103,7 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
         found.append(Step(
             f"add `{include}` to the root Makefile",
             "and `make verify` is one word",
-            makefile.is_file() and include in makefile.read_text(),
+            makefile.is_file() and include in makefile.read_text(encoding="utf-8"),
         ))
     found.append(Step(
         "an accepted ADR with a `Strategy:` line",
@@ -155,7 +155,7 @@ def template_gone(root: Path) -> bool:
     page = root / ".specify/memory/constitution.md"
     if not page.is_file():
         return False
-    text = page.read_text(errors="replace")
+    text = page.read_text(errors="replace", encoding="utf-8")
     return "[PRINCIPLE_1_NAME]" not in text and "<!-- journey:" not in text
 
 

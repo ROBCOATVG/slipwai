@@ -130,7 +130,7 @@ def service_lock(selection: Selection) -> str:
     offline, and two people generating the same answers a week apart must get the same versions. The
     template's name is rewritten into the project's by `name_service`, exactly as the npm locks' is.
     """
-    return (LANGUAGE_ROOT / f"python/locks/uv{lock_suffix(selection)}.lock").read_text()
+    return (LANGUAGE_ROOT / f"python/locks/uv{lock_suffix(selection)}.lock").read_text(encoding="utf-8")
 
 
 def python_verify(services: list[App]) -> str:

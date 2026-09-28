@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-EXPECTED_VERSION = (Path(__file__).resolve().parents[1] / "VERSION").read_text().strip()
+EXPECTED_VERSION = (Path(__file__).resolve().parents[1] / "VERSION").read_text(encoding="utf-8").strip()
 
 
 def main() -> None:
@@ -45,7 +45,7 @@ def main() -> None:
             cwd=output,
         )
         project = output / "packaged-smoke"
-        metadata = json.loads((project / "project.json").read_text())
+        metadata = json.loads((project / "project.json").read_text(encoding="utf-8"))
         if metadata["deployables"]["service"]["language"] != "go":
             raise RuntimeError("packaged backend selection was not preserved")
         if metadata["deployables"]["web"]["framework"] != "react-vite":
@@ -107,7 +107,7 @@ def main() -> None:
         ):
             if not (project / relative).is_file():
                 raise RuntimeError(f"packaged backing-service assets are incomplete: {relative}")
-        compose = (project / "docker-compose.yml").read_text()
+        compose = (project / "docker-compose.yml").read_text(encoding="utf-8")
         # Pruning ran inside the frozen build: both containers were asked for, so both survive, and the
         # markers a later `./init` needs are still there.
         for expected in ("postgres:", "keycloak:", "backing-service:postgres:begin"):

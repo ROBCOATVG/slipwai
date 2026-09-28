@@ -23,7 +23,7 @@ else:
 # A checkout scaffolds beside itself; a command installed or frozen has no "beside", so it scaffolds where it
 # is run.
 DEFAULT_OUTPUT = Path.cwd() if FROZEN or INSTALLED else ROOT.parent
-VERSION = (ROOT / "VERSION").read_text().strip()
+VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 # Where a factory command leaves something for the project to act on and then throw away: `migrate` writes
 # its catch-up notes here and `/catch-up` reads them. Spelled here, in the tier every other may read, because
 # three of them need it — the module that writes the page, the `.gitignore` that keeps it out of the history,
@@ -82,7 +82,7 @@ def read_faithfully(path: Path) -> str:
     `Path.read_text` only grew a `newline` parameter in 3.13; on the 3.11 the README promises it raises
     `TypeError` before the first asset is read. `open` has taken `newline` all along.
     """
-    with path.open(newline="") as handle:
+    with path.open(newline="", encoding="utf-8") as handle:
         return handle.read()
 
 

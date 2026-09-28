@@ -112,7 +112,7 @@ def selected_integrations(arguments: list[str]) -> list[str]:
     state_path = ROOT / ".specify/integration.json"
     if not state_path.is_file():
         raise RuntimeError("cannot determine the selected integration; rerun ./init --integration <agent>")
-    state = json.loads(state_path.read_text())
+    state = json.loads(state_path.read_text(encoding="utf-8"))
     installed = state.get("installed_integrations", [])
     if isinstance(installed, list) and installed:
         return list(dict.fromkeys(value for value in installed if isinstance(value, str)))
@@ -127,15 +127,15 @@ def materialize(path: Path, content: str) -> None:
     if CHECK:
         if not path.is_file():
             FINDINGS.append(f"{path.relative_to(ROOT)}: missing")
-        elif path.read_text() != content:
+        elif path.read_text(encoding="utf-8") != content:
             FINDINGS.append(f"{path.relative_to(ROOT)}: differs from its canonical source")
         return
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content)
+    path.write_text(content, encoding="utf-8")
 
 
 def parse_command(path: Path) -> tuple[str, str, str]:
-    source = path.read_text()
+    source = path.read_text(encoding="utf-8")
     description = f"Run the {path.stem} project workflow"
     argument_hint = ""
     body = source
@@ -223,7 +223,7 @@ def rendered_command(path: Path, harness: dict[str, object]) -> tuple[str, str]:
 
 def parse_agent(path: Path) -> tuple[dict[str, str], str]:
     """A canonical `agents/<name>.md`: its neutral declaration, and the standing brief below it."""
-    source = path.read_text()
+    source = path.read_text(encoding="utf-8")
     if not source.startswith("---\n"):
         raise RuntimeError(f"{PREFIX}agents/{path.name} has no frontmatter; a type declares name, description, "
                            "stage, writes and commands")
@@ -254,7 +254,7 @@ def agent_model(stage: str, harness: dict[str, object]) -> tuple[str | None, str
     if not models.MODELS.is_file():
         return None, f"no {models.MODELS.relative_to(ROOT)} yet, so this type inherits the session's model"
     try:
-        table = json.loads(models.MODELS.read_text())
+        table = json.loads(models.MODELS.read_text(encoding="utf-8"))
         _, model, why = models.resolve(stage, table, harness)
     except (ValueError, KeyError) as error:
         return None, f"{models.MODELS.relative_to(ROOT)} could not be read ({error}); `make check-agents` says why"
@@ -366,7 +366,7 @@ def copy_skills(destination: Path) -> None:
             continue
         relative = source.relative_to(DELIVERY / "skills")
         target = destination / relative
-        content = source.read_text()
+        content = source.read_text(encoding="utf-8")
         materialize(
             target,
             stamp_markdown(content, f"{PREFIX}skills/{relative.as_posix()}") if source.suffix == ".md" else content,
@@ -401,7 +401,7 @@ def sync_context(harness: dict[str, object]) -> None:
 
 def write_context_import(path: Path, name: str) -> None:
     """Own a marker-fenced `@AGENTS.md` include in an import harness's context file."""
-    content = path.read_text() if path.is_file() else ""
+    content = path.read_text(encoding="utf-8") if path.is_file() else ""
     found = IMPORT_REGION_PATTERN.search(content)
     if found is not None and found.group(0) == IMPORT_REGION:
         EXPECTED.add(path)
@@ -421,7 +421,7 @@ def write_context_import(path: Path, name: str) -> None:
         updated = f"{outside}\n\n{IMPORT_REGION}\n" if outside.strip() else f"{IMPORT_REGION}\n"
     EXPECTED.add(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(updated)
+    path.write_text(updated, encoding="utf-8")
 
 
 def copy_context_blocks(path: Path) -> None:
@@ -430,8 +430,8 @@ def copy_context_blocks(path: Path) -> None:
         # Spec Kit wrote no context file for this harness, so there is no copy to keep in step. Silent
         # rather than a finding: an absent file is that integration's business, not a drifted projection.
         return
-    content = path.read_text()
-    expected = extension_blocks(AGENTS.read_text())
+    content = path.read_text(encoding="utf-8")
+    expected = extension_blocks(AGENTS.read_text(encoding="utf-8"))
     findings: list[str] = []
     updated = content
     for key, block in expected:
@@ -468,14 +468,14 @@ def materialize_json(path: Path, content: dict[str, object]) -> None:
             FINDINGS.append(f"{path.relative_to(ROOT)}: missing")
             return
         try:
-            present = json.loads(path.read_text())
+            present = json.loads(path.read_text(encoding="utf-8"))
         except ValueError:
             present = None
         if present != content:
             FINDINGS.append(f"{path.relative_to(ROOT)}: differs from its canonical source")
         return
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(content, indent=2, ensure_ascii=False) + "\n")
+    path.write_text(json.dumps(content, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def hook_file(harness: dict[str, object]) -> tuple[Path, dict[str, object]] | None:
@@ -505,7 +505,7 @@ def hook_file(harness: dict[str, object]) -> tuple[Path, dict[str, object]] | No
     present: dict[str, object] = {}
     if path.is_file():
         try:
-            loaded = json.loads(path.read_text())
+            loaded = json.loads(path.read_text(encoding="utf-8"))
         except ValueError:
             raise RuntimeError(f"{path.relative_to(ROOT)} is not JSON; the hooks {harness['name']} runs /cruise's "
                                "stop hook from cannot be written into it") from None
@@ -596,7 +596,7 @@ def project_capabilities() -> set[str]:
     manifest = ROOT / "project.json"
     if not manifest.is_file():
         return set()
-    document = json.loads(manifest.read_text())
+    document = json.loads(manifest.read_text(encoding="utf-8"))
     deployables = document.get("deployables")
     if not isinstance(deployables, dict):
         return set()
@@ -646,7 +646,7 @@ def report_unjustified_skills() -> None:
     if not capabilities:
         return
     for skill in sorted((DELIVERY / "skills").glob("*/SKILL.md")):
-        declared = declared_capabilities(skill.read_text())
+        declared = declared_capabilities(skill.read_text(encoding="utf-8"))
         if declared is None or serves(declared, capabilities):
             continue
         print(
@@ -733,7 +733,7 @@ def list_harnesses(registry: list[dict[str, object]]) -> None:
     installed: set[str] = set()
     state_path = ROOT / ".specify/integration.json"
     if state_path.is_file():
-        state = json.loads(state_path.read_text())
+        state = json.loads(state_path.read_text(encoding="utf-8"))
         installed = set(value for value in state.get("installed_integrations", []) if isinstance(value, str))
     for harness in registry:
         marker = "*" if harness["key"] in installed else " "
@@ -745,7 +745,7 @@ def list_harnesses(registry: list[dict[str, object]]) -> None:
 
 
 def main() -> None:
-    registry = json.loads(REGISTRY.read_text())["harnesses"]
+    registry = json.loads(REGISTRY.read_text(encoding="utf-8"))["harnesses"]
     if LIST:
         list_harnesses(registry)
         return

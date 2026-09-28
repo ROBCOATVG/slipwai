@@ -141,7 +141,7 @@ def main() -> int:
         source = args.source
     else:
         tags = run("git", "tag", "--list", "v*", "--sort=-v:refname", cwd=FACTORY).split()
-        version = (FACTORY / "VERSION").read_text().strip()
+        version = (FACTORY / "VERSION").read_text(encoding="utf-8").strip()
         head = run("git", "rev-parse", "HEAD", cwd=FACTORY)
         newest_commit = (
             run("git", "rev-parse", f"{tags[0]}^{{commit}}", cwd=FACTORY) if tags else ""
@@ -165,7 +165,7 @@ def main() -> int:
         old = work / f"factory-{source}"
         run("git", "worktree", "add", "--quiet", "--detach", str(old), source, cwd=FACTORY)
         try:
-            was = (old / "VERSION").read_text().strip()
+            was = (old / "VERSION").read_text(encoding="utf-8").strip()
             print(f"test-migration: generating {NAME} with the factory at {source} ({was})")
             run(str(old / "slipwai"), "generate", NAME, *ANSWERS, "--output", str(work / "old"), cwd=work, quiet=True)
         finally:
@@ -177,7 +177,8 @@ def main() -> int:
         generated = set(files_of(project))
         (project / ".specify").mkdir(exist_ok=True)
         (project / INTEGRATION).write_text(
-            json.dumps({"installed_integrations": [HARNESS], "default_integration": HARNESS}, indent=2) + "\n"
+            json.dumps({"installed_integrations": [HARNESS], "default_integration": HARNESS}, indent=2) + "\n",
+            encoding="utf-8",
         )
         run("python3", "scripts/agents/project.py", cwd=project, quiet=True)
         run("git", "add", "-A", cwd=project)
@@ -193,13 +194,15 @@ def main() -> int:
         # The project's own work.
         sources = sorted((project / "apps/service/src").rglob("*.ts"))
         own_file = next(path for path in sources if "test" not in path.name)
-        own_file.write_text(own_file.read_text() + OWN_LINE)
-        (project / OWN_PAGE).write_text("# The product's own decision\n\nRecorded by the product, not the factory.\n")
+        own_file.write_text(own_file.read_text(encoding="utf-8") + OWN_LINE, encoding="utf-8")
+        (project / OWN_PAGE).write_text(
+            "# The product's own decision\n\nRecorded by the product, not the factory.\n", encoding="utf-8"
+        )
         run("git", "add", "-A", cwd=project)
         run("git", *IDENTITY, "commit", "-q", "-m", "The product's own work", cwd=project)
         changed = {own_file.relative_to(project).as_posix(), OWN_PAGE} | projected
 
-        now = (FACTORY / "VERSION").read_text().strip()
+        now = (FACTORY / "VERSION").read_text(encoding="utf-8").strip()
         print(f"test-migration: migrating it with the factory at {here} ({now})")
         # The merge is committed as the project, the way a person's `git` would commit it; the registry is
         # not asked whether this checkout is the newest, because this checkout is what is under test.
@@ -241,7 +244,8 @@ def main() -> int:
         run(str(FACTORY / "slipwai"), "generate", NAME, *ANSWERS, "--output", str(work / "fresh"), cwd=work, quiet=True)
         (fresh_project / ".specify").mkdir(exist_ok=True)
         (fresh_project / INTEGRATION).write_text(
-            json.dumps({"installed_integrations": [HARNESS], "default_integration": HARNESS}, indent=2) + "\n"
+            json.dumps({"installed_integrations": [HARNESS], "default_integration": HARNESS}, indent=2) + "\n",
+            encoding="utf-8",
         )
         run("python3", "scripts/agents/project.py", cwd=fresh_project, quiet=True)
         fresh, merged = files_of(fresh_project), files_of(project)

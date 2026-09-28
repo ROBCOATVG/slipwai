@@ -81,7 +81,7 @@ def index_of(receipt: Path) -> tuple[str, str]:
     if override:
         return INDEX_NAME, override
     try:
-        content = tomllib.loads(receipt.read_text())
+        content = tomllib.loads(receipt.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError):
         return INDEX_NAME, INDEX
     for index in content.get("tool", {}).get("options", {}).get("index", []):

@@ -17,6 +17,7 @@ from ..origin import Adoption
 from ..services import App, wrapped_of
 from .adopted_ci import ACTIONS_GATE, delivery_workflow, gitlab_job
 from .drive_adoption import adoption_hooks
+from .pins import GITATTRIBUTES
 from .shared_packages import PACKAGES
 
 # The list of every path the factory wrote into an adopted repository, relative to the root. `replay` reads the
@@ -33,7 +34,7 @@ WRITTEN = ".written"
 # one is the worst of them — and none is something the method needs in order to work.
 OWN = (
     "README.md", "AGENTS.md", ".gitignore", ".claude/settings.json", f"{PACKAGES}/.gitkeep",
-    ".editorconfig", ".nvmrc", ".python-version", "LICENSE", "SECURITY.md", "renovate.json",
+    ".editorconfig", ".gitattributes", ".nvmrc", ".python-version", "LICENSE", "SECURITY.md", "renovate.json",
     ".github/PULL_REQUEST_TEMPLATE.md",
 )
 EXPERIMENTAL = (
@@ -60,6 +61,7 @@ def adopted_files(files: dict[str, str], apps: list[App], layout: Layout, adopti
     # Spec Kit reads its hooks at the root whatever the layout, so the file is not relocated; the adoption's own
     # hooks — the map before a specification, the pin before a plan, the map again after converge — go in it.
     kept[".specify/extensions.yml"] = adoption_hooks(kept[".specify/extensions.yml"], apps, layout)
+    kept.update({layout.under(".gitattributes"): GITATTRIBUTES} if layout.moved else {})  # its own LF, not the root's
     written = layout.under(WRITTEN)
     kept[written] = "".join(f"{path}\n" for path in sorted([*kept, written]))
     return kept

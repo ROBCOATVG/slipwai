@@ -270,6 +270,7 @@ Makefile        discoverable setup, run, quality, test, model, agent, audit, and
 docker-compose.yml  the app and whatever backing services it was given, for `make demo`
 .editorconfig   the whitespace conventions; `.nvmrc` and `.python-version` beside it pin the toolchains
                 a laptop picks up, from the same constants CI and the image build read
+.gitattributes  LF line endings whatever a clone's `core.autocrlf` says, so `./init` runs under Git Bash
 renovate.json   how the exact pins are kept current, written for this repository's own layout
 LICENSE         All rights reserved, with the project's name and year, until its owner decides otherwise
 SECURITY.md     how a vulnerability is reported, with the contact left as the project's to fill in

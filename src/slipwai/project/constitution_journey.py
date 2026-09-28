@@ -70,7 +70,7 @@ def quoted(body: str) -> str:
 def journey_template(profile: str, rows: list[Row]) -> str:
     """The profile's constitution template with every target principle written as a target."""
     path = PROFILE_ROOT / f"{profile}/.specify/presets/{profile}/templates/constitution-template.md"
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     targets = journey_rows(rows)
     for key, (axis_key, rung, in_force) in targets.items():
         words = JOURNEY[key][2]

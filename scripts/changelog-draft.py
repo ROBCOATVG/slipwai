@@ -97,7 +97,7 @@ def main(argv: list[str]) -> int:
         print(__doc__, file=sys.stderr)
         return 2
     start, described = since(argv[0] if argv else None)
-    written = (ROOT / "VERSION").read_text().strip()
+    written = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
     # The entry is the release's, not the snapshot's: `1.3.0` for a VERSION of `1.3.0.dev0`.
     current = base(written) or written
     landed = git("log", "--format=%H %s", "--no-merges", f"{start}..HEAD").splitlines()

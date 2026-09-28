@@ -135,11 +135,11 @@ def main() -> int:
     if not (BOOTSTRAP / "main.tf").is_file() or not SERVICE.is_dir():
         print("check-deploy-role: no infra/bootstrap/main.tf and infra/service/ here; nothing to compare")
         return 0
-    grants = deploy_grants("\n".join(uncommented(path.read_text()) for path in sorted(BOOTSTRAP.glob("*.tf"))))
+    grants = deploy_grants("\n".join(uncommented(path.read_text(encoding="utf-8")) for path in sorted(BOOTSTRAP.glob("*.tf"))))
     problems, checked = [], 0
     for path in sorted(SERVICE.rglob("*.tf")):
         relative = path.relative_to(ROOT).as_posix()
-        for match in RESOURCE.finditer(uncommented(path.read_text())):
+        for match in RESOURCE.finditer(uncommented(path.read_text(encoding="utf-8"))):
             kind_actions = TYPES.get(match.group(1))
             address = f"{match.group(1)}.{match.group(2)}"
             if kind_actions is None:

@@ -173,12 +173,12 @@ def written_by_factory(root: Path) -> tuple[str, set[str]]:
     """What an earlier adoption put here — the delivery directory and every path it listed in `.written` — so
     that a re-survey does not read the factory's own CI workflow or scripts as the repository's."""
     try:
-        document = json.loads((root / "project.json").read_text())
+        document = json.loads((root / "project.json").read_text(encoding="utf-8"))
         delivery = document.get("layout", {}).get("delivery", ".")
     except (OSError, ValueError, AttributeError):
         return ".", set()
     listing = root / (f"{delivery}/.written" if delivery != "." else ".written")
-    written = set(listing.read_text().split()) if listing.is_file() else set()
+    written = set(listing.read_text(encoding="utf-8").split()) if listing.is_file() else set()
     return delivery, written
 
 

@@ -102,14 +102,16 @@ def clashes(root: Path, document: dict, adoption: Adoption, layout: Layout) -> l
     apps = apps_from_manifest(document)
     generated = project_files(str(document["name"]), document["profile"], document["target"], apps, AT_ROOT, adoption)
     listing = root / layout.under(WRITTEN)
-    already = set(listing.read_text().split()) if listing.is_file() else set()
+    already = set(listing.read_text(encoding="utf-8").split()) if listing.is_file() else set()
     found = []
     for path in sorted(generated):
         # The factory's own files at the root — the manifest, the Spec Kit presets, the CI gate — are replaced.
         if path in OWN or path in already or path.startswith(f"{layout.delivery}/"):
             continue
         target = root / path
-        adopt_wrote = path == "Makefile" and target.read_text(errors="replace").startswith(MAKEFILE_MARKER)
+        adopt_wrote = path == "Makefile" and target.read_text(encoding="utf-8", errors="replace").startswith(
+            MAKEFILE_MARKER
+        )
         if target.exists() and not adopt_wrote:
             found.append(path)
     for path in git(root, "ls-files", "--", layout.delivery).splitlines():
@@ -197,11 +199,11 @@ def respell(path: Path, markers: tuple[str, str], block: str) -> None:
     """Replace the marked block in a file the repository owns with its root-layout spelling; leave the rest alone."""
     if not path.is_file():
         return
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     begin, end = (re.escape(marker) for marker in markers)
     respelled, count = re.subn(rf"{begin}.*?{end}[^\n]*", lambda _match: block, text, count=1, flags=re.S)
     if count:
-        path.write_text(respelled)
+        path.write_text(respelled, encoding="utf-8")
 
 
 def check_report(readiness: Check) -> str:

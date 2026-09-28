@@ -49,7 +49,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="report the snapshot's age instead of refreshing")
     arguments = parser.parse_args(argv)
-    table = json.loads(TABLE.read_text())
+    table = json.loads(TABLE.read_text(encoding="utf-8"))
     today = datetime.date.today()
     if arguments.check:
         age = today - datetime.date.fromisoformat(table["snapshot"])
@@ -70,7 +70,7 @@ def main(argv: list[str]) -> int:
         else:
             print(f"{key}: endoflife.date/{slug} returned nothing; kept as it was", file=sys.stderr)
     table["snapshot"] = today.isoformat()
-    TABLE.write_text(json.dumps(table, indent=2) + "\n")
+    TABLE.write_text(json.dumps(table, indent=2) + "\n", encoding="utf-8")
     print(f"snapshot dated {table['snapshot']}")
     return 0
 

@@ -88,7 +88,7 @@ def adopted() -> bool:
     if DIRECTORY.is_dir():
         return True
     try:
-        return "codegraph" in (json.loads(EXTENSIONS.read_text()).get("extensions") or [])
+        return "codegraph" in (json.loads(EXTENSIONS.read_text(encoding="utf-8")).get("extensions") or [])
     except (OSError, ValueError, AttributeError):
         return False
 
@@ -424,7 +424,7 @@ def asker(happened: dict[str, Any]) -> str:
 
 def load_asked() -> dict[str, float]:
     try:
-        read = json.loads(ASKED.read_text())
+        read = json.loads(ASKED.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
     return read if isinstance(read, dict) else {}
@@ -442,7 +442,7 @@ def guard() -> int:
     if index_query(tool, given):
         asked[who] = time.time()
         try:
-            ASKED.write_text(json.dumps(dict(sorted(asked.items(), key=lambda pair: pair[1])[-200:])) + "\n")
+            ASKED.write_text(json.dumps(dict(sorted(asked.items(), key=lambda pair: pair[1])[-200:])) + "\n", encoding="utf-8")
         except OSError:
             pass
         return 0
@@ -479,7 +479,7 @@ def delegate_use(stream: Path, only: int | None = None) -> dict[int, list[dict[s
     if not stream.is_file():
         return found
     iteration, agents = 0, {}
-    for line in stream.read_text(errors="replace").splitlines():
+    for line in stream.read_text(errors="replace", encoding="utf-8").splitlines():
         if line.startswith("# iteration "):
             iteration = int(line.split()[2])
             if only is not None and iteration != only:

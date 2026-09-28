@@ -33,7 +33,7 @@ sys.path.insert(0, str(FACTORY / "src"))
 
 from slipwai.versions import is_snapshot, key  # noqa: E402 — after the path that makes it importable
 
-VERSION = (FACTORY / "VERSION").read_text().strip()
+VERSION = (FACTORY / "VERSION").read_text(encoding="utf-8").strip()
 PACKAGE = "slipwai"
 
 

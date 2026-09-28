@@ -43,7 +43,7 @@ def project_services() -> dict[str, list[str]]:
     have nothing to require, and the manifest's own readers report it.
     """
     try:
-        document = json.loads(MANIFEST.read_text())
+        document = json.loads(MANIFEST.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
     deployables = document.get("deployables") if isinstance(document, dict) else None
@@ -83,7 +83,7 @@ def load_yaml() -> object:
         )
         importlib.invalidate_caches()
         import yaml  # type: ignore[import-not-found]
-    return yaml.safe_load(MODEL.read_text())
+    return yaml.safe_load(MODEL.read_text(encoding="utf-8"))
 
 
 def validate(model: object, services: dict[str, list[str]] | None = None) -> list[str]:

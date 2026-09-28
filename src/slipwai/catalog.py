@@ -14,7 +14,7 @@ from .errors import GenerationError
 from .extensions import validate_extensions
 from .targets import required_axes, validate_targets
 
-CATALOG = json.loads((ROOT / "catalog.json").read_text())
+CATALOG = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
 
 
 def validate_catalog(catalog: dict) -> None:

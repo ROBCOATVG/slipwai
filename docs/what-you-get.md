@@ -28,6 +28,7 @@ infra/              OpenTofu, under --target aws or --target azure
 Makefile            setup, run, quality, test, model, agent, audit, deploy and CI targets
 docker-compose.yml  the app and whatever backing services it was given
 .editorconfig       the whitespace conventions, for editors that read them
+.gitattributes      LF line endings whatever a clone's core.autocrlf says, so shell scripts run under Git Bash
 .nvmrc              the Node major CI and Compose are pinned to, where there is an npm workspace
 .python-version     the CPython minor they are pinned to, where there is a Python service
 renovate.json       how the exact pins are kept from becoming old exact pins

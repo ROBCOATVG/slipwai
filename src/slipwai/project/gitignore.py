@@ -51,7 +51,7 @@ def harness_directories(entry: dict) -> list[str]:
 
 def projection_artifacts() -> str:
     """One ignored line per harness directory inside the repository, once each, in registry order."""
-    harnesses = json.loads(REGISTRY.read_text())["harnesses"]
+    harnesses = json.loads(REGISTRY.read_text(encoding="utf-8"))["harnesses"]
     directories = [directory for entry in harnesses for directory in harness_directories(entry)]
     return "".join(f"{directory.rstrip('/')}/\n" for directory in dict.fromkeys(directories))
 

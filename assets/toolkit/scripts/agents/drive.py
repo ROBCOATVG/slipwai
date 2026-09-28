@@ -89,7 +89,7 @@ def main() -> None:
     if not CONFIG.is_file():
         print(ABSENT)
         return
-    table = json.loads(CONFIG.read_text())
+    table = json.loads(CONFIG.read_text(encoding="utf-8"))
     if "--set" in arguments:
         assignments = arguments[arguments.index("--set") + 1:]
         if not assignments:
@@ -98,7 +98,7 @@ def main() -> None:
         findings = check(table)
         if findings:
             raise RuntimeError("not written — the change would leave the file malformed:\n  - " + "\n  - ".join(findings))
-        CONFIG.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n")
+        CONFIG.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         for line in changed:
             print(line)
         print(f"{CONFIG.relative_to(ROOT)} written; it takes effect at the next implementation stage /drive runs. "

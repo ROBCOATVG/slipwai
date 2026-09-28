@@ -102,7 +102,7 @@ FAST_SEEDED = {"claude": "sonnet"}
 
 def switchable_harnesses() -> list[dict]:
     """Every registry row that records how a sub-task gets its model, in registry order."""
-    harnesses = json.loads(REGISTRY.read_text())["harnesses"]
+    harnesses = json.loads(REGISTRY.read_text(encoding="utf-8"))["harnesses"]
     return [entry for entry in harnesses if isinstance(entry.get("subagentModel"), dict)]
 
 

@@ -46,7 +46,7 @@ def deployables(kind: str) -> list[dict]:
     """
     if not MANIFEST.is_file():
         return []
-    records = json.loads(MANIFEST.read_text()).get("deployables", {})
+    records = json.loads(MANIFEST.read_text(encoding="utf-8")).get("deployables", {})
     return [
         record
         for record in records.values()
@@ -64,7 +64,7 @@ def unruled() -> list[str]:
     as: a service, a library, a tool, a test suite, or an application whose role nobody has established."""
     if not MANIFEST.is_file():
         return []
-    records = json.loads(MANIFEST.read_text()).get("deployables", {}).values()
+    records = json.loads(MANIFEST.read_text(encoding="utf-8")).get("deployables", {}).values()
     return [
         record["path"] for record in records
         if isinstance(record, dict) and isinstance(record.get("path"), str)
@@ -220,7 +220,7 @@ def main() -> int:
 
     # 1. Domain code may not name an outer layer, in any language.
     for path in source_files("domain"):
-        for number, line in enumerate(path.read_text(errors="replace").splitlines(), start=1):
+        for number, line in enumerate(path.read_text(errors="replace", encoding="utf-8").splitlines(), start=1):
             if IMPORT_LINE.match(line) and OUTER_LAYER.search(line):
                 violations.append(f"{path.relative_to(ROOT)}:{number}: domain imports an outer layer: {line.strip()}")
 
@@ -233,7 +233,7 @@ def main() -> int:
         allowed: frozenset[str] | None = policy["allowed"]  # type: ignore[assignment]
         banned_prefixes: tuple[str, ...] = policy["banned_prefixes"]  # type: ignore[assignment]
         banned_label = policy["banned"]
-        for number, specifier in specifiers_with_lines(path.read_text(errors="replace"), path.suffix):
+        for number, specifier in specifiers_with_lines(path.read_text(errors="replace", encoding="utf-8"), path.suffix):
             if specifier.startswith(".") or specifier.startswith("/"):
                 continue
             relative = f"{path.relative_to(ROOT)}:{number}"
@@ -249,7 +249,7 @@ def main() -> int:
 
     # 3. Application code may not name an adapter or the composition root, in any language.
     for path in source_files("application"):
-        for number, line in enumerate(path.read_text(errors="replace").splitlines(), start=1):
+        for number, line in enumerate(path.read_text(errors="replace", encoding="utf-8").splitlines(), start=1):
             if IMPORT_LINE.match(line) and OUTER_LAYER_FROM_APPLICATION.search(line):
                 violations.append(
                     f"{path.relative_to(ROOT)}:{number}: application imports an outer layer: {line.strip()}"
@@ -263,7 +263,7 @@ def main() -> int:
         for path in sorted(web.rglob("*")):
             if not path.is_file() or path.suffix not in {".ts", ".tsx"}:
                 continue
-            for number, line in enumerate(path.read_text(errors="replace").splitlines(), start=1):
+            for number, line in enumerate(path.read_text(errors="replace", encoding="utf-8").splitlines(), start=1):
                 if IMPORT_LINE.match(line) and implementation.search(line):
                     violations.append(
                         f"{path.relative_to(ROOT)}:{number}: frontend imports backend implementation: {line.strip()}"
@@ -285,7 +285,7 @@ def main() -> int:
             if own is None:
                 continue
             published = "api" if path.suffix == ".java" else "public"
-            for number, line in enumerate(path.read_text(errors="replace").splitlines(), start=1):
+            for number, line in enumerate(path.read_text(errors="replace", encoding="utf-8").splitlines(), start=1):
                 if not IMPORT_LINE.match(line):
                     continue
                 for other in contexts:

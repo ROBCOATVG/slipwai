@@ -57,7 +57,7 @@ class Product:
 
 
 def support_table() -> dict:
-    return json.loads(SUPPORT_TABLE.read_text())
+    return json.loads(SUPPORT_TABLE.read_text(encoding="utf-8"))
 
 
 def numbers(version: str) -> str:

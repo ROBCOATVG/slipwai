@@ -114,13 +114,13 @@ def go_module_variant(selection: Selection) -> str:
 
 
 def go_module(selection: Selection) -> str:
-    return (LANGUAGE_ROOT / f"go/modules/{go_module_variant(selection)}/go.mod").read_text()
+    return (LANGUAGE_ROOT / f"go/modules/{go_module_variant(selection)}/go.mod").read_text(encoding="utf-8")
 
 
 def go_checksums(selection: Selection) -> str | None:
     """The committed `go.sum`, or None for a variant that requires nothing."""
     path = LANGUAGE_ROOT / f"go/modules/{go_module_variant(selection)}/go.sum"
-    return path.read_text() if path.is_file() else None
+    return path.read_text(encoding="utf-8") if path.is_file() else None
 
 
 def go_language_version(module: str) -> str:
@@ -169,7 +169,7 @@ def repository_files(
     uses = "".join(f"use ./{service.path}\n" for service in services)
     files["go.work"] = f"go {go_language_version(files[f'{services[0].path}/go.mod'])}\n\n{uses}"
     for script in (GO_COVERAGE_SCRIPT, GO_MUTATION_SCRIPT):
-        files[script] = (LANGUAGE_ROOT / f"go/{script}").read_text().replace(GO_GREMLINS_TOKEN, GO_GREMLINS)
+        files[script] = (LANGUAGE_ROOT / f"go/{script}").read_text(encoding="utf-8").replace(GO_GREMLINS_TOKEN, GO_GREMLINS)
     apps = " ".join(service.path for service in services)
     files[verify] = f"""#!/bin/sh
 set -eu

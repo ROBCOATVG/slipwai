@@ -82,7 +82,7 @@ def migrations() -> list[Path]:
 
 def statements(path: Path) -> str:
     """The text that runs when the migration is applied: comments out, and a JavaScript `down` cut off."""
-    text = path.read_text(errors="ignore")
+    text = path.read_text(errors="ignore", encoding="utf-8")
     if path.suffix in {".js", ".ts"}:
         down = DOWN.search(text)
         if down:
@@ -182,7 +182,7 @@ def check() -> list[str]:
         relative = path.relative_to(ROOT).as_posix()
         text = statements(path)
         found = contractions(text)
-        marker = CONTRACT.search(path.read_text(errors="ignore"))
+        marker = CONTRACT.search(path.read_text(errors="ignore", encoding="utf-8"))
         if not found:
             continue
         what = "; ".join(found)

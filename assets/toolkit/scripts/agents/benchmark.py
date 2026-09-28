@@ -97,7 +97,7 @@ def git(*arguments: str) -> str | None:
 def load(directory: Path) -> dict[str, Any]:
     path = directory / RECORD
     if path.is_file():
-        record: dict[str, Any] = json.loads(path.read_text())
+        record: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
         return record
     parts = directory.relative_to(ROOT).parts
     feature = parts[1] if len(parts) > 1 and parts[0] == "specs" else directory.name
@@ -107,7 +107,7 @@ def load(directory: Path) -> dict[str, Any]:
 
 def save(directory: Path, record: dict[str, Any]) -> None:
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / RECORD).write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n")
+    (directory / RECORD).write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def tasks_file(directory: Path) -> Path | None:
@@ -123,7 +123,7 @@ def task_counts(directory: Path) -> dict[str, int] | None:
     path = tasks_file(directory)
     if path is None:
         return None
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     open_, done = len(re.findall(r"^\s*- \[ \]", text, re.M)), len(re.findall(r"^\s*- \[[xX]\]", text, re.M))
     return {"open": open_, "done": done}
 
@@ -139,7 +139,7 @@ def planned(stage: str) -> str | None:
 def installed() -> list[str]:
     if not INTEGRATION.is_file():
         return []
-    state = json.loads(INTEGRATION.read_text())
+    state = json.loads(INTEGRATION.read_text(encoding="utf-8"))
     keys = state.get("installed_integrations")
     if isinstance(keys, list) and keys:
         return [key for key in keys if isinstance(key, str)]
@@ -148,7 +148,7 @@ def installed() -> list[str]:
 
 
 def registry() -> dict[str, dict[str, Any]]:
-    return {entry["key"]: entry for entry in json.loads(REGISTRY.read_text())["harnesses"]}
+    return {entry["key"]: entry for entry in json.loads(REGISTRY.read_text(encoding="utf-8"))["harnesses"]}
 
 
 def sizes(paths: list[Path]) -> dict[str, int]:
@@ -552,7 +552,7 @@ def close(directory: Path) -> None:
             path = ROOT / untracked
             if path.is_file() and path.name != RECORD:
                 shape["files"] += 1
-                shape["added"] += len(path.read_text(errors="replace").splitlines())
+                shape["added"] += len(path.read_text(errors="replace", encoding="utf-8").splitlines())
     record["shape"] = shape
     save(directory, record)
     print(f"benchmark: {record['slice'] or record['feature']} closed — {shape['tasks']} tasks, {shape['files']} files, "
@@ -612,7 +612,7 @@ def implemented() -> list[tuple[str, str | None]]:
     model = ROOT / "docs/event-model/model.yaml"
     found: list[tuple[str, str | None]] = []
     if model.is_file():
-        for block in re.split(r"^\s*- id:\s*", model.read_text(), flags=re.M)[1:]:
+        for block in re.split(r"^\s*- id:\s*", model.read_text(encoding="utf-8"), flags=re.M)[1:]:
             ident = block.split("\n", 1)[0].strip().strip("'\"")
             if ident and re.search(r"^\s*status:\s*implemented\s*$", block, re.M):
                 named = re.search(r"^\s*(?:spec|gwt):\s*['\"]?specs/([^/\s'\"]+)/", block, re.M)
@@ -627,7 +627,7 @@ def done_slices(feature: Path) -> set[str]:
     done: set[str] = set()
     register = feature / "slices/README.md"
     if register.is_file():
-        for line in register.read_text().splitlines():
+        for line in register.read_text(encoding="utf-8").splitlines():
             if line.strip().startswith("|"):
                 first = line.strip().strip("|").split("|")[0].strip().strip("`")
                 found = re.match(r"([A-Za-z]+\d+)\b", first)
@@ -670,7 +670,7 @@ def check() -> list[str]:
             if not record_path.is_file():
                 findings.append(f"{where} is done but has no {RECORD}: no stage of it was bracketed "
                                 "(commands/drive.md, *What each stage costs*)")
-            elif "shape" not in json.loads(record_path.read_text()):
+            elif "shape" not in json.loads(record_path.read_text(encoding="utf-8")):
                 findings.append(f"{where} is done but its record was never closed — "
                                 f"`python3 scripts/agents/benchmark.py close {where}`")
         if done and not (feature / RECORD).is_file():
@@ -798,7 +798,7 @@ def summarise(record: dict[str, Any]) -> dict[str, Any]:
 
 def records() -> list[tuple[Path, dict[str, Any]]]:
     specs = ROOT / "specs"
-    return [(path, json.loads(path.read_text())) for path in sorted(specs.rglob(RECORD))] if specs.is_dir() else []
+    return [(path, json.loads(path.read_text(encoding="utf-8"))) for path in sorted(specs.rglob(RECORD))] if specs.is_dir() else []
 
 
 COLUMNS = ("slice", "delegate/cycle", "wall", "in", "out", "models", "sessions", "converge", "+tasks", "gaps", "mutation",
@@ -956,7 +956,7 @@ def overview(feature: str | None = None) -> list[Path]:
                                                                                           "every stage's tokens read."))
         parts.append(f"## Reading these numbers\n\n{READING}")
         page = ROOT / "specs" / name / OVERVIEW
-        page.write_text("\n\n".join(parts) + "\n")
+        page.write_text("\n\n".join(parts) + "\n", encoding="utf-8")
         pages.append(page)
     return pages
 

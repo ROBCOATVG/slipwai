@@ -71,7 +71,7 @@ def missing_wrapper(root: Path, app: App) -> str | None:
 def pinned_version(ecosystem: str) -> str:
     """The build tool version the wrapper fetches, read from the properties it is written with."""
     properties = next(source for _, source, _ in WRAPPERS[ecosystem][2] if source.name.endswith(".properties"))
-    match = re.search(r"-(\d+\.\d+(?:\.\d+)?)-bin\.zip", properties.read_text())
+    match = re.search(r"-(\d+\.\d+(?:\.\d+)?)-bin\.zip", properties.read_text(encoding="utf-8"))
     return match.group(1) if match else "its pinned version"
 
 

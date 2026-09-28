@@ -48,7 +48,7 @@ def snippet(backend: str, family: str, skill: str, example_id: str, root: Path =
     for owner in dict.fromkeys((backend, family)):
         path = root / f"assets/languages/{owner}/{relative}"
         if path.is_file():
-            return path.read_text().rstrip("\n")
+            return path.read_text(encoding="utf-8").rstrip("\n")
     raise GenerationError(
         f"missing {backend} example snippet for {skill}/{example_id} (expected "
         f"assets/languages/{backend}/{relative}, or assets/languages/{family}/{relative})"

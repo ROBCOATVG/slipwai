@@ -122,20 +122,20 @@ def adopted() -> bool:
     record = ROOT / ".slipwai/extensions.json"
     if record.is_file():
         try:
-            document = json.loads(record.read_text())
+            document = json.loads(record.read_text(encoding="utf-8"))
         except ValueError:
             document = {}
         if KEY in (document.get("extensions") or []):
             return True
     agents = ROOT / "AGENTS.md"
-    return agents.is_file() and f"<!-- extension:{KEY}:begin -->" in agents.read_text()
+    return agents.is_file() and f"<!-- extension:{KEY}:begin -->" in agents.read_text(encoding="utf-8")
 
 
 def browser_apps() -> list[Path]:
     manifest = ROOT / "project.json"
     if not manifest.is_file():
         return []
-    deployables = json.loads(manifest.read_text()).get("deployables")
+    deployables = json.loads(manifest.read_text(encoding="utf-8")).get("deployables")
     if not isinstance(deployables, dict):
         return []
     return [
@@ -238,7 +238,7 @@ def local(reference: str, beside: Path) -> Path | None:
 
 def styles_of(page: Path) -> set[Path]:
     """Every local stylesheet a preview links or imports, and every one those import in turn."""
-    text = page.read_text(errors="replace")
+    text = page.read_text(errors="replace", encoding="utf-8")
     pending = [local(href.group(1), page.parent) for link in LINK.findall(text) if STYLESHEET.search(link)
                for href in [HREF.search(link)] if href]
     pending += [local(reference, page.parent) for reference in IMPORT.findall(text)]
@@ -249,7 +249,7 @@ def styles_of(page: Path) -> set[Path]:
             continue
         found.add(sheet)
         if sheet.is_file():
-            imported = IMPORT.findall(sheet.read_text(errors="replace"))
+            imported = IMPORT.findall(sheet.read_text(errors="replace", encoding="utf-8"))
             pending += [local(reference, sheet.parent) for reference in imported]
     return found
 
@@ -379,7 +379,7 @@ def main() -> int:
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as scratch:
         preload = Path(scratch) / "preload.cjs"
-        preload.write_text(PRELOAD.replace("{scripts}", json.dumps(str(kit / "scripts/preload.cjs"))))
+        preload.write_text(PRELOAD.replace("{scripts}", json.dumps(str(kit / "scripts/preload.cjs"))), encoding="utf-8")
         with ThreadPoolExecutor(max_workers=jobs()) as pool:
             verdicts = list(pool.map(lambda gate: run(gate, preload if opened == "bundled" else None), gates))
     for gate, verdict in zip(gates, verdicts, strict=True):

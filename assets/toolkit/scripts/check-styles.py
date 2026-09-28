@@ -44,7 +44,7 @@ def web_paths(root: Path = ROOT) -> list[Path]:
     manifest = root / "project.json"
     if not manifest.is_file():
         return []
-    records = json.loads(manifest.read_text()).get("deployables", {}).values()
+    records = json.loads(manifest.read_text(encoding="utf-8")).get("deployables", {}).values()
     return [
         root / record["path"]
         for record in records
@@ -81,7 +81,7 @@ def imported_styles(app: Path) -> set[Path]:
     for path in sorted(source.rglob("*")):
         if path.suffix not in {".ts", ".tsx"} or not path.is_file():
             continue
-        text = COMMENTS.sub("", path.read_text(errors="ignore"))
+        text = COMMENTS.sub("", path.read_text(errors="ignore", encoding="utf-8"))
         for specifier in TS_CSS_IMPORT.findall(text):
             imported = resolve_import(path, specifier, app)
             if imported is not None and imported not in found:
@@ -89,7 +89,7 @@ def imported_styles(app: Path) -> set[Path]:
                 pending.append(imported)
     while pending:
         path = pending.pop()
-        text = COMMENTS.sub("", path.read_text(errors="ignore"))
+        text = COMMENTS.sub("", path.read_text(errors="ignore", encoding="utf-8"))
         for specifier in CSS_IMPORT.findall(text):
             imported = resolve_import(path, specifier, app)
             if imported is not None and imported not in found:
@@ -100,7 +100,7 @@ def imported_styles(app: Path) -> set[Path]:
 
 def root_properties(path: Path) -> set[str]:
     """Custom properties declared by any ``:root`` block in one stylesheet."""
-    text = COMMENTS.sub("", path.read_text(errors="ignore"))
+    text = COMMENTS.sub("", path.read_text(errors="ignore", encoding="utf-8"))
     properties: set[str] = set()
     for match in ROOT_BLOCK.finditer(text):
         depth = 1

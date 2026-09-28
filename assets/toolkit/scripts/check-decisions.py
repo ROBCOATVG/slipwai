@@ -108,7 +108,7 @@ def check_decisions(path: Path) -> list[str]:
     relative = path.relative_to(ROOT).as_posix()
     findings: list[str] = []
     expected = 1
-    for line, heading, fields in entries(path.read_text(), DECISION_HEADING):
+    for line, heading, fields in entries(path.read_text(encoding="utf-8"), DECISION_HEADING):
         where = f"{relative}:{line}"
         if heading is None:
             findings.append(f"{where}: a heading that is not `## D<n> — <question>`")
@@ -138,7 +138,7 @@ def check_decisions(path: Path) -> list[str]:
 def check_demo_log(path: Path) -> list[str]:
     relative = path.relative_to(ROOT).as_posix()
     findings: list[str] = []
-    for line, heading, fields in entries(path.read_text(), DEMO_HEADING):
+    for line, heading, fields in entries(path.read_text(encoding="utf-8"), DEMO_HEADING):
         where = f"{relative}:{line}"
         if heading is None:
             findings.append(f"{where}: a heading that is not `## <instant> — <verdict> · iteration <n> · drive-hand (<model>)`")
@@ -163,7 +163,7 @@ def implemented() -> list[tuple[str, str | None]]:
     model = ROOT / "docs/event-model/model.yaml"
     found: list[tuple[str, str | None]] = []
     if model.is_file():
-        for block in re.split(r"^\s*- id:\s*", model.read_text(), flags=re.M)[1:]:
+        for block in re.split(r"^\s*- id:\s*", model.read_text(encoding="utf-8"), flags=re.M)[1:]:
             ident = block.split("\n", 1)[0].strip().strip("'\"")
             if ident and re.search(r"^\s*status:\s*implemented\s*$", block, re.M):
                 named = re.search(r"^\s*(?:spec|gwt):\s*['\"]?specs/([^/\s'\"]+)/", block, re.M)
@@ -178,7 +178,7 @@ def done_slices(feature: Path) -> set[str]:
     done: set[str] = set()
     register = feature / "slices/README.md"
     if register.is_file():
-        for line in register.read_text().splitlines():
+        for line in register.read_text(encoding="utf-8").splitlines():
             if line.strip().startswith("|"):
                 first = line.strip().strip("|").split("|")[0].strip().strip("`")
                 found = re.match(r"([A-Za-z]+\d+)\b", first)
@@ -206,7 +206,7 @@ def check_adversary_rows() -> list[str]:
         if not done:
             continue
         log = feature / ADVERSARY_LOG
-        rows = set(re.findall(r"^## (\S+) · ", log.read_text(), re.M)) if log.is_file() else set()
+        rows = set(re.findall(r"^## (\S+) · ", log.read_text(encoding="utf-8"), re.M)) if log.is_file() else set()
         for ident in sorted(done - rows):
             findings.append(f"{log.relative_to(ROOT).as_posix()}: no row for {ident}, which is done — `/adversary` runs "
                             "after every acceptance and records the attack or the skip; an unwritten row is a pass "
@@ -223,7 +223,7 @@ def baseline() -> int:
     migrated across the gate, whose history cannot be attacked honestly after the fact; refused where any log
     already carries a baseline row, so it is the done set at one moment and not a way past the gate afterwards."""
     logs = sorted(SPECS.glob(f"*/{ADVERSARY_LOG}")) if SPECS.is_dir() else []
-    taken = [log for log in logs if f"· {PREDATES}" in log.read_text()]
+    taken = [log for log in logs if f"· {PREDATES}" in log.read_text(encoding="utf-8")]
     if taken:
         print(f"check-decisions: a baseline was already taken ({taken[0].relative_to(ROOT).as_posix()}); a slice "
               "finished since is held to a row `/adversary` writes", file=sys.stderr)
@@ -234,14 +234,14 @@ def baseline() -> int:
         if not (feature / "slices").is_dir():
             continue
         log = feature / ADVERSARY_LOG
-        text = log.read_text() if log.is_file() else f"# Adversary log — {feature.name}\n"
+        text = log.read_text(encoding="utf-8") if log.is_file() else f"# Adversary log — {feature.name}\n"
         missing = sorted(done_slices(feature) - set(re.findall(r"^## (\S+) · ", text, re.M)))
         if not missing:
             continue
         rows = "".join(f"\n## {ident} · {PREDATES} · {today}\n\nFinished before `check-decisions` held every done "
                        "slice to a row here. Never attacked by `/adversary`, so no slice may cite this row as "
                        "coverage.\n" for ident in missing)
-        log.write_text(text.rstrip("\n") + "\n" + rows)
+        log.write_text(text.rstrip("\n") + "\n" + rows, encoding="utf-8")
         written += len(missing)
         print(f"check-decisions: {log.relative_to(ROOT).as_posix()}: {len(missing)} baseline row(s)")
     print(f"check-decisions: baselined {written} done slice(s)" if written
@@ -271,8 +271,8 @@ def main() -> int:
             print(f"  {finding}", file=sys.stderr)
         print(file=sys.stderr)
         return 1
-    counted = sum(len(entries(p.read_text(), DECISION_HEADING)) for p in decisions)
-    demos = sum(len(entries(p.read_text(), DEMO_HEADING)) for p in logs)
+    counted = sum(len(entries(p.read_text(encoding="utf-8"), DECISION_HEADING)) for p in decisions)
+    demos = sum(len(entries(p.read_text(encoding="utf-8"), DEMO_HEADING)) for p in logs)
     print(f"check-decisions: {counted} decision(s) in {len(decisions)} file(s), {demos} demo(s) in {len(logs)} log(s), "
           "every field present and every path in the tree, every done slice in the adversary log")
     return 0

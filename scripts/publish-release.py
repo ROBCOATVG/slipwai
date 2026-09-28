@@ -145,7 +145,7 @@ def notes(repository: Path, version: str) -> str:
     changelog = repository / "CHANGELOG.md"
     if not changelog.is_file():
         return ""
-    text = changelog.read_text()
+    text = changelog.read_text(encoding="utf-8")
     headings = list(ENTRY.finditer(text))
     for index, heading in enumerate(headings):
         if heading.group(1) != version:

@@ -60,7 +60,7 @@ def installed() -> list[str]:
     """The harness keys Spec Kit recorded as installed; none before `./init`."""
     if not INTEGRATION.is_file():
         return []
-    state = json.loads(INTEGRATION.read_text())
+    state = json.loads(INTEGRATION.read_text(encoding="utf-8"))
     keys = state.get("installed_integrations")
     if isinstance(keys, list) and keys:
         return list(dict.fromkeys(key for key in keys if isinstance(key, str)))
@@ -195,11 +195,11 @@ def reproject() -> None:
 
 def main() -> None:
     arguments = sys.argv[1:]
-    registry = {entry["key"]: entry for entry in json.loads(REGISTRY.read_text())["harnesses"]}
+    registry = {entry["key"]: entry for entry in json.loads(REGISTRY.read_text(encoding="utf-8"))["harnesses"]}
     if not MODELS.is_file():
         print(ABSENT)
         return
-    table = json.loads(MODELS.read_text())
+    table = json.loads(MODELS.read_text(encoding="utf-8"))
     if "--set" in arguments:
         assignments = arguments[arguments.index("--set") + 1:]
         if not assignments:
@@ -209,7 +209,7 @@ def main() -> None:
         if findings:
             listed = "\n  - ".join(findings)
             raise RuntimeError(f"not written — the change would leave the table malformed:\n  - {listed}")
-        MODELS.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n")
+        MODELS.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         for line_ in changed:
             print(line_)
         print(f"{MODELS.relative_to(ROOT)} written; it takes effect at the next stage /drive runs. Commit it: the "

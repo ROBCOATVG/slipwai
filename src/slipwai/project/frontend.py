@@ -78,7 +78,7 @@ def web_files(project_name: str, web: App, apps: list[App], target: str) -> dict
     # Both export the same things, so `main.tsx` and every slice are identical either way.
     variant = "app-flags-target" if managed(CATALOG, target) else "app-flags-local"
     for relative, destination in (("flags.ts", "src/flags.ts"), ("flags.test.ts", "tests/flags.test.ts")):
-        content = (FRONTEND_ROOT / "react-vite" / variant / relative).read_text()
+        content = (FRONTEND_ROOT / "react-vite" / variant / relative).read_text(encoding="utf-8")
         files[f"{web.path}/{destination}"] = content
     # The one route, in the shape this project can actually write it. A service that publishes an API
     # document gets a client generated from it and calls through that; one whose framework publishes
@@ -92,7 +92,7 @@ def web_files(project_name: str, web: App, apps: list[App], target: str) -> dict
             ("Home.tsx", "src/routes/Home.tsx"),
             ("Home.test.tsx", "tests/routes/Home.test.tsx"),
         ):
-            content = (FRONTEND_ROOT / "react-vite" / variant / relative).read_text()
+            content = (FRONTEND_ROOT / "react-vite" / variant / relative).read_text(encoding="utf-8")
             files[f"{web.path}/{destination}"] = spoken_for_app(content, project_name, api, status_path)
     for feature, source in WEB_FEATURE_FILES.items():
         if feature not in features:
@@ -169,7 +169,7 @@ def frontend_files(project_name: str, apps: list[App], target: str) -> dict[str,
         if node
         else f"frontend-only{web_suffix}.json"
     )
-    lock = json.loads((FRONTEND_ROOT / f"react-vite/locks/{lock_name}").read_text())
+    lock = json.loads((FRONTEND_ROOT / f"react-vite/locks/{lock_name}").read_text(encoding="utf-8"))
     lock["name"] = project_name
     root_record = lock["packages"][""]
     root_record["name"] = project_name
@@ -196,7 +196,7 @@ def frontend_files(project_name: str, apps: list[App], target: str) -> dict[str,
         packages[key] = value
         if key == "":
             for service in node:
-                record = json.loads(service_lock(service.selection).read_text())["packages"][""]
+                record = json.loads(service_lock(service.selection).read_text(encoding="utf-8"))["packages"][""]
                 packages[service.path] = dict(
                     service_template,
                     **{k: record[k] for k in ("dependencies", "devDependencies") if k in record},
@@ -207,7 +207,7 @@ def frontend_files(project_name: str, apps: list[App], target: str) -> dict[str,
             if has_client and client_template is not None:
                 packages[API_CLIENT] = dict(client_template, name=api_client_package(project_name))
     for service in node[1:]:
-        for key, value in json.loads(service_lock(service.selection).read_text())["packages"].items():
+        for key, value in json.loads(service_lock(service.selection).read_text(encoding="utf-8"))["packages"].items():
             if key and key not in packages:
                 packages[key] = value
     for app in web:

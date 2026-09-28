@@ -150,7 +150,7 @@ def deletions(base: str, path: str) -> int:
 
 def deployables() -> dict[str, dict]:
     try:
-        document = json.loads((ROOT / "project.json").read_text())
+        document = json.loads((ROOT / "project.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
     listed = document.get("deployables") if isinstance(document, dict) else None
@@ -192,7 +192,7 @@ class Scope:
         self.slice_id = slice_id
         self.base = base
         self.apps = deployables()
-        model_text = (ROOT / MODEL).read_text() if (ROOT / MODEL).is_file() else None
+        model_text = (ROOT / MODEL).read_text(encoding="utf-8") if (ROOT / MODEL).is_file() else None
         self.model = load_model(model_text) if model_text is not None else None
         own = slices_of(self.model).get(slice_id, {})
         self.service = own.get("service") if isinstance(own.get("service"), str) else None

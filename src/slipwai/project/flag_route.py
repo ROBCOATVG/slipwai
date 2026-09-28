@@ -171,7 +171,7 @@ def flag_resource(target: str, backend: str, selection: Selection) -> dict[str, 
     for transport, resource in FLAG_RESOURCES.items():
         if resource.backend == backend and selection.has(transport):
             root = BACKING_SERVICE_ROOT / resource.backend
-            return {resource.destination: (root / resource.source).read_text()}
+            return {resource.destination: (root / resource.source).read_text(encoding="utf-8")}
     return {}
 
 

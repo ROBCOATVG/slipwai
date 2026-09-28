@@ -73,7 +73,7 @@ def published_document(selection: Selection, target: str) -> dict[str, str]:
         if not selection.has(transport):
             continue
         source = flagged if managed(CATALOG, target) else plain
-        return {"openapi.json": (BACKING_SERVICE_ROOT / backend / source).read_text()}
+        return {"openapi.json": (BACKING_SERVICE_ROOT / backend / source).read_text(encoding="utf-8")}
     return {}
 
 

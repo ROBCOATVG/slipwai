@@ -168,7 +168,7 @@ def decision_of(root: Path, layout: Layout) -> dict:
     nothing, which is what a recommendation is until a person writes one."""
     decided: dict = {"decided": None, "adr": None}
     for path in sorted((root / layout.under("docs/adr")).glob("*.md")):
-        text = path.read_text(errors="replace")
+        text = path.read_text(errors="replace", encoding="utf-8")
         # An ADR accepted under an older factory's spelling still decides — `Strategy: modernise-in-place` is read
         # as `in-place` — because the decision is the person's and a rename here is not a reason to lose it.
         named = [current(match.group(1).lower()) for match in ADR_STRATEGY.finditer(text)]
@@ -181,7 +181,7 @@ def decision_of(root: Path, layout: Layout) -> dict:
 def ledger_finished(root: Path, layout: Layout) -> bool:
     """Whether every capability in the retirement ledger has reached *removed* — its last row says so — and there is
     at least one. An empty ledger has finished nothing."""
-    text = (root / layout.under("retirement.md")).read_text(errors="replace") if (
+    text = (root / layout.under("retirement.md")).read_text(errors="replace", encoding="utf-8") if (
         root / layout.under("retirement.md")).is_file() else ""
     last: dict[str, str] = {}
     for line in text.splitlines():

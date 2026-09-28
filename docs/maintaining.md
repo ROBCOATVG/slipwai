@@ -131,7 +131,7 @@ src/slipwai/
 │   ├── init_script.py   its ./init            ├── event_model.py    its event model
 │   ├── run_skill.py     its run-the-app skill ├── frontend.py       its apps/web
 │   ├── agent_settings.py  its agent settings  ├── backing_services.py  its adapters
-│   ├── pins.py          its .editorconfig, .nvmrc and .python-version: the toolchain the gate runs on,
+│   ├── pins.py          its .editorconfig, .gitattributes, .nvmrc and .python-version: the toolchain the gate runs on,
 │                        written where each ecosystem's own tools look for it
 │   ├── renovate.py      its renovate.json: what keeps exact pins from becoming old exact pins, written
 │                        for this repository's own layout

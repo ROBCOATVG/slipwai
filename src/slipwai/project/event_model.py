@@ -123,7 +123,7 @@ concurrently*); a harness that cannot delegate takes the earliest in split order
     mapping = model_to_code(backend, service, paths)
     # The asset is the canonical template, with its guidance comments intact. The one generated change is
     # the page address: unlike a template, a generated project knows where its pages daemon will serve it.
-    model = (TOOLKIT_ROOT / "docs/event-model/model.yaml").read_text().replace(
+    model = (TOOLKIT_ROOT / "docs/event-model/model.yaml").read_text(encoding="utf-8").replace(
         "  # page: https://your-org.github.io/your-repo/",
         f"  page: {event_model_page_url(project_name)}",
     )

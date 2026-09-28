@@ -720,7 +720,7 @@ def targets() -> dict[str, tuple[str, str, str]]:
     if not METADATA.is_file():
         return {}
     try:
-        metadata = json.loads(METADATA.read_text())
+        metadata = json.loads(METADATA.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return {}
     if metadata.get("origin") != "adopted":
@@ -766,7 +766,7 @@ def capabilities() -> set[str] | None:
     if not METADATA.is_file():
         return None
     try:
-        metadata = json.loads(METADATA.read_text())
+        metadata = json.loads(METADATA.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return None
     declared = metadata.get("capabilities")
@@ -812,7 +812,7 @@ def untouched_template(raw: bytes) -> bool:
     """
     if TEMPLATE_RECORD.is_file():
         try:
-            recorded = json.loads(TEMPLATE_RECORD.read_text()).get("sha256")
+            recorded = json.loads(TEMPLATE_RECORD.read_text(encoding="utf-8")).get("sha256")
         except json.JSONDecodeError:
             recorded = None
         if isinstance(recorded, str) and recorded == hashlib.sha256(raw).hexdigest():
@@ -820,7 +820,7 @@ def untouched_template(raw: bytes) -> bool:
     candidates = [CORE_TEMPLATE, *PRESET_TEMPLATES.glob("*/templates/constitution-template.md")]
     text = flatten(raw.decode(errors="replace")).strip()
     return any(
-        candidate.is_file() and flatten(candidate.read_text(errors="replace")).strip() == text
+        candidate.is_file() and flatten(candidate.read_text(errors="replace", encoding="utf-8")).strip() == text
         for candidate in candidates
     )
 

@@ -59,7 +59,7 @@ class Refreshed:
 def writes(root: Path, layout: Layout) -> set[str]:
     """Every path a refresh may write or remove: the factory's listing, and the pages the record drives."""
     listing = root / layout.under(WRITTEN)
-    listed = set(listing.read_text().split()) if listing.is_file() else set()
+    listed = set(listing.read_text(encoding="utf-8").split()) if listing.is_file() else set()
     return listed | {layout.under(page) for page in (SURVEY_PAGE, STRUCTURE_PAGE, "docs/convergence.md")}
 
 
@@ -251,7 +251,7 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
     # then on: taking one over is deleting its line, and the factory leaves it alone and says so — the third real
     # adoption could not edit the gate's workflow for its own default branch and had to add a second one beside it.
     listing = root / layout.under(WRITTEN)
-    listed = set(listing.read_text().split()) if listing.is_file() else set()
+    listed = set(listing.read_text(encoding="utf-8").split()) if listing.is_file() else set()
     owned = {
         relative for relative in after
         if listing.is_file() and relative in before and relative not in listed and relative != layout.under(WRITTEN)
@@ -266,10 +266,11 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
     # person edits `project.json` by hand (a confirmed version, a row moved) and the files it drives have to follow.
     for relative, content in after.items():
         path = root / relative
-        if relative == "project.json" or relative in owned or (path.is_file() and path.read_text() == content):
+        if relative == "project.json" or relative in owned or (
+                path.is_file() and path.read_text(encoding="utf-8") == content):
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, newline="")
+        path.write_text(content, newline="", encoding="utf-8")
         path.chmod(0o755 if relative in executables else 0o644)
         done.rewritten.append(relative)
     # What the factory wrote before and does not write now is removed with its reason, not left in the tree: the
@@ -300,10 +301,10 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
                               (layout.under(STRUCTURE_PAGE), view),
                               (convergence_page, after[convergence_page])):
         path = root / relative
-        if path.is_file() and path.read_text() == content:
+        if path.is_file() and path.read_text(encoding="utf-8") == content:
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8")
         done.rewritten.append(relative)
     stamp(root, (set(after) - owned) | writes(root, layout))  # what a later answer may write over as its own
     return done

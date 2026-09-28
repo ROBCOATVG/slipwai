@@ -7,8 +7,9 @@ thing the ownership rule was protecting: the project sees what changed, takes wh
 every place where it and the factory disagree. The output of an upgrade is a proposed merge, never a
 mutation.
 
-Learning the whole loop? [Generate](learn-generate.md#4-migrate-then-catch-up) and
-[adopt](learn-adopt.md#4-migrate-then-catch-up) each end on migrate **then `/catch-up`**.
+Following a runsheet? [Generate](learn-generate.md#phase-6-keeping-the-repository-in-tune-with-slipwai) and
+[adopt](learn-adopt.md#phase-7-keeping-the-repository-in-tune-with-slipwai) each end on migrate **then
+`/catch-up`**.
 
 ## What a project records
 

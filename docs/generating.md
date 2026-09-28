@@ -1,7 +1,7 @@
 # Scaffold a new project
 
-New here? [Generate a new project — learning path](learn-generate.md) is the short route: install, first
-session with terminal screenshots, then upgrade, migrate and `/catch-up`. This page is the full reference.
+New here? [Runsheet: generate a new project](learn-generate.md) is every step in order, from install to
+`/cruise` and each later release. This page is the full reference.
 
 Install `slipwai` once ([Install the command](executable.md)), then run it from wherever the new
 repository should appear. You do not need a checkout of this factory:

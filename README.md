@@ -14,10 +14,12 @@ The canonical source is
 there.
 
 ```sh
-slipwai generate            # answer a few questions -> a fresh Git repo, one commit, on main
-cd ledger && ./init         # Spec Kit + your coding agent, on demand
-make verify                 # the gate, the same one CI runs
+slipwai generate            # answer a few questions -> a fresh Git repo, one commit, on main,
+                            # then ./init: Spec Kit and your coding agent
+cd ledger && make verify    # the gate, the same one CI runs
 ```
+
+It runs on macOS, Linux, WSL and Windows. On Windows, a project's scripts run under Git Bash (Git for Windows).
 
 **Jump to** — [New to this](#new-to-this--start-here) · [What it is](#what-it-is) ·
 [Getting started](#getting-started) · [Cruise](#cruise-drive-with-nobody-at-the-wheel) ·
@@ -116,7 +118,13 @@ how you know it worked, and what the terminal shows.
 Scaffolding needs **Python 3.11 or later** and **Git**.
 
 **`uv` is the recommended installer.** It is worth having anyway: a generated project's `./init` uses `uv`
-to fetch Spec Kit, so one tool covers both ends.
+to fetch Spec Kit and to give your `python3` the PyYAML that Spec Kit's scripts need, so one tool covers both
+ends.
+
+When `slipwai` or `./init` finds a tool missing, it names the command that installs it with the package
+manager your machine has: Homebrew or MacPorts on macOS; apt, dnf, pacman, zypper or apk on Linux and WSL;
+winget, Scoop or Chocolatey on Windows. On Windows you also need [Git for Windows](https://git-scm.com/download/win),
+because `./init` and the `Makefile` run under its Git Bash.
 
 ```sh
 uv tool install slipwai
@@ -141,7 +149,8 @@ pushes the repository and bootstraps the account:
 3. A region.
 4. Access to your forge.
 
-`slipwai generate` checks all four as soon as you choose `aws` or `azure`, and refuses with what is missing.
+`slipwai generate` checks all four as soon as you choose `aws` or `azure`, and refuses with what is missing
+and the command that installs each one on this machine.
 [Tools required](docs/requirements.md) has the full list. Running costs are in
 [The AWS target](docs/aws-target.md) and [The Azure target](docs/azure-target.md), which is also where the
 two are compared.
@@ -163,19 +172,27 @@ slipwai generate ledger \
 That creates `./ledger` in the current directory, initialised on `main` with one commit. The target
 directory must not already exist. `--output` names a different **parent directory**.
 
+Answered at a terminal, `generate` then runs the project's `./init` for you (step 3). The flag form above
+leaves it to you, for scripts and CI; `--init` runs it there too, and `--no-init` skips it anywhere.
+
 ### 3. Bootstrap the new repository
 
-Spec Kit is deliberately absent until you ask for it. From inside the generated project:
+Spec Kit is deliberately absent until you ask for it. Answering the questions at a terminal asks for it: the
+interactive `generate` ends by running `./init`. After the flag form, run it from inside the generated
+project:
 
 ```sh
 ./init
 ```
 
+On Windows, `generate` runs it through Git Bash, and you run it from Git Bash too.
+
 That installs Spec Kit. It then asks which coding agent to project `skills/`, `commands/` and `agents/`
 into — any of [36 harnesses](docs/spec-kit.md). It then offers optional extensions as a checkbox menu:
 CodeGraph, UI/UX Pro Max and the UX gates.
 
-`--integration <name>` and `--extension <key>` skip those questions. `--extension` also adds one later. See
+`--integration <name>` and `--extension <key>` skip those questions; `slipwai generate --integration <name>`
+passes the agent through. `--extension` also adds one later. See
 [Extensions](docs/extensions.md).
 
 ### 4. Work in it, and run it

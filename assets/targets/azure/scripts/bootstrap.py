@@ -214,11 +214,11 @@ def location(ask: bool) -> str | None:
     in a terminal, asked once and written down for the verbs that follow."""
     found = os.environ.get("AZURE_LOCATION") or configured_location()
     if not found and LOCATION_FILE.is_file():
-        found = LOCATION_FILE.read_text().strip() or None
+        found = LOCATION_FILE.read_text(encoding="utf-8").strip() or None
     if not found and ask and sys.stdin.isatty():
         found = input("Azure region for this project (for example uksouth): ").strip() or None
         if found:
-            LOCATION_FILE.write_text(found + "\n")
+            LOCATION_FILE.write_text(found + "\n", encoding="utf-8", newline="\n")
             print(f"+ wrote {LOCATION_FILE.relative_to(ROOT)} — commit it with the state", file=sys.stderr)
     return found
 
@@ -238,8 +238,8 @@ def auto_promote(given: str | None, ask: bool) -> str:
     if given:
         # Held to PROMOTE_CHOICES by argparse, which `make bootstrap AUTO_PROMOTE=…` also goes through.
         found = given
-    elif PROMOTE_FILE.is_file() and PROMOTE_FILE.read_text().strip() in PROMOTE_CHOICES:
-        return PROMOTE_FILE.read_text().strip()
+    elif PROMOTE_FILE.is_file() and PROMOTE_FILE.read_text(encoding="utf-8").strip() in PROMOTE_CHOICES:
+        return PROMOTE_FILE.read_text(encoding="utf-8").strip()
     elif ask and sys.stdin.isatty():
         print(
             "\nAuto-promote means every commit that passes verify on main goes to staging and then "
@@ -254,7 +254,7 @@ def auto_promote(given: str | None, ask: bool) -> str:
     else:
         found = "true"
     if ask:
-        PROMOTE_FILE.write_text(found + "\n")
+        PROMOTE_FILE.write_text(found + "\n", encoding="utf-8", newline="\n")
         print(f"+ wrote {PROMOTE_FILE.relative_to(ROOT)} = {found} — commit it with the state", file=sys.stderr)
     return found
 
@@ -281,7 +281,7 @@ def uses_auth0() -> bool:
     data = ROOT / "infra/service/project.auto.tfvars.json"
     if not data.is_file():
         return False
-    services = json.loads(data.read_text()).get("services", {})
+    services = json.loads(data.read_text(encoding="utf-8")).get("services", {})
     return any(service.get(axis) == "auth0" for service in services.values() for axis in ("auth", "users"))
 
 
@@ -320,7 +320,7 @@ def remember(found: dict) -> None:
     for relative, output in RECORDED.items():
         value = str(found.get(output) or "").strip()
         if value:
-            (ROOT / relative).write_text(value + "\n")
+            (ROOT / relative).write_text(value + "\n", encoding="utf-8", newline="\n")
     print("+ wrote " + ", ".join(sorted(RECORDED)) + " — commit them with the state", file=sys.stderr)
 
 
@@ -449,7 +449,7 @@ def answers_entra() -> bool:
     data = ROOT / "infra/service/project.auto.tfvars.json"
     if not data.is_file():
         return False
-    services = json.loads(data.read_text()).get("services", {})
+    services = json.loads(data.read_text(encoding="utf-8")).get("services", {})
     return any(service.get("auth") == "entra" for service in services.values())
 
 

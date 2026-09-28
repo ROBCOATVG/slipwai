@@ -37,7 +37,9 @@ def main() -> None:
     app = build_app([readiness()]__FLAGS_SOURCE__)
     # Trailing newline, two-space indent, keys as FastAPI orders them: a document a person will read
     # in a diff, and one that does not make every commit look like it rewrote the whole file.
-    destination.write_text(json.dumps(app.openapi(), indent=2) + "\n")
+    destination.write_text(
+        json.dumps(app.openapi(), indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
 
 
 if __name__ == "__main__":

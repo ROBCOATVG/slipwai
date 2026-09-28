@@ -272,7 +272,7 @@ def describe(table: dict[str, Any]) -> str:
 
 
 def load() -> dict[str, Any]:
-    table = json.loads(CONFIG.read_text())
+    table = json.loads(CONFIG.read_text(encoding="utf-8"))
     findings = check(table)
     if findings:
         raise RuntimeError(f"{CONFIG.relative_to(ROOT)}:\n  - " + "\n  - ".join(findings))
@@ -287,14 +287,14 @@ def enabled() -> dict[str, Any]:
 
 
 def registry() -> dict[str, dict[str, Any]]:
-    return {row["key"]: row for row in json.loads(REGISTRY.read_text())["harnesses"]}
+    return {row["key"]: row for row in json.loads(REGISTRY.read_text(encoding="utf-8"))["harnesses"]}
 
 
 def installed_keys() -> list[str]:
     """The harnesses Spec Kit recorded as installed here, in the order it recorded them; none where it never ran."""
     if not INTEGRATION.is_file():
         return []
-    state = json.loads(INTEGRATION.read_text())
+    state = json.loads(INTEGRATION.read_text(encoding="utf-8"))
     keys = state.get("installed_integrations") or [state.get("default_integration")]
     return [key for key in keys if isinstance(key, str)]
 
@@ -481,12 +481,12 @@ def fingerprint() -> str:
 def entries() -> list[dict[str, Any]]:
     if not LOG.is_file():
         return []
-    return [json.loads(line) for line in LOG.read_text().splitlines() if line.strip()]
+    return [json.loads(line) for line in LOG.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def record(entry: dict[str, Any]) -> None:
     LOG.parent.mkdir(parents=True, exist_ok=True)
-    with LOG.open("a") as handle:
+    with LOG.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
@@ -766,7 +766,7 @@ def iterate(template: str, prompt: str, environment: dict[str, str], iteration: 
     command = template.replace("{prompt}", shlex.quote(prompt))
     environment = {**environment, RUNNER_VARIABLE: "1", ITERATION_VARIABLE: str(iteration)}
     feed = Feed(stream)
-    raw = STREAM.open("a") if stream else None
+    raw = STREAM.open("a", encoding="utf-8", newline="\n") if stream else None
     try:
         if raw is not None:
             raw.write(f"# iteration {iteration} {now()}\n")
@@ -809,7 +809,7 @@ def resume() -> None:
     if not CHECKPOINT.is_file():
         return
     print(RESUME)
-    print(CHECKPOINT.read_text().rstrip())
+    print(CHECKPOINT.read_text(encoding="utf-8").rstrip())
     log = entries()
     if log:
         print(f"cruise: the log's last iteration is {log[-1]['iteration']}, ended {log[-1]['ended']} with "
@@ -819,7 +819,7 @@ def resume() -> None:
 def compacting() -> None:
     """Stamp the checkpoint before compaction, so the resumed context can see when it lost its memory."""
     if CHECKPOINT.is_file():
-        with CHECKPOINT.open("a") as handle:
+        with CHECKPOINT.open("a", encoding="utf-8", newline="\n") as handle:
             handle.write(f"- **Compacted:** {now()}\n")
 
 
@@ -835,7 +835,7 @@ def loop() -> None:
 def last_assistant_text(transcript: Path) -> str | None:
     """The text of the last assistant message in a Claude Code transcript, or None where there is none."""
     text = None
-    for line in transcript.read_text(errors="replace").splitlines():
+    for line in transcript.read_text(errors="replace", encoding="utf-8").splitlines():
         try:
             entry = json.loads(line)
         except ValueError:
@@ -870,7 +870,7 @@ def responded() -> None:
     text = event.get("text") or event.get("last_assistant_message")
     if isinstance(text, str) and text.strip():
         LAST_RESPONSE.parent.mkdir(parents=True, exist_ok=True)
-        LAST_RESPONSE.write_text(text)
+        LAST_RESPONSE.write_text(text, encoding="utf-8", newline="\n")
 
 
 def ending_message(event: dict[str, Any]) -> str:
@@ -885,7 +885,7 @@ def ending_message(event: dict[str, Any]) -> str:
     if transcript.is_file():
         return last_assistant_text(transcript) or ""
     if LAST_RESPONSE.is_file():
-        return LAST_RESPONSE.read_text()
+        return LAST_RESPONSE.read_text(encoding="utf-8")
     return ""
 
 
@@ -922,14 +922,14 @@ def stopping() -> None:
         return
     if ended:
         return
-    checkpoint = CHECKPOINT.read_text()
+    checkpoint = CHECKPOINT.read_text(encoding="utf-8")
     if checkpoint.count("- **Held:**") >= HOLD_LIMIT:
         print(f"cruise: held {HOLD_LIMIT} times against a checkpoint nothing rewrote; letting the turn end",
               file=sys.stderr)
         return
     next_step = next((line.strip() for line in checkpoint.splitlines() if line.strip().startswith("- **Next:**")),
                      "- **Next:** (the checkpoint names no next step; read it and commands/cruise.md)")
-    with CHECKPOINT.open("a") as handle:
+    with CHECKPOINT.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(f"- **Held:** {now()} — {last or 'no last line'!r}\n")
     reason = ("cruise: an iteration is in flight (specs/cruise-checkpoint.md) and this turn did not end on one of "
               "its four last lines. An iteration ends only on `cruise: continue`, `cruise: done`, `cruise: parked: "
@@ -972,7 +972,7 @@ def running_pid() -> tuple[int, str] | None:
     """The pid and start time of the runner the pid file names, where that process is still alive."""
     if not PID.is_file():
         return None
-    words = PID.read_text().split()
+    words = PID.read_text(encoding="utf-8").split()
     if not words or not words[0].isdigit():
         return None
     pid = int(words[0])
@@ -1015,7 +1015,7 @@ def queued() -> list[dict[str, Any]]:
     """What a person has queued and no iteration has taken yet, oldest first."""
     if not INBOX.is_file():
         return []
-    return [json.loads(line) for line in INBOX.read_text().splitlines() if line.strip()]
+    return [json.loads(line) for line in INBOX.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def deliver() -> list[str]:
@@ -1028,9 +1028,9 @@ def deliver() -> list[str]:
         os.replace(INBOX, taken)
     except FileNotFoundError:
         return []
-    lines = [line for line in taken.read_text().splitlines() if line.strip()]
+    lines = [line for line in taken.read_text(encoding="utf-8").splitlines() if line.strip()]
     taken.unlink()
-    with TOLD.open("a") as handle:
+    with TOLD.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write("".join(f"{line}\n" for line in lines))
     return [str(json.loads(line)["text"]) for line in lines]
 
@@ -1039,7 +1039,7 @@ def delivered() -> list[dict[str, Any]]:
     """Every message an iteration was given, by the runner or by `told`, and the file cleared for the next."""
     if not TOLD.is_file():
         return []
-    given = [json.loads(line) for line in TOLD.read_text().splitlines() if line.strip()]
+    given = [json.loads(line) for line in TOLD.read_text(encoding="utf-8").splitlines() if line.strip()]
     TOLD.unlink()
     return given
 
@@ -1052,7 +1052,7 @@ def requeue(given: list[dict[str, Any]]) -> None:
     lines = [json.dumps(entry, ensure_ascii=False) for entry in given] + [
         json.dumps(entry, ensure_ascii=False) for entry in queued()]
     INBOX.parent.mkdir(parents=True, exist_ok=True)
-    INBOX.write_text("".join(f"{line}\n" for line in lines))
+    INBOX.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8", newline="\n")
 
 
 def told_argument(texts: list[str]) -> str:
@@ -1073,7 +1073,7 @@ def tell(arguments: list[str]) -> None:
     if not text:
         raise RuntimeError("tell takes the message as its words, or on standard input")
     INBOX.parent.mkdir(parents=True, exist_ok=True)
-    with INBOX.open("a") as handle:
+    with INBOX.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps({"at": now(), "text": text, "now": now_flag}, ensure_ascii=False) + "\n")
     waiting = len(queued())
     count = f"{waiting} message(s) queued" if waiting > 1 else "queued"
@@ -1084,7 +1084,7 @@ def tell(arguments: list[str]) -> None:
         return
     # A parked runner says so as the last line of its log; a foreground one prints it instead, so there the log
     # entry is the evidence, and it cannot say whether something resumed the run since.
-    tail = RUN_LOG.read_text(errors="replace").rstrip().splitlines()[-1:] if RUN_LOG.is_file() else []
+    tail = RUN_LOG.read_text(errors="replace", encoding="utf-8").rstrip().splitlines()[-1:] if RUN_LOG.is_file() else []
     log = entries()
     if tail and tail[-1].startswith("cruise: waiting;"):
         print(f"cruise: {count}; the run is parked and resumes with it within the second")
@@ -1157,7 +1157,7 @@ def run(arguments: list[str]) -> None:
     prompt = prompt_for(harness, feature)
     first = prompt_for(harness, " ".join(part for part in (feature, kickoff) if part))
     PID.parent.mkdir(parents=True, exist_ok=True)
-    PID.write_text(f"{os.getpid()} {now()}\n")
+    PID.write_text(f"{os.getpid()} {now()}\n", encoding="utf-8", newline="\n")
     # What a run that ended under an iteration — `stop --now`, a killed runner — had given it is not spent.
     requeue(delivered())
     signal.signal(signal.SIGTERM, terminated)
@@ -1165,7 +1165,7 @@ def run(arguments: list[str]) -> None:
     try:
         drive(table, harness, template, why, environment, prompt, first, feature, kickoff, no_park)
     finally:
-        if PID.is_file() and PID.read_text().split()[:1] == [str(os.getpid())]:
+        if PID.is_file() and PID.read_text(encoding="utf-8").split()[:1] == [str(os.getpid())]:
             PID.unlink()
 
 
@@ -1339,7 +1339,7 @@ def start(arguments: list[str]) -> None:
         print(line)
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
     # The watch seat starts reading here, so the first `watch` shows this run from its first line.
-    WATCH_CURSOR.write_text(str(RUN_LOG.stat().st_size if RUN_LOG.is_file() else 0))
+    WATCH_CURSOR.write_text(str(RUN_LOG.stat().st_size if RUN_LOG.is_file() else 0), encoding="utf-8", newline="\n")
     with RUN_LOG.open("ab") as log:
         log.write(f"cruise: runner started {now()} from a session, detached\n".encode())
         process = subprocess.Popen([sys.executable, str(SCRIPT), "run", *arguments], cwd=ROOT,
@@ -1349,7 +1349,7 @@ def start(arguments: list[str]) -> None:
     # and so a runner that refused after all is reported here, with its reason, rather than found in the log.
     for _ in range(100):
         if process.poll() is not None:
-            tail = RUN_LOG.read_text().rstrip().splitlines()[-3:] if RUN_LOG.is_file() else []
+            tail = RUN_LOG.read_text(encoding="utf-8").rstrip().splitlines()[-3:] if RUN_LOG.is_file() else []
             if process.returncode == 0:
                 # A run with nothing left to do ends inside this wait: done, stopped, or a budget already spent.
                 print(f"cruise: the runner started and already ended ({why}); {relative(RUN_LOG)} says: "
@@ -1357,7 +1357,7 @@ def start(arguments: list[str]) -> None:
                 return
             raise RuntimeError(f"the runner ended at once (exit {process.returncode}); {relative(RUN_LOG)} says: "
                                + " | ".join(tail))
-        words = PID.read_text().split() if PID.is_file() else []
+        words = PID.read_text(encoding="utf-8").split() if PID.is_file() else []
         if words[:1] == [str(process.pid)]:
             break
         time.sleep(0.05)
@@ -1383,7 +1383,7 @@ def watch_position() -> int:
     cursor, or a log shorter than it — the start of the last run, so a first watch is not the whole history."""
     size = RUN_LOG.stat().st_size if RUN_LOG.is_file() else 0
     if WATCH_CURSOR.is_file():
-        cursor = WATCH_CURSOR.read_text().strip()
+        cursor = WATCH_CURSOR.read_text(encoding="utf-8").strip()
         if cursor.isdigit() and int(cursor) <= size:
             return int(cursor)
     data = RUN_LOG.read_bytes() if RUN_LOG.is_file() else b""
@@ -1445,7 +1445,7 @@ def watch(arguments: list[str]) -> None:
             position += len(raw)
             verdict = boundary(line) or verdict
         if cut:
-            WATCH_CURSOR.write_text(str(position))
+            WATCH_CURSOR.write_text(str(position), encoding="utf-8", newline="\n")
             sys.stdout.flush()
             shown_at = time.monotonic()
             if verdict is not None:
@@ -1459,7 +1459,7 @@ def watch(arguments: list[str]) -> None:
         elif not cut and RUN_LOG.is_file():
             # Nothing new and a runner alive: a run parked before this watch began is still parked, and the
             # seat should say so now rather than sit the whole budget out on a log that will not move.
-            tail = RUN_LOG.read_text(errors="replace").rstrip().splitlines()[-2:]
+            tail = RUN_LOG.read_text(errors="replace", encoding="utf-8").rstrip().splitlines()[-2:]
             if tail and tail[-1].startswith("cruise: waiting;"):
                 parked = next((boundary(line) for line in tail if line.startswith("cruise: parked — ")), None)
                 verdict = parked or ("parked", "see the log")
@@ -1522,7 +1522,7 @@ def refusals() -> dict[tuple[str, str], list[int]]:
     if not STREAM.is_file():
         return found
     iteration = 0
-    for line in STREAM.read_text(errors="replace").splitlines():
+    for line in STREAM.read_text(errors="replace", encoding="utf-8").splitlines():
         if line.startswith("# iteration "):
             iteration = int(line.split()[2])
             continue
@@ -1648,7 +1648,7 @@ def checkpoint_fields() -> dict[str, str]:
         return {}
     fields: dict[str, str] = {}
     label: str | None = None
-    for line in CHECKPOINT.read_text().splitlines():
+    for line in CHECKPOINT.read_text(encoding="utf-8").splitlines():
         found = re.findall(r"\*\*([A-Za-z ]+):\*\* (.*?)(?= · \*\*|$)", line)
         if found:
             for label, value in found:
@@ -1667,7 +1667,7 @@ def where() -> None:
     if running is None:
         return
     log = entries()
-    tail = RUN_LOG.read_text(errors="replace").rstrip().splitlines()[-2:] if RUN_LOG.is_file() else []
+    tail = RUN_LOG.read_text(errors="replace", encoding="utf-8").rstrip().splitlines()[-2:] if RUN_LOG.is_file() else []
     parked = next((line.removeprefix("cruise: parked — ") for line in tail if line.startswith("cruise: parked — ")),
                   None) if tail and tail[-1].startswith("cruise: waiting;") else None
     print(f"cruise: a run is going here — runner pid {running[0]} since {running[1]}, {len(log)} iteration(s) logged, "
@@ -1710,7 +1710,7 @@ def main() -> None:
         verbs[arguments[0]]()
         return
     if "--set" in arguments:
-        table = json.loads(CONFIG.read_text())
+        table = json.loads(CONFIG.read_text(encoding="utf-8"))
         assignments = arguments[arguments.index("--set") + 1:]
         if not assignments:
             raise RuntimeError(f"--set takes key=value with a key from {', '.join(DEFAULTS)}")
@@ -1718,7 +1718,7 @@ def main() -> None:
         findings = check(table)
         if findings:
             raise RuntimeError("not written — the change would leave the file malformed:\n  - " + "\n  - ".join(findings))
-        CONFIG.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n")
+        CONFIG.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
         for line in changed:
             print(line)
         print(f"{CONFIG.relative_to(ROOT)} written; it takes effect at the next iteration /cruise runs. "

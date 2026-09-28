@@ -37,7 +37,7 @@ sign that a programme has quietly become a second system beside the first.
 def strategy_page(layout: Layout, adoption: Adoption | None = None) -> str:
     """`docs/change-strategy.md`, opening with what is recommended for this repository, its one layout-dependent path
     spelled for this project."""
-    text = (ADOPTION_ROOT / "docs/change-strategy.md").read_text()
+    text = (ADOPTION_ROOT / "docs/change-strategy.md").read_text(encoding="utf-8")
     text = text.replace("__DELIVERY__/", f"{layout.delivery}/" if layout.moved else "")
     if adoption is None or not adoption.strategy:
         return text

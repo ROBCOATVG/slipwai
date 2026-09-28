@@ -188,11 +188,11 @@ def region(ask: bool) -> str | None:
     in a terminal, asked once and written down for the verbs that follow."""
     found = os.environ.get("AWS_REGION") or configured_region()
     if not found and REGION_FILE.is_file():
-        found = REGION_FILE.read_text().strip() or None
+        found = REGION_FILE.read_text(encoding="utf-8").strip() or None
     if not found and ask and sys.stdin.isatty():
         found = input("AWS region for this project (for example eu-west-2): ").strip() or None
         if found:
-            REGION_FILE.write_text(found + "\n")
+            REGION_FILE.write_text(found + "\n", encoding="utf-8", newline="\n")
             print(f"+ wrote {REGION_FILE.relative_to(ROOT)} — commit it with the state", file=sys.stderr)
     return found
 
@@ -212,8 +212,8 @@ def auto_promote(given: str | None, ask: bool) -> str:
     if given:
         # Held to PROMOTE_CHOICES by argparse, which `make bootstrap AUTO_PROMOTE=…` also goes through.
         found = given
-    elif PROMOTE_FILE.is_file() and PROMOTE_FILE.read_text().strip() in PROMOTE_CHOICES:
-        return PROMOTE_FILE.read_text().strip()
+    elif PROMOTE_FILE.is_file() and PROMOTE_FILE.read_text(encoding="utf-8").strip() in PROMOTE_CHOICES:
+        return PROMOTE_FILE.read_text(encoding="utf-8").strip()
     elif ask and sys.stdin.isatty():
         print(
             "\nAuto-promote means every commit that passes verify on main goes to staging and then "
@@ -228,7 +228,7 @@ def auto_promote(given: str | None, ask: bool) -> str:
     else:
         found = "true"
     if ask:
-        PROMOTE_FILE.write_text(found + "\n")
+        PROMOTE_FILE.write_text(found + "\n", encoding="utf-8", newline="\n")
         print(f"+ wrote {PROMOTE_FILE.relative_to(ROOT)} = {found} — commit it with the state", file=sys.stderr)
     return found
 
@@ -255,7 +255,7 @@ def uses_auth0() -> bool:
     data = ROOT / "infra/service/project.auto.tfvars.json"
     if not data.is_file():
         return False
-    services = json.loads(data.read_text()).get("services", {})
+    services = json.loads(data.read_text(encoding="utf-8")).get("services", {})
     return any(service.get(axis) == "auth0" for service in services.values() for axis in ("auth", "users"))
 
 

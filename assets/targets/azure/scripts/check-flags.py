@@ -169,7 +169,7 @@ def deployables() -> tuple[dict[str, str], dict[str, str]]:
     services: dict[str, str] = {}
     sites: dict[str, str] = {}
     try:
-        records = json.loads(MANIFEST.read_text()).get("deployables", {})
+        records = json.loads(MANIFEST.read_text(encoding="utf-8")).get("deployables", {})
     except (OSError, ValueError, AttributeError):
         return services, sites
     for name, record in (records.items() if isinstance(records, dict) else ()):
@@ -289,7 +289,7 @@ def declared_before() -> set[tuple[str, str]] | None:
 
 def seeds() -> dict[tuple[str, str], str]:
     """What this project declares now, keyed `(service, key)`."""
-    return declared(DECLARATION.read_text()) if DECLARATION.is_file() else {}
+    return declared(DECLARATION.read_text(encoding="utf-8")) if DECLARATION.is_file() else {}
 
 
 def check() -> list[str]:
@@ -306,7 +306,7 @@ def check() -> list[str]:
     sdk_reads: list[str] = []
     for path in sources():
         relative = path.relative_to(ROOT).as_posix()
-        text = COMMENTS.sub(" ", path.read_text(errors="ignore"))
+        text = COMMENTS.sub(" ", path.read_text(errors="ignore", encoding="utf-8"))
         if is_test(path):
             # A test is not a read. Counted as one, a key declared, tested on both paths and never
             # actually consulted by the code would pass — which is the dead configuration rule 1 is for.

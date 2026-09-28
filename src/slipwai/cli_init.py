@@ -1,17 +1,24 @@
-"""What `adopt` says about the coding agent, and the `./init` run it can end with.
+"""What `adopt` says about the coding agent, and the `./init` run `adopt` and `generate` can each end with.
 
 Brownfield adoption (#74; experimental as `AGENTS.md` defines the word). `harness.py` establishes which
 harness the material is for and `init_script.py` generates the script; this is the edge between them — the
 report's line about what was established and how, running the script once the adoption is committed, and
 bringing the record up to what `./init` settled where `adopt` itself could not tell.
+
+`generate` ends with the same run (`bootstrap`), so a new project is not a second command away from having
+Spec Kit and its agent's skills. `./init` is a `/bin/sh` script, and a native Windows shell cannot run one:
+there it goes through Git for Windows' `sh` when that is installed, and otherwise the run is not attempted
+and the person is told which of WSL or Git Bash to reach for — never a failure half-way through.
 """
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
 from .harness import Agent, from_spec_kit, name_of
+from .host import Host, detect, install_hint
 
 
 def agent_line(agent: Agent) -> str:
@@ -46,13 +53,67 @@ def record_agent(root: Path, agent: Agent) -> str:
     if settled is None or settled.harness is None:
         return "`./init` recorded no integration, so project.json's agent stays the open question it was."
     manifest = root / "project.json"
-    document = json.loads(manifest.read_text())
+    document = json.loads(manifest.read_text(encoding="utf-8"))
     document["agent"] = settled.record()
-    manifest.write_text(json.dumps(document, indent=2) + "\n")
+    manifest.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     return (
         f"Agent: {name_of(settled.harness)} — `./init` asked, and project.json now records the answer "
         "(`confirmed`). That is one more uncommitted change for you to read."
     )
+
+
+def git_sh() -> str | None:
+    """The `sh.exe` Git for Windows ships beside `git.exe`, which is on PATH even where its `bin/` is not."""
+    git = shutil.which("git")
+    if git is None:
+        return None
+    # `<Git>/cmd/git.exe` or `<Git>/bin/git.exe`; `sh.exe` lives in `<Git>/bin/` either way.
+    candidate = Path(git).resolve().parent.parent / "bin" / "sh.exe"
+    return str(candidate) if candidate.is_file() else None
+
+
+def launcher(host: Host) -> list[str] | str:
+    """What runs a `/bin/sh` script on this machine, or why nothing here can — said with the way past it.
+
+    `./init` needs `python3` whatever else it finds, for the agent projection it ends with, so its absence is
+    said before the run rather than after Spec Kit has been fetched for nothing.
+    """
+    if shutil.which("python3") is None:
+        return (
+            f"./init needs python3, and this machine ({host.name}) has none on PATH. Install it with "
+            f"{install_hint('python3', 'https://www.python.org/downloads/', host)}, then run ./init."
+        )
+    if host.posix:
+        return []
+    sh = shutil.which("sh") or git_sh()
+    if sh is None:
+        return (
+            "./init is a POSIX shell script, and this is a native Windows shell with no `sh` to run it. Run it "
+            "inside WSL (`wsl --install`, then work from the Linux side), or from Git Bash — "
+            f"{install_hint('git', 'https://git-scm.com/download/win', host)} installs it."
+        )
+    return [sh]
+
+
+def bootstrap(root: Path, script: Path, integration: str | None) -> bool:
+    """Run `script` (`./init`, or `./<delivery>/init`) from `root`; whether it finished.
+
+    Never raises for a script that could not run or did not finish: whatever called this has already written
+    and committed its work, and that is the thing that must not be lost to a step that needs the network.
+    """
+    command = [f"./{script.as_posix()}", *(["--integration", integration] if integration else [])]
+    shown = " ".join(command)
+    how = launcher(detect())
+    if isinstance(how, str):
+        print(f"\nNot running {shown}: {how}")
+        return False
+    # Flushed, because the script writes straight to the same stream: buffered, everything printed so far
+    # would land after its output wherever stdout is a pipe.
+    print(f"\nRunning {shown} — it installs Spec Kit, which needs the network.", flush=True)
+    finished = subprocess.run([*how, *command], cwd=root, check=False)
+    if finished.returncode != 0:
+        print(f"`{shown}` exited {finished.returncode}.")
+    return finished.returncode == 0
 
 
 def run_init(root: Path, delivery: str, agent: Agent) -> None:
@@ -63,23 +124,35 @@ def run_init(root: Path, delivery: str, agent: Agent) -> None:
     tree for the person to read and commit, exactly as it is in a project the factory generated.
     """
     script = Path(delivery) / "init" if delivery != "." else Path("init")
-    command = [f"./{script.as_posix()}", *(["--integration", agent.harness] if agent.harness else [])]
-    print(f"\nRunning {' '.join(command)} — it installs Spec Kit, which needs the network.")
-    finished = subprocess.run(command, cwd=root, check=False)
-    if finished.returncode == 0:
+    shown = f"./{script.as_posix()}"
+    if bootstrap(root, script, agent.harness):
         # Where `adopt` could not tell which harness this was for, it handed the question to `./init` — and
         # `./init` has now asked it. The record catches up rather than staying behind the truth, which is the
         # difference between a fact nobody has established and one nobody has written down.
         print(record_agent(root, agent))
         print(
-            f"`{' '.join(command)}` is done; what it wrote is uncommitted, and yours to read and commit. "
+            f"`{shown}` is done; what it wrote is uncommitted, and yours to read and commit. "
             "`slipwai adopt --next` says what is left."
         )
         return
     print(
-        f"`{' '.join(command)}` exited {finished.returncode}, and the adoption is committed and unaffected: it is "
-        f"a step of its own, which is why it runs after. Run it again when whatever stopped it is fixed — "
-        f"`slipwai adopt --next` will keep saying that it is the step you are on."
+        f"The adoption is committed and unaffected: `{shown}` is a step of its own, which is why it runs "
+        f"after. Run it again when whatever stopped it is fixed — `slipwai adopt --next` will keep saying that "
+        f"it is the step you are on."
+    )
+
+
+def run_generated_init(destination: Path, integration: str | None) -> None:
+    """`./init` in a project `generate` has just written and committed, from the directory it lives in."""
+    if bootstrap(destination, Path("init"), integration):
+        print(
+            f"./init is done; what it wrote is uncommitted. Next: `cd {destination}`, read it, and "
+            "`git add -A && git commit -m \"Install Spec Kit\"`."
+        )
+        return
+    print(
+        f"The project is written and committed, and unaffected. When whatever stopped it is fixed: "
+        f"`cd {destination} && ./init`."
     )
 
 

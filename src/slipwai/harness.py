@@ -68,7 +68,7 @@ class Agent:
 
 @lru_cache(maxsize=1)
 def registry() -> list[dict]:
-    document = json.loads(REGISTRY.read_text())
+    document = json.loads(REGISTRY.read_text(encoding="utf-8"))
     return [row for row in document.get("harnesses", []) if isinstance(row, dict) and row.get("key")]
 
 
@@ -131,7 +131,7 @@ def from_spec_kit(root: Path) -> Agent | None:
     if not recorded.is_file():
         return None
     try:
-        document = json.loads(recorded.read_text())
+        document = json.loads(recorded.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
     key = document.get("integration") if isinstance(document, dict) else None

@@ -67,7 +67,7 @@ TIMED_OUT = "TIMED OUT"
 
 
 def module_path(go_mod: Path) -> str:
-    for line in go_mod.read_text().splitlines():
+    for line in go_mod.read_text(encoding="utf-8").splitlines():
         if line.startswith("module "):
             return line.split(None, 1)[1].strip()
     sys.exit(f"{go_mod}: no module directive")
@@ -98,7 +98,7 @@ def workspace(service: Path) -> tuple[Path, dict[str, Path]]:
     for parent in [service, *service.parents]:
         work = parent / "go.work"
         if work.is_file():
-            modules = {module_path(parent / d / "go.mod"): (parent / d).resolve() for d in uses(work.read_text())}
+            modules = {module_path(parent / d / "go.mod"): (parent / d).resolve() for d in uses(work.read_text(encoding="utf-8"))}
             return parent, modules
     return service.parent, {}
 
@@ -131,7 +131,7 @@ def stage(service: Path, root: Path, modules: dict[str, Path], into: Path) -> Pa
     if needed:
         needed = {path: directory for path, directory in needed.items() if path in imported(service)}
     go_mod = staged_service / "go.mod"
-    text = go_mod.read_text()
+    text = go_mod.read_text(encoding="utf-8")
     sums = [service / "go.sum"]
     for path, directory in sorted(needed.items()):
         staged = into / directory.relative_to(root)
@@ -141,13 +141,13 @@ def stage(service: Path, root: Path, modules: dict[str, Path], into: Path) -> Pa
         text += f"replace {path} => {staged}\n"
         sums.append(staged / "go.sum")
         print(f"mutation: staged {directory.relative_to(root)} for {path}")
-    go_mod.write_text(text)
+    go_mod.write_text(text, encoding="utf-8", newline="\n")
     # A workspace keeps the checksums of a shared module's dependencies in go.work.sum; with GOWORK=off the
     # staged service needs them in its own go.sum. Every line once, whichever file it came from.
     sums.append(root / "go.work.sum")
-    lines = dict.fromkeys(line for path in sums if path.is_file() for line in path.read_text().splitlines() if line)
+    lines = dict.fromkeys(line for path in sums if path.is_file() for line in path.read_text(encoding="utf-8").splitlines() if line)
     if lines:
-        (staged_service / "go.sum").write_text("".join(f"{line}\n" for line in lines))
+        (staged_service / "go.sum").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8", newline="\n")
     return staged_service
 
 
@@ -179,7 +179,7 @@ def excluded(config: Path) -> list[str]:
     """
     if not config.is_file():
         return []
-    lines = [line for line in config.read_text().splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    lines = [line for line in config.read_text(encoding="utf-8").splitlines() if line.strip() and not line.lstrip().startswith("#")]
     if any("\t" in line[: len(line) - len(line.lstrip())] for line in lines):
         sys.exit(f"{config}: a tab in the indentation. YAML does not allow one, so Gremlins is not reading "
                  "this file the way it looks like it reads.")
@@ -277,7 +277,7 @@ def assess(report: Path) -> int:
             "run — either way a pass on nothing is not a pass.\n"
         )
         return 1
-    result = json.loads(report.read_text())
+    result = json.loads(report.read_text(encoding="utf-8"))
     statuses = Counter(m["status"] for f in result.get("files", []) for m in f.get("mutations", []))
     if not statuses:
         sys.stderr.write("mutation: Gremlins reported no mutants; a pass on nothing is not a pass.\n")

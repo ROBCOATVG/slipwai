@@ -143,7 +143,7 @@ def write_notes(root: Path, name: str, was: str | None) -> str | None:
     try:
         destination = root / NOTES
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(notes(name, was))
+        destination.write_text(notes(name, was), encoding="utf-8", newline="\n")
     except OSError as error:
         return str(error)
     return None
@@ -168,7 +168,7 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
     commands: list[list[str]] = []
     extensions = root / layout.place("scripts/extensions")
     agents = root / "AGENTS.md"
-    marked = agents.read_text() if agents.is_file() else ""
+    marked = agents.read_text(encoding="utf-8") if agents.is_file() else ""
     extension_elected = False
     if extensions.is_dir():
         extension_elected = (root / EXTENSION_STATE).is_file() or any(

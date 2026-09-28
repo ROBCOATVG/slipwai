@@ -96,7 +96,7 @@ def browser_apps() -> list[str]:
     manifest = ROOT / "project.json"
     if not manifest.is_file():
         return []
-    deployables = json.loads(manifest.read_text()).get("deployables")
+    deployables = json.loads(manifest.read_text(encoding="utf-8")).get("deployables")
     if not isinstance(deployables, dict):
         return []
     return [
@@ -137,9 +137,9 @@ def install(source: Path, destination: Path) -> None:
         shutil.rmtree(destination)
     shutil.copytree(source, destination)
     for page in destination.rglob("*.md"):
-        page.write_text(relocated(page.read_text()))
+        page.write_text(relocated(page.read_text(encoding="utf-8")), encoding="utf-8", newline="\n")
     skill_md = destination / "SKILL.md"
-    skill_md.write_text(with_capability(skill_md.read_text()))
+    skill_md.write_text(with_capability(skill_md.read_text(encoding="utf-8")), encoding="utf-8", newline="\n")
 
 
 def reproject() -> None:

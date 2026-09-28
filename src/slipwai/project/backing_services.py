@@ -56,7 +56,7 @@ def backing_service_files(apps: list[App]) -> dict[str, str]:
     if composed(apps):
         files["docker-compose.yml"] = (
             (BACKING_SERVICE_ROOT / "docker-compose.yml")
-            .read_text()
+            .read_text(encoding="utf-8")
             .replace("__APP_SERVICES__\n", app_services(apps))
         )
     if not features_of(apps):
@@ -65,9 +65,9 @@ def backing_service_files(apps: list[App]) -> dict[str, str]:
     # with no transport and no identity provider has nothing left to answer, and shipping it a script whose
     # every axis is settled is shipping a dead end.
     if prunable_features_of(apps):
-        files["scripts/backing-services.py"] = (BACKING_SERVICE_ROOT / "prune.py").read_text()
+        files["scripts/backing-services.py"] = (BACKING_SERVICE_ROOT / "prune.py").read_text(encoding="utf-8")
     if needs_environment(apps):
-        environment = (BACKING_SERVICE_ROOT / "env.example").read_text()
+        environment = (BACKING_SERVICE_ROOT / "env.example").read_text(encoding="utf-8")
         # One block, marked with the first service's transport, rather than one per framework: the two
         # keys are the first service's — `PORT` is its port — and three near-identical marked regions is
         # three places to forget one.
@@ -98,7 +98,7 @@ def backing_service_files(apps: list[App]) -> dict[str, str]:
             continue
         for destination, source in mapping.items():
             files[destination] = spoken_for(
-                (BACKING_SERVICE_ROOT / source).read_text(), first, web[0] if web else None
+                (BACKING_SERVICE_ROOT / source).read_text(encoding="utf-8"), first, web[0] if web else None
             )
     return files
 
@@ -118,5 +118,5 @@ def backing_service_service_files(selection: Selection, backend: str) -> dict[st
         if not selection.has(feature):
             continue
         for destination, source in mapping.items():
-            files[destination] = (root / source).read_text()
+            files[destination] = (root / source).read_text(encoding="utf-8")
     return files

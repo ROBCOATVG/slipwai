@@ -37,7 +37,7 @@ def skill_declarations() -> dict[str, tuple[str, ...] | None]:
     declared: dict[str, tuple[str, ...] | None] = {}
     for source in asset_files(TOOLKIT_ROOT / "skills"):
         if source.name == "SKILL.md":
-            declared[source.parent.name] = declared_for(source.read_text())
+            declared[source.parent.name] = declared_for(source.read_text(encoding="utf-8"))
     return declared
 
 
@@ -166,7 +166,8 @@ def toolkit_files_from_assets(profile: str, apps: list[App]) -> dict[str, str]:
     families = families_of(apps) or list(dict.fromkeys(app.language for app in wrapped_of(apps)))
 
     def copied(source) -> str:
-        return spoken_for(resolve_examples_for(source.read_text(), speakers), first, web[0] if web else None)
+        resolved = resolve_examples_for(source.read_text(encoding="utf-8"), speakers)
+        return spoken_for(resolved, first, web[0] if web else None)
 
     capabilities = pruning_capabilities(profile, apps)
     files: dict[str, str] = {}

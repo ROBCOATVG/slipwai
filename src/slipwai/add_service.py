@@ -229,7 +229,7 @@ def regenerate(
             continue
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, newline="")
+        path.write_text(content, newline="", encoding="utf-8")
         path.chmod(0o755 if relative in executables else 0o644)
         (added if new else rewritten).append(relative)
     return sorted(added), rewritten, json.loads(after["project.json"])
@@ -249,7 +249,7 @@ def pruning_state(root: Path, asked: set[str]) -> tuple[set[str], set[str]]:
 def record(root: Path, document: dict) -> str:
     """Write the manifest, edited in place, with this factory stamped as the last to write here."""
     document["generator"] = wrote_here(document.get("generator"))
-    (root / "project.json").write_text(json.dumps(document, indent=2) + "\n")
+    (root / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     return "project.json"
 
 

@@ -116,7 +116,7 @@ def main(argv: list[str]) -> int:
         for package in packages(service)
         if (reason := out_of_scope(package)) is not None
     }
-    per_package, total, covered = measure(profile_path.read_text(), excluded)
+    per_package, total, covered = measure(profile_path.read_text(encoding="utf-8"), excluded)
     width = max((len(name) for name in [*per_package, *excluded]), default=0)
     for name, (statements, hit) in sorted(per_package.items()):
         print(f"  {name:<{width}}  {percent(hit, statements):6.1f}%  ({hit}/{statements} statements)")

@@ -42,7 +42,7 @@ from .project.languages import language_files
 from .project.makefile import makefile
 from .project.metadata import metadata
 from .project.pin_commands import pin_command_files
-from .project.pins import pin_files
+from .project.pins import GITATTRIBUTES, pin_files
 from .project.readme import readme
 from .project.renovate import renovate_config
 from .project.repository import repository_files
@@ -100,6 +100,7 @@ def project_files(
         "project.json": metadata(project_name, profile, target, apps, layout, adoption),
         "init": init_script(apps, target, layout),
         ".gitignore": build_artifacts(event, apps, target),
+        ".gitattributes": GITATTRIBUTES,
         "renovate.json": renovate_config(apps),
         "Makefile": makefile(project_name, profile, apps, target, layout),
         "AGENTS.md": agent_guidance(profile, apps, target),
@@ -131,8 +132,10 @@ def project_files(
         generated["docs/deployment.md"] = existing_deployment_page(project_name, adoption)
     if wrapped_of(apps):
         # The ratchet, only where there is code that was written before the gate that now judges it.
-        generated["scripts/ratchet.py"] = (ADOPTION_ROOT / "scripts/ratchet.py").read_text()
-        generated["scripts/check-convergence.py"] = (ADOPTION_ROOT / "scripts/check-convergence.py").read_text()
+        generated["scripts/ratchet.py"] = (ADOPTION_ROOT / "scripts/ratchet.py").read_text(encoding="utf-8")
+        generated["scripts/check-convergence.py"] = (ADOPTION_ROOT / "scripts/check-convergence.py").read_text(
+            encoding="utf-8"
+        )
     if managed(CATALOG, target):
         # The one answer whose credential the cloud did not issue, so the one the workflows carry extra.
         auth0 = any(
@@ -215,7 +218,7 @@ def write_project(
         # `newline=""` writes the string's own line endings rather than translating them, which is the
         # other half of `asset_tree`'s faithful read. Only `mvnw.cmd` depends on it today, but the pair is
         # what makes "an asset arrives as committed" true of the bytes and not just of the characters.
-        path.write_text(content, newline="")
+        path.write_text(content, newline="", encoding="utf-8")
         desired_mode = 0o755 if relative in executables else 0o644
         path.chmod(desired_mode)
     prunable = set(prunable_features_of(apps)) if keep is None else keep

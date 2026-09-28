@@ -95,7 +95,8 @@ def push_environment() -> dict[str, str] | None:
 
 
 def entries(repo: Path) -> list[tuple[str, str | None]]:
-    return [(match.group(1), match.group(2)) for match in ENTRY.finditer((repo / "CHANGELOG.md").read_text())]
+    changelog = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+    return [(match.group(1), match.group(2)) for match in ENTRY.finditer(changelog)]
 
 
 def announced(repo: Path, release: str) -> str:
@@ -144,13 +145,14 @@ def cut_entry(repo: Path, release: str) -> list[str]:
     would be read as part of the next entry and go out twice.
     """
     changelog = repo / "CHANGELOG.md"
-    text = changelog.read_text()
+    text = changelog.read_text(encoding="utf-8")
     newest = ENTRY.search(text)
     found = fragments(repo)
     if newest is None:
-        changelog.write_text(text.rstrip() + "\n\n" + entry(release, found, first=True))
+        changelog.write_text(text.rstrip() + "\n\n" + entry(release, found, first=True), encoding="utf-8", newline="\n")
     else:
-        changelog.write_text(text[: newest.start()] + entry(release, found) + text[newest.start() :])
+        updated = text[: newest.start()] + entry(release, found) + text[newest.start() :]
+        changelog.write_text(updated, encoding="utf-8", newline="\n")
     for path, _claim, _body in found:
         # Removed from the worktree alone: the index still has the entry, which is what lets the commit stage
         # the deletion by naming the path like any other change it carries.
@@ -284,7 +286,7 @@ def spent(repo: Path, remote: str, tag: str, at: str | None) -> None:
 
 
 def commit_version(repo: Path, version: str, subject: str, *also: str) -> str:
-    (repo / "VERSION").write_text(f"{version}\n")
+    (repo / "VERSION").write_text(f"{version}\n", encoding="utf-8", newline="\n")
     # `--all` over the named paths and no others: a fragment the entry consumed is staged as the deletion it
     # is, where a bare `add` would refuse a path that is no longer on disk.
     git(repo, "add", "--all", "--", "VERSION", *also)
@@ -327,7 +329,7 @@ def main() -> None:
     # rather than as whatever the half-finished edit did to `VERSION`.
     remote_url, resumed = preflight(repo, remote)
     forge = web_url(remote_url)
-    written = (repo / "VERSION").read_text().strip()
+    written = (repo / "VERSION").read_text(encoding="utf-8").strip()
 
     if resumed is not None:
         # Made by an earlier run whose push failed: preflight proved the two commits are this script's own

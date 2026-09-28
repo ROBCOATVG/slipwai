@@ -799,7 +799,7 @@ def project_has_web(root: Path) -> bool:
     manifest = root / "project.json"
     if not manifest.is_file():
         return False
-    deployables = json.loads(manifest.read_text()).get("deployables") or {}
+    deployables = json.loads(manifest.read_text(encoding="utf-8")).get("deployables") or {}
     return any(
         isinstance(record, dict) and record.get("kind") == "web" and record.get("generated") is not False
         for record in deployables.values()
@@ -815,7 +815,7 @@ def project_target(root: Path) -> str:
     manifest = root / "project.json"
     if not manifest.is_file():
         return "none"
-    target = json.loads(manifest.read_text()).get("target")
+    target = json.loads(manifest.read_text(encoding="utf-8")).get("target")
     return target if isinstance(target, str) else "none"
 
 
@@ -830,7 +830,7 @@ def project_services(root: Path) -> list[tuple[str, str]]:
     manifest = root / "project.json"
     if not manifest.is_file():
         raise ValueError("project.json is missing, so the services cannot be found")
-    deployables = json.loads(manifest.read_text()).get("deployables")
+    deployables = json.loads(manifest.read_text(encoding="utf-8")).get("deployables")
     services: list[tuple[str, str]] = []
     for record in (deployables or {}).values():
         # A service recorded `"generated": false` already existed when the method was installed around it: it
@@ -877,7 +877,7 @@ def delivery_of(root: Path) -> str:
     manifest = root / "project.json"
     if not manifest.is_file():
         return "."
-    layout = json.loads(manifest.read_text()).get("layout")
+    layout = json.loads(manifest.read_text(encoding="utf-8")).get("layout")
     delivery = layout.get("delivery", ".") if isinstance(layout, dict) else "."
     return delivery if isinstance(delivery, str) and delivery else "."
 
@@ -981,7 +981,7 @@ def project_web_apps(root: Path) -> list[str]:
     manifest = root / "project.json"
     if not manifest.is_file():
         return []
-    deployables = json.loads(manifest.read_text()).get("deployables")
+    deployables = json.loads(manifest.read_text(encoding="utf-8")).get("deployables")
     return [
         record["path"]
         for record in (deployables or {}).values()
@@ -1008,7 +1008,7 @@ def features_present(root: Path, services: list[tuple[str, str]]) -> set[str]:
     """
     present: set[str] = set()
     for path in marked_paths(root, services, project_web_apps(root), delivery_of(root)):
-        for name, edge in MARKER.findall(path.read_text()):
+        for name, edge in MARKER.findall(path.read_text(encoding="utf-8")):
             if edge == "begin":
                 present |= marker_features(name) & set(FEATURES)
     return present
@@ -1080,7 +1080,7 @@ def _uninstall_typescript(
     manifest = root / service / "package.json"
     if not manifest.is_file():
         return
-    package = json.loads(manifest.read_text())
+    package = json.loads(manifest.read_text(encoding="utf-8"))
     wanted = [
         name
         for name in packages
@@ -1093,7 +1093,7 @@ def _uninstall_typescript(
     if leftover_scripts:
         for name in leftover_scripts:
             del package["scripts"][name]
-        manifest.write_text(json.dumps(package, indent=2) + "\n")
+        manifest.write_text(json.dumps(package, indent=2) + "\n", encoding="utf-8", newline="\n")
         log(f"  {service}/package.json: dropped script(s) {', '.join(leftover_scripts)}")
 
     if not wanted:
@@ -1141,7 +1141,7 @@ def _uninstall_python(root: Path, service: str, packages: tuple[str, ...], log) 
     names = {name.split("[")[0].lower() for name in packages}
     kept: list[str] = []
     dropped: list[str] = []
-    for line in manifest.read_text().splitlines(keepends=True):
+    for line in manifest.read_text(encoding="utf-8").splitlines(keepends=True):
         match = PYTHON_DEPENDENCY.match(line)
         if match is not None and match.group(1).lower() in names:
             dropped.append(line.strip().rstrip(","))
@@ -1149,7 +1149,7 @@ def _uninstall_python(root: Path, service: str, packages: tuple[str, ...], log) 
             kept.append(line)
     if not dropped:
         return
-    manifest.write_text("".join(kept))
+    manifest.write_text("".join(kept), encoding="utf-8", newline="\n")
     log(f"  {service}/pyproject.toml: dropped {', '.join(dropped)}")
     if shutil.which("uv") is None:
         log(
@@ -1182,7 +1182,7 @@ def _uninstall_go(root: Path, service_path: str, packages: tuple[str, ...], log)
     # Only when go.mod actually still requires one of them. Generation prunes every feature the project was
     # not given, and running a network operation for a module that was never there would make scaffolding
     # need the network.
-    required = (service / "go.mod").read_text()
+    required = (service / "go.mod").read_text(encoding="utf-8")
     if not any(package in required for package in packages):
         return
     if shutil.which("go") is None:
@@ -1244,11 +1244,11 @@ def _drop_compose_environment(root: Path, dropped: set[str], log) -> None:
     if not keys or not path.is_file():
         return
     pattern = re.compile(rf"^\s+({'|'.join(re.escape(key) for key in keys)}):")
-    lines = path.read_text().splitlines(keepends=True)
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
     kept = [line for line in lines if not pattern.match(line)]
     if len(kept) == len(lines):
         return
-    path.write_text("".join(kept))
+    path.write_text("".join(kept), encoding="utf-8", newline="\n")
     log(f"  docker-compose.yml: dropped {', '.join(keys)} from the app service")
 
 
@@ -1268,10 +1268,10 @@ def prune(root: Path, keep: set[str], *, settled: set[str] | None = None, log=pr
     dropped = present - keep
 
     for path in marked_paths(root, services, project_web_apps(root), delivery_of(root)):
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         if not MARKER.search(text):
             continue
-        path.write_text(strip_markers(text, keep, settled))
+        path.write_text(strip_markers(text, keep, settled), encoding="utf-8", newline="\n")
 
     web = project_web_apps(root)
     for feature in sorted(dropped):
@@ -1351,7 +1351,7 @@ def record_answers(root: Path, answers: list[tuple[str, str]], log=print) -> Non
     manifest = root / "project.json"
     if not manifest.is_file():
         return
-    document = json.loads(manifest.read_text())
+    document = json.loads(manifest.read_text(encoding="utf-8"))
     deployables = document.get("deployables")
     if not isinstance(deployables, dict):
         return
@@ -1372,7 +1372,7 @@ def record_answers(root: Path, answers: list[tuple[str, str]], log=print) -> Non
             changed.append(f"{name}: {axis} is now {chosen}")
     if not changed:
         return
-    manifest.write_text(json.dumps(document, indent=2) + "\n")
+    manifest.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     for line in changed:
         log(f"  project.json — {line}")
 

@@ -97,7 +97,7 @@ def caps(document: dict) -> dict[str, tuple[str, str]]:
                 found["platform"] = ("supported", "not every application records an audit command")
     if BASELINE.is_file():
         try:
-            baseline = json.loads(BASELINE.read_text())
+            baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
         except ValueError:
             baseline = {}
         red = []
@@ -110,7 +110,7 @@ def caps(document: dict) -> dict[str, tuple[str, str]]:
                 red.append(f"{name} ({failing} failing)" if failing else name)
         if red and "safety-net" not in found:
             found["safety-net"] = ("tests-exist", f"the ratchet quarantines the test suite of {', '.join(red)}")
-    if not CONSTITUTION.is_file() or PLACEHOLDER.search(CONSTITUTION.read_text(errors="replace")):
+    if not CONSTITUTION.is_file() or PLACEHOLDER.search(CONSTITUTION.read_text(errors="replace", encoding="utf-8")):
         found["constitution"] = ("template", "the constitution is missing or still carries the template's placeholders")
     if not document.get("why"):
         found["strategy"] = ("open", "no `why` is recorded")
@@ -128,7 +128,7 @@ def decided_strategy() -> str | None:
     """The strategy the highest-numbered accepted ADR names, or None."""
     decided = None
     for path in sorted((DELIVERY / "docs/adr").glob("*.md")):
-        text = path.read_text(errors="replace")
+        text = path.read_text(errors="replace", encoding="utf-8")
         spelled = [match.group(1).lower() for match in ADR_STRATEGY.finditer(text)]
         named = [OLD_STRATEGIES.get(name, name) for name in spelled]
         strategy = next((name for name in named if name in STRATEGIES), None)
@@ -139,7 +139,7 @@ def decided_strategy() -> str | None:
 
 def ledger_finished() -> bool:
     last: dict[str, str] = {}
-    for line in (LEDGER.read_text(errors="replace") if LEDGER.is_file() else "").splitlines():
+    for line in (LEDGER.read_text(errors="replace", encoding="utf-8") if LEDGER.is_file() else "").splitlines():
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
         if len(cells) == 7 and cells[0] not in ("Date", "---") and not cells[0].startswith("-"):
             last[cells[1]] = cells[6].strip("*").lower()
@@ -147,7 +147,7 @@ def ledger_finished() -> bool:
 
 
 def main() -> int:
-    document = json.loads((ROOT / "project.json").read_text())
+    document = json.loads((ROOT / "project.json").read_text(encoding="utf-8"))
     rows = document.get("convergence")
     if not isinstance(rows, list) or not rows:
         print("check-convergence: no map recorded — adopted before the map existed; `slipwai adopt --refresh` writes "
@@ -157,7 +157,7 @@ def main() -> int:
         print(f"check-convergence: {PAGE.relative_to(ROOT)} is missing; /survey (slipwai adopt --refresh) writes it",
               file=sys.stderr)
         return 1
-    marker = MARKER.search(PAGE.read_text())
+    marker = MARKER.search(PAGE.read_text(encoding="utf-8"))
     expected = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()[:16]
     if marker is None or marker.group(1) != expected:
         print(

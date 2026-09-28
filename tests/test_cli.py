@@ -278,7 +278,7 @@ class CliTest(FactoryTestCase):
             pid, fd = pty.fork()
             if pid == 0:  # pragma: no cover - the child is the generator
                 # Choosing aws checks the machine for tofu, aws and a forge; this test is about the menu.
-                os.execv(str(ROOT / "slipwai"), ["slipwai", "generate", "--skip-checks"])
+                os.execv(str(ROOT / "slipwai"), ["slipwai", "generate", "--skip-checks", "--no-init"])
             transcript = b""
             pending = b""  # what the generator has written since the last answer went in
             stalled = False

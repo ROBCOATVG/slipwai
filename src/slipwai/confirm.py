@@ -153,7 +153,7 @@ def confirm(root: Path, confirming: dict[str, dict], declining: list[str]) -> Co
         document["candidates"] = remaining
     else:
         document.pop("candidates", None)
-    (root / "project.json").write_text(json.dumps(document, indent=2) + "\n")
+    (root / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     return Confirmed(
         confirmed=[app.name for app in settled], declined=list(declining),
         commands={app.name: dict(app.commands or {}) for app in settled},

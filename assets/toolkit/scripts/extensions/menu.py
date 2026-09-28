@@ -131,7 +131,7 @@ def main() -> int:
         # write-only each avoid that check. Input is binary and unbuffered so `read_key`'s select() sees the
         # truth — a text layer's readahead would hold an arrow key's tail bytes where select cannot see them.
         tty_in = open("/dev/tty", "rb", buffering=0)
-        tty_out = open("/dev/tty", "w", buffering=1)
+        tty_out = open("/dev/tty", "w", buffering=1, encoding="utf-8", newline="\n")
     except OSError:
         # No controlling terminal — the same silent, exit-0 skip every other `./init` prompt falls back to.
         return 0

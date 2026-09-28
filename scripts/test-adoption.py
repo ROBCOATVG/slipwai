@@ -93,9 +93,9 @@ def newer_factory(into: Path) -> Path:
         shutil.copytree(FACTORY / name, factory / name, ignore=shutil.ignore_patterns("__pycache__"))
     for name in ("catalog.json", "slipwai", "CHANGELOG.md"):
         shutil.copy2(FACTORY / name, factory / name)
-    (factory / "VERSION").write_text(f"{NEWER}\n")
+    (factory / "VERSION").write_text(f"{NEWER}\n", encoding="utf-8", newline="\n")
     skill = factory / "assets/toolkit" / CHANGED_SKILL
-    skill.write_text(skill.read_text() + CHANGE)
+    skill.write_text(skill.read_text(encoding="utf-8") + CHANGE, encoding="utf-8", newline="\n")
     return factory
 
 
@@ -127,7 +127,7 @@ def quarantine(repo: Path, tool: str) -> None:
             f"{stopped.stdout[-3000:]}{stopped.stderr[-3000:]}"
         )
     baseline = repo / "delivery/baseline.json"
-    if baseline.is_file() and '"test"' in baseline.read_text():
+    if baseline.is_file() and '"test"' in baseline.read_text(encoding="utf-8"):
         raise SystemExit("test-adoption: the red suite was quarantined without anybody asking for it")
     tightened = run("make", "-f", "delivery/Makefile", "ratchet-tighten", cwd=repo, env=env)
     if tightened.returncode != 0 or "QUARANTINED" not in tightened.stdout:
@@ -171,14 +171,14 @@ def adopt_fixture(name: str, flags: list[str], tool: str, work: Path, factory: P
             raise SystemExit(f"test-adoption: {name}: a GitHub workflow was written into a GitLab repository")
         if not (repo / "delivery/ci/verify-delivery.gitlab-ci.yml").is_file():
             raise SystemExit(f"test-adoption: {name}: no GitLab job was written for a repository whose CI is GitLab's")
-    drive = (repo / "delivery/commands/drive.md").read_text()
+    drive = (repo / "delivery/commands/drive.md").read_text(encoding="utf-8")
     for stage in ("**Ground**", "**Principles**", "**Pin**", "**Implementation**", "**Convergence**"):
         if stage not in drive:
             raise SystemExit(f"test-adoption: {name}: /drive has no {stage} stage")
     order = [drive.index(stage) for stage in ("**Ground**", "**Principles**", "**Pin**", "**Implementation**")]
     if order != sorted(order):
         raise SystemExit(f"test-adoption: {name}: /drive's adoption stages are out of order")
-    view = (repo / "delivery/survey/structure.md").read_text()
+    view = (repo / "delivery/survey/structure.md").read_text(encoding="utf-8")
     headings = ("### Where anything starts", "### What the graph says", "## What this means for the map",
                 "## Where to cut")
     for heading in headings:
@@ -186,7 +186,7 @@ def adopt_fixture(name: str, flags: list[str], tool: str, work: Path, factory: P
             raise SystemExit(f"test-adoption: {name}: the architecture view lacks {heading!r}")
     # The essay opens with the strategy the trigger recommends: changing in place for an end-of-life runtime —
     # said in `why`, or read off the tree, as the Go module's `go 1.22` is — and leaving it where neither says.
-    essay = (repo / "delivery/docs/change-strategy.md").read_text()
+    essay = (repo / "delivery/docs/change-strategy.md").read_text(encoding="utf-8")
     expired = EXPIRED.get(name)
     strategy = "in-place" if "--why" in flags or expired else "leave-it"
     if "## Recommended for this repository" not in essay or f"**`{strategy}`**" not in essay:
@@ -198,18 +198,18 @@ def adopt_fixture(name: str, flags: list[str], tool: str, work: Path, factory: P
     if floor and (floor not in essay or essay.index(floor) < essay.index("### The programme")):
         raise SystemExit(f"test-adoption: {name}: docs/change-strategy.md's programme does not open with the build "
                          f"({floor})")
-    ground = (repo / "delivery/commands/ground.md").read_text()
+    ground = (repo / "delivery/commands/ground.md").read_text(encoding="utf-8")
     if "## The rows, as they stand" not in ground or "### Integration" not in ground or "/ground" not in drive:
         raise SystemExit(f"test-adoption: {name}: /ground lacks its rows or questions, or /drive does not name it")
-    running = (repo / "delivery/survey/running.md").read_text()
-    skill = (repo / "delivery/skills/run-the-app/SKILL.md").read_text()
+    running = (repo / "delivery/survey/running.md").read_text(encoding="utf-8")
+    skill = (repo / "delivery/skills/run-the-app/SKILL.md").read_text(encoding="utf-8")
     if "Not yet proven" not in running or "`delivery/survey/running.md`" not in skill or "never here" not in skill:
         raise SystemExit(f"test-adoption: {name}: the run path's home is not the repository's own survey/running.md")
-    pin = (repo / "delivery/commands/characterise.md").read_text()
+    pin = (repo / "delivery/commands/characterise.md").read_text(encoding="utf-8")
     if ("not a framework you add" not in pin or "Mockito" not in pin or "never a mocking framework" not in drive
             or "never a mocking framework added for the purpose" not in drive.split("**Implementation**")[1]):
         raise SystemExit(f"test-adoption: {name}: /characterise or /drive's Pin stage allows a mocking framework")
-    hooks = (repo / ".specify/extensions.yml").read_text()
+    hooks = (repo / ".specify/extensions.yml").read_text(encoding="utf-8")
     if "before_specify:" not in hooks or "before_plan:" not in hooks or hooks.count("convergence-map") < 2:
         raise SystemExit(f"test-adoption: {name}: .specify/extensions.yml lacks the adoption's hooks")
     print("  adopted: one commit by the factory; nothing of theirs written over; /drive grounds, pins, holds the map")
@@ -244,7 +244,7 @@ def adopt_fixture(name: str, flags: list[str], tool: str, work: Path, factory: P
         )
     if not clean(repo):
         raise SystemExit(f"test-adoption: {name}: the migration left the tree unclean")
-    if CHANGE.strip() not in (repo / "delivery" / CHANGED_SKILL).read_text():
+    if CHANGE.strip() not in (repo / "delivery" / CHANGED_SKILL).read_text(encoding="utf-8"):
         raise SystemExit(f"test-adoption: {name}: the newer factory's change did not arrive")
     for path, content in original.items():
         if path not in ("AGENTS.md", ".gitignore") and (repo / path).read_bytes() != content:
@@ -283,7 +283,7 @@ def commit(repo: Path, message: str) -> None:
 
 
 def rows_of(repo: Path) -> dict[str, dict]:
-    document = json.loads((repo / "project.json").read_text())
+    document = json.loads((repo / "project.json").read_text(encoding="utf-8"))
     return {row["axis"]: row for row in document["convergence"]}
 
 
@@ -312,11 +312,11 @@ def journey(work: Path, factory: Path) -> None:
 
     # One method slice: the suite is green in the gate and nothing is quarantined, so the safety-net row may
     # truthfully move one rung. A person moves it; the refresh redraws the page; the gate agrees.
-    document = json.loads((repo / "project.json").read_text())
+    document = json.loads((repo / "project.json").read_text(encoding="utf-8"))
     for row in document["convergence"]:
         if row["axis"] == "safety-net":
             row.update(rung="tests-pass", provenance="confirmed", planned=None)
-    (repo / "project.json").write_text(json.dumps(document, indent=2) + "\n")
+    (repo / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     commit(repo, "method slice: the suite is green in the gate")
     must(run(str(FACTORY / "slipwai"), "adopt", "--refresh", cwd=repo), "adopt --refresh")
     commit(repo, "the map redrawn")
@@ -327,18 +327,20 @@ def journey(work: Path, factory: Path) -> None:
 
     # The rest of the journey, as a person establishes each rung: every row at its target, the layout declared,
     # the infrastructure answered, the constitution ratified in full, the strategy decided by an ADR.
-    document = json.loads((repo / "project.json").read_text())
+    document = json.loads((repo / "project.json").read_text(encoding="utf-8"))
     for row in document["convergence"]:
         row.update(rung=row["target"], provenance="confirmed", planned=None)
     document["deployables"]["shop"]["layout"] = "hexagonal"
     document["infrastructure"].update(home="none", provenance="confirmed")
-    (repo / "project.json").write_text(json.dumps(document, indent=2) + "\n")
+    (repo / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     requirements = must(run("python3", "delivery/scripts/check-constitution.py", "--requirements", cwd=repo),
                         "constitution requirements")
     (repo / ".specify/memory").mkdir(parents=True, exist_ok=True)
-    (repo / ".specify/memory/constitution.md").write_text("# Ratified\n\n" + requirements)
+    (repo / ".specify/memory/constitution.md").write_text(
+        "# Ratified\n\n" + requirements, encoding="utf-8", newline="\n"
+    )
     (repo / "delivery/docs/adr").mkdir(parents=True, exist_ok=True)
-    (repo / "delivery/docs/adr/0002-leave-it.md").write_text(ADR)
+    (repo / "delivery/docs/adr/0002-leave-it.md").write_text(ADR, encoding="utf-8", newline="\n")
     commit(repo, "every rung established")
     must(run(str(FACTORY / "slipwai"), "adopt", "--refresh", cwd=repo), "adopt --refresh")
     commit(repo, "the map redrawn at every target")
@@ -350,7 +352,7 @@ def journey(work: Path, factory: Path) -> None:
     must(run(str(FACTORY / "slipwai"), "converge", cwd=repo), "converge")
     if (repo / "delivery").exists() or not clean(repo):
         raise SystemExit(f"test-adoption: {JOURNEY}: converge left delivery/ behind or the tree unclean")
-    document = json.loads((repo / "project.json").read_text())
+    document = json.loads((repo / "project.json").read_text(encoding="utf-8"))
     if document.get("origin") != "adopted" or document["layout"]["delivery"] != "." or "converged" not in document:
         raise SystemExit(f"test-adoption: {JOURNEY}: the record after converge is wrong: {document.get('layout')}")
     print("  converged: the material is at the root; origin adopted kept as history")
@@ -368,7 +370,7 @@ def journey(work: Path, factory: Path) -> None:
     if migrated.returncode != 0 or conflicts or not clean(repo):
         raise SystemExit(f"test-adoption: {JOURNEY}: a newer factory did not merge cleanly after converge\n"
                          f"{migrated.stdout}{migrated.stderr}")
-    if CHANGE.strip() not in (repo / CHANGED_SKILL).read_text():
+    if CHANGE.strip() not in (repo / CHANGED_SKILL).read_text(encoding="utf-8"):
         raise SystemExit(f"test-adoption: {JOURNEY}: the newer factory's change did not arrive at the root")
     verify(repo, "node", "after a newer factory's migrate", makefile="Makefile")
     print(f"  migrated to {NEWER} at the root: one clean merge, the gate green")

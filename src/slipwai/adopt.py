@@ -215,11 +215,11 @@ def facts(found: Survey, answers: Answers, layout: Layout) -> Adoption:
 
 def append_block(path: Path, block: str, begin: str) -> bool:
     """Append `block` to the file at `path` once — created if absent; left alone if its marker is there."""
-    existing = path.read_text() if path.is_file() else ""
+    existing = path.read_text(encoding="utf-8") if path.is_file() else ""
     if begin in existing:
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(existing.rstrip("\n") + ("\n" if existing else "") + block)
+    path.write_text(existing.rstrip("\n") + ("\n" if existing else "") + block, encoding="utf-8", newline="\n")
     return True
 
 
@@ -243,20 +243,20 @@ def adopt(root: Path, answers: Answers, found: Survey | None = None) -> Adopted:
     for relative, content in files.items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, newline="")
+        path.write_text(content, newline="", encoding="utf-8")
         path.chmod(0o755 if relative in executables else 0o644)
     page = layout.under(SURVEY_PAGE)
     (root / page).parent.mkdir(parents=True, exist_ok=True)
-    (root / page).write_text(survey_page(found, apps))
+    (root / page).write_text(survey_page(found, apps), encoding="utf-8", newline="\n")
     view = layout.under(STRUCTURE_PAGE)
     found_shape = structure(root, apps, layout.delivery, FACTORY_IDENTITY["GIT_AUTHOR_EMAIL"])
-    (root / view).write_text(structure_page(found_shape, adoption, layout))
+    (root / view).write_text(structure_page(found_shape, adoption, layout), encoding="utf-8", newline="\n")
     ledger = layout.under(PINNED)
-    (root / ledger).write_text(PINNED_LEDGER)
+    (root / ledger).write_text(PINNED_LEDGER, encoding="utf-8", newline="\n")
     retirement = layout.under(RETIREMENT)
-    (root / retirement).write_text(RETIREMENT_LEDGER)
+    (root / retirement).write_text(RETIREMENT_LEDGER, encoding="utf-8", newline="\n")
     running = layout.under(RUNNING)
-    (root / running).write_text(running_ledger(answers.name, apps))
+    (root / running).write_text(running_ledger(answers.name, apps), encoding="utf-8", newline="\n")
     written = [*files, page, view, ledger, retirement, running]
 
     appended = []
@@ -268,7 +268,7 @@ def adopt(root: Path, answers: Answers, found: Survey | None = None) -> Adopted:
     settings_written = not (root / SETTINGS).exists()
     if settings_written:
         (root / SETTINGS).parent.mkdir(parents=True, exist_ok=True)
-        (root / SETTINGS).write_text(claude_settings(apps, answers.target, layout))
+        (root / SETTINGS).write_text(claude_settings(apps, answers.target, layout), encoding="utf-8", newline="\n")
         written.append(SETTINGS)
     # No root Makefile means nothing of theirs to clash with, so `make verify` can be one word from day one.
     # Where there is one, its targets are theirs and the include is a person's edit — see `report`.
@@ -292,7 +292,7 @@ def adopt(root: Path, answers: Answers, found: Survey | None = None) -> Adopted:
 
 
 def manifest_of(root: Path) -> dict:
-    return json.loads((root / "project.json").read_text())
+    return json.loads((root / "project.json").read_text(encoding="utf-8"))
 
 
 __all__ = ["Adopted", "Answers", "WRITTEN", "adopt", "candidates_of", "manifest_of", "proposed", "report"]

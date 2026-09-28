@@ -81,7 +81,7 @@ def main() -> int:
             # prevent. Postgres runs DDL transactionally, so this is a real guarantee.
             try:
                 with connection.cursor() as cursor:
-                    cursor.execute(migration.read_text())
+                    cursor.execute(migration.read_text(encoding="utf-8"))
                     cursor.execute(
                         "INSERT INTO schema_migrations (name) VALUES (%s)", (name,)
                     )

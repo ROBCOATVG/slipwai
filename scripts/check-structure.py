@@ -41,7 +41,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # per backend language and where each backend answers its two probes — what a build ecosystem's
     # files say, for a repository the factory did not make, and which coding agent reads what is written.
     ("contract", ("catalog", "axes", "features", "extensions", "targets", "examples", "backends", "images",
-                  "ecosystems", "probes", "harness")),
+                  "ecosystems", "probes", "harness", "host")),
     # One validated answer per axis, which applications a project has, what they add up to being able to do,
     # how a written manifest reads back into that list, how a canonical toolkit file reaches a project, where
     # the delivery material lives — and the build wrapper a wrapped Java application runs through, written
@@ -111,7 +111,7 @@ def main() -> int:
 
     for path in modules:
         relative = path.relative_to(ROOT).as_posix()
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         name = module_name(path)
         length = len(text.splitlines())
         budget = FACADE_BUDGET if path.name == "__init__.py" else MODULE_BUDGET
@@ -148,7 +148,7 @@ def main() -> int:
                     stack.append((target, [*route, target]))
 
     for path in sorted((ROOT / "tests").glob("*.py")):
-        length = len(path.read_text().splitlines())
+        length = len(path.read_text(encoding="utf-8").splitlines())
         if length > MODULE_BUDGET:
             relative = path.relative_to(ROOT).as_posix()
             violations.append(f"{relative}: {length} lines in one suite, over the {MODULE_BUDGET}-line budget")

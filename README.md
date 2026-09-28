@@ -30,11 +30,11 @@ make verify                 # the gate, the same one CI runs
 Do not clone this repository to create a product. Install the command once. Then run `slipwai generate` or
 `slipwai adopt`.
 
-Two learning paths. Each one installs the command, walks the first session with terminal screenshots, then
-shows how to update `slipwai`, how to migrate a project when the factory moves, and how to catch up.
-`/catch-up` handles the work a merge cannot finish.
+Two runsheets, one per starting point. Each is every step in order: install the command, the first session
+with terminal screenshots, the first feature, `/drive` and `/cruise`, then how to update `slipwai`, migrate a
+project when the factory moves, and catch up. `/catch-up` handles the work a merge cannot finish.
 
-| Path | When |
+| Runsheet | When |
 |---|---|
 | **[Generate a new project](docs/learn-generate.md)** | You want a fresh repository. You get a walking skeleton, a gate and a delivery method from a few answers |
 | **[Adopt an existing repository](docs/learn-adopt.md)** — experimental | You already have a codebase. Install the method around it, without rewriting it first |
@@ -103,10 +103,10 @@ Every other question has its own answer, and a project can answer most of them a
 
 Four steps. You install a `slipwai` command and run it. You do not clone this repository.
 
-New here? Use the [generate learning path](docs/learn-generate.md), or
-[adopt](docs/learn-adopt.md) for an existing tree. Both cover install, first session, upgrade, migrate and
-`/catch-up`, with terminal screenshots. The runsheets — [new project](docs/runsheet-greenfield.md) and
-[existing repository](docs/runsheet-brownfield.md) — are the same journeys as one ordered list of commands.
+New here? Follow the runsheet for your case: [generate a new project](docs/learn-generate.md), or
+[adopt an existing repository](docs/learn-adopt.md). Each is every step in order, from installing the
+command through the first feature and `/cruise` to taking each slipwai release, with where to type it,
+how you know it worked, and what the terminal shows.
 
 [Scaffold a new project](docs/generating.md) is the full reference.
 [Tools required](docs/requirements.md) lists what each toolchain and `make` target needs.
@@ -398,10 +398,8 @@ is which, what each answer brings, and how a project answers a question again la
 
 | Document | Covers |
 |---|---|
-| [Generate a new project — learning path](docs/learn-generate.md) | Install, generate, upgrade, migrate and `/catch-up`, with terminal screenshots |
-| [Adopt an existing repository — learning path](docs/learn-adopt.md) — **experimental** | Install, adopt, upgrade, migrate and `/catch-up`, with terminal screenshots |
-| [Runsheet: a new project](docs/runsheet-greenfield.md) | Every command in order, from `slipwai generate` to `/cruise`, and the three steps that keep the project in tune with each slipwai release |
-| [Runsheet: an existing repository](docs/runsheet-brownfield.md) — **experimental** | Every command in order, from `slipwai adopt` through `/ground` to `/cruise`, how to revisit an answer, and how to take each slipwai release |
+| [Runsheet: generate a new project](docs/learn-generate.md) | Every step in order, from installing the command and `slipwai generate` to `/cruise`, the three steps that keep the project in tune with each slipwai release, and how to undo each one |
+| [Runsheet: adopt an existing repository](docs/learn-adopt.md) — **experimental** | Every step in order, from `slipwai adopt` through `/ground` to `/cruise`, how to revisit an answer, how to take each slipwai release, and how to undo each one |
 | [Scaffold a new project](docs/generating.md) | The interactive and argument forms, one-shot semantics, the generated repository layout, and the event-sourcing boundary between the services and `apps/web` |
 | [Bring a generated project forward](docs/upgrading.md) | `slipwai migrate`: a newer factory's output merged over a project already generated. What comes through clean, what conflicts and should, the catch-up notes it leaves for what a merge cannot do, and the gate that proves it |
 | [Adopt an existing repository](docs/adopting.md) — **experimental** | `slipwai adopt`: the method installed around a repository the factory did not make. The survey, the candidates `/ground` confirms, what is written beside the code and never over it, what `project.json` records with provenance, and what it forfeits for a language the factory cannot generate |

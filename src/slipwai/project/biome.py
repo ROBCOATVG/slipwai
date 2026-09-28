@@ -39,7 +39,7 @@ PLUGIN = "scripts/domain-purity.grit"
 def biome_version() -> str:
     """The exact `@biomejs/biome` the manifests pin."""
     pins = {
-        json.loads(path.read_text())["devDependencies"]["@biomejs/biome"] for path in PINNED_IN
+        json.loads(path.read_text(encoding="utf-8"))["devDependencies"]["@biomejs/biome"] for path in PINNED_IN
     }
     if len(pins) != 1:
         raise AssertionError(f"the manifests pin more than one Biome: {sorted(pins)}")
@@ -51,6 +51,6 @@ def biome_files(apps: list[App]) -> dict[str, str]:
     if not node_workspace(apps):
         return {}
     return {
-        "biome.jsonc": (BIOME_ROOT / "biome.jsonc").read_text().replace(VERSION, biome_version()),
-        PLUGIN: (BIOME_ROOT / "domain-purity.grit").read_text(),
+        "biome.jsonc": (BIOME_ROOT / "biome.jsonc").read_text(encoding="utf-8").replace(VERSION, biome_version()),
+        PLUGIN: (BIOME_ROOT / "domain-purity.grit").read_text(encoding="utf-8"),
     }

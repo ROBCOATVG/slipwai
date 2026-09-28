@@ -9,8 +9,8 @@
 > issue tracker — a detection that was wrong, a gate that went red on day one,
 > or a sentence a page should have had.
 
-New here? [Adopt an existing repository — learning path](learn-adopt.md) is the short route: install, first
-session with terminal screenshots, then upgrade, migrate and `/catch-up`. This page is the full reference.
+New here? [Runsheet: adopt an existing repository](learn-adopt.md) is every step in order, from install to
+`/cruise` and each later release. This page is the full reference.
 
 Most of the projects this method will reach already exist. `slipwai generate` makes a repository; `slipwai
 adopt`, run at the root of one the factory did not make, installs the method *around* it — the gate, CI for

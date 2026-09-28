@@ -58,7 +58,7 @@ def main() -> int:
     args = parser.parse_args()
 
     version_file = ROOT / "VERSION"
-    written = version_file.read_text().strip()
+    written = version_file.read_text(encoding="utf-8").strip()
     if not is_snapshot(written):
         print(
             f"snapshot-version: VERSION is {written}, a release rather than a snapshot; the tag publishes "
@@ -73,7 +73,7 @@ def main() -> int:
         )
     version = snapshot(written, commits_since(newest_release_tag()))
     if args.write:
-        version_file.write_text(f"{version}\n")
+        version_file.write_text(f"{version}\n", encoding="utf-8", newline="\n")
     print(version)
     return 0
 

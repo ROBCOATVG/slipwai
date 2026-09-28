@@ -102,7 +102,7 @@ def released() -> list[Entry]:
     """Every entry in the changelog, newest first — all of them out, each one a version somebody has."""
     if not CHANGELOG.is_file():
         return []
-    text = CHANGELOG.read_text()
+    text = CHANGELOG.read_text(encoding="utf-8")
     found = list(ENTRY.finditer(text))
     read = []
     for index, match in enumerate(found):

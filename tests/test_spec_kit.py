@@ -93,63 +93,94 @@ class SpecKitTest(FactoryTestCase):
             subprocess.run(["./init", "--integration", "claude"], cwd=repo, check=True, env=environment)
             self.assertEqual(log.read_text().splitlines(), ["ran", "ran"])
 
-    def test_init_gives_spec_kits_scripts_pyyaml_or_says_exactly_how_to(self) -> None:
+    def test_init_gives_spec_kits_scripts_pyyaml_with_no_step_of_yours(self) -> None:
         """From Spec Kit 1.0.9 its bash scripts compose the preset templates with PyYAML on the bare `python3`
         they call, and a project whose python3 lacks it learns so at its first `/speckit-specify`: "PyYAML is
-        required", with no remedy, and on a PEP 668 Python the obvious `pip install` is refused too. So `./init`
-        checks, where the installed scripts mention it, against a `python3` it cannot otherwise reach: a venv
-        under `.delivery-tools/` that shares the system's packages, with the PATH line to use it, or the exact
-        thing to install by hand. A Spec Kit whose scripts never mention it gets no word about it."""
+        required", with no remedy, and on a PEP 668 Python the obvious `pip install` is refused too. Those
+        scripts take `python3` off the PATH and nothing else, so `./init` has uv put PyYAML where that
+        interpreter looks without being asked — its venv, or `--target` its user site — and never ends by
+        asking for a venv to be put first on PATH. Without uv it says the line that installs uv, and a Spec Kit
+        whose scripts never mention PyYAML gets no word about it."""
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "yaml-less")
             fake_bin = Path(directory) / "fake-bin"
             fake_bin.mkdir()
+            no_uv_bin = Path(directory) / "no-uv-bin"
+            no_uv_bin.mkdir()
+            site = Path(directory) / "user-site"
+            calls = Path(directory) / "uv-calls"
             (fake_bin / "specify").write_text("#!/bin/sh\nexit 0\n")
-            # A python3 with no `yaml`, whose pip refuses the user site, and whose venv is what the test says.
+            # A python3 whose `yaml` is whatever the user site holds, which answers the question of where it
+            # looks as INIT_TEST_HOME says (`venv`, or its user site), and a uv that records what it was
+            # asked and puts PyYAML there.
             (fake_bin / "python3").write_text(f"""#!/bin/sh
 case "$*" in
-  "-c import yaml") exit 1 ;;
-  "-m pip install "*) exit 1 ;;
-  "-m venv "*) [ "$INIT_TEST_VENV" = works ] || exit 1
-     mkdir -p .delivery-tools/venv/bin && printf '#!/bin/sh\\nexit 0\\n' > .delivery-tools/venv/bin/python
-     chmod 755 .delivery-tools/venv/bin/python; exit 0 ;;
+  "-c import yaml") [ -f "{site}/yaml/__init__.py" ] && exit 0; exit 1 ;;
+  "-c import site, sys;"*) if [ "$INIT_TEST_HOME" = venv ]; then echo venv; else echo "{site}"; fi; exit 0 ;;
 esac
 exec {shutil.which("python3")} "$@"
 """)
-            for tool in ("specify", "python3"):
+            (fake_bin / "uv").write_text(f"""#!/bin/sh
+echo "$*" >> "{calls}"
+mkdir -p "{site}/yaml" && touch "{site}/yaml/__init__.py"
+""")
+            for tool in ("specify", "python3", "uv"):
                 (fake_bin / tool).chmod(0o755)
+            for tool in ("specify", "python3"):
+                (no_uv_bin / tool).symlink_to(fake_bin / tool)
             scripts = repo / ".specify/scripts/bash"
             scripts.mkdir(parents=True)
-            environment = os.environ | {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
+            system_path = ":".join(
+                entry for entry in os.environ["PATH"].split(":") if not (Path(entry) / "uv").exists()
+            )
 
-            def init(venv: str) -> subprocess.CompletedProcess[str]:
+            def init(home: str, uv: bool = True) -> subprocess.CompletedProcess[str]:
+                shutil.rmtree(site, ignore_errors=True)
+                calls.unlink(missing_ok=True)
                 return subprocess.run(
                     ["./init", "--integration", "codex"], cwd=repo, text=True, capture_output=True,
-                    env=environment | {"INIT_TEST_VENV": venv},
+                    env=os.environ | {
+                        "PATH": f"{fake_bin if uv else no_uv_bin}:{system_path}", "INIT_TEST_HOME": home,
+                    },
                 )
 
             (scripts / "common.sh").write_text("#!/usr/bin/env bash\necho 'no composition here'\n")
-            silent = init("fails")
+            silent = init("site")
             self.assertEqual(silent.returncode, 0, silent.stderr)
             self.assertNotIn("PyYAML", silent.stdout + silent.stderr)
+            self.assertFalse(calls.exists())
 
             (scripts / "common.sh").write_text(
                 '#!/usr/bin/env bash\necho "Error: PyYAML is required to resolve preset template composition" >&2\n'
             )
-            by_hand = init("fails")
-            self.assertEqual(by_hand.returncode, 0, by_hand.stderr)
-            self.assertIn("Spec Kit's scripts need PyYAML on python3 to compose this project's preset templates, "
-                          "and neither pip nor a\nvenv could install it here.", by_hand.stderr)
-            self.assertIn("`python3 -m pip install --user PyYAML`", by_hand.stderr)
-            self.assertIn('stops with "PyYAML is required"', by_hand.stderr)
+            to_site = init("site")
+            self.assertEqual(to_site.returncode, 0, to_site.stderr)
+            self.assertIn("Installed PyYAML for python3", to_site.stdout)
+            self.assertEqual(calls.read_text(), f"pip install --quiet --python python3 --target {site} PyYAML\n")
+            self.assertNotIn("export PATH", to_site.stdout + to_site.stderr)
             self.assertFalse((repo / ".delivery-tools/venv").exists())
 
-            with_venv = init("works")
-            self.assertEqual(with_venv.returncode, 0, with_venv.stderr)
-            self.assertIn("A venv with it is at .delivery-tools/venv", with_venv.stderr)
-            self.assertIn('export PATH="$PWD/.delivery-tools/venv/bin:$PATH"', with_venv.stderr)
-            self.assertTrue((repo / ".delivery-tools/venv/bin/python").is_file())
-            self.assertIn(".delivery-tools/", (repo / ".gitignore").read_text())
+            in_venv = init("venv")
+            self.assertIn("Installed PyYAML for python3", in_venv.stdout)
+            self.assertEqual(calls.read_text(), "pip install --quiet --python python3 PyYAML\n")
+
+            # Windows: Spec Kit installs its PowerShell scripts, whose `create-new-feature.ps1` needs PyYAML
+            # just the same, and the bash ones never arrive — so the step reads both.
+            (scripts / "common.sh").write_text("#!/usr/bin/env bash\necho 'no composition here'\n", encoding="utf-8")
+            powershell = repo / ".specify/scripts/powershell"
+            powershell.mkdir(parents=True)
+            (powershell / "common.ps1").write_text(
+                'throw "Python 3 and PyYAML are required to resolve preset template composition"\n', encoding="utf-8"
+            )
+            on_windows = init("site")
+            self.assertIn("Installed PyYAML for python3", on_windows.stdout)
+            self.assertEqual(calls.read_text(), f"pip install --quiet --python python3 --target {site} PyYAML\n")
+
+            without_uv = init("site", uv=False)
+            self.assertEqual(without_uv.returncode, 0, without_uv.stderr)
+            self.assertIn("it could not be\ninstalled for the python3 on PATH here", without_uv.stderr)
+            self.assertIn("On this machine, uv installs with:", without_uv.stderr)
+            self.assertIn('stops with "PyYAML is required"', without_uv.stderr)
 
     def test_init_exposes_project_skills_and_commands_to_cursor(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

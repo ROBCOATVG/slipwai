@@ -83,7 +83,7 @@ def which(tool: str) -> None:
 
 
 def manifest() -> dict:
-    return json.loads((ROOT / "project.json").read_text())
+    return json.loads((ROOT / "project.json").read_text(encoding="utf-8"))
 
 
 def services() -> dict[str, dict]:
@@ -96,7 +96,7 @@ def services() -> dict[str, dict]:
 
 def probe_paths() -> dict[str, str]:
     """Where each service answers "send me traffic", per service, from the stack's own variables."""
-    document = json.loads(TFVARS.read_text()) if TFVARS.is_file() else {}
+    document = json.loads(TFVARS.read_text(encoding="utf-8")) if TFVARS.is_file() else {}
     return {
         name: record.get("health_path", HEALTH_PATH)
         for name, record in (document.get("services") or {}).items()
@@ -145,7 +145,7 @@ def push(arguments: list[str]) -> None:
             run(["docker", "pull", image])
         recorded[name] = digest_of(image)
     BUILD.mkdir(exist_ok=True)
-    IMAGES.write_text(json.dumps(recorded, indent=2) + "\n")
+    IMAGES.write_text(json.dumps(recorded, indent=2) + "\n", encoding="utf-8", newline="\n")
     for name, digest in recorded.items():
         print(f"{name}: {digest}")
     print(f"recorded in {IMAGES.relative_to(ROOT)}")
@@ -162,7 +162,7 @@ def published_hosts() -> list[str]:
     """
     hosts = ["127.0.0.1", "host.docker.internal"]
     try:
-        for line in Path("/proc/net/route").read_text().splitlines()[1:]:
+        for line in Path("/proc/net/route").read_text(encoding="utf-8").splitlines()[1:]:
             fields = line.split()
             if len(fields) > 2 and fields[1] == "00000000" and fields[2] != "00000000":
                 gateway = int(fields[2], 16).to_bytes(4, "little")
@@ -249,7 +249,7 @@ def setting(name: str) -> str:
         # What `make bootstrap` wrote down, when the environment does not say. Put into the environment as
         # well, so `tofu` and `az` read the same answer.
         recorded = ROOT / RECORDED[name]
-        value = recorded.read_text().strip() if recorded.is_file() else ""
+        value = recorded.read_text(encoding="utf-8").strip() if recorded.is_file() else ""
         if value:
             os.environ[name] = value
     if not value:
@@ -408,7 +408,7 @@ def shared_packages() -> list[str]:
     found = []
     for descriptor in sorted(directory.glob("*/package.json")):
         try:
-            scripts = json.loads(descriptor.read_text()).get("scripts") or {}
+            scripts = json.loads(descriptor.read_text(encoding="utf-8")).get("scripts") or {}
         except ValueError as unreadable:
             raise Failure(f"{descriptor.relative_to(ROOT)} is not readable JSON: {unreadable}") from unreadable
         if scripts.get("build"):
@@ -556,7 +556,7 @@ def record_release(environment: str, sha: str, images: dict[str, str], rollback_
     record = {"sha": sha, "images": images, "at": stamp, **({"rollback_of": rollback_of} if rollback_of else {})}
     path = BUILD / f"release-{environment}.json"
     BUILD.mkdir(exist_ok=True)
-    path.write_text(json.dumps(record, indent=2) + "\n")
+    path.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8", newline="\n")
     blob_upload(path, f"{releases_prefix(environment)}{stamp}-{sha}.json")
 
 
@@ -568,7 +568,7 @@ def releases(environment: str) -> list[dict]:
         for name in names:
             path = Path(directory) / "release.json"
             blob_download(name, path)
-            found.append(json.loads(path.read_text()))
+            found.append(json.loads(path.read_text(encoding="utf-8")))
             path.unlink()
     return found
 
@@ -590,7 +590,7 @@ def current_sha() -> str:
 
 def image_names() -> list[str]:
     """Every image the project builds: each service's, and the migrate image a backend builds beside it."""
-    data = json.loads(TFVARS.read_text())
+    data = json.loads(TFVARS.read_text(encoding="utf-8"))
     names = []
     for name, service in data["services"].items():
         names.append(name)
@@ -604,9 +604,9 @@ def images_of(sha: str) -> dict[str, str]:
     registry by the commit's tag, which is what lets a deploy job run on a fresh checkout with nothing
     handed to it but the commit."""
     if IMAGES.is_file():
-        return json.loads(IMAGES.read_text())
+        return json.loads(IMAGES.read_text(encoding="utf-8"))
     registry = setting("IMAGE_REGISTRY")
-    project = json.loads(TFVARS.read_text())["project"]
+    project = json.loads(TFVARS.read_text(encoding="utf-8"))["project"]
     found = {}
     for name in image_names():
         repository = f"{project}-{name}"

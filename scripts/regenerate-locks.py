@@ -74,7 +74,9 @@ CLIENT_NAME = "delivery-starter-api-client"
 def stage_api_client(directory: Path) -> None:
     """Put the typed client's manifest in the staging tree, so the lock holds its records too."""
     (directory / "packages/api-client").mkdir(parents=True)
-    (directory / "packages/api-client/package.json").write_text(API_CLIENT_PACKAGE.read_text())
+    (directory / "packages/api-client/package.json").write_text(
+        API_CLIENT_PACKAGE.read_text(encoding="utf-8"), encoding="utf-8", newline="\n"
+    )
 
 
 def subsets(features: tuple[str, ...]) -> list[set[str]]:
@@ -106,11 +108,11 @@ def selections() -> list[Selection]:
 
 
 def service_manifest(selection: Selection) -> str:
-    return service_package_json((TYPESCRIPT_APP / "package.json").read_text(), selection)
+    return service_package_json((TYPESCRIPT_APP / "package.json").read_text(encoding="utf-8"), selection)
 
 
 def web_manifest(web_features: set[str]) -> str:
-    return web_package_json((FRONTEND_APP / "package.json").read_text(), web_features)
+    return web_package_json((FRONTEND_APP / "package.json").read_text(encoding="utf-8"), web_features)
 
 
 def resolve(directory: Path) -> str:
@@ -122,14 +124,14 @@ def resolve(directory: Path) -> str:
     )
     if result.returncode != 0:
         raise SystemExit(f"npm could not resolve {directory}:\n{result.stderr.strip()}")
-    return (directory / "package-lock.json").read_text()
+    return (directory / "package-lock.json").read_text(encoding="utf-8")
 
 
 def backend_lock(selection: Selection) -> str:
     """The service's own lock, as `language_files` restructures it into a project root lock."""
     with tempfile.TemporaryDirectory() as staging:
         directory = Path(staging)
-        (directory / "package.json").write_text(service_manifest(selection))
+        (directory / "package.json").write_text(service_manifest(selection), encoding="utf-8", newline="\n")
         return resolve(directory)
 
 
@@ -147,12 +149,14 @@ def combined_lock(selection: Selection, web_features: set[str]) -> str:
                 },
                 indent=2,
             )
-            + "\n"
+            + "\n", encoding="utf-8", newline="\n"
         )
         (directory / "apps/service").mkdir(parents=True)
-        (directory / "apps/service/package.json").write_text(service_manifest(selection))
+        (directory / "apps/service/package.json").write_text(
+            service_manifest(selection), encoding="utf-8", newline="\n"
+        )
         (directory / "apps/web").mkdir(parents=True)
-        (directory / "apps/web/package.json").write_text(web_manifest(web_features))
+        (directory / "apps/web/package.json").write_text(web_manifest(web_features), encoding="utf-8", newline="\n")
         stage_api_client(directory)
         return resolve(directory)
 
@@ -170,10 +174,10 @@ def frontend_only_lock(web_features: set[str]) -> str:
                 },
                 indent=2,
             )
-            + "\n"
+            + "\n", encoding="utf-8", newline="\n"
         )
         (directory / "apps/web").mkdir(parents=True)
-        (directory / "apps/web/package.json").write_text(web_manifest(web_features))
+        (directory / "apps/web/package.json").write_text(web_manifest(web_features), encoding="utf-8", newline="\n")
         stage_api_client(directory)
         return resolve(directory)
 
@@ -201,7 +205,8 @@ def python_locks() -> dict[Path, str]:
         with tempfile.TemporaryDirectory() as staging:
             directory = Path(staging)
             (directory / "pyproject.toml").write_text(
-                python_pyproject((PYTHON_APP / "pyproject.toml").read_text(), selection)
+                python_pyproject((PYTHON_APP / "pyproject.toml").read_text(encoding="utf-8"), selection),
+                encoding="utf-8", newline="\n",
             )
             result = subprocess.run(
                 ["uv", "lock", "--quiet"],
@@ -215,7 +220,7 @@ def python_locks() -> dict[Path, str]:
                                  f"dependency set:\n{result.stderr.strip()}")
             wanted[PYTHON_LOCKS / f"uv{python_lock_suffix(selection)}.lock"] = (
                 directory / "uv.lock"
-            ).read_text()
+            ).read_text(encoding="utf-8")
     return wanted
 
 
@@ -251,13 +256,13 @@ def go_module_files() -> dict[Path, str]:
             if result.returncode != 0:
                 raise SystemExit(f"`go mod tidy` failed for the {variant} variant:\n{result.stderr}")
             # The module path is rewritten per project, so it is put back before committing.
-            module = (service / "go.mod").read_text().replace(
+            module = (service / "go.mod").read_text(encoding="utf-8").replace(
                 "example.com/tidy/service", "example.com/delivery-starter"
             )
             wanted[GO_MODULES / variant / "go.mod"] = module
             checksums = service / "go.sum"
-            if checksums.is_file() and checksums.read_text().strip():
-                wanted[GO_MODULES / variant / "go.sum"] = checksums.read_text()
+            if checksums.is_file() and checksums.read_text(encoding="utf-8").strip():
+                wanted[GO_MODULES / variant / "go.sum"] = checksums.read_text(encoding="utf-8")
     return wanted
 
 
@@ -302,14 +307,14 @@ def main() -> int:
                 checksums.unlink()
                 print(f"removed {checksums.relative_to(ROOT)} (nothing requires anything)")
     for path, content in targets_cache.items():
-        current = path.read_text() if path.is_file() else None
+        current = path.read_text(encoding="utf-8") if path.is_file() else None
         if current == content:
             continue
         stale.append(path)
         if arguments.check:
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8", newline="\n")
         print(f"wrote {path.relative_to(ROOT)}")
 
     if arguments.check and stale:

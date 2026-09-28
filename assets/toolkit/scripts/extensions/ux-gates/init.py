@@ -152,13 +152,13 @@ def ci_gates() -> str:
     workflow = ROOT / WORKFLOW
     if not workflow.is_file():
         return f"there is no {WORKFLOW}, so CI runs no render gates; `make check-ux-gates` is the gate to run"
-    text = workflow.read_text()
+    text = workflow.read_text(encoding="utf-8")
     found = re.search(r"^\s*node-version: *(\S+)", text, re.MULTILINE)
     job = ci_job(found.group(1) if found else "lts/*")
     block = re.compile(rf"\n*{re.escape(CI_BEGIN)}\n.*?{re.escape(CI_END)}\n?", re.DOTALL)
     updated = block.sub(lambda _: "\n" + job, text, count=1) if block.search(text) else text.rstrip("\n") + "\n" + job
     if updated != text:
-        workflow.write_text(updated)
+        workflow.write_text(updated, encoding="utf-8", newline="\n")
     return f"{WORKFLOW} runs the render gates in a `ux-gates` job over {SHARDS} shards"
 
 
@@ -167,7 +167,7 @@ def browser_apps() -> list[str]:
     manifest = ROOT / "project.json"
     if not manifest.is_file():
         return []
-    deployables = json.loads(manifest.read_text()).get("deployables")
+    deployables = json.loads(manifest.read_text(encoding="utf-8")).get("deployables")
     if not isinstance(deployables, dict):
         return []
     return [

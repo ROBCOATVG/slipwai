@@ -101,6 +101,8 @@ src/slipwai/
 ├── manifest.py          that list read back from a written `project.json`, for `add-service` and `replay`
 ├── layout.py            where the factory's delivery material lives in a project (`layout.delivery`), and how files
 │                        assembled for the root are placed and re-pointed when it lives elsewhere
+├── host.py              which machine this is — macOS, Linux, WSL or Windows — and the command that installs a
+│                        missing tool with the package manager it has
 ├── ecosystems.py        what a build ecosystem's files say about the code they build — the table `survey.py` reads
 ├── survey.py            what an existing repository is made of, read off its tree, for `adopt` (experimental)
 ├── origin.py            how a repository came to have the factory's material, and an adoption's recorded facts
@@ -129,7 +131,7 @@ src/slipwai/
 │   ├── init_script.py   its ./init            ├── event_model.py    its event model
 │   ├── run_skill.py     its run-the-app skill ├── frontend.py       its apps/web
 │   ├── agent_settings.py  its agent settings  ├── backing_services.py  its adapters
-│   ├── pins.py          its .editorconfig, .nvmrc and .python-version: the toolchain the gate runs on,
+│   ├── pins.py          its .editorconfig, .gitattributes, .nvmrc and .python-version: the toolchain the gate runs on,
 │                        written where each ecosystem's own tools look for it
 │   ├── renovate.py      its renovate.json: what keeps exact pins from becoming old exact pins, written
 │                        for this repository's own layout

@@ -51,7 +51,7 @@ def complete(**given: str | None) -> Commands:
 
 def read(path: Path) -> str:
     try:
-        return path.read_text(errors="replace")
+        return path.read_text(errors="replace", encoding="utf-8")
     except OSError:
         return ""
 

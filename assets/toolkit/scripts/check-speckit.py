@@ -41,11 +41,11 @@ def profile_findings() -> list[str]:
     constitution_path = ROOT / ".specify/memory/constitution.md"
     if not metadata_path.is_file() or not constitution_path.is_file():
         return []
-    metadata = json.loads(metadata_path.read_text())
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     if metadata.get("profile") != "standard":
         return []
 
-    constitution = constitution_path.read_text()
+    constitution = constitution_path.read_text(encoding="utf-8")
     normative_event_sourcing = (
         r"event[- ]sourced\s+(?:core|write model|architecture|system)",
         r"event sourcing\s+(?:is|must|shall)\s+(?:the\s+)?(?:premise|required|mandatory|core)",
@@ -75,7 +75,7 @@ def preset_findings() -> list[str]:
     if not registry_path.is_file():
         return [f"{registry_path.relative_to(ROOT)}: missing; the preset layer resolves off this file"]
     try:
-        registry = json.loads(registry_path.read_text())
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
         return [f"{registry_path.relative_to(ROOT)}: not valid JSON ({error})"]
     presets = registry.get("presets")
@@ -92,7 +92,7 @@ def preset_findings() -> list[str]:
                 f"({name} is enabled in .registry)"
             )
             continue
-        for declared in PRESET_FILE_ENTRY.findall(manifest.read_text()):
+        for declared in PRESET_FILE_ENTRY.findall(manifest.read_text(encoding="utf-8")):
             if not (directory / declared).is_file():
                 findings.append(
                     f"{(directory / declared).relative_to(ROOT)}: declared by "
@@ -111,7 +111,7 @@ def projection_directories() -> list[Path]:
     """
     if not REGISTRY.is_file():
         return []
-    harnesses = json.loads(REGISTRY.read_text()).get("harnesses", [])
+    harnesses = json.loads(REGISTRY.read_text(encoding="utf-8")).get("harnesses", [])
     directories = [
         entry[key]
         for entry in harnesses
@@ -155,7 +155,7 @@ def main() -> int:
     # Per absent projection directory: the integration whose manifest lists files there, and how many.
     unprojected: dict[Path, tuple[str, int]] = {}
     for manifest_path in manifests:
-        manifest = json.loads(manifest_path.read_text())
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         integration = manifest.get("integration", manifest_path.stem)
         files = manifest.get("files")
         if not isinstance(files, dict):

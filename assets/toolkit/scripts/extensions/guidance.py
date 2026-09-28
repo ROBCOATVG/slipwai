@@ -43,7 +43,7 @@ def canonical_block(key: str, guidance: str) -> str:
 def recorded_extensions() -> list[str]:
     if not STATE.is_file():
         return []
-    document = json.loads(STATE.read_text())
+    document = json.loads(STATE.read_text(encoding="utf-8"))
     if document.get("schemaVersion") != SCHEMA or not isinstance(document.get("extensions"), list):
         raise ValueError(f"{STATE.relative_to(ROOT)} is not extension election schema {SCHEMA}")
     if not all(isinstance(key, str) and key for key in document["extensions"]):
@@ -56,7 +56,7 @@ def marked_extensions() -> list[str]:
         return []
     return [
         match.group(1)
-        for match in BLOCK.finditer(AGENTS.read_text())
+        for match in BLOCK.finditer(AGENTS.read_text(encoding="utf-8"))
         if (HERE / match.group(1) / "init.py").is_file()
     ]
 
@@ -71,7 +71,7 @@ def adopted_extensions(*, persist_legacy: bool) -> list[str]:
 
 def write_elections(keys: list[str]) -> None:
     STATE.parent.mkdir(parents=True, exist_ok=True)
-    STATE.write_text(json.dumps({"schemaVersion": SCHEMA, "extensions": sorted(set(keys))}, indent=2) + "\n")
+    STATE.write_text(json.dumps({"schemaVersion": SCHEMA, "extensions": sorted(set(keys))}, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
 def record_extension(key: str) -> None:
@@ -81,7 +81,7 @@ def record_extension(key: str) -> None:
 def installed_block(key: str) -> str | None:
     if not AGENTS.is_file():
         return None
-    matches = [match.group(0) for match in BLOCK.finditer(AGENTS.read_text()) if match.group(1) == key]
+    matches = [match.group(0) for match in BLOCK.finditer(AGENTS.read_text(encoding="utf-8")) if match.group(1) == key]
     if len(matches) != 1:
         return None
     return matches[0]
@@ -92,7 +92,7 @@ def replace_block(key: str, guidance: str) -> None:
     if not AGENTS.is_file():
         return
     canonical = canonical_block(key, guidance)
-    content = AGENTS.read_text()
+    content = AGENTS.read_text(encoding="utf-8")
     matches = [match for match in BLOCK.finditer(content) if match.group(1) == key]
     if matches:
         first = matches[0]
@@ -106,7 +106,7 @@ def replace_block(key: str, guidance: str) -> None:
         updated = content[:first.start()] + canonical + suffix
     else:
         updated = content.rstrip("\n") + f"\n\n{canonical}\n"
-    AGENTS.write_text(updated)
+    AGENTS.write_text(updated, encoding="utf-8", newline="\n")
 
 
 
@@ -126,7 +126,7 @@ def installed_harnesses() -> list[str]:
     by the same run and may not be there yet when an extension hook runs (`SLIPWAI_INTEGRATION`)."""
     keys: list[str] = []
     if INTEGRATION.is_file():
-        state = json.loads(INTEGRATION.read_text())
+        state = json.loads(INTEGRATION.read_text(encoding="utf-8"))
         recorded = state.get("installed_integrations")
         if isinstance(recorded, list) and recorded:
             keys = [key for key in recorded if isinstance(key, str)]
@@ -139,7 +139,7 @@ def installed_harnesses() -> list[str]:
 
 
 def harness_rows() -> dict[str, dict]:
-    return {row["key"]: row for row in json.loads(REGISTRY.read_text())["harnesses"]}
+    return {row["key"]: row for row in json.loads(REGISTRY.read_text(encoding="utf-8"))["harnesses"]}
 
 
 def write_project_mcp(name: str, command: list[str]) -> list[str]:
@@ -189,7 +189,7 @@ def write_json_entry(path: Path, key: str, name: str, entry: dict) -> str | None
     document: dict = {}
     if path.is_file():
         try:
-            loaded = json.loads(path.read_text())
+            loaded = json.loads(path.read_text(encoding="utf-8"))
         except ValueError:
             loaded = None
         if not isinstance(loaded, dict):
@@ -203,7 +203,7 @@ def write_json_entry(path: Path, key: str, name: str, entry: dict) -> str | None
         return None
     servers[name] = entry
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(document, indent=2) + "\n")
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     return f"{shown} names `{name}`; commit it"
 
 
@@ -214,7 +214,7 @@ def write_toml_table(path: Path, table: str, values: dict) -> str | None:
     shown = path.relative_to(ROOT)
     rendered = "".join(f"{field} = {json.dumps(value)}\n" for field, value in values.items())
     block = f"[{table}]\n{rendered}"
-    text = path.read_text() if path.is_file() else ""
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
     header = re.compile(rf"^\[{re.escape(table)}\][ \t]*(?:#.*)?$\n?", re.MULTILINE)
     starts = [match for match in header.finditer(text)]
     if len(starts) > 1:
@@ -231,5 +231,5 @@ def write_toml_table(path: Path, table: str, values: dict) -> str | None:
     else:
         text = (text.rstrip("\n") + "\n\n" if text.strip() else "") + block
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text)
+    path.write_text(text, encoding="utf-8", newline="\n")
     return f"{shown} names `{table.rpartition('.')[2]}`; commit it"

@@ -73,6 +73,21 @@ trim_trailing_whitespace = false
 """
 
 
+# How Git writes each file into a checkout, decided in the repository rather than by each clone's
+# `core.autocrlf`. Git for Windows defaults that to `true`, which turns every LF into CRLF on checkout — and
+# `./init`, `scripts/verify` and every other `#!/bin/sh` script is then unrunnable (`/bin/sh^M: bad
+# interpreter`) in the Git Bash that is the only way to run them on Windows, while every commit prints an
+# "LF will be replaced by CRLF" warning per file. LF everywhere, as `.editorconfig` already says; a batch file
+# is the one kind that needs CRLF to run. A service's own `.gitattributes` (the Maven wrapper's) is nearer the
+# files it names, so it still decides for them.
+GITATTRIBUTES = """# Line endings are decided here, not by each clone's core.autocrlf: a shell script checked out with CRLF
+# will not run, which on Windows is every script this repository has.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+"""
+
+
 def pin_files(apps: list[App]) -> dict[str, str]:
     """The pin files this project's toolchains have, keyed by path.
 

@@ -20,7 +20,7 @@ def service_files(event: bool, selection: Selection, target: str = "none") -> di
     """What this backend puts in a service's directory, keyed relative to it."""
     files = asset_tree(LANGUAGE_ROOT / "typescript/app")
     files.update({
-        "package-lock.json": service_lock(selection).read_text(),
+        "package-lock.json": service_lock(selection).read_text(encoding="utf-8"),
         # The two the selection decides the contents of, so they are written rather than copied.
         "tsconfig.json": typescript_config(selection),
         "vitest.config.ts": vitest_config(selection),

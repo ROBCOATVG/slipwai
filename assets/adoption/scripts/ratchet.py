@@ -104,7 +104,7 @@ def application_directory(application: str) -> Path:
     if not manifest.is_file():
         return ROOT
     try:
-        recorded = json.loads(manifest.read_text()).get("deployables", {}).get(application, {}).get("path")
+        recorded = json.loads(manifest.read_text(encoding="utf-8")).get("deployables", {}).get(application, {}).get("path")
     except (OSError, json.JSONDecodeError, AttributeError):
         return ROOT
     if not isinstance(recorded, str) or recorded in ("", "."):
@@ -163,14 +163,14 @@ def read_baseline() -> dict:
     if not BASELINE.is_file():
         return {}
     try:
-        loaded = json.loads(BASELINE.read_text())
+        loaded = json.loads(BASELINE.read_text(encoding="utf-8"))
     except ValueError as error:
         raise SystemExit(f"ratchet: {BASELINE.relative_to(ROOT)} is not valid JSON: {error}") from error
     return loaded if isinstance(loaded, dict) else {}
 
 
 def write_baseline(baseline: dict) -> None:
-    BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n")
+    BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
 
 
 def relative(path: Path) -> str:

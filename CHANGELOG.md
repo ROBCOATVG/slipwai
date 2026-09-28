@@ -2,6 +2,432 @@
 
 No public releases yet. Release notes are recorded here newest first.
 
+## 1.3.0 — MINOR
+
+**`slipwai adopt` refuses an unclean tree, a directory that is not a Git repository, or one already holding a
+`project.json` before it surveys anything or asks anything — not after.** The check ran as `adopt` began
+writing, which is the right place for it to be enforced but the wrong place to find out: on a repository of
+twelve thousand files it meant waiting through the survey, answering the interview, and only then being told
+that none of it could be kept. `adopt` still checks when it writes, because it is a library function and that
+contract is its own; the command line now checks first as well.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.
+
+**`slipwai adopt` no longer wraps anything in a terminal: every buildable directory the survey finds is
+recorded as a candidate, and which of them is an application is answered by the coding agent, with the code in
+front of it.** [ADR 0003](docs/adr/0003-a-wrapped-application-begins-as-a-candidate.md) has the reasoning and
+the evidence. `Wrap it as the application …? [Y/n]` defaults to yes and is asked of somebody who has not read
+the directory; on the first real monorepo this met, that wrapped three asset bundles and a test suite as
+applications, under names taken from their directories, with every `purpose` left blank — and there was no way
+back, because a re-survey reports an unwrapped directory but has never removed a record.
+
+So `project.json` gained the state it was missing. `deployables` says what somebody has established;
+`candidates` says what was merely found, with the path, the language, the commands the build answers and the
+file that found it. It is the same distinction `unrecorded` already draws for every row of the convergence
+map, and it is why no un-wrap command had to be written: nothing is wrapped, so nothing needs unwrapping.
+
+What follows from it: **`make verify` refuses while nothing is confirmed** and names what confirms one, because
+a gate with nothing to hold has not been given its subject and a green run over zero applications is the false
+assurance this exists to prevent. **The terminal asks one question** — the forge — and shows the rest as facts;
+the language, the kind, the commands, what each directory owns, where the schema and the infrastructure live,
+how a change reaches production and why the work is happening all move to the agent or to a conversation.
+**`/ground` opens with the candidates**, one at a time, saying what it thinks each is and why from what it
+read, before asking. **`slipwai adopt --confirm <name>`** records the answer — with `--as` for a name that is
+not the directory's, and `--kind`, `--purpose`, `--command` and `--hexagonal` for the rest — builds the entry
+and regenerates everything that reads it, so `deployables` is never edited by hand; **`--decline <name>`** drops
+a candidate with nothing recorded in its place. **`--next`** names confirming as the step before the map's rows.
+`--yes` stays the unattended path it has always been: it confirms every candidate as found, and the report now
+says plainly that nobody looked.
+
+This is the only intro. The per-directory interview it replaces — wrap it? language? kind? these commands?
+what does it own? the schema, the infrastructure, the release path, why — is gone, and in a terminal `adopt`
+now runs `./<delivery>/init` once its commit is made unless `--no-init` says otherwise. It arrived behind
+`--experimental-intro` and `SLIPWAI_EXPERIMENTAL_INTRO=1` while it was being built; the flag is still accepted
+and chooses nothing, so a script that passes it keeps working, and the variable is no longer read.
+
+**Catch-up.** Nothing. A repository adopted before this has its applications in `deployables` already, which is
+confirmation by an earlier factory and is left alone; it has no `candidates` key, which reads as an adoption
+with nothing outstanding, and `--confirm` says so rather than inventing work. Two readers of an adopted record
+— `--next` and `--refresh` — now tolerate a manifest with no deployables, which is the honest state between
+`adopt` and the first confirmation; `add-service` still refuses one, since it needs an application to take a
+language and a port from.
+
+**`slipwai adopt` establishes which coding agent the material is for, instead of leaving it to a question
+`./init` asks one step too late.** `./init` projects the canonical skills, commands and agent types into one
+harness's native locations, and it has always asked which — after `adopt` had already finished. That ordering
+makes the answer useless to the adoption itself, because the questions worth handing to a coding agent are the
+ones asked before there is one. It was also mostly answerable without asking: a run started from inside a
+harness is told so by its environment, and a repository whose team already uses one says so in the tree
+(`.claude/skills`, `.gemini/commands`, `.github/copilot-instructions.md`). `adopt` now reads both and records
+the answer in `project.json` under `agent`, with the evidence and `detected` provenance; `--integration <agent>`
+names it outright, recorded `overridden`, and `./init` asks nothing where the record already says. What nothing
+establishes stays `unrecorded` and is said out loud — a directory two harnesses read names neither, a tree that
+reads for two records neither, and a thirty-six-row list is not a question a terminal can ask well — so `./init`
+keeps its own question for exactly the case it is still needed in.
+
+**Catch-up.** Nothing. A repository adopted by an earlier factory has no `agent` key, which reads as the
+question still being open, and `./init --integration <agent>` answers it the way it always did. A re-survey
+carries the key as recorded rather than re-reading it: which agent gets the material is not something the tree
+says.
+
+**`slipwai adopt --init` runs `./init` once the adoption is committed, so a terminal adoption can end in one
+step rather than four.** Off unless asked for: `./init` reaches Spec Kit's source, and making every `--yes` in
+a script or a test need the network to finish would be a poor trade for saving a line. It runs last and never
+inside the commit, so an unreachable source costs the adoption nothing — the commit is already made, the
+failure says so, and `slipwai adopt --next` keeps naming `./init` as the step you are on. What it writes is
+left uncommitted and yours to read, exactly as in a project the factory generated. `--no-init` is the default
+said out loud.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.
+
+**`slipwai adopt --next` says where an adopted repository stands in the sequence the adoption report names —
+what is done, what is next, and why — so the plan survives the scrollback.** That report is printed once, at
+the end of the longest output this factory produces, and the sequence it names spans days and four tools;
+`docs/adoption.md` carries the same list but is introduced there as a record of what was wrapped rather than
+as the plan. Nothing is remembered now: every step leaves a mark, and `--next` reads them. Spec Kit writes
+`.specify/integration.json`, the first gate run writes the ratchet baseline, `/ground` moves a row of the
+convergence map off `unrecorded`, the root Makefile gains its `-include`, and a strategy is an accepted ADR
+with a `Strategy:` line. It writes nothing itself, and it names the applications nobody has yet proved start.
+A repository adopted by an earlier version needs nothing: the marks are the ones it was already leaving.
+
+**A recorded command that changes directory first no longer reports the shell's `cd` as a tool this machine
+is missing.** Every build that is not at the repository root is recorded as `cd <dir> && <build>`, and the
+report read the first word off that line and asked the PATH for it — so a repository with four such builds
+was told `` `cd` is not on PATH here `` above a list of all fifteen of their targets, with the one tool that
+really was missing a line among them. The tools a command runs are now every shell segment's program, past
+any leading `VAR=value`, and never one of the shell's own words.
+
+**The questions a terminal cannot answer well move to the coding agent, which can read the code before
+asking.** What a directory is, what it is called, what it owns, and first of all the language, which the line
+above it had already printed. The candidate state is what finished the move; see the entry that introduces
+it.
+
+**The code index is kept sound, kept current and asked first by the harness, not by a sentence in a brief.** A
+`/cruise` iteration on an indexed project started against a corrupt `.codegraph/codegraph.db` — which CodeGraph's
+own `status` and `sync` report as up to date — repaired it by hand, asked it once and went back to grep, and its
+delegates located symbols with `grep -n` and `sed -n` although their brief said to ask the index; nothing counted
+who asked it. Now:
+
+- Before every iteration the runner opens the database, runs SQLite's integrity check, moves a corrupt one to
+  `.codegraph/corrupt/` and rebuilds it, and syncs one the tree has moved past; the log entry's `index` says which.
+  A Claude Code session takes the same step when it opens (a `SessionStart` hook), so a person's `/drive` starts on
+  a sound index too, and hears about it only when something was done. `python3 scripts/agents/code_index.py health`
+  is the same repair by hand.
+- `scripts/codegraph` runs the pinned CLI (`@colbymchenry/codegraph@1.6.0`, the version the MCP server now runs
+  too) through `npx`, or an installed `codegraph`, so every session with a shell — a delegate's included — has a
+  route. Claude Code's `.mcp.json` entry carries `alwaysLoad`, so `codegraph_explore` is loaded at session start
+  instead of behind the tool-search step a delegate had to take by name.
+- Claude Code's `PreToolUse` hook refuses a search of the source for a symbol — a name the index defines, or one
+  shaped like one — from any session or delegate that has not asked the index yet, naming the command that
+  answers; words, phrases and searches confined to documents are text search and never refused. A `PostToolUse`
+  hook syncs the index each time a delegate returns, because CodeGraph turns its own watcher off where it decides
+  it is sandboxed.
+- `check-codegraph` no longer skips a database that fails the integrity check: where the CLI is reachable it
+  rebuilds it, and syncs a stale index, before comparing, and fails only where the index cannot be made sound and
+  current — so `make verify` on any harness mends a broken index rather than going red on it
+  (`CODEGRAPH_GATE_NO_SYNC=1` compares without repairing).
+- The log entry's `index_use`, the feed and `cruise.py status` count index queries per delegate and name each
+  that searched the source for a symbol before asking.
+
+The hooks and per-delegate counts are Claude Code's; on other harnesses the runner's repair, the gate, the wrapper
+and a per-iteration count hold.
+
+**Catch-up.** `slipwai migrate` brings the scripts, the hooks and the delegate briefs. Run `make agents` (or
+`./init --extension codegraph`) once in a project that adopted the index, so `.mcp.json` and the `AGENTS.md` block
+name the pinned server with `alwaysLoad`, and commit the result.
+
+**`make verify` on the `aws` target fails when the service stack declares IAM the deploy role cannot create.**
+The bootstrap stack gives the deploy role PowerUserAccess and IAM on roles named `<project>-*`, and nothing
+held `infra/service/` to that: a generated project added an `aws_iam_user`, passed every gate, and met the
+limit at the production apply — refused on `iam:CreateUser` part-way through. `check-deploy-role` reads both
+stacks and fails on every `aws_iam_*` resource whose create or delete action the policies attached to the
+deploy role do not grant on that kind of IAM resource, and on any IAM type it has no row for. Its message,
+and `scripts/deploy.py`'s when an apply is refused on an `iam:` action anyway, name where the fix is: a
+statement in `infra/bootstrap/main.tf` and a `make bootstrap` by a person with admin credentials — not the
+service stack, not the pipeline and not the IAM console.
+
+**Renaming a resource is a `moved` block, and the guidance says so.** The same project renamed a CloudFront
+response-headers policy with no `moved` block; OpenTofu created the new one and destroyed the old one before
+updating the distribution that still used it, and CloudFront refused with 409. `infra/README.md` on both
+targets, and the production rule in `AGENTS.md`, now say that a renamed or moved resource gets a `moved` block
+and one dropped from the code a `removed` block, and what `tofu plan` shows when either is right.
+
+**Catch-up.** `slipwai migrate` brings the gate. If it fails on a stack that deploys today, the resource it
+names was granted by hand outside `infra/bootstrap/`: put the grant in `bootstrap/main.tf` and run
+`make bootstrap`, so the next bootstrap does not take it away.
+
+**A slice with a screen now has its design decided before it is built and reviewed on the rendered screen
+before the demo, as two `/drive` rungs, not as a sentence nothing asked anyone to act on.** Three new screens
+reached a demo with every `check-ux-gates` gate green and still showed default-blue links, labels crammed
+against their fields, a raw UUID and a diagram drawn as a bare rectangle: the design skills were installed and
+`AGENTS.md` named them, but no stage of the ladder asked for them, so a delegate briefed from the plan styled
+from the tokens, ran the gates and stopped. Where the project has a browser app:
+
+- **Screen design**, between *Plan and tasks* and *Implementation*: `docs/design.md` holds the decision each
+  screen needs, `skills/frontend-design`'s second pass has been over the plan, and `tasks.md` records a
+  `Designed:` line per screen under `## Design review`.
+- **Design review**, between *Implementation* and *Convergence*: each screen rendered, a screenshot per state,
+  read against `skills/web-interface-guidelines`, every finding fixed or given its reason on a `Reviewed:`
+  line. A green gate is evidence for this rung, never the rung.
+- A slice with no screen says `No screen in this slice` once, and both rungs are done.
+
+The ladder names only what every browser app ships with. The `uipro` extension's `AGENTS.md` block now puts its
+search into *Screen design*, and the `ux-gates` block puts `make check-ux-gates` and the kit's `design-review.md`
+and `wcag-checklist.md` into *Design review*, so a project that did not adopt them reads about neither. The
+`drive-tasks` brief and the event-modelling tasks template carry the steps inside the styling task and leave the
+`## Design review` heading. The demo stop checks the record. Under `/cruise`, `drive-hand` also looks at every
+screen on its browser walk and writes what it sees as `design:` notes in the demo log's **Feedback**.
+
+**Catch-up.** `slipwai migrate` brings the ladder, the brief and the template. A slice already past
+*Implementation* whose `tasks.md` has no `## Design review` enters `/drive` at *Screen design*: write the
+`Designed:` lines for the screens that were built, then run the review. In a project that adopted `uipro` or
+`ux-gates`, run `make agents` once so its `AGENTS.md` block names the rung, and commit the result.
+
+**A flag that describes the adoption is refused on a `--confirm` or `--decline` run, rather than read and
+thrown away.** `slipwai adopt --confirm shop --integration cursor` looked like it recorded a coding agent and
+recorded nothing: the settling path never reads those flags. It now names each one and says where it belongs —
+`--integration` after the method is installed is `./init`'s. The same rule the intro already applies
+to flags that describe an application, and nothing that previously worked stops working: a flag that did
+nothing now says so.
+
+**`check-codegraph` no longer fails a repository for files CodeGraph deliberately declined.** It inferred what
+should be indexed from the suffixes already in the index, so a vendored `bootstrap.min.js` beside a `src/app.js`
+read as a hole in the graph — and a real adoption failed a gate that `codegraph sync` said was already up to
+date, the two tools calling each other wrong. Which files belong in the index is CodeGraph's decision; a file
+the index has never seen is now a finding only where it appeared *after* the index last ran, which is the
+question the check was always asking.
+
+**A harness that cannot be projected says where its skills live instead of only that they are elsewhere.** The
+registry already records the reason — Hermes keeps them at `~/.hermes/skills` — and the refusal now quotes it,
+because a person told "outside the repository" still has to go and find out where.
+
+**`docs/change-strategy.md` stopped opening by asserting that `make verify` is green.** It is written before
+any gate has run, and on a repository whose build tool is not on the machine it is not true. The page says what
+the gate actually does instead: runs the build's own commands, green where the ratchet has a baseline to hold
+them to and plainly red where it does not.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.
+
+**A migration no longer lands on gates nothing true can satisfy: `check-benchmark` warns rather than fails, the one
+event model charges a slice to its own feature, and a project's slice history can be baselined for the adversary
+log once.** A project migrating from a 1.2.0 snapshot met two gates that arrived in 1.2.0 without a word in its
+catch-up note. `check-benchmark` failed on every slice finished before benchmark records existed, and those records
+can only be taken at the time, so the only ways to pass were to invent them or never push again. It now prints
+each of those findings as a `warning:` and passes, and its own self-test is still what fails it. Both it and
+`check-decisions` counted every `status: implemented` slice in `docs/event-model/model.yaml`, which is the whole
+project's, against every feature they checked: a second feature failed for the first feature's slices, and
+nothing done inside the second could fix that. A slice now counts only for the feature its `spec` or `gwt` path
+is under, or, where it names none, the feature holding `slices/<id>/`. An implemented slice that no feature holds
+is reported once. `python3 scripts/check-decisions.py --adversary-baseline` writes, once, a `## <id> · predates
+the adversary gate · <date>` row for every done slice with no row. The gate accepts that row. The row says the
+slice was never attacked, and `/adversary` never relies on it. A second baseline is refused.
+
+Four smaller fixes, found on the same migration. `make verify` now runs `check-python` first, and it names the
+interpreter when `python3` is older than the 3.10 the gate scripts need. Before this, a non-interactive macOS
+shell that found `/usr/bin/python3` (3.9) first died inside whichever gate first used a newer feature.
+`check-codegraph` and `code_index.py health` now tell a database they cannot open apart from a damaged one. On
+macOS's system SQLite, CodeGraph's WAL database with no `-shm` beside it refuses a read-only open. It is now
+read with `immutable=1`, and an open failure is reported as one and never moves the database aside, so `health`
+no longer rebuilds a sound index in a loop. The code index finds a Node that nvm, volta or fnm installed when a
+hook's shell has none on `PATH`, and says that is the likely cause when it finds none. `check-ux-gates.py` can
+now be loaded with `importlib` without being registered in `sys.modules`, and it says to unset an
+`UX_GATES_SHARD` value it refuses.
+
+**Catch-up.** These gates are new or stricter since 1.1: `check-benchmark` (warns since this release),
+`check-decisions`' adversary rows (1.2.0), `check-deploy-role` on `aws` (1.3.0), `check-ux-gates` sharding and
+its CI job (1.3.0), and `check-python` (1.3.0). If `check-decisions` reports `no row for` slices finished
+before you migrated, run `python3 scripts/check-decisions.py --adversary-baseline` once and commit the rows it
+writes. Slices finished after that need the row `/adversary` writes. Make sure the `python3` your shell finds
+first is 3.10 or newer. Nothing else needs doing: the rest arrives whole with the merge.
+
+**`/ground` asks, before anything about the repository, how much each answer should explain itself — and holds
+to the answer.** Spelling out what every option writes, what moves because of it and what it costs is what
+somebody meeting a codebase or this method for the first time needs to answer safely; it is also how a
+question set becomes a wall to skim for somebody on their second adoption who already knows what confirming
+an application does. So it is asked once, the agent says which it would pick for this person and why, and
+either form can be changed at any question. The short form drops the elaboration and not the honesty: what
+the agent thinks and why, from what it read, stays, and *I don't know* stays an answer on offer.
+
+**And `slipwai adopt --refresh` no longer drops the outstanding candidates and the recorded agent.** A
+re-survey reads the tree, and neither is a fact about the tree — a candidate is a question nobody has
+answered yet, and which coding agent gets the material is `./init`'s. Rebuilding the record without them left
+`project.json` holding two candidates while the `/ground` regenerated in the same run had lost the section
+that asks about them: a generated file disagreeing with the record it is generated from, which is the one
+thing this must not do. Found by running the command over a real adoption mid-way through.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.
+
+**`/ground` can record its answers one at a time and commit them once, as it says to.** `adopt --confirm`,
+`adopt --decline` and `adopt --refresh` refused any uncommitted change at all, so the first answer was refused
+by what `./init` had just left for the person to read, the second by the first, and the refresh by the rows it
+exists to follow — and the first repository taken end to end got through by committing after every answer. They
+now refuse only where they would write over somebody's work: a path they write, from the factory's `.written`
+listing or the survey's pages, holding an uncommitted change that is not what slipwai last left there. What
+slipwai left is recorded by digest in `.delivery-tools/written.json`, which every `.gitignore` the factory has
+written already ignores, so it belongs to the checkout and is never committed. It is kept out of `.git` on purpose: Codex runs an agent's
+commands in a sandbox that makes `.git` read-only, and a record there was silently never written.
+`project.json`, what `./init` wrote and a person's own source no longer stop anything, because none of them is
+written. `slipwai adopt` itself still refuses an unclean tree: it commits, and the `git reset --hard HEAD^` it
+offers as the undo would take uncommitted work with it.
+
+**The code-index guard holds only searches of its own repository.** A session opened in one repository searched
+another checkout and was refused, because `version` is a name the first repository's index defines — an index
+that cannot answer anything about code it never read. Where a search runs is now read from the hook's `cwd`, a
+Grep `path`, or a `cd` earlier in the shell command, and a search wholly outside the repository is allowed.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it
+gets wrong belongs on that issue.
+
+**`/ground` now has to say what each answer on offer will do, not just what it is called.** The first real run
+of the command over a brownfield monorepo produced a page of sound reasoning per candidate and then collapsed
+it into option labels — *Yes — hold its lint*, *Yes, as recommended* — and the person answering it replied
+"Not sure, what do you think?" and, once, "check yourself". A person reads the options, not the paragraph
+above them, so that is where the consequence has to be: each answer names what it writes, what moves because
+of it, and what it costs. Three rules go with it: a question the tree can settle is read and settled rather
+than put as a menu; a recommendation always comes with the reasoning that produced it, never a bare list; and
+*I don't know* is offered as one of the answers every time rather than merely accepted when volunteered,
+because a question that does not offer it manufactures an answer.
+
+**And a runtime past its end of life is named once, however many applications run it.** The platform record
+holds a row per application per product, so a repository whose four npm packages all run Node 20 had the same
+sentence four times under the strategy's `because` and four more under its `before`. The reader needs the
+products; a product is its title and its version.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.
+
+**`/ground`'s long form says what being an application commits you to, before it asks about the first one.**
+The question was "is this an application?", and the natural reading of the word is "something that gets
+deployed" — so a person could agree to put a directory's lint and tests in front of every change without knowing
+that was what they were agreeing to. In the long form the agent now says, once and in this repository's terms,
+that an application here is a directory whose build the gate holds: its commands join `make verify`, which every
+change has to pass, the person's and `/drive`'s and `/cruise`'s; the gate's CI runs it on every pull request;
+`/drive` can change it once somebody has recorded how it starts. It says what declining leaves behind, that
+leaving a directory a candidate is *not yet decided*, and that neither answer can be taken back by a command yet —
+so an unsure answer is best left open.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it
+gets wrong belongs on that issue.
+
+**Go's CI cache is keyed on the files a workspace has.** `actions/setup-go` keys its cache on a root `go.sum`,
+and a generated Go project is a workspace — `go.work` and `go.work.sum` at the root, each module's `go.sum`
+beside its `go.mod` — so the step found nothing to key on, cached nothing, and said so only as a warning while
+the run stayed green and downloaded and compiled every module from cold. `verify.yml` and `deploy.yml` now
+name every module's `go.sum` and `go.work.sum` as `cache-dependency-path`.
+
+**A language somebody spoke brings its own toolchain.** The survey reads each directory once, by the first
+ecosystem that recognises it, so a directory with a `package.json` beside a `requirements.txt` is Node. Saying
+it is Python — with `--language`, or through the `--confirm` that `/ground` runs once it has read the code —
+moved the language and left `kind: node` behind it, and a refresh then put the reading back over the answer.
+The toolchain is what CI installs, so the record was describing a pipeline that cannot run. It now follows the
+language where the tree has a build in that language to follow, is left alone where it has none rather than
+invented, and a refresh holds what a person settled and says what the tree now reads instead.
+
+**Claude Code's hooks find their scripts from any directory.** They were written as repository-relative paths
+and run with whatever directory the session is in, so a session opened in a subdirectory ran
+`python3 delivery/scripts/agents/cruise.py` against a path that is not there — and a hook that fails is silent.
+They are written from `$CLAUDE_PROJECT_DIR` now, and the two other harnesses the factory writes hooks for —
+Cursor's `.cursor/hooks.json` and Gemini CLI's `.gemini/settings.json` — change to the root Git names
+(`cd "$(git rev-parse --show-toplevel)" && …`) before they run, since neither harness shares a variable
+for it. `make agents` rewrites them; nothing else is asked of a repository already generated.
+
+**A command that needs an application says that confirming one is the missing step.** Between `adopt` and the
+first confirmed candidate there is nothing for a frontend to sit beside, and `slipwai add-frontend web` — which
+is what `./init` had just said to run — answered "project.json names no deployables, so there is nothing to add
+a service to". True, and the same sentence a manifest that names none gets. It now names the candidates and the
+command that settles one.
+
+**An extension tells a wrapped repository to run the script it actually has.** `./init --extension codegraph`
+is advice nobody can follow where the adoption put `init` under `delivery/`. The three shipped extensions
+derive the path from where they are, in all ten places they print it.
+
+**`slipwai adopt --next` runs to the loop rather than stopping at a ready repository.** It ended at the
+strategy ADR — wrapped, gated and asked to do nothing — and the first person to take it end to end had to be
+told the rest in chat. It now names `/speckit-constitution` before the first spec, because `check-constitution`
+fails the moment `specs/` exists over the template it installed, then `/speckit-specify`, `/drive` once by
+hand, and `make cruise`. A constitution in a repository where `./init` has never run reports as pending, which
+is what it is.
+
+**`--command app:test=` records none, as `-` does.** An empty value is what a shell leaves when a variable is
+unset, and recording `""` wrote a target that runs nothing and reads as one somebody chose. The report now
+says what each target was vouched for with, so a written no is visible where it was decided.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it
+gets wrong belongs on that issue.
+
+**`slipwai adopt --confirm` and `--refresh` now re-derive the harness projections, so `make verify` is not red
+the moment `/ground` finishes.** Confirming a candidate changes which languages the record names, which
+rewrites the skills' prose, which makes every copy under `.claude/skills/` differ from its canonical source —
+and `check-agents` fails. Both real adoptions hit it and fixed it by hand with `make agents`. The factory
+writes the canonical files, so the factory re-derives what copies them, exactly as `migrate` already does
+after a merge. A projector that cannot run is reported rather than raised: the record is written and good
+either way.
+
+**And the typecheck the survey proposes for a TypeScript directory with no script of its own now passes
+`--skipLibCheck`.** A bare `tsc --noEmit` gave seventeen errors on a real adoption, every one of them inside
+`node_modules` where two dependencies ship disagreeing types — nothing the project can fix, and the ratchet
+baselines the whole failure as a blanket excuse for the check. With lib types skipped the same tree is green,
+and a type error the project actually wrote is what turns it red. A directory with its own `typecheck` script
+keeps it, whatever it says.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.
+
+**The ratchet now sees findings in an application that is not at the repository root — which, until now, it
+never did.** A tool prints the paths it found relative to the directory it ran in, and a wrapped application's
+build runs in its own: `cd admin-dev/themes/new-theme && npm exec -- tsc`. Every path it reported was resolved
+against the repository root alone, where nothing of that name exists, so the run found no findings at all and
+fell back to comparing the exit code — which passes a second error tomorrow exactly as it passed the first.
+On a real adoption a plain type error in the project's own source was invisible to it. That is the ratchet
+failing at the one thing it exists for, silently, on precisely the repositories it was written for: the ones
+whose applications live in subdirectories. A path is now resolved against the directory the build runs in as
+well as the root — `project.json` records it — and recorded root-relative either way, so a finding compares
+the same however the tool that printed it spelled it.
+
+**Catch-up.** An adopted repository with an application below its root should re-record: its `lint` or
+`typecheck` entry in `baseline.json` is almost certainly `{"exit": N, "findings": []}`, which excused the whole
+command. `make ratchet-tighten` after reading what the command actually reports replaces it with the findings
+that are really there, and the gate holds to no new ones from then on.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.
+
+**`slipwai adopt` no longer names `./init` as the next step and then runs it two lines later.** Where
+`--init` is going to run it, the report says it is running now and what that leaves for you to commit; the
+rest of the sequence is unchanged, since only the first line was ever about that step.
+
+**And where `adopt` could not tell which coding agent the material was for, the record now catches up with
+the answer `./init` collected.** Handing the question on was right — a tree that reads for three harnesses is
+a decision and not a guess — but the answer then existed only in Spec Kit's own file while `project.json`
+still said nobody had established one, and `slipwai adopt --next` went on offering `--integration` for a
+question somebody had already answered. `harness.py` now reads `.specify/integration.json` as a source of its
+own, and the strongest one: a person answered `./init`, so it is recorded `confirmed`, and it outranks both
+the environment a run started in and what the tree reads, which are readings rather than answers. A record
+that already names a harness is left alone, and one a person overrode is never moved by a later step.
+
+Found by running the candidate intro over PrestaShop, whose tree reads for Claude Code, GitHub Copilot and
+Gemini CLI at once — which is the case the ambiguity rule was written for, and the first time it has been met
+in the wild.
+
+Part of brownfield adoption, which is experimental (#74): what it offers may change in a MINOR, and what it gets wrong belongs on that issue.
+
+**The UX render gates are spread from the first screen: side by side, sharded across six CI jobs, and scoped
+to what a pull request changed.** Each per-file render gate launches its own browser, four per preview, so
+their cost is linear in `screens/`: a generated project with 225 previews spent 24 minutes of a 33-minute
+`verify` in them. `check-ux-gates` now runs its gates concurrently (`UX_GATES_JOBS`, one per processor by
+default); `UX_GATES_SHARD=k/n` runs every n-th gate from the k-th, so n jobs cover every gate exactly once;
+and `UX_GATES_SINCE=<ref>` renders only the previews whose own file, or a local stylesheet they link or
+`@import`, changed since the merge base with `<ref>` — every preview again when the gate, the extension, the
+lockfile or `verify.yml` moved, or when Git cannot say. The file gate over `src/` always runs. And
+`./init --extension ux-gates` now writes a `ux-gates` job into `verify.yml`, between markers: six shards, each
+installing the pinned kit and Playwright's Chromium and setting `UX_GATES_REQUIRE=1`, scoped to the base commit
+on a pull request and whole on `main`. Until now the generated CI never installed the kit, so its render gates
+were reported skipped there on every run; they are now measured before a deploy, which waits on `verify`.
+
+**Catch-up.** Run `./init --extension ux-gates` once in a project that adopted the gates, and commit the job it
+adds to `.github/workflows/verify.yml`. A project that wrote its own UX-gate job should remove it first. A project that patched the gate should know
+what the upstream script no longer takes: `UX_GATES_SHARD` accepts only `k/n` (`1 <= k <= n`), and any other
+value — `none` included — fails the gate, so unset it to run every gate; and `check-ux-gates.py`'s entry points
+are `main()` and the `UX_GATES_*` variables, its helpers are not a contract, and a test that loads it with
+`importlib` should call `main()` with the environment set rather than reach into them.
+
 ## 1.2.1 — PATCH
 
 **`make check-imports` no longer reads a test of the domain as domain code.** The gate took any file with a

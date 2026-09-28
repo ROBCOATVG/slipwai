@@ -20,12 +20,13 @@ forge's to say, and `make bootstrap` says it plainly when the time comes.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 
 from .catalog import CATALOG
 from .errors import GenerationError
-from .host import install_hint
+from .host import Host, detect, install_hint
 from .targets import TOOLS, managed
 
 # Per target: the variable naming where the project deploys, a command asking the target's own CLI whether
@@ -72,8 +73,17 @@ def answers(probe: tuple[str, ...]) -> bool:
     return bool(result.stdout.strip())
 
 
-def missing_for(target: str) -> list[tuple[str, str, str]]:
+def for_shell(text: str, host: Host) -> str:
+    """`text` with each `export NAME=value` spelled for the shell this machine has: `$env:` in PowerShell,
+    where `export` is not a command, so the line the refusal hands a Windows user is one that works there."""
+    if host.posix:
+        return text
+    return re.sub(r"`export (\w+)=([^`]+)`", r'`$env:\1 = "\2"`', text)
+
+
+def missing_for(target: str, host: Host | None = None) -> list[tuple[str, str, str]]:
     """Every requirement this machine does not meet for the target, as (what, why, where)."""
+    host = host or detect()
     found = [
         (tool, why, install_hint(tool, where))
         for tool, why, where in TOOLS.get(target, ())
@@ -83,7 +93,8 @@ def missing_for(target: str) -> list[tuple[str, str, str]]:
     if region is not None:
         variable, probe, requirement = region
         if not os.environ.get(variable) and not answers(probe):
-            found.append(requirement)
+            what, why, where = requirement
+            found.append((what, for_shell(why, host), where))
     if managed(CATALOG, target) and shutil.which("gh") is None and not os.environ.get("GITEA_TOKEN"):
         what, why, where = FORGE
         found.append((what, why, install_hint("gh", where)))

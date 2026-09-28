@@ -11,7 +11,9 @@ from ..host import uv_by_uname
 # `.specify/scripts/bash/create-new-feature.sh` that finds `preset.yml` and no `yaml` module on the `python3`
 # it calls stops with "PyYAML is required to resolve preset template composition" — at the first
 # `/speckit-specify`, hours after `./init` ran, with no remedy given. So it is checked here, against the
-# `python3` those scripts call, only where the installed Spec Kit mentions it, and put right.
+# `python3` those scripts call, only where the installed Spec Kit mentions it, and put right. On Windows Spec
+# Kit installs its PowerShell scripts instead of the bash ones, and `create-new-feature.ps1` needs PyYAML just
+# the same (it calls `python3` first too), so both are read: checking only the bash ones skipped the step there.
 #
 # Those scripts take `python3` off the PATH and nothing else, so PyYAML has to be importable by *that*
 # interpreter with no step of the person's. An earlier answer built a venv under `.delivery-tools/` and asked
@@ -27,7 +29,8 @@ from ..host import uv_by_uname
 # Never fatal: Spec Kit is installed by now, and this is a message with the fix in it rather than a failed
 # bootstrap.
 PYYAML_FOR_SPECKIT = """
-if grep -qs 'PyYAML' .specify/scripts/bash/*.sh && ! python3 -c 'import yaml' >/dev/null 2>&1; then
+if grep -qs 'PyYAML' .specify/scripts/bash/*.sh .specify/scripts/powershell/*.ps1 \\
+   && ! python3 -c 'import yaml' >/dev/null 2>&1; then
   yaml_home=$(python3 -c 'import site, sys; print("venv" if sys.prefix != sys.base_prefix else (site.getusersitepackages() if site.ENABLE_USER_SITE else ""))' 2>/dev/null || true)
   if command -v uv >/dev/null 2>&1 && [ -n "$yaml_home" ]; then
     if [ "$yaml_home" = venv ]; then

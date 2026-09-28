@@ -73,6 +73,18 @@ class HostTest(FactoryTestCase):
         self.assertIn("winget install --exact --id Git.Git", result.stdout)
 
 
+class PreflightShellTest(FactoryTestCase):
+    def test_a_windows_refusal_spells_the_variable_for_powershell(self) -> None:
+        """`export` is not a PowerShell command; the line a Windows user is handed has to be one that runs."""
+        from slipwai.preflight import REGION, for_shell
+
+        why = REGION["aws"][2][1]
+        self.assertIn('`$env:AWS_REGION = "eu-west-2"`', for_shell(why, WINDOWS))
+        self.assertNotIn("export", for_shell(why, WINDOWS))
+        self.assertEqual(for_shell(why, MAC), why)
+        self.assertEqual(for_shell(why, DEBIAN), why)
+
+
 class BootstrapTest(FactoryTestCase):
     def script(self, root: Path, body: str) -> Path:
         init = root / "init"

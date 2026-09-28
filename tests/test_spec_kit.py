@@ -164,6 +164,18 @@ mkdir -p "{site}/yaml" && touch "{site}/yaml/__init__.py"
             self.assertIn("Installed PyYAML for python3", in_venv.stdout)
             self.assertEqual(calls.read_text(), "pip install --quiet --python python3 PyYAML\n")
 
+            # Windows: Spec Kit installs its PowerShell scripts, whose `create-new-feature.ps1` needs PyYAML
+            # just the same, and the bash ones never arrive — so the step reads both.
+            (scripts / "common.sh").write_text("#!/usr/bin/env bash\necho 'no composition here'\n", encoding="utf-8")
+            powershell = repo / ".specify/scripts/powershell"
+            powershell.mkdir(parents=True)
+            (powershell / "common.ps1").write_text(
+                'throw "Python 3 and PyYAML are required to resolve preset template composition"\n', encoding="utf-8"
+            )
+            on_windows = init("site")
+            self.assertIn("Installed PyYAML for python3", on_windows.stdout)
+            self.assertEqual(calls.read_text(), f"pip install --quiet --python python3 --target {site} PyYAML\n")
+
             without_uv = init("site", uv=False)
             self.assertEqual(without_uv.returncode, 0, without_uv.stderr)
             self.assertIn("it could not be\ninstalled for the python3 on PATH here", without_uv.stderr)

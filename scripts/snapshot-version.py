@@ -73,7 +73,7 @@ def main() -> int:
         )
     version = snapshot(written, commits_since(newest_release_tag()))
     if args.write:
-        version_file.write_text(f"{version}\n", encoding="utf-8")
+        version_file.write_text(f"{version}\n", encoding="utf-8", newline="\n")
     print(version)
     return 0
 

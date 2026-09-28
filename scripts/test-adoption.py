@@ -93,9 +93,9 @@ def newer_factory(into: Path) -> Path:
         shutil.copytree(FACTORY / name, factory / name, ignore=shutil.ignore_patterns("__pycache__"))
     for name in ("catalog.json", "slipwai", "CHANGELOG.md"):
         shutil.copy2(FACTORY / name, factory / name)
-    (factory / "VERSION").write_text(f"{NEWER}\n", encoding="utf-8")
+    (factory / "VERSION").write_text(f"{NEWER}\n", encoding="utf-8", newline="\n")
     skill = factory / "assets/toolkit" / CHANGED_SKILL
-    skill.write_text(skill.read_text(encoding="utf-8") + CHANGE, encoding="utf-8")
+    skill.write_text(skill.read_text(encoding="utf-8") + CHANGE, encoding="utf-8", newline="\n")
     return factory
 
 
@@ -316,7 +316,7 @@ def journey(work: Path, factory: Path) -> None:
     for row in document["convergence"]:
         if row["axis"] == "safety-net":
             row.update(rung="tests-pass", provenance="confirmed", planned=None)
-    (repo / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    (repo / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     commit(repo, "method slice: the suite is green in the gate")
     must(run(str(FACTORY / "slipwai"), "adopt", "--refresh", cwd=repo), "adopt --refresh")
     commit(repo, "the map redrawn")
@@ -332,13 +332,15 @@ def journey(work: Path, factory: Path) -> None:
         row.update(rung=row["target"], provenance="confirmed", planned=None)
     document["deployables"]["shop"]["layout"] = "hexagonal"
     document["infrastructure"].update(home="none", provenance="confirmed")
-    (repo / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    (repo / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     requirements = must(run("python3", "delivery/scripts/check-constitution.py", "--requirements", cwd=repo),
                         "constitution requirements")
     (repo / ".specify/memory").mkdir(parents=True, exist_ok=True)
-    (repo / ".specify/memory/constitution.md").write_text("# Ratified\n\n" + requirements, encoding="utf-8")
+    (repo / ".specify/memory/constitution.md").write_text(
+        "# Ratified\n\n" + requirements, encoding="utf-8", newline="\n"
+    )
     (repo / "delivery/docs/adr").mkdir(parents=True, exist_ok=True)
-    (repo / "delivery/docs/adr/0002-leave-it.md").write_text(ADR, encoding="utf-8")
+    (repo / "delivery/docs/adr/0002-leave-it.md").write_text(ADR, encoding="utf-8", newline="\n")
     commit(repo, "every rung established")
     must(run(str(FACTORY / "slipwai"), "adopt", "--refresh", cwd=repo), "adopt --refresh")
     commit(repo, "the map redrawn at every target")

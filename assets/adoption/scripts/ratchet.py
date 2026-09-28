@@ -170,7 +170,7 @@ def read_baseline() -> dict:
 
 
 def write_baseline(baseline: dict) -> None:
-    BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
 
 
 def relative(path: Path) -> str:

@@ -70,7 +70,7 @@ def stamp(root: Path, paths: Iterable[str]) -> None:
     kept.update({path: digest(root / path) for path in paths if path in now})
     with contextlib.suppress(OSError):
         where.parent.mkdir(parents=True, exist_ok=True)
-        where.write_text(json.dumps(dict(sorted(kept.items())), indent=2) + "\n", encoding="utf-8")
+        where.write_text(json.dumps(dict(sorted(kept.items())), indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
 def refuse_foreign(root: Path, writes: set[str], verb: str) -> None:

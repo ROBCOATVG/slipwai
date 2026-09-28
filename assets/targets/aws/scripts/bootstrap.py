@@ -192,7 +192,7 @@ def region(ask: bool) -> str | None:
     if not found and ask and sys.stdin.isatty():
         found = input("AWS region for this project (for example eu-west-2): ").strip() or None
         if found:
-            REGION_FILE.write_text(found + "\n", encoding="utf-8")
+            REGION_FILE.write_text(found + "\n", encoding="utf-8", newline="\n")
             print(f"+ wrote {REGION_FILE.relative_to(ROOT)} — commit it with the state", file=sys.stderr)
     return found
 
@@ -228,7 +228,7 @@ def auto_promote(given: str | None, ask: bool) -> str:
     else:
         found = "true"
     if ask:
-        PROMOTE_FILE.write_text(found + "\n", encoding="utf-8")
+        PROMOTE_FILE.write_text(found + "\n", encoding="utf-8", newline="\n")
         print(f"+ wrote {PROMOTE_FILE.relative_to(ROOT)} = {found} — commit it with the state", file=sys.stderr)
     return found
 

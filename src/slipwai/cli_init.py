@@ -55,7 +55,7 @@ def record_agent(root: Path, agent: Agent) -> str:
     manifest = root / "project.json"
     document = json.loads(manifest.read_text(encoding="utf-8"))
     document["agent"] = settled.record()
-    manifest.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    manifest.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     return (
         f"Agent: {name_of(settled.harness)} — `./init` asked, and project.json now records the answer "
         "(`confirmed`). That is one more uncommitted change for you to read."

@@ -304,7 +304,7 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
         if path.is_file() and path.read_text(encoding="utf-8") == content:
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_text(content, encoding="utf-8", newline="\n")
         done.rewritten.append(relative)
     stamp(root, (set(after) - owned) | writes(root, layout))  # what a later answer may write over as its own
     return done

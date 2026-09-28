@@ -145,7 +145,7 @@ def push(arguments: list[str]) -> None:
             run(["docker", "pull", image])
         recorded[name] = digest_of(image)
     BUILD.mkdir(exist_ok=True)
-    IMAGES.write_text(json.dumps(recorded, indent=2) + "\n", encoding="utf-8")
+    IMAGES.write_text(json.dumps(recorded, indent=2) + "\n", encoding="utf-8", newline="\n")
     for name, digest in recorded.items():
         print(f"{name}: {digest}")
     print(f"recorded in {IMAGES.relative_to(ROOT)}")
@@ -556,7 +556,7 @@ def record_release(environment: str, sha: str, images: dict[str, str], rollback_
     record = {"sha": sha, "images": images, "at": stamp, **({"rollback_of": rollback_of} if rollback_of else {})}
     path = BUILD / f"release-{environment}.json"
     BUILD.mkdir(exist_ok=True)
-    path.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8", newline="\n")
     blob_upload(path, f"{releases_prefix(environment)}{stamp}-{sha}.json")
 
 

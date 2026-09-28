@@ -1093,7 +1093,7 @@ def _uninstall_typescript(
     if leftover_scripts:
         for name in leftover_scripts:
             del package["scripts"][name]
-        manifest.write_text(json.dumps(package, indent=2) + "\n", encoding="utf-8")
+        manifest.write_text(json.dumps(package, indent=2) + "\n", encoding="utf-8", newline="\n")
         log(f"  {service}/package.json: dropped script(s) {', '.join(leftover_scripts)}")
 
     if not wanted:
@@ -1149,7 +1149,7 @@ def _uninstall_python(root: Path, service: str, packages: tuple[str, ...], log) 
             kept.append(line)
     if not dropped:
         return
-    manifest.write_text("".join(kept), encoding="utf-8")
+    manifest.write_text("".join(kept), encoding="utf-8", newline="\n")
     log(f"  {service}/pyproject.toml: dropped {', '.join(dropped)}")
     if shutil.which("uv") is None:
         log(
@@ -1248,7 +1248,7 @@ def _drop_compose_environment(root: Path, dropped: set[str], log) -> None:
     kept = [line for line in lines if not pattern.match(line)]
     if len(kept) == len(lines):
         return
-    path.write_text("".join(kept), encoding="utf-8")
+    path.write_text("".join(kept), encoding="utf-8", newline="\n")
     log(f"  docker-compose.yml: dropped {', '.join(keys)} from the app service")
 
 
@@ -1271,7 +1271,7 @@ def prune(root: Path, keep: set[str], *, settled: set[str] | None = None, log=pr
         text = path.read_text(encoding="utf-8")
         if not MARKER.search(text):
             continue
-        path.write_text(strip_markers(text, keep, settled), encoding="utf-8")
+        path.write_text(strip_markers(text, keep, settled), encoding="utf-8", newline="\n")
 
     web = project_web_apps(root)
     for feature in sorted(dropped):
@@ -1372,7 +1372,7 @@ def record_answers(root: Path, answers: list[tuple[str, str]], log=print) -> Non
             changed.append(f"{name}: {axis} is now {chosen}")
     if not changed:
         return
-    manifest.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    manifest.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     for line in changed:
         log(f"  project.json — {line}")
 

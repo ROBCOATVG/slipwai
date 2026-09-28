@@ -203,7 +203,7 @@ def respell(path: Path, markers: tuple[str, str], block: str) -> None:
     begin, end = (re.escape(marker) for marker in markers)
     respelled, count = re.subn(rf"{begin}.*?{end}[^\n]*", lambda _match: block, text, count=1, flags=re.S)
     if count:
-        path.write_text(respelled, encoding="utf-8")
+        path.write_text(respelled, encoding="utf-8", newline="\n")
 
 
 def check_report(readiness: Check) -> str:

@@ -158,7 +158,7 @@ def ci_gates() -> str:
     block = re.compile(rf"\n*{re.escape(CI_BEGIN)}\n.*?{re.escape(CI_END)}\n?", re.DOTALL)
     updated = block.sub(lambda _: "\n" + job, text, count=1) if block.search(text) else text.rstrip("\n") + "\n" + job
     if updated != text:
-        workflow.write_text(updated, encoding="utf-8")
+        workflow.write_text(updated, encoding="utf-8", newline="\n")
     return f"{WORKFLOW} runs the render gates in a `ux-gates` job over {SHARDS} shards"
 
 

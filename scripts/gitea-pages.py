@@ -102,7 +102,7 @@ def write_index(published: list[str]) -> None:
     (ROOT / "index.html").write_text(
         "<!doctype html>\n<meta charset='utf-8'>\n<title>Gitea pages</title>\n"
         "<style>body{font:16px/1.5 system-ui;max-width:40rem;margin:3rem auto;padding:0 1rem}</style>\n"
-        f"<h1>Gitea pages</h1>\n<ul>\n{body}\n</ul>\n", encoding="utf-8"
+        f"<h1>Gitea pages</h1>\n<ul>\n{body}\n</ul>\n", encoding="utf-8", newline="\n"
     )
 
 
@@ -132,7 +132,7 @@ def sync_once() -> None:
         previous = marker.read_text(encoding="utf-8").strip() if marker.exists() else None
         if sha != previous or not site.is_dir():
             export(bare, site, sha)
-            marker.write_text(sha + "\n", encoding="utf-8")
+            marker.write_text(sha + "\n", encoding="utf-8", newline="\n")
             log(f"published: {name} @ {sha[:12]}")
         published.append(name)
     known = {name for name in sites}

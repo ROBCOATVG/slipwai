@@ -486,7 +486,7 @@ def entries() -> list[dict[str, Any]]:
 
 def record(entry: dict[str, Any]) -> None:
     LOG.parent.mkdir(parents=True, exist_ok=True)
-    with LOG.open("a", encoding="utf-8") as handle:
+    with LOG.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
@@ -766,7 +766,7 @@ def iterate(template: str, prompt: str, environment: dict[str, str], iteration: 
     command = template.replace("{prompt}", shlex.quote(prompt))
     environment = {**environment, RUNNER_VARIABLE: "1", ITERATION_VARIABLE: str(iteration)}
     feed = Feed(stream)
-    raw = STREAM.open("a", encoding="utf-8") if stream else None
+    raw = STREAM.open("a", encoding="utf-8", newline="\n") if stream else None
     try:
         if raw is not None:
             raw.write(f"# iteration {iteration} {now()}\n")
@@ -819,7 +819,7 @@ def resume() -> None:
 def compacting() -> None:
     """Stamp the checkpoint before compaction, so the resumed context can see when it lost its memory."""
     if CHECKPOINT.is_file():
-        with CHECKPOINT.open("a", encoding="utf-8") as handle:
+        with CHECKPOINT.open("a", encoding="utf-8", newline="\n") as handle:
             handle.write(f"- **Compacted:** {now()}\n")
 
 
@@ -870,7 +870,7 @@ def responded() -> None:
     text = event.get("text") or event.get("last_assistant_message")
     if isinstance(text, str) and text.strip():
         LAST_RESPONSE.parent.mkdir(parents=True, exist_ok=True)
-        LAST_RESPONSE.write_text(text, encoding="utf-8")
+        LAST_RESPONSE.write_text(text, encoding="utf-8", newline="\n")
 
 
 def ending_message(event: dict[str, Any]) -> str:
@@ -929,7 +929,7 @@ def stopping() -> None:
         return
     next_step = next((line.strip() for line in checkpoint.splitlines() if line.strip().startswith("- **Next:**")),
                      "- **Next:** (the checkpoint names no next step; read it and commands/cruise.md)")
-    with CHECKPOINT.open("a", encoding="utf-8") as handle:
+    with CHECKPOINT.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(f"- **Held:** {now()} — {last or 'no last line'!r}\n")
     reason = ("cruise: an iteration is in flight (specs/cruise-checkpoint.md) and this turn did not end on one of "
               "its four last lines. An iteration ends only on `cruise: continue`, `cruise: done`, `cruise: parked: "
@@ -1030,7 +1030,7 @@ def deliver() -> list[str]:
         return []
     lines = [line for line in taken.read_text(encoding="utf-8").splitlines() if line.strip()]
     taken.unlink()
-    with TOLD.open("a", encoding="utf-8") as handle:
+    with TOLD.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write("".join(f"{line}\n" for line in lines))
     return [str(json.loads(line)["text"]) for line in lines]
 
@@ -1052,7 +1052,7 @@ def requeue(given: list[dict[str, Any]]) -> None:
     lines = [json.dumps(entry, ensure_ascii=False) for entry in given] + [
         json.dumps(entry, ensure_ascii=False) for entry in queued()]
     INBOX.parent.mkdir(parents=True, exist_ok=True)
-    INBOX.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+    INBOX.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8", newline="\n")
 
 
 def told_argument(texts: list[str]) -> str:
@@ -1073,7 +1073,7 @@ def tell(arguments: list[str]) -> None:
     if not text:
         raise RuntimeError("tell takes the message as its words, or on standard input")
     INBOX.parent.mkdir(parents=True, exist_ok=True)
-    with INBOX.open("a", encoding="utf-8") as handle:
+    with INBOX.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps({"at": now(), "text": text, "now": now_flag}, ensure_ascii=False) + "\n")
     waiting = len(queued())
     count = f"{waiting} message(s) queued" if waiting > 1 else "queued"
@@ -1157,7 +1157,7 @@ def run(arguments: list[str]) -> None:
     prompt = prompt_for(harness, feature)
     first = prompt_for(harness, " ".join(part for part in (feature, kickoff) if part))
     PID.parent.mkdir(parents=True, exist_ok=True)
-    PID.write_text(f"{os.getpid()} {now()}\n", encoding="utf-8")
+    PID.write_text(f"{os.getpid()} {now()}\n", encoding="utf-8", newline="\n")
     # What a run that ended under an iteration — `stop --now`, a killed runner — had given it is not spent.
     requeue(delivered())
     signal.signal(signal.SIGTERM, terminated)
@@ -1339,7 +1339,7 @@ def start(arguments: list[str]) -> None:
         print(line)
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
     # The watch seat starts reading here, so the first `watch` shows this run from its first line.
-    WATCH_CURSOR.write_text(str(RUN_LOG.stat().st_size if RUN_LOG.is_file() else 0), encoding="utf-8")
+    WATCH_CURSOR.write_text(str(RUN_LOG.stat().st_size if RUN_LOG.is_file() else 0), encoding="utf-8", newline="\n")
     with RUN_LOG.open("ab") as log:
         log.write(f"cruise: runner started {now()} from a session, detached\n".encode())
         process = subprocess.Popen([sys.executable, str(SCRIPT), "run", *arguments], cwd=ROOT,
@@ -1445,7 +1445,7 @@ def watch(arguments: list[str]) -> None:
             position += len(raw)
             verdict = boundary(line) or verdict
         if cut:
-            WATCH_CURSOR.write_text(str(position), encoding="utf-8")
+            WATCH_CURSOR.write_text(str(position), encoding="utf-8", newline="\n")
             sys.stdout.flush()
             shown_at = time.monotonic()
             if verdict is not None:
@@ -1718,7 +1718,7 @@ def main() -> None:
         findings = check(table)
         if findings:
             raise RuntimeError("not written — the change would leave the file malformed:\n  - " + "\n  - ".join(findings))
-        CONFIG.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        CONFIG.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
         for line in changed:
             print(line)
         print(f"{CONFIG.relative_to(ROOT)} written; it takes effect at the next iteration /cruise runs. "

@@ -149,9 +149,10 @@ def cut_entry(repo: Path, release: str) -> list[str]:
     newest = ENTRY.search(text)
     found = fragments(repo)
     if newest is None:
-        changelog.write_text(text.rstrip() + "\n\n" + entry(release, found, first=True), encoding="utf-8")
+        changelog.write_text(text.rstrip() + "\n\n" + entry(release, found, first=True), encoding="utf-8", newline="\n")
     else:
-        changelog.write_text(text[: newest.start()] + entry(release, found) + text[newest.start() :], encoding="utf-8")
+        updated = text[: newest.start()] + entry(release, found) + text[newest.start() :]
+        changelog.write_text(updated, encoding="utf-8", newline="\n")
     for path, _claim, _body in found:
         # Removed from the worktree alone: the index still has the entry, which is what lets the commit stage
         # the deletion by naming the path like any other change it carries.
@@ -285,7 +286,7 @@ def spent(repo: Path, remote: str, tag: str, at: str | None) -> None:
 
 
 def commit_version(repo: Path, version: str, subject: str, *also: str) -> str:
-    (repo / "VERSION").write_text(f"{version}\n", encoding="utf-8")
+    (repo / "VERSION").write_text(f"{version}\n", encoding="utf-8", newline="\n")
     # `--all` over the named paths and no others: a fragment the entry consumed is staged as the deletion it
     # is, where a bare `add` would refuse a path that is no longer on disk.
     git(repo, "add", "--all", "--", "VERSION", *also)

@@ -442,7 +442,7 @@ def guard() -> int:
     if index_query(tool, given):
         asked[who] = time.time()
         try:
-            ASKED.write_text(json.dumps(dict(sorted(asked.items(), key=lambda pair: pair[1])[-200:])) + "\n", encoding="utf-8")
+            ASKED.write_text(json.dumps(dict(sorted(asked.items(), key=lambda pair: pair[1])[-200:])) + "\n", encoding="utf-8", newline="\n")
         except OSError:
             pass
         return 0

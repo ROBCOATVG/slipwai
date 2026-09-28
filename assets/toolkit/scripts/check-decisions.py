@@ -241,7 +241,7 @@ def baseline() -> int:
         rows = "".join(f"\n## {ident} · {PREDATES} · {today}\n\nFinished before `check-decisions` held every done "
                        "slice to a row here. Never attacked by `/adversary`, so no slice may cite this row as "
                        "coverage.\n" for ident in missing)
-        log.write_text(text.rstrip("\n") + "\n" + rows, encoding="utf-8")
+        log.write_text(text.rstrip("\n") + "\n" + rows, encoding="utf-8", newline="\n")
         written += len(missing)
         print(f"check-decisions: {log.relative_to(ROOT).as_posix()}: {len(missing)} baseline row(s)")
     print(f"check-decisions: baselined {written} done slice(s)" if written

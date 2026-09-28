@@ -70,7 +70,7 @@ def main(argv: list[str]) -> int:
         else:
             print(f"{key}: endoflife.date/{slug} returned nothing; kept as it was", file=sys.stderr)
     table["snapshot"] = today.isoformat()
-    TABLE.write_text(json.dumps(table, indent=2) + "\n", encoding="utf-8")
+    TABLE.write_text(json.dumps(table, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"snapshot dated {table['snapshot']}")
     return 0
 

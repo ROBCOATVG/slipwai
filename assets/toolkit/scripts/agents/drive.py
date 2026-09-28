@@ -98,7 +98,7 @@ def main() -> None:
         findings = check(table)
         if findings:
             raise RuntimeError("not written — the change would leave the file malformed:\n  - " + "\n  - ".join(findings))
-        CONFIG.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        CONFIG.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
         for line in changed:
             print(line)
         print(f"{CONFIG.relative_to(ROOT)} written; it takes effect at the next implementation stage /drive runs. "

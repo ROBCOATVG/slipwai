@@ -75,7 +75,7 @@ def stage_api_client(directory: Path) -> None:
     """Put the typed client's manifest in the staging tree, so the lock holds its records too."""
     (directory / "packages/api-client").mkdir(parents=True)
     (directory / "packages/api-client/package.json").write_text(
-        API_CLIENT_PACKAGE.read_text(encoding="utf-8"), encoding="utf-8"
+        API_CLIENT_PACKAGE.read_text(encoding="utf-8"), encoding="utf-8", newline="\n"
     )
 
 
@@ -131,7 +131,7 @@ def backend_lock(selection: Selection) -> str:
     """The service's own lock, as `language_files` restructures it into a project root lock."""
     with tempfile.TemporaryDirectory() as staging:
         directory = Path(staging)
-        (directory / "package.json").write_text(service_manifest(selection), encoding="utf-8")
+        (directory / "package.json").write_text(service_manifest(selection), encoding="utf-8", newline="\n")
         return resolve(directory)
 
 
@@ -149,12 +149,14 @@ def combined_lock(selection: Selection, web_features: set[str]) -> str:
                 },
                 indent=2,
             )
-            + "\n", encoding="utf-8"
+            + "\n", encoding="utf-8", newline="\n"
         )
         (directory / "apps/service").mkdir(parents=True)
-        (directory / "apps/service/package.json").write_text(service_manifest(selection), encoding="utf-8")
+        (directory / "apps/service/package.json").write_text(
+            service_manifest(selection), encoding="utf-8", newline="\n"
+        )
         (directory / "apps/web").mkdir(parents=True)
-        (directory / "apps/web/package.json").write_text(web_manifest(web_features), encoding="utf-8")
+        (directory / "apps/web/package.json").write_text(web_manifest(web_features), encoding="utf-8", newline="\n")
         stage_api_client(directory)
         return resolve(directory)
 
@@ -172,10 +174,10 @@ def frontend_only_lock(web_features: set[str]) -> str:
                 },
                 indent=2,
             )
-            + "\n", encoding="utf-8"
+            + "\n", encoding="utf-8", newline="\n"
         )
         (directory / "apps/web").mkdir(parents=True)
-        (directory / "apps/web/package.json").write_text(web_manifest(web_features), encoding="utf-8")
+        (directory / "apps/web/package.json").write_text(web_manifest(web_features), encoding="utf-8", newline="\n")
         stage_api_client(directory)
         return resolve(directory)
 
@@ -204,7 +206,7 @@ def python_locks() -> dict[Path, str]:
             directory = Path(staging)
             (directory / "pyproject.toml").write_text(
                 python_pyproject((PYTHON_APP / "pyproject.toml").read_text(encoding="utf-8"), selection),
-                encoding="utf-8",
+                encoding="utf-8", newline="\n",
             )
             result = subprocess.run(
                 ["uv", "lock", "--quiet"],
@@ -312,7 +314,7 @@ def main() -> int:
         if arguments.check:
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_text(content, encoding="utf-8", newline="\n")
         print(f"wrote {path.relative_to(ROOT)}")
 
     if arguments.check and stale:

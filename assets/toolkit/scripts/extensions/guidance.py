@@ -71,7 +71,7 @@ def adopted_extensions(*, persist_legacy: bool) -> list[str]:
 
 def write_elections(keys: list[str]) -> None:
     STATE.parent.mkdir(parents=True, exist_ok=True)
-    STATE.write_text(json.dumps({"schemaVersion": SCHEMA, "extensions": sorted(set(keys))}, indent=2) + "\n", encoding="utf-8")
+    STATE.write_text(json.dumps({"schemaVersion": SCHEMA, "extensions": sorted(set(keys))}, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
 def record_extension(key: str) -> None:
@@ -106,7 +106,7 @@ def replace_block(key: str, guidance: str) -> None:
         updated = content[:first.start()] + canonical + suffix
     else:
         updated = content.rstrip("\n") + f"\n\n{canonical}\n"
-    AGENTS.write_text(updated, encoding="utf-8")
+    AGENTS.write_text(updated, encoding="utf-8", newline="\n")
 
 
 
@@ -203,7 +203,7 @@ def write_json_entry(path: Path, key: str, name: str, entry: dict) -> str | None
         return None
     servers[name] = entry
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     return f"{shown} names `{name}`; commit it"
 
 
@@ -231,5 +231,5 @@ def write_toml_table(path: Path, table: str, values: dict) -> str | None:
     else:
         text = (text.rstrip("\n") + "\n\n" if text.strip() else "") + block
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8", newline="\n")
     return f"{shown} names `{table.rpartition('.')[2]}`; commit it"

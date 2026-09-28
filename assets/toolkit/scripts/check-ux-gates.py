@@ -379,7 +379,7 @@ def main() -> int:
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as scratch:
         preload = Path(scratch) / "preload.cjs"
-        preload.write_text(PRELOAD.replace("{scripts}", json.dumps(str(kit / "scripts/preload.cjs"))), encoding="utf-8")
+        preload.write_text(PRELOAD.replace("{scripts}", json.dumps(str(kit / "scripts/preload.cjs"))), encoding="utf-8", newline="\n")
         with ThreadPoolExecutor(max_workers=jobs()) as pool:
             verdicts = list(pool.map(lambda gate: run(gate, preload if opened == "bundled" else None), gates))
     for gate, verdict in zip(gates, verdicts, strict=True):

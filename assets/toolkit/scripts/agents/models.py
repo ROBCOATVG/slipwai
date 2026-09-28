@@ -209,7 +209,7 @@ def main() -> None:
         if findings:
             listed = "\n  - ".join(findings)
             raise RuntimeError(f"not written — the change would leave the table malformed:\n  - {listed}")
-        MODELS.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        MODELS.write_text(json.dumps(table, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
         for line_ in changed:
             print(line_)
         print(f"{MODELS.relative_to(ROOT)} written; it takes effect at the next stage /drive runs. Commit it: the "

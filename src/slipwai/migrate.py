@@ -143,7 +143,7 @@ def write_notes(root: Path, name: str, was: str | None) -> str | None:
     try:
         destination = root / NOTES
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(notes(name, was), encoding="utf-8")
+        destination.write_text(notes(name, was), encoding="utf-8", newline="\n")
     except OSError as error:
         return str(error)
     return None

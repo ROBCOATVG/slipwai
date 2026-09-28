@@ -137,9 +137,9 @@ def install(source: Path, destination: Path) -> None:
         shutil.rmtree(destination)
     shutil.copytree(source, destination)
     for page in destination.rglob("*.md"):
-        page.write_text(relocated(page.read_text(encoding="utf-8")), encoding="utf-8")
+        page.write_text(relocated(page.read_text(encoding="utf-8")), encoding="utf-8", newline="\n")
     skill_md = destination / "SKILL.md"
-    skill_md.write_text(with_capability(skill_md.read_text(encoding="utf-8")), encoding="utf-8")
+    skill_md.write_text(with_capability(skill_md.read_text(encoding="utf-8")), encoding="utf-8", newline="\n")
 
 
 def reproject() -> None:

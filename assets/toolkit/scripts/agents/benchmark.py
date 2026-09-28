@@ -107,7 +107,7 @@ def load(directory: Path) -> dict[str, Any]:
 
 def save(directory: Path, record: dict[str, Any]) -> None:
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / RECORD).write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (directory / RECORD).write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
 
 
 def tasks_file(directory: Path) -> Path | None:
@@ -956,7 +956,7 @@ def overview(feature: str | None = None) -> list[Path]:
                                                                                           "every stage's tokens read."))
         parts.append(f"## Reading these numbers\n\n{READING}")
         page = ROOT / "specs" / name / OVERVIEW
-        page.write_text("\n\n".join(parts) + "\n", encoding="utf-8")
+        page.write_text("\n\n".join(parts) + "\n", encoding="utf-8", newline="\n")
         pages.append(page)
     return pages
 

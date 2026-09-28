@@ -249,7 +249,7 @@ def pruning_state(root: Path, asked: set[str]) -> tuple[set[str], set[str]]:
 def record(root: Path, document: dict) -> str:
     """Write the manifest, edited in place, with this factory stamped as the last to write here."""
     document["generator"] = wrote_here(document.get("generator"))
-    (root / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    (root / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     return "project.json"
 
 

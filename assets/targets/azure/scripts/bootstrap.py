@@ -218,7 +218,7 @@ def location(ask: bool) -> str | None:
     if not found and ask and sys.stdin.isatty():
         found = input("Azure region for this project (for example uksouth): ").strip() or None
         if found:
-            LOCATION_FILE.write_text(found + "\n", encoding="utf-8")
+            LOCATION_FILE.write_text(found + "\n", encoding="utf-8", newline="\n")
             print(f"+ wrote {LOCATION_FILE.relative_to(ROOT)} — commit it with the state", file=sys.stderr)
     return found
 
@@ -254,7 +254,7 @@ def auto_promote(given: str | None, ask: bool) -> str:
     else:
         found = "true"
     if ask:
-        PROMOTE_FILE.write_text(found + "\n", encoding="utf-8")
+        PROMOTE_FILE.write_text(found + "\n", encoding="utf-8", newline="\n")
         print(f"+ wrote {PROMOTE_FILE.relative_to(ROOT)} = {found} — commit it with the state", file=sys.stderr)
     return found
 
@@ -320,7 +320,7 @@ def remember(found: dict) -> None:
     for relative, output in RECORDED.items():
         value = str(found.get(output) or "").strip()
         if value:
-            (ROOT / relative).write_text(value + "\n", encoding="utf-8")
+            (ROOT / relative).write_text(value + "\n", encoding="utf-8", newline="\n")
     print("+ wrote " + ", ".join(sorted(RECORDED)) + " — commit them with the state", file=sys.stderr)
 
 

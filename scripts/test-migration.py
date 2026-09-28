@@ -178,7 +178,7 @@ def main() -> int:
         (project / ".specify").mkdir(exist_ok=True)
         (project / INTEGRATION).write_text(
             json.dumps({"installed_integrations": [HARNESS], "default_integration": HARNESS}, indent=2) + "\n",
-            encoding="utf-8",
+            encoding="utf-8", newline="\n",
         )
         run("python3", "scripts/agents/project.py", cwd=project, quiet=True)
         run("git", "add", "-A", cwd=project)
@@ -194,9 +194,11 @@ def main() -> int:
         # The project's own work.
         sources = sorted((project / "apps/service/src").rglob("*.ts"))
         own_file = next(path for path in sources if "test" not in path.name)
-        own_file.write_text(own_file.read_text(encoding="utf-8") + OWN_LINE, encoding="utf-8")
+        own_file.write_text(own_file.read_text(encoding="utf-8") + OWN_LINE, encoding="utf-8", newline="\n")
         (project / OWN_PAGE).write_text(
-            "# The product's own decision\n\nRecorded by the product, not the factory.\n", encoding="utf-8"
+            "# The product's own decision\n\nRecorded by the product, not the factory.\n",
+            encoding="utf-8",
+            newline="\n",
         )
         run("git", "add", "-A", cwd=project)
         run("git", *IDENTITY, "commit", "-q", "-m", "The product's own work", cwd=project)
@@ -245,7 +247,7 @@ def main() -> int:
         (fresh_project / ".specify").mkdir(exist_ok=True)
         (fresh_project / INTEGRATION).write_text(
             json.dumps({"installed_integrations": [HARNESS], "default_integration": HARNESS}, indent=2) + "\n",
-            encoding="utf-8",
+            encoding="utf-8", newline="\n",
         )
         run("python3", "scripts/agents/project.py", cwd=fresh_project, quiet=True)
         fresh, merged = files_of(fresh_project), files_of(project)

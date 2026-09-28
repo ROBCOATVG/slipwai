@@ -141,13 +141,13 @@ def stage(service: Path, root: Path, modules: dict[str, Path], into: Path) -> Pa
         text += f"replace {path} => {staged}\n"
         sums.append(staged / "go.sum")
         print(f"mutation: staged {directory.relative_to(root)} for {path}")
-    go_mod.write_text(text, encoding="utf-8")
+    go_mod.write_text(text, encoding="utf-8", newline="\n")
     # A workspace keeps the checksums of a shared module's dependencies in go.work.sum; with GOWORK=off the
     # staged service needs them in its own go.sum. Every line once, whichever file it came from.
     sums.append(root / "go.work.sum")
     lines = dict.fromkeys(line for path in sums if path.is_file() for line in path.read_text(encoding="utf-8").splitlines() if line)
     if lines:
-        (staged_service / "go.sum").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+        (staged_service / "go.sum").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8", newline="\n")
     return staged_service
 
 

@@ -76,6 +76,11 @@ Customer authentication:
 Choose (none/keycloak) [none]:
 Output parent [/work/projects]:
 created: /work/projects/my-product
+
+Running ./init — it installs Spec Kit, which needs the network.
+… Spec Kit installed; which coding agent; the optional extensions …
+./init is done; what it wrote is uncommitted. Next: `cd /work/projects/my-product`, read it, and
+`git add -A && git commit -m "Install Spec Kit"`.
 ```
 
 **The service and the browser app are asked their names.** `service` and `web` are the defaults, and the
@@ -118,14 +123,15 @@ of the road — is the default, and every project records its answer as `"target
 slipwai generate shop --target aws --language go --frontend react-vite --auth cognito --output /work/projects
 ```
 
-Choosing a cloud also checks, there and then, that this machine has what the generated `./init` will use —
+Choosing a cloud also checks, there and then, that this machine has what setting the project up will use —
 `tofu`, that cloud's own CLI (`aws`, or `az` under `--target azure`), the region it deploys to, and `gh` or
 `GITEA_TOKEN` — and refuses if not, naming for each missing tool the command that installs it on this
 machine (`brew install opentofu` on a Mac with Homebrew, `winget install --exact --id OpenTofu.Tofu` on
 Windows, the distribution's own package where it carries one) beside the page that covers every other
-machine, because finding out at the end of `./init` is the wrong moment. The list is the target's own (`targets.TOOLS`), and it is the same list the generated `./init`
-looks for, so a project is never refused for a tool its own script does not check. `--skip-checks` generates
-anyway, for when another machine will run `./init`.
+machine, because finding out at the end of the setup, after the push, is the wrong moment. The list is the
+target's own (`targets.TOOLS`), and it is the same list the project's setup script (`./init`) looks for, so a
+project is never refused for a tool its own script does not check. `--skip-checks` generates anyway, for when
+the setup will run on another machine: generate with `--no-init` and run `./init` there.
 
 Each axis is asked separately, and only when the chosen profile and backend can actually be given a choice —
 so the prompt never offers a combination that would then be refused. Every answer shows what it means,
@@ -236,11 +242,12 @@ what it refuses.
 - files are assembled in a temporary sibling and moved into place only after a successful scaffold;
 - the project is initialized as a local Git repository on `main` with one initial commit;
 - no remote is created;
-- where the questions were answered at a terminal, the project's `./init` runs next, from inside it — the
-  same run `slipwai adopt` ends with — so Spec Kit and the agent's skills are in place without a second
-  command. It needs the network, and what it writes is left uncommitted for you to read. `--integration
-  <agent>` names the agent so `./init` does not ask. The argument form leaves `./init` as the next step
-  unless given `--init`, and `--no-init` skips it anywhere. On native Windows, where a `/bin/sh` script
+- where the questions were answered at a terminal, the same command sets the project up for your coding
+  agent: Spec Kit, the agent's skills and commands, and the extension menu, by running the project's
+  `./init` from inside it, which is the same setup `slipwai adopt` ends with. It needs the network, and what
+  it writes is left uncommitted for you to read. `--integration <agent>` names the agent so it is not asked.
+  The argument form, for scripts and CI, sets nothing up unless given `--init`, and `--no-init` skips the
+  setup anywhere; the project keeps `./init` to run later. On native Windows, where a `/bin/sh` script
   cannot run as it is, it runs through Git for Windows' `sh` when that is installed and otherwise says to
   use WSL or Git Bash, and a machine without `python3` is given the command that installs it first; and
 - no list of files the factory may later overwrite is left behind. The product owns every generated file.
@@ -299,8 +306,8 @@ without making every local increment pay their cost.
 Each generated repository receives only active material for its selected profile and language:
 
 - both profiles receive the shared delivery skills, adapted `/drive`, `/where-are-we`, `/gaps`, `/adversary`,
-  `/mutation` and `/constitution-coverage` commands, `/add-service`, `/add-frontend` and `/catch-up`, plus an `./init`
-  bootstrap for Spec Kit and the selected agent integration;
+  `/mutation` and `/constitution-coverage` commands, `/add-service`, `/add-frontend` and `/catch-up`, plus `./init`,
+  the Spec Kit and agent-integration setup `generate` runs and a project runs again to change it;
 - the event profile additionally receives Event Modeling, event sourcing, and global-event-model skills,
   `/example-map`, `/validate-code-against-model`, and the event-model documentation;
 - the skills' examples are rendered in the services' languages, and a skill that still carries TypeScript is

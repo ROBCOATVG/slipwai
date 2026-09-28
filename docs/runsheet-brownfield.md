@@ -47,7 +47,9 @@ runs. The gate runs the commands your build already has, so it needs what those 
 
 - **1.2: the flags.**
   - `--integration claude` names your coding agent. Use the key for yours.
-  - It then runs `./delivery/init` for you, which needs the network. `--no-init` leaves that to you.
+  - It then runs `./delivery/init` for you, which needs the network. `--no-init` leaves that to you. On
+    native Windows it runs through Git Bash when that is installed, and otherwise says to use WSL or Git
+    Bash; without `python3` it names the command that installs it on your machine and does not start.
 - **1.2: what it writes.** The adoption is one commit, and `git reset --hard HEAD^` undoes exactly that
   commit.
   - The method lives under `delivery/`.

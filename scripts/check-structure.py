@@ -41,7 +41,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # per backend language and where each backend answers its two probes — what a build ecosystem's
     # files say, for a repository the factory did not make, and which coding agent reads what is written.
     ("contract", ("catalog", "axes", "features", "extensions", "targets", "examples", "backends", "images",
-                  "ecosystems", "probes", "harness")),
+                  "ecosystems", "probes", "harness", "host")),
     # One validated answer per axis, which applications a project has, what they add up to being able to do,
     # how a written manifest reads back into that list, how a canonical toolkit file reaches a project, where
     # the delivery material lives — and the build wrapper a wrapped Java application runs through, written

@@ -33,9 +33,9 @@ Docker if you choose Postgres or Keycloak. [Tools required](requirements.md) lis
 
 | # | Where | Command | Done when |
 |---|---|---|---|
-| 1.1 | terminal | `slipwai generate` | it prints `created: <path>` |
+| 1.1 | terminal | `slipwai generate` | it prints `created: <path>`, then runs `./init`: it has asked which coding agent to use, and then offered the optional extensions |
 | 1.2 | terminal | `cd <name>` | |
-| 1.3 | terminal | `./init` | it has asked which coding agent to use, and then offered the optional extensions |
+| 1.3 | terminal | `./init`, only if 1.1 did not run it | as 1.1 |
 | 1.4 | terminal | `make verify` | it ends with `verify: all gates passed` |
 | 1.5 | terminal | `git add -A && git commit -m "Install Spec Kit"` | `git status` is clean |
 
@@ -43,8 +43,12 @@ Docker if you choose Postgres or Keycloak. [Tools required](requirements.md) lis
   and the frontend, one at a time, and shows each default. To skip the questions, give every answer as a
   flag: `slipwai generate ledger --profile event-modelling --target none --language typescript --frontend
   react-vite --event-store postgres --http fastify`. [Project shape](axes.md) says what each answer brings.
+- **1.1 and 1.3: when `./init` runs.** Answering the questions at a terminal runs `./init` for you as the last
+  step, as `slipwai adopt` does. The argument form does not unless given `--init`; `--no-init` skips it
+  either way, and 1.3 is then yours to run. On native Windows it runs through Git Bash when that is
+  installed; otherwise run it from WSL or Git Bash.
 - **1.3: agent and extensions.** `./init` installs Spec Kit, then copies the commands and skills into the
-  agent you name. `./init --integration claude` names the agent without asking. `./init --extension
+  agent you name. `slipwai generate --integration claude` passes the agent through. `./init --integration claude` names the agent without asking. `./init --extension
   codegraph` adds the code index, now or at any later time.
 - **1.5: commit.** A generated project starts as one commit. `./init` writes its files and does not commit
   them, which is what 1.5 is for.

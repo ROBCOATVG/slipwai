@@ -11,6 +11,9 @@ wrong moment; the right one is the moment the target is chosen. So `generate` as
 after the target question interactively, before anything is written from flags — and refuses with what is
 missing and where to get it. `--skip-checks` is for the case where another machine will run `./init`.
 
+Each missing tool is named with the command that installs it on this machine (`host.py`), where one is
+known, beside the page that covers every other machine.
+
 Presence on the PATH is all that is checked. Whether `gh` is signed in or a token has the right scope is the
 forge's to say, and `make bootstrap` says it plainly when the time comes.
 """
@@ -22,6 +25,7 @@ import subprocess
 
 from .catalog import CATALOG
 from .errors import GenerationError
+from .host import install_hint
 from .targets import TOOLS, managed
 
 # Per target: the variable naming where the project deploys, a command asking the target's own CLI whether
@@ -70,14 +74,19 @@ def answers(probe: tuple[str, ...]) -> bool:
 
 def missing_for(target: str) -> list[tuple[str, str, str]]:
     """Every requirement this machine does not meet for the target, as (what, why, where)."""
-    found = [(tool, why, where) for tool, why, where in TOOLS.get(target, ()) if shutil.which(tool) is None]
+    found = [
+        (tool, why, install_hint(tool, where))
+        for tool, why, where in TOOLS.get(target, ())
+        if shutil.which(tool) is None
+    ]
     region = REGION.get(target)
     if region is not None:
         variable, probe, requirement = region
         if not os.environ.get(variable) and not answers(probe):
             found.append(requirement)
     if managed(CATALOG, target) and shutil.which("gh") is None and not os.environ.get("GITEA_TOKEN"):
-        found.append(FORGE)
+        what, why, where = FORGE
+        found.append((what, why, install_hint("gh", where)))
     return found
 
 

@@ -1,7 +1,10 @@
 # Tools required
 
 Scaffolding needs almost nothing; a generated repository needs whatever its own toolchain needs. Nothing
-here is installed for you, and nothing is vendored into the output.
+here is installed for you, and nothing is vendored into the output. Where `slipwai` or `./init` finds a tool
+missing, it names the command that installs it with the package manager this machine has — Homebrew or
+MacPorts on macOS; apt, dnf, pacman, zypper or apk on Linux and WSL; winget, Scoop or Chocolatey on
+Windows — and the page below where it knows none.
 
 | To do this | You need |
 |---|---|
@@ -30,7 +33,7 @@ here is installed for you, and nothing is vendored into the output.
 | `make push`, `deploy`, `rollback`, `migrate-remote`, `url` in an `azure` project | The above, OpenTofu 1.12 (`tofu`), the `az` CLI and an Azure sign-in; `npx` where the project has a browser app, for the Static Web Apps CLI the site is uploaded with. The identifiers come from the environment or from the `infra/` files `make bootstrap` wrote |
 | `make verify` on the factory, for the `aws` suites | `tofu` and `ko` on the PATH, or those tests skip with the reason; network for the pinned AWS provider once |
 | `make verify` on the factory, for the `azure` suites | `tofu` on the PATH, or those tests skip with the reason; network for the pinned azurerm, azapi and azuread providers once |
-| `./init` (installs Spec Kit) | `uv`, or Python 3 with network access; Spec Kit 0.16+ for the preset layer |
+| `./init` (installs Spec Kit) | `uv`, or Python 3 with network access; Spec Kit 0.16+ for the preset layer. A POSIX shell: macOS, Linux and WSL have one; on native Windows, Git Bash. Missing `uv`, it prints the command that installs it on the machine it runs on |
 
 The gate scripts a generated repository ships are deliberately dependency-free: they use only the Python
 standard library, so `make verify` needs no `pip install` of its own in any language.

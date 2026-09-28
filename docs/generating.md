@@ -120,8 +120,10 @@ slipwai generate shop --target aws --language go --frontend react-vite --auth co
 
 Choosing a cloud also checks, there and then, that this machine has what the generated `./init` will use —
 `tofu`, that cloud's own CLI (`aws`, or `az` under `--target azure`), the region it deploys to, and `gh` or
-`GITEA_TOKEN` — and refuses with install pointers if not, because finding out at the end of `./init` is the
-wrong moment. The list is the target's own (`targets.TOOLS`), and it is the same list the generated `./init`
+`GITEA_TOKEN` — and refuses if not, naming for each missing tool the command that installs it on this
+machine (`brew install opentofu` on a Mac with Homebrew, `winget install --exact --id OpenTofu.Tofu` on
+Windows, the distribution's own package where it carries one) beside the page that covers every other
+machine, because finding out at the end of `./init` is the wrong moment. The list is the target's own (`targets.TOOLS`), and it is the same list the generated `./init`
 looks for, so a project is never refused for a tool its own script does not check. `--skip-checks` generates
 anyway, for when another machine will run `./init`.
 
@@ -233,7 +235,14 @@ what it refuses.
 - the target must not exist;
 - files are assembled in a temporary sibling and moved into place only after a successful scaffold;
 - the project is initialized as a local Git repository on `main` with one initial commit;
-- no remote is created; and
+- no remote is created;
+- where the questions were answered at a terminal, the project's `./init` runs next, from inside it — the
+  same run `slipwai adopt` ends with — so Spec Kit and the agent's skills are in place without a second
+  command. It needs the network, and what it writes is left uncommitted for you to read. `--integration
+  <agent>` names the agent so `./init` does not ask. The argument form leaves `./init` as the next step
+  unless given `--init`, and `--no-init` skips it anywhere. On native Windows, where a `/bin/sh` script
+  cannot run as it is, it runs through Git for Windows' `sh` when that is installed and otherwise says to
+  use WSL or Git Bash, and a machine without `python3` is given the command that installs it first; and
 - no list of files the factory may later overwrite is left behind. The product owns every generated file.
   `project.json` records the answers it was generated from and which factory version did it — provenance,
   which nothing generated reads.

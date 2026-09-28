@@ -18,6 +18,7 @@ from .cli_add import (
     resolve_requested_backend,
 )
 from .cli_adopt import adopt_main
+from .cli_init import run_generated_init
 from .cli_prompts import (
     prompt_application_name,
     prompt_axis,
@@ -32,6 +33,7 @@ from .cli_prompts import (
     validate_project_name,
 )
 from .errors import GenerationError
+from .harness import keys
 from .preflight import check as check_requirements
 from .scaffold import write_project
 from .selection import resolve_selection
@@ -174,11 +176,35 @@ def generate_main(argv: list[str]) -> None:
         "--skip-checks", action="store_true",
         help="do not check that this machine has what the target's ./init needs (tofu, the aws CLI, a forge)",
     )
+    # The project's `./init`, run as the last step rather than left as the first thing to type — the same run
+    # `adopt` ends with. On by default only where somebody answered the questions at a terminal: the flag form
+    # is for scripts and CI, where a step that reaches the network and asks which agent to use is not wanted
+    # unless asked for.
+    init = parser.add_mutually_exclusive_group()
+    init.add_argument(
+        "--init", action="store_true", dest="run_init", default=None,
+        help="run the project's ./init once it is written (the default when the questions were answered at a "
+        "terminal). It installs Spec Kit, so it needs the network; what it writes is left for you to commit",
+    )
+    init.add_argument(
+        "--no-init", action="store_false", dest="run_init", default=None,
+        help="do not run ./init; leave it as the next step (the default with a name and flags)",
+    )
+    parser.add_argument(
+        "--integration", default=None, metavar="AGENT",
+        help="which coding agent ./init installs the skills and commands into, by its key in the agent registry "
+        "(default: ./init asks)",
+    )
     args = parser.parse_args(argv)
     try:
         named = {axis: getattr(args, axis.replace("-", "_")) for axis in CATALOG["axes"]}
-        # Bare, or bare but for the one flag that has nothing to prompt about, is the interactive form.
-        interactive = all(argument == "--skip-checks" for argument in argv)
+        if args.integration is not None and args.integration not in keys():
+            raise GenerationError(
+                f"--integration names `{args.integration}`, and the agent registry has no such harness; "
+                f"one of: {', '.join(sorted(keys()))}"
+            )
+        # Bare, or bare but for the flags that have nothing to prompt about, is the interactive form.
+        interactive = all(argument in RUN_SHAPE for argument in without_integration(argv))
         if interactive:
             print("Create a new product monorepo. Press Enter to accept a shown default.")
             args.name = prompt_project_name()
@@ -244,3 +270,23 @@ def generate_main(argv: list[str]) -> None:
         print(f"created: {destination}")
     except GenerationError as error:
         parser.error(str(error))
+    if args.run_init if args.run_init is not None else interactive and sys.stdin.isatty():
+        run_generated_init(destination, args.integration)
+
+
+# The flags that say how `generate` runs rather than what it makes, so passing one keeps the questions.
+RUN_SHAPE = ("--skip-checks", "--init", "--no-init")
+
+
+def without_integration(argv: list[str]) -> list[str]:
+    """`argv` without `--integration` and its value, which name what `./init` does rather than the project."""
+    kept: list[str] = []
+    skip = False
+    for argument in argv:
+        if skip:
+            skip = False
+        elif argument == "--integration":
+            skip = True
+        elif not argument.startswith("--integration="):
+            kept.append(argument)
+    return kept

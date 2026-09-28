@@ -13,6 +13,7 @@ import json
 
 from ..catalog import CATALOG
 from ..extensions import known_extensions
+from ..host import uv_by_uname
 from ..layout import AT_ROOT, Layout
 from ..services import App, axes_of, services_of
 from ..targets import managed, tools_for
@@ -317,7 +318,7 @@ Spec Kit is not installed, and neither uv nor Python 3 is available to install i
 Install uv or Python 3, then rerun ./init, or install the official specify CLI.
 See https://github.com/github/spec-kit/blob/main/docs/installation.md
 EOF
-  return 1
+""" + uv_by_uname() + """  return 1
 }
 """ + prune + """
 # What "$@" still holds after the scan is exactly what Spec Kit is for; every flag this project answers

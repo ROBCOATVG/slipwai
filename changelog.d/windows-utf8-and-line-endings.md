@@ -16,6 +16,10 @@ unrunnable under Git Bash and printed an "LF will be replaced by CRLF" warning p
 adopted repository keeps its own root `.gitattributes` untouched and gets one scoped to the delivery
 directory (experimental), which decides only for the files under it.
 
+A generated project's `make verify` also runs on native Windows now (from Git Bash, with GNU Make and Node
+installed). It failed at one recipe, `check-drawio`, which called `node_modules/.bin/tsx`: npm's POSIX shim,
+which a Windows `make` cannot run. The event-model recipes now run tsx's entry point with `node`.
+
 **Catch-up.** `slipwai migrate` brings the `.gitattributes`. In a Windows clone whose files were already
 checked out with CRLF, re-check them out once so they take it: with a clean tree,
 `git rm -r --cached -q . && git reset --hard`.

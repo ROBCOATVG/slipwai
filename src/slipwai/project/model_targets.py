@@ -14,7 +14,11 @@ from __future__ import annotations
 # through a prerequisite, so each target is one thing to read; with the tree already installed it costs
 # about a second and asks the registry nothing.
 INSTALL = "npm --prefix scripts/event-model install --no-audit --no-fund --loglevel=error"
-TSX = "scripts/event-model/node_modules/.bin/tsx"
+# tsx's own entry point, run by `node`, rather than `node_modules/.bin/tsx`: that is npm's POSIX shim, which a
+# native Windows `make` cannot run (`'scripts' is not recognized as an internal or external command`), and it
+# was the one gate recipe `make verify` failed on there. The shim runs this same file everywhere else, and the
+# exact `tsx` pin in `scripts/event-model/package.json` is what keeps the path from moving under it.
+TSX = "node scripts/event-model/node_modules/tsx/dist/cli.mjs"
 
 MODEL_TARGETS = f"""
 .PHONY: check-model

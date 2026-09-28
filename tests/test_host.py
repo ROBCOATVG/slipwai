@@ -85,6 +85,17 @@ class PreflightShellTest(FactoryTestCase):
         self.assertEqual(for_shell(why, DEBIAN), why)
 
 
+class PortableRecipesTest(FactoryTestCase):
+    def test_no_generated_recipe_runs_an_npm_shim_a_windows_make_cannot(self) -> None:
+        """`node_modules/.bin/<tool>` is a POSIX shell script on every OS, and native Windows `make` fails on it;
+        `make verify` on Windows stopped at exactly one recipe, `check-drawio`, for that reason."""
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate(directory, "portable", "event-modelling", "typescript")
+            makefile = (repo / "Makefile").read_text(encoding="utf-8")
+            self.assertNotIn("node_modules/.bin/", makefile)
+            self.assertIn("node scripts/event-model/node_modules/tsx/dist/cli.mjs", makefile)
+
+
 class BootstrapTest(FactoryTestCase):
     def script(self, root: Path, body: str) -> Path:
         init = root / "init"

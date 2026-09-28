@@ -41,9 +41,12 @@ the field.
 From Spec Kit 1.0.9 on, its bash scripts compose the templates a preset declares with PyYAML, on the bare
 `python3` they call — without it, `.specify/scripts/bash/create-new-feature.sh` stops with "PyYAML is
 required to resolve preset template composition". `./init` checks for that after installing Spec Kit and
-installs it where it can: into the user site, or — where this Python refuses pip outside a venv (PEP 668:
-Homebrew's, Debian's) — into a venv at `.delivery-tools/venv` that shares the system's packages, printing the
-`PATH` line that puts it first. Rerun `./init` after changing the Python on your PATH.
+installs it where that `python3` looks without being told — its venv if it is a venv's, otherwise its user
+site — with `uv pip install --python python3`, so there is nothing to activate and nothing to put on `PATH`.
+uv writes the user site as a directory rather than installing into the managed environment, so a Python that
+refuses pip outside a venv (PEP 668: Homebrew's, Debian's) has nothing to refuse, and the system's packages
+are never touched. Without uv, `./init` prints the line that installs it. Rerun `./init` after changing the
+Python on your PATH.
 
 `make check-speckit` enforces all of this and runs inside `make verify` — in-place edits, deleted managed
 files, a preset with no or invalid `preset.yml`, and a declared override whose file is missing (which

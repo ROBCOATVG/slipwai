@@ -14,8 +14,8 @@ The canonical source is
 there.
 
 ```sh
-slipwai generate            # answer a few questions -> a fresh Git repo, one commit, on main,
-                            # then ./init: Spec Kit and your coding agent
+slipwai generate            # answer a few questions -> a fresh Git repo on main, with Spec Kit
+                            # and your coding agent already set up
 cd ledger && make verify    # the gate, the same one CI runs
 ```
 
@@ -57,8 +57,9 @@ It is not a one-way door. You can run the factory again inside a project it made
   that list the project's applications. The factory derives that set by generating the project twice and
   comparing the results, so it cannot drift from a hand-kept list. **`slipwai describe-service`** records
   what a service already there is for — its purpose and its bounded contexts — and regenerates the same way.
-- **`./init`** answers the event store, HTTP, staff identity and customer identity questions again, by
-  removing what the old answers brought.
+- **The project's `./init`, run again,** answers the event store, HTTP, staff identity and customer identity
+  questions again, by removing what the old answers brought. (`generate` runs it once for you; running it
+  again is for changing an answer, the coding agent, or the extensions.)
 
 Both respect what the project has become, not what it was generated from.
 
@@ -103,7 +104,7 @@ Every other question has its own answer, and a project can answer most of them a
 
 ## Getting started
 
-Four steps. You install a `slipwai` command and run it. You do not clone this repository.
+Three steps. You install a `slipwai` command and run it. You do not clone this repository.
 
 New here? Follow the runsheet for your case: [generate a new project](docs/learn-generate.md), or
 [adopt an existing repository](docs/learn-adopt.md). Each is every step in order, from installing the
@@ -117,14 +118,14 @@ how you know it worked, and what the terminal shows.
 
 Scaffolding needs **Python 3.11 or later** and **Git**.
 
-**`uv` is the recommended installer.** It is worth having anyway: a generated project's `./init` uses `uv`
-to fetch Spec Kit and to give your `python3` the PyYAML that Spec Kit's scripts need, so one tool covers both
-ends.
+**`uv` is the recommended installer.** It is worth having anyway: when `generate` or `adopt` sets a project up,
+it uses `uv` to fetch Spec Kit and to give your `python3` the PyYAML that Spec Kit's scripts need, so one tool
+covers both ends.
 
-When `slipwai` or `./init` finds a tool missing, it names the command that installs it with the package
-manager your machine has: Homebrew or MacPorts on macOS; apt, dnf, pacman, zypper or apk on Linux and WSL;
-winget, Scoop or Chocolatey on Windows. On Windows you also need [Git for Windows](https://git-scm.com/download/win),
-because `./init` and the `Makefile` run under its Git Bash.
+When `slipwai` finds a tool missing, it names the command that installs it with the package manager your
+machine has: Homebrew or MacPorts on macOS; apt, dnf, pacman, zypper or apk on Linux and WSL; winget, Scoop or
+Chocolatey on Windows. On Windows you also need [Git for Windows](https://git-scm.com/download/win), because a
+project's scripts and `Makefile` run under its Git Bash.
 
 ```sh
 uv tool install slipwai
@@ -141,8 +142,8 @@ of `main` as well.
 This repository is the factory that *makes* the command. Clone it only to change the factory.
 [Work on the factory](docs/maintaining.md) is that path.
 
-**Going to a cloud needs four more things on the machine before you generate**, because `./init` there
-pushes the repository and bootstraps the account:
+**Going to a cloud needs four more things on the machine before you generate**, because setting the project
+up there pushes the repository and bootstraps the account:
 
 1. OpenTofu.
 2. That cloud's CLI, signed in with enough authority to create what the bootstrap creates.
@@ -157,8 +158,23 @@ two are compared.
 
 ### 2. Generate a project
 
-Run `generate` with no arguments to be asked one question at a time. Pass the answers as flags for scripts
-and CI:
+```sh
+slipwai generate
+```
+
+It asks one question at a time, writes the repository as one commit on `main`, and then sets it up for your
+coding agent in the same command:
+
+- it installs Spec Kit;
+- it asks which coding agent to project `skills/`, `commands/` and `agents/` into — any of
+  [36 harnesses](docs/spec-kit.md);
+- it offers optional extensions as a checkbox menu: CodeGraph, UI/UX Pro Max and the UX gates.
+
+What that setup writes is left uncommitted for you to read, then `git add -A && git commit`. On Windows it runs
+under Git Bash.
+
+For scripts and CI, pass every answer as a flag. Add `--init` to get the same setup, and `--integration` to name
+the agent instead of being asked:
 
 ```sh
 slipwai generate ledger \
@@ -166,36 +182,22 @@ slipwai generate ledger \
   --language typescript \
   --frontend react-vite \
   --event-store postgres \
-  --http fastify
+  --http fastify \
+  --init --integration claude
 ```
 
-That creates `./ledger` in the current directory, initialised on `main` with one commit. The target
-directory must not already exist. `--output` names a different **parent directory**.
+That creates `./ledger` in the current directory. The target directory must not already exist, and `--output`
+names a different **parent directory**. Without `--init`, the flag form writes the repository and stops there;
+`--no-init` does the same for the interactive form.
 
-Answered at a terminal, `generate` then runs the project's `./init` for you (step 3). The flag form above
-leaves it to you, for scripts and CI; `--init` runs it there too, and `--no-init` skips it anywhere.
+**`slipwai adopt`** is the same single command for a repository that already exists: it installs the method
+around your code and sets it up for your agent. See [Adopt an existing repository](docs/learn-adopt.md).
 
-### 3. Bootstrap the new repository
-
-Spec Kit is deliberately absent until you ask for it. Answering the questions at a terminal asks for it: the
-interactive `generate` ends by running `./init`. After the flag form, run it from inside the generated
-project:
-
-```sh
-./init
-```
-
-On Windows, `generate` runs it through Git Bash, and you run it from Git Bash too.
-
-That installs Spec Kit. It then asks which coding agent to project `skills/`, `commands/` and `agents/`
-into — any of [36 harnesses](docs/spec-kit.md). It then offers optional extensions as a checkbox menu:
-CodeGraph, UI/UX Pro Max and the UX gates.
-
-`--integration <name>` and `--extension <key>` skip those questions; `slipwai generate --integration <name>`
-passes the agent through. `--extension` also adds one later. See
+**Changing the setup later.** The project keeps its `./init`, so you can switch or add a coding agent
+(`./init --integration <agent>`) or add an extension (`./init --extension <key>`) at any time. See
 [Extensions](docs/extensions.md).
 
-### 4. Work in it, and run it
+### 3. Work in it, and run it
 
 ```sh
 make help        # every target, with a line each
@@ -295,7 +297,7 @@ Everything below is in a generated repository from its first commit.
 | **[Generated documentation](docs/what-you-get.md#documentation-written-for-this-project)** | Thirteen pages written for this project's actual shape rather than copied, and an index built from the files that shipped |
 | **[Services and bounded contexts](docs/services.md)** | One list of applications, each with its own language, framework and answers. `add-service` and `add-frontend` grow it. Contexts are found rather than declared |
 | **[A path to production](docs/aws-target.md)** | `--target aws` or `--target azure` gives you `infra/` in OpenTofu, one deployable per application released blue/green, a pipeline from every push to `main` through staging to production, and a one-command rollback. The same promise on either cloud. [The Azure page](docs/azure-target.md) is where they are compared |
-| **[Extensions](docs/extensions.md)** | Optional dev tooling, adopted with `./init --extension <key>`: a code index, a design-system generator, and objective UX gates in `make verify`. None of them changes the generated skeleton's code |
+| **[Extensions](docs/extensions.md)** | Optional dev tooling, offered when you generate or adopt, or added later with `./init --extension <key>`: a code index, a design-system generator, and objective UX gates in `make verify`. None of them changes the generated skeleton's code |
 
 ### The commands a project gets
 
@@ -435,7 +437,7 @@ is which, what each answer brings, and how a project answers a question again la
 | [The skill catalogue](docs/skills.md) | The 51 skills grouped by what they are for, why a project is given only the ones whose subject it has, how examples are rendered in your own languages, and where to edit them |
 | [The global event model](docs/event-model.md) | Why the model is global, what `make model` renders, the status ladder `make check-model` enforces, and how the browsable page is published |
 | [Gates](docs/verification.md) | What `make verify` runs, what is deliberately outside it, and why the split falls where it does |
-| [Bootstrap Spec Kit](docs/spec-kit.md) | `./init`, the 36 agent integrations, how Spec Kit is obtained, and the constitution floor gated from both sides |
+| [Bootstrap Spec Kit](docs/spec-kit.md) | How `generate` and `adopt` set up Spec Kit (and `./init`, which re-runs that setup), the 36 agent integrations, how Spec Kit is obtained, and the constitution floor gated from both sides |
 | [Services](docs/services.md) | `project.json`'s one list of applications, everything that reads it, what a second service is in each language, `add-service` and `add-frontend` and their agent commands, and what a maintainer owes a new generated file that names an application |
 | [Extensions](docs/extensions.md) | `./init --extension <key>`, the contract every extension's `init.py` owes, and what makes a second one a catalog entry plus one file |
 | [The AWS target](docs/aws-target.md) | What `--target aws` gives: the stacks, the images, the pipeline and the rollback. What it costs, what the factory proves about it and what it cannot, and how the next cloud becomes a row |

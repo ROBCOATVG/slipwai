@@ -1,14 +1,18 @@
 # Bootstrap Spec Kit in a generated repository
 
-Spec Kit files are deliberately absent immediately after generation. From inside a generated repository,
-run:
+You do not run a separate step for this. `slipwai generate`, answered at a terminal, sets Spec Kit up as the
+last thing it does, and so does `slipwai adopt` for an existing repository: it runs `specify init --here
+--force` and asks which agent integration to use. Name the agent up front when automation or repeatability
+matters, and in the flag form, which sets nothing up unless given `--init`:
 
 ```sh
-./init
+slipwai generate                                     # asks which agent
+slipwai generate ledger [answers...] --init --integration claude
+slipwai adopt --integration codex
 ```
 
-That runs `specify init --here --force` and prompts for an agent integration. Select one explicitly when
-automation or repeatability matters:
+The setup is the project's own `./init`, and the project keeps it. Run it again from inside the project to
+change the agent, pass Spec Kit options, or restore the agent's files in a fresh checkout:
 
 ```sh
 ./init --integration claude
@@ -16,22 +20,22 @@ automation or repeatability matters:
 ./init --integration cursor-agent
 ```
 
-Initialization first runs native Spec Kit setup, then projects the project-owned `skills/` and `commands/`
+The setup first runs native Spec Kit setup, then projects the project-owned `skills/` and `commands/`
 into the selected integration's native locations using the included Spec Kit-derived agent registry. Cursor
 receives the full catalogue under `.cursor/skills/` alongside Spec Kit's own `speckit-*` skills; because
 Cursor's current Spec Kit integration is skills-native, project commands such as `slice` become invocable
 skills there too. Codex uses `.agents/skills/`; other integrations use their own registered locations and
-command formats. The root directories remain canonical. Rerun `./init` after changing them to refresh the
+command formats. The root directories remain canonical. Run `./init` again after changing them to refresh the
 projections, or with a different `--integration` to change harness. A rerun is local: in a project deploying
 to AWS it finds the committed bootstrap state and leaves the account alone rather than running
 `make bootstrap` again ([A path to production](aws-target.md)).
 
-`./init` is also how a generated project answers an axis again — see
+Running `./init` again is also how a generated project answers an axis again — see
 [Answering an axis again later](axes.md#answering-an-axis-again-later).
 
 ## How Spec Kit itself is obtained
 
-If `specify` is installed, `./init` uses it. Otherwise it uses `uvx` (or `uv tool run`) to run the official
+If `specify` is installed, the setup uses it. Otherwise it uses `uvx` (or `uv tool run`) to run the official
 CLI from `github/spec-kit` **at the release the project records** — `speckitSource` in `project.json`, written
 at generation from the factory's pin. If neither is available, it installs that same source into the ignored
 project-local `.specify-tools/` directory using Python and pip; `python3-venv` is not required. Any extra

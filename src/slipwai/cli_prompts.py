@@ -35,6 +35,10 @@ from .services import check_context, check_name
 from .targets import offered_backends
 
 
+def valid_project_name(name: str) -> bool:
+    return bool(re.fullmatch(r"[a-z0-9][a-z0-9._-]*", name)) and name not in {".", ".."}
+
+
 def validate_project_name(name: str) -> None:
     if not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", name) or name in {".", ".."}:
         raise GenerationError(
@@ -43,10 +47,10 @@ def validate_project_name(name: str) -> None:
         )
 
 
-def prompt_project_name() -> str:
+def prompt_project_name(default: str | None = None) -> str:
     while True:
         try:
-            name = input("Project name: ").strip()
+            name = input(f"Project name [{default}]: " if default else "Project name: ").strip() or (default or "")
         except EOFError as error:
             raise GenerationError("project name is required; pass it as an argument in non-interactive use") from error
         try:

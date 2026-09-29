@@ -27,7 +27,7 @@ import subprocess
 from pathlib import Path
 
 from .harness import Agent, from_environment, from_spec_kit, keys, name_of
-from .host import TOOLCHAINS, Host, detect, ensure, install_hint
+from .host import TOOLCHAINS, Host, detect, ensure, install_hint, present
 
 
 def add_setup_arguments(parser: argparse.ArgumentParser, script: str) -> None:
@@ -98,7 +98,7 @@ def tools_for(languages: list[str], *, base: tuple[str, ...] = ("git", "make", "
 def install_tools(tools: list[str], install: bool) -> list[str]:
     """Put `tools` on the machine where `install` allows it; say what could not be, and return that."""
     if not install:
-        return [tool for tool in tools if shutil.which(tool) is None]
+        return [tool for tool in tools if not present(tool)]
     missing = ensure(tools)
     for tool in missing:
         print(f"Could not install {tool} here; {install_hint(tool, 'its own install page')} is the line to try.")
@@ -162,8 +162,8 @@ def launcher(host: Host, install: bool = False) -> list[str] | str:
     `./init` needs `python3` whatever else it finds, for the agent projection it ends with, so its absence is
     said before the run rather than after Spec Kit has been fetched for nothing.
     """
-    if shutil.which("python3") is None and install:
-        ensure(["python3"])
+    if not present("python3") and install:
+        ensure(["python3"])  # missing, or too old for the gate scripts (a stock Mac's 3.9)
     if shutil.which("python3") is None:
         return (
             f"./init needs python3, and this machine ({host.name}) has none on PATH. Install it with "
@@ -236,9 +236,12 @@ def run_init(root: Path, delivery: str, agent: Agent, install: bool = False) -> 
 def run_generated_init(destination: Path, integration: str | None, install: bool = False) -> None:
     """`./init` in a project `generate` has just written and committed, from the directory it lives in."""
     if bootstrap(destination, Path("init"), integration, install):
+        # The agent only finds the project's commands when it starts in the project's root, so say where that is.
+        where = "here" if destination == Path.cwd() else f"in {destination} (`cd {destination}`)"
         print(
-            f"./init is done; what it wrote is uncommitted. Next: `cd {destination}`, read it, and "
-            "`git add -A && git commit -m \"Install Spec Kit\"`."
+            "./init is done; what it wrote is uncommitted: read it, and "
+            "`git add -A && git commit -m \"Install Spec Kit\"`.\n"
+            f"Start your coding agent {where}: it finds the project's commands only from the project's root."
         )
         return
     print(

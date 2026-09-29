@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -30,6 +31,7 @@ from .cli_prompts import (
     prompt_project_name,
     prompt_purpose,
     prompt_target,
+    valid_project_name,
     validate_project_name,
 )
 from .errors import GenerationError
@@ -198,9 +200,13 @@ def generate_main(argv: list[str]) -> None:
         attended = interactive and sys.stdin.isatty()
         install = installing(args.install, attended)
         running_init = args.run_init if args.run_init is not None else attended
+        # Run in an empty folder, the folder is the project: its name is offered, and the project is written into
+        # it rather than into a new folder beneath it — so the agent started in the same place finds its commands.
+        here = Path.cwd()
+        in_place = interactive and not any(here.iterdir())
         if interactive:
             print("Create a new product monorepo. Press Enter to accept a shown default.")
-            args.name = prompt_project_name()
+            args.name = prompt_project_name(here.name if in_place and valid_project_name(here.name) else None)
             args.profile = prompt_profile()
             args.target = prompt_target()
             # Asked before the target and checked against it: a name the target's cloud will not take is
@@ -229,7 +235,7 @@ def generate_main(argv: list[str]) -> None:
                 named[axis] = prompt_axis(axis, args.profile, backend, args.target)
             if running_init:
                 args.integration = agent_for_setup(args.integration, asking=True)
-            args.output = prompt_output(DEFAULT_OUTPUT)
+            args.output = here.parent if in_place else prompt_output(DEFAULT_OUTPUT)
             args.backend = backend
         elif args.name is None:
             raise GenerationError("project name is required")
@@ -257,15 +263,20 @@ def generate_main(argv: list[str]) -> None:
         )
         output = args.output.resolve()
         output.mkdir(parents=True, exist_ok=True)
-        destination = output / args.name
-        if destination.exists():
+        destination = here if in_place else output / args.name
+        if destination.exists() and not in_place:
             raise GenerationError(f"refusing to overwrite existing target: {destination}")
         if install:
             install_tools(["git"], install)  # the project is committed as it is written
         with tempfile.TemporaryDirectory(prefix=f".{args.name}-", dir=output) as staging:
             staging_path = Path(staging)
             write_project(staging_path, args.name, args.profile, args.target, apps)
-            staging_path.rename(destination)
+            if in_place:
+                # Moved in entry by entry: the folder is where the person is standing, so it is kept, not replaced.
+                for entry in staging_path.iterdir():
+                    shutil.move(str(entry), str(destination / entry.name))
+            else:
+                staging_path.rename(destination)
         print(f"created: {destination}")
     except GenerationError as error:
         parser.error(str(error))

@@ -157,7 +157,13 @@ class Host:
 
 
 def system() -> str:
-    """`macos`, `linux`, `wsl`, `windows` or `other`. Cygwin and MSYS2 are POSIX shells and read as `other`."""
+    """`macos`, `linux`, `wsl`, `windows` or `other`. Cygwin and MSYS2 are POSIX shells and read as `other`.
+
+    `SLIPWAI_HOST_SYSTEM` names one outright. It exists to test slipwai itself: a container can only be Linux, and
+    the macOS routes (Homebrew first) are exercised in one that sets `SLIPWAI_HOST_SYSTEM=macos`."""
+    forced = os.environ.get("SLIPWAI_HOST_SYSTEM", "").strip()
+    if forced in NAMES:
+        return forced
     if sys.platform == "darwin":
         return "macos"
     if sys.platform == "win32":
@@ -212,8 +218,39 @@ def disabled() -> bool:
     return os.environ.get("SLIPWAI_NO_INSTALL", "").strip() not in ("", "0", "false", "no")
 
 
+# Where a tool on PATH can be too old to count. A stock Mac's `python3` is Apple's 3.9, below what the gate scripts
+# run on; an old distribution's Node is below what a generated project builds with. Such a tool is installed over,
+# the same as a missing one.
+MINIMUM: dict[str, tuple[int, ...]] = {"python3": (3, 10), "node": (22, 13)}
+VERSION_ARGS: dict[str, list[str]] = {
+    "python3": ["-c", "import sys; print('.'.join(map(str, sys.version_info[:3])))"],
+    "node": ["--version"],
+}
+
+
+def version_of(tool: str) -> tuple[int, ...] | None:
+    """The version the tool on PATH reports, or None where it says nothing that reads as one."""
+    import re
+
+    path = shutil.which(COMMAND.get(tool, tool))
+    if path is None:
+        return None
+    try:
+        said = subprocess.run([path, *VERSION_ARGS.get(tool, ["--version"])], capture_output=True, text=True,
+                              timeout=30, check=False).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    found = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", said)
+    return tuple(int(part) for part in found.groups() if part is not None) if found else None
+
+
 def present(tool: str) -> bool:
-    return shutil.which(COMMAND.get(tool, tool)) is not None
+    """On PATH, and new enough where there is a floor. A version that cannot be read is given the benefit."""
+    if shutil.which(COMMAND.get(tool, tool)) is None:
+        return False
+    floor = MINIMUM.get(tool)
+    found = version_of(tool) if floor else None
+    return found is None or found >= floor  # type: ignore[operator]
 
 
 def arch() -> str:

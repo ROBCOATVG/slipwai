@@ -51,6 +51,7 @@ install_command = TOOLS.install_command
 install_hint = TOOLS.install_hint
 uv_by_uname = TOOLS.uv_by_uname
 ensure = TOOLS.ensure
+present = TOOLS.present
 disabled = TOOLS.disabled
 
 # What each language a project builds in needs on the machine, by `backends.py`'s family names and the

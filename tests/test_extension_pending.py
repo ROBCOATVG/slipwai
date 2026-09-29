@@ -18,7 +18,13 @@ from support import FactoryTestCase
 
 
 class PendingExtensionsTest(FactoryTestCase):
-    fake_bin = design.DesignExtensionsTest.fake_bin
+    def fake_bin(self, directory: str, **scripts: str) -> Path:
+        fake_bin = Path(directory) / "fake-bin"
+        fake_bin.mkdir()
+        for name, body in {"specify": design.FAKE_SPECIFY, **scripts}.items():
+            (fake_bin / name).write_text(body)
+            (fake_bin / name).chmod(0o755)
+        return fake_bin
 
     def test_chosen_before_there_is_a_browser_app_they_wait_and_install_themselves_once_one_exists(self) -> None:
         """Ticked in a project with no screen yet — an adopted repository whose frontend is still a candidate, or a

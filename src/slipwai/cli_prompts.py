@@ -40,7 +40,7 @@ def valid_project_name(name: str) -> bool:
 
 
 def validate_project_name(name: str) -> None:
-    if not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", name) or name in {".", ".."}:
+    if not valid_project_name(name):
         raise GenerationError(
             "project name must start with a lowercase letter or number and contain only lowercase "
             "letters, numbers, '.', '_' or '-'"

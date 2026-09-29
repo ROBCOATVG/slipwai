@@ -321,7 +321,7 @@ def adopt_main(argv: list[str]) -> None:
         agent = chosen(args.integration) if args.integration else detect(root)
         # Somebody at the terminal, about to have `./init` set the agent up, is asked which one where nothing
         # settled it — with no answer preselected, and before the commit, so the adoption records it.
-        attended = not args.yes
+        attended = not args.yes and sys.stdin.isatty()
         running_init = args.run_init if args.run_init is not None else attended
         install = installing(args.install, attended)
         if agent.harness is None and running_init and attended:

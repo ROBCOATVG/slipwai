@@ -153,10 +153,16 @@ def main() -> int:
     environment = {**os.environ, "CODEGRAPH_NO_UPDATE_CHECK": "1"}
     # The full path: on Windows `npx` is `npx.cmd`, which a process can start only when it is named whole.
     command = [shutil.which(command[0]) or command[0], *command[1:]]
-    indexed = subprocess.run([*command, "init"], cwd=ROOT, check=False, env=environment)
-    if indexed.returncode != 0:
+    # `-y .` and no stdin, as `code_index.cli` runs it: never a question that would hold `./init` open.
+    try:
+        indexed = subprocess.run([*command, "init", "-y", "."], cwd=ROOT, check=False, env=environment,
+                                 stdin=subprocess.DEVNULL, timeout=1800)
+        code = indexed.returncode
+    except subprocess.TimeoutExpired:
+        code = "a timeout"
+    if code != 0:
         print(
-            f"`codegraph init` exited {indexed.returncode}: AGENTS.md is unchanged.\n"
+            f"`codegraph init` exited {code}: AGENTS.md is unchanged.\n"
             f"Fix what it reported, then: {INIT} --extension codegraph",
             file=sys.stderr,
         )

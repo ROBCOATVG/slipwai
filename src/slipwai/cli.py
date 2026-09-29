@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -241,7 +240,8 @@ def generate_main(argv: list[str]) -> None:
                 named[axis] = prompt_axis(axis, args.profile, backend, args.target)
             if running_init:
                 args.integration = agent_for_setup(args.integration, asking=True)
-            args.output = here.parent if in_place else prompt_output(DEFAULT_OUTPUT)
+            # A name other than the folder's is a project of that name inside it, so its files and names agree.
+            args.output = here if in_place else prompt_output(DEFAULT_OUTPUT)
             args.backend = backend
         elif args.name is None:
             raise GenerationError("project name is required")
@@ -269,18 +269,20 @@ def generate_main(argv: list[str]) -> None:
         )
         output = args.output.resolve()
         output.mkdir(parents=True, exist_ok=True)
+        in_place = in_place and args.name == here.name
         destination = here if in_place else output / args.name
         if destination.exists() and not in_place:
             raise GenerationError(f"refusing to overwrite existing target: {destination}")
         if install:
             install_tools(["git"], install)  # the project is committed as it is written
-        with tempfile.TemporaryDirectory(prefix=f".{args.name}-", dir=output) as staging:
+        # Staged beside the destination — inside it, when writing in place, so the parent's permissions never matter.
+        with tempfile.TemporaryDirectory(prefix=f".{args.name}-", dir=here if in_place else output) as staging:
             staging_path = Path(staging)
             write_project(staging_path, args.name, args.profile, args.target, apps)
             if in_place:
                 # Moved in entry by entry: the folder is where the person is standing, so it is kept, not replaced.
-                for entry in staging_path.iterdir():
-                    shutil.move(str(entry), str(destination / entry.name))
+                for entry in list(staging_path.iterdir()):
+                    entry.rename(destination / entry.name)
             else:
                 staging_path.rename(destination)
         print(f"created: {destination}")

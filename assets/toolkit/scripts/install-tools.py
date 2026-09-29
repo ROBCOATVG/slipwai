@@ -89,8 +89,9 @@ PACKAGES: dict[str, dict[str, str]] = {
         "brew": "make", "apt-get": "make", "dnf": "make", "pacman": "make", "zypper": "make", "apk": "make",
         "winget": "ezwinports.make", "scoop": "make", "choco": "make",
     },
-    "node": {"brew": "node", "winget": "OpenJS.NodeJS.LTS", "scoop": "nodejs-lts", "choco": "nodejs-lts"},
-    "go": {"brew": "go", "winget": "GoLang.Go", "scoop": "go", "choco": "golang"},
+    "node": {"brew": "node", "apk": "nodejs npm", "winget": "OpenJS.NodeJS.LTS", "scoop": "nodejs-lts",
+             "choco": "nodejs-lts"},
+    "go": {"brew": "go", "apk": "go", "winget": "GoLang.Go", "scoop": "go", "choco": "golang"},
     "java": {"winget": "EclipseAdoptium.Temurin.25.JDK", "scoop": "temurin25-jdk", "choco": "temurin25"},
     "tofu": {"brew": "opentofu", "winget": "OpenTofu.Tofu", "scoop": "opentofu", "choco": "opentofu"},
     "aws": {"brew": "awscli", "pacman": "aws-cli-v2", "winget": "Amazon.AWSCLI", "choco": "awscli"},
@@ -247,12 +248,20 @@ def version_of(tool: str) -> tuple[int, ...] | None:
 
 
 def present(tool: str) -> bool:
-    """On PATH, and new enough where there is a floor. A version that cannot be read is given the benefit."""
+    """On PATH, and — where there is a floor — runnable and new enough. A floored tool that cannot say its version
+    does not count: Windows' `python3` Store alias, or a glibc build on a musl system, is on PATH and runs nothing."""
     if shutil.which(COMMAND.get(tool, tool)) is None:
         return False
     floor = MINIMUM.get(tool)
-    found = version_of(tool) if floor else None
-    return found is None or found >= floor  # type: ignore[operator]
+    if not floor:
+        return True
+    found = version_of(tool)
+    return found is not None and found >= floor
+
+
+def musl() -> bool:
+    """Whether this Linux links against musl (Alpine), where the publishers' glibc builds do not run."""
+    return any(Path(p).exists() for p in ("/lib/ld-musl-x86_64.so.1", "/lib/ld-musl-aarch64.so.1"))
 
 
 def arch() -> str:
@@ -383,18 +392,18 @@ def refresh_path() -> None:
             r"C:\Program Files\Go\bin",
             r"C:\Program Files\Git\cmd",
         ]
-        try:
-            import winreg
+        import winreg
 
-            for hive, key in (
-                (winreg.HKEY_CURRENT_USER, "Environment"),
-                (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
-            ):
+        for hive, key in (
+            (winreg.HKEY_CURRENT_USER, "Environment"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+        ):
+            try:  # one hive at a time: a profile with no user-level Path must not hide the machine's
                 with winreg.OpenKey(hive, key) as handle:
                     value, _kind = winreg.QueryValueEx(handle, "Path")
                     extra += os.path.expandvars(value).split(os.pathsep)
-        except OSError:
-            pass
+            except OSError:
+                continue
     current = os.environ.get("PATH", "").split(os.pathsep)
     os.environ["PATH"] = os.pathsep.join([*[p for p in extra if p and p not in current], *current])
 
@@ -413,7 +422,7 @@ def persist_bin_on_path(host: Host) -> None:
 
 def install(tool: str, host: Host, refreshed: set[str]) -> bool:
     """One tool, by the first route this machine has; whether it is on PATH afterwards."""
-    if tool in DOWNLOADS and host.system in DOWNLOAD_ON.get(tool, ()) and not (
+    if tool in DOWNLOADS and host.system in DOWNLOAD_ON.get(tool, ()) and not musl() and not (
         host.system == "macos" and tool in PACKAGES and "brew" in host.managers and PACKAGES[tool].get("brew")
     ):
         try:

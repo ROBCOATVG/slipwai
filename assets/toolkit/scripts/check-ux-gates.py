@@ -280,7 +280,7 @@ def browser() -> str:
     if completed.returncode == 0 and word in ("chrome", "bundled", "none", "no-playwright"):
         return word
     sys.stderr.write(completed.stderr)
-    return "none"
+    return "unprobed"  # reported as `none`; distinct, so a crashed probe never starts an install
 
 
 def install_browser() -> bool:
@@ -290,10 +290,13 @@ def install_browser() -> bool:
     manager (`sudo`). Not in CI, whose job installs its own, and not under `SLIPWAI_NO_INSTALL`."""
     if os.environ.get("CI") or os.environ.get("SLIPWAI_NO_INSTALL", "").strip() not in ("", "0", "false", "no"):
         return False
-    with_deps = ["--with-deps"] if sys.platform.startswith("linux") else []
+    # The system libraries come through the package manager (`sudo`), so only where somebody could answer it.
+    root = hasattr(os, "geteuid") and os.geteuid() == 0
+    with_deps = ["--with-deps"] if sys.platform.startswith("linux") and (root or sys.stdin.isatty()) else []
     command = ["npx", "playwright", "install", *with_deps, "chromium"]
     print(f"check-ux-gates: no browser to render with; installing one: {' '.join(command)}", flush=True)
-    return subprocess.run(command, cwd=ROOT, check=False).returncode == 0
+    # From the kit's directory: the Playwright the probe resolved, so the browser matches it.
+    return subprocess.run(command, cwd=ROOT / KIT, check=False, stdin=subprocess.DEVNULL).returncode == 0
 
 
 def run(gate: Gate, preload: Path | None = None) -> str:
@@ -372,6 +375,8 @@ def main() -> int:
     opened = ("no-node" if shutil.which("node") is None else browser()) if render else "chrome"
     if opened == "none" and install_browser():
         opened = browser()
+    if opened == "unprobed":
+        opened = "none"
     for app in dict.fromkeys(gate.app for gate in render):
         relative = app.relative_to(ROOT).as_posix()
         mine = [gate for gate in render if gate.app == app]

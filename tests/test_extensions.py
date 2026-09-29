@@ -109,7 +109,7 @@ class ExtensionsTest(FactoryTestCase):
 
             # This project's index and nothing else: `init`, never `install`, which rewrites every agent's global
             # config (~/.claude.json, ~/.claude/CLAUDE.md, Cursor's, Codex's) — not a project's to change.
-            self.assertEqual(log.read_text().split(), ["init"])
+            self.assertEqual(log.read_text().split(), ["init", "-y", "."])
             agents = (repo / "AGENTS.md").read_text()
             self.assertIn("<!-- extension:codegraph:begin -->", agents)
             self.assertIn("codegraph_explore", agents)

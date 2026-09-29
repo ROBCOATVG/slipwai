@@ -49,6 +49,40 @@ class GenerateHereTest(FactoryTestCase):
             self.assertTrue((here / "shop/project.json").is_file())
 
 
+class GenerateHereNamesTest(FactoryTestCase):
+    def test_a_different_name_is_a_project_of_that_name_inside_the_empty_folder(self) -> None:
+        """Typing `shop` in an empty `work` must not leave a `shop` project whose folder is called `work`."""
+        with tempfile.TemporaryDirectory() as parent:
+            here = Path(parent) / "work"
+            here.mkdir()
+            result = subprocess.run(
+                [str(ROOT / "slipwai"), "generate"], cwd=here, input="shop\n" + "\n" * 20, text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((here / "shop/project.json").is_file())
+            self.assertEqual([p.name for p in here.iterdir()], ["shop"], "staging or stray files left in the folder")
+
+    def test_the_parent_of_an_empty_folder_need_not_be_writable(self) -> None:
+        """A devcontainer's `/workspaces/app` under a root-owned `/workspaces`: staging goes inside the folder."""
+        import os
+
+        if os.geteuid() == 0:
+            self.skipTest("root writes through permissions")
+        with tempfile.TemporaryDirectory() as parent:
+            here = Path(parent) / "app"
+            here.mkdir()
+            os.chmod(parent, 0o555)
+            try:
+                result = subprocess.run(
+                    [str(ROOT / "slipwai"), "generate"], cwd=here, input="\n" * 20, text=True, capture_output=True,
+                )
+            finally:
+                os.chmod(parent, 0o755)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((here / "project.json").is_file())
+
+
 class OutputEncodingTest(FactoryTestCase):
     def test_a_redirected_stream_in_a_legacy_code_page_does_not_crash_the_questions(self) -> None:
         """Windows gives a redirected stdout cp1252, and the questions print `—` and `↑`: generate died with

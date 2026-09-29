@@ -47,6 +47,14 @@ for try in 1 2 3; do
 done
 (( ok )) && pass "make verify passes under make 3.81" || { fail "make verify failed under make 3.81"; tail -20 /tmp/verify.log }
 
+print -- "\n--- the interactive way: an empty folder, \`slipwai generate\` in a real terminal, answered by hand"
+mkdir -p ~/work/by-hand && cd ~/work/by-hand
+python3 /t/drive-generate.py slipwai generate
+[[ -f ~/work/by-hand/project.json ]] && pass "the empty folder became the project" || fail "project not written into the folder"
+[[ ! -e ~/work/by-hand/by-hand ]] && pass "nothing nested beneath it" || fail "a folder was nested"
+n=$(ls ~/work/by-hand/.claude/commands 2>/dev/null | wc -l | tr -d ' '); (( n > 10 )) && pass "Claude commands in the folder ($n)" || fail "no Claude commands ($n)"
+cd ~
+
 print -- "\n--- what it did to the login profile"
 diff /tmp/zprofile.before ~/.zprofile >/dev/null && print "~/.zprofile unchanged" || { print "~/.zprofile changed:"; diff /tmp/zprofile.before ~/.zprofile }
 (( FAILED )) && print "SOME FAILED" || print "ALL PASSED"

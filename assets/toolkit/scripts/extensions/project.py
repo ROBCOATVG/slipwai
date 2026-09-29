@@ -46,7 +46,12 @@ def project(check: bool) -> list[str]:
             if waiting:
                 continue  # chosen, and waiting for what it needs; nothing to hold it to yet
             if not check and hasattr(module, "ready") and installed_block(key) is None:
-                module.main()  # it has just become possible: set it up now, as if it had been ready when chosen
+                # It has just become possible: set it up now, as if it had been ready when chosen. Where the tool is
+                # already installed (the block was deleted, say), the guidance is all that is missing.
+                if hasattr(module, "installed") and module.installed():
+                    module.project_guidance()
+                else:
+                    module.main()
                 continue
             if check:
                 if installed_block(key) != canonical:

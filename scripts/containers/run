@@ -30,6 +30,6 @@ if [ "$which" = all ] || [ "$which" = macos ]; then
   echo "== Mac-like zsh image"
   (cd "$root" && ./scripts/build-wheel >/dev/null) && cp "$root"/dist/slipwai-*-py3-none-any.whl "$work/"
   docker build -q -t slipwai-maclike -f "$here/macos-like.Dockerfile" "$here" >/dev/null
-  docker run --rm -v "$work:/wheel:ro" -v "$here/macos-like.zsh:/t/mac.zsh:ro" \
+  docker run --rm -v "$work:/wheel:ro" -v "$here/macos-like.zsh:/t/mac.zsh:ro" -v "$here/drive-generate.py:/t/drive-generate.py:ro" \
     slipwai-maclike zsh -l /t/mac.zsh | grep -E "^(PASS|FAIL|ALL|SOME)"
 fi

@@ -27,7 +27,7 @@ import subprocess
 from pathlib import Path
 
 from .harness import Agent, from_environment, from_spec_kit, keys, name_of
-from .host import TOOLCHAINS, Host, detect, ensure, install_hint, present
+from .host import TOOLCHAINS, Host, detect, disabled, ensure, install_hint, present
 
 
 def add_setup_arguments(parser: argparse.ArgumentParser, script: str) -> None:
@@ -59,7 +59,7 @@ def add_setup_arguments(parser: argparse.ArgumentParser, script: str) -> None:
 def installing(flag: bool | None, attended: bool) -> bool:
     """Whether to install: as the flags said, else wherever somebody is at a terminal, and never under the
     environment's own opt-out."""
-    if os.environ.get("SLIPWAI_NO_INSTALL", "").strip() not in ("", "0", "false", "no"):
+    if disabled():
         return False
     return flag if flag is not None else attended
 
@@ -98,7 +98,7 @@ def tools_for(languages: list[str], *, base: tuple[str, ...] = ("git", "make", "
 def install_tools(tools: list[str], install: bool) -> list[str]:
     """Put `tools` on the machine where `install` allows it; say what could not be, and return that."""
     if not install:
-        return [tool for tool in tools if not present(tool)]
+        return []
     missing = ensure(tools)
     for tool in missing:
         print(f"Could not install {tool} here; {install_hint(tool, 'its own install page')} is the line to try.")

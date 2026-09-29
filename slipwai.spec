@@ -20,7 +20,14 @@ analysis = Analysis(
         # `slipwai upgrade --pre` installs, and a project migrating onto it is owed what the fragments say.
         (str(root / "changelog.d"), "changelog.d"),
     ],
-    hiddenimports=[],
+    # The standard-library modules of `assets/toolkit/scripts/install-tools.py`, which `host.py` loads from the
+    # bundled assets at run time: PyInstaller never reads that file, so without these the frozen executable
+    # starts and dies on `import platform` (the 1.5.0 release job's smoke test). `winreg` exists only on Windows,
+    # where the executable is built too. `tests/test_host.py` holds this list to the script's imports.
+    hiddenimports=[
+        "json", "platform", "shutil", "subprocess", "tarfile", "tempfile", "urllib.request", "dataclasses", "re",
+        *(["winreg"] if __import__("sys").platform == "win32" else []),
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

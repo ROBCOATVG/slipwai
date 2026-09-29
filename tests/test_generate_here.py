@@ -47,3 +47,21 @@ class GenerateHereTest(FactoryTestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("Output parent", result.stdout)
             self.assertTrue((here / "shop/project.json").is_file())
+
+
+class OutputEncodingTest(FactoryTestCase):
+    def test_a_redirected_stream_in_a_legacy_code_page_does_not_crash_the_questions(self) -> None:
+        """Windows gives a redirected stdout cp1252, and the questions print `—` and `↑`: generate died with
+        UnicodeEncodeError the moment its output went to a pipe or a CI log. Reproduced here by asking for cp1252."""
+        import os
+
+        with tempfile.TemporaryDirectory() as parent:
+            here = Path(parent) / "ledger"
+            here.mkdir()
+            result = subprocess.run(
+                [str(ROOT / "slipwai"), "generate"], cwd=here, input="\n" * 20, text=True, encoding="utf-8",
+                capture_output=True, env=os.environ | {"PYTHONIOENCODING": "cp1252"},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn("UnicodeEncodeError", result.stderr)
+            self.assertIn("event-modelling — Event Modeling", result.stdout)

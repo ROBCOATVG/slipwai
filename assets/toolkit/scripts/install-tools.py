@@ -77,8 +77,10 @@ PACKAGES: dict[str, dict[str, str]] = {
         "brew": "git", "port": "git", "apt-get": "git", "dnf": "git", "pacman": "git", "zypper": "git",
         "apk": "git", "winget": "Git.Git", "scoop": "git", "choco": "git",
     },
+    # Homebrew links `python3` only for its current Python (the unversioned `python`); `python@3.13` installs a
+    # keg with no `python3` on PATH, which is what a Mac run found.
     "python3": {
-        "brew": "python@3.13", "port": "python313", "apt-get": "python3 python3-venv", "dnf": "python3",
+        "brew": "python", "port": "python313", "apt-get": "python3 python3-venv", "dnf": "python3",
         "pacman": "python", "zypper": "python3", "apk": "python3", "winget": "Python.Python.3.13",
         "scoop": "python", "choco": "python",
     },

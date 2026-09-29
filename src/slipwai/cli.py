@@ -52,6 +52,12 @@ def main() -> None:
     `add-frontend`, `describe-service`, `migrate` and `replay` from inside one that does; `upgrade` from
     anywhere, about the command itself rather than about any project. Each verb owns its parser, so
     `slipwai generate --help` is the generator's flags and nothing else's."""
+    # What slipwai prints — its questions' arrows and dashes — is UTF-8. Windows gives a redirected stream (a pipe,
+    # a CI log) its ANSI code page, cp1252, and a print there raised UnicodeEncodeError; a console was fine.
+    for stream in (sys.stdout, sys.stderr):
+        encoding = (getattr(stream, "encoding", "") or "").lower().replace("-", "")
+        if encoding != "utf8" and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     validate_catalog(CATALOG)
     argv = sys.argv[1:]
     if argv[:1] == ["generate"]:

@@ -47,12 +47,12 @@ slipwai 1.4.0
 | # | Where | Command | Done when |
 |---|---|---|---|
 | 1.1 | terminal | `slipwai generate` | among its questions it has asked which coding agent to use (nothing preselected); it prints `created: <path>`, installs any missing tools, and runs `./init`, which offers the optional extensions and installs the ones you tick |
-| 1.2 | terminal | `cd <name>` | |
+| 1.2 | terminal | `cd <name>`, only if you did not run 1.1 in an empty folder | you are in the project's root: start your coding agent here, or it will not find the project's commands |
 | 1.3 | terminal | `./init`, only if 1.1 did not run it | as 1.1 |
 | 1.4 | terminal | `make verify` | it ends with `verify: all gates passed` |
 | 1.5 | terminal | `git add -A && git commit -m "Install Spec Kit"` | `git status` is clean |
 
-**1.1: answering the questions.** Run it from wherever the new repository should appear. In a terminal each
+**1.1: answering the questions.** Run it in an empty folder to make that folder the project — its name is offered, and nothing is nested beneath it — or from wherever a new folder for it should appear. In a terminal each
 fixed list is an arrow-key menu (↑/↓ or `j`/`k`; Enter chooses). The transcript below is the typed form of
 the same questions: what you see when stdin is not a terminal, and on Windows. Press Enter to accept a shown
 default:

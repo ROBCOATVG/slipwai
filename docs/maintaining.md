@@ -46,6 +46,16 @@ generate — is made a repository with history of its own, adopted, re-surveyed 
 clean merge that leaves the repository's own files untouched, and held to the gate again. `ADOPTION_ARGS="--only
 go-module"` runs one fixture; `--keep DIR` leaves the adopted repositories to look at. CI runs it as its own job.
 
+`scripts/containers/run` proves what the suite cannot — that `generate` and `adopt` leave a working project on a
+machine that has nothing yet — in Docker, and needs the network. `bare-linux.sh` runs this checkout in
+`debian:trixie` with only Python: git, make, Node and uv must be installed by slipwai itself, `./init` must finish,
+CodeGraph must index without touching global agent config, and the generated project's own `make verify` must
+pass. `macos-like.Dockerfile` is the Mac stand-in: Ubuntu with zsh and Oh My Zsh as the login shell, plus what a
+stock Mac ships that Ubuntu does not — bash 3.2 as `/bin/sh` and `bash`, GNU Make 3.81, Apple's Python 3.9 — and
+Homebrew; `macos-like.zsh` installs the wheel with `uv tool install` and runs the same journey through the
+Homebrew routes (`SLIPWAI_HOST_SYSTEM=macos`). What it cannot be is Darwin: BSD `sed` and `tar`, `/opt/homebrew`
+and Apple's protected paths still want a real Mac. `scripts/containers/run macos` or `linux` runs one half.
+
 `make changelog` prints the commits since the last release, split by whether they reached a user, and the
 fragments already written for the release `main` is working towards — the `1.3.0` a `VERSION` of
 `1.3.0.dev0` is a snapshot of; `make changelog VERSION=1.2.0` lists from an older release. It writes

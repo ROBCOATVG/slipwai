@@ -280,3 +280,24 @@ class StatusTest(FactoryTestCase):
                 )
                 self.assertEqual(asked.returncode, reference.returncode, spelling)
                 self.assertEqual(asked.stderr.splitlines()[-1:], reference.stderr.splitlines()[-1:], spelling)
+
+
+class FrozenExecutableTest(FactoryTestCase):
+    def test_the_executable_is_told_about_every_module_the_installer_imports(self) -> None:
+        """`host.py` loads `install-tools.py` from the bundled assets at run time, so PyInstaller never sees its
+        imports; the 1.5.0 executable died on `import platform` in its release smoke test. Every module the
+        installer imports has to be named in `slipwai.spec`'s `hiddenimports`."""
+        import ast
+        import re
+
+        source = ast.parse((ROOT / "assets/toolkit/scripts/install-tools.py").read_text(encoding="utf-8"))
+        imported = set()
+        for node in ast.walk(source):
+            if isinstance(node, ast.Import):
+                imported |= {alias.name for alias in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.module and node.module != "__future__":
+                imported.add(node.module)
+        spec = (ROOT / "slipwai.spec").read_text(encoding="utf-8")
+        listed = set(re.findall(r'"([a-z_.]+)"', spec.split("hiddenimports=", 1)[1].split("hookspath", 1)[0]))
+        always_bundled = {"os", "sys", "pathlib"}  # the frozen app's own imports pull these in regardless
+        self.assertEqual(sorted(imported - listed - always_bundled), [])

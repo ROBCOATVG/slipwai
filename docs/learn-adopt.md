@@ -95,7 +95,8 @@ Running ./delivery/init --integration claude — it installs Spec Kit, which nee
     the agent, then the optional extensions as a checkbox menu (Escape skips; `--extension <key>` adds one
     later).
   - On native Windows it runs through Git Bash when that is installed, and otherwise says to use WSL or Git
-    Bash. Without `python3` it names the command that installs it on your machine and does not start.
+    Bash. Whatever it needs that is missing — `python3`, uv, Make, the toolchain of each directory that builds —
+    it installs first. Where the tree reads for more than one agent, it asks which, with nothing preselected.
   - `--delivery <dir>` puts the method somewhere other than `delivery/`.
   - `--yes` is the unattended path: nothing is asked, `./delivery/init` is left for you, and every directory
     that builds is confirmed as an application unlooked-at, each fact recorded `detected`. Outside a terminal

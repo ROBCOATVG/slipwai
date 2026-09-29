@@ -141,6 +141,7 @@ mkdir -p "{site}/yaml" && touch "{site}/yaml/__init__.py"
                     ["./init", "--integration", "codex"], cwd=repo, text=True, capture_output=True,
                     env=os.environ | {
                         "PATH": f"{fake_bin if uv else no_uv_bin}:{system_path}", "INIT_TEST_HOME": home,
+                        "HOME": directory,  # `./init` looks under `~/.local/bin` for a uv it installed
                     },
                 )
 

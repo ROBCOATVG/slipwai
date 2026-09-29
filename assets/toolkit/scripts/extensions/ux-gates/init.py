@@ -14,9 +14,11 @@ pinned by the package version below and reproducible from this one command. A ch
 fresh clone, a CI runner — is what `check-ux-gates` reports as skipped rather than passed, and
 `UX_GATES_REQUIRE=1` turns that into a failure wherever the kit is expected to be present.
 
-A project with no browser app has nothing to gate, so it is refused politely with the command that would
-change that. Never fails `./init`: a missing `npx`, a failed install or an unexpected layout is reported,
-not fatal. See docs/extensions.md for what every extension's `init.py` owes.
+A project with no browser app yet has nothing to gate: the choice is recorded and waits, and it installs
+itself once a browser app is there (`ready`, which `scripts/extensions/project.py` asks). Without `npx` it
+installs Node itself (`scripts/install-tools.py`), and `check-ux-gates` installs Playwright's browser the first
+time it has Playwright and no browser. Never fails `./init`: an install that still does not take, or an
+unexpected layout, is reported, not fatal. See docs/extensions.md for what every extension's `init.py` owes.
 
 It also writes the one place the kit is expected: a `ux-gates` job in `.github/workflows/verify.yml`, between
 markers so a second run rewrites it and nothing else. The render gates launch a browser per preview, so what
@@ -37,7 +39,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from guidance import record_extension, replace_block  # noqa: E402
+from guidance import ensure_tools, record_extension, replace_block  # noqa: E402
 
 KIT_VERSION = "2.8.0"
 KIT_DIR = "tools/ux-gates"
@@ -179,6 +181,15 @@ def browser_apps() -> list[str]:
     ]
 
 
+def ready() -> bool:
+    """Whether there is a screen to gate: a browser app in `project.json`."""
+    return bool(browser_apps())
+
+
+def installed() -> bool:
+    return (ROOT / KIT_DIR / "scripts/lint_hardcodes.py").is_file()
+
+
 def project_guidance() -> None:
     """Record this election and make its factory-owned guidance region current."""
     record_extension("ux-gates")
@@ -186,22 +197,23 @@ def project_guidance() -> None:
 
 
 def main() -> int:
-    if not browser_apps():
+    if not ready():
+        # Chosen before there is a screen to measure: the election is kept, and re-projection (`scripts/extensions/
+        # project.py`, which confirming a frontend or adding one runs) installs it the moment there is one —
+        # nothing for the person to run again.
+        record_extension("ux-gates")
         print(
-            "The UX gates measure screens, and this project has no browser app to measure: nothing was "
-            "installed and AGENTS.md is unchanged.\n"
-            "Add one first, then adopt it here:\n"
-            "  slipwai add-frontend web\n"
-            f"  {INIT} --extension ux-gates",
-            file=sys.stderr,
+            "The UX gates are chosen, and wait for a browser app to measure: they install themselves as soon as "
+            "the project has one — when /ground confirms your frontend in an adopted repository, or with "
+            "`slipwai add-frontend`."
         )
         return 0
     if shutil.which("npx") is None:
+        ensure_tools(["node"])
+    if shutil.which("npx") is None:
         print(
-            "`npx` was not found, so the ux-ui-agent-skills kit was not installed and AGENTS.md is "
-            "unchanged.\n"
-            "Install Node.js, then adopt it here, which is what points the agent at it:\n"
-            f"  {INIT} --extension ux-gates",
+            "The UX gates need Node, which could not be installed here: the kit was not installed and AGENTS.md "
+            f"is unchanged. `{INIT} --extension ux-gates` tries again once installs are allowed or Node is here.",
             file=sys.stderr,
         )
         return 0

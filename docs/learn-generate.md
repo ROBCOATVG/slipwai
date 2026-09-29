@@ -33,11 +33,12 @@ slipwai 1.4.0
 - **0.1: why uv.** It is the recommended installer, and a generated project's `./init` uses it too: to fetch
   Spec Kit, and to give the `python3` on your PATH the PyYAML that Spec Kit's scripts need. Alternatives,
   `pip` or a standalone executable that needs only Git, are in [Install the command](executable.md).
-- **The project's own toolchain.** You also need the toolchain of whichever language you are going to pick
-  (Node, Python, Go or a JDK), and Docker if you choose Postgres or Keycloak. [Tools required](requirements.md)
-  lists them all. Where slipwai finds a tool missing, it names the command that installs it with the package
-  manager your machine has: Homebrew on macOS, apt, dnf, pacman, zypper or apk on Linux, winget, Scoop or
-  Chocolatey on Windows.
+- **The project's own toolchain** (Node, Python, Go or a JDK, whichever language you pick) is installed for you
+  where it is missing, as are Git, Make and uv: with Homebrew on macOS, apt, dnf, pacman, zypper or apk on Linux
+  (through `sudo`), winget, Scoop or Chocolatey on Windows, or the publisher's own download where the packaged
+  version is too old. `--no-install` turns that off. **Docker is the exception:** it needs a system service and
+  your user in its group, so if you choose Postgres or Keycloak, install Docker yourself.
+  [Tools required](requirements.md) lists everything.
 
 ---
 
@@ -45,7 +46,7 @@ slipwai 1.4.0
 
 | # | Where | Command | Done when |
 |---|---|---|---|
-| 1.1 | terminal | `slipwai generate` | it prints `created: <path>`, then runs `./init`: it has asked which coding agent to use, and then offered the optional extensions |
+| 1.1 | terminal | `slipwai generate` | among its questions it has asked which coding agent to use (nothing preselected); it prints `created: <path>`, installs any missing tools, and runs `./init`, which offers the optional extensions and installs the ones you tick |
 | 1.2 | terminal | `cd <name>` | |
 | 1.3 | terminal | `./init`, only if 1.1 did not run it | as 1.1 |
 | 1.4 | terminal | `make verify` | it ends with `verify: all gates passed` |
@@ -125,8 +126,8 @@ The new directory is a Git repository on `main` with one commit. The target must
 
 - **1.1 and 1.3: when `./init` runs.** Answering the questions at a terminal runs `./init` for you, from
   inside the new project, as the last step. The flag form does not unless given `--init`, and `--no-init`
-  skips it either way; 1.3 is then yours to run. `--integration <agent>` names the coding agent so `./init`
-  does not ask.
+  skips it either way; 1.3 is then yours to run. `--integration <agent>` names the coding agent so it is not
+  asked; run from inside an agent, `generate` uses that one.
 - **1.1 on Windows.** `./init` is a shell script. `generate` runs it through Git Bash when Git for Windows
   is installed, and otherwise tells you to run it from WSL or Git Bash.
 - **1.3: agent and extensions.** `./init` installs Spec Kit, then copies the commands and skills into the

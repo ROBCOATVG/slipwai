@@ -35,11 +35,13 @@ class HostTest(FactoryTestCase):
         self.assertEqual(install_command("gh", DEBIAN), "sudo apt-get install -y gh")
         self.assertEqual(install_command("python3", DEBIAN), "sudo apt-get install -y python3 python3-venv")
 
-    def test_a_package_no_default_index_carries_falls_back_to_the_link(self) -> None:
-        """OpenTofu is not in Debian's own archive: the answer is the page, not a repository added for you."""
-        self.assertIsNone(install_command("tofu", DEBIAN))
-        self.assertEqual(install_hint("tofu", "https://opentofu.org/", DEBIAN), "https://opentofu.org/")
+    def test_a_package_no_default_index_carries_uses_the_publisher_s_installer(self) -> None:
+        """OpenTofu is not in Debian's own archive: its own standalone installer is the route, not a repository
+        added for you; a tool with neither is still answered with the page."""
+        self.assertIn("get.opentofu.org", install_command("tofu", DEBIAN) or "")
         self.assertIn("`brew install opentofu`", install_hint("tofu", "https://opentofu.org/", MAC))
+        self.assertIsNone(install_command("az", DEBIAN))
+        self.assertEqual(install_hint("az", "https://aka.ms/azcli", DEBIAN), "https://aka.ms/azcli")
 
     def test_uv_has_its_own_installer_where_no_manager_carries_it(self) -> None:
         self.assertEqual(install_command("uv", DEBIAN), "curl -LsSf https://astral.sh/uv/install.sh | sh")
@@ -160,3 +162,114 @@ class GenerateInitTest(FactoryTestCase):
         )
         self.assertEqual(result.returncode, 2)
         self.assertIn("not allowed with argument", result.stderr)
+
+
+def run_python(
+    code: str, path: str, *, no_install: bool = False, stdin: str | None = None
+) -> subprocess.CompletedProcess[str]:
+    """`code` in a fresh interpreter with `PATH` set to `path`, installs on unless asked otherwise."""
+    environment = {key: value for key, value in os.environ.items() if key != "SLIPWAI_NO_INSTALL"}
+    environment |= {"PATH": path, "PYTHONPATH": str(ROOT / "src")}
+    if no_install:
+        environment["SLIPWAI_NO_INSTALL"] = "1"
+    return subprocess.run(
+        [shutil.which("python3") or "python3", "-c", code], env=environment, input=stdin, text=True,
+        capture_output=True,
+    )
+
+
+class InstallTest(FactoryTestCase):
+    """What was chosen is installed, not handed back as a line to run — driven through stub package managers on a
+    private PATH, so the real install path runs and nothing reaches the network or this machine's packages."""
+
+    def stubs(self, directory: str, **scripts: str) -> Path:
+        bin_dir = Path(directory) / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        for name, body in scripts.items():
+            (bin_dir / name).write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+            (bin_dir / name).chmod(0o755)
+        for tool in ("sh", "python3", "chmod"):  # what the stubs themselves call; nothing else is on this PATH
+            real = shutil.which(tool)
+            if real and not (bin_dir / tool).exists():
+                (bin_dir / tool).symlink_to(real)
+        return bin_dir
+
+    def test_a_missing_tool_is_installed_with_the_package_manager_the_machine_has(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "brew.log"
+            bin_dir = self.stubs(directory, brew=(
+                f'echo "$@" >> {log}\nprintf "#!/bin/sh\\n" > "{directory}/bin/tofu"; chmod 755 "{directory}/bin/tofu"'
+            ))
+            done = run_python(
+                "from slipwai.host import ensure, Host; print(ensure(['tofu'], Host('macos', ('brew',))))", str(bin_dir)
+            )
+            self.assertEqual(done.stdout.strip().splitlines()[-1], "[]", done.stderr)
+            self.assertEqual(log.read_text(encoding="utf-8").strip(), "install opentofu")
+
+    def test_nothing_is_installed_where_installs_are_turned_off(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "brew.log"
+            bin_dir = self.stubs(directory, brew=f'echo "$@" >> {log}')
+            done = run_python(
+                "from slipwai.host import ensure, Host; print(ensure(['tofu'], Host('macos', ('brew',))))",
+                str(bin_dir), no_install=True,
+            )
+            self.assertEqual(done.stdout.strip().splitlines()[-1], "['tofu']", done.stderr)
+            self.assertFalse(log.exists(), "SLIPWAI_NO_INSTALL was set, and brew still ran")
+
+    def test_a_system_manager_goes_through_sudo_and_never_waits_for_a_password_without_a_terminal(self) -> None:
+        """apt needs root: `sudo`, refreshed once first, and `-n` where there is no terminal to type a password into
+        — a failure then, never a hang. As root, there is no `sudo` at all."""
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "calls.log"
+            bin_dir = self.stubs(
+                directory,
+                sudo=f'echo "sudo $@" >> {log}\nwhile [ "${{1#-}}" != "$1" ]; do shift; done\nexec "$@"',
+                **{"apt-get": f'echo "apt-get $@" >> {log}\ncase "$*" in *install*) printf "#!/bin/sh\\n" > '
+                              f'"{directory}/bin/gh"; chmod 755 "{directory}/bin/gh" ;; esac'},
+            )
+            done = run_python(
+                "from slipwai.host import ensure, Host; print(ensure(['gh'], Host('linux', ('apt-get',))))",
+                str(bin_dir),
+            )
+            self.assertEqual(done.stdout.strip().splitlines()[-1], "[]", done.stderr)
+            calls = log.read_text(encoding="utf-8").splitlines()
+            self.assertIn("apt-get update -qq", calls)
+            self.assertIn("apt-get install -y gh", calls)
+            if os.geteuid() != 0:
+                self.assertIn("sudo -n apt-get install -y gh", calls)
+
+    def test_the_agent_question_has_no_answer_until_one_is_chosen(self) -> None:
+        """Nothing preselected: Enter alone is not an answer — the list Spec Kit shows highlights Copilot, and
+        Enter there chose it for people who meant Claude Code."""
+        done = run_python(
+            "from slipwai.cli_init import prompt_agent; print('chose', prompt_agent())",
+            os.environ["PATH"], stdin="\nclaude\n",
+        )
+        self.assertIn("chose claude", done.stdout, done.stderr)
+        self.assertIn("Coding agent (", done.stdout)
+        self.assertNotIn("[copilot]", done.stdout)
+        self.assertIn("Invalid coding agent", done.stderr)
+
+    def test_installing_is_on_at_a_terminal_off_in_scripts_and_off_under_the_opt_out(self) -> None:
+        code = ("from slipwai.cli_init import installing; "
+                "print(installing(None, True), installing(None, False), installing(True, False), "
+                "installing(False, True))")
+        self.assertEqual(run_python(code, os.environ["PATH"]).stdout.split(), ["True", "False", "True", "False"])
+        self.assertEqual(run_python(code, os.environ["PATH"], no_install=True).stdout.split(), ["False"] * 4)
+
+
+class StatusTest(FactoryTestCase):
+    def test_slipwai_status_and_next_are_adopt_next(self) -> None:
+        """The ways people asked "where am I?" in a real adoption — `slipwai --next`, `slipwai --status` — answer
+        it, rather than printing usage."""
+        with tempfile.TemporaryDirectory() as directory:
+            reference = subprocess.run(
+                [str(ROOT / "slipwai"), "adopt", "--next"], cwd=directory, text=True, capture_output=True
+            )
+            for spelling in (["status"], ["--next"], ["--status"], ["next"]):
+                asked = subprocess.run(
+                    [str(ROOT / "slipwai"), *spelling], cwd=directory, text=True, capture_output=True
+                )
+                self.assertEqual(asked.returncode, reference.returncode, spelling)
+                self.assertEqual(asked.stderr.splitlines()[-1:], reference.stderr.splitlines()[-1:], spelling)

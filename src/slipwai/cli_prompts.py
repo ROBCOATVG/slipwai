@@ -58,7 +58,7 @@ def prompt_project_name() -> str:
 
 
 def prompt_choice(
-    label: str, choices: list[str], default: str, describe: Callable[[str], str] | None = None,
+    label: str, choices: list[str], default: str | None, describe: Callable[[str], str] | None = None,
     question: str | None = None,
 ) -> str:
     """Ask one question with a fixed list of answers.
@@ -72,6 +72,7 @@ def prompt_choice(
     `question`, where given, is the full sentence printed above the rows while they are live, so the reader
     knows what the list is an answer to before choosing; `label` is the short name the chosen answer is
     written against afterwards. A caller that has already printed its question passes only the label.
+    `default=None` is a question with no answer offered: nothing is highlighted, and Enter alone chooses nothing.
     """
     if terminal_can_select():
         return select_in_terminal(label, choices, default, describe, question)
@@ -83,7 +84,7 @@ def prompt_choice(
     rendered = "/".join(choices)
     while True:
         try:
-            answer = input(f"{label} ({rendered}) [{default}]: ").strip()
+            answer = input(f"{label} ({rendered})" + (f" [{default}]" if default else "") + ": ").strip()
         except EOFError as error:
             raise GenerationError(f"{label.lower()} is required in non-interactive use") from error
         value = answer or default
@@ -108,7 +109,7 @@ def read_key() -> str:
 
 
 def select_in_terminal(
-    label: str, choices: list[str], default: str, describe: Callable[[str], str] | None,
+    label: str, choices: list[str], default: str | None, describe: Callable[[str], str] | None,
     question: str | None = None,
 ) -> str:
     """The arrow-key menu: ↑/↓ (or k/j) move, Enter chooses, a letter jumps to the first answer starting with
@@ -116,11 +117,11 @@ def select_in_terminal(
     description does not throw the redraw off. The question, where there is one, stands above the rows the
     whole time and goes with them when the list collapses to its answer."""
     assert termios is not None and tty is not None
-    index = choices.index(default)
+    index: int | None = choices.index(default) if default else None
     width = max(shutil.get_terminal_size().columns, 40)
     heading = textwrap.wrap(question, width - 1) if question else []
 
-    def rows(selected: int) -> list[str]:
+    def rows(selected: int | None) -> list[str]:
         lines: list[str] = []
         for i, name in enumerate(choices):
             text = f"{name} — {describe(name)}" if describe is not None else name
@@ -144,13 +145,15 @@ def select_in_terminal(
         while True:
             key = read_key()
             if key in ("\r", "\n"):
-                break
+                if index is not None:
+                    break
+                continue
             if key in ("\x03", "\x1b"):
                 raise KeyboardInterrupt
             if key in ("\x1b[A", "k"):
-                index = (index - 1) % len(choices)
+                index = len(choices) - 1 if index is None else (index - 1) % len(choices)
             elif key in ("\x1b[B", "j"):
-                index = (index + 1) % len(choices)
+                index = 0 if index is None else (index + 1) % len(choices)
             elif key.isalnum():
                 match = next((i for i, name in enumerate(choices) if name.startswith(key.lower())), None)
                 if match is None:
@@ -167,6 +170,7 @@ def select_in_terminal(
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, settings)
         out.write("\x1b[?25h")
     # Collapse the list — and the question above it — to the answer, in the shape the typed question leaves.
+    assert index is not None  # Enter only leaves the loop once something is highlighted
     out.write(f"\x1b[{len(drawn) + len(heading)}A\x1b[J{label}: {choices[index]}\n")
     out.flush()
     return choices[index]

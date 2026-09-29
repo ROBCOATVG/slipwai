@@ -101,8 +101,8 @@ src/slipwai/
 ├── manifest.py          that list read back from a written `project.json`, for `add-service` and `replay`
 ├── layout.py            where the factory's delivery material lives in a project (`layout.delivery`), and how files
 │                        assembled for the root are placed and re-pointed when it lives elsewhere
-├── host.py              which machine this is — macOS, Linux, WSL or Windows — and the command that installs a
-│                        missing tool with the package manager it has
+├── host.py              which machine this is and how a tool gets onto it: loads the project's own
+│                        `assets/toolkit/scripts/install-tools.py`, the one installer factory and projects share
 ├── ecosystems.py        what a build ecosystem's files say about the code they build — the table `survey.py` reads
 ├── survey.py            what an existing repository is made of, read off its tree, for `adopt` (experimental)
 ├── origin.py            how a repository came to have the factory's material, and an adoption's recorded facts

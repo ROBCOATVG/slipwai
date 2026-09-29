@@ -18,7 +18,7 @@ from .cli_add import (
     resolve_requested_backend,
 )
 from .cli_adopt import adopt_main
-from .cli_init import run_generated_init
+from .cli_init import add_setup_arguments, agent_for_setup, install_tools, installing, run_generated_init, tools_for
 from .cli_prompts import (
     prompt_application_name,
     prompt_axis,
@@ -76,6 +76,10 @@ def main() -> None:
     if argv[:1] == ["adopt"]:
         adopt_main(argv[1:])
         return
+    # "Where am I?" asked the ways people ask it — `slipwai status`, `slipwai --next` — is `adopt --next`.
+    if argv[:1] in (["status"], ["next"], ["--status"], ["--next"]):
+        adopt_main(["--next", *argv[1:]])
+        return
     if argv[:1] == ["converge"]:
         converge_main(argv[1:])
         return
@@ -89,8 +93,8 @@ def main() -> None:
         "(`%(prog)s replay` writes the same beside it, to look at first). "
         "`%(prog)s upgrade` replaces this command with the newest version the forge has. `%(prog)s adopt`, run in "
         "a repository this factory did not make, installs the method around it, and `%(prog)s converge` ends that "
-        "adoption once every row of its map reads as generated (both experimental). `%(prog)s <verb> --help` lists "
-        "a verb's flags.",
+        "adoption once every row of its map reads as generated (both experimental); `%(prog)s status` says where an "
+        "adopted repository stands. `%(prog)s <verb> --help` lists a verb's flags.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     parser.add_argument(
@@ -176,25 +180,11 @@ def generate_main(argv: list[str]) -> None:
         "--skip-checks", action="store_true",
         help="do not check that this machine has what the target's ./init needs (tofu, the aws CLI, a forge)",
     )
-    # The project's `./init`, run as the last step rather than left as the first thing to type — the same run
-    # `adopt` ends with. On by default only where somebody answered the questions at a terminal: the flag form
-    # is for scripts and CI, where a step that reaches the network and asks which agent to use is not wanted
+    # What follows the files — the agent, the project's `./init` (the same run `adopt` ends with), and the tools
+    # both need — is on by default only where somebody answered the questions at a terminal: the flag form is
+    # for scripts and CI, where a step that reaches the network, asks a question or runs sudo is not wanted
     # unless asked for.
-    init = parser.add_mutually_exclusive_group()
-    init.add_argument(
-        "--init", action="store_true", dest="run_init", default=None,
-        help="run the project's ./init once it is written (the default when the questions were answered at a "
-        "terminal). It installs Spec Kit, so it needs the network; what it writes is left for you to commit",
-    )
-    init.add_argument(
-        "--no-init", action="store_false", dest="run_init", default=None,
-        help="do not run ./init; leave it as the next step (the default with a name and flags)",
-    )
-    parser.add_argument(
-        "--integration", default=None, metavar="AGENT",
-        help="which coding agent ./init installs the skills and commands into, by its key in the agent registry "
-        "(default: ./init asks)",
-    )
+    add_setup_arguments(parser, "./init")
     args = parser.parse_args(argv)
     try:
         named = {axis: getattr(args, axis.replace("-", "_")) for axis in CATALOG["axes"]}
@@ -205,6 +195,9 @@ def generate_main(argv: list[str]) -> None:
             )
         # Bare, or bare but for the flags that have nothing to prompt about, is the interactive form.
         interactive = all(argument in RUN_SHAPE for argument in without_integration(argv))
+        attended = interactive and sys.stdin.isatty()
+        install = installing(args.install, attended)
+        running_init = args.run_init if args.run_init is not None else attended
         if interactive:
             print("Create a new product monorepo. Press Enter to accept a shown default.")
             args.name = prompt_project_name()
@@ -213,7 +206,7 @@ def generate_main(argv: list[str]) -> None:
             # Asked before the target and checked against it: a name the target's cloud will not take is
             # said here, not after another nine questions.
             check_project_name(CATALOG, args.target, args.name)
-            check_requirements(args.target, args.skip_checks)
+            check_requirements(args.target, args.skip_checks, install=install)
             # Only the languages with a backend offered under the target: the target decides the menus.
             offered = offered_backends(CATALOG, args.target)
             languages = [family for family, members in families().items() if set(members) & set(offered)]
@@ -234,6 +227,8 @@ def generate_main(argv: list[str]) -> None:
                 if not axis_applies(axis, args.profile, backend, args.target):
                     continue
                 named[axis] = prompt_axis(axis, args.profile, backend, args.target)
+            if running_init:
+                args.integration = agent_for_setup(args.integration, asking=True)
             args.output = prompt_output(DEFAULT_OUTPUT)
             args.backend = backend
         elif args.name is None:
@@ -241,7 +236,9 @@ def generate_main(argv: list[str]) -> None:
         validate_project_name(args.name)
         check_project_name(CATALOG, args.target, args.name)
         if not interactive:
-            check_requirements(args.target, args.skip_checks)
+            check_requirements(args.target, args.skip_checks, install=install)
+            if running_init:
+                args.integration = agent_for_setup(args.integration, asking=False)
         backend = resolve_requested_backend(args)
         if backend not in offered_backends(CATALOG, args.target):
             offered = offered_backends(CATALOG, args.target)
@@ -263,6 +260,8 @@ def generate_main(argv: list[str]) -> None:
         destination = output / args.name
         if destination.exists():
             raise GenerationError(f"refusing to overwrite existing target: {destination}")
+        if install:
+            install_tools(["git"], install)  # the project is committed as it is written
         with tempfile.TemporaryDirectory(prefix=f".{args.name}-", dir=output) as staging:
             staging_path = Path(staging)
             write_project(staging_path, args.name, args.profile, args.target, apps)
@@ -270,12 +269,16 @@ def generate_main(argv: list[str]) -> None:
         print(f"created: {destination}")
     except GenerationError as error:
         parser.error(str(error))
-    if args.run_init if args.run_init is not None else interactive and sys.stdin.isatty():
-        run_generated_init(destination, args.integration)
+    if install:
+        # Every language the project builds in, so its `make verify` runs on this machine the day it is made.
+        languages = [family_of(backend), *(["typescript"] if args.frontend != "none" else [])]
+        install_tools(tools_for(languages), install)
+    if running_init:
+        run_generated_init(destination, args.integration, install)
 
 
 # The flags that say how `generate` runs rather than what it makes, so passing one keeps the questions.
-RUN_SHAPE = ("--skip-checks", "--init", "--no-init")
+RUN_SHAPE = ("--skip-checks", "--init", "--no-init", "--install", "--no-install")
 
 
 def without_integration(argv: list[str]) -> list[str]:

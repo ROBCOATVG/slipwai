@@ -28,10 +28,22 @@ from ..host import uv_by_uname
 # the line that installs uv there. A Python with its user site switched off is not second-guessed.
 # Never fatal: Spec Kit is installed by now, and this is a message with the fix in it rather than a failed
 # bootstrap.
+# uv, put on the machine rather than asked for: the project's own `scripts/install-tools.py` installs it the way
+# this machine installs things (its package manager, or astral.sh's user-level installer), and the directories
+# those write to join PATH for the rest of this run. It honours `SLIPWAI_NO_INSTALL`, and nothing here is fatal:
+# without uv, Spec Kit still installs through pip, and the PyYAML step says what it could not do.
+ENSURE_UV = """
+if ! command -v uv >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1 && [ -f scripts/install-tools.py ]; then
+  python3 scripts/install-tools.py uv || true
+  PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+  export PATH
+fi
+"""
+
 PYYAML_FOR_SPECKIT = """
 if grep -qs 'PyYAML' .specify/scripts/bash/*.sh .specify/scripts/powershell/*.ps1 \\
    && ! python3 -c 'import yaml' >/dev/null 2>&1; then
-  yaml_home=$(python3 -c 'import site, sys; print("venv" if sys.prefix != sys.base_prefix else (site.getusersitepackages() if site.ENABLE_USER_SITE else ""))' 2>/dev/null || true)
+""" + ENSURE_UV.replace("\n", "\n  ").rstrip(" ") + """  yaml_home=$(python3 -c 'import site, sys; print("venv" if sys.prefix != sys.base_prefix else (site.getusersitepackages() if site.ENABLE_USER_SITE else ""))' 2>/dev/null || true)
   if command -v uv >/dev/null 2>&1 && [ -n "$yaml_home" ]; then
     if [ "$yaml_home" = venv ]; then
       uv pip install --quiet --python python3 PyYAML >/dev/null 2>&1 || true

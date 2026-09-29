@@ -114,7 +114,9 @@ class NextStepsTest(FactoryTestCase):
             with (repo / "Makefile").open("a") as makefile:
                 makefile.write("-include delivery/Makefile\n")
             after_gate = slipwai(repo, "adopt", "--next").stdout
-            self.assertIn("done: make -f delivery/Makefile verify", after_gate)
+            # Once the root Makefile includes the delivery one, the gate is one word, and every later line says so.
+            self.assertIn("done: make verify", after_gate)
+            self.assertNotIn("make -f delivery/Makefile", after_gate)
             self.assertIn("done: add `-include delivery/Makefile` to the root Makefile", after_gate)
             self.assertIn("now:  /ground, in the agent", after_gate, "the order stands; only the marks moved")
 

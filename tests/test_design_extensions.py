@@ -163,30 +163,6 @@ class DesignExtensionsTest(FactoryTestCase):
             self.assertEqual(log.read_text().split(), ["init", "--ai", "universal", "--force"])
             self.assertTrue((repo / "skills/ui-ux-pro-max/SKILL.md").is_file())
 
-    def test_uipro_and_the_gates_refuse_a_project_with_no_browser_app_and_say_what_would_change_that(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repo = self.generate(directory, "headless", frontend="none")
-            fake_bin = self.fake_bin(directory, uipro=FAKE_UIPRO, npx=FAKE_NPX)
-            environment = os.environ | {
-                "PATH": f"{fake_bin}:{os.environ['PATH']}",
-                "UIPRO_LOG": str(Path(directory) / "u"),
-                "NPX_LOG": str(Path(directory) / "n"),
-            }
-
-            result = subprocess.run(
-                ["./init", "--integration", "codex", "--extension", "uipro", "--extension", "ux-gates"],
-                cwd=repo, env=environment, text=True, capture_output=True,
-            )
-
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("no browser app", result.stderr)
-            self.assertIn("slipwai add-frontend web", result.stderr)
-            self.assertNotIn("<!-- extension:uipro:begin -->", (repo / "AGENTS.md").read_text())
-            self.assertNotIn("<!-- extension:ux-gates:begin -->", (repo / "AGENTS.md").read_text())
-            self.assertFalse((repo / "skills/ui-ux-pro-max").exists())
-            self.assertFalse((repo / "tools/ux-gates").exists())
-            self.assertFalse((repo / ".slipwai/extensions.json").exists())
-
     def test_a_missing_installer_is_non_fatal_and_names_the_recovery(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "designed-no-tools", frontend="react-vite")
@@ -199,9 +175,11 @@ class DesignExtensionsTest(FactoryTestCase):
             )
 
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("Neither the `uipro` CLI nor `npx` was found", result.stderr)
+            # Installs are off for the suite (`support.py`), so Node cannot be put here: each says so, and how to
+            # finish once it can.
+            self.assertIn("UI/UX Pro Max needs Node, which could not be installed here", result.stderr)
             self.assertIn("./init --extension uipro", result.stderr)
-            self.assertIn("`npx` was not found", result.stderr)
+            self.assertIn("The UX gates need Node, which could not be installed here", result.stderr)
             self.assertIn("./init --extension ux-gates", result.stderr)
             self.assertNotIn("<!-- extension:", (repo / "AGENTS.md").read_text())
             self.assertTrue((repo / ".agents/skills/testing/SKILL.md").is_file())

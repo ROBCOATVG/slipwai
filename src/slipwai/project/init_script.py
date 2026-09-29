@@ -18,7 +18,7 @@ from ..layout import AT_ROOT, Layout
 from ..services import App, axes_of, services_of
 from ..targets import managed, tools_for
 from .init_production import ALREADY_BOOTSTRAPPED, PRODUCTION_BOOTSTRAP, PRODUCTION_CHECK
-from .init_pyyaml import PYYAML_FOR_SPECKIT
+from .init_pyyaml import ENSURE_UV, PYYAML_FOR_SPECKIT
 from .pins import SPECKIT_SOURCE
 from .rules import CLOUD
 
@@ -253,6 +253,8 @@ run_specify() {
   # projections reinstalls the same Spec Kit rather than moving to upstream HEAD. SPECIFY_SOURCE overrides it.
   recorded=$(sed -n 's/.*"speckitSource": *"\\([^"]*\\)".*/\\1/p' project.json 2>/dev/null | head -n 1)
   source=${SPECIFY_SOURCE:-${recorded:-__SPECKIT_SOURCE__}}
+  if ! command -v specify >/dev/null 2>&1; then
+""" + ENSURE_UV.replace("\n", "\n  ").rstrip(" ") + """  fi
   if command -v specify >/dev/null 2>&1; then
     specify init --here --force "$@"
     return

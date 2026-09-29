@@ -3,9 +3,11 @@
 server into the project-scoped config file of every harness installed here."""
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 
@@ -23,6 +25,22 @@ STATE = ROOT / ".slipwai/extensions.json"
 INTEGRATION = ROOT / ".specify/integration.json"
 REGISTRY = HERE.parent / "agents/registry.json"
 SCHEMA = 1
+
+
+def ensure_tools(tools: list[str]) -> list[str]:
+    """Install what an extension needs through the project's own `scripts/install-tools.py` — the machine's
+    package manager, `sudo` included, or the publisher's download — and return what is still missing. An
+    extension the person ticked installs what it needs rather than handing them the line to run."""
+    source = HERE.parent / "install-tools.py"
+    if not source.is_file():
+        return list(tools)
+    spec = importlib.util.spec_from_file_location("project_install_tools", source)
+    if spec is None or spec.loader is None:
+        return list(tools)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module.ensure(tools)
 BLOCK = re.compile(
     r"<!-- extension:([a-z0-9][a-z0-9-]*):begin -->.*?<!-- extension:\1:end -->",
     re.DOTALL,

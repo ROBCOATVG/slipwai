@@ -15,9 +15,10 @@ Only the `ui-ux-pro-max` skill is taken. The installer also writes `ui-styling` 
 the generated browser app deliberately does not use), `design-system`, `design`, `brand`, `banner-design`
 and `slides`, none of which is about a delivery project's screens.
 
-A project with no browser app has nothing for it to design, so it is refused politely with the command
-that would change that. Never fails `./init`: a missing CLI, a failed install or an unexpected layout is
-reported, not fatal. See docs/extensions.md for what every extension's `init.py` owes.
+A project with no browser app yet has nothing for it to design: the choice is recorded and waits, and it
+installs itself once a browser app is there (`ready`, which `scripts/extensions/project.py` asks). Without
+`npx` it installs Node itself (`scripts/install-tools.py`). Never fails `./init`: an install that still does not
+take, or an unexpected layout, is reported, not fatal. See docs/extensions.md for what every extension's `init.py` owes.
 """
 from __future__ import annotations
 
@@ -31,7 +32,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from guidance import record_extension, replace_block  # noqa: E402
+from guidance import ensure_tools, record_extension, replace_block  # noqa: E402
 
 CLI_VERSION = "2.15.0"
 SKILL = "ui-ux-pro-max"
@@ -108,6 +109,15 @@ def browser_apps() -> list[str]:
     ]
 
 
+def ready() -> bool:
+    """Whether there is a screen to design: a browser app in `project.json`."""
+    return bool(browser_apps())
+
+
+def installed() -> bool:
+    return (ROOT / "skills" / SKILL / "SKILL.md").is_file()
+
+
 def installer() -> list[str] | None:
     """The installed CLI when there is one, otherwise the pinned package through `npx`, otherwise nothing."""
     if shutil.which("uipro") is not None:
@@ -162,24 +172,25 @@ def project_guidance() -> None:
 
 
 def main() -> int:
-    if not browser_apps():
+    if not ready():
+        # Chosen before there is a screen to design: the election is kept, and re-projection (`scripts/extensions/
+        # project.py`, which confirming a frontend or adding one runs) installs it the moment there is one —
+        # nothing for the person to run again.
+        record_extension("uipro")
         print(
-            "UI/UX Pro Max designs screens, and this project has no browser app for it to design: nothing "
-            "was installed and AGENTS.md is unchanged.\n"
-            "Add one first, then adopt it here:\n"
-            "  slipwai add-frontend web\n"
-            f"  {INIT} --extension uipro",
-            file=sys.stderr,
+            "UI/UX Pro Max is chosen, and waits for a browser app to design: it installs itself as soon as the "
+            "project has one — when /ground confirms your frontend in an adopted repository, or with "
+            "`slipwai add-frontend`."
         )
         return 0
     command = installer()
     if command is None:
+        ensure_tools(["node"])  # `npx` runs the pinned CLI; Node brings it
+        command = installer()
+    if command is None:
         print(
-            "Neither the `uipro` CLI nor `npx` was found: nothing was installed and AGENTS.md is unchanged.\n"
-            "Install one:\n"
-            f"  npm install -g ui-ux-pro-max-cli@{CLI_VERSION}\n"
-            "Then adopt it here, which is what points the agent at it:\n"
-            f"  {INIT} --extension uipro",
+            "UI/UX Pro Max needs Node, which could not be installed here: nothing was installed and AGENTS.md is "
+            f"unchanged. `{INIT} --extension uipro` tries again once installs are allowed or Node is here.",
             file=sys.stderr,
         )
         return 0

@@ -26,8 +26,8 @@ import subprocess
 
 from .catalog import CATALOG
 from .errors import GenerationError
-from .host import Host, detect, install_hint
-from .targets import TOOLS, managed
+from .host import Host, detect, ensure, install_hint
+from .targets import TOOLS, managed, tools_for
 
 # Per target: the variable naming where the project deploys, a command asking the target's own CLI whether
 # it already knows, and what to say when neither answers. A cloud needing no such setting has no row.
@@ -101,10 +101,21 @@ def missing_for(target: str, host: Host | None = None) -> list[tuple[str, str, s
     return found
 
 
-def check(target: str, skip: bool = False) -> None:
-    """Refuse a target this machine cannot take a project to, naming each gap and the way past it."""
+def check(target: str, skip: bool = False, install: bool = False) -> None:
+    """Refuse a target this machine cannot take a project to, naming each gap and the way past it.
+
+    With `install`, every missing tool is installed first (`host.ensure`, the machine's package manager or the
+    publisher's installer), so the refusal is left for what no install can supply — a region, a forge token —
+    and for a tool whose install did not take."""
     if skip:
         return
+    if install:
+        tools = [tool for tool in tools_for(target) if shutil.which(tool) is None]
+        if managed(CATALOG, target) and shutil.which("gh") is None and not os.environ.get("GITEA_TOKEN"):
+            tools.append("gh")
+        if tools:
+            print(f"--target {target} needs {', '.join(tools)}; installing.", flush=True)
+            ensure(tools)
     missing = missing_for(target)
     if not missing:
         return

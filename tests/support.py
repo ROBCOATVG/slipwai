@@ -12,6 +12,12 @@ import unittest
 from pathlib import Path
 
 from slipwai.assets import ROOT
+
+# The suite installs nothing on the machine it runs on. `generate` and `adopt` install missing tools by default
+# wherever somebody is at a terminal — and the tests that drive them through a pseudo-terminal are exactly that —
+# so the opt-out every command and every generated script honours is set once, here, for the whole run. A test of
+# the installing itself clears it for its own subprocess.
+os.environ["SLIPWAI_NO_INSTALL"] = "1"
 from slipwai.catalog import CATALOG
 from slipwai.scaffold import NO_MAINTENANCE
 

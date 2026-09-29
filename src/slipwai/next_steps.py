@@ -64,6 +64,12 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
     decided = bool((adoption.strategy or {}).get("decided"))
     recommended = (adoption.strategy or {}).get("recommended")
     outstanding = [str(row.get("name")) for row in (adoption.candidates or []) if isinstance(row, dict)]
+    # `make verify` is one word once the root Makefile includes the delivery one — which `adopt` writes itself
+    # where there was no root Makefile — so the commands below say `make` then, and `make -f …` only until.
+    include = f"-include {layout.delivery}/Makefile"
+    makefile = root / "Makefile"
+    included = not layout.moved or (makefile.is_file() and include in makefile.read_text(encoding="utf-8"))
+    make = "make" if included else layout.make
     found = [
         Step(
             f"./{layout.under('init')}" if layout.moved else "./init",
@@ -90,21 +96,15 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
             open_rows == 0,
         ),
         Step(
-            f"{layout.make} verify",
+            f"{make} verify",
             f"the gate. Its first run records the lint and typecheck findings that are there as the baseline; "
             f"commit {layout.under(BASELINE)}. A red test suite stops the run and says so — read the failures, then "
-            f"`{layout.make} ratchet-tighten` quarantines it deliberately",
+            f"`{make} ratchet-tighten` quarantines it deliberately",
             baseline,
         ),
     ]
     if layout.moved:
-        include = f"-include {layout.delivery}/Makefile"
-        makefile = root / "Makefile"
-        found.append(Step(
-            f"add `{include}` to the root Makefile",
-            "and `make verify` is one word",
-            makefile.is_file() and include in makefile.read_text(encoding="utf-8"),
-        ))
+        found.append(Step(f"add `{include}` to the root Makefile", "and `make verify` is one word", included))
     found.append(Step(
         "an accepted ADR with a `Strategy:` line",
         (f"the map recommends `{recommended}`, and a recommendation is not a decision — `leave it` is one of the five"
@@ -140,7 +140,7 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
         False,
     ))
     found.append(Step(
-        f"`{layout.make} cruise`",
+        f"`{make} cruise`",
         "the same loop with nobody at the wheel, off until a project asks for it: "
         "`python3 " + layout.under("scripts/agents/cruise.py") + " --set enabled=true`, and "
         "`--set max_iterations=<n>` bounds it while you watch. `cruise-watch`, `cruise-status`, "

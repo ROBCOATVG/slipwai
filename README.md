@@ -122,9 +122,12 @@ Scaffolding needs **Python 3.11 or later** and **Git**.
 it uses `uv` to fetch Spec Kit and to give your `python3` the PyYAML that Spec Kit's scripts need, so one tool
 covers both ends.
 
-When `slipwai` finds a tool missing, it names the command that installs it with the package manager your
-machine has: Homebrew or MacPorts on macOS; apt, dnf, pacman, zypper or apk on Linux and WSL; winget, Scoop or
-Chocolatey on Windows. On Windows you also need [Git for Windows](https://git-scm.com/download/win), because a
+**You do not install anything else yourself.** When `generate` or `adopt` needs a tool your machine lacks — Git,
+Make, uv, your language's toolchain (Node, Go, a JDK), a cloud's CLI — it installs it: with Homebrew on macOS,
+apt, dnf, pacman, zypper or apk on Linux and WSL (through `sudo`, which may ask for your password), winget,
+Scoop or Chocolatey on Windows, or the publisher's own download where the packaged version is too old. It does
+this wherever you answer at a terminal; `--no-install` (or `SLIPWAI_NO_INSTALL=1`) turns it off and names each
+missing tool instead. On Windows it installs [Git for Windows](https://git-scm.com/download/win) too, because a
 project's scripts and `Makefile` run under its Git Bash.
 
 ```sh
@@ -150,8 +153,8 @@ up there pushes the repository and bootstraps the account:
 3. A region.
 4. Access to your forge.
 
-`slipwai generate` checks all four as soon as you choose `aws` or `azure`, and refuses with what is missing
-and the command that installs each one on this machine.
+`slipwai generate` checks all four as soon as you choose `aws` or `azure`, installs the tools that are missing,
+and stops only for what no install can supply: the region, and access to your forge.
 [Tools required](docs/requirements.md) has the full list. Running costs are in
 [The AWS target](docs/aws-target.md) and [The Azure target](docs/azure-target.md), which is also where the
 two are compared.

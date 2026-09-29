@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 import sys
 import importlib
@@ -66,12 +67,15 @@ def load_yaml() -> object:
     try:
         import yaml  # type: ignore[import-not-found]
     except ImportError:
+        # uv where it is — it needs no pip on this Python, which Debian's and Homebrew's may not have — else pip.
+        installer = (
+            ["uv", "pip", "install", "--python", sys.executable]
+            if shutil.which("uv")
+            else [sys.executable, "-m", "pip", "install"]
+        )
         subprocess.run(
             [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
+                *installer,
                 "--disable-pip-version-check",
                 "--quiet",
                 "--target",

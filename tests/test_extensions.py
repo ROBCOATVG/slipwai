@@ -107,7 +107,9 @@ class ExtensionsTest(FactoryTestCase):
                 env=environment,
             )
 
-            self.assertEqual(log.read_text().split(), ["install", "--yes", "--init"])
+            # This project's index and nothing else: `init`, never `install`, which rewrites every agent's global
+            # config (~/.claude.json, ~/.claude/CLAUDE.md, Cursor's, Codex's) — not a project's to change.
+            self.assertEqual(log.read_text().split(), ["init", "-y", "."])
             agents = (repo / "AGENTS.md").read_text()
             self.assertIn("<!-- extension:codegraph:begin -->", agents)
             self.assertIn("codegraph_explore", agents)
@@ -198,15 +200,22 @@ class ExtensionsTest(FactoryTestCase):
             fake_bin.mkdir()
             (fake_bin / "specify").write_text(FAKE_SPECIFY)
             (fake_bin / "specify").chmod(0o755)
-            # No `codegraph` binary on this PATH at all — which has to be arranged, not assumed: the
-            # machine running the suite may well have the real CLI installed, and prepending a fake-bin
-            # without a stub would still find it further down.
+            # No route to CodeGraph at all — no `codegraph`, no `npx`, and no Node that nvm, volta or fnm keeps
+            # under a home directory — which has to be arranged, not assumed: the machine running the suite may
+            # well have every one of them. Installs are off for the whole suite (`support.py`), so the extension
+            # cannot put Node here either, and has to say so.
+            routes = [
+                entry for entry in os.environ["PATH"].split(os.pathsep)
+                if any(os.access(Path(entry) / tool, os.X_OK) for tool in ("codegraph", "npx"))
+            ]
+            if any(os.access(Path(entry) / "sh", os.X_OK) for entry in routes):
+                self.skipTest("`npx` shares a directory with `sh` here, so it cannot be hidden from ./init")
             without_codegraph = os.pathsep.join(
-                entry
-                for entry in os.environ["PATH"].split(os.pathsep)
-                if not os.access(Path(entry) / "codegraph", os.X_OK)
+                entry for entry in os.environ["PATH"].split(os.pathsep) if entry not in routes
             )
-            environment = os.environ | {"PATH": f"{fake_bin}:{without_codegraph}"}
+            environment = {
+                key: value for key, value in os.environ.items() if key not in ("NVM_DIR", "VOLTA_HOME", "FNM_DIR")
+            } | {"PATH": f"{fake_bin}:{without_codegraph}", "HOME": directory}
 
             result = subprocess.run(
                 ["./init", "--integration", "codex", "--extension", "codegraph"],
@@ -217,13 +226,13 @@ class ExtensionsTest(FactoryTestCase):
             )
 
             self.assertEqual(result.returncode, 0)
-            self.assertIn("CodeGraph CLI not found", result.stderr)
+            self.assertIn("CodeGraph could not be put on this machine", result.stderr)
             self.assertIn("./init --extension codegraph", result.stderr)
             self.assertNotIn("<!-- extension:codegraph:begin -->", (repo / "AGENTS.md").read_text())
             self.assertTrue((repo / ".agents/skills/testing/SKILL.md").is_file())
 
     def test_a_failing_codegraph_install_is_non_fatal_and_says_how_to_retry(self) -> None:
-        """`codegraph install` exiting non-zero must not fail `./init`, and must not leave a half-adopted
+        """`codegraph init` exiting non-zero must not fail `./init`, and must not leave a half-adopted
         project silently: no pointer is written, and the message names the command that finishes the job."""
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "codegraph-install-fails")

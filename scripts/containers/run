@@ -1,0 +1,35 @@
+#!/bin/sh
+# Prove the zero-friction setup where the suite cannot: on a machine that has nothing yet.
+#
+#   scripts/containers/run            # all three: bare Debian (generate, adopt) and the Mac-like zsh image
+#   scripts/containers/run macos      # just the Mac-like one
+#
+# `bare-linux.sh` runs this checkout's source in `debian:trixie` with only Python: generate and adopt must install
+# git, make, Node and uv themselves, run ./init to the end, index with CodeGraph without touching global config,
+# and the generated project's own `make verify` must pass. `macos-like.Dockerfile` is Ubuntu with zsh and Oh My
+# Zsh, plus what a stock Mac ships that Ubuntu does not — bash 3.2 as /bin/sh and bash, GNU Make 3.81, Apple's
+# Python 3.9 — and Homebrew for a zsh login user; `macos-like.zsh` installs the wheel with `uv tool install` and
+# runs the same journey through the Homebrew routes (SLIPWAI_HOST_SYSTEM=macos). It cannot be Darwin itself: BSD
+# sed/tar, /opt/homebrew and Apple's SIP paths are for a real Mac. Needs Docker and the network.
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+root=$(cd "$here/../.." && pwd)
+work=$(mktemp -d)
+chmod 755 "$work"  # the container runs as a non-root user, who must be able to read the wheel
+trap 'rm -rf "$work"' EXIT
+which=${1:-all}
+
+if [ "$which" = all ] || [ "$which" = linux ]; then
+  for mode in generate adopt; do
+    echo "== bare Debian: $mode"
+    docker run --rm -e MODE=$mode -v "$root:/src:ro" -v "$here/bare-linux.sh:/zf.sh:ro" debian:trixie sh /zf.sh \
+      | grep -E "^(PASS|FAIL|ALL|SOME)"
+  done
+fi
+if [ "$which" = all ] || [ "$which" = macos ]; then
+  echo "== Mac-like zsh image"
+  (cd "$root" && ./scripts/build-wheel >/dev/null) && cp "$root"/dist/slipwai-*-py3-none-any.whl "$work/"
+  docker build -q -t slipwai-maclike -f "$here/macos-like.Dockerfile" "$here" >/dev/null
+  docker run --rm -v "$work:/wheel:ro" -v "$here/macos-like.zsh:/t/mac.zsh:ro" -v "$here/drive-generate.py:/t/drive-generate.py:ro" \
+    slipwai-maclike zsh -l /t/mac.zsh | grep -E "^(PASS|FAIL|ALL|SOME)"
+fi

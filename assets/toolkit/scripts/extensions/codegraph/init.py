@@ -14,10 +14,17 @@ the index at all, because a checkout travels into
 places its tooling does not, and `make check-codegraph` is what notices an index nothing is maintaining.
 See docs/extensions.md for what every extension's `init.py` owes.
 
-Never fails `./init`: a missing `codegraph` CLI is reported, not fatal.
+It indexes this project and nothing else. CodeGraph's own `codegraph install` also rewrites the global config
+of every agent on the machine — `~/.claude.json`, `~/.claude/CLAUDE.md`, Cursor's, Codex's, VS Code's — which is
+not a project's to change; the project-scoped MCP files below are what the checkout needs, and travel with it.
+
+Nothing to install by hand: the pinned CLI runs through `npx`, so where Node is missing it is installed
+(`scripts/install-tools.py`), and only where Node cannot be had is CodeGraph's own user-level installer run.
+Never fails `./init`: a route that still cannot be found is reported, not fatal.
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -26,8 +33,8 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "agents"))
-from code_index import CODEGRAPH  # noqa: E402
-from guidance import record_extension, replace_block, write_project_mcp  # noqa: E402
+from code_index import CODEGRAPH, route  # noqa: E402
+from guidance import ensure_tools, record_extension, replace_block, write_project_mcp  # noqa: E402
 
 def project_root(script: Path, depth: int) -> Path:
     """The repository root: the nearest directory above this script holding `project.json`.
@@ -99,9 +106,7 @@ boundary.
 
 **Where no route exists** — no Node and no `codegraph` — `scripts/codegraph` says so; then say in as many words
 that the answer is a text search ("the database is here, the tooling is not"), and work as a project with no
-index would. Install Node, or the CLI
-(`curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh`), and re-adopt with
-`./init --extension codegraph`.
+index would. `./init --extension codegraph` installs Node where the machine allows it and indexes again.
 {MARKER_END}
 """
 
@@ -127,28 +132,38 @@ def project_guidance() -> None:
 
 
 def main() -> int:
-    if shutil.which("codegraph") is None:
-        # Naming the recovery matters more than naming the tool: without the second command this project
-        # keeps no pointer to CodeGraph, so a reader who installs the CLI and stops there ends up with a
-        # working index no agent is ever told about.
+    # A `codegraph` already installed is the one this machine's person chose; otherwise the pinned `npx` route.
+    command = ["codegraph"] if shutil.which("codegraph") else route()
+    for tool in ("node", "codegraph"):  # Node gives the pinned `npx` route; CodeGraph's own installer is the last
+        if command is None:
+            ensure_tools([tool])
+            command = route()
+    if command is None:
         print(
-            "CodeGraph CLI not found: nothing was indexed and AGENTS.md is unchanged.\n"
-            "Install it:\n"
-            "  curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh\n"
-            "Then adopt it here, which is what points the agent at it:\n"
-            f"  {INIT} --extension codegraph",
+            "CodeGraph could not be put on this machine (no Node, and its own installer did not take): nothing was "
+            "indexed and AGENTS.md is unchanged.\n"
+            f"`{INIT} --extension codegraph` tries again, once Node is installed or installs are allowed "
+            "(`SLIPWAI_NO_INSTALL` unset).",
             file=sys.stderr,
         )
         return 0
-    # `check=False`: an extension may not fail `./init` (docs/extensions.md), and a raised
-    # CalledProcessError here would also skip the pointer below — leaving exactly the half-adopted state
-    # the missing-CLI branch takes care to avoid.
-    installed = subprocess.run(["codegraph", "install", "--yes", "--init"], cwd=ROOT, check=False)
-    if installed.returncode != 0:
+    # `init` builds this project's index and touches nothing outside it — unlike `install`, which rewrites every
+    # agent's global config. `check=False`: an extension may not fail `./init` (docs/extensions.md), and a raised
+    # error here would also skip the pointer below, the half-adopted state the branch above avoids.
+    environment = {**os.environ, "CODEGRAPH_NO_UPDATE_CHECK": "1"}
+    # The full path: on Windows `npx` is `npx.cmd`, which a process can start only when it is named whole.
+    command = [shutil.which(command[0]) or command[0], *command[1:]]
+    # `-y .` and no stdin, as `code_index.cli` runs it: never a question that would hold `./init` open.
+    try:
+        indexed = subprocess.run([*command, "init", "-y", "."], cwd=ROOT, check=False, env=environment,
+                                 stdin=subprocess.DEVNULL, timeout=1800)
+        code = indexed.returncode
+    except subprocess.TimeoutExpired:
+        code = "a timeout"
+    if code != 0:
         print(
-            f"`codegraph install` exited {installed.returncode}: AGENTS.md is unchanged.\n"
-            "Fix what it reported, then adopt it here:\n"
-            f"  {INIT} --extension codegraph",
+            f"`codegraph init` exited {code}: AGENTS.md is unchanged.\n"
+            f"Fix what it reported, then: {INIT} --extension codegraph",
             file=sys.stderr,
         )
         return 0

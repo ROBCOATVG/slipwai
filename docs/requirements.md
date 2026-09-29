@@ -1,10 +1,16 @@
 # Tools required
 
 Scaffolding needs almost nothing; a generated repository needs whatever its own toolchain needs. Nothing
-here is installed for you, and nothing is vendored into the output. Where `slipwai` or `./init` finds a tool
-missing, it names the command that installs it with the package manager this machine has — Homebrew or
-MacPorts on macOS; apt, dnf, pacman, zypper or apk on Linux and WSL; winget, Scoop or Chocolatey on
-Windows — and the page below where it knows none.
+is vendored into the output, and **you do not install the rest yourself**: where `slipwai generate`, `slipwai
+adopt`, `./init` or a chosen extension finds a tool it needs missing, it installs it — with the package manager
+this machine has (Homebrew or MacPorts on macOS; apt, dnf, pacman, zypper or apk on Linux and WSL, through
+`sudo`, which may ask for your password; winget, Scoop or Chocolatey on Windows), or with the publisher's own
+user-level download where a distribution's package is too old to build with (Node, Go and the JDK on Linux,
+from nodejs.org, go.dev and Adoptium) or where no manager has it (uv from its GitHub release). That is the
+default wherever you answer at a terminal. `--install` asks for it from a script, `--no-install` turns it off,
+and `SLIPWAI_NO_INSTALL=1` turns it off everywhere — for CI, or a machine whose tools you manage yourself; then
+each missing tool is named with the line that installs it. The table below is what gets installed — except
+Docker, which needs a system service and your user in its group, so it stays yours to install.
 
 | To do this | You need |
 |---|---|

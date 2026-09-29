@@ -280,7 +280,23 @@ def browser() -> str:
     if completed.returncode == 0 and word in ("chrome", "bundled", "none", "no-playwright"):
         return word
     sys.stderr.write(completed.stderr)
-    return "none"
+    return "unprobed"  # reported as `none`; distinct, so a crashed probe never starts an install
+
+
+def install_browser() -> bool:
+    """Put Playwright's own Chromium on this machine, with the project's own Playwright so the two agree, where
+    the probe found Playwright and no browser — rather than reporting the render gates skipped and leaving the
+    person to run the line. `--with-deps` on Linux brings the system libraries it needs through the package
+    manager (`sudo`). Not in CI, whose job installs its own, and not under `SLIPWAI_NO_INSTALL`."""
+    if os.environ.get("CI") or os.environ.get("SLIPWAI_NO_INSTALL", "").strip() not in ("", "0", "false", "no"):
+        return False
+    # The system libraries come through the package manager (`sudo`), so only where somebody could answer it.
+    root = hasattr(os, "geteuid") and os.geteuid() == 0
+    with_deps = ["--with-deps"] if sys.platform.startswith("linux") and (root or sys.stdin.isatty()) else []
+    command = ["npx", "playwright", "install", *with_deps, "chromium"]
+    print(f"check-ux-gates: no browser to render with; installing one: {' '.join(command)}", flush=True)
+    # From the kit's directory: the Playwright the probe resolved, so the browser matches it.
+    return subprocess.run(command, cwd=ROOT / KIT, check=False, stdin=subprocess.DEVNULL).returncode == 0
 
 
 def run(gate: Gate, preload: Path | None = None) -> str:
@@ -357,6 +373,10 @@ def main() -> int:
     skipped = 0
     render = [gate for gate in gates if gate.render]
     opened = ("no-node" if shutil.which("node") is None else browser()) if render else "chrome"
+    if opened == "none" and install_browser():
+        opened = browser()
+    if opened == "unprobed":
+        opened = "none"
     for app in dict.fromkeys(gate.app for gate in render):
         relative = app.relative_to(ROOT).as_posix()
         mine = [gate for gate in render if gate.app == app]

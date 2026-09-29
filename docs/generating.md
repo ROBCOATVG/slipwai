@@ -125,10 +125,11 @@ slipwai generate shop --target aws --language go --frontend react-vite --auth co
 
 Choosing a cloud also checks, there and then, that this machine has what setting the project up will use —
 `tofu`, that cloud's own CLI (`aws`, or `az` under `--target azure`), the region it deploys to, and `gh` or
-`GITEA_TOKEN` — and refuses if not, naming for each missing tool the command that installs it on this
-machine (`brew install opentofu` on a Mac with Homebrew, `winget install --exact --id OpenTofu.Tofu` on
-Windows, the distribution's own package where it carries one) beside the page that covers every other
-machine, because finding out at the end of the setup, after the push, is the wrong moment. The list is the
+`GITEA_TOKEN` — and installs each missing tool there and then, with the machine's package manager or the
+publisher's installer (`brew install opentofu` on a Mac with Homebrew, `winget install --exact --id
+OpenTofu.Tofu` on Windows, OpenTofu's own installer on Debian). It refuses only for what is still missing —
+the region, a forge token, or a tool whose install did not take, named with its install line — because finding
+out at the end of the setup, after the push, is the wrong moment. `--no-install` turns the installing off. The list is the
 target's own (`targets.TOOLS`), and it is the same list the project's setup script (`./init`) looks for, so a
 project is never refused for a tool its own script does not check. `--skip-checks` generates anyway, for when
 the setup will run on another machine: generate with `--no-init` and run `./init` there.
@@ -249,7 +250,9 @@ what it refuses.
   The argument form, for scripts and CI, sets nothing up unless given `--init`, and `--no-init` skips the
   setup anywhere; the project keeps `./init` to run later. On native Windows, where a `/bin/sh` script
   cannot run as it is, it runs through Git for Windows' `sh` when that is installed and otherwise says to
-  use WSL or Git Bash, and a machine without `python3` is given the command that installs it first; and
+  use WSL or Git Bash. Git, Make, uv, Python and every toolchain the answers need are installed first where
+  they are missing, and the coding agent is asked with nothing preselected unless it is named or `generate`
+  runs inside one; and
 - no list of files the factory may later overwrite is left behind. The product owns every generated file.
   `project.json` records the answers it was generated from and which factory version did it — provenance,
   which nothing generated reads.

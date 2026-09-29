@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Re-project elected extension guidance without rerunning extension setup."""
+"""Re-project elected extension guidance without rerunning extension setup — except for an extension that was
+chosen before it could be set up.
+
+An extension with a `ready()` (the UI ones: there has to be a browser app) can be elected while it is not, and
+then waits: it has no guidance block, and `--check` does not expect one. The first time this runs and finds it
+ready with no block — a frontend just confirmed in an adopted repository, or just added — it runs that
+extension's whole setup, once, so nobody has to go back and run `./init --extension <key>` again."""
 from __future__ import annotations
 
 import argparse
@@ -36,6 +42,17 @@ def project(check: bool) -> list[str]:
         try:
             module = extension_module(key)
             canonical = canonical_block(key, module.GUIDANCE)
+            waiting = hasattr(module, "ready") and not module.ready()
+            if waiting:
+                continue  # chosen, and waiting for what it needs; nothing to hold it to yet
+            if not check and hasattr(module, "ready") and installed_block(key) is None:
+                # It has just become possible: set it up now, as if it had been ready when chosen. Where the tool is
+                # already installed (the block was deleted, say), the guidance is all that is missing.
+                if hasattr(module, "installed") and module.installed():
+                    module.project_guidance()
+                else:
+                    module.main()
+                continue
             if check:
                 if installed_block(key) != canonical:
                     findings.append(

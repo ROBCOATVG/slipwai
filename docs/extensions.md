@@ -12,8 +12,10 @@ There are three:
 | `uipro` | [UI/UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill), an offline design-system generator, as one skill in the root catalogue | `skills/ui-ux-pro-max/` (ignored; `make agents` projects it like any other) | When to generate a design system, where its `MASTER.md` goes, and that `docs/design.md` stays the page a slice reads first. Needs a browser app |
 | `ux-gates` | [ux-ui-agent-skills](https://github.com/plugin87/ux-ui-agent-skills), whose objective gates measure a screen | `tools/ux-gates/` (ignored) | `check-ux-gates` runs the kit's no-literal-values gate over each browser app's source, and its real-render contrast, focus, target-size, responsive and axe gates over `<app>/screens/*.html` when a browser is present — Chrome, or Playwright's own Chromium where Chrome is not installed, which two of the kit's scripts would otherwise crash on — skipped, never passed, when neither opens. Adds a six-shard `ux-gates` job to `verify.yml` that installs the kit and a browser and requires both. Needs a browser app |
 
-An extension that needs a capability the project has not got refuses politely at `./init` — exit 0, the
-command that would change that on stderr — rather than installing something with nothing to act on.
+An extension that needs a capability the project has not got yet — a browser app, for the two UI ones — is
+recorded as chosen and **waits**: nothing is installed with nothing to act on, and nothing is refused. The first
+re-projection that finds the capability there (`scripts/extensions/project.py`, which confirming a frontend in an
+adopted repository runs, as does `slipwai add-frontend`) sets it up. The person who ticked it runs nothing again.
 
 ## What ships where
 
@@ -58,10 +60,17 @@ stdout. See `prompt_extensions` in `src/slipwai/project/init_script.py` for the 
 
 1. **Replaceably idempotent.** Running it twice must not duplicate anything it writes, and newer factory
    guidance must replace the content inside its existing markers without touching text around them.
-2. **Non-fatal.** By the time it runs, Spec Kit and the agent projection are already in place — an
-   extension whose own CLI is missing, or whose setup step fails, must report that and exit 0, not fail the
-   rest of `./init`. `scripts/extensions/codegraph/init.py` is the reference: it prints an install command
-   and returns cleanly when `codegraph` is not on `PATH`.
+2. **Installs what it needs; non-fatal when it cannot.** The person ticked it, so a missing tool is installed,
+   not handed back as a line to run: `guidance.ensure_tools([...])` goes through the project's own
+   `scripts/install-tools.py` — the machine's package manager (`sudo` included) or the publisher's download —
+   and honours `SLIPWAI_NO_INSTALL`. By the time it runs, Spec Kit and the agent projection are in place, so a
+   tool that still cannot be had, or a setup step that fails, is reported and the script exits 0, never failing
+   the rest of `./init`. `scripts/extensions/codegraph/init.py` is the reference: Node for the pinned `npx`
+   route first, CodeGraph's own installer only where Node cannot be had.
+   **Project-only.** Nothing outside the repository is changed: CodeGraph's `codegraph install` rewrites every
+   agent's global config, so the extension runs `codegraph init`, which indexes this project and nothing else.
+   **Waiting, where it needs a capability.** Give it a `ready()` (is the capability there?) and `installed()`;
+   while `ready()` is false, `main()` only records the election, and `project.py` sets it up once it is true.
 3. **Point the agent at it.** An extension that only gets installed and never queried is dead weight. Project
    a marker-fenced block into `AGENTS.md` (`<!-- extension:<key>:begin -->` / `:end`) — short enough to read in
    one go: what the tool is for, how to tell whether this environment can reach it at all, and that the agent

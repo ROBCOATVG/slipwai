@@ -22,12 +22,22 @@ from . import next_steps, resurvey
 from .adopt import Answers, adopt, candidates_of, check_repository, proposed, report
 from .catalog import CATALOG
 from .cli_confirm import confirmations
-from .cli_init import agent_line, projection_line, reproject, run_init
+from .cli_init import (
+    add_setup_arguments,
+    agent_line,
+    install_tools,
+    installing,
+    projection_line,
+    prompt_agent,
+    reproject,
+    run_init,
+    tools_for,
+)
 from .cli_interview import NOTHING_TO_ASK, shape, with_override
 from .cli_prompts import validate_project_name
 from .ecosystems import EXTRA, TARGETS
 from .errors import GenerationError
-from .harness import chosen, detect, keys
+from .harness import Agent, chosen, detect, keys
 from .layout import layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import FORGES, HOMES, RELEASE_PATHS, WRAPPED_KINDS, adoption_of
@@ -46,7 +56,7 @@ NOTHING_LEFT = "every application the survey found was skipped or left unwrapped
 # silently does nothing is worse than one that is refused, which is the rule the intro already
 # applies to the flags that describe an application.
 SETTLING_IGNORES = (
-    "yes", "refresh", "next_steps", "experimental_intro", "integration", "run_init", "name", "profile",
+    "yes", "refresh", "next_steps", "experimental_intro", "integration", "run_init", "install", "name", "profile",
     "target", "delivery", "why", "skip", "database", "database_repository", "infrastructure",
     "infrastructure_repository", "forge", "release",
 )
@@ -120,25 +130,7 @@ def adopt_main(argv: list[str]) -> None:
         "--as", action="append", default=[], dest="renamed", metavar="NAME=NEW",
         help="confirm a candidate under a name of your own, rather than the directory's",
     )
-    parser.add_argument(
-        "--integration", default=None, metavar="AGENT",
-        help="which coding agent gets the skills and commands, by its key in the agent registry (default: the "
-        "harness this ran from, or the one the tree already reads; neither, and ./init keeps its own question)",
-    )
-    init = parser.add_mutually_exclusive_group()
-    init.add_argument(
-        "--init", action="store_true", dest="run_init", default=None,
-        help="run ./<delivery>/init once the adoption is committed (the default in a terminal; under --yes it is "
-        "the next step instead). It reaches Spec Kit's source, so it needs the network; what it writes is left "
-        "for you to commit",
-    )
-    init.add_argument(
-        # `default=None` on both halves, so that "nobody said" is one value rather than two: a store_false
-        # defaulting to True and a store_true defaulting to None share `run_init`, and whichever argparse
-        # applied last decided what unset looked like.
-        "--no-init", action="store_false", dest="run_init", default=None,
-        help="do not run ./<delivery>/init; leave it as the next step (the default under --yes)",
-    )
+    add_setup_arguments(parser, "./<delivery>/init")
     parser.add_argument("--name", default=None, help="the project's name (default: the directory's)")
     parser.add_argument("--profile", choices=CATALOG["profiles"], default="standard")
     parser.add_argument(
@@ -327,6 +319,14 @@ def adopt_main(argv: list[str]) -> None:
                 f"`python3 {args.delivery}/scripts/agents/project.py --list` lists them once the method is here"
             )
         agent = chosen(args.integration) if args.integration else detect(root)
+        # Somebody at the terminal, about to have `./init` set the agent up, is asked which one where nothing
+        # settled it — with no answer preselected, and before the commit, so the adoption records it.
+        attended = not args.yes and sys.stdin.isatty()
+        running_init = args.run_init if args.run_init is not None else attended
+        install = installing(args.install, attended)
+        if agent.harness is None and running_init and attended:
+            key = prompt_agent(agent.candidates)
+            agent = Agent(key, "answered at `slipwai adopt`'s question", "confirmed")
         answers = Answers(
             name, args.profile, target, args.delivery, why, apps, database, infrastructure, ci, release,
             agent=agent.record(), candidates=candidates,
@@ -335,11 +335,12 @@ def adopt_main(argv: list[str]) -> None:
     except GenerationError as error:
         parser.error(str(error))
     # `./init` reaches Spec Kit's source, so it is the one step that needs the network, and it leaves files for
-    # the person to commit. Off unless asked, and asked for by default only where somebody is sitting at the
-    # terminal — which is the case the wall of `Next:` lines was written for. Decided
-    # before the report is printed, because the report says something different when it is about to happen.
-    running_init = args.run_init if args.run_init is not None else not args.yes
+    # the person to commit. By default only where somebody is at the terminal, decided above, before the report
+    # is printed, because the report says something different when it is about to happen.
     print(report(done, running_init))
     print(agent_line(agent))
+    if install:
+        languages = [str(row.get("language")) for row in candidates] + [str(app.language) for app in apps]
+        install_tools(tools_for(languages), install)
     if running_init:
-        run_init(root, args.delivery, agent)
+        run_init(root, args.delivery, agent, install)

@@ -22,6 +22,7 @@ stdout; writes nothing when there is nothing to choose or no usable terminal, so
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 import textwrap
@@ -119,11 +120,46 @@ def select(options: list[dict], tty_in, tty_out) -> list[str]:
     return chosen
 
 
+def ask_on_windows(options: list[dict]) -> list[str]:
+    """The same question typed, for Windows, which has no raw-mode terminal to draw the list in. Read from the console
+    itself (`CONIN$`/`CONOUT$`), as the list reads `/dev/tty`: stdin is the JSON, and `./init` runs under Git Bash with
+    its output captured. Nothing is printed and nothing chosen where there is no console — a script, CI."""
+    try:
+        console_in = open("CONIN$", encoding="utf-8")
+        console_out = open("CONOUT$", "w", encoding="utf-8", newline="\n")
+    except OSError:
+        return []
+    keys = [option["key"] for option in options]
+    with console_in, console_out:
+        console_out.write(f"\n{PREAMBLE}\n")
+        for number, option in enumerate(options, 1):
+            console_out.write(f"  {number}. {option['key']} — {option['name']}: {option['description']}\n")
+        while True:
+            console_out.write("Extensions to adopt (keys or numbers, comma-separated; Enter for none): ")
+            console_out.flush()
+            answer = console_in.readline()
+            if not answer:  # end of input: nobody is there to answer
+                return []
+            chosen = []
+            for word in (part.strip() for part in answer.replace(" ", ",").split(",") if part.strip()):
+                key = keys[int(word) - 1] if word.isdigit() and 0 < int(word) <= len(keys) else word
+                if key not in keys:
+                    console_out.write(f"Unknown extension {word!r}: choose from {', '.join(keys)}\n")
+                    break
+                if key not in chosen:
+                    chosen.append(key)
+            else:
+                console_out.write(f"Extensions: {', '.join(chosen) if chosen else 'none'}\n")
+                return chosen
+
+
 def main() -> int:
     options = json.load(sys.stdin)
     if not options:
         return 0
     if termios is None:
+        for key in ask_on_windows(options) if os.name == "nt" else []:
+            print(key)
         return 0
     try:
         # Two separate handles, not one opened "r+": a combined read/write TextIOWrapper on a tty tries to

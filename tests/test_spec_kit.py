@@ -36,7 +36,8 @@ class SpecKitTest(FactoryTestCase):
 
             self.assertEqual(
                 log.read_text().splitlines(),
-                ["init", "--here", "--force", "--integration", "codex", "--integration-options=--skills"],
+                ["init", "--here", "--force", "--integration", "codex", "--integration-options=--skills",
+                 "--script", "sh"],
             )
             self.assertTrue((repo / ".agents/skills/testing/SKILL.md").is_file())
             self.assertTrue((repo / ".agents/skills/drive/SKILL.md").is_file())
@@ -97,10 +98,9 @@ class SpecKitTest(FactoryTestCase):
         """From Spec Kit 1.0.9 its bash scripts compose the preset templates with PyYAML on the bare `python3`
         they call, and a project whose python3 lacks it learns so at its first `/speckit-specify`: "PyYAML is
         required", with no remedy, and on a PEP 668 Python the obvious `pip install` is refused too. Those
-        scripts take `python3` off the PATH and nothing else, so `./init` has uv put PyYAML where that
-        interpreter looks without being asked — its venv, or `--target` its user site — and never ends by
-        asking for a venv to be put first on PATH. Without uv it says the line that installs uv, and a Spec Kit
-        whose scripts never mention PyYAML gets no word about it."""
+        scripts take `python3` off the PATH, so `./init` has uv put PyYAML where it looks — its venv, or `--target`
+        its user site — never asking for a venv on PATH. Without uv it says the line that installs uv, and a Spec
+        Kit whose scripts never mention PyYAML gets no word about it."""
         with tempfile.TemporaryDirectory() as directory:
             repo = self.generate(directory, "yaml-less")
             fake_bin = Path(directory) / "fake-bin"
@@ -139,9 +139,9 @@ mkdir -p "{site}/yaml" && touch "{site}/yaml/__init__.py"
                 calls.unlink(missing_ok=True)
                 return subprocess.run(
                     ["./init", "--integration", "codex"], cwd=repo, text=True, capture_output=True,
-                    env=os.environ | {
+                    env=os.environ | {  # its own HOME: `./init` looks under `~/.local/bin` for a uv it installed
                         "PATH": f"{fake_bin if uv else no_uv_bin}:{system_path}", "INIT_TEST_HOME": home,
-                        "HOME": directory,  # `./init` looks under `~/.local/bin` for a uv it installed
+                        "HOME": directory,
                     },
                 )
 

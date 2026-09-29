@@ -13,7 +13,8 @@ import time
 
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 SHOWN = ("Project name [", "Which coding agent", "Coding agent:", "Output parent", "install-tools:", "created:",
-         "Choose your coding agent", "./init is done", "Start your coding agent", "Could not", "Not running")
+         "Choose your coding agent", "Choose script type", "./init is done", "Start your coding agent", "Could not",
+         "Not running")
 
 
 def drive(command: list) -> str:

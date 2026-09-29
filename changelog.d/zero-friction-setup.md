@@ -22,7 +22,9 @@ global config (`~/.claude.json`, `~/.claude/CLAUDE.md`, Cursor's, Codex's, VS Co
 UX gates, ticked before there is a browser app — an adopted repository whose frontend is still a candidate
 (experimental), or a headless project — are recorded and wait, and install themselves once a browser app is
 confirmed or added; before, they refused and asked for `slipwai add-frontend` and a second `./init`. The UX
-gate installs Playwright's Chromium the first time it has Playwright and no browser.
+gate installs Playwright's Chromium the first time it has Playwright and no browser. On Windows, where the
+checkbox list cannot be drawn, `./init` asks for the extensions as a typed question in the console instead of
+skipping the choice silently.
 
 **`slipwai generate` in an empty folder makes that folder the project.** Its name is offered and nothing is nested
 beneath it, so the agent started in the same folder finds the project's commands — the first real run made

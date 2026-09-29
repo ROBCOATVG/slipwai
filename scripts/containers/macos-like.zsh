@@ -49,7 +49,9 @@ done
 
 print -- "\n--- the interactive way: an empty folder, \`slipwai generate\` in a real terminal, answered by hand"
 mkdir -p ~/work/by-hand && cd ~/work/by-hand
-python3 /t/drive-generate.py slipwai generate
+transcript=$(python3 /t/drive-generate.py slipwai generate); print -- "$transcript"
+case "$transcript" in *"Choose script type"*|*"Choose your coding agent"*) fail "Spec Kit asked a question of its own" ;;
+  *) pass "no question from Spec Kit: slipwai asked everything" ;; esac
 [[ -f ~/work/by-hand/project.json ]] && pass "the empty folder became the project" || fail "project not written into the folder"
 [[ ! -e ~/work/by-hand/by-hand ]] && pass "nothing nested beneath it" || fail "a folder was nested"
 n=$(ls ~/work/by-hand/.claude/commands 2>/dev/null | wc -l | tr -d ' '); (( n > 10 )) && pass "Claude commands in the folder ($n)" || fail "no Claude commands ($n)"

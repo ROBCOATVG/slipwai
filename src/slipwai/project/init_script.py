@@ -116,6 +116,7 @@ fi
     return f"""
 selected_integration=
 expect_integration=false
+script_given=false
 {axis_variables}{extension_variables}{production_variables}remaining=$#
 while [ "$remaining" -gt 0 ]; do
   argument=$1
@@ -130,6 +131,7 @@ while [ "$remaining" -gt 0 ]; do
   case "$argument" in
     --integration) expect_integration=true; set -- "$@" "$argument" ;;
     --integration=*) selected_integration=${{argument#--integration=}}; set -- "$@" "$argument" ;;
+    --script|--script=*) script_given=true; set -- "$@" "$argument" ;;
 {axis_case}{extension_case}{production_case}    *) set -- "$@" "$argument" ;;
   esac
 done
@@ -297,6 +299,14 @@ EOF
 if [ $# -eq 0 ] && [ -f .specify/integration.json ]; then
   printf '%s\n' 'Spec Kit is already installed and nothing new was asked of it, so it was left alone; `./init --integration <agent>` reruns `specify init`.'
 else
+  # Spec Kit's own default script type, said out loud: without `--script` it stops a terminal run to ask for one,
+  # a question with nothing to decide. PowerShell's where Spec Kit would choose it (Git Bash on Windows).
+  if [ "$script_given" != true ]; then
+    case "$(uname -s 2>/dev/null)" in
+      MINGW*|MSYS*|CYGWIN*) set -- "$@" --script ps ;;
+      *) set -- "$@" --script sh ;;
+    esac
+  fi
   run_specify "$@"
 fi
 if ! command -v python3 >/dev/null 2>&1; then

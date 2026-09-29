@@ -164,12 +164,24 @@ class GenerateInitTest(FactoryTestCase):
         self.assertIn("not allowed with argument", result.stderr)
 
 
+# A tool no machine has, registered with the installer for the test alone. A real one — `tofu`, `gh` — may well be
+# on the machine running the suite (CI's image has OpenTofu in /usr/local/bin), and `ensure` rightly widens PATH with
+# the standard install directories before it looks, so it would find the real one and install nothing.
+TOOL = "zz-slipwai-test-tool"
+SYNTHETIC = (
+    "from slipwai.host import ensure, Host, TOOLS; "
+    f"TOOL = '{TOOL}'; TOOLS.PACKAGES[TOOL] = {{'brew': 'zz-formula', 'apt-get': 'zz-package'}}; "
+)
+ON_BREW = SYNTHETIC + "print(ensure([TOOL], Host('macos', ('brew',))))"
+ON_APT = SYNTHETIC + "print(ensure([TOOL], Host('linux', ('apt-get',))))"
+
+
 def run_python(
-    code: str, path: str, *, no_install: bool = False, stdin: str | None = None
+    code: str, path: str, *, no_install: bool = False, stdin: str | None = None, home: str | None = None
 ) -> subprocess.CompletedProcess[str]:
     """`code` in a fresh interpreter with `PATH` set to `path`, installs on unless asked otherwise."""
     environment = {key: value for key, value in os.environ.items() if key != "SLIPWAI_NO_INSTALL"}
-    environment |= {"PATH": path, "PYTHONPATH": str(ROOT / "src")}
+    environment |= {"PATH": path, "PYTHONPATH": str(ROOT / "src")} | ({"HOME": home} if home else {})
     if no_install:
         environment["SLIPWAI_NO_INSTALL"] = "1"
     return subprocess.run(
@@ -198,23 +210,21 @@ class InstallTest(FactoryTestCase):
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / "brew.log"
             bin_dir = self.stubs(directory, brew=(
-                f'echo "$@" >> {log}\nprintf "#!/bin/sh\\n" > "{directory}/bin/tofu"; chmod 755 "{directory}/bin/tofu"'
+                f'echo "$@" >> {log}\n'
+                f'printf "#!/bin/sh\\n" > "{directory}/bin/{TOOL}"; chmod 755 "{directory}/bin/{TOOL}"'
             ))
-            done = run_python(
-                "from slipwai.host import ensure, Host; print(ensure(['tofu'], Host('macos', ('brew',))))", str(bin_dir)
-            )
+            done = run_python(ON_BREW, str(bin_dir), home=directory)
             self.assertEqual(done.stdout.strip().splitlines()[-1], "[]", done.stderr)
-            self.assertEqual(log.read_text(encoding="utf-8").strip(), "install opentofu")
+            self.assertEqual(log.read_text(encoding="utf-8").strip(), "install zz-formula")
 
     def test_nothing_is_installed_where_installs_are_turned_off(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / "brew.log"
             bin_dir = self.stubs(directory, brew=f'echo "$@" >> {log}')
             done = run_python(
-                "from slipwai.host import ensure, Host; print(ensure(['tofu'], Host('macos', ('brew',))))",
-                str(bin_dir), no_install=True,
+                ON_BREW, str(bin_dir), no_install=True, home=directory,
             )
-            self.assertEqual(done.stdout.strip().splitlines()[-1], "['tofu']", done.stderr)
+            self.assertEqual(done.stdout.strip().splitlines()[-1], f"['{TOOL}']", done.stderr)
             self.assertFalse(log.exists(), "SLIPWAI_NO_INSTALL was set, and brew still ran")
 
     def test_a_system_manager_goes_through_sudo_and_never_waits_for_a_password_without_a_terminal(self) -> None:
@@ -226,18 +236,15 @@ class InstallTest(FactoryTestCase):
                 directory,
                 sudo=f'echo "sudo $@" >> {log}\nwhile [ "${{1#-}}" != "$1" ]; do shift; done\nexec "$@"',
                 **{"apt-get": f'echo "apt-get $@" >> {log}\ncase "$*" in *install*) printf "#!/bin/sh\\n" > '
-                              f'"{directory}/bin/gh"; chmod 755 "{directory}/bin/gh" ;; esac'},
+                              f'"{directory}/bin/{TOOL}"; chmod 755 "{directory}/bin/{TOOL}" ;; esac'},
             )
-            done = run_python(
-                "from slipwai.host import ensure, Host; print(ensure(['gh'], Host('linux', ('apt-get',))))",
-                str(bin_dir),
-            )
+            done = run_python(ON_APT, str(bin_dir), home=directory)
             self.assertEqual(done.stdout.strip().splitlines()[-1], "[]", done.stderr)
             calls = log.read_text(encoding="utf-8").splitlines()
             self.assertIn("apt-get update -qq", calls)
-            self.assertIn("apt-get install -y gh", calls)
+            self.assertIn("apt-get install -y zz-package", calls)
             if os.geteuid() != 0:
-                self.assertIn("sudo -n apt-get install -y gh", calls)
+                self.assertIn("sudo -n apt-get install -y zz-package", calls)
 
     def test_the_agent_question_has_no_answer_until_one_is_chosen(self) -> None:
         """Nothing preselected: Enter alone is not an answer — the list Spec Kit shows highlights Copilot, and

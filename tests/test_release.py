@@ -77,8 +77,12 @@ class ReleaseTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("pushed: main and v1.2.3", done.stdout)
         self.assertIn("main now carries 1.2.4.dev0", done.stdout)
-        self.assertIn("package executables", done.stdout)
-        self.assertIn("publish package", done.stdout)
+        # Where the release actually goes: the tag's own gate, then PyPI — not the forge's registry, which is
+        # what this said for a release after the workflows had stopped publishing there.
+        self.assertIn("runs the complete verify gate", done.stdout)
+        self.assertIn("attached to", done.stdout)
+        self.assertIn("uploaded to PyPI: https://pypi.org/project/slipwai/1.2.3/", done.stdout)
+        self.assertNotIn("PyPI registry", done.stdout)
         self.assertIn("slipwai upgrade", done.stdout)
         # The forge has the tag, on a commit whose VERSION is the release and whose parent is what was
         # verified; main is one commit past it, carrying the next snapshot.

@@ -155,6 +155,7 @@ A project ships with `/cruise` disabled. To start, in any harness's session:
 /cruise-settings enabled=true     # commits .specify/cruise.json
 /cruise                           # starts the runner, detached from this session, and watches it from here
 /cruise use the PRD in docs/prd.md   # the same, with a kick-off the first iteration is given
+/cruise --workstream billing      # take one bounded context's slices and no other, so a second runner can take another
 /cruise-status                    # is a runner running, how the last iteration ended, the tail of the feed
 /cruise-watch                     # sit back down at the watch seat, where the feed left off, starting nothing
 /cruise-stop                      # end the run after the iteration in flight; `/cruise-stop now` ends it now
@@ -463,6 +464,11 @@ control does anything: a person's `/drive` session edits a gate when a gate need
 - **A run that loops is detected.** `stuck_after` iterations with the same artifact fingerprint give the
   bosun one iteration, then park the loop; the same open question raised twice in one iteration goes the
   same way.
+- **Two runners are two workstreams.** A run given `--workstream <name>` (`make cruise WORKSTREAM=<name>`)
+  takes that bounded context's slices and no other, and its log entries say so; one given none takes every
+  workstream nobody holds (`held_by` in the split's `## Workstreams` table). The `slice/<id>` claim stays
+  the mutex between them, so two runners on one workstream still never take the same slice — they only
+  serialise on its merges, which is what a workstream is for avoiding.
 
 The ladder `/cruise` runs, its stages, the models table and the benchmark are all described in
 [The delivery loop](delivery-loop.md).

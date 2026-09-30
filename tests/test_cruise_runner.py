@@ -210,7 +210,7 @@ echo "cruise: continue\"""")
                 makefile = (repo / "Makefile").read_text()
                 self.assertIn("cruise: ## Run /drive with nobody at the wheel", makefile)
                 self.assertIn("\tpython3 scripts/agents/cruise.py run $(if $(FEATURE),--feature $(FEATURE),) "
-                              "$(CRUISE_FLAGS)", makefile)
+                              "$(if $(WORKSTREAM),--workstream $(WORKSTREAM),) $(CRUISE_FLAGS)", makefile)
                 self.assertIn("cruise-status: ## Say whether a /cruise runner is running and what its log shows",
                               makefile)
                 self.assertIn("cruise-watch: ## Watch a /cruise run from here: what the iteration does as it happens, "

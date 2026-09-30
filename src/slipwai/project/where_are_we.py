@@ -65,6 +65,11 @@ The board `commands/drive.md` opens every demo stop with, in the same order, so 
   delegate, unless the user picks another ready one
 - ⛔ **Blocked** — remaining slices waiting on unmet `depends_on`, or an open `CRITICAL` ahead of them
 
+Where the split names more than one workstream (`## Workstreams` in `story-split.md`, or the contexts the
+model's slices name), ⬜, 🔀 and ➡️ are grouped by workstream, each group with its own `N of M` and its
+`held_by`, so a person holding one sees theirs and a runner sees which are free; a slice in a workstream
+somebody else holds is *held*, never *unclaimed*.
+
 The second line is the only one that differs from the demo stop's 🆕 *New in this demo*: a demo has something
 new to show, and a question asked between demos has something half-built to report.
 

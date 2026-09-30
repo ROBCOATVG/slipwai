@@ -12,8 +12,8 @@ with `start`, and the session that typed it runs no stage of the ladder.
     python3 scripts/agents/cruise.py                       # every setting and what it controls
     python3 scripts/agents/cruise.py --check               # well-formed; `make check-agents` runs this
     python3 scripts/agents/cruise.py --set enabled=true    # change settings, checked, any time
-    python3 scripts/agents/cruise.py run [--feature F] [--no-park] [--sandbox] [kick-off…]   # the loop; `make cruise`
-    python3 scripts/agents/cruise.py start [--feature F] [--no-park] [--sandbox] [kick-off…] # the loop, detached
+    python3 scripts/agents/cruise.py run [--feature F] [--workstream W] [--no-park] [--sandbox] [kick-off…]   # the loop; `make cruise`
+    python3 scripts/agents/cruise.py start [--feature F] [--workstream W] [--no-park] [--sandbox] [kick-off…] # the loop, detached
     python3 scripts/agents/cruise.py watch [--minutes M] [--quiet S]  # the watch seat: the feed since the last watch
     python3 scripts/agents/cruise.py stop [--now]  # end the run after the iteration in flight, or now
     python3 scripts/agents/cruise.py tell [--now] <message…>  # queue a message for the next iteration; --now ends the one in flight
@@ -1127,21 +1127,26 @@ def cut_off_brackets(reason: str) -> None:
 
 
 def run_arguments(arguments: list[str]) -> tuple[str | None, str | None, bool, bool]:
-    """What `run` and `start` are given: `--feature <feature>`, which scopes every iteration; the kick-off — every
-    other word, what a person typed after `/cruise`, which reaches the first iteration of this run and no other,
-    because everything after it derives from disk; and the two flags."""
-    feature: str | None = None
+    """What `run` and `start` are given: the scope — `--feature <feature>`, which enters the ladder for that
+    feature's specification and no other, and `--workstream <name>`, which confines the ready set to that bounded
+    context's slices (`commands/drive.md`, *Workstreams*); together they are the first words of every iteration's
+    argument, the workstream as `workstream=<name>`, the spelling `/drive` reads. Then the kick-off — every other
+    word, what a person typed after `/cruise`, which reaches the first iteration of this run and no other, because
+    everything after it derives from disk; and the two flags."""
+    scope: dict[str, str | None] = {"--feature": None, "--workstream": None}
     words: list[str] = []
     skip = False
     for index, argument in enumerate(arguments):
         if skip:
             skip = False
             continue
-        if argument == "--feature":
-            feature = arguments[index + 1] if index + 1 < len(arguments) else None
+        if argument in scope:
+            scope[argument] = arguments[index + 1] if index + 1 < len(arguments) else None
             skip = True
         elif argument not in ("--no-park", "--sandbox"):
             words.append(argument)
+    workstream = f"workstream={scope['--workstream']}" if scope["--workstream"] else None
+    feature = " ".join(part for part in (scope["--feature"], workstream) if part) or None
     return feature, " ".join(words).strip() or None, "--no-park" in arguments, "--sandbox" in arguments
 
 
@@ -1254,6 +1259,8 @@ def drive(table: dict[str, Any], harness: dict[str, Any] | None, template: str, 
                                  "last_line": last or "no last line", "fingerprint": seen}
         if attempt is not None:
             entry["attempt"] = attempt
+        if feature and "workstream=" in feature:
+            entry["workstream"] = feature.split("workstream=", 1)[1].split(" ", 1)[0]
         if index:
             entry["index"] = index
         use = code_index.delegate_use(STREAM, iteration).get(iteration) if index and stream else None

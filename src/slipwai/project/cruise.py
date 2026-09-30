@@ -94,7 +94,7 @@ def cruise_command(
     )
     return f"""---
 description: Run /drive as driver and product owner, iteration after iteration, until every specification is satisfied — stopping only for a human
-argument-hint: [--feature <name>] [kick-off: what this run is for, where the brief or PRD is] | unblock: <what the outer loop saw> | told: <a person's message>
+argument-hint: [--feature <name>] [--workstream <name>] [kick-off: what this run is for, where the brief or PRD is] | unblock: <what the outer loop saw> | told: <a person's message>
 ---
 
 # Cruise
@@ -140,7 +140,11 @@ states goes into the owner brief (`{OWNER_BRIEF}`), a scope it sets is a decisio
 anything else. Two things the runner passes itself recur: a feature named with `--feature` on `run` or `start`
 (`{layout.make} cruise FEATURE=<name>`) is the first word of every iteration's argument and scopes the run to that
 feature's specification — the ladder is entered for it and no other — and `unblock: <reason>` is what the runner
-says when a run makes no progress (*Blocked: the bosun protocol*, below). {told_argument(SCRIPT)}
+says when a run makes no progress (*Blocked: the bosun protocol*, below). A workstream named with `--workstream`
+(`{layout.make} cruise WORKSTREAM=<name>`) rides beside the feature as `workstream=<name>` on every iteration and
+confines the ready set to that workstream, as *Workstreams* in `commands/drive.md` says: two runners on two
+machines are two workstreams, and a runner given none takes every workstream nobody holds.
+{told_argument(SCRIPT)}
 
 ## The watch seat
 
@@ -194,8 +198,9 @@ re-derives the entry stage from that artifact, the way demo feedback re-enters t
 ## When the ready set is empty: the completion audit
 
 An exhausted split is where `/drive` stops and where this command does its last stage. Delegate `/gaps` over
-the whole of `specs/<feature>/spec.md` against what shipped — one `drive-gaps` delegate per feature area,
-concurrently, as the post-implementation pass is per seam — and put every finding to the skipper protocol:
+the whole of `specs/<feature>/spec.md` against what shipped — one `drive-gaps` delegate per workstream first,
+concurrently, each over the criteria its context owns, then one across them for the events one context
+publishes and another reads — and put every finding to the skipper protocol:
 a criterion nothing built becomes a slice, appended to the split with `/story-splitting`, and the ladder is
 re-entered for it; a finding the owner rules out of scope is a decision entry saying so. Write
 `{REPORT}`: what the specification asked, what shipped, every out-of-scope decision, and every entry a person
@@ -264,7 +269,9 @@ does the stop hook; one that ends `continue` or `parked` leaves it for the next.
 - **Parallelism is inherited and widened.** Everything *Running ready slices concurrently* allows runs the
   same way here. What no longer serialises the fan-out are the two stops that were a person's: a delegate's
   product question is answered while its siblings keep running, and a slice's demo runs in the hand while
-  the next slice's delegate is still converging. Phase 4 stays one slice at a time on `main`. The worktrees
+  the next slice's delegate is still converging. Workstreams widen it further: a run given `--workstream`
+  takes that bounded context's slices and no other, one given none takes every workstream nobody holds, and a
+  workstream's merges and demos never wait on another's. Phase 4 stays one slice at a time on `main`. The worktrees
   beside the checkout are writable on Claude Code because the runner starts every iteration with `--add-dir`
   for the directory the checkout sits in (`scripts/agents/registry.json`, `headless.worktreeFlags`); on a
   harness whose row has no such flag, make the worktree inside the tree where the harness offers one, or run

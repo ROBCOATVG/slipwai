@@ -64,8 +64,9 @@ def drive_command(
    `context:`. One vocabulary is one context; say so and move on."""
         )
     stages.append(
-        """**Split** — the work is ordered vertical slices rather than one undivided outcome. Otherwise run
-   `/story-splitting`."""
+        """**Split** — the work is ordered vertical slices rather than one undivided outcome, arranged into
+   workstreams by bounded context where the slices fall in more than one (*Workstreams*, below). Otherwise
+   run `/story-splitting`."""
     )
     if event:
         stages.append(
@@ -135,7 +136,7 @@ def drive_command(
     ladder = "\n".join(f"{index}. {stage}" for index, stage in enumerate(stages, start=1))
     return f"""---
 description: Drive one slice through planning, implementation, and an actor-visible demo
-argument-hint: [slice-id-or-feature]
+argument-hint: [slice-id-or-feature] [workstream=<name>]
 ---
 
 # Drive

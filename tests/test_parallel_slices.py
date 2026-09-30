@@ -91,7 +91,7 @@ class DriveFansOutTest(FactoryTestCase):
                 self.assertIn("Inside one slice the stages stay strictly sequential", section)
                 self.assertIn("`make check-slice-scope` holds on\nevery `slice/<id>` branch", section)
                 self.assertIn("The canonical slot at the feature root is a link, never committed", section)
-                self.assertIn("in split order — never in finishing order", section)
+                self.assertIn("in split order within its workstream — never in\nfinishing order there", section)
                 self.assertIn("Demo on the slice branch, then verify, then push", section)
                 self.assertIn("unpushed worktree", section)
                 self.assertIn("a sibling's demo never waits on another's Phase 4", section)

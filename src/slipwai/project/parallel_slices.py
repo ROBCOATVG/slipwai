@@ -10,6 +10,12 @@ at the gate; and one slice per delegate, strictly sequential inside it. This mod
 the driver reads them. What "done" means changed with it: a slice's plan and tasks live under
 `slices/<id>/` from the day they are written, so their being there no longer says the slice shipped — the
 model's `status` does on the event profile, and the register at `slices/README.md` does otherwise.
+
+A fourth rule arrived when the bounded contexts the ladder already decides at the event model and the plan
+started being read downstream: a **workstream** is one context's slices in split order, held by one runner at
+a time, and two workstreams share nothing but the events one publishes and another reads — so merges are
+ordered within a workstream and not across, a demo never waits on another workstream's, and a second person or
+machine joins by taking a workstream rather than by racing for the next slice in one list.
 """
 from __future__ import annotations
 
@@ -55,11 +61,17 @@ def ready_set_selection(event: bool) -> str:
 3. Otherwise **ready** = not done, every `depends_on` done.
 4. If ready is empty, stop — the split is exhausted or every remaining slice is blocked.
 5. If ready has one slice, claim it and take it.
-6. If ready has several, **name the full ready set**, split into *claimed* and *unclaimed* by the
-   forge's `slice/<id>` branches, and run every unclaimed one whose contract is settled concurrently, as
-   *Running ready slices concurrently* says. Where the harness cannot delegate, claim the earliest in the
-   ordered split for this session and leave the rest named, so another session can claim a sibling. Do not
-   stop merely to choose among them unless the user asks."""
+6. If ready has several, **name the full ready set** — grouped by workstream where the split names more
+   than one — split into *claimed* and *unclaimed* by the forge's `slice/<id>` branches, and
+   run every unclaimed one whose contract is settled concurrently, as *Running ready slices concurrently*
+   says. Where the harness cannot delegate, claim the earliest in the ordered split for this session and
+   leave the rest named, so another session can claim a sibling. Do not stop merely to choose among them
+   unless the user asks.
+7. **A workstream narrows all of the above.** Given one — `workstream=<name>` in this command's argument,
+   which is what the cruise runner's `--workstream` passes — ready is that workstream's slices and no other;
+   the rest of the ready set is named as *another workstream's* and left. Given none, take the ready slices
+   of every workstream nobody holds, and leave a workstream whose `held_by` names somebody else to them,
+   naming its slices as *held*. *Workstreams* below says where a slice's workstream is read from."""
 
 
 def concurrent_slices(event: bool, layout: Layout = AT_ROOT) -> str:
@@ -125,8 +137,9 @@ before the fan-out or between merges. The canonical slot at the feature root is 
 its unpushed worktree in split order — never from `main`, never by pushing increment commits first. A
 claim may already have pushed a lock ref from `main`; leave the increment commits local until the actor
 accepts. After acceptance: `codegraph sync` if the project has adopted a code index, `{layout.make} verify`
-green, then push the slice's commits and merge into `main` in split order — never in finishing order.
-That is the first implementation push, and it is what starts CI. The composition root and the cumulative
+green, then push the slice's commits and merge into `main` in split order within its workstream — never in
+finishing order there — and across workstreams as each is accepted (*Workstreams*, below). That is the first
+implementation push, and it is what starts CI. The composition root and the cumulative
 artifacts are where two merges meet, and split order is what makes those resolutions predictable;
 regenerate the Mermaid diagrams (`{layout.make} model`) after a merge, never in a branch, and the canvas
 (`{layout.make} model-drawio`) after each merge as well, taking both sides' blocks. No slice's Phase 4 runs until its demo is
@@ -135,4 +148,58 @@ accepted, and a sibling's demo never waits on another's Phase 4. Phase 4 itself 
 `slice/<id>` branch once its Phase 4 clears: the claim is spent.
 
 **Where the harness cannot delegate**, run one slice at a time here — claim the earliest in split order,
-name the rest — and say so in the line that says which model ran (`harness cannot delegate`)."""
+name the rest — and say so in the line that says which model ran (`harness cannot delegate`).
+
+{workstreams(event, layout)}"""
+
+
+def workstream_source(event: bool) -> str:
+    """Where a slice's workstream is read from, per profile — derived from what the ladder already records,
+    never a second field to keep in step with the first."""
+    if event:
+        return ("the `context` its block of `docs/event-model/model.yaml` names; its `service`, where the project "
+                "has several services and that one holds a single context")
+    return ("the *Workstream* column of `## Slice graph` in `specs/<feature>/story-split.md`, naming the bounded "
+            "context the plan's *Structure Decision* names")
+
+
+def workstreams(event: bool, layout: Layout = AT_ROOT) -> str:
+    """The `### Workstreams` section: what one is, where it is read from, who takes it, and how its merges and
+    demos stop waiting on another's."""
+    decided = (
+        "at the event model and the plan" if event else "at the plan's *Structure Decision*"
+    )
+    return f"""### Workstreams
+
+A **workstream** is one bounded context's slices, in split order, held by one runner at a time — a person, a
+`/drive` session, a `/cruise` runner on another machine. The contexts are decided {decided}; a workstream is
+what they are for once the split exists. Two contexts share nothing but the events one publishes and another
+reads, so a slice in one workstream merges, demos and releases without waiting on a slice in another, and a
+second person or machine joins the work by taking a workstream rather than by racing for the next slice in one
+list. A slice's workstream is {workstream_source(event)}. A project with one context has one workstream, and
+nothing in this section changes for it.
+
+**The split names them.** Where the slices fall in more than one context, `## Workstreams` in
+`specs/<feature>/story-split.md` has one row per workstream — its bounded context, its slices in split order,
+`held_by` (a name, or empty) and a note — and `## Slice graph` carries a *Workstream* column;
+`/story-splitting` writes both. A slice whose commands and events straddle two contexts is two slices, or a
+boundary question for the model, and never one slice in two workstreams. A `depends_on` that crosses
+workstreams is a contract dependency — the event one publishes and the other reads — and the row says which.
+
+**A session takes one workstream, or every free one.** `/drive workstream=<name>` — what the cruise runner's
+`--workstream <name>` and `{layout.make} cruise WORKSTREAM=<name>` pass — confines the ready set to that
+workstream. Given none, a session takes the ready slices of every workstream nobody holds. `held_by` is
+routing, not a lock: a person or a runner named there gets that workstream's slices left alone, and the board
+shows them as held; the claim stays the `slice/<id>` branch, so two runners on one workstream are still two
+claims and the mutex holds. A person takes a workstream by writing their name in the row and committing it on
+`main`; a runner given `--workstream` writes nothing — the argument is the whole of its hold.
+
+**Merges are ordered within a workstream and not across.** In one workstream, merge in split order as
+*Running ready slices concurrently* says. Across workstreams, merge as each is accepted, whichever finished
+first: the composition root and the cumulative artifacts are still where two merges meet, and the second takes
+both sides. The context's events module grows additively for exactly this reason — the merge of two additions
+is a union — and a conflict there is a contract change: stop both workstreams for the host, never resolve it
+in a branch. A workstream's demo never waits on another workstream's demo, and its release constraint is its
+own — a flag covers a capability, and a capability lives in one context. Phase 4 stays one slice at a time on
+`main`, whichever workstream the slice came from. The board's ⬜, 🔀 and ➡️ lines are grouped by workstream
+where there is more than one, each with its own `N of M` and its `held_by`."""

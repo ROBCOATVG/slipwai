@@ -233,6 +233,8 @@ Before returning a split, check every child story:
 - Are dependencies explicit and small enough to manage?
 - Does the **Slice graph** name genuine `depends_on` separately from apparent ones (synthetic-event seeding is not a build dependency)?
 - Could any pair of slices whose `depends_on` are already satisfied run in parallel (schema-only sharing, no shared mutable surface)?
+- Does every slice sit in exactly one **workstream** — one bounded context? A slice whose commands and events straddle two contexts is two slices, or a boundary question for the model, never one slice in two workstreams.
+- Is every `depends_on` that crosses workstreams named as the contract it is — the event one context publishes and the other reads — rather than an ordering habit?
 - Are deferred paths, data, rules, and qualities visible?
 - Is it safe to ship, or is the release constraint explicit?
 - Does it avoid prescribing unnecessary implementation details?
@@ -247,6 +249,7 @@ Red flags:
 - every child must finish before any child can be tested
 - a spike for every story
 - the first (or an early) slice is infrastructure — auth, admin, user management — chosen because it "has to come first," not because the product's core capability depends on it being real yet
+- one bounded context's slices all `depends_on` another context's, so two workstreams that share only an event are serialised into one
 - acceptance criteria that say "works" or "fast" without observable detail
 - slices that are so tiny they only specify a solution detail
 - all business rules forced into the first slice without discussion
@@ -270,15 +273,31 @@ Why this first: [value, risk, learning, or bargain]
 | ... | ... | ... | ... | ... | ... |
 
 ## Slice graph
-| Slice | depends_on | parallel_ok_with | Notes |
-|---|---|---|---|
-| ... | — or id list | sibling ids that share only a schema / synthetic seed | genuine build deps only; synthetic-event seeding is not a dependency |
+| Slice | Workstream | depends_on | parallel_ok_with | Notes |
+|---|---|---|---|---|
+| ... | the bounded context that owns it | — or id list | sibling ids that share only a schema / synthetic seed | genuine build deps only; synthetic-event seeding is not a dependency |
 
 `/drive` and `/where-are-we` read this table (or, on the event profile, each slice's `depends_on` in
 `docs/event-model/model.yaml`) to compute the **ready** set: not yet done, every `depends_on` already done.
 Ready slices whose contract is settled run in parallel: one `/drive` session fans out over the unclaimed
-ones, one delegate per slice on a `slice/<id>` branch, and merges them back in split order; a session that
-cannot delegate takes the earliest ready slice in split order and names the rest.
+ones, one delegate per slice on a `slice/<id>` branch, and merges them back in split order within a
+workstream and as each is accepted across workstreams; a session that cannot delegate takes the earliest
+ready slice in split order and names the rest.
+
+## Workstreams
+| Workstream | Bounded context | Slices (split order) | held_by | Notes |
+|---|---|---|---|---|
+| ... | the context, as the model or `project.json` names it | id list, in order | a person or runner, or empty | cross-workstream `depends_on`, and the event each one is |
+
+Only where the slices fall in more than one bounded context; one context is one workstream and needs no
+table. A **workstream** is that context's slices in split order, held by one runner at a time — a person, a
+`/drive` session, a `/cruise` runner on another machine. On the event profile the *Workstream* column repeats
+each slice's `context` (or its `service`, where that holds one context) and may not disagree with it; on the
+other profile it is where the workstream is recorded, and the plan's *Structure Decision* names the same
+context. Two workstreams share nothing but the events one publishes and another reads, which is what lets a
+second person or machine take one whole (`/drive workstream=<name>`) and merge, demo and release without
+waiting on the other; `held_by` is routing for that, not a lock — the `slice/<id>` claim stays the mutex.
+`commands/drive.md`, *Workstreams*, has the rules `/drive` applies.
 
 ## Parking Lot
 [Explicit follow-ups, questions, or intentionally unsplit tasks]

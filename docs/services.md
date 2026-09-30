@@ -89,8 +89,10 @@ applications say.
   one entry: `scripts/check-imports.py` refuses an import from one context into another that does not go
   through the other's `public` module (`api` in Java), and `check-model` requires every slice from
   `modelled` on to name its `context` beside its `service`, so the canvases exist per context before any
-  context is a service. A manifest written before the field was a list — `"context": "billing"` — is read
-  as a list of one; the factory writes `contexts`.
+  context is a service. Once the split exists, each context is also a **workstream** — its slices in split
+  order, held by one runner at a time, merging and demoing without waiting on another context's
+  ([The delivery loop](delivery-loop.md), *Workstreams*). A manifest written before the field was a list —
+  `"context": "billing"` — is read as a list of one; the factory writes `contexts`.
 - **`schema`** says which shape those readers expect. `add-service` refuses a manifest with another number
   rather than guessing what an older or newer factory meant by these fields.
 

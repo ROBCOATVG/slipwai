@@ -152,6 +152,13 @@ model, the plan's *Structure Decision* otherwise — and where that service hold
 `context` as well. A slice that no recorded purpose covers is a product decision to ask, not a default to
 take. A service with no purpose recorded is the first question to ask, before anything is placed in or
 around it.
+
+Once the split exists, a context is also a **workstream**: its slices in split order, held by one runner at
+a time — a person, a `/drive` session, a `/cruise` runner on another machine. Two contexts share nothing but
+the events one publishes and another reads, so a workstream merges, demos and releases without waiting on
+another, and a second person or machine joins the work by taking one (`/drive workstream=<name>`) rather
+than by racing for the next slice in one list. `commands/drive.md`, *Workstreams*, has the rules; the seam
+the import gate and `make check-slice-scope` already hold is what makes them safe.
 """
     if web:
         proxies = "; ".join(

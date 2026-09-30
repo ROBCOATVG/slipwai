@@ -82,6 +82,11 @@ line in the actor's vocabulary rather than a slice id or a test name:
   delegate, unless the user picks another ready one
 - ⛔ **Blocked** — remaining slices waiting on unmet `depends_on`, or an open `CRITICAL` ahead of them
 
+Where the split names more than one workstream (`## Workstreams` in `story-split.md`, or the contexts the
+model's slices name), ⬜, 🔀 and ➡️ are grouped by workstream, each group with its own `N of M` and its
+`held_by`, so a person holding one sees theirs and a runner sees which are free; a slice in a workstream
+somebody else holds is *held*, never *unclaimed*.
+
 The board is derived from artifacts, not memory, the way the entry stage is:
 {board_sources}.
 

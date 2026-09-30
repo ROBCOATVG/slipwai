@@ -142,6 +142,18 @@ Spec Kit commands write through, so being there no longer means shipped: `status
 event profile, a row in `slices/README.md`'s register otherwise. `docs/event-model.md` says why the contract
 comes first; a harness that cannot delegate takes one slice at a time and names the rest.
 
+The bounded contexts stages 3 and 8 decide are what let more than one person or machine deliver at once. A
+**workstream** is one context's slices in split order, held by one runner at a time; two contexts share nothing
+but the events one publishes and another reads, so a workstream's merges are ordered within it and not across,
+its demo never waits on another workstream's, and its release constraint is its own — a flag covers a
+capability, and a capability lives in one context. The split names them (`## Workstreams` in `story-split.md`,
+with a `held_by` per row) wherever the slices fall in more than one context; a slice's workstream is its
+`context` in the model, or the *Workstream* column of the slice graph on the other profile. A session given
+`/drive workstream=<name>` — the cruise runner's `--workstream`, `make cruise WORKSTREAM=<name>` — takes that
+workstream's ready slices and no other; one given none takes every workstream nobody holds. The `slice/<id>`
+claim stays the mutex; `held_by` only routes. Phase 4 stays one slice at a time on `main`. One context is one
+workstream, and a project with one sees no difference (`commands/drive.md`, *Workstreams*).
+
 The table is the owner's to change as and when. `/model-delegation-settings implement=strong claude.fast=haiku` — the command over
 `python3 scripts/agents/models.py --set` — edits it checked — a stage's role, or what a role maps to on a harness; a role a stage newly
 names is added as `null` under every harness until it is mapped, and a harness the registry records no

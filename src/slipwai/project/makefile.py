@@ -310,7 +310,7 @@ check-migrations: ## Fail when a migration contracts the schema without naming t
 \tpython3 scripts/check-migrations.py
 check-chart: ## Fail when the chart's marks are untyped, double-set, withdrawn, or a slice names no capability
 \tpython3 scripts/check-chart.py
-check-rendered: ## Fail when a feature-level decisions or adversary log is not what the fairways' own copies render to
+check-rendered: ## Fail when a decisions or adversary log, or the split's held_by, is not what it renders from
 \tpython3 scripts/render-fairways.py --check
 check-surfaces: ## Fail when a slice delivers a state nobody approved, or an approved state no slice delivers
 \tpython3 scripts/check-surfaces.py

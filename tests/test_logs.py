@@ -12,6 +12,7 @@ that wrote no line made no progress.
 from __future__ import annotations
 
 import json
+import os
 import re
 import unittest
 
@@ -173,6 +174,49 @@ class ClosedTest(unittest.TestCase):
         if found is None:
             self.fail("check-decisions.py no longer declares VERDICTS as a literal tuple")
         self.assertEqual(tuple(re.findall(r'"([^"]+)"', found.group(1))), logs.VERDICTS)
+
+
+class MachineTest(unittest.TestCase):
+    """Which machine wrote this. One identity, used by the claim refs, the per-machine harbour log and a
+    berth's database name — because three answers to *which machine* is three ways for two of them to
+    disagree about whether a collision is one."""
+
+    def setUp(self) -> None:
+        self.was = os.environ.get("SLIPWAI_MACHINE")
+        self.addCleanup(self.restore)
+
+    def restore(self) -> None:
+        if self.was is None:
+            os.environ.pop("SLIPWAI_MACHINE", None)
+        else:
+            os.environ["SLIPWAI_MACHINE"] = self.was
+
+    def test_it_is_derived_and_not_chosen(self) -> None:
+        """Nobody picks it, which is the berth rule: a name somebody types is a name somebody retypes."""
+        os.environ.pop("SLIPWAI_MACHINE", None)
+        self.assertEqual(logs.machine(), logs.machine())
+        self.assertTrue(logs.machine())
+
+    def test_it_is_safe_in_a_git_ref_a_filename_and_a_database_name(self) -> None:
+        """It is spent in all three places, and the one that would break quietly is the database name:
+        `bookings_<machine>_booking` reaching a server with a hyphen in it is a refused connection."""
+        for given in ("Lukes-MacBook-Pro.local", "ci runner #3", "  ", "WIN-DESKTOP", "ação"):
+            with self.subTest(given=given):
+                os.environ["SLIPWAI_MACHINE"] = given
+                self.assertRegex(logs.machine(), r"^[a-z][a-z0-9_]*$")
+                self.assertLessEqual(len(logs.machine()), logs.MACHINE_WIDTH)
+
+    def test_a_person_may_say_which_machine_this_is(self) -> None:
+        """Two containers off one image share a hostname, and a shared database is where that is found
+        out. The override is the one place a name is typed, and it is typed once."""
+        os.environ["SLIPWAI_MACHINE"] = "harbour-two"
+        self.assertEqual(logs.machine(), "harbour_two")
+
+    def test_a_name_with_nothing_usable_in_it_is_still_a_machine(self) -> None:
+        """Never the empty string: it is spent as a path component and a ref component, and an empty one
+        makes `refs/slipwai/claims//ordering`, which git refuses in a sentence about nothing."""
+        os.environ["SLIPWAI_MACHINE"] = "???"
+        self.assertRegex(logs.machine(), r"^[a-z][a-z0-9_]*$")
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -25,6 +25,9 @@ this file exists to prevent.
 from __future__ import annotations
 
 import json
+import os
+import platform
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -35,6 +38,14 @@ V = 1
 #: them through `refs/slipwai/logs`, so a captain on another machine reads the same lines with no commit.
 LOGS = ".slipwai/logs"
 HARBOUR = f"{LOGS}/harbour.jsonl"
+
+#: How long a machine's identity may be. Short because it is spent inside other names — a database called
+#: `bookings_<machine>_booking` reaching PostgreSQL's 63-byte limit is a berth that cannot connect and a
+#: refusal nobody traces back to a hostname.
+MACHINE_WIDTH = 16
+#: What a machine's identity may be made of, which is the intersection of three alphabets: a git ref
+#: component, a path component on every platform, and an unquoted SQL identifier.
+UNUSABLE = re.compile(r"[^a-z0-9]+")
 
 #: What every line carries, whichever log it is in.
 COMMON = ("v", "t", "kind")
@@ -106,6 +117,31 @@ class Unreadable(Exception):
 def now() -> str:
     """The timestamp a line carries: UTC, to the second, which is what sorts two logs into one order."""
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def machine() -> str:
+    """Which machine this is: one identity, derived from the hostname, used everywhere two of them meet.
+
+    It names the claim ref a captain takes (`refs/slipwai/claims/<fairway>` carries it as the commit's
+    author), the harbour log this machine writes, and the database a berth allocates. Three answers to
+    *which machine* would be three ways for two of them to disagree about whether a collision is one, which
+    is why there is this one and it is in the module both runtimes already share.
+
+    **Derived and not chosen**, which is the berth rule: nobody picks a number, so nobody picks the same
+    one twice. The hostname's first label, lowercased, with everything outside the three alphabets it has
+    to survive — a git ref component, a path component, an unquoted SQL identifier — folded to `_`.
+
+    `SLIPWAI_MACHINE` is the one place a name is typed, and it is typed once. Two containers off one image
+    share a hostname, and a shared database is where that is found out rather than said.
+    """
+    given = os.environ.get("SLIPWAI_MACHINE") or platform.node() or ""
+    slug = UNUSABLE.sub("_", given.split(".")[0].strip().lower()).strip("_")
+    if not slug[:1].isalpha():
+        # A name that begins with a digit is not an SQL identifier and a name with nothing usable in it is
+        # not a path component. Neither is a fault worth refusing a run over, so both become a machine
+        # whose name says it was not readable rather than an empty string nothing can be built out of.
+        slug = f"m_{slug}" if slug else "machine"
+    return slug[:MACHINE_WIDTH].rstrip("_")
 
 
 @dataclass(frozen=True)

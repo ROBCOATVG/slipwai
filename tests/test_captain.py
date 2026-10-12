@@ -67,6 +67,58 @@ class ChoosingTest(Fixture):
         self.assertIn("no slices", done.stdout)
 
 
+class ClaimTest(Fixture):
+    """One machine holds a fairway at a time, and the ref is what says so.
+
+    Nothing stopped two machines running a captain for one fairway, and the whole log design rests on one
+    writer per file: two captains for `ordering` is two processes appending to one `.jsonl` through two
+    worktrees. A `claimed` line could never fix it, being the thing protected.
+    """
+
+    def test_it_holds_the_claim_ref_while_the_slice_is_being_worked(self) -> None:
+        """Asked from inside `/sail`, because that is the only moment the question matters: while this
+        machine is writing to the deck log, the ref has to say the fairway is this machine's."""
+        watcher = ("import subprocess, pathlib\n"
+                   "shown = subprocess.run(['git', 'show', '-s', '--format=%an',"
+                   " 'refs/slipwai/claims/ORD'], capture_output=True, text=True)\n"
+                   "pathlib.Path('held.txt').write_text(shown.stdout.strip(), encoding='utf-8')\n")
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(watcher + WORKS), machine="harbour_one")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual((self.root / "held.txt").read_text(encoding="utf-8"), "harbour_one", done.stdout)
+
+    def test_a_fairway_another_machine_holds_is_refused_by_name(self) -> None:
+        """The refusal is the whole point: the silent corruption becomes a message naming who and when."""
+        self.hold("ORD", "harbour_one")
+        done = self.captain("ORD", self.sail(WORKS), machine="harbour_two")
+        self.assertIn("harbour_one", done.stdout)
+        self.assertIn("ORD is held by", done.stdout)
+
+    def test_and_writes_nothing_at_all_to_the_other_machine_s_log(self) -> None:
+        """Not even a `parked`: the deck log is the file the claim exists to keep one writer on, so a
+        captain that was refused the claim and then wrote its reason into it would have done the damage
+        while explaining that it must not."""
+        self.hold("ORD", "harbour_one")
+        self.grant("ORD-01")
+        self.captain("ORD", self.sail(WORKS), machine="harbour_two")
+        self.assertEqual(self.read("ORD"), [])
+
+    def test_the_claim_is_given_back_when_the_captain_stops(self) -> None:
+        """A captain that kept the claim after it stopped would park the fairway for every other machine
+        until somebody went looking for a ref."""
+        self.grant("ORD-01")
+        self.captain("ORD", self.sail(WORKS), machine="harbour_one")
+        self.assertEqual(self.claimed_by("ORD"), "")
+
+    def test_the_machine_that_holds_it_runs_again(self) -> None:
+        """Re-taking your own claim is the common case: a captain takes it every turn."""
+        self.hold("ORD", "harbour_one")
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(WORKS), machine="harbour_one")
+        self.assertIn("ORD-01", done.stdout)
+        self.assertEqual([e.fields["slice"] for e in self.read("ORD") if e.kind == "claimed"], ["ORD-01"])
+
+
 class WatchingTest(Fixture):
     def test_a_drive_that_writes_nothing_is_ended_and_parked_with_the_reason(self) -> None:
         """Not because the agent said it was stuck — a stuck agent cannot say so — but because the log stopped."""

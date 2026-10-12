@@ -53,6 +53,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+import claims  # noqa: E402
 import clearance  # noqa: E402
 import harness  # noqa: E402
 import inbox  # noqa: E402
@@ -87,6 +88,9 @@ DEFAULT_ATTEMPTS = 2
 ACCEPTED = "accepted"
 #: How often the harbour log is re-read while waiting for an answer to a request.
 ANSWER_POLL = 2.0
+#: What a turn can say that ends the run rather than inviting another: a park is a person's to clear, there
+#: is nothing to start, or another machine holds this fairway and nothing here changes that by waiting.
+STOPS = (" is parked — ", "nothing to start", " is held by ")
 #: Minutes a harbour may be *silent* for before a wait on it is a park, where `harbour.json` does not say.
 #: `half-ahead`'s number. Silence and not elapsed time: see `await_answer`.
 DEFAULT_WAIT_MINUTES = 60
@@ -514,8 +518,23 @@ def fetch() -> None:
 
 
 def turn(fairway: str) -> str:
-    """One turn: what happened, as the line the command prints."""
+    """One turn: what happened, as the line the command prints.
+
+    **The claim comes before anything is written.** A fairway's deck log has one writer by rule, and
+    nothing enforced it across machines: two captains for `ordering` were two processes appending to one
+    file through two worktrees, which is a conflict in the file the design promised would never have one.
+    So the claim ref is taken here, before the first line of the turn, and a captain that cannot take it
+    writes nothing at all — not even its reason, which would be the damage done while explaining it.
+    """
     fetch()
+    taken = claims.take(ROOT, fairway, logs.machine())
+    if not taken.ours:
+        return f"captain: {taken.why}"
+    if taken.why:
+        # Taken, with something to say about it — a harbour that is not a git repository, where nothing can
+        # hold a fairway and a second captain cannot be refused. Said and carried on from, because a project
+        # without git has no berths and no merges either, and this is not where that is refused.
+        print(f"captain: {taken.why}", flush=True)
     _, feature = clearance.chart()
     found = entries(feature, fairway)
     claimed, merged, parked = state(found)
@@ -544,12 +563,18 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--once", action="store_true", help="one slice, rather than the loop")
     parser.add_argument("--interval", type=float, default=30.0, help="seconds between turns")
     parsed = parser.parse_args(argv)
-    while True:
-        said = turn(parsed.fairway)
-        print(said, flush=True)
-        if parsed.once or " is parked — " in said or "nothing to start" in said:
-            return 0
-        time.sleep(parsed.interval)
+    try:
+        while True:
+            said = turn(parsed.fairway)
+            print(said, flush=True)
+            if parsed.once or any(mark in said for mark in STOPS):
+                return 0
+            time.sleep(parsed.interval)
+    finally:
+        # The claim is given back whichever way the loop ended, including the park. A captain that kept it
+        # would hold the fairway against every other machine until somebody went looking for a ref — and a
+        # captain killed outright still does, which is what 11.2's lease is for.
+        claims.release(ROOT, parsed.fairway, logs.machine())
 
 
 if __name__ == "__main__":

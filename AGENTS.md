@@ -64,9 +64,12 @@ Every module in version 2 comes from one of two commits, and the slice says whic
 
 The keel names no language and no extension. A `slipwai_language_*` import anywhere in `src/` fails the
 gate. In the other direction, a package may import only the keel modules
-[import-surface.txt](import-surface.txt) lists, and that file is held in both directions: a line naming a
-module the keel has not got fails too. Adding a line to it is a promise that cannot be withdrawn without
-breaking a package built somewhere this repository cannot see. The ceiling is twenty.
+[import-surface.txt](import-surface.txt) lists **for its kind**, and that file is held in both directions: a
+line naming a module the keel has not got fails too. Adding a line to it is a promise that cannot be
+withdrawn without breaking a package built somewhere this repository cannot see. The ceiling is twenty, and
+it is twenty *per kind*: the file carries a section per kind of package — `[language]`, `[target]` — because
+the number is about how far into the keel any one package may reach, which is the same question whichever
+kind is asking, rather than a budget shared out between them.
 
 ## The skills, and where they live
 

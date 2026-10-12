@@ -17,9 +17,12 @@ Four rules, each with a failure it exists to prevent:
    a named pair before anyone pays for it.
 3. **Size.** A module over the budget is the state this package was split out of: a file nobody reads
    end to end, whose contents are found by grep and edited in the dark.
-4. **The import surface.** A language package may import only the keel modules `import-surface.txt` lists,
-   and that file may list only modules the keel has. Without it, a package leans on a module nobody
+4. **The import surface.** A package may import only the keel modules `import-surface.txt` lists *for its
+   kind*, and that file may list only modules the keel has. Without it, a package leans on a module nobody
    promised it, and a rename inside the keel breaks a language built somewhere this repository cannot see.
+   The file is a section per kind — `[language]`, `[target]` — because the two are promised different
+   things and the ceiling is on how far into the keel any one kind may reach, not a budget shared between
+   them.
 
 The keel knows no package in the other direction either: an absolute import of a `slipwai_language_*`
 module anywhere in `src/` is a violation, whichever package it names.
@@ -100,12 +103,19 @@ MODULE_BUDGET = 350
 # A package facade dispatches; anything longer is behaviour hiding somewhere no one looks for it.
 FACADE_BUDGET = 40
 
-# A language is a package in a directory of its own (`slipwai_language_<name>`), loaded by name at run
+# The kinds of package whose Python the keel imports, each in a directory of its own, loaded by name at run
 # time. Extensions are not here: an extension's executable half is the `init.py` that runs inside a
 # generated project, where the keel is not installed and nothing of it can be imported.
-PACKAGE_PREFIX = "slipwai_language_"
+PACKAGE_PREFIXES = {"language": "slipwai_language_", "target": "slipwai_target_"}
 PACKAGES = ROOT / "packages"
 SURFACE = ROOT / "import-surface.txt"
+# How many keel modules any one kind of package may be promised. The plan's number, read off what the six
+# language packages actually import; past it a package is reaching into the keel rather than being answered
+# by it, and that is the same question whichever kind is asking.
+CEILING = 20
+# A section header in the surface: `[language]`, `[target]`. Lines before the first one are the language's,
+# which is what the whole file was before there was a second kind to promise anything to.
+SECTION = "language"
 
 
 def tier_of(module: str) -> tuple[int, str]:
@@ -144,6 +154,7 @@ def imported_modules(path: Path, text: str) -> list[tuple[int, str]]:
 
 def package_imports(text: str) -> list[tuple[int, str]]:
     """Every absolute import of a language package in a module, as (line, top-level module), anywhere in it."""
+    prefix = PACKAGE_PREFIXES["language"]
     found: list[tuple[int, str]] = []
     for node in ast.walk(ast.parse(text)):
         if isinstance(node, ast.Import):
@@ -152,14 +163,35 @@ def package_imports(text: str) -> list[tuple[int, str]]:
             names = [node.module]
         else:
             continue
-        found += [(node.lineno, name.split(".")[0]) for name in names if name.startswith(PACKAGE_PREFIX)]
+        found += [(node.lineno, name.split(".")[0]) for name in names if name.startswith(prefix)]
     return found
 
 
-def import_surface(listing: str) -> set[str]:
-    """The modules `import-surface.txt` lists: one dotted name per line, blanks and `#` comments ignored."""
-    lines = (line.split("#", 1)[0].strip() for line in listing.splitlines())
-    return {line for line in lines if line}
+def import_surface(listing: str, kind: str | None = None) -> set[str]:
+    """The modules `import-surface.txt` lists: one dotted name per line, blanks and `#` comments ignored.
+
+    One section per kind of package, headed `[language]` or `[target]`, because the two are promised
+    different things and the ceiling is on what any one kind may reach for. `kind` is one section; without
+    it, every section at once — which is what holds the file's other direction, since a line naming a module
+    the keel has not got is a promise nobody can keep whichever section somebody wrote it in.
+
+    Lines before the first header are the language's. The file was one flat list of what a language may
+    import before there was a second kind to promise anything to, and that is what such a list still means.
+    """
+    found: dict[str, set[str]] = {name: set() for name in PACKAGE_PREFIXES}
+    section = SECTION
+    for raw in listing.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1].strip()
+            found.setdefault(section, set())
+            continue
+        found[section].add(line)
+    if kind is None:
+        return {module for modules in found.values() for module in modules}
+    return set(found.get(kind, ()))
 
 
 def keel_modules() -> set[str]:
@@ -202,10 +234,10 @@ def surface_violations(modules: set[str]) -> tuple[int, list[str]]:
     The surface is held whether or not a package exists to break it: a line naming a module the keel does
     not have is a promise nobody can keep, and the empty list of phase 1 is checked the same way.
     """
-    surface = import_surface(SURFACE.read_text(encoding="utf-8") if SURFACE.is_file() else "")
+    listing = SURFACE.read_text(encoding="utf-8") if SURFACE.is_file() else ""
     violations = [
         f"{SURFACE.name}: the import surface lists {module}, which the keel does not have"
-        for module in sorted(surface - modules)
+        for module in sorted(import_surface(listing) - modules)
     ]
     if not PACKAGES.is_dir():
         return 0, violations
@@ -217,17 +249,20 @@ def surface_violations(modules: set[str]) -> tuple[int, list[str]]:
         for entry in sorted(PACKAGES.iterdir())
         if entry.is_dir() and not entry.name.startswith(".") and not any(entry.iterdir())
     ]
-    packages = sorted(PACKAGES.glob(f"*/{PACKAGE_PREFIX}*/"))
-    for directory in packages:
-        language = directory.parent.name
+    packages = sorted((kind, directory)
+                      for kind, prefix in PACKAGE_PREFIXES.items()
+                      for directory in PACKAGES.glob(f"*/{prefix}*/"))
+    for kind, directory in packages:
+        surface = import_surface(listing, kind)
+        name = directory.parent.name
         for path in sorted(directory.rglob("*")):
             relative = path.relative_to(ROOT).as_posix()
             if path.is_symlink():
-                violations.append(f"{relative}: a symlink inside language {language}'s source, whose target this gate "
+                violations.append(f"{relative}: a symlink inside {kind} {name}'s source, whose target this gate "
                                   "does not read; a package holds its own files")
                 continue
             if "__pycache__" not in path.parts and path.suffix in (".pyc", ".so", ".pyd"):
-                violations.append(f"{relative}: a compiled module in language {language}'s source, which this gate "
+                violations.append(f"{relative}: a compiled module in {kind} {name}'s source, which this gate "
                                   "cannot read; ship the .py")
             if path.suffix != ".py" or not path.is_file():
                 continue
@@ -236,8 +271,8 @@ def surface_violations(modules: set[str]) -> tuple[int, list[str]]:
                 violations.append(fault)
                 continue
             violations += [
-                f"{relative}:{line}: language {language} imports {module}, which is not on the import surface "
-                f"listed in {SURFACE.name}"
+                f"{relative}:{line}: {kind} {name} imports {module}, which is not on the import surface "
+                f"listed in {SURFACE.name} for a {kind}"
                 for line, module in sorted(set(keel_imports(text, modules))) if module not in surface
             ]
     return len(packages), violations
@@ -308,9 +343,10 @@ def main() -> int:
         for violation in sorted(set(violations)):
             print(f"  {violation}", file=sys.stderr)
         return 1
-    surface = import_surface(SURFACE.read_text(encoding="utf-8") if SURFACE.is_file() else "")
+    listing = SURFACE.read_text(encoding="utf-8") if SURFACE.is_file() else ""
+    promised = ", ".join(f"{len(import_surface(listing, kind))} for a {kind}" for kind in sorted(PACKAGE_PREFIXES))
     print(f"check-structure: {len(modules)} modules, {len(TIERS)} tiers, no upward imports and no cycles; "
-          f"{packages} language packages import only the {len(surface)} modules on the surface")
+          f"{packages} package(s) import only what the surface promises — {promised}")
     return 0
 
 

@@ -153,6 +153,42 @@ class GateTest(unittest.TestCase):
         self.assertIn("language go imports slipwai.cli, which is not on the import surface", said)
         self.assertNotIn("slipwai.errors, which is not on the import surface", said)
 
+    def test_a_target_package_is_read_and_held_to_the_targets_own_surface(self) -> None:
+        """The surface is a section per kind. A target reaching for a module only a language is promised is
+        refused exactly as a language reaching past its own section is."""
+        code, said = self.gate(
+            {"__init__.py": '"""The keel."""\n', "errors.py": '"""A refusal."""\n', "cli.py": '"""The edge."""\n'},
+            surface="[language]\nslipwai.cli\n[target]\nslipwai.errors\n",
+            packages={"cumulus/slipwai_target_cumulus/__init__.py":
+                      '"""Cumulus."""\nfrom slipwai import errors, cli\n'},
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("target cumulus imports slipwai.cli, which is not on the import surface", said)
+        self.assertNotIn("slipwai.errors, which is not on the import surface", said)
+
+    def test_a_language_may_not_reach_for_what_only_a_target_is_promised(self) -> None:
+        code, said = self.gate(
+            {"__init__.py": '"""The keel."""\n', "errors.py": '"""A refusal."""\n', "cli.py": '"""The edge."""\n'},
+            surface="[language]\nslipwai.cli\n[target]\nslipwai.errors\n",
+            packages={"go/slipwai_language_go/backend.py": '"""Go."""\nfrom slipwai import errors\n'},
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("language go imports slipwai.errors, which is not on the import surface", said)
+
+    def test_a_whole_target_package_passes(self) -> None:
+        code, said = self.gate(
+            {"__init__.py": '"""The keel."""\n', "errors.py": '"""A refusal."""\n'},
+            surface="[target]\nslipwai.errors\n",
+            packages={"cumulus/slipwai_target_cumulus/__init__.py": '"""Cumulus."""\nfrom slipwai import errors\n'},
+        )
+        self.assertEqual((code, said), (0, ""))
+
+    def test_a_surface_naming_a_module_the_keel_has_not_got_is_refused_in_any_section(self) -> None:
+        code, said = self.gate({"__init__.py": '"""The keel."""\n'},
+                               surface="[target]\nslipwai.registry\n")
+        self.assertEqual(code, 1)
+        self.assertIn("lists slipwai.registry, which the keel does not have", said)
+
     def test_a_package_directory_that_was_never_checked_out_is_reported(self) -> None:
         (self.root / "packages/go").mkdir(parents=True)
         code, said = self.gate({"__init__.py": '"""The keel."""\n'})
@@ -171,6 +207,23 @@ class SurfaceTest(unittest.TestCase):
         listing = "# a comment\n\nslipwai.registry\n  slipwai.loaded  # why\n"
         self.assertEqual(structure.import_surface(listing), {"slipwai.registry", "slipwai.loaded"})
 
+    def test_a_listing_with_no_section_header_is_what_it_always_was(self) -> None:
+        """The file was one flat list of what a language may import, so that is what a headerless one is."""
+        listing = "slipwai.registry\n"
+        self.assertEqual(structure.import_surface(listing, "language"), {"slipwai.registry"})
+        self.assertEqual(structure.import_surface(listing, "target"), set())
+
+    def test_each_kind_reads_its_own_section_and_no_other(self) -> None:
+        listing = "slipwai.registry\n[target]\nslipwai.target_protocol\n[language]\nslipwai.loaded\n"
+        self.assertEqual(structure.import_surface(listing, "language"), {"slipwai.registry", "slipwai.loaded"})
+        self.assertEqual(structure.import_surface(listing, "target"), {"slipwai.target_protocol"})
+
+    def test_the_whole_file_is_every_section_at_once(self) -> None:
+        """Which is what holds the other direction: a line naming a module the keel has not got is a
+        promise nobody can keep, in whichever section somebody wrote it."""
+        listing = "slipwai.registry\n[target]\nslipwai.target_protocol\n"
+        self.assertEqual(structure.import_surface(listing), {"slipwai.registry", "slipwai.target_protocol"})
+
     def test_every_module_this_repository_promises_is_one_it_has(self) -> None:
         """A surface line is a promise. One naming a module the keel has not got cannot be kept."""
         self.assertTrue(structure.SURFACE.is_file())
@@ -178,11 +231,21 @@ class SurfaceTest(unittest.TestCase):
         self.assertTrue(promised, "the surface should not be empty once a module is promised")
         self.assertLessEqual(promised, structure.keel_modules())
 
-    def test_the_surface_stays_under_the_ceiling(self) -> None:
-        """Twenty is what the six packages actually import, and the plan's ceiling. Past it, a package is
-        reaching into the keel rather than being answered by it."""
-        promised = structure.import_surface(structure.SURFACE.read_text(encoding="utf-8"))
-        self.assertLessEqual(len(promised), 20, sorted(promised))
+    def test_every_section_stays_under_the_ceiling(self) -> None:
+        """Twenty is what the six language packages actually import, and the plan's ceiling. Past it, a
+        package is reaching into the keel rather than being answered by it — which is the same question for
+        every kind, so every kind's section is held to the same number rather than to one of its own."""
+        listing = structure.SURFACE.read_text(encoding="utf-8")
+        for kind in structure.PACKAGE_PREFIXES:
+            with self.subTest(kind=kind):
+                promised = structure.import_surface(listing, kind)
+                self.assertLessEqual(len(promised), structure.CEILING, sorted(promised))
+
+    def test_a_language_still_promises_exactly_the_twenty_it_did(self) -> None:
+        """The surface was already at the ceiling when targets arrived, which is what sections are for: a
+        kind's own section widens without the language's being spent on it."""
+        listing = structure.SURFACE.read_text(encoding="utf-8")
+        self.assertEqual(len(structure.import_surface(listing, "language")), structure.CEILING)
 
 
 class RepositoryTest(unittest.TestCase):

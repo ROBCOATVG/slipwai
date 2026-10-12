@@ -10,9 +10,17 @@
 # built somewhere this repository cannot see. The list being short is the point — twenty modules is the
 # ceiling the plan sets, not a target.
 #
+# **A section per kind of package, and each section has that same ceiling.** The ceiling is about how far
+# into the keel any one package may reach, which is the same question whether the package is a language or
+# a target; it is not a budget to be shared out between them. The language section was at twenty on the day
+# targets became packages, and a flat list would have made a target's first line come out of a language's
+# promise — a promise that cannot be withdrawn, so it would have come out of nothing. Lines before the
+# first header are the language's, which is what the whole of this file was before there was a second kind.
+#
 # Extensions are not on this schema. An extension's executable half is the `init.py` that runs inside a
 # generated project, where the keel is not installed and nothing of it can be imported.
 
+[language]
 slipwai.assets
 slipwai.backends
 slipwai.errors
@@ -37,3 +45,10 @@ slipwai.project.shared_packages
 # The toy package's own tests import `slipwai.conformance` — the suite the keel exports for a package to
 # run against itself, rather than a module its source imports for an answer. The gate reads a package's
 # source and not its tests, so it is not on this list; it arrives in slice 3.9.
+
+[target]
+# One line, and deliberately one. A target package's module exists to export `TARGET`, and `TARGET` is a
+# `Target` of `TargetMember`s — so this is the module that has to be importable for a target package to be
+# writable at all, and nothing else has been shown to be. A line here is as unwithdrawable as a line above
+# it, so the rest of what a cloud needs arrives when a cloud is a package and has been seen to need it.
+slipwai.target_protocol

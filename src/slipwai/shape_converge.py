@@ -22,6 +22,14 @@ from .targets import managed
 
 
 def transition(root: Path, requested: str) -> tuple[dict, dict, str]:
+    """The manifest, the row whose warning this move has to carry, and the shape being left.
+
+    A package writes each row's `transition` as *how to leave this shape*, so the row the operator needs is
+    the current one's and not the destination's. Printing the destination's meant `converge --shape liner`
+    — a skiff leaving a private Lightsail database that ECS cannot reach — never showed its export/import
+    warning, while `converge --shape skiff` told somebody leaving RDS to import into RDS. Both rows are
+    still read here, so a target missing either is refused before anything is written.
+    """
     document = read_manifest(root, "converge --shape")
     selected(requested)
     target = document["target"]
@@ -34,20 +42,20 @@ def transition(root: Path, requested: str) -> tuple[dict, dict, str]:
         raise GenerationError(
             f"this project already has shape {requested}; run slipwai converge --check to inspect its adoption"
         )
-    destination = row(target, requested)
-    if destination is None:
+    leaving, arriving = row(target, current), row(target, requested)
+    if leaving is None or arriving is None:
         raise GenerationError(f"target {target} has no shape transition contract; install an updated target package")
-    return document, destination, current
+    return document, leaving, current
 
 
 def check(root: Path, requested: str) -> str:
-    document, destination, current = transition(root, requested)
-    return (f"{document['name']}: {current} → {requested}\n\n{destination['transition']}\n\n"
+    document, leaving, current = transition(root, requested)
+    return (f"{document['name']}: {current} → {requested}\n\n{leaving['transition']}\n\n"
             f"Run slipwai converge --shape {requested} to prepare files and a runbook. No infrastructure is applied.\n")
 
 
 def prepare(root: Path, requested: str) -> Path:
-    document, destination, current = transition(root, requested)
+    document, leaving, current = transition(root, requested)
     layout = layout_of(document)
     relative = f".slipwai/shape-transitions/{current}-to-{requested}"
     proposal = contained(root, relative)
@@ -78,7 +86,7 @@ def prepare(root: Path, requested: str) -> Path:
     descriptor = {"from": current, "to": requested, "status": "prepared", "files": sorted(files), "remove": removed,
                   "applied": False, "cutoverConfirmed": False}
     files["transition.json"] = json.dumps(descriptor, indent=2) + "\n"
-    files["RUNBOOK.md"] = runbook(relative, current, requested, destination)
+    files["RUNBOOK.md"] = runbook(relative, current, requested, leaving)
     paths = {path: contained(proposal, path) for path in files}
     proposal.mkdir(parents=True)
     for relative_path, content in files.items():
@@ -88,14 +96,15 @@ def prepare(root: Path, requested: str) -> Path:
     return proposal
 
 
-def runbook(proposal: str, current: str, requested: str, destination: dict) -> str:
+def runbook(proposal: str, current: str, requested: str, leaving: dict) -> str:
+    """The steps, headed by the warning that belongs to the shape being left — see `transition`."""
     return f"""# Prepare {current} → {requested}
 
 This directory is a proposal. The active project.json, infrastructure, state and database have not changed.
 Nothing has been applied, destroyed, pushed or cut over. Do not install the candidate manifest before the
 provider's data-preservation and cutover steps are complete: its deploy workflow uses the new shape.
 
-{destination['transition']}
+{leaving['transition']}
 
 1. Back up the current state and database. Keep the original module and its state key/workspace intact.
    Record the current deployment's immutable images, database endpoint, migration version and row counts.

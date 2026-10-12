@@ -91,6 +91,37 @@ class GeneratedShapeTest(unittest.TestCase):
                 liner = project_files("a-staff-tool", "event-modelling", target, self.apps(), shape="liner")
                 self.assertNotIn(login, liner[".github/workflows/deploy.yml"].split("\n  staging:", 1)[1])
 
+    def test_each_direction_warns_about_the_shape_it_is_being_asked_to_leave(self) -> None:
+        """A package's `transition` is written as "how to leave this shape", so the direction decides whose.
+
+        The decisive one is the skiff's: a private Lightsail database cannot be reached from ECS, so
+        skiff → liner is an export/import and a verified cutover, not a DNS change. Printing the
+        destination's row meant the one path this slice exists for never showed that warning at all, and
+        the other direction told an operator leaving RDS to import *into* RDS.
+        """
+        import tempfile
+        from pathlib import Path as _Path
+
+        from slipwai.deployment_shapes import row
+        from slipwai.scaffold import project_files
+        from slipwai.shape_converge import check, prepare
+        for current, requested in (("skiff", "liner"), ("liner", "skiff")):
+            with self.subTest(leaving=current), tempfile.TemporaryDirectory() as directory:
+                root = _Path(directory)
+                generated = project_files("a-staff-tool", "event-modelling", "aws", self.apps(),
+                                          shape=current)
+                (root / "project.json").write_text(generated["project.json"], encoding="utf-8")
+                leaving, arriving = row("aws", current) or {}, row("aws", requested) or {}
+                self.assertTrue(leaving and arriving)
+                self.assertNotEqual(leaving["transition"], arriving["transition"])
+                said = check(root, requested)
+                self.assertIn(f"{current} \u2192 {requested}", said)
+                self.assertIn(leaving["transition"], said)
+                self.assertNotIn(arriving["transition"], said)
+                written = (prepare(root, requested) / "RUNBOOK.md").read_text(encoding="utf-8")
+                self.assertIn(leaving["transition"], written)
+                self.assertNotIn(arriving["transition"], written)
+
     def test_prepare_preserves_original_database_state_and_manifest_and_runs_no_cloud_commands(self) -> None:
         import json
         import tempfile

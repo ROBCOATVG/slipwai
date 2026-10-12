@@ -64,6 +64,26 @@ AUTH0_ENVIRONMENT = (
     "  AUTH0_CLIENT_SECRET: ${{ secrets.AUTH0_CLIENT_SECRET }}\n"
 )
 
+# What this pipeline is, in its own words, which is not the same pipeline on both shapes: a liner builds once
+# and walks the commit through staging to production, and a skiff has one environment to reach. So the two
+# are written out whole and the shape picks one. The liner's was assembled and the skiff's cut back out of
+# the result by searching for the wording of a comment, which is a line that stops working the day somebody
+# improves the wording — and stops by raising from the middle of a generation rather than by failing a test.
+DEPLOY_HEADERS = {
+    "liner": """name: deploy
+# Every commit that passes `verify` on main goes all the way to production, in one pipeline: build once, push
+# by digest, apply staging, prove it, apply production, prove it. The gate is `verify`: this workflow starts
+# when that one completes on main, and only goes on if it passed, so the deploy never runs beside the gate
+# or ahead of it. There is no approval step, and no second pipeline for a hotfix, because this is the only
+# path. Every job checks out the commit `verify` passed, not the head of main at the time the job starts.
+""",
+    "skiff": """name: deploy
+# Every verified main commit builds immutable images, deploys the one production
+# environment and proves its endpoint. Every job checks out the verified commit.
+""",
+}
+
+
 def pipeline(target: str) -> dict[str, str]:
     """The five parts of these workflows that are this target's. The job around them is this module's."""
     return dict(answer(target, PIPELINE, default={}))
@@ -107,13 +127,8 @@ def deploy_workflow(apps: list[App], target: str, auth0: bool, shape: str = "lin
                   deploy_job("staging", "build", web, target)
                   + deploy_job("production", "staging", web, target, condition="vars.AUTO_PROMOTE != 'false'"))
     result = (
-        """name: deploy
-# Every commit that passes `verify` on main goes all the way to production, in one pipeline: build once, push
-# by digest, apply staging, prove it, apply production, prove it. The gate is `verify`: this workflow starts
-# when that one completes on main, and only goes on if it passed, so the deploy never runs beside the gate
-# or ahead of it. There is no approval step, and no second pipeline for a hotfix, because this is the only
-# path. Every job checks out the commit `verify` passed, not the head of main at the time the job starts.
-on:
+        DEPLOY_HEADERS[shape]
+        + """on:
   workflow_run:
     workflows:
       - verify
@@ -147,11 +162,6 @@ env:
 """
         + deployment
     )
-    if shape == "skiff":
-        start = result.index("# Every commit")
-        end = result.index("on:\n", start)
-        result = (result[:start] + "# Every verified main commit builds immutable images, deploys the one production\n"
-                  "# environment and proves its endpoint. Every job checks out the verified commit.\n" + result[end:])
     return result
 
 

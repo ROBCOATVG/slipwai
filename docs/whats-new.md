@@ -132,8 +132,8 @@ and none of them starts a second one.
 A run has a dozen numbers that all mean "go slower" in different units, and in version 1 none of them
 existed — 104 hours and hundreds of millions of input tokens on one slice, with a person noticing and the
 bill arriving as the only signals. `slipwai telegraph half-ahead` sets the group: how many boilers are lit,
-how many delegates a captain may run at once, which model role each stage uses, and the budget per slice
-and per day. Five positions, fastest first: `full-ahead`, `half-ahead`, `slow-ahead`, `dead-slow`, `stop`.
+how many delegates a captain may run at once, the budget per slice and per day, and five more. Which model
+runs each stage is a separate choice, `/model-delegation-settings`, versioned with the project. Five positions, fastest first: `full-ahead`, `half-ahead`, `slow-ahead`, `dead-slow`, `stop`.
 Set one number alone and the board says "adjusted" rather than inventing a position. When the day's budget
 is spent the harbourmaster steps down one notch and writes why — never straight to `stop`, because a run
 that stops dead loses what was in flight.

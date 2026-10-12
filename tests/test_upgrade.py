@@ -22,8 +22,10 @@ from pathlib import Path
 from slipwai.assets import ROOT, VERSION
 from slipwai.errors import GenerationError
 from slipwai.upgrade import (
+    MIGRATION_PAGE,
     RECEIPT,
     credentials,
+    crossing_notice,
     environment_variable,
     following_snapshots,
     how_installed,
@@ -127,6 +129,22 @@ class UpgradeTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(f"newest published: {NEWER}", result.stdout)
+
+    def test_the_crossing_notice_reaches_a_person_through_the_verb_itself(self) -> None:
+        """End to end, against the registry fixture: this copy is 1.x, the page offers a 2.x, and
+        `--check` says so and points at the page. The unit cases decide when it fires; this one proves it
+        is wired to the verb and not merely importable."""
+        result = self.run_upgrade("--check", SLIPWAI_INDEX=f"{self.base}/public")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"newest published: {NEWER}", result.stdout)
+        self.assertIn("Moving a 1.x project is a major crossing", result.stdout)
+        self.assertIn(MIGRATION_PAGE, result.stdout)
+
+    def test_the_crossing_notice_is_not_said_by_a_plain_upgrade(self) -> None:
+        """`--check` is a question; an upgrade is an answer. A person who has already decided to upgrade
+        the tool is not asking whether to migrate a project, and saying it there would say it every time."""
+        result = self.run_upgrade(SLIPWAI_INDEX=f"{self.base}/public")
+        self.assertNotIn("major crossing", result.stdout)
 
     def test_a_registry_holding_none_of_this_package_says_so(self) -> None:
         """A 404 is an absence and is reported as one — the distinction the 401 case exists to keep."""
@@ -243,3 +261,70 @@ class UpgradeTest(unittest.TestCase):
         for kind in ("executable", "checkout"):
             with self.assertRaises(GenerationError):
                 upgrade_command(kind)
+
+
+class CrossingNoticeTest(unittest.TestCase):
+    """The last thing the 1.x line says: a 2.x exists, and crossing a project is a decision of its own.
+
+    Narrow on purpose. Upgrading the tool does not migrate a project, so a notice on every `upgrade` would
+    be telling people about work they have not asked to do, every time, for the rest of the line. It is on
+    `--check` — the flag whose purpose is "tell me what is out there" — and it is said by the line being
+    left rather than for ever by the line arrived at.
+    """
+
+    def test_a_released_two_is_named_with_the_page_that_says_what_crossing_costs(self) -> None:
+        notice = crossing_notice("1.5.1", "2.0.0")
+        self.assertIn("2.0.0 is available", notice)
+        self.assertIn(MIGRATION_PAGE, notice)
+        self.assertIn("slipwai migrate --check", notice)
+        self.assertNotIn("development snapshot", notice)
+
+    def test_a_snapshot_of_two_is_named_as_one_rather_than_passed_over(self) -> None:
+        """A snapshot reaches this line only where the person asked for snapshots — `published` counts
+        them under `--pre` or when this copy is itself one — so staying silent would be silent for exactly
+        the people watching version 2 arrive. It is said, and said as what it is."""
+        for snapshot in ("2.0.0.dev0", "2.0.0rc1", "2.0.0a1"):
+            with self.subTest(newest=snapshot):
+                notice = crossing_notice("1.5.1", snapshot)
+                self.assertIn(snapshot, notice)
+                self.assertIn("development snapshot", notice)
+                self.assertIn("not the 2.0.0 release", notice)
+                self.assertIn(MIGRATION_PAGE, notice)
+
+    def test_a_jump_of_several_versions_at_once_still_says_it(self) -> None:
+        """The gap is the reason, not the increment. Somebody two or three majors behind has the most to
+        read before moving and is the likeliest to meet this line at all."""
+        for installed, newest in (("1.0.0", "2.4.7"), ("1.3.0", "2.1.0"), ("1.5.1", "2.0.0")):
+            with self.subTest(installed=installed, newest=newest):
+                self.assertIn(MIGRATION_PAGE, crossing_notice(installed, newest))
+
+    def test_an_offer_past_version_two_still_sends_them_through_version_two(self) -> None:
+        """A rule that only recognised major 2 would go quiet exactly when the gap was widest. The
+        crossing out of 1.x is version 2's `migrate`, so that is what a 1.x copy is told, whatever the
+        registry's newest happens to be by then."""
+        for newest in ("3.0.0", "4.1.0"):
+            with self.subTest(newest=newest):
+                notice = crossing_notice("1.5.1", newest)
+                self.assertIn(newest, notice)
+                self.assertIn("more than one major release ahead", notice)
+                self.assertIn("Cross to version 2 before going further", notice)
+                self.assertIn("slipwai migrate", notice)
+                self.assertIn(MIGRATION_PAGE, notice)
+
+    def test_an_upgrade_inside_this_line_says_nothing(self) -> None:
+        self.assertEqual(crossing_notice("1.5.1", "1.6.0"), "")
+
+    def test_a_copy_already_across_says_nothing(self) -> None:
+        self.assertEqual(crossing_notice("2.0.0", "2.1.0"), "")
+
+    def test_the_page_it_names_is_one_this_repository_has(self) -> None:
+        """A notice pointing at a 404 is worse than no notice: it is the one moment somebody goes looking.
+
+        Checked by filename against the tree rather than by fetching, so the gate needs no network and the
+        link cannot rot without this failing.
+        """
+        page = ROOT / "docs" / MIGRATION_PAGE.rsplit("/", 1)[-1]
+        self.assertTrue(page.is_file(), f"{MIGRATION_PAGE} names {page}, which is not in this repository")
+        words = page.read_text(encoding="utf-8")
+        for promised in ("slipwai migrate", "cannot undo", "--with-claims", "--check"):
+            self.assertIn(promised, words)

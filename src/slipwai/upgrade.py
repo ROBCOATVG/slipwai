@@ -259,13 +259,41 @@ MIGRATION_PAGE = "https://github.com/ROBCOATVG/slipwai/blob/main/docs/migrating-
 
 
 def crossing_notice(installed: str, newest: str) -> str:
-    """Only a registry-confirmed stable 2.x offer activates the final 1.x crossing notice."""
-    if key(installed)[0] != 1 or key(newest)[0] != 2 or is_prerelease(newest):
+    """The last thing this line says: a 2.x or later exists, and crossing a project is a decision of its own.
+
+    Fired by a registry-confirmed offer of version 2 **or anything past it** to a 1.x copy, including a
+    development snapshot.
+
+    Past it matters as much as 2 itself. The crossing out of 1.x is version 2's `migrate`, so a copy this
+    far back still goes through it — and a rule that only recognised major 2 would go quiet exactly when
+    the gap was widest, for the person who has been away longest and has the most to read before moving.
+
+    A snapshot only ever reaches here when the person asked for one: `published` counts them under `--pre`,
+    or when this copy is itself a snapshot. So the choice is already theirs, and a line that stayed silent
+    then would be silent for everyone watching version 2 arrive. It says which it is rather than levelling
+    them, because somebody reading this is deciding whether to move a real project.
+
+    Narrow everywhere else. Upgrading the tool does not migrate a project, so this is said on `--check`,
+    the flag whose whole purpose is "tell me what is out there", and by the line being left rather than for
+    ever by the line arrived at.
+    """
+    if key(installed)[0] != 1 or key(newest)[0] < 2:
         return ""
+    if is_prerelease(newest):
+        offer = (f"Version {newest} is a development snapshot of version 2, published to your configured "
+                 "registry. It is not the 2.0.0 release and is not a version to move a project you care "
+                 "about onto.")
+    elif key(newest)[0] > 2:
+        offer = (f"Version {newest} is available in your configured registry, more than one major release "
+                 "ahead of this copy. The crossing out of 1.x is version 2's: a project moves across once, "
+                 "with `slipwai migrate`, and what that costs is below. Cross to version 2 before going "
+                 "further.")
+    else:
+        offer = f"Version {newest} is available in your configured registry."
     return (
-        f"Version {newest} is available in your configured registry. Moving a 1.x project is a major crossing: "
-        "keep a clean committed backup, install its language and target packages, and review renamed files "
-        "and any three-way merge conflicts. Upgrading the tool does not migrate the project.\n"
+        f"{offer} Moving a 1.x project is a major crossing: keep a clean committed backup, install its "
+        "language and target packages, and review renamed files and any three-way merge conflicts. "
+        "Upgrading the tool does not migrate the project.\n"
         "After installing version 2, run `slipwai migrate --check` in the project; when ready, "
         "run `slipwai migrate`. Confirm proposed fairways and unplaced slices before claiming work.\n"
         f"Migration steps and costs: {MIGRATION_PAGE}"

@@ -4,8 +4,9 @@ Brownfield adoption. Three of them: `check-convergence` and `ratchet-tighten`, t
 re-recording; `smoke`, each application that existed before the method did started by the command it recorded and proved
 to answer — the one thing the day-one gate cannot compose from the eight recorded commands, run by `ci` and by a job of
 its own in the gate's workflow and never by `verify`, since it needs what the application needs; and `test-full` where a
-suite too slow for `verify` was recorded. Split from `adopted.py` when the smoke target took the pages and the targets
-together past the module budget, the way `adopted_ci.py` was.
+suite too slow for `verify` was recorded. Split from `adopted.py` for the reason `adopted_ci.py` is: these are read off what the adoption recorded
+about running the applications, and a change to them follows a change to that record rather than to the
+method's prose.
 """
 from __future__ import annotations
 

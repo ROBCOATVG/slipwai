@@ -1,7 +1,6 @@
 """The commands about the keel that made this project: `add-service`, `add-frontend`, `catch-up`.
 
-Split from `commands.py` for the reason `native_commands.py` is split from `makefile.py` — that module is at
-its budget — and because these are a different kind of command. The others drive a slice through the
+Split from `commands.py` because these are a different kind of command. The others drive a slice through the
 project's own workflow; these are about the relationship with the keel. An agent asked for "a payments
 service" and given no command will copy `apps/service` by hand and edit the nine files that name it, which
 is the state `add-service` exists to end; the command is where it learns that the keel does this, what

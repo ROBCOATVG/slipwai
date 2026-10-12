@@ -1387,6 +1387,29 @@ The first attempt paid for these rules. They apply from phase 1, inside the fork
   positions. Found writing the reference pages (9.2), which documented the code and reported the gap rather
   than repeating the plan.
 
+- **The module budget stays at 350 and keeps counting every line.** Phase 16.8's re-examination, and two
+  decisions rather than one. Phase 16 took `src/slipwai/project/` from 48% of its lines inside
+  non-docstring string literals to **32%**, and the modules at or over 300 lines from **ten to four**.
+  The number stays because it is now binding on code without being moved: the largest modules in the tree
+  are 95 to 100% code — `ecosystems.py` at 349 of 349, `test_services.py` at 350 of 350 — and several sit
+  exactly at it. It keeps counting every line because counting code alone would stop it binding at all:
+  measured that way the largest module in the repository is exactly 350, so nothing would be over and the
+  rule would become a no-op the day it changed — and prose would be free to keep in Python, which is the
+  incentive this phase spent eight slices removing.
+  **An asset's own size is deliberately not budgeted.** The largest is `assets/toolkit/commands/sail.md` at
+  355 lines. A page is read top to bottom, has headings to navigate by, and is as long as its subject, none
+  of which is true of a module. What holds an asset instead is `tests/test_generated_prose.py` — every token
+  named must be provided, every value provided must be named, nothing rendered may still carry a marker —
+  which is the drift a page can actually suffer.
+  **And the line the slice found while doing it: a budget is a good reason to split code and a bad one to
+  split prose.** Eight modules under `project/` gave the budget as their reason for existing; each had a
+  behavioural seam available and now states it — what a selection *says* against what it *writes*, the
+  forge's answer against the method's words, the commands that add to a project against the one about a
+  migration already landed. Four modules in the keel proper also name the budget, and those were left
+  alone: `adopt_report.py`, `naming.py`, `cli_generate.py` and `manifest/reading.py` were split when *code*
+  reached the limit, which is the budget doing exactly what it is for. The complaint was never that a
+  module was split at the budget; it was that the budget was being spent on paragraphs.
+
 ### Still open
 
 None. Every decision this plan needed on 2026-10-06 is taken, including the one slice 3.6 raised and

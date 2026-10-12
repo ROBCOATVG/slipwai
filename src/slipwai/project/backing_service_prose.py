@@ -1,12 +1,14 @@
 """The prose that explains the selected adapters: the README sections and what each gate proves.
 
-It sits apart from `backing_services.py` for the reason the service layouts once did — the tables are most of
-the bytes and none of the behaviour, and a module holding both outgrows what anybody wants to read at once.
-`backing_services.py` had grown past check-structure's module budget saying exactly that.
+It sits apart from `backing_services.py` because the two have different readers and write different things.
+Nothing here writes a file: `project/readme.py` asks for the README section, `project/docs.py` for the gate
+section and `project/guidance.py` for the rules, while the half left behind writes Compose, the environment
+template, the prune script and the realms, and is read by `scaffold.py` and the per-language modules. One
+module answering both would be asked by six callers for two unrelated things.
 
-The split is also where the readers are. Nothing here writes a file: `project/readme.py` asks for the
-README section and `project/docs.py` for the gate section, while the half left behind is read by
-`scaffold.py` and the per-language modules. Every table is keyed by the feature that answered an axis
+The budget is not the reason, though it was the reason recorded until 16.8 looked: a split made to get
+under a limit is a split a reader cannot predict, and this one is predictable — ask it what a selection
+*says*, ask the other what a selection *writes*. Every table is keyed by the feature that answered an axis
 rather than tested for by name, so a second event store or a second identity provider is a row and not a
 branch.
 """

@@ -1,6 +1,6 @@
 """The generated `docs/evolving-the-project.md`: what the project owns, and how a newer factory reaches it.
 
-Split from `docs.py` when that module reached its budget, and a page of its own because it states the one
+A page of its own because it states the one
 relationship a generated project has with this keel afterwards: ownership of every file, and `replay`
 as the way later versions are offered rather than applied.
 """

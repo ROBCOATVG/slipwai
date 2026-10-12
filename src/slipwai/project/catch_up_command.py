@@ -1,8 +1,8 @@
 """`commands/catch-up.md`: what a newer factory now asks of code it did not write.
 
 Split from `add_commands`, which generates the commands that *add* to a project. This one is about a
-migration that has already landed — an unrelated subject sharing a file only because both are generated
-command pages, and the module was at its budget.
+migration that has already landed — an unrelated subject, sharing nothing with those but the fact that
+both are generated command pages.
 """
 from __future__ import annotations
 

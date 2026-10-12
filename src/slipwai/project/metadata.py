@@ -1,9 +1,20 @@
 """`project.json`: the manifest — every answer this project was given, written once for everything that reads it.
 
-Split from `readme.py`, which had reached its budget, and kept apart from `manifest.py`: that module reads a
-written manifest back for `add-service` and `replay`, and this one writes it, so the shape is spelled in
-two places on purpose — a factory that means something else by these fields is refused by the reader, not
-silently accepted by the writer.
+This module left `readme.py` because that module had reached its budget, which is not a reason, and slice
+16.4 is where the split was re-examined now that the budget is not being spent on paragraphs. It stays, and
+the reason is `sourced` rather than the line count. That function is the keel's one reading of whether a
+service's truth is its log, and three modules that write prose ask it — `write_model_prose.py`, whose own
+docstring calls this the one place that reads the rung, `backing_service_prose.py` and `event_model.py`.
+`readme.py` imports all three. Putting the manifest back in `readme.py` would therefore have three prose
+modules importing the README writer to ask what rung a service is on, and would close an import cycle
+`check-structure.py` refuses — `project.readme -> project.write_model_prose -> project.readme`. The seam is
+real: the manifest and the rung sit below the prose that reads them, and the README is one of that prose's
+readers rather than their home.
+
+Kept apart from `manifest.py` for a second reason: that module reads a written manifest back for
+`add-service` and `replay`, and this one writes it, so the shape is spelled in two places on purpose — a
+factory that means something else by these fields is refused by the reader, not silently accepted by the
+writer.
 """
 from __future__ import annotations
 

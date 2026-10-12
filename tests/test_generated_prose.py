@@ -30,17 +30,22 @@ from __future__ import annotations
 import unittest
 from collections.abc import Callable
 
-from slipwai.assets import ADOPTION_ROOT, GUIDANCE_ROOT, TOOLKIT_ROOT
+import checkout_packages  # noqa: F401
+
+from slipwai.assets import ADOPTION_ROOT, GUIDANCE_ROOT, PAGE_ROOT, TOOLKIT_ROOT
 from slipwai.errors import GenerationError
 from slipwai.layout import AT_ROOT
 from slipwai.project import (
     add_commands,
     briefs,
     commands,
+    docs,
     ground_command,
     pin_commands,
     prose,
+    readme,
     rules,
+    run_skill,
     sail_section,
 )
 
@@ -67,6 +72,13 @@ def pooled(*providers: Callable[[], dict[str, str]]) -> dict[str, str]:
 #: paragraphs the pages are assembled from.
 TEMPLATED = (
     (TOOLKIT_ROOT / "agents", ("agents",), lambda: briefs.values(AT_ROOT)),
+    # The pages a project is given that are rendered rather than copied. Three rows rather than one,
+    # because each tree is written by its own module and so names its own values — pooling them would let
+    # a page name a token only another module provides and still pass.
+    (PAGE_ROOT, ("README.md",), lambda: readme.values("project", "standard", [], "none", "liner")),
+    (PAGE_ROOT / "docs", ("docs",), lambda: docs.values("project", "standard", [], "none")),
+    (PAGE_ROOT / "skills/run-the-app", ("skills/run-the-app",),
+     lambda: run_skill.values("project", [], AT_ROOT)),
     (GUIDANCE_ROOT, ("AGENTS.md", "docs/architecture.md"), lambda: rules.TOKENS),
     (TOOLKIT_ROOT / "commands", ("commands",),
      lambda: pooled(commands.values, sail_section.values, add_commands.values)),

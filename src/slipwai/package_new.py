@@ -46,8 +46,11 @@ KINDS = ("extension", "language", "target")
 #: of one. The other two kinds' scaffolds were written before that rule was and still carry `0.1.0`, which
 #: fails their own `version` check; a target's does not.
 FIRST_RELEASE = "1.0.0"
-#: The publisher's verbs, in the order they are used.
-VERBS = ("new", "check", "version", "release", "register", "key")
+#: The publisher's verbs, in the order they are used. `plugin` is the odd one and is here rather than in a
+#: verb of its own on purpose: it renders a package of the keel's *own* material for a harness to install,
+#: which is the publisher's job done by the keel, and a second top-level verb would have been a second
+#: place a person looks for the thing that makes something installable.
+VERBS = ("new", "check", "version", "release", "register", "key", "plugin")
 #: What a scaffolded manifest declares it needs: this keel's schema, and everything up to the next major.
 def core_range(schema: str) -> str:
     major = schema.split(".")[0]

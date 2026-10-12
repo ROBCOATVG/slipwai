@@ -186,6 +186,11 @@ SHAPE_ROWS = {
                     "scripts/_deploy_common.py": "scripts/deploy.py",
                     "scripts/skiff_migrations.py": "scripts/skiff_migrations.py"},
         "environments": ("production",),
+        # `make deploy` on a skiff is also the migration: `scripts/skiff_migrations.py` builds a bounded
+        # wrapper over the immutable migration image and pushes it to ECR, because Lightsail has no
+        # one-off task to run it in. So the job that deploys has to be signed in to the registry, where a
+        # liner's deploy job never touches it — the liner migrates with an ECS task the stack declares.
+        "registry_at_deploy": True,
         "guidance": "One production environment, managed HTTPS readiness checks and rolling deployments. "
                     "The database stays private, backed up and protected from destruction. Database TLS "
                     "enforcement is checked before migrations or applications start. Lightsail operators can "

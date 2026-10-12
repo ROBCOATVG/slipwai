@@ -80,7 +80,9 @@ FLAG_TRANSPORTS: TargetMember[Any] = M("flag_transports", False, dict, "the defa
 
 #: Project deployment choices, distinct from the bootstrap/service stack phases above.
 DEPLOYMENT_SHAPES: TargetMember[Any] = M(
-    "deployment_shapes", False, dict, "skiff or liner -> compute, database, stacks, scripts, environments and guidance",
+    "deployment_shapes", False, dict,
+    "skiff or liner -> compute, database, stacks, scripts, environments, guidance, transition, and "
+    "optionally registry_at_deploy",
 )
 
 PROTOCOL: tuple[TargetMember[Any], ...] = (

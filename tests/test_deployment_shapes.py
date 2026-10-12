@@ -65,6 +65,32 @@ class GeneratedShapeTest(unittest.TestCase):
                 self.assertIn("infra/service/staging.tfvars", liner)
                 self.assertIn(".github/workflows/production.yml", liner)
 
+    def test_a_shape_that_migrates_from_its_deploy_job_signs_that_job_in_to_the_registry(self) -> None:
+        """`registry_at_deploy`, and the two halves of it that matter.
+
+        A liner applies and lets a task the stack declares pull the migration image with the platform's own
+        credentials, so the registry sign-in belongs to its build job and its deploy jobs never ask for it.
+        AWS's skiff has no such task — Lightsail has no one-off job — so `scripts/skiff_migrations.py`
+        builds a bounded wrapper over the immutable image and pushes it from inside `make deploy`; without
+        the login in that job every deploy of a TypeScript+Postgres skiff ended in `no basic auth
+        credentials`. Azure's skiff keeps the liner's Container App migrate job, so its deploy job must
+        *not* be given a sign-in it never uses: a step that does nothing reads as configuration.
+        """
+        from slipwai.project.deploy_workflow import pipeline
+        from slipwai.scaffold import project_files
+        for target, at_deploy in (("aws", True), ("azure", False)):
+            with self.subTest(target=target):
+                login = pipeline(target)["registry_login"].strip()
+                self.assertTrue(login)
+                skiff = project_files("a-staff-tool", "event-modelling", target, self.apps())
+                workflow = skiff[".github/workflows/deploy.yml"]
+                self.assertIn(login, workflow.split("\n  build:", 1)[1].split("\n  production:", 1)[0])
+                deploying = workflow.split("\n  production:", 1)[1]
+                self.assertEqual(login in deploying, at_deploy)
+                # And the liner is left exactly as it was: its deploy jobs apply and smoke, nothing else.
+                liner = project_files("a-staff-tool", "event-modelling", target, self.apps(), shape="liner")
+                self.assertNotIn(login, liner[".github/workflows/deploy.yml"].split("\n  staging:", 1)[1])
+
     def test_prepare_preserves_original_database_state_and_manifest_and_runs_no_cloud_commands(self) -> None:
         import json
         import tempfile

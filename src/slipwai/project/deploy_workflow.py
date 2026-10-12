@@ -27,6 +27,7 @@ and no laptop ever applies it.
 """
 from __future__ import annotations
 
+from ..deployment_shapes import row
 from ..images import KO_VERSION, PACK_VERSION, tools_needed
 from ..loaded_targets import answer
 from ..services import App, backends_of, families_of, services_of, web_apps
@@ -89,12 +90,21 @@ def pipeline(target: str) -> dict[str, str]:
     return dict(answer(target, PIPELINE, default={}))
 
 
-def deploy_job(environment: str, needs: str, web: bool, target: str, condition: str = "") -> str:
+def deploy_job(
+    environment: str, needs: str, web: bool, target: str, condition: str = "", *, registry: bool = False,
+) -> str:
     # The site is built in the deploy job rather than the build job because Vite bakes VITE_* values into the
     # bundle, and where there is a customer login those are the environment's.
+    #
+    # `registry` is the deployment row's `registry_at_deploy`: whether this shape's `make deploy` itself
+    # reaches the image registry. A liner's does not — it applies, and the migration is a task the stack
+    # declares, which pulls its own image with the platform's credentials — so the registry sign-in belongs
+    # to the build job alone and nothing here asks for it. A shape whose deploy *is* the migration needs it
+    # in this job, and a job that signs in to a registry it never touches is configuration doing nothing.
     cloud = pipeline(target)
     node = NODE_SETUP if web else ""
     gate = f"    if: {condition}\n" if condition else ""
+    login = cloud["registry_login"] if registry else ""
     return f"""
   {environment}:
     needs: {needs}
@@ -104,7 +114,7 @@ def deploy_job(environment: str, needs: str, web: bool, target: str, condition: 
 {CHECKOUT}{cloud['cli']}      - uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: {TOFU_VERSION}
-{node}{cloud['credentials']}      - run: make deploy ENV={environment}
+{node}{cloud['credentials']}{login}      - run: make deploy ENV={environment}
       - run: make smoke URL=$(make -s url ENV={environment})
 """
 
@@ -123,9 +133,16 @@ def deploy_workflow(apps: list[App], target: str, auth0: bool, shape: str = "lin
     tools = "".join(TOOL_SETUPS[tool] for tool in tools_needed(backends_of(apps)))
     cloud = pipeline(target)
     web = bool(web_apps(apps))
-    deployment = (deploy_job("production", "build", web, target) if shape == "skiff" else
-                  deploy_job("staging", "build", web, target)
-                  + deploy_job("production", "staging", web, target, condition="vars.AUTO_PROMOTE != 'false'"))
+    # Whether the job that runs `make deploy` has to be signed in to the image registry is the deployment
+    # row's to say, because it follows from how that shape migrates and nothing here can know that. A shape
+    # with no one-off task to migrate in builds and pushes a bounded migration wrapper from inside `make
+    # deploy`, and without the login every deploy of such a shape ends in `no basic auth credentials`.
+    choice = row(target, shape) or {}
+    at_deploy = bool(choice.get("registry_at_deploy"))
+    deployment = (deploy_job("production", "build", web, target, registry=at_deploy) if shape == "skiff" else
+                  deploy_job("staging", "build", web, target, registry=at_deploy)
+                  + deploy_job("production", "staging", web, target, condition="vars.AUTO_PROMOTE != 'false'",
+                               registry=at_deploy))
     result = (
         DEPLOY_HEADERS[shape]
         + """on:

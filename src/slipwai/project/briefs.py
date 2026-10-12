@@ -31,7 +31,6 @@ written over by nothing, so it would ship with its `{{make}}` still in it.
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from ..assets import TOOLKIT_ROOT
@@ -49,13 +48,10 @@ from .cruise_agents import (
     OWNER_BRIEF,
 )
 from .design_stage import tasks_brief as design_tasks_brief
+from .prose import resolve
 
 # Where the briefs live, beside the skills and the commands a project receives.
 BRIEFS = TOOLKIT_ROOT / "agents"
-# A placeholder, in the spelling `examples.py` already uses under `assets/`. Lower case and hyphenated so the
-# marker cannot be mistaken for the prose around it, and so a token and the Python name behind it are visibly
-# different things — the asset names `{{owner-brief}}`, not a module's `OWNER_BRIEF`.
-MARKER = re.compile(r"\{\{([a-z][a-z0-9-]*)\}\}")
 # What `agents.py` generates from the stage table, and what a brief may therefore never declare for itself.
 DECLARED = ("name", "stage", "writes", "commands")
 FENCE = "---\n"
@@ -129,26 +125,7 @@ def parse(name: str, text: str) -> Brief:
     return Brief(fields["description"], rest.strip("\n"))
 
 
-def resolve(name: str, text: str, named: dict[str, str]) -> str:
-    """`text` with each `{{placeholder}}` replaced, or a refusal naming the file and the token it invented.
-
-    The refusal matters more than the substitution. An unresolved `{{make}}` is a brief that ships the marker
-    into somebody's repository, where it reads as a typo in the method rather than as a bug in the keel, and
-    nothing downstream would notice: the file is valid markdown either way.
-    """
-    def value(match: re.Match[str]) -> str:
-        token = match.group(1)
-        if token not in named:
-            raise GenerationError(
-                f"{name}.md names {{{{{token}}}}}, which no brief value provides; the whole set is "
-                f"{', '.join(sorted(named))}"
-            )
-        return named[token]
-
-    return MARKER.sub(value, text)
-
-
 def brief(name: str, layout: Layout) -> Brief:
     """One type's brief, resolved for this project: what `agents.py` puts under the frontmatter it generates."""
     found = read(name)
-    return Brief(found.summary, resolve(name, found.body, values(layout)))
+    return Brief(found.summary, resolve(f"{name}.md", found.body, values(layout)))

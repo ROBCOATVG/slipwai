@@ -1332,6 +1332,26 @@ The first attempt paid for these rules. They apply from phase 1, inside the fork
   absent one and does not try; the gate that can is the package's own CI, where `package_sources` checks
   out exactly the siblings the package names and fails when one of them exists nowhere.
 
+- **Conditional generated prose: a whole section may become an asset, a sentence may not.** Phase 16's
+  gating question, and the rule the other seven slices apply. Two different things were both called
+  conditional prose, and one `if` in `guidance.py` holds both: an outer branch deciding whether a whole
+  section appears, and inner branches agreeing a sentence with a count — `{"s" if len(web) > 1 else ""}`.
+  The first is standing text whose presence is conditional, which is case 1; the second is rendered from the
+  declaration, which is case 2, and an asset that hand-wrote it would be a second answer to a question
+  `project.json` already answers. So a section moves behind an HTML-comment marker the module selects, and a
+  branch inside a sentence stays in Python. The test is the paragraph boundary: can you point at where the
+  branch begins and ends, and is it a whole paragraph or more? **There is deliberately no `{% if %}`** — a
+  template language with conditionals would make every one of those agreements expressible in an asset, which
+  is exactly the drift case 2 exists to prevent. The marker is an HTML comment because an asset is copied
+  into a project verbatim before the resolved one is written over it, so one that leaked is invisible rather
+  than a stray word in somebody's `AGENTS.md`. Written up in [docs/generated-prose.md](generated-prose.md),
+  with the check in `tests/test_generated_prose.py`.
+  One thing the writing-down found that the plan had not: **`{{name}}` is not the keel's spelling alone.** A
+  generated project ships `registry.json` carrying `"argPlaceholder": "{{args}}"` and a skill carrying
+  `{{badges}}`, both another system's substitution that must arrive intact. So the "nothing ships a marker"
+  check reads what the keel *renders*, named tree by tree, rather than every file a project receives — the
+  alternative was a list of exemptions by name, stale the first time somebody adds a skill.
+
 ### Still open
 
 None. Every decision this plan needed on 2026-10-06 is taken, including the one slice 3.6 raised and

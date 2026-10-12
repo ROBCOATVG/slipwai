@@ -26,7 +26,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai.errors import GenerationError
 from slipwai.layout import Layout
-from slipwai.project import briefs
+from slipwai.project import briefs, prose
 from slipwai.project.agents import agent_files, types
 
 RECORD = Path(__file__).resolve().parent / "fixtures/agent-briefs.sha256"
@@ -57,7 +57,7 @@ class SubstitutionTest(unittest.TestCase):
 
     def test_every_token_an_asset_names_is_one_the_substitution_provides(self) -> None:
         for name, text in self.assets.items():
-            for token in briefs.MARKER.findall(text):
+            for token in prose.MARKER.findall(text):
                 with self.subTest(brief=name, token=token):
                     self.assertIn(token, self.values,
                                   f"{name}.md names {{{{{token}}}}}, which no brief value provides")
@@ -65,7 +65,7 @@ class SubstitutionTest(unittest.TestCase):
     def test_every_value_the_substitution_provides_is_named_by_some_asset(self) -> None:
         """The direction that rots quietly: a value nothing names is a path somebody keeps in step for
         nobody, and it is still there to be interpolated into the next brief by accident."""
-        named = {token for text in self.assets.values() for token in briefs.MARKER.findall(text)}
+        named = {token for text in self.assets.values() for token in prose.MARKER.findall(text)}
         self.assertEqual(sorted(set(self.values) - named), [],
                          "these brief values are provided and no asset names them")
 
@@ -155,7 +155,7 @@ class ByteForByteTest(unittest.TestCase):
         """The two records differ for exactly the briefs that interpolate `{{make}}`, which is what makes
         the second layout worth recording rather than a copy of the first."""
         rows = recorded()
-        names = {token for text in assets().values() for token in briefs.MARKER.findall(text)}
+        names = {token for text in assets().values() for token in prose.MARKER.findall(text)}
         self.assertIn("make", names)
         moved = {path for (delivery, path), digest in rows.items()
                  if delivery != "." and rows[(".", path)] != digest}

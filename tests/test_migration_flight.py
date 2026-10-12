@@ -95,6 +95,30 @@ class FlightTest(unittest.TestCase):
         self.assertEqual([row["what"] for row in inbox([Fairway("main", "ordering", lines)])],
                          ["taken by the iteration that died", "still queued", "and this one"])
 
+    def park(self, *endings: str) -> list[str]:
+        """What the crossing records after a version 1 run whose log ends on each of these last lines."""
+        found = []
+        for number, ending in enumerate(endings, start=1):
+            (self.root / "specs/cruise-log.jsonl").write_text(
+                json.dumps({"iteration": number, "last_line": ending}) + "\n", encoding="utf-8")
+            with patch("slipwai.migration_flight.shipped", return_value=None):
+                flight = read(self.root, self.document, YAML())
+            found.append("; ".join(line.fields["why"] for _, _, line in flight.logs if line.kind == "parked"))
+        return found
+
+    def test_every_version_1_ending_but_done_crosses_as_a_park_that_says_why(self) -> None:
+        reasons = self.park("cruise: parked: the gate is red", "cruise: stopped: human", "cruise: done",
+                            "cruise: continue", "interrupted: a person's message", "no last line")
+        self.assertEqual(reasons[0], "the gate is red")
+        self.assertEqual(reasons[2], "")
+        for reason, iteration in ((reasons[1], "2"), (reasons[3], "4"), (reasons[4], "5"), (reasons[5], "6")):
+            self.assertIn(f"iteration {iteration}", reason)
+        self.assertIn("person", reasons[1])
+        for reason, ending in ((reasons[3], "cruise: continue"), (reasons[4], "interrupted: a person's message"),
+                               (reasons[5], "no last line")):
+            self.assertIn(ending, reason)
+            self.assertIn("without recording", reason)
+
     def test_model_choices_are_preserved_and_review_is_null_per_harness(self) -> None:
         (self.root / ".specify").mkdir()
         (self.root / ".specify/models.json").write_text(

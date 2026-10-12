@@ -90,6 +90,39 @@ def queued(root: Path) -> list[Entry]:
     return lines
 
 
+def stopped(root: Path) -> str:
+    """Why version 1's run is not running, in version 2's one shape for it, or "" where nothing is owed.
+
+    Version 1 ended an iteration on one of four last lines, and version 2 has a single shape for every one
+    of them that is not an ending: a `parked` with its reason. `cruise: done` is the one that owes nobody
+    anything — every specification was satisfied — so it leaves no line, and a fairway with nothing parked
+    on it is one a person is not asked about. `cruise: parked: <why>` keeps the person's own words.
+    `cruise: stopped: human` recorded no reason beyond the person, so that is the reason, said rather than
+    left to be guessed at. Everything else is a run that stopped without saying why — killed, ended for a
+    message, or ended on a line the runner did not recognise — and naming the iteration and the line it
+    ended on is the most anybody can be told. None of them is silently dropped: a crossing that reads a
+    stopped run as a finished one is one that loses the only record of why somebody stopped.
+    """
+    path = root / LEGACY_LOG
+    if not path.is_file():
+        return ""
+    lines = legacy_lines(path)
+    if not lines:
+        return ""
+    last = lines[-1]
+    where = f" at iteration {last['iteration']}" if last.get("iteration") is not None else ""
+    ending = str(last.get("last_line") or "").strip()
+    if "parked:" in ending:
+        return ending.split("parked:", 1)[1].strip() or f"version 1 parked{where} and recorded no reason"
+    if ending == "cruise: done":
+        return ""
+    if ending == "cruise: stopped: human":
+        return (f"a person stopped the version 1 run{where}; it recorded no reason beyond that, so confirm "
+                "there is nothing left owed before this fairway is claimed")
+    return (f"the version 1 run stopped{where} without recording an ending; its last line was "
+            f"{ending or 'never written'}")
+
+
 def shipped(root: Path, slice_id: str) -> str | None:
     """A committed slice merge or explicit trailer on trunk, never a model's optimistic status."""
     history = git(root, "log", "main", "--format=%H%x00%B%x00").decode("utf-8").split("\0")
@@ -234,14 +267,9 @@ def read(root: Path, document: dict, legacy: YAMLReader) -> Flight:
         # `main` fairway of the first feature, beside the records frozen there.
         active_feature = next(iter(flight.features))
         flight.logs += [(active_feature, "main", line) for line in queued(root)]
-        old_log = root / LEGACY_LOG
-        if old_log.is_file():
-            lines = legacy_lines(old_log)
-            last = lines[-1] if lines else {}
-            reason = str(last.get("last_line") or "")
-            if "parked:" in reason:
-                flight.logs.append((active_feature, "main", entry("parked", fairway="main",
-                                                     why=reason.split("parked:", 1)[1].strip())))
+        why = stopped(root)
+        if why:
+            flight.logs.append((active_feature, "main", entry("parked", fairway="main", why=why)))
         flight.files[STATE] = json_bytes({"v": 1, "features": flight.features})
     return flight
 

@@ -15,6 +15,9 @@ from ..assets import VERSION
 from ..extension_shape import OBLIGATIONS
 from .extension import check as check_extension
 from .run import CHECKS, Report, check, require_package_name
+from .target import CHECKS as TARGET_CHECKS
+from .target import MANIFEST as TARGET_MANIFEST
+from .target import check as check_target
 
 
 def lines(report: Report) -> list[str]:
@@ -55,6 +58,30 @@ def extension_report(parser: argparse.ArgumentParser, package: Path) -> int:
     return 0 if report.passed else 1
 
 
+def target_report(parser: argparse.ArgumentParser, package: Path) -> int:
+    """`--target <dir>`: the four a target package is held to, in the order a publisher meets them."""
+    if not (package / TARGET_MANIFEST).is_file():
+        parser.error(f"{package} holds no {TARGET_MANIFEST}, so it is not a target package")
+    try:
+        report = check_target(package)
+    except (OSError, ValueError, RuntimeError) as error:
+        print(f"conformance: the suite could not run: {error}", file=sys.stderr)
+        return 3
+    print(f"conformance: target {report.name} in {package}, against slipwai {VERSION}")
+    for name in TARGET_CHECKS:
+        if name in report.not_run:
+            print(f"  {name:<11} not run: {report.not_run[name]}")
+            continue
+        found = report.findings.get(name, [])
+        print(f"  {name:<11} {'FAILED' if found else 'ok'}")
+        for finding in found:
+            print(f"    {finding}")
+    count = report.count()
+    print(f"conformance: {report.name} "
+          f"{'passed' if report.passed else f'failed, {count} finding' + ('' if count == 1 else 's')}")
+    return 0 if report.passed else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m slipwai.conformance",
@@ -63,14 +90,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--extension", metavar="<dir>", type=Path,
                         help="an extension package instead: the six obligations, run against a scratch project")
+    parser.add_argument("--target", metavar="<dir>", type=Path,
+                        help="a target package instead: its declaration, its TARGET, both stacks and its version")
     parser.add_argument("language_dir", metavar="language-dir", type=Path, nargs="?",
                         help="the directory holding the package (and, for a framework, its family)")
     parser.add_argument("package", nargs="?", help="the package's directory name in it, e.g. go or java-quarkus")
     args = parser.parse_args(argv)
+    if args.extension is not None and args.target is not None:
+        parser.error("one package at a time: --extension or --target, not both")
     if args.extension is not None:
         return extension_report(parser, args.extension)
+    if args.target is not None:
+        return target_report(parser, args.target)
     if args.language_dir is None or args.package is None:
-        parser.error("name a language package (<language-dir> <package>) or an extension (--extension <dir>)")
+        parser.error("name a language package (<language-dir> <package>), an extension (--extension <dir>) "
+                     "or a target (--target <dir>)")
     if not args.language_dir.is_dir():
         parser.error(f"{args.language_dir} is not a directory")
     try:

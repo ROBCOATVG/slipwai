@@ -103,12 +103,20 @@ class PackageWorkflowTest(unittest.TestCase):
         self.assertLess(self.workflow.index("Install what this package is proved beside"),
                         self.workflow.index("python -m slipwai.conformance"))
 
-    def test_an_extension_is_proved_alone(self) -> None:
-        """It has no family and no framework; the step would have nothing to read and no manifest to read
-        it from."""
+    def test_only_a_language_is_proved_beside_a_sibling(self) -> None:
+        """An extension and a target each have no family and no framework; the step would have nothing to
+        read and no manifest to read it from. Named for what *is* proved beside something rather than for
+        what is not: the condition was `!= 'extension'`, and the third kind silently took the language's
+        path the day it arrived."""
         beside = self.workflow[self.workflow.index("Install what this package is proved beside"):
                                self.workflow.index("- name: Conformance")]
-        self.assertIn("if: inputs.kind != 'extension'", beside)
+        self.assertIn("if: inputs.kind == 'language'", beside)
+
+    def test_each_kind_is_proved_by_the_suite_that_is_its_own(self) -> None:
+        conformance = self.workflow[self.workflow.index("- name: Conformance"):
+                                    self.workflow.index("inputs.toolchains")]
+        self.assertIn("--extension", conformance)
+        self.assertIn("--target", conformance)
 
     def test_the_matrix_runs_on_a_runner_that_can_build_a_generated_project(self) -> None:
         """The matrix generates a project per row and runs *that project's* own `make verify`, so the runner

@@ -1,9 +1,9 @@
 """`slipwai package new|check|release|register`: the publisher's side of the chandlery, in one verb.
 
-A language and an extension are both packages, found in one directory, read by one loader, built into one
-shape of release file, and listed in one index. They differ in what they declare and what the keel does with
-it, which is exactly the part a publisher cannot be expected to know by heart — so the verb is one verb that
-works out the kind from the manifest, rather than two that would drift apart.
+A language, an extension and a target are all packages, found in one directory, read by one loader, built
+into one shape of release file, and listed in one index. They differ in what they declare and what the keel
+does with it, which is exactly the part a publisher cannot be expected to know by heart — so the verb is one
+verb that works out the kind from the manifest, rather than three that would drift apart.
 
 The five read in the order a publisher uses them. `new` writes a package that already loads. `check` runs
 the conformance suite for whichever kind it is. `version` cuts a release — the entry assembled from
@@ -23,7 +23,7 @@ from . import ed25519
 from .assets import this_command
 from .catalog import CORE
 from .errors import GenerationError, refuse
-from .index_schema import EXTENSION
+from .index_schema import EXTENSION, TARGET
 from .package_new import KINDS, VERBS, write
 from .package_release import kind_of, register, release
 from .package_version import cut
@@ -48,8 +48,11 @@ def check_package(root: Path) -> int:
     """
     from .conformance.__main__ import main as conformance
     whole = root.resolve()
-    if kind_of(whole) == EXTENSION:
+    kind = kind_of(whole)
+    if kind == EXTENSION:
         return conformance(["--extension", str(whole)])
+    if kind == TARGET:
+        return conformance(["--target", str(whole)])
     return conformance([str(whole.parent), whole.name])
 
 
@@ -121,7 +124,7 @@ def register_package(parsed: argparse.Namespace) -> None:
 def package_main(argv: list[str]) -> None:
     prog = f"{this_command()} package"
     parser = argparse.ArgumentParser(
-        prog=prog, description="Write, check, build and publish a language or extension package")
+        prog=prog, description="Write, check, build and publish a language, extension or target package")
     parser.add_argument("verb", choices=VERBS)
     parser.add_argument("name", help="the package's key for `new`; its directory for the others")
     parser.add_argument("--kind", choices=KINDS, default="extension",

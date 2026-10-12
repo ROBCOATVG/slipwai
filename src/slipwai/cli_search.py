@@ -16,6 +16,7 @@ import argparse
 
 from .assets import this_command
 from .catalog import families
+from .index_schema import KINDS
 from .language_directory import directory
 from .language_index import Index, Release
 from .language_install import installed
@@ -184,7 +185,7 @@ def search_main(argv: list[str]) -> None:
         "whichever language it is written in. With no term, everything is listed.",
     )
     parser.add_argument("term", nargs="?", default="", help="what to look for")
-    parser.add_argument("--kind", choices=("language", "extension"), default=None)
+    parser.add_argument("--kind", choices=KINDS, default=None)
     parser.add_argument("--family", default=None, help="only packages of this language family")
     parser.add_argument("--pre", action="store_true", help="count snapshots in the index")
     args = parser.parse_args(argv)

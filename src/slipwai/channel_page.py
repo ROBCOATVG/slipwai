@@ -18,7 +18,7 @@ import html
 from typing import Any
 
 from .brand import favicon, inline
-from .index_schema import EXTENSION
+from .index_schema import EXTENSION, LANGUAGE
 
 #: How wide a description may run before it is cut. A channel's page is a list to scan, not prose to read.
 SAID = 220
@@ -48,17 +48,23 @@ def described(entry: dict) -> str:
     return f"backends: {backends}" if backends else "no description"
 
 
+#: The verb that installs each kind. A kind absent from this is one a channel may list and this keel has no
+#: way to install — a target, until the clouds themselves are packages — and the page says so by offering no
+#: command rather than by printing `slipwai install <name>`, which would go looking for a language.
+INSTALLS = {LANGUAGE: "install", EXTENSION: "extension install"}
+
+
 def row(entry: dict, base: str) -> str:
-    kind = str(entry.get("kind") or "language")
+    kind = str(entry.get("kind") or LANGUAGE)
     name = str(entry.get("name"))
-    verb = "extension install" if kind == EXTENSION else "install"
+    verb = INSTALLS.get(kind)
     return f"""      <tr>
         <td><b>{esc(name)}</b></td>
         <td><span class="kind">{esc(kind)}</span></td>
         <td class="mono">{esc(entry.get("version"))}</td>
         <td>{esc(entry.get("publisher") or "—")}</td>
         <td>{esc(described(entry))}</td>
-        <td class="mono cmd">slipwai {esc(verb)} {esc(name)}</td>
+        <td class="mono cmd">{f"slipwai {esc(verb)} {esc(name)}" if verb else "—"}</td>
       </tr>"""
 
 

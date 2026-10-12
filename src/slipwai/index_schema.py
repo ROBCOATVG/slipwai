@@ -4,10 +4,12 @@ Version 1 listed languages: a `languages` object, a list of releases under each 
 its file, the file's digest and its `language.json`. Nothing else was publishable, so nothing else was
 described.
 
-**Version 2 lists packages.** An extension is a package the way a language is, and an index that could only
-list one of them would make the other a thing people pass paths around for. So the block is `packages`, each
-entry declares its `kind`, and the manifest is under the key that names it — `language` or `extension` — which
-is also how a reader with no `kind` field still knows what it is holding.
+**Version 2 lists packages.** An extension is a package the way a language is, and a target — the place a
+project is deployed to — is a third; an index that could only list one of them would make the others things
+people pass paths around for. So the block is `packages`, each entry declares its `kind`, and the manifest
+is under the key that names it — `language`, `extension` or `target` — which is also how a reader with no
+`kind` field still knows what it is holding. A kind is added here rather than branched on at each reader:
+the three differ only in which few fields a line can be built from.
 
 **Four fields arrive with it, and each answers a question a person asked of version 1.** `publisher`, because
 "who published this?" had no answer. `signature`, because the digest proves the file is the file the index
@@ -39,8 +41,12 @@ CHANDLERY = "SLIPWAI_CHANDLERY"
 FORMATS = (1, 2)
 #: Where each format's entries live, and what version 1 called the one kind it had.
 BLOCK = {1: "languages", 2: "packages"}
-LANGUAGE, EXTENSION = "language", "extension"
-KINDS = (LANGUAGE, EXTENSION)
+LANGUAGE, EXTENSION, TARGET = "language", "extension", "target"
+#: In the order a reader meets them, which is the order they were published in. A kind arriving here is a
+#: kind every index in the world may already be listing: the block, the manifest key and the `kind` field
+#: are one word, so an index written for a keel that reads three kinds still loads on one that reads two —
+#: the entries it cannot read are dropped, which is what `entry_of` does with every entry it cannot read.
+KINDS = (LANGUAGE, EXTENSION, TARGET)
 DIGEST = re.compile(r"[0-9a-f]{64}")
 #: The declared-never-required family members an entry's `answers` may name: what a verb needs to know a
 #: release answers before it is installed (D122, ADR 0010). A value a reader does not know is ignored.
@@ -56,9 +62,9 @@ TAGS = 12
 class Release:
     """One release the index lists.
 
-    `fragment` is the manifest, whichever kind it is: a `language.json` for a language and an
-    `extension.json` for an extension. One field rather than two, because every reader of it either knows
-    the kind already or does not care — `compatible` reads `core`, which both carry.
+    `fragment` is the manifest, whichever kind it is: a `language.json`, an `extension.json` or a
+    `target.json`. One field rather than three, because every reader of it either knows the kind already or
+    does not care — `compatible` reads `core`, which all three carry.
     """
 
     name: str
@@ -82,6 +88,10 @@ class Release:
     @property
     def is_extension(self) -> bool:
         return self.kind == EXTENSION
+
+    @property
+    def is_target(self) -> bool:
+        return self.kind == TARGET
 
     @property
     def signed(self) -> bool:
@@ -177,6 +187,21 @@ def extension_entry(name: str, fragment: Any) -> bool:
     return isinstance(fragment.get("name"), str) and bool(fragment["name"])
 
 
+def target_entry(name: str, fragment: Any) -> bool:
+    """Whether a target manifest is one a line may be built from. Its `name` is what it is listed under, and
+    its `label` is the sentence a prompt shows — an entry with none could be installed and never offered."""
+    if not (isinstance(fragment, dict) and isinstance(fragment.get("core"), str)):
+        return False
+    if fragment.get("name") != name or name_fault("target", name) is not None:
+        return False
+    return isinstance(fragment.get("label"), str) and bool(fragment["label"])
+
+
+#: Which reader holds each kind's manifest to the little a line is built from. Everything else a manifest
+#: declares is for the loader to refuse, on the machine that installs it, where the package's files are.
+READERS = {LANGUAGE: language_entry, EXTENSION: extension_entry, TARGET: target_entry}
+
+
 def entry_of(document: str, name: str, entry: Any, channel: str = "", origin: str = "") -> Release | None:
     """One entry of the document as a `Release`, or None where it is not the contract's shape.
 
@@ -195,11 +220,9 @@ def entry_of(document: str, name: str, entry: Any, channel: str = "", origin: st
     if not (isinstance(digest, str) and DIGEST.fullmatch(digest)):
         return None
     fragment = entry.get(kind)
-    if kind == LANGUAGE and not language_entry(name, fragment):
+    if not READERS[kind](name, fragment):
         return None
-    if kind == EXTENSION and not extension_entry(name, fragment):
-        return None
-    assert isinstance(fragment, dict)  # both checks above refuse anything else
+    assert isinstance(fragment, dict)  # every reader above refuses anything else
     said = entry.get("answers")
     answers = tuple(each for each in said if each in ANSWERS) if isinstance(said, list) else ()
     return Release(name, version, urllib.parse.urljoin(document, file), digest, dict(fragment), answers,

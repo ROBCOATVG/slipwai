@@ -38,7 +38,7 @@ from pathlib import Path
 from . import ed25519
 from .assets import this_command
 from .errors import GenerationError
-from .index_schema import BLOCK, EXTENSION, LANGUAGE
+from .index_schema import BLOCK, EXTENSION, LANGUAGE, TARGET
 from .language_release import ReleaseError, pack, read_package
 from .trust import ED25519
 
@@ -68,13 +68,17 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+#: Each kind against the manifest that declares it. The manifest's name is how a reader and the loader both
+#: tell the kinds apart without being told which they are holding.
+MANIFESTS = {EXTENSION: "extension.json", LANGUAGE: "language.json", TARGET: "target.json"}
+
+
 def kind_of(root: Path) -> str:
     """Which kind of package this directory is, by the manifest it holds."""
-    if (root / "extension.json").is_file():
-        return EXTENSION
-    if (root / "language.json").is_file():
-        return LANGUAGE
-    raise GenerationError(f"{root} holds neither a language.json nor an extension.json, so it is no package")
+    for kind, manifest in MANIFESTS.items():
+        if (root / manifest).is_file():
+            return kind
+    raise GenerationError(f"{root} holds none of {', '.join(sorted(MANIFESTS.values()))}, so it is no package")
 
 
 def signing_key(path: Path) -> bytes:

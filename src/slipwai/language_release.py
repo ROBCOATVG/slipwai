@@ -69,24 +69,33 @@ def version_in(root: Path) -> str:
     return version
 
 
+#: The kinds that are not a language, against the manifest each declares and the field in it that is the
+#: name a release file is called after. A language is the fallback, because it is the one whose manifest
+#: `read_directory` already reads for everything else it needs.
+BESIDE_LANGUAGE = (("extension", "extension.json", "key"), ("target", "target.json", "name"))
+
+
 def read_package(root: Path) -> Source:
-    """Either kind of package directory as a source, read by whichever manifest it holds.
+    """Any kind of package directory as a source, read by whichever manifest it holds.
 
     `pack` and `copy_directory` do not care which kind they are moving — a package is a directory of files
-    with a name and a version — so this is where the two kinds stop being different, rather than there being
-    a second packer that differs in one `json.loads`.
+    with a name and a version — so this is where the kinds stop being different, rather than there being a
+    second and a third packer that differ in one `json.loads`.
     """
-    manifest = root / "extension.json"
-    if not manifest.is_file():
-        return read_directory(root)
-    try:
-        declared = json.loads(manifest.read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError) as error:
-        raise ReleaseError(f"{manifest} cannot be read as an extension.json: {error}") from None
-    key = declared.get("key") if isinstance(declared, dict) else None
-    if not isinstance(key, str) or name_fault("extension", key) is not None:
-        raise ReleaseError(f"{manifest} gives no `key`, which is the name its release file is called after")
-    return Source(key, version_in(root), declared, root, "directory")
+    for kind, filename, field in BESIDE_LANGUAGE:
+        manifest = root / filename
+        if not manifest.is_file():
+            continue
+        try:
+            declared = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError, UnicodeDecodeError) as error:
+            raise ReleaseError(f"{manifest} cannot be read as a {filename}: {error}") from None
+        named_key = declared.get(field) if isinstance(declared, dict) else None
+        if not isinstance(named_key, str) or name_fault(kind, named_key) is not None:
+            raise ReleaseError(f"{manifest} gives no `{field}`, which is the name its release file is "
+                               f"called after")
+        return Source(named_key, version_in(root), declared, root, "directory")
+    return read_directory(root)
 
 
 def read_directory(root: Path) -> Source:

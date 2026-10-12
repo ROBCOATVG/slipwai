@@ -69,7 +69,11 @@ OWN = {"catalog_checks", "catalog_options", "cli_offered", "cli_search",
        "package_version", "cli_extension", "cli_package",
        "conformance.extension", "index_schema", "trust", "cli_trust", "ed25519", "rungs", "renamed",
        "channel", "channel_new", "channel_page", "cli_channel", "telegraph", "cli_telegraph", "fleet", "cli_fleet",
-       "bridge", "bridge_page", "cli_bridge", "whats_new", "deck", "brand"}
+       "bridge", "bridge_page", "cli_bridge", "whats_new", "deck", "brand",
+       # The third kind of package. The experiment had clouds in the keel and so had no target package to
+       # bring back: its declaration, the protocol its `TARGET` answers, and what `package new` writes.
+       "target_shape", "target_protocol", "target_templates",
+       "conformance.target", "conformance.target_probe"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will
 # grow a verb per slice, `assets` holds the paths and not the asset trees, `__init__` and `__main__` are
 # the package's own. The ledger's row for each describes what it becomes, not what is here, so they are

@@ -1,6 +1,7 @@
 name: package conformance
 
-# What a package's own CI runs — either kind — as a workflow a package repository calls rather than copies.
+# What a package's own CI runs — whichever kind it is — as a workflow a package repository calls rather
+# than copies.
 # The division is theme A's: the keel's gate proves the conformance suite works, against one toy package
 # in-tree; each package proves itself against a pinned keel, on its own schedule; and the keel's release
 # proves the published packages still pass against what is about to ship (slice 8.4).
@@ -16,7 +17,7 @@ on:
         required: true
         type: string
       kind:
-        description: language or extension — which conformance suite proves it
+        description: language, extension or target — which conformance suite proves it
         required: false
         default: language
         type: string
@@ -106,7 +107,7 @@ jobs:
       # copy under test. Installed from the chandlery, which is where a sibling comes from for anybody
       # proving one package on its own.
       - name: Install what this package is proved beside
-        if: inputs.kind != 'extension'
+        if: inputs.kind == 'language'
         run: |
           set -eu
           needed=$(python - "$PWD/${{ inputs.package }}/language.json" <<'PY'
@@ -152,12 +153,16 @@ jobs:
           done
 
       # One suite per kind. A language's asks the package questions and checks the answers; an extension's
-      # builds a scratch project, runs the entry point in it, and looks at what happened to the project.
+      # builds a scratch project, runs the entry point in it, and looks at what happened to the project; a
+      # target's reads its declaration, imports its `TARGET` and holds both stacks to the files it ships.
+      # A target reaches no cloud here, deliberately: a gate that needed an account is a gate no fork runs.
       - name: Conformance
         run: |
           set -eu
           if [ "${{ inputs.kind }}" = "extension" ]; then
             python -m slipwai.conformance --extension "$PWD/${{ inputs.package }}"
+          elif [ "${{ inputs.kind }}" = "target" ]; then
+            python -m slipwai.conformance --target "$PWD/${{ inputs.package }}"
           else
             python -m slipwai.conformance "$PWD" "${{ inputs.package }}"
           fi
@@ -192,7 +197,7 @@ jobs:
       # builds images and starts containers and a package that has not got that far says so. A language's
       # only: an extension writes no skeleton, so it has no variants.
       - name: The generated-variant matrix
-        if: ${{ inputs.matrix && inputs.kind != 'extension' }}
+        if: ${{ inputs.matrix && inputs.kind == 'language' }}
         run: python -m slipwai.matrix "$PWD" "${{ inputs.package }}"
 
   # Publishing, and only from a tag. A green run on `main` is a package that works; it is not a package

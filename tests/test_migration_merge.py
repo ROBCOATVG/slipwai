@@ -74,6 +74,12 @@ class GitMergeTest(unittest.TestCase):
         self.command("init", "-q", "-b", "main")
         self.command("config", "user.name", "proof")
         self.command("config", "user.email", "proof@example.invalid")
+        # Git for Windows installs `core.autocrlf=true` globally, so a repository made here inherits it and
+        # rewrites line endings on checkout — and `git merge --abort` then restores the person's file as
+        # CRLF, which is git behaving as configured and not the crossing losing anything. These cases
+        # assert bytes, so the fixture holds the filters off and measures what it wrote.
+        self.command("config", "core.autocrlf", "false")
+        self.command("config", "core.eol", "lf")
         (self.root / "new.md").write_bytes(b"first\nkeep\nkeep\nkeep\nlast\n")
         self.command("add", "-A")
         self.command("commit", "-qm", "base")

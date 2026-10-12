@@ -259,6 +259,20 @@ def second_worker(project: Path) -> None:
     ])
 
 
+def with_forge(project: Path) -> None:
+    """The guide's hand-taken claim is a push, proved against an offline bare forge."""
+    forge = project.parent / "forge.git"
+    subprocess.run(["git", "init", "--bare", "-q", str(forge)], check=True)
+    git(project, "remote", "add", "origin", str(forge))
+
+
+def claim_pushed(project: Path) -> None:
+    """A successful local claim would cover less than the guide promises; require its remote ref."""
+    forge = project.parent / "forge.git"
+    subprocess.run(["git", "--git-dir", str(forge), "rev-parse", "--verify", "refs/slipwai/claims/booking"],
+                   check=True, capture_output=True)
+
+
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────
 # The programme
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -342,6 +356,9 @@ PROGRAMME: list[Step] = [
     Run("a-second-person.md", "python3 scripts/agents/clearance.py"),
     Seed(second_worker, "a second person claims AVA-01, and BOK-01 is merged"),
     Run("a-second-person.md", "slipwai fleet"),
+    Seed(with_forge, "the second person has a bare forge to publish the hand-taken claim to"),
+    Run("a-second-person.md", "python3 scripts/agents/claims.py --take booking"),
+    Seed(claim_pushed, "the booking claim exists on the forge, rather than only on this machine"),
     Named("a-second-person.md", "slipwai fleet", "the same board, shown once more as a figure"),
     Named("a-second-person.md", "slipwai fleet watch", "redraws until it is interrupted"),
     Captured("a-second-person.md", "slipwai fleet ordering", "stream-log.txt"),
@@ -435,7 +452,8 @@ def check_interview(parent: Path, documented: list[str]) -> list[str]:
     transcript = interview(parent / "interview")
     asked = {stem(line) for line in transcript.replace(": ", ": \n").splitlines()}
     spelled = "\n".join(path.read_text(encoding="utf-8") for path in
-                        (ROOT / "src/slipwai/cli_prompts.py", ROOT / "src/slipwai/cli.py", ROOT / "catalog.json"))
+                        (ROOT / "src/slipwai/cli_prompts.py", ROOT / "src/slipwai/cli_generate.py",
+                         ROOT / "src/slipwai/cli.py", ROOT / "catalog.json"))
     findings = []
     for line in documented:
         question = stem(line)

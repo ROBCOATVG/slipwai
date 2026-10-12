@@ -23,16 +23,22 @@ CORE = "9.0"
 #: A module that answers everything a managed target owes, with the files the fixture also writes.
 WHOLE = '''"""A target for the suite to read."""
 from slipwai.target_protocol import (
-    DEPLOY_STEPS, DOCS_PAGES, IMAGE_REGISTRY, SCRIPTS, SHAPES, TOOLS, Target,
+    ADD_COMMANDS, AGENT_RULES, DOCS_PAGES, IMAGE_REGISTRY, PIPELINE, README_WORDS, SCRIPTS, SHAPES, TOOLS,
+    Target,
 )
 
 TARGET = Target(name="cumulus", answers={
     SHAPES: {"bootstrap": ("bootstrap/main.tf",), "service": ("service/main.tf",)},
     SCRIPTS: {"scripts/deploy.py": "scripts/deploy.py"},
-    DOCS_PAGES: {"docs/deployment.md": lambda selection: "# Where\\n"},
+    DOCS_PAGES: {"docs/deployment.md": lambda project, apps: "# Where\\n"},
     TOOLS: (("tofu", "what applies the stacks", "https://opentofu.org"),),
-    IMAGE_REGISTRY: {"repository": "cumulus.example/app"},
-    DEPLOY_STEPS: lambda environment: f"  - run: make deploy ENV={environment}\\n",
+    IMAGE_REGISTRY: {"cloud": "Cumulus", "registry": "CR", "example": "cumulus.example/", "runtime": "Boxes"},
+    PIPELINE: {"cli": "", "credentials": "      - uses: cumulus/login@v1\\n", "build_cli": "",
+               "registry_login": "      - run: cumulus registry login\\n",
+               "environment": "  IMAGE_REGISTRY: ${{ vars.IMAGE_REGISTRY }}\\n"},
+    README_WORDS: {"runtime": "one box per app", "site": " A bucket.", "credentials": "a cumulus sign-in"},
+    AGENT_RULES: "- This project deploys to Cumulus from the pipeline.\\n",
+    ADD_COMMANDS: {"service": "- one more box\\n", "web": "- behind the edge\\n"},
 })
 '''
 

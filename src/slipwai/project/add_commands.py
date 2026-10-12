@@ -21,7 +21,10 @@ The first two name the project's current applications, so they change when one i
 from __future__ import annotations
 
 from ..catalog import CATALOG, families
+from ..loaded_targets import answer
 from ..services import App, contexts_phrase, services_of, web_apps
+from ..target_protocol import ADD_COMMANDS
+from ..targets import managed
 from ..toolkit import example_of
 
 # The command is the keel's, not this repository's, and a generated project does not know where its
@@ -67,37 +70,18 @@ def listed(apps: list[App]) -> str:
     return "\n".join(lines)
 
 
-# What adding a service means for a project with a destination: one more image, one more ECS service, and a
-# repository the bootstrap stack has to create first. Said in the command because the report says it once and
-# the agent reads the command every time.
-PRODUCTION_AFTERWARDS = {
-    "aws": """- This project deploys to AWS, and `infra/` was regenerated with the new service: its image repository is the
-  bootstrap stack's, so `make bootstrap` has to run once more — by a person with the administrator
-  credentials it needs — before the pipeline can push its image; the ECS service itself arrives with the
-  next `make deploy`. Say so when handing over. `docs/deployment.md` was redrawn with the new service;
-  `docs/adr/0002-production-target.md` is the design.
-""",
-    # Nothing to bootstrap here, and that difference is worth stating rather than leaving as a silence: a
-    # container registry holds every repository it is pushed and creates them on first push, so unlike ECR
-    # there is nothing per service for the bootstrap stack to create.
-    "azure": """- This project deploys to Azure, and `infra/` was regenerated with the new service: its Container App
-  arrives with the next `make deploy`, and there is nothing to bootstrap — one registry holds every
-  service's images and creates a repository the first time one is pushed. `docs/deployment.md` was redrawn
-  with the new service; `docs/adr/0002-production-target.md` is the design.
-""",
-}
+# What adding a service or a frontend means for a project with a destination: one more image, one more
+# deployable, and — on some clouds — a repository the bootstrap stack has to create first. Said in the
+# command because the report says it once and the agent reads the command every time, and asked of the
+# target because every noun in it is that cloud's.
+def afterwards(target: str, what: str) -> str:
+    """What `add-service` or `add-frontend` says afterwards about the destination, or nothing where there
+    is no destination to say anything about."""
+    if not managed(CATALOG, target):
+        return ""
+    return str(answer(target, ADD_COMMANDS, default={}).get(what, ""))
 
-WEB_PRODUCTION_AFTERWARDS = {
-    "aws": """- This project deploys to AWS: `infra/service/frontend.tf` was regenerated to put the site behind CloudFront
-  with `/api` routed to the service it names, and `make deploy` uploads the bundle. Nothing to apply by hand.
-""",
-    "azure": """- This project deploys to Azure: `infra/service/frontend.tf` was regenerated to serve the site from a
-  static web app with the service it names linked as its API backend, so `/api` reaches that service by the
-  product's own rule, and `make deploy` uploads the bundle. Nothing to apply by hand. One consequence worth
-  saying when handing over: a linked service answers only through the site, so that service no longer has a
-  public address of its own in `urls`.
-""",
-}
+
 
 
 def add_service_command(apps: list[App], target: str = "none") -> str:
@@ -177,7 +161,7 @@ one of those, say so, and offer to add `X` to `{example_name}`'s `contexts` in `
 - It shares the local backing services with every other service — one `DATABASE_URL`, one database. That is
   right for a walking skeleton and wrong for a product: give it its own database or schema before it owns
   any data, and say so when handing it over.
-''' + PRODUCTION_AFTERWARDS.get(target, ""),
+''' + afterwards(target, "service"),
 )}
 """
 
@@ -225,7 +209,7 @@ dev-server port is the command's own decision — the next one free.
     afterwards='''- Say how it runs: `make dev-<name>` in the foreground — with `WEB_HOST=0.0.0.0` when the browser is not on
   this machine — `make demo` with the rest, and its port from the report. Its page is the placeholder the
   first slice replaces; `/sail` from there.
-''' + WEB_PRODUCTION_AFTERWARDS.get(target, ""),
+''' + afterwards(target, "web"),
 )}
 """
 

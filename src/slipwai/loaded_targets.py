@@ -17,6 +17,7 @@ the same repository as the dict.
 from __future__ import annotations
 
 import functools
+from pathlib import Path
 from typing import Any
 
 from .assets import this_command
@@ -24,7 +25,7 @@ from .catalog import TARGETS
 from .errors import GenerationError
 from .language_directory import Refused
 from .target_directory import import_package
-from .target_protocol import Target, TargetMember
+from .target_protocol import IMAGE_REGISTRY, TOOLS, Target, TargetMember
 
 #: What `answer` returns for a member a target does not answer and is not obliged to. A sentinel rather than
 #: `None`, because `None` is a thing a target could in principle answer with.
@@ -104,3 +105,42 @@ def answer(target: str, member: TargetMember[Any], default: Any = UNASKED) -> An
         f"A managed target is refused at install for missing one, so either {target} is not a managed "
         f"target or this is being asked of it where it should not be"
     )
+
+
+def cloud_of(target: str) -> str:
+    """What this target is called in prose — `AWS`, `Azure` — or its own name where it has no prose name.
+
+    Never refuses, because every caller of it is writing a sentence rather than making a decision: a README
+    paragraph, a line of agent guidance, a prompt in `./init`. A target with no package answers with its own
+    name, which is what `none` and `existing` have always been called in those sentences anyway.
+    """
+    found = loaded().get(target)
+    registry = found.answers.get(IMAGE_REGISTRY) if found is not None else None
+    if isinstance(registry, dict) and isinstance(registry.get("cloud"), str) and registry["cloud"]:
+        return str(registry["cloud"])
+    return target
+
+
+def root_of(target: str) -> Path:
+    """The directory this target's package is installed in, which its `shapes` and `scripts` are relative to.
+
+    The keel reads a target's files rather than being handed their contents, for the reason `infra.py` has
+    always had: the stacks are committed HCL, copied as written. A package that returned them as strings
+    would be a package that had to keep them as strings.
+    """
+    for package in TARGETS:
+        if package.name == target:
+            return package.root
+    raise GenerationError(missing(target))
+
+
+def tools_for(target: str) -> list[str]:
+    """Just the command names this target needs on the PATH, in the order a message lists them.
+
+    Here rather than in `targets.py`, where it was while every target was the keel's own: the list is the
+    target package's `tools`, so reading it is reading a package, which is this module's job. One list read
+    twice — by `preflight` before a project is written, and by the generated `./init` on the machine that
+    runs it — because a project refused for a tool its own script never looks for is one nobody can
+    un-refuse.
+    """
+    return [tool for tool, _why, _where in answer(target, TOOLS, default=()) or ()]

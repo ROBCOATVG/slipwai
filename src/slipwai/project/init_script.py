@@ -12,13 +12,13 @@ from __future__ import annotations
 from ..catalog import CATALOG, axis_prunable
 from ..extensions import known_extensions
 from ..layout import AT_ROOT, Layout
+from ..loaded_targets import cloud_of, tools_for
 from ..services import App, axes_of, services_of
-from ..targets import managed, tools_for
+from ..targets import managed
 from .init_extensions import RUN_EXTENSIONS, prompt_extensions
 from .init_languages import LANGUAGES_CHECK
 from .init_production import ALREADY_BOOTSTRAPPED, PRODUCTION_BOOTSTRAP, PRODUCTION_CHECK
 from .pins import SPECKIT_SOURCE
-from .rules import CLOUD
 
 
 # The axis and extension flags are this project's own, not Spec Kit's, so they are lifted out of the
@@ -188,10 +188,10 @@ def init_script(apps: list[App], target: str = "none", layout: Layout = AT_ROOT)
     extensions = sorted(known_extensions(CATALOG))
     scan = argument_scan(prunable, extensions, production)
     prune = PRUNE_BACKING_SERVICES if prunable else ""
-    # The tool list and the cloud's name are the target's, so a second cloud changes the words `./init`
-    # prints and nothing about what it does. They must be the same list `preflight` refuses on, which is
-    # why both read `targets.TOOLS`.
-    cloud = CLOUD.get(target, target)
+    # The tool list and the cloud's name are the target's own answers, so a second cloud changes the words
+    # `./init` prints and nothing about what it does. They must be the same list `preflight` refuses on,
+    # which is why both read the target's `tools` rather than a list of their own.
+    cloud = cloud_of(target)
     check = (
         ALREADY_BOOTSTRAPPED + PRODUCTION_CHECK.format(tools=" ".join(tools_for(target)), cloud=cloud)
         if production

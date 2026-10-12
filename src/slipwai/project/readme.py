@@ -7,13 +7,14 @@ same answers for a tool to read.
 from __future__ import annotations
 
 from ..catalog import CATALOG
+from ..loaded_targets import cloud_of
 from ..services import App, described, frontend_of, services_of, web_apps
 from ..targets import managed
 from .backing_service_prose import backing_services_readme
 from .event_model import event_model_page_url
 from .existing import EXISTING_README
-from .rules import CLOUD
-from .target_docs import PREREQUISITES, WORDS
+from .target_docs import prerequisites
+from .target_docs import words as target_words
 from .write_model_prose import readme_write_model
 
 
@@ -198,7 +199,7 @@ for `pip`. Nothing else has to be set up first.
     # The cloud's own rows land in the middle, so the numbering either side of them is counted rather than
     # written: a target that asks for one more tool moves every row below it, and the sentence under the
     # table names the range it checks.
-    cloud_rows = PREREQUISITES[target]
+    cloud_rows = prerequisites(target)
     rows = "\n".join(
         f"| {number} | {have} | {proof} |" for number, (have, proof) in enumerate(cloud_rows, start=2)
     )
@@ -206,7 +207,7 @@ for `pip`. Nothing else has to be set up first.
     return f"""## Before `./init`
 
 In this project `./init` does the first day's work: it installs Spec Kit, pushes this repository to your
-forge, and runs `make bootstrap` against your {CLOUD[target]} account — so the push is the first deploy. Have every row
+forge, and runs `make bootstrap` against your {cloud_of(target)} account — so the push is the first deploy. Have every row
 below ready on the machine that runs it. It checks, and stops before pushing if something is missing, but
 knowing first is quicker.
 
@@ -241,7 +242,7 @@ def documentation_production(target: str) -> str:
     if not managed(CATALOG, target):
         return ""
     return (
-        f", [`docs/deployment.md`](docs/deployment.md) draws what runs in {CLOUD[target]} for this project's "
+        f", [`docs/deployment.md`](docs/deployment.md) draws what runs in {cloud_of(target)} for this project's "
         f"services and how a commit gets there"
     )
 
@@ -262,7 +263,7 @@ def start_here_production(target: str) -> str:
         return ""
     return (
         f"    # then asks where to push, pushes, and runs `make bootstrap`: once, with admin "
-        f"{CLOUD[target]} credentials"
+        f"{cloud_of(target)} credentials"
     )
 
 
@@ -272,12 +273,12 @@ def production_readme(target: str, services: list[App], web: list[App]) -> str:
         return EXISTING_README
     if not managed(CATALOG, target):
         return ""
-    words = WORDS[target]
+    words = target_words(target)
     site = words["site"] if web else ""
     return f"""
 ## Production
 
-This project deploys to {CLOUD[target]}, and the pipeline is the way it gets there: every commit that passes `verify` on
+This project deploys to {cloud_of(target)}, and the pipeline is the way it gets there: every commit that passes `verify` on
 `main` runs `.github/workflows/deploy.yml`, which builds one image per service with the ecosystem's own
 builder, pushes each by digest, applies `staging`, proves it with `make smoke`, applies `production` and
 proves that. It starts when `verify` completes, and only if it passed — never beside it or ahead of it.{site}

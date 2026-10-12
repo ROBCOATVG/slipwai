@@ -76,8 +76,9 @@ ROWS: dict[str, dict] = {}
 # `targets` is where an option is offered — the production targets, as `project.json` records this
 # project's under `target`. The factory filtered the menu by it at generation time and this script filters
 # the same way afterwards, so an answer a project's target cannot carry is refused here too rather than
-# pruned into. SQLite is local-only (the file dies with the task), Keycloak is local-only (Cognito is its
-# answer in the cloud), and Cognito is offered under `aws` alone.
+# pruned into. SQLite is local-only (the file dies with the task) and so is Keycloak, which is the local
+# stand-in for whatever a target provisions identity as. A place's own answers are not in this literal at
+# all: they arrive with the target package, through AXIS_OPTIONS and AXIS_TARGETS below.
 #
 # `capabilities` is what the answer gives the project — the same list `catalog.json` declares on the option
 # and the generator writes into `project.json` per deployable, which is why `record_answers` can swap one
@@ -96,7 +97,7 @@ AXES: dict[str, dict] = {
             "postgres": {
                 "capabilities": ("event-store-postgres",),
                 "features": ("postgres",),
-                "targets": ("none", "existing", "aws", "azure"),
+                "targets": ("none", "existing"),
                 "label": "Postgres — append-only table, unique (stream, version) as the concurrency control",
                 "note": (
                     "Postgres is what makes the never-write-the-same-version-twice guarantee provable: "
@@ -118,7 +119,7 @@ AXES: dict[str, dict] = {
             "memory": {
                 "capabilities": ("event-store-memory",),
                 "features": (),
-                "targets": ("none", "existing", "aws", "azure"),
+                "targets": ("none", "existing"),
                 "label": "In-memory only — zero infrastructure, loses all truth on restart",
                 "note": (
                     "In-memory only. Nothing survives a restart, and the concurrency guarantee is NOT "
@@ -133,7 +134,7 @@ AXES: dict[str, dict] = {
             "none": {
                 "capabilities": (),
                 "features": (),
-                "targets": ("none", "existing", "aws", "azure"),
+                "targets": ("none", "existing"),
                 "label": "None — library or worker only, no inbound HTTP",
                 "note": (
                     "With no external interface, boundary-level scenarios must bind to whatever the real "
@@ -146,63 +147,6 @@ AXES: dict[str, dict] = {
     "auth": {
         "prompt": "Internal authentication",
         "options": {
-            "cognito": {
-                "capabilities": ("auth-cognito",),
-                "features": ("keycloak",),
-                "targets": ("aws",),
-                "label": "Cognito — a user pool provisioned in AWS; Keycloak is the local stand-in, same "
-                         "groups and OIDC_* keys",
-                # The same files as Keycloak's, on purpose: what a Cognito project carries locally *is* the
-                # Keycloak stand-in — realm, container, group mapping — and `infra/` is where the pool is.
-                # Dropping the answer drops both, which is why the two share a feature.
-                "note": (
-                    "Scaffolded: the Cognito user pool, hosted login domain, groups and confidential client in "
-                    "infra/service, and Keycloak locally with the same groups. The protocol flow is the "
-                    "ecosystem's maintained client where the backend has one and deliberately unwritten where "
-                    "it does not — read the auth adapter's own note, and load the secure-oauth-oidc skill before "
-                    "writing any part of it yourself. Cognito puts groups in the `cognito:groups` claim; "
-                    "OIDC_GROUPS_CLAIM names it."
-                ),
-            },
-            "entra": {
-                "capabilities": ("auth-entra",),
-                "features": ("keycloak",),
-                "targets": ("azure",),
-                "label": "Entra ID — an app registration provisioned in Azure; Keycloak is the local "
-                         "stand-in, same groups and OIDC_* keys",
-                # The same files as Keycloak's, on purpose: what an Entra ID project carries locally *is*
-                # the Keycloak stand-in — realm, container, group mapping — and `infra/` is where the app
-                # registration is. Dropping the answer drops both, which is why the two share a feature.
-                "note": (
-                    "Scaffolded: the Entra ID app registration, the internal groups and a confidential client in "
-                    "infra/service, and Keycloak locally with the same groups. The protocol flow is the "
-                    "ecosystem's maintained client where the backend has one and deliberately unwritten where "
-                    "it does not — read the auth adapter's own note, and load the secure-oauth-oidc skill before "
-                    "writing any part of it yourself. Entra puts groups in the `groups` claim; "
-                    "OIDC_GROUPS_CLAIM names it."
-                ),
-            },
-            "auth0": {
-                "capabilities": ("auth-auth0",),
-                "features": ("keycloak",),
-                "targets": ("aws", "azure"),
-                "label": "Auth0 — an application and the internal roles provisioned through Auth0's own "
-                         "Management API, from either cloud; Keycloak is the local stand-in, same groups "
-                         "and OIDC_* keys",
-                # The same files as Keycloak's, for the reason the two rows above share them: what an
-                # Auth0 project carries locally *is* the Keycloak stand-in, and `infra/` is where the
-                # tenant's own objects are. Unlike those two, they are not created by the cloud
-                # credential — `infra/service/auth0.tf` says what that costs.
-                "note": (
-                    "Scaffolded: the Auth0 application, the API that names the audience, the internal roles and "
-                    "the post-login action that puts them in the token, in infra/service, and Keycloak locally "
-                    "with the same groups. The protocol flow is the ecosystem's maintained client where the "
-                    "backend has one and deliberately unwritten where it does not — read the auth adapter's own "
-                    "note, and load the secure-oauth-oidc skill before writing any part of it yourself. Auth0 "
-                    "puts no roles in a token by default; the action adds a namespaced claim and "
-                    "OIDC_GROUPS_CLAIM names it."
-                ),
-            },
             "keycloak": {
                 "capabilities": ("auth-keycloak",),
                 "features": ("keycloak",),
@@ -223,7 +167,7 @@ AXES: dict[str, dict] = {
             "none": {
                 "capabilities": (),
                 "features": (),
-                "targets": ("none", "existing", "aws", "azure"),
+                "targets": ("none", "existing"),
                 "label": "None — no internal identity yet",
                 "note": (
                     "No identity provider, so anything you build has no authentication. Keep authorisation "
@@ -236,38 +180,6 @@ AXES: dict[str, dict] = {
     "users": {
         "prompt": "External authentication",
         "options": {
-            "cognito": {
-                "capabilities": ("users-cognito",),
-                "features": ("users-keycloak",),
-                "targets": ("aws",),
-                "label": "Cognito — a second user pool for the product's users, provisioned in AWS; Keycloak's "
-                         "external realm is the local stand-in",
-                "note": (
-                    "Scaffolded: a user pool with self-registration and a public PKCE client in infra/service, "
-                    "the external realm in Keycloak locally, the browser app's login through a maintained "
-                    "client, and the external adapter in each service. Token validation is the framework's where "
-                    "one owns startup and deliberately unwritten where none does. Cognito access tokens carry the "
-                    "client id in `client_id` rather than `aud`; read the users adapter's note before trusting "
-                    "an audience check written against Keycloak."
-                ),
-            },
-            "auth0": {
-                "capabilities": ("users-auth0",),
-                "features": ("users-keycloak",),
-                "targets": ("aws", "azure"),
-                "label": "Auth0 — a database connection with self-registration and a public PKCE client, "
-                         "provisioned through Auth0's own Management API, from either cloud; Keycloak's "
-                         "external realm is the local stand-in",
-                "note": (
-                    "Scaffolded: an Auth0 database connection with self-registration and password reset, the "
-                    "API that names the audience and a public PKCE client in infra/service, the external realm "
-                    "in Keycloak locally, the browser app's login through a maintained client, and the external "
-                    "adapter in each service. Token validation is the framework's where one owns startup and "
-                    "deliberately unwritten where none does. An Auth0 access token carries the API identifier in "
-                    "`aud`, exactly as Keycloak's does, so an audience check written against the stand-in is "
-                    "right against the real thing — which is not true of the Cognito row above."
-                ),
-            },
             "keycloak": {
                 "capabilities": ("users-keycloak",),
                 "features": ("users-keycloak",),
@@ -286,7 +198,7 @@ AXES: dict[str, dict] = {
             "none": {
                 "capabilities": (),
                 "features": (),
-                "targets": ("none", "existing", "aws", "azure"),
+                "targets": ("none", "existing"),
                 "label": "None — no external accounts yet",
                 "note": (
                     "Nobody outside the organisation can sign in, so nothing you build has an external user. Keep "
@@ -304,7 +216,10 @@ AXES: dict[str, dict] = {
 # and the factory asserts the two agree.
 
 
-TARGET_REQUIRES: dict[str, tuple[str, ...]] = {"aws": ("http",), "azure": ("http",)}
+# Written in by the keel when a project is generated, the way ROWS and AXIS_OPTIONS are: which axes
+# the project's target will not take the "none" answer to is the target package's declaration, and
+# the keel's own copy of this script has no target that requires anything.
+TARGET_REQUIRES: dict[str, tuple[str, ...]] = {}
 
 # Axes whose non-"none" answer needs another axis to be answered too. The factory refuses these
 # combinations at generation time; a later prune has to refuse them for the same reason, or
@@ -431,6 +346,22 @@ WEB_PACKAGE_EDITS: dict[str, tuple[str, ...]] = {
 # and the factory's test suite asserts the two agree.
 SERVICE_ENVIRONMENT: dict[str, tuple[str, ...]] = {"postgres": ("DATABASE_URL",)}
 
+
+# Where an option is offered, for the targets that are packages. The keel's own copy of this script knows
+# `none` and `existing` and no place, because every place is a package now; a generated project's copy is
+# written with the targets that were installed when it was generated, which is the only set it can ever be
+# asked about — `project.json` records one target and that target is the one this script filters by.
+AXIS_TARGETS: dict[str, dict] = {}
+
+for _axis, _offered in AXIS_TARGETS.items():
+    # Only the axes this script prunes by. The keel declares more of them than are prunable — a write model
+    # is not a backing service and nothing here takes it away — and writing a target list into an axis this
+    # table has never held would be writing it somewhere nothing reads.
+    if _axis not in AXES:
+        continue
+    for _name, _targets in _offered.items():
+        if _name in AXES[_axis]["options"]:
+            AXES[_axis]["options"][_name]["targets"] = tuple(_targets)
 
 # Folded in after the literal so every reader of AXES sees one table: the keel's infrastructure options
 # and whatever the loaded packages brought.

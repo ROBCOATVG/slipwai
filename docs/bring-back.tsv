@@ -85,8 +85,6 @@ project.adversary	136
 project.agent_settings	191	catalog layout npm_workspace project.compose registry services targets	
 project.agent_targets	48		
 project.agents	299	layout project.converge_stage project.cruise_agents project.design_stage project.stage_models	
-project.aws_docs	259	images probes project.flags project.provisioning services	
-project.azure_docs	271	images probes project.flags project.provisioning services	
 project.backing_service_prose	237	catalog registry services toolkit	
 project.backing_services	149	assets project.compose project.pruner registry selection services toolkit	BACKING_SERVICE_ROOT
 project.benchmark	141	layout	
@@ -127,7 +125,7 @@ project.frontend	252	assets backends catalog errors npm_workspace probes project
 project.gitignore	153	assets catalog extensions npm_workspace project.cruise_record project.openapi project.shared_packages registry services targets	TOOLKIT_ROOT
 project.ground_command	342	convergence layout origin services	
 project.guidance	333	catalog npm_workspace project.compose project.existing project.flags project.rules registry services targets	
-project.infra	183	assets catalog images probes project.flag_route project.provisioning project.target_docs registry services targets tooling	TARGET_ROOT
+project.infra	183	assets catalog images probes project.flag_route project.provisioning project.target_docs registry services targets tooling	
 project.init_extensions	94		
 project.init_languages	41		
 project.init_production	74		
@@ -157,7 +155,7 @@ project.skills_page	97	assets capabilities services toolkit	TOOLKIT_ROOT
 project.stage_models	317	assets layout	TOOLKIT_ROOT
 project.strangle_command	229	assets catalog layout origin programme services strategy targets	ADOPTION_ROOT
 project.structure_page	202	assets layout origin programme structure	
-project.target_docs	104	errors project.aws_docs project.azure_docs services	
+project.target_docs	104	errors services	
 project.whats_next	69	project.cruise_seat project.demo_stop	
 project.where_are_we	95	catalog project.cruise_seat project.demo_stop targets	
 quick_wins	211	ecosystems	

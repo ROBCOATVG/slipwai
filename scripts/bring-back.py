@@ -39,7 +39,6 @@ TREES = {
     "FRONTEND_ROOT": "frontends",
     "ADOPTION_ROOT": "adoption",
     "BACKING_SERVICE_ROOT": "backing-services",
-    "TARGET_ROOT": "targets",
     "PRUNER": "backing-services",
     "LANGUAGE_ROOT": None,  # version 2 has none: a language's assets live in its package
 }

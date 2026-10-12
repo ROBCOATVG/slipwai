@@ -28,7 +28,9 @@ and no laptop ever applies it.
 from __future__ import annotations
 
 from ..images import KO_VERSION, PACK_VERSION, tools_needed
+from ..loaded_targets import answer
 from ..services import App, backends_of, families_of, services_of, web_apps
+from ..target_protocol import PIPELINE
 from .ci_workflows import NODE_SETUP, toolchain_setup
 
 TOFU_VERSION = "1.12.6"
@@ -40,72 +42,17 @@ CHECKOUT = """      - uses: actions/checkout@v6
           ref: ${{ github.event.workflow_run.head_sha }}
 """
 
-# Both spellings, on purpose: the secrets are empty on GitHub, where the OIDC token does the work, and set on
-# a forge without one, where the key signs in and the role is assumed with it. Written by `make bootstrap`.
-CREDENTIALS = """      - uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-"""
-
-# GitHub's hosted runners ship the `aws` CLI; act's default ubuntu image — what a local Gitea runner uses —
-# does not, and `make deploy`, `make rollback` and `make url` all hand off to `scripts/deploy.py`, which
-# shells out to it. So every job that runs those verbs installs the CLI itself, right after checkout;
-# `--update` makes it a no-op on a runner that already has one. The build job needs no copy: `make build
-# push` is docker-only, and the credential and ECR-login actions are JavaScript on the SDK, not the CLI.
-# The architecture comes from the runner itself — AWS names the installer with exactly what `uname -m`
-# answers (`x86_64`, `aarch64`), and a local runner is as likely to be ARM as a hosted one is not.
-AWS_CLI = """      - run: |
-          curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o awscliv2.zip
-          unzip -q awscliv2.zip && sudo ./aws/install --update
-"""
-
-# `azure/login` has no `client-secret` input: given the three identifiers it always asks GitHub for an OIDC
-# token. Choose that path only when bootstrap stored no secret. On Gitea the jobs already install `az`, so
-# use its service-principal login directly; environment variables preserve secrets containing JSON-significant
-# characters without trying to interpolate them into `azure/login`'s `creds` JSON input.
-AZURE_CREDENTIALS = """      - if: ${{ secrets.AZURE_CLIENT_SECRET == '' }}
-        uses: azure/login@v2
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - if: ${{ secrets.AZURE_CLIENT_SECRET != '' }}
-        env:
-          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        run: |
-          az login --service-principal \\
-            --username "$AZURE_CLIENT_ID" \\
-            --password "$AZURE_CLIENT_SECRET" \\
-            --tenant "$AZURE_TENANT_ID"
-          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
-"""
-
-# GitHub's hosted runners ship the `az` CLI; act's default ubuntu image — what a local Gitea runner uses —
-# does not, and `make deploy`, `make rollback` and `make url` all hand off to `scripts/deploy.py`, which
-# shells out to it. So every job that runs those verbs installs the CLI itself, right after checkout. The
-# build job needs one too, unlike its AWS counterpart: `az acr login` is what signs the daemon in to the
-# registry, where ECR has a JavaScript action that never touches the CLI. Microsoft's own installer script
-# is a no-op on a runner that already has one.
-AZURE_CLI = """      - run: |
-          command -v az >/dev/null 2>&1 || curl -sSL https://aka.ms/InstallAzureCLIDeb | sudo bash
-"""
-
 TOOL_SETUPS = {
     "pack": f"      - uses: buildpacks/github-actions/setup-pack@v6.1.0\n        with:\n          pack-version: {PACK_VERSION.lstrip('v')}\n",
     "ko": f"      - uses: ko-build/setup-ko@v0.10\n        with:\n          version: {KO_VERSION}\n",
 }
 
-# Everything in these three workflows that is one cloud's rather than every project's, per target: the CLI
-# a runner may not ship, how a job becomes the deploy identity, how it signs in to the image registry, and
-# what the stacks and `scripts/deploy.py` read out of the environment. The shape around them is the promise
-# and not the cloud — `verify` passes on `main`, one apply at a time, apply then smoke, production behind
-# `AUTO_PROMOTE`, a rollback that re-applies the release before — so a second cloud is a row here.
+# Everything in these three workflows that is one cloud's rather than every project's is the target's own
+# `pipeline`: the CLI a runner may not ship, how a job becomes the deploy identity, how it signs in to the
+# image registry, and what the stacks and `scripts/deploy.py` read out of the environment. The shape around
+# them is the promise and not the cloud — `verify` passes on `main`, one apply at a time, apply then smoke,
+# production behind `AUTO_PROMOTE`, a rollback that re-applies the release before — so a second cloud
+# answers five strings and rewrites none of this file.
 # The one credential in a deploy that the cloud did not issue: the Auth0 tenant's, which `infra/service/
 # auth0.tf` is applied with. Added to the workflow environment only for a project that answered an identity
 # axis with Auth0 — an empty `AUTH0_DOMAIN` in every other project's workflow would read as configuration
@@ -117,46 +64,15 @@ AUTH0_ENVIRONMENT = (
     "  AUTH0_CLIENT_SECRET: ${{ secrets.AUTH0_CLIENT_SECRET }}\n"
 )
 
-CLOUD_STEPS = {
-    "aws": {
-        "cli": AWS_CLI,
-        "credentials": CREDENTIALS,
-        # The build job needs no CLI: `make build push` is docker-only, and the credential and ECR-login
-        # actions are JavaScript on the SDK.
-        "build_cli": "",
-        "registry_login": "      - uses: aws-actions/amazon-ecr-login@v2\n",
-        "environment": (
-            "  AWS_REGION: ${{ vars.AWS_REGION }}\n"
-            "  TOFU_STATE_BUCKET: ${{ vars.TOFU_STATE_BUCKET }}\n"
-            "  IMAGE_REGISTRY: ${{ vars.IMAGE_REGISTRY }}\n"
-        ),
-    },
-    "azure": {
-        "cli": AZURE_CLI,
-        "credentials": AZURE_CREDENTIALS,
-        # Unlike ECR's, this login is the CLI's own, so the build job installs it too.
-        "build_cli": AZURE_CLI,
-        # `az acr login` rather than an action, and therefore after the CLI and the sign-in above: it takes
-        # the active Azure CLI session and hands the Docker daemon a registry credential from it.
-        "registry_login": "      - run: az acr login --name ${{ vars.AZURE_REGISTRY_NAME }}\n",
-        "environment": (
-            "  AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}\n"
-            "  AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n"
-            "  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}\n"
-            "  AZURE_REGISTRY_ID: ${{ vars.AZURE_REGISTRY_ID }}\n"
-            "  TOFU_STATE_RESOURCE_GROUP: ${{ vars.TOFU_STATE_RESOURCE_GROUP }}\n"
-            "  TOFU_STATE_ACCOUNT: ${{ vars.TOFU_STATE_ACCOUNT }}\n"
-            "  TOFU_STATE_CONTAINER: ${{ vars.TOFU_STATE_CONTAINER }}\n"
-            "  IMAGE_REGISTRY: ${{ vars.IMAGE_REGISTRY }}\n"
-        ),
-    },
-}
+def pipeline(target: str) -> dict[str, str]:
+    """The five parts of these workflows that are this target's. The job around them is this module's."""
+    return dict(answer(target, PIPELINE, default={}))
 
 
 def deploy_job(environment: str, needs: str, web: bool, target: str, condition: str = "") -> str:
     # The site is built in the deploy job rather than the build job because Vite bakes VITE_* values into the
     # bundle, and where there is a customer login those are the environment's.
-    cloud = CLOUD_STEPS[target]
+    cloud = pipeline(target)
     node = NODE_SETUP if web else ""
     gate = f"    if: {condition}\n" if condition else ""
     return f"""
@@ -175,7 +91,7 @@ def deploy_job(environment: str, needs: str, web: bool, target: str, condition: 
 
 def cloud_environment(target: str, auth0: bool) -> str:
     """The workflow-level environment for this target, plus the Auth0 tenant's when the project uses one."""
-    return CLOUD_STEPS[target]["environment"] + (AUTH0_ENVIRONMENT if auth0 else "")
+    return pipeline(target)["environment"] + (AUTH0_ENVIRONMENT if auth0 else "")
 
 
 def deploy_workflow(apps: list[App], target: str, auth0: bool) -> str:
@@ -185,7 +101,7 @@ def deploy_workflow(apps: list[App], target: str, auth0: bool) -> str:
         toolchain_setup([s for s in services if s.language == family]) for family in families
     )
     tools = "".join(TOOL_SETUPS[tool] for tool in tools_needed(backends_of(apps)))
-    cloud = CLOUD_STEPS[target]
+    cloud = pipeline(target)
     web = bool(web_apps(apps))
     return (
         """name: deploy
@@ -252,7 +168,7 @@ def promotion_workflow(web: bool, target: str, auth0: bool) -> str:
     site is rebuilt because a bundle is not an image — Vite bakes this environment's values into it — which
     is why Node is set up here where there is a browser app.
     """
-    cloud = CLOUD_STEPS[target]
+    cloud = pipeline(target)
     node = NODE_SETUP if web else ""
     return f"""name: production
 # Deploy production with the commit staging is running. This is how production is reached in a project whose
@@ -310,7 +226,7 @@ def rollback_workflow(target: str, auth0: bool) -> str:
     # Nothing is built and no toolchain is installed: a rollback promotes images that already ran here, and
     # the site comes back from the copy of index.html `make deploy` kept. The same concurrency group as the
     # deploy, so it waits for an apply in flight rather than crossing it.
-    cloud = CLOUD_STEPS[target]
+    cloud = pipeline(target)
     return f"""name: rollback
 # Started by hand, from the Actions tab, when a release is wrong: re-apply the release before the current one
 # in the environment named — the previous digests, and the previous index.html where there is a site — then

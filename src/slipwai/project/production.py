@@ -7,9 +7,12 @@ it is one — is read from `images.py`; the verbs that need more than one line h
 """
 from __future__ import annotations
 
+from ..catalog import CATALOG
 from ..images import image_builder, migrations_in_production, spelled
+from ..loaded_targets import answer
 from ..services import App, services_of
-from ..targets import TARGET_ROOT
+from ..target_protocol import IMAGE_REGISTRY, SCRIPTS
+from ..targets import managed
 
 # The gate between the two stacks that meet at the deploy role, where a target ships one: a static read of
 # what the bootstrap stack grants that role against what the service stack declares, so a slice that adds
@@ -20,20 +23,21 @@ DEPLOY_ROLE_GATE = "scripts/check-deploy-role.py"
 def deploy_role_gate(target: str) -> tuple[str, str]:
     """`check-deploy-role` for `verify`'s prerequisites and its recipe, or two empty strings for a target that
     ships no such gate — never a target that always passes."""
-    if target not in REGISTRY or not (TARGET_ROOT / target / DEPLOY_ROLE_GATE).is_file():
+    if not managed(CATALOG, target) or DEPLOY_ROLE_GATE not in answer(target, SCRIPTS, default={}):
         return "", ""
     return " check-deploy-role", (
         "check-deploy-role: ## Fail when infra/service/ declares IAM the deploy role cannot create or delete\n"
         f"\tpython3 {DEPLOY_ROLE_GATE}\n"
     )
 
-# Per target: the cloud a person signs in to, the registry the images go to, one of its addresses as an
-# example, and whose CPU architecture the default `PLATFORM` is. Four words in one comment block — the verbs
-# either side of them are the same everywhere, which is the point of `scripts/deploy.py` owning them.
-REGISTRY = {
-    "aws": ("AWS", "ECR", "123456789012.dkr.ecr.eu-west-2.amazonaws.com/", "Fargate"),
-    "azure": ("Azure", "ACR", "acrshop1a2b3c4d.azurecr.io/", "Container Apps"),
-}
+# The cloud a person signs in to, the registry the images go to, one of its addresses as an example, and
+# whose CPU architecture the default `PLATFORM` is. Four words in one comment block — the verbs either side
+# of them are the same everywhere, which is the point of `scripts/deploy.py` owning them, and the four are
+# the target's own `image_registry`.
+def registry_words(target: str) -> tuple[str, str, str, str]:
+    """The four words this comment block is written round, in the order it reads them."""
+    said = answer(target, IMAGE_REGISTRY, default={})
+    return said["cloud"], said["registry"], said["example"], said["runtime"]
 
 
 def image_variables(project_name: str, services: list[App]) -> str:
@@ -113,7 +117,7 @@ migrate-remote: ## Run the services' migrations inside an environment, as a one-
     else:
         flag_service = ""
         flag_example = f"make flag ENV=production SERVICE={services[0].name} KEY=checkout-v2 VALUE=off"
-    cloud, registry, registry_example, platform = REGISTRY[target]
+    cloud, registry, registry_example, platform = registry_words(target)
     return f"""
 # ── Production ────────────────────────────────────────────────────────────────────────────────────────
 # One image per service, built by the ecosystem's own builder and tagged with the commit that built it.

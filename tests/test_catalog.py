@@ -20,11 +20,16 @@ import checkout_packages  # noqa: F401
 
 from slipwai.assets import PRUNER, ROOT
 from slipwai.axes import validate_axes
-from slipwai.catalog import CATALOG, PACKAGES, SCHEMA_VERSION
+from slipwai.catalog import CATALOG, PACKAGES, SCHEMA_VERSION, TARGETS
 from slipwai.catalog_checks import check_rung, validate_catalog
 from slipwai.errors import Refusal
 from slipwai.registry import load, registry
 from slipwai.targets import validate_targets
+
+#: The targets this checkout has installed. The two validators take it because a packaged
+#: target's contribution reaches a project's pruner through the emission that writes it there,
+#: so the keel's own static copy has nothing to mirror for one.
+PACKAGED = [package.name for package in TARGETS]
 
 EMPTY = load([])
 SHIPPED = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
@@ -91,10 +96,10 @@ class MirrorTest(unittest.TestCase):
     """
 
     def test_the_axes_agree_with_the_pruner(self) -> None:
-        validate_axes(CATALOG)
+        validate_axes(CATALOG, PACKAGED)
 
     def test_the_targets_agree_with_the_pruner(self) -> None:
-        validate_targets(CATALOG)
+        validate_targets(CATALOG, PACKAGED)
 
     def test_the_pruner_knows_every_feature_the_keel_itself_offers(self) -> None:
         """The keel's copy carries the infrastructure features and no framework. A feature a package's
@@ -112,17 +117,20 @@ class MirrorTest(unittest.TestCase):
         name = next(n for n in axis["options"] if n != axis["absent"])
         axis["options"][name]["targets"] = ["none"]
         with self.assertRaises(ValueError) as raised:
-            validate_axes(drifted)
+            validate_axes(drifted, PACKAGED)
         self.assertIn("prune.py", str(raised.exception))
 
-    def test_a_managed_target_with_no_infrastructure_behind_it_is_refused(self) -> None:
+    def test_a_managed_target_with_no_package_behind_it_is_refused(self) -> None:
         """A catalogue entry with nothing behind it generates projects claiming a destination they
-        cannot reach, which is the half-ported shape the keel refuses everywhere else."""
+        cannot reach, which is the half-ported shape the keel refuses everywhere else. Since phase 10 the
+        infrastructure travels inside the package, so "nothing behind it" means no package of that name."""
         drifted = copy.deepcopy(CATALOG)
         drifted["targets"]["gcp"] = {"label": "GCP", "managed": True, "requires": []}
         with self.assertRaises(ValueError) as raised:
-            validate_targets(drifted)
-        self.assertIn("assets/targets/gcp", str(raised.exception))
+            validate_targets(drifted, PACKAGED)
+        said = str(raised.exception)
+        self.assertIn("gcp", said)
+        self.assertIn("target install gcp", said)
 
 
 class RungTest(unittest.TestCase):

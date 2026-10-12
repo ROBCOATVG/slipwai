@@ -15,76 +15,6 @@
     "none": {
       "label": "Local only — nothing is deployed anywhere; `make verify` is the end of the road"
     },
-    "aws": {
-      "label": "AWS — one ECS service per app deployed blue/green behind its own load balancer, RDS Postgres, Cognito and S3 + CloudFront, provisioned by OpenTofu and deployed by the trunk pipeline",
-      "requires": [
-        "http"
-      ],
-      "reserved": {
-        "anywhere": [
-          "amazon",
-          "aws",
-          "cognito"
-        ]
-      },
-      "managed": true
-    },
-    "azure": {
-      "label": "Azure — one Container App per app deployed by revision behind the environment's own ingress and managed certificate, PostgreSQL Flexible Server, Entra ID and Static Web Apps, provisioned by OpenTofu and deployed by the trunk pipeline",
-      "requires": [
-        "http"
-      ],
-      "reserved": {
-        "anywhere": [
-          "microsoft",
-          "windows"
-        ],
-        "word": [
-          "access",
-          "app_browsers",
-          "app_code",
-          "app_data",
-          "app_globalresources",
-          "app_localresources",
-          "app_themes",
-          "app_webreferences",
-          "azure",
-          "bing",
-          "bizspark",
-          "biztalk",
-          "cortana",
-          "directx",
-          "dotnet",
-          "dynamics",
-          "excel",
-          "exchange",
-          "forefront",
-          "groove",
-          "hololens",
-          "hyperv",
-          "kinect",
-          "lync",
-          "msdn",
-          "o365",
-          "office",
-          "office365",
-          "onedrive",
-          "onenote",
-          "outlook",
-          "powerpoint",
-          "sharepoint",
-          "skype",
-          "visio",
-          "visualstudio",
-          "web.config",
-          "xbox"
-        ],
-        "prefix": [
-          "login"
-        ]
-      },
-      "managed": true
-    },
     "existing": {
       "label": "Existing — this project deploys to infrastructure it does not own: whatever runs it is described in `docs/deployment.md` and provisioned by nobody here; `make verify` is the gate and nothing is deployed by the factory"
     }
@@ -126,9 +56,7 @@
           "backends": [],
           "targets": [
             "none",
-            "existing",
-            "aws",
-            "azure"
+            "existing"
           ]
         },
         "state": {
@@ -141,9 +69,7 @@
           "backends": [],
           "targets": [
             "none",
-            "existing",
-            "aws",
-            "azure"
+            "existing"
           ]
         }
       }
@@ -171,9 +97,7 @@
           "backends": [],
           "targets": [
             "none",
-            "existing",
-            "aws",
-            "azure"
+            "existing"
           ]
         },
         "sqlite": {
@@ -209,16 +133,8 @@
           "backends": [],
           "targets": [
             "none",
-            "existing",
-            "aws",
-            "azure"
-          ],
-          "aws": {
-            "provisions": "rds"
-          },
-          "azure": {
-            "provisions": "flexible-server"
-          }
+            "existing"
+          ]
         }
       }
     },
@@ -241,9 +157,7 @@
           "backends": [],
           "targets": [
             "none",
-            "existing",
-            "aws",
-            "azure"
+            "existing"
           ]
         }
       },
@@ -272,9 +186,7 @@
           "backends": [],
           "targets": [
             "none",
-            "existing",
-            "aws",
-            "azure"
+            "existing"
           ]
         },
         "keycloak": {
@@ -296,48 +208,6 @@
             "existing"
           ]
         },
-        "cognito": {
-          "capabilities": [
-            "auth-cognito"
-          ],
-          "containers": [
-            "keycloak"
-          ],
-          "migrations": false,
-          "integration-suite": false,
-          "label": "Cognito — a user pool with the internal groups, a hosted login and a confidential client, provisioned in AWS; Keycloak runs locally as the stand-in, with the same groups and OIDC_* keys (the flow itself is NOT implemented)",
-          "features": [
-            "keycloak"
-          ],
-          "backends": [],
-          "targets": [
-            "aws"
-          ],
-          "aws": {
-            "provisions": "cognito"
-          }
-        },
-        "entra": {
-          "capabilities": [
-            "auth-entra"
-          ],
-          "containers": [
-            "keycloak"
-          ],
-          "migrations": false,
-          "integration-suite": false,
-          "label": "Entra ID — an app registration with the internal groups and a confidential client, provisioned in the subscription's own workforce tenant; Keycloak runs locally as the stand-in, with the same groups and OIDC_* keys (the flow itself is NOT implemented)",
-          "features": [
-            "keycloak"
-          ],
-          "backends": [],
-          "targets": [
-            "azure"
-          ],
-          "azure": {
-            "provisions": "entra"
-          }
-        },
         "auth0": {
           "capabilities": [
             "auth-auth0"
@@ -352,16 +222,7 @@
             "keycloak"
           ],
           "backends": [],
-          "targets": [
-            "aws",
-            "azure"
-          ],
-          "aws": {
-            "provisions": "auth0"
-          },
-          "azure": {
-            "provisions": "auth0"
-          }
+          "targets": []
         }
       },
       "always": []
@@ -388,9 +249,7 @@
           "backends": [],
           "targets": [
             "none",
-            "existing",
-            "aws",
-            "azure"
+            "existing"
           ]
         },
         "keycloak": {
@@ -412,27 +271,6 @@
             "existing"
           ]
         },
-        "cognito": {
-          "capabilities": [
-            "users-cognito"
-          ],
-          "containers": [
-            "keycloak"
-          ],
-          "migrations": false,
-          "integration-suite": false,
-          "label": "Cognito — a second user pool for external users with self-registration and a public PKCE client, provisioned in AWS; Keycloak's external realm runs locally as the stand-in, and the browser login is real",
-          "features": [
-            "users-keycloak"
-          ],
-          "backends": [],
-          "targets": [
-            "aws"
-          ],
-          "aws": {
-            "provisions": "cognito"
-          }
-        },
         "auth0": {
           "capabilities": [
             "users-auth0"
@@ -447,16 +285,7 @@
             "users-keycloak"
           ],
           "backends": [],
-          "targets": [
-            "aws",
-            "azure"
-          ],
-          "aws": {
-            "provisions": "auth0"
-          },
-          "azure": {
-            "provisions": "auth0"
-          }
+          "targets": []
         }
       },
       "always": []

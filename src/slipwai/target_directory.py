@@ -282,7 +282,22 @@ def merge_targets(catalog: dict[str, Any], packages: list[TargetPackage]) -> lis
             refusals.append(refusal(package.name, package.root, "; ".join(found)))
             continue
         declare(catalog, package)
+    drop_unoffered(catalog)
     return refusals
+
+
+def drop_unoffered(catalog: dict[str, Any]) -> None:
+    """Take out every option no installed target offers, because an answer nobody offers is not a choice.
+
+    Auth0 is why this exists. It is a third party rather than a cloud's own service, so it belongs to no
+    package — and it is reachable only from a cloud that provisions it, so with no cloud installed there is
+    nowhere it could be chosen. Left in, it would be an option declaring an empty list of targets, which
+    `check_targets` refuses and no default could resolve against; taken out, the menu simply does not offer
+    a thing this machine cannot provision, and installing a cloud that provisions it brings it back.
+    """
+    for spec in catalog["axes"].values():
+        for name in [name for name, option in spec["options"].items() if not option.get("targets")]:
+            del spec["options"][name]
 
 
 def declare(catalog: dict[str, Any], package: TargetPackage) -> None:

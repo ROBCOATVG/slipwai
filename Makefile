@@ -117,4 +117,3 @@ check-structure: ## Fail when a module imports against the declared direction, c
 verify: lint typecheck check-structure check-shared check-release test ## Full local gate — the same one CI runs
 	@echo
 	@echo 'verify: all gates passed'
-

@@ -15,7 +15,7 @@ import unittest
 
 import checkout_packages
 
-from slipwai import loaded_targets, preflight
+from slipwai import deployment_shapes, loaded_targets, preflight
 from slipwai.catalog import CATALOG
 from slipwai.errors import GenerationError
 from slipwai.project import add_commands, deploy_workflow, flag_route, infra, production, target_docs
@@ -99,14 +99,47 @@ class ReaderTest(unittest.TestCase):
                 self.assertIn("scripts/deploy.py", files)
                 self.assertIn("terraform", files["infra/bootstrap/main.tf"])
 
-    def test_both_pages_a_project_going_to_production_gets_are_written(self) -> None:
-        """`project/target_docs.py`, which was a table naming one keel module per cloud."""
+    def test_every_page_a_project_going_to_production_gets_is_written(self) -> None:
+        """`project/target_docs.py`, which was a table naming one keel module per cloud.
+
+        The drawing and the decision record are the cloud's own; `infra/README.md` is the operations page
+        3.4b added, and it is written from the shape row rather than from a page the package brings, so it
+        is the one of the three the keel composes and the one that can disagree with the stacks.
+        """
         for cloud in CLOUDS:
             with self.subTest(target=cloud):
                 pages = target_docs.pages("shopfront", [app()], cloud)
-                self.assertEqual(sorted(pages),
-                                 ["docs/adr/0002-production-target.md", "docs/deployment.md"])
+                self.assertEqual(sorted(pages), ["docs/adr/0002-production-target.md",
+                                                 "docs/deployment.md", "infra/README.md"])
                 self.assertIn("flowchart", pages["docs/deployment.md"])
+                liner = deployment_shapes.row(cloud, "liner") or {}
+                self.assertTrue(liner)
+                operations = pages["infra/README.md"]
+                self.assertTrue(operations.startswith("# Liner infrastructure"))
+                self.assertIn(f"Compute: {liner['compute']}.", operations)
+                self.assertIn(f"Database: {liner['database']}.", operations)
+                self.assertIn(liner["transition"], operations)
+                self.assertIn("make deploy ENV=production", operations)
+
+    def test_a_skiff_gets_the_same_three_pages_written_round_its_own_row(self) -> None:
+        """The shape `pages` is asked for decides the words, and a skiff's are not a liner's.
+
+        The deployment drawing and the decision record are the keel's for a skiff — the package's pages
+        describe a pipeline with a staging environment this shape has not got — so all three say one
+        environment, and all three say the compute the shape row names.
+        """
+        for cloud in CLOUDS:
+            with self.subTest(target=cloud):
+                pages = target_docs.pages("shopfront", [app()], cloud, "skiff")
+                self.assertEqual(sorted(pages), ["docs/adr/0002-production-target.md",
+                                                 "docs/deployment.md", "infra/README.md"])
+                skiff = deployment_shapes.row(cloud, "skiff") or {}
+                self.assertTrue(skiff)
+                for page in pages.values():
+                    self.assertIn(f"Compute: {skiff['compute']}.", page)
+                    self.assertIn(f"Database: {skiff['database']}.", page)
+                self.assertTrue(pages["infra/README.md"].startswith("# Skiff infrastructure"))
+                self.assertIn("deploys the one\nproduction environment", pages["docs/deployment.md"])
 
     def test_the_readme_borrows_the_clouds_own_nouns(self) -> None:
         """`project/target_docs.WORDS`."""

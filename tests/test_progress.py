@@ -28,6 +28,28 @@ class TickTest(unittest.TestCase):
             code = progress.main(["--check"])
         self.assertEqual(code, 0, out.getvalue())
 
+    def test_a_stale_total_is_not_what_the_gate_is_for(self) -> None:
+        """A captain's branch computes a different total from trunk's, and that must not be a red gate.
+
+        Found by running five fairways at once: each captain lands a slice, each branch's `**Progress:`
+        line counts that one slice and no other's, and `--check` compared the whole page — so every
+        captain was red on a line none of them was allowed to own. The ticks are the fact the plan is
+        read for; the totals are rendered, like the drawio canvas the host regenerates after a merge.
+        """
+        page = progress.rendered()
+        stale = page.replace(
+            next(line for line in page.splitlines() if line.startswith("**Progress:")),
+            "**Progress: 1 of 999 slices done** — phase 1 0/6. Written by `scripts/progress.py`.")
+        self.assertNotEqual(stale, page, "the fixture did not change the line it meant to")
+        self.assertEqual(progress.without_the_total(stale), progress.without_the_total(page))
+
+    def test_a_tick_that_is_actually_wrong_is_still_caught(self) -> None:
+        """The relaxation is the totals and only the totals: a Status cell still answers to the history."""
+        page = progress.rendered()
+        untick = page.replace("| done |\n", "|  |\n", 1)
+        self.assertNotEqual(untick, page, "the fixture did not untick anything")
+        self.assertNotEqual(progress.without_the_total(untick), progress.without_the_total(page))
+
     def test_writing_twice_changes_nothing_the_second_time(self) -> None:
         """The Status cell is rewritten, not appended, or the table grows a column per run."""
         once = progress.rendered()

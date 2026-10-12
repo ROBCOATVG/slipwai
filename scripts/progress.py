@@ -188,6 +188,31 @@ def rendered() -> str:
     return "\n".join(lines) + "\n"
 
 
+def without_the_total(page: str) -> str:
+    """The page with its one shared line blanked, which is what `--check` compares.
+
+    Two things of different natures live in this file and only one of them is concurrent-safe.
+
+    A **Status cell** is per slice and disjoint: the slice that lands `10.1` ticks row `10.1` and no other
+    branch touches it. That is the same shape `check-slice-scope.py` already grants a slice over its own
+    block of `docs/event-model/model.yaml` — "every other slice's block reads exactly as on `main`" — and
+    it merges cleanly however many fairways are open.
+
+    The **`**Progress:` line** is one shared line that every branch rewrites, because its totals count
+    every slice in the plan. That is precisely the conflict `changelog.d` was created to eliminate: one
+    block at a known spot, and "every pair of branches that overlapped in time inserted at the same spot".
+    Worse than the conflict, it made the gate unpassable — a captain on a branch with one new trailer
+    computed a different total from trunk's, so `--check` was red and the only way to green was to edit a
+    file every other fairway was also holding.
+
+    So the totals stop being gated. They are rendered, like `docs/event-model/model.drawio`, which
+    `check-slice-scope` says the host regenerates after each merge. `make progress` still writes them; what
+    is *held* to the history is the ticks, which is what the plan is read for.
+    """
+    lines = page.splitlines()
+    return "\n".join("**Progress:**" if line.startswith("**Progress:") else line for line in lines) + "\n"
+
+
 def main(arguments: list[str]) -> int:
     wanted = rendered()
     if "--check" not in arguments:
@@ -195,7 +220,7 @@ def main(arguments: list[str]) -> int:
         ids = [m.group(1) for line in wanted.splitlines() if (m := ROW.match(line))]
         print(summary(wanted, with_headings(shipped(), ids, wanted)).split(" — ")[0].replace("**", ""))
         return 0
-    if PLAN.read_text(encoding="utf-8") == wanted:
+    if without_the_total(PLAN.read_text(encoding="utf-8")) == without_the_total(wanted):
         print("progress: the plan's ticks match the history")
         return 0
     print("progress: the plan's ticks are out of step with the history.\n  Run: make progress", file=sys.stderr)

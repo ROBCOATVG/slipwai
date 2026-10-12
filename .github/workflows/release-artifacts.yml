@@ -1,0 +1,52 @@
+name: release artifacts
+
+# Preparation only. No tag, release, registry upload or write permission is granted by this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Commit or branch to build and smoke before the final release
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  distributions:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Build and smoke the wheel
+        shell: bash
+        run: |
+          set -eu
+          ./scripts/build-wheel
+          for wheel in dist/slipwai-*.whl; do
+            python scripts/smoke-wheel.py "$wheel"
+          done
+      - name: Build and smoke the executable
+        shell: bash
+        run: |
+          set -eu
+          ./scripts/build-executable
+          suffix=''
+          if [ "$RUNNER_OS" = Windows ]; then suffix='.exe'; fi
+          python scripts/smoke-executable.py "dist/slipwai$suffix"
+          git rev-parse HEAD > dist/slipwai-revision.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slipwai-${{ matrix.os }}-${{ github.run_id }}
+          path: dist/slipwai*
+          if-no-files-found: error

@@ -86,7 +86,13 @@ next: ## What can be brought back next, and what each remaining module waits on
 executable: ## Build the standalone slipwai executable
 	./scripts/build-executable
 
-.PHONY: test-executable
+.PHONY: wheel test-wheel test-executable
+wheel: ## Build the keel's wheel and source distribution without cutting a release
+	./scripts/build-wheel
+
+test-wheel: wheel ## Install the wheel outside the checkout and exercise its bundled material
+	@for wheel in dist/slipwai-*.whl; do python3 scripts/smoke-wheel.py "$$wheel" || exit; done
+
 test-executable: executable ## Build it, then prove it scaffolds with Git alone
 	python3 scripts/smoke-executable.py dist/slipwai$(if $(filter Windows_NT,$(OS)),.exe,)
 

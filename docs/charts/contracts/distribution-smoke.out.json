@@ -1,0 +1,1 @@
+{"type":"object","required":["version","plugin","native","adoption"],"properties":{"version":{"const":"passed"},"plugin":{"const":"passed"},"native":{"const":"passed"},"adoption":{"const":"passed"}}}

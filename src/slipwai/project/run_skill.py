@@ -124,6 +124,7 @@ def values(project_name: str, apps: list[App], layout: Layout = AT_ROOT) -> dict
         "where": where(services),
         "screen": f" and its screen in `{browser.path}`" if browser else "",
         "web-url": f"http://localhost:{browser.port}" if browser else "",
+        "web-path": browser.path if browser else "",
         "health-path": HEALTH_PATH,
         "service-count": str(len(services)),
         "ports": "".join(

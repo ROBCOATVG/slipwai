@@ -29,15 +29,21 @@ from __future__ import annotations
 
 import unittest
 
-from slipwai.assets import TOOLKIT_ROOT
+from slipwai.assets import GUIDANCE_ROOT, TOOLKIT_ROOT
 from slipwai.errors import GenerationError
 from slipwai.layout import AT_ROOT
-from slipwai.project import briefs, prose
+from slipwai.project import briefs, prose, rules
 
-#: Every directory of assets that is rendered rather than copied, and the values each may name. One row per
-#: templated asset tree: a slice of phase 16 that templates another adds its row here, and the two rules
-#: below then hold it without another test being written.
-TEMPLATED = ((TOOLKIT_ROOT / "agents", "agents", lambda: briefs.values(AT_ROOT)),)
+#: Every directory of assets that is rendered rather than copied, where what it renders to lands in a
+#: generated project, and the values each may name. One row per templated asset tree: a slice of phase 16
+#: that templates another adds its row here, and the two rules below then hold it without another test being
+#: written. A tree lands at one or more paths, each either a directory of rendered files or a single page —
+#: `assets/guidance/` is three files that become two pages, and `rules.md` is not one of them, being the
+#: paragraphs the pages are assembled from.
+TEMPLATED = (
+    (TOOLKIT_ROOT / "agents", ("agents",), lambda: briefs.values(AT_ROOT)),
+    (GUIDANCE_ROOT, ("AGENTS.md", "docs/architecture.md"), lambda: rules.TOKENS),
+)
 
 
 class SectionTest(unittest.TestCase):

@@ -60,17 +60,20 @@ class GeneratedProjectTest(unittest.TestCase):
         Read over what the keel renders rather than every file a project receives, because `{{name}}` is not
         the keel's spelling alone — `scripts/agents/registry.json` ships `"argPlaceholder": "{{args}}"` and a
         skill ships `{{badges}}`, both another system's substitution that a harness fills itself. `TEMPLATED`
-        names each rendered tree and where it lands; a slice of phase 16 that templates another adds its row.
+        names each rendered tree and where it lands — a directory of rendered files, or a single page — and a
+        slice of phase 16 that templates another adds its row.
         """
         from test_generated_prose import TEMPLATED
 
         carried: dict[str, list[str]] = {}
         for _directory, lands, _provider in TEMPLATED:
-            where = self.project / lands
-            self.assertTrue(where.is_dir(), f"{lands}/ is not in a generated project")
-            for path in sorted(where.rglob("*")):
-                if path.is_file() and (left := prose.unresolved(path.read_text(encoding="utf-8"))):
-                    carried[str(path.relative_to(self.project))] = left
+            for landing in lands:
+                where = self.project / landing
+                self.assertTrue(where.exists(), f"{landing} is not in a generated project")
+                found = sorted(where.rglob("*")) if where.is_dir() else [where]
+                for path in found:
+                    if path.is_file() and (left := prose.unresolved(path.read_text(encoding="utf-8"))):
+                        carried[str(path.relative_to(self.project))] = left
         self.assertEqual(carried, {}, f"rendered files still carrying a placeholder: {carried}")
 
     def test_a_project_is_written(self) -> None:

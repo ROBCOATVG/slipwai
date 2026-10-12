@@ -219,6 +219,19 @@ def _load_pruner():
 PRUNER = _load_pruner()
 
 
+def command_text():
+    """The project's own command-to-skill renderer, shared with standalone harness installs."""
+    import importlib.util
+
+    source = TOOLKIT_ROOT / "scripts/agents/command_text.py"
+    spec = importlib.util.spec_from_file_location("delivery_command_text", source)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load the command renderer from {source}. Run: slipwai upgrade")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 
 
 def this_command(kind: str | None = None, executable: Path | None = None,

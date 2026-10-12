@@ -1,0 +1,17 @@
+v: 1
+feature: codex-harness
+fairways:
+  native-harness:
+    context: repository workflows are discoverable by Codex
+    owns: [src/slipwai/native.py, src/slipwai/assets.py, assets/toolkit/scripts/agents/project.py, assets/toolkit/scripts/agents/command_text.py, assets/toolkit/scripts/agents/registry.json, tests/test_native.py, tests/test_generated.py]
+marks:
+  CodexCommandSkill:
+    kind: port
+    inputs: docs/charts/contracts/codex-command-skill.in.json
+    outputs: docs/charts/contracts/codex-command-skill.out.json
+slices:
+  codex-harness-repair:
+    fairway: native-harness
+    capability: a Codex user can discover repository workflows after either install route
+    sets: [CodexCommandSkill]
+    steers_by: []

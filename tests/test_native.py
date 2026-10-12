@@ -61,7 +61,7 @@ class EveryHarnessTest(unittest.TestCase):
 
 
 class CodexTest(unittest.TestCase):
-    """The harness the slice names: its prompts directory and its MCP configuration."""
+    """The harness the slice names: repository skills and its MCP configuration."""
 
     rendered: dict[str, str]
 
@@ -69,16 +69,19 @@ class CodexTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.rendered = native.files("codex")
 
-    def test_the_commands_land_in_codexs_prompts_directory(self) -> None:
-        self.assertIn(".codex/prompts/sail.md", self.rendered)
+    def test_the_commands_land_in_codexs_repository_skills(self) -> None:
+        self.assertIn(".agents/skills/sail/SKILL.md", self.rendered)
 
     def test_the_skills_land_where_codex_reads_skills(self) -> None:
         self.assertTrue(any(path.startswith(".agents/skills/tdd/") for path in self.rendered))
 
-    def test_a_command_is_the_same_file_the_plugin_carries(self) -> None:
-        """Bar the argument placeholder, which is the one thing the row says differs."""
-        self.assertEqual(self.rendered[".codex/prompts/sail.md"],
-                         plugin.files()["commands/sail.md"])
+    def test_a_command_skill_preserves_the_plugins_workflow_body(self) -> None:
+        source = plugin.files()["commands/sail.md"]
+        body = source.split("\n---\n", 1)[1].lstrip("\n")
+        skill = self.rendered[".agents/skills/sail/SKILL.md"]
+        self.assertTrue(skill.startswith("---\nname: sail\ndescription:"))
+        self.assertTrue(skill.endswith(body))
+        self.assertFalse(any(path.startswith(".codex/prompts/") for path in self.rendered))
 
     def test_its_mcp_configuration_names_the_servers_command(self) -> None:
         found = self.rendered[".codex/config.toml"]
@@ -142,7 +145,7 @@ class WrittenTest(unittest.TestCase):
         into = Path(tempfile.mkdtemp()) / "codex"
         written = native.write("codex", into)
         self.assertEqual(sorted(written), sorted(native.files("codex")))
-        self.assertTrue((into / ".codex/prompts/sail.md").is_file())
+        self.assertTrue((into / ".agents/skills/sail/SKILL.md").is_file())
 
 
 if __name__ == "__main__":

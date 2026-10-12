@@ -15,6 +15,8 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from command_text import command_as_skill, parse_text  # noqa: E402
+
 import models  # noqa: E402 — after the path that makes this script's sibling importable
 
 
@@ -148,24 +150,7 @@ def materialize(path: Path, content: str) -> None:
 
 
 def parse_command(path: Path) -> tuple[str, str, str]:
-    source = path.read_text(encoding="utf-8")
-    description = f"Run the {path.stem} project workflow"
-    argument_hint = ""
-    body = source
-    if source.startswith("---\n"):
-        end = source.find("\n---\n", 4)
-        if end != -1:
-            header = source[4:end]
-            body = source[end + 5 :].lstrip("\n")
-            for line in header.splitlines():
-                key, separator, value = line.partition(":")
-                if not separator:
-                    continue
-                if key == "description":
-                    description = value.strip().strip('"')
-                elif key == "argument-hint":
-                    argument_hint = value.strip().strip('"')
-    return description, argument_hint, body
+    return parse_text(path.read_text(encoding="utf-8"), path.stem)
 
 
 def stamp_markdown(source: str, canonical: str) -> str:
@@ -178,17 +163,6 @@ def stamp_markdown(source: str, canonical: str) -> str:
     boundary = end + 5
     return f"{source[:boundary]}\n{stamp}\n{source[boundary:]}"
 
-
-def command_as_skill(name: str, description: str, hint: str, body: str, source: str) -> str:
-    arguments = f"\n**Arguments:** {hint}\n" if hint else ""
-    return (
-        "---\n"
-        f"name: {name}\n"
-        f"description: {json.dumps(description, ensure_ascii=False)}\n"
-        "---\n\n"
-        f"<!-- {STAMP.format(source=source)} -->\n"
-        f"{arguments}\n{body}"
-    )
 
 
 def rendered_command(path: Path, harness: dict[str, object]) -> tuple[str, str]:

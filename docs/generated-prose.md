@@ -47,6 +47,14 @@ sentence stays in Python.** The test a contributor applies is the paragraph boun
 where the branch begins and ends, and is it a whole paragraph or more?* If yes, it is a section. If the
 branch is inside a sentence, it is rendering and it stays.
 
+**A branch that begins or ends mid-paragraph stays, and the mechanism settles it rather than the test.**
+16.3 met the case the question above does not answer: two alternatives, each four lines of whole
+sentences, but the branch opening and closing *inside* a bullet rather than around one. The paragraph
+boundary gives no clean yes there, and the answer does not need one — `OPEN` and `CLOSE` are anchored to
+the start of a line, so a span that begins mid-paragraph cannot be marked as a section at all. The text
+stays in Python and the asset carries the frame around it with a token. Said here because two slices met
+this shape and the second should not have to re-derive it from the regular expressions.
+
 ```markdown
 Standing text every project gets.
 

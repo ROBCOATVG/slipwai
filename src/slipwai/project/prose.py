@@ -43,8 +43,8 @@ catalogue it is deliberately not in. `page` below is how a module reads one.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
-from ..assets import PAGE_ROOT
 from ..errors import GenerationError
 
 #: A placeholder, in the spelling `examples.py` already uses under `assets/`. Lower case and hyphenated so
@@ -121,14 +121,14 @@ def render(name: str, text: str, named: dict[str, str], wanted: tuple[str, ...] 
     return resolve(name, "".join(out), named)
 
 
-def page(name: str, named: dict[str, str], wanted: tuple[str, ...] | None = None) -> str:
-    """The page under `assets/pages/` named, as a project receives it: sections selected, tokens resolved.
+def page(root: Path, name: str, named: dict[str, str], wanted: tuple[str, ...] | None = None) -> str:
+    """The page `name` under `root`, as a project receives it, or a refusal naming the file that is missing.
 
-    `name` is where the page lands in a generated project — `README.md`, `docs/gates.md` — so a refusal from
-    anywhere below names the file somebody will open rather than the file a contributor edits, and the two
-    are the same path anyway.
+    The refusal is worth the two lines: a page read from a tree is a page somebody can delete or rename,
+    and `read_text` on a path that is not there says `FileNotFoundError` and the absolute path of a
+    directory inside the keel, which is a line about this machine rather than about the asset.
     """
-    path = PAGE_ROOT / name
+    path = root / name
     if not path.is_file():
         raise GenerationError(f"{name} has no page: {path} is missing")
     return render(name, path.read_text(encoding="utf-8"), named, wanted)

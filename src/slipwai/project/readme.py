@@ -19,6 +19,7 @@ services actually need (`backing_service_prose.py`). Each arrives as a value rat
 """
 from __future__ import annotations
 
+from ..assets import PAGE_ROOT
 from ..catalog import CATALOG
 from ..loaded_targets import cloud_of
 from ..services import App, described, frontend_of, services_of, web_apps
@@ -41,7 +42,7 @@ def readme(
     on the page: a value would have to carry its own trailing newline into the asset, and a page that ends
     without one is a page every editor fights.
     """
-    rendered = page(PAGE, values(project_name, profile, apps, target, shape), wanted(profile, apps, target))
+    rendered = page(PAGE_ROOT, PAGE, values(project_name, profile, apps, target, shape), wanted(profile, apps, target))
     return rendered + backing_services_readme(apps)
 
 

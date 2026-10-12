@@ -19,6 +19,7 @@ the file at all — and an asset nothing proves resolved is the failure that che
 """
 from __future__ import annotations
 
+from ..assets import PAGE_ROOT
 from ..layout import AT_ROOT, Layout
 from ..probes import HEALTH_PATH, health_body, ready_path
 from ..services import App, first_transport, services_of, web_apps, wrapped_of
@@ -74,10 +75,10 @@ def run_skill(project_name: str, apps: list[App], layout: Layout = AT_ROOT) -> s
     if not services_of(apps) and not web_apps(apps):
         # A project none of whose applications the keel made: it cannot say how they start, so the page says
         # so as the question it is and points at the repository's own file for the answer.
-        return page(ADOPTED, named)
+        return page(PAGE_ROOT, ADOPTED, named)
     if first_transport(apps) is None and not web_apps(apps):
-        return page(NO_TRANSPORT, named)
-    return page(SKILL, named, wanted(apps))
+        return page(PAGE_ROOT, NO_TRANSPORT, named)
+    return page(PAGE_ROOT, SKILL, named, wanted(apps))
 
 
 def wanted(apps: list[App]) -> tuple[str, ...]:

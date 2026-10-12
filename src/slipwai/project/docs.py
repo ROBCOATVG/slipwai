@@ -20,6 +20,7 @@ very end of a page would have to carry the page's own final newline.
 """
 from __future__ import annotations
 
+from ..assets import PAGE_ROOT
 from ..catalog import CATALOG
 from ..registry import GATE_DESCRIPTION, registry
 from ..services import App, backends_of, frontend_of, services_of, web_apps
@@ -52,15 +53,15 @@ def documentation_files(
     if managed(CATALOG, target):
         gates.append("production-gate")
     files = {
-        GETTING_STARTED: page(GETTING_STARTED, named,
+        GETTING_STARTED: page(PAGE_ROOT, GETTING_STARTED, named,
                               ("event-contract",) if event else ("standard-boundary",)),
-        GATES: page(GATES, named, tuple(gates)) + backing_services_gates(apps),
+        GATES: page(PAGE_ROOT, GATES, named, tuple(gates)) + backing_services_gates(apps),
         "docs/skills-and-commands.md": skills_page(
             profile, apps, named["language"], named["frontend"], command_list(event)
         ),
-        INCLUDED: (page(INCLUDED, named) + production_included_line(target)
+        INCLUDED: (page(PAGE_ROOT, INCLUDED, named) + production_included_line(target)
                    + included_model_line(event, apps)),
-        WORKFLOW: page(WORKFLOW, named, ("event-diagram",) if event else ("plain-diagram",)),
+        WORKFLOW: page(PAGE_ROOT, WORKFLOW, named, ("event-diagram",) if event else ("plain-diagram",)),
         "docs/evolving-the-project.md": evolving_page(),
     }
     # What this project's browser surface looks like and where that is decided; nothing at all without one.

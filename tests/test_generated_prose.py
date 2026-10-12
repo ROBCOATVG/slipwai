@@ -28,24 +28,67 @@ somebody adds a skill. So the rows below name where each templated tree lands, a
 from __future__ import annotations
 
 import unittest
+from collections.abc import Callable
 
 import checkout_packages  # noqa: F401
 
-from slipwai.assets import PAGE_ROOT, TOOLKIT_ROOT
+from slipwai.assets import ADOPTION_ROOT, GUIDANCE_ROOT, PAGE_ROOT, TOOLKIT_ROOT
 from slipwai.errors import GenerationError
 from slipwai.layout import AT_ROOT
-from slipwai.project import briefs, docs, prose, readme, run_skill
+from slipwai.project import (
+    add_commands,
+    briefs,
+    commands,
+    docs,
+    ground_command,
+    pin_commands,
+    prose,
+    readme,
+    rules,
+    run_skill,
+    sail_section,
+)
 
-#: Every directory of assets that is rendered rather than copied, and the values each may name. One row per
-#: templated asset tree: a slice of phase 16 that templates another adds its row here, and the two rules
-#: below then hold it without another test being written. `lands` is where the rendered files arrive in a
-#: generated project — a directory, or the one path a single page lands at.
+
+def pooled(*providers: Callable[[], dict[str, str]]) -> dict[str, str]:
+    """One tree's values, from every module that writes a page into it.
+
+    `commands/` is one directory that five modules write into, and no keel module holds the others' values:
+    one that did would have to import the modules that import it. Two of them name `make`, which is one
+    value two pages ask for; what the rules below read is the pool, and the digest gate is what holds each
+    page to the set its own module provides.
+    """
+    values: dict[str, str] = {}
+    for provider in providers:
+        values.update(provider())
+    return values
+
+
+#: Every directory of assets that is rendered rather than copied, where what it renders to lands in a
+#: generated project, and the values each may name. One row per templated asset tree: a slice of phase 16
+#: that templates another adds its row here, and the two rules below then hold it without another test being
+#: written. A tree lands at one or more paths, each either a directory of rendered files or a single page —
+#: `assets/guidance/` is three files that become two pages, and `rules.md` is not one of them, being the
+#: paragraphs the pages are assembled from.
 TEMPLATED = (
-    (TOOLKIT_ROOT / "agents", "agents", lambda: briefs.values(AT_ROOT)),
-    (PAGE_ROOT, "README.md", lambda: readme.values("project", "standard", [], "none", "liner")),
-    (PAGE_ROOT / "docs", "docs", lambda: docs.values("project", "standard", [], "none")),
-    (PAGE_ROOT / "skills/run-the-app", "skills/run-the-app",
+    (TOOLKIT_ROOT / "agents", ("agents",), lambda: briefs.values(AT_ROOT)),
+    # The pages a project is given that are rendered rather than copied. Three rows rather than one,
+    # because each tree is written by its own module and so names its own values — pooling them would let
+    # a page name a token only another module provides and still pass.
+    (PAGE_ROOT, ("README.md",), lambda: readme.values("project", "standard", [], "none", "liner")),
+    (PAGE_ROOT / "docs", ("docs",), lambda: docs.values("project", "standard", [], "none")),
+    (PAGE_ROOT / "skills/run-the-app", ("skills/run-the-app",),
      lambda: run_skill.values("project", [], AT_ROOT)),
+    (GUIDANCE_ROOT, ("AGENTS.md", "docs/architecture.md"), lambda: rules.TOKENS),
+    (TOOLKIT_ROOT / "commands", ("commands",),
+     lambda: pooled(commands.values, sail_section.values, add_commands.values)),
+    # The pages only a repository that adopted the method receives. An asset of the adoption rather than of
+    # the toolkit, because everything under `assets/toolkit/` is copied into every project and only an
+    # adopted one is written over here — so a page kept there would reach a generated repository with its
+    # `{{make}}` still in it, which is the third refusal catching the first slice to need the distinction.
+    (ADOPTION_ROOT / "commands", ("commands",),
+     lambda: pooled(pin_commands.values, ground_command.values)),
+
 )
 
 

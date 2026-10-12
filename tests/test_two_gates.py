@@ -11,12 +11,12 @@ every backend that has nothing to add.
 """
 from __future__ import annotations
 
-import inspect
 import unittest
 
 import checkout_packages  # noqa: F401
 
-from slipwai.project import guidance, ladder
+from slipwai.assets import GUIDANCE_ROOT
+from slipwai.project import ladder
 from slipwai.project.native_commands import DEFAULT_FAST, TARGETS, fast_targets
 from slipwai.registry import FAST_TARGETS, PROTOCOL
 
@@ -82,7 +82,13 @@ class GeneratedGuidanceTest(unittest.TestCase):
     """
 
     def guidance(self) -> str:
-        return " ".join(inspect.getsource(guidance.agent_guidance).split())
+        """The page as a project receives it, read from the asset it is now written in.
+
+        This read the module's source until slice 16.3 moved the page into `assets/guidance/agents.md`.
+        The asset rather than a rendered page because every line asked about here is standing text: a
+        rendering would need a project built to carry it, and would be asking the same file one hop later.
+        """
+        return " ".join((GUIDANCE_ROOT / "agents.md").read_text(encoding="utf-8").split())
 
     def test_a_project_is_told_its_two_gates_and_which_runs_when(self) -> None:
         text = self.guidance()

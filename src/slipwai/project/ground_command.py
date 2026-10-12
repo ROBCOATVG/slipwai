@@ -7,14 +7,28 @@ whenever `/sail` enters at Ground with a row it needs unplaced: the rung meaning
 the person, one question at a time, the answer written where the record keeps it with `confirmed` provenance and the
 person's words as evidence, and `/survey` afterwards so the pages follow and the strategy recommendation is re-made from
 what was said. Regenerated with the record, so the table of rows it opens with is the map as it stands.
+
+The page is an asset of the adoption (`assets/adoption/commands/ground.md`); what is left here is what it
+may name. The question set below stays: it is one section per axis of `convergence.AXES`, with each rung's
+meaning read off the axis, so an axis that gains a rung gains a line and cannot fail to — and a file per
+axis under `assets/` would be a fragment landing nowhere in a project.
 """
 from __future__ import annotations
 
+from ..assets import ADOPTION_ROOT
 from ..convergence import AXES, Axis
-from ..layout import Layout
+from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
 from ..services import App, wrapped_of
+from .prose import page
 from .write_model_prose import rung_question
+
+# Where the pages live. An asset of the adoption rather than of the toolkit, for the reason
+# `strangle_command.py` gives: everything under `assets/toolkit/` is copied into every project and
+# only an adopted one is written over here, so a page kept there would reach a generated repository
+# raw, with its `{{make}}` still in it — and a greenfield project has nothing that was here to ask
+# about anyway.
+COMMANDS = ADOPTION_ROOT / "commands"
 
 # What to ask for each axis, and where the answer is written. The constitution is not asked: `/speckit-constitution`
 # and the gate establish it, and a person saying "ratified" does not make it so.
@@ -150,195 +164,56 @@ def question_sections(apps: list[App]) -> str:
     return "\n\n".join(sections)
 
 
-def candidate_section(adoption: Adoption, layout: Layout) -> str:
-    """The candidates, asked about before any row of the map.
+def values(apps: list[App] | None = None, layout: Layout = AT_ROOT,
+           adoption: Adoption | None = None) -> dict[str, str]:
+    """Every value `ground.md` may name, and the whole of what it may name.
 
-    First because nothing else can be answered without it: a Structure row is about applications, and until
-    somebody says which of the directories the survey found *are* applications there is nothing for the rows
-    to be about — and `verify` refuses (ADR 0003). This is the question the terminal used to ask once per
-    directory with `[Y/n]` and a default of yes, which is how asset bundles and a test suite were wrapped as
-    applications on the first real monorepo it met.
+    All of it is rendered from a declaration or from the record: the map as it stands, the question set
+    from `convergence.AXES` and the table above, the applications as `project.json` has them, what the
+    survey found that builds, and the paths that move with the delivery layout. The page's own English —
+    the rules, the first question, how each application starts — is the asset's.
     """
-    candidates = [row for row in (adoption.candidates or []) if isinstance(row, dict)]
-    if not candidates:
-        return ""
-    rung = rung_question([row for row in candidates if row.get("writeModel")])
-    rows = "\n".join(
+    apps = [] if apps is None else apps
+    adoption = Adoption() if adoption is None else adoption
+    proposed = [row for row in (adoption.candidates or []) if isinstance(row, dict) and row.get("writeModel")]
+    return {
+        "make": layout.make,
+        "convergence-page": layout.under("docs/convergence.md"),
+        "running-page": layout.under("survey/running.md"),
+        "map": row_table(adoption),
+        "questions": question_sections(apps),
+        "how-each-starts": application_lines(apps, "smoke"),
+        "candidate-rows": candidate_rows(adoption),
+        "rung-question": rung_question(proposed),
+    }
+
+
+def candidate_rows(adoption: Adoption) -> str:
+    """The directories the survey found that build, one line each, with what the tree says each is for."""
+    return "\n".join(
         f"   - `{row.get('name')}` at `{row.get('path')}` — {row.get('language')}, from `{row.get('evidence')}`"
         + (f"; the tree says {row.get('kind')} ({row.get('roleEvidence')})" if row.get("roleEvidence")
            else "; nothing in the tree says what it is for")
-        for row in candidates
-    )
-    return (
-        "## What is an application here\n\n"
-        "Asked first, and before any row: until one of these is confirmed there is nothing for the rows to be\n"
-        f"about, and `{layout.make} verify` refuses rather than passing over nothing. `adopt` recorded them and\n"
-        "wrapped none of them, because which of them the gate should hold is a question the code answers and a\n"
-        "terminal cannot ask.\n\n"
-        "   The directories the survey found that build:\n\n"
-        f"{rows}\n\n"
-        "**Where they asked for the long form, say what the word means before the first candidate** — once,\n"
-        "in your own words, and in the terms of this repository. *Application* here is not \"something that\n"
-        "gets deployed\": it is a directory whose build this gate holds, and a library or a test suite can be one.\n"
-        "Confirming one means, and the person is agreeing to all of it:\n\n"
-        f"   - its recorded `lint`, `typecheck` and `test` join `{layout.make} verify`, which every change has to\n"
-        "     pass — the person's, `/sail`'s and `/cruise`'s. Findings already there are recorded as the baseline\n"
-        "     on the first run and only new ones fail, but a red test suite stops the gate until it is fixed or\n"
-        f"     quarantined on purpose with `{layout.make} ratchet-tighten`;\n"
-        "   - the gate's own CI workflow runs that `verify` on every push to the main branch and every pull\n"
-        "     request, on the runtime the application's toolchain names — so what its lint and tests need to run,\n"
-        "     CI needs too, and a red one is a red check on the pull request;\n"
-        "   - `/sail` and `/cruise` can plan changes to it, and will not change it until somebody has recorded\n"
-        "     the command that starts it and proves it answers (`smoke`, asked at the end of this command);\n"
-        "   - it is named on the map, the structure page and the architecture view, as what this repository is.\n\n"
-        "   Declining records nothing: the code stays, agents still read it, its own CI keeps running, and the\n"
-        "   delivery gate says nothing about it — `/survey` goes on listing it as a directory that builds with no\n"
-        "   record. Leaving it a candidate is *not yet decided*, and it is asked again. Say too that neither a\n"
-        "   confirm nor a decline can be taken back by a command today, short of reverting the commit that\n"
-        "   recorded it — so where the person is unsure, leaving it is the answer that keeps every door open.\n\n"
-        "**Ask, one at a time, having read the directory first:** is this an application the gate should hold —\n"
-        "or is it an asset bundle, a test suite for something else here, a sample, a vendored dependency? Say\n"
-        "which you think it is *and why, from what you read*, before asking; the person is confirming your\n"
-        "reading, not answering a quiz. Where it is one: what should it be called (the directory's name is what\n"
-        "the record proposes, and `default` or `ui` is rarely what anybody calls it), what does it own in a\n"
-        "sentence or two, and are the commands the survey read the ones that matter?\n\n"
-        "Where they asked for the long form, each answer says what confirming it does: which commands join\n"
-        "the gate and what running them needs, what a red one would stop, and what declining forfeits\n"
-        "instead. *Held as a `library` for its lint \u2014 `make verify` gains `npm run lint` here, which needs\n"
-        "only Node* and *declined \u2014 its lint stays in the repository's own CI, which already runs it, and\n"
-        "the delivery gate says nothing about this directory* are answers somebody can choose between. *Yes*\n"
-        "and *No* are not. Where they asked for the short form, the labels stand alone and your reading above\n"
-        "them carries the reasoning.\n\n"
-        f"{rung}"
-        "**Write:** one `slipwai adopt --confirm <name>` per application — with `--as <name>=<new>` where the\n"
-        "directory's name is not its name, and `--kind`, `--purpose` and `--command` for what you established —\n"
-        "and `--decline <name>` for each that is not one. The command builds the record and regenerates\n"
-        "everything that reads it, so never edit `deployables` by hand. A directory you are unsure of stays a\n"
-        "candidate: that is what the state is for, and leaving it is an honest answer where guessing is not.\n\n"
+        for row in (adoption.candidates or []) if isinstance(row, dict)
     )
 
 
 def ground_command(apps: list[App], layout: Layout, adoption: Adoption) -> str:
-    page = layout.under("docs/convergence.md")
-    return f"""---
-description: Ask the person what the tree cannot say — one question per row of the convergence map — and record each answer with its provenance
-argument-hint: [axis ...]
----
+    """The question set, asked of the person one row at a time.
 
-# Ground
+    What the candidates are is a whole section, and it comes before any row because nothing else can be
+    answered without it: a Structure row is about applications, and until somebody says which of the
+    directories the survey found *are* applications there is nothing for the rows to be about — and
+    `verify` refuses (ADR 0003). An adoption with nothing outstanding has no such question, and the
+    section is gone rather than empty.
 
-This repository adopted the delivery method around code that was already here. `{page}` says where it stands
-on each ladder a generated project sits at the top of. The survey placed every row it could from a file, and the
-rows it could not are `unrecorded` — a question, not a default. This command is that question set, asked by you
-of the person, one row at a time, with the answers written where the record keeps them. Two ways in, one question
-set: run it on its own after `./init` and before the first slice, or let `/sail` run it — its Ground stage is this
-command, for the axes the slice touches, and the ladder continues once the rows are placed. `$ARGUMENTS` names the
-axes to ask about; empty means every row a person has not yet placed.
-
-## The rules
-
-- **One question at a time.** Ask, wait, write, confirm what was written, then the next. Never a questionnaire
-  (`skills/find-gaps/SKILL.md` has the discipline).
-- **Evidence and rungs first.** Before asking, show the row as it stands — the evidence the survey found and each
-  rung's meaning — so the person places themselves on a ladder rather than answering a quiz.
-- **Settle from the tree whatever the tree settles, and say you did.** A question you can answer by reading a
-  file is not a question to put: read it, say what you found and where, and record it. Ask only what reading
-  cannot reach — what a person intends, what they would ship on, what they know about how the work is done. A
-  menu offered for something the tree already states asks somebody to guess at their own repository.
-- **Ask how much to explain, first, and hold to the answer.** The opening question is not about this
-  repository: it is whether they want each answer's consequence spelled out — what it writes, what moves,
-  what it costs — or the short form. Somebody who knows this codebase and this method does not need to be
-  told what webpack does, and being told anyway is how a question set becomes a wall to skim; somebody
-  meeting either for the first time cannot answer safely without it. Offer both, say which you would pick
-  for them and why, and take the answer as standing for the rest of the run unless they change it — which
-  they may, at any question, in either direction.
-- **In full, every answer on offer says what it does.** The person reads the options, not the paragraph above
-  them, so each one names what it writes, what moves because of it, and what it costs. *`library`, and the
-  gate holds its lint: `make verify` runs `npm run lint` here from now on, and a red one stops every change
-  until it is fixed or quarantined* is an answer. *Yes — hold its lint* is a label, and a label is what gets
-  picked by somebody who does not yet know what they are picking. Where two options differ only in a word,
-  say what turns on that word. Never offer one whose consequence you have not stated: if you cannot say what
-  an answer does, you are not ready to ask it.
-- **In short, the labels stand alone — and two things never go.** The short form drops the elaboration, not
-  the honesty: what you think and why, from what you read, stays (the next rule), and *I don't know* stays an
-  answer on offer. What a short answer costs is a sentence away whenever they ask, and offering that once —
-  *say the word and I will spell any of these out* — costs a line.
-- **Say what you think, and why, from what you read.** A recommendation with its reasoning is what makes an
-  answer a confirmation rather than a guess, and it is what lets somebody disagree with you on the evidence
-  rather than on authority. Never a bare menu.
-- **"I don't know" is one of the answers, every time, and offered as one.** It is the honest state of most
-  rows in most repositories on the first pass, and a question that does not offer it is a question that
-  manufactures an answer.
-- **A rung is claimed only from a fact.** Here the person is the fact for what only they can know (how work is
-  integrated, whether they would ship on the tests). Where the tree can contradict a rung — a release path, a
-  quarantined suite, a template constitution, an application's role, no accepted ADR — the tree wins:
-  `make check-convergence` fails the row, so say that instead of recording it.
-- **"I don't know" stays `unrecorded`,** and is said so in the row's evidence. It is not filled in from context.
-- **`detected` is the tree's reading, not the person's answer.** A row the survey placed from a file is asked
-  about like an `unrecorded` one the first time; only `confirmed` and `overridden` mean a person has spoken.
-- **A row a person already placed** (`confirmed`, `overridden`) is asked about again only if `$ARGUMENTS` names
-  its axis; never moved silently.
-- **Record, do not paraphrase.** `rung`, `provenance` `confirmed`, `evidence` in the person's own words, and
-  `planned` where they name the slice that will move it. Where the answer is a fact under another key — the
-  release path, an application's `kind`, a home, `why` — write it there with `confirmed` provenance; the row
-  follows when `/survey` re-reads the record.
-
-## The first question
-
-Asked before anything about this repository, once, and answered for the rest of the run:
-
-**Ask:** how much should each answer explain itself? *Long* spells out, for every option, what it writes to
-the record, what moves because of it, and what it costs — which is what somebody meeting this repository or
-this method for the first time needs in order to answer safely. *Short* gives you the reading, the
-recommendation and the answers as labels, on the understanding that you already know what confirming an
-application or placing a rung does. Say which you would pick for this person and why, from what you can see:
-a repository whose record is entirely `unrecorded` and whose person has not met the method suggests long; a
-second or third adoption by the same hands suggests short.
-
-Then say, once: *say the word at any question and I will spell that one out* — and mean it, in either
-direction, at any point.
-
-**Write:** nothing. It is how you talk, not a fact about the repository, and it is not a row.
-
-{candidate_section(adoption, layout)}## The rows, as they stand
-
-{row_table(adoption)}
-
-## The questions
-
-{question_sections(apps)}
-
-## How each application starts
-
-Not a row of the map, and asked before any slice changes code that was here: an application nobody has proved
-starts is the floor beside the build, and `/sail`'s Pin stage refuses to change one. The first adoptions each
-merged a slice that had stopped the application starting — constructor injection the container could not call —
-and no suite saw it, because no suite builds the context.
-
-**Ask:** For each application below — how is it started: the command, the port, what has to be seeded first, the
-runtime it needs and the ones it cannot run on? What proves it answers — a URL, a command? Has anyone run it that
-way since the method arrived, and did it start?
-
-   The applications that were here:
-
-{application_lines(apps, "smoke")}
-
-**Write:** what was proven, with the date, in `{layout.under("survey/running.md")}` — the repository's own file,
-which the `run-the-app` skill points to — including the run that failed and why. Then the one command that starts
-the application and proves it answers, exiting non-zero when it does not, as `smoke` under the application's
-`commands` in `project.json`, with `provenance.commands` `confirmed`: `make smoke` and the gate's smoke job run it
-from then on, `verify` never does. An application nobody can start anywhere but production is a written `null`
-with the reason in the same file — never a key left unwritten, which reads as a question still open.
-
-## Then
-
-1. `/survey` (`slipwai adopt --refresh`): the pages follow the record, and the strategy recommendation is
-   re-made from what was said. Read the person the map's summary line and the recommendation
-   `docs/change-strategy.md` now opens with.
-2. `make verify` — `check-convergence` holds every row you wrote to the tree.
-3. Commit as one change: what the person said, in the rows and the facts, and the pages that followed.
-4. Say which rows are still `unrecorded`, and that `/sail` will ask about each before a slice that touches it.
-"""
+    It is the question the terminal used to ask once per directory with `[Y/n]` and a default of yes,
+    which is how asset bundles and a test suite were wrapped as applications on the first real monorepo
+    it met.
+    """
+    candidates = [row for row in (adoption.candidates or []) if isinstance(row, dict)]
+    return page(COMMANDS, "ground.md", values(apps, layout, adoption),
+                ("candidates",) if candidates else ())
 
 
 def ground_command_files(apps: list[App], layout: Layout, adoption: Adoption) -> dict[str, str]:

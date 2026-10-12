@@ -12,8 +12,9 @@ merged.
 
 ## The state is read, never held
 
-Fold your own deck log, `.slipwai/logs/<feature>/<fairway>.jsonl`, and the harbour log,
-`.slipwai/logs/harbour.jsonl`, and read trunk. That fold is the whole of what you know: which slices are
+Fold your own deck log, `.slipwai/logs/<feature>/<fairway>.jsonl`, every machine's harbour log under
+`.slipwai/logs/harbour/`, and the legacy `.slipwai/logs/harbour.jsonl` where present, ordered by timestamp,
+and read trunk. That fold is the whole of what you know: which slices are
 claimed, which marks are set, what is blocked and on what, what somebody told you and whether you have
 answered it. A slice that wrote no line made no progress — including yours.
 
@@ -58,9 +59,10 @@ believed. Every line carries `fairway`.
 | `taken-over` | this stream was another machine's and you have carried it on | `slice`, `from` (that machine) |
 | `parked` | you have stopped, and this is why | `why` |
 
-Write `heartbeat` often enough that a stall is told from a finish. They are told apart by your last line: a
-berth whose last line is `merged` has finished, and one whose last line is anything else and whose heartbeat
-is old has stalled. That distinction is free only if you keep writing.
+Write `heartbeat` often enough that a stall is told from a finish. A last line of `merged` means
+**idle** when the chart and marks clear further unclaimed slices: report how many await a captain.
+It means **finished** when no cleared work remains. An in-flight slice whose heartbeat is old is
+stalled. That distinction is free only if you keep writing.
 
 Append with one write per line, in append mode. Several captains share a harbour and whole lines interleave;
 half-written ones do not.
@@ -70,14 +72,17 @@ half-written ones do not.
 **You hold no credential, and you never take what you were not given.** No push, no deploy, no publish, no
 flag change, no secret. Each of those is a `request` line with `what` as one of `push`, `merge`, `deploy`,
 `flag` or `publish`, an `id` the answer names back, and a `detail` saying exactly what you want done. Write
-it and **carry on to your next slice**. Do not block waiting for an answer; the harbourmaster's `granted` or
-`refused` will be in the harbour log next time you fold it.
+it and **stop dispatching while that slice awaits the harbourmaster's outcome**. Keep the same claimed
+slice; do not claim another one to fill the wait. Fold the per-machine harbour logs within the wait budget.
+A granted merge names the trunk commit, which you record as `merged`; a refusal or an unanswered bounded
+wait ends with a `parked` reason. A request alone is no evidence the slice merged.
 
 **A captain never merges to trunk.** People hold the merge until the captain-enforced controls exist. You
 run the full gate on the rebased branch, you write the `request`, and you stop there.
 
-**You never write `.slipwai/logs/harbour.jsonl`.** The harbourmaster is its only writer, which is how one
-shared file never conflicts. You never write another fairway's deck log either, for the same reason: one
+**You never write a harbour log.** Each machine's harbourmaster writes only
+`.slipwai/logs/harbour/<machine>.jsonl`; all readers fold those files and still read the legacy
+`.slipwai/logs/harbour.jsonl`. You never write another fairway's deck log either, for the same reason: one
 writer per file, always.
 
 **You do not decide a product question.** A question the artifacts do not settle goes back to the person,
@@ -93,3 +98,10 @@ Every stop records a reason. If you cannot proceed — a blocked fairway, a gate
 with nobody to answer it — write `parked` with a `why` somebody who was not here can act on, and stop.
 Stopping with a line is a state the harbour can see. Stopping without one is indistinguishable from having
 died, and somebody will spend an hour working out which.
+
+A park owes an answer. Keep its original timestamp: only a harbour `cleared` line carrying this
+`fairway`, that timestamp as `parked`, and the answer as `what` closes it. A later heartbeat does not
+reset the wait clock; report its age and whether it is past `wait_bound`. When the matching answer
+arrives, resume the last unmerged claimed slice rather than skip it. After your final deck line,
+keep the claim until the harbourmaster has published the whole suffix to `refs/slipwai/logs/<fairway>`;
+if publication exceeds the wait bound, retain the claim and name the publisher that must return.

@@ -19,7 +19,7 @@ from .assets import this_command
 from .cli_start import start_main
 from .deck import RECENT, recent, streams
 from .errors import GenerationError, refuse
-from .fleet import NOTHING, board
+from .fleet import NOTHING, board, inbox_detail
 from .harbour import config
 from .project.harbour import CONFIG
 
@@ -48,14 +48,15 @@ def lines(root: Path) -> list[str]:
     assert isinstance(waiting, list)
     said.append(f"waiting on you: {len(waiting)}" if waiting else "waiting on you: nothing")
     for row in waiting:
-        said.append(f"  {row['fairway']:<10} {row['kind']:<7} {str(row['what'])[:width - 24]}")
+        detail = inbox_detail(row)
+        said.append(f"  {row['fairway']:<10} {row['kind']:<7} {detail[:width - 24]}")
 
     berths = found["berths"]
     assert isinstance(berths, list)
     stalled = [row for row in berths if row["state"] == "stalled"]
     said += ["", f"berths: {len(berths)}" + (f", {len(stalled)} stalled" if stalled else "")]
     said += table(berths, [("fairway", "fairway"), ("feature", "feature"), ("slice", "slice"),
-                           ("state", "state"), ("last", "last line"), ("tokens", "tokens"),
+                           ("state", "state"), ("waiting", "waiting"), ("last", "last line"), ("tokens", "tokens"),
                            ("merged", "merged"), ("marks", "marks")]) or ["  no fairway has written a line"]
 
     pressure = found["pressure"]
@@ -72,7 +73,10 @@ def lines(root: Path) -> list[str]:
     unreadable = found["unreadable"]
     assert isinstance(unreadable, dict)
     for name, fault in sorted(unreadable.items()):
-        said.append(f"  {name}'s log cannot be read ({fault}); its row is what is left of it")
+        if name == "clearance":
+            said.append(f"  clearance unavailable ({fault}); waiting counts are unknown")
+        else:
+            said.append(f"  {name}'s log cannot be read ({fault}); its row is what is left of it")
 
     feed = found["feed"]
     assert isinstance(feed, list)

@@ -50,13 +50,13 @@ DEFAULT_CEILING = 10
 DEFAULT_WAIT = 60
 
 
-def settings() -> tuple[int, int]:
+def settings() -> tuple[int, float]:
     try:
         document = json.loads(HARBOUR.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return DEFAULT_CEILING, DEFAULT_WAIT
     return (int(document.get("decision_ceiling", DEFAULT_CEILING)),
-            int(document.get("wait_bound", DEFAULT_WAIT)))
+            float(document.get("wait_bound", DEFAULT_WAIT)))
 
 
 def lines(fairway: str) -> list[dict]:
@@ -112,9 +112,18 @@ def unreviewed(written: list[dict]) -> list[dict]:
     return [line for line in written if line.get("kind") == "decision" and str(line.get("t")) not in receipts]
 
 
-def overrun(written: list[dict], bound: int, now: datetime | None = None) -> list[dict]:
+def overrun(written: list[dict], bound: float, now: datetime | None = None) -> list[dict]:
     """Every wait past its bound: a `told` nobody answered, which is the wait a person can end."""
     return [line for line in unread(written) if minutes_since(str(line.get("t", "")), now) > bound]
+
+
+def open_parks(written: list[dict], fairway: str) -> list[dict]:
+    """The original parks with no matching harbour receipt, never another fairway's receipt."""
+    receipts = {(str(line.get("fairway")), str(line.get("parked")))
+                for line in written if line.get("kind") == "cleared"}
+    return [line for line in written if line.get("kind") == "parked"
+            and str(line.get("fairway")) == fairway
+            and (fairway, str(line.get("t"))) not in receipts]
 
 
 def owed(fairway: str, now: datetime | None = None) -> dict:
@@ -123,15 +132,20 @@ def owed(fairway: str, now: datetime | None = None) -> dict:
     written = lines(fairway)
     waiting, backlog = unread(written), unreviewed(written)
     late = overrun(written, bound, now)
+    parks = [{**line, "waited": max(0.0, minutes_since(str(line.get("t", "")), now)),
+              "waiting_on": "harbourmaster"} for line in open_parks(written, fairway)]
+    overdue_parks = [line for line in parks if line["waited"] > bound]
     return {
         "unread": waiting,
         "unreviewed": backlog,
         "overrun": late,
+        "parks": parks,
+        "overdue_parks": overdue_parks,
         "ceiling": ceiling,
         "over_ceiling": len(backlog) > ceiling,
         # A boundary is forced by a message nobody answered in time, or by a backlog of judgement nobody
         # has looked at. Either way the next thing to happen is a person, not another stage.
-        "forced": bool(late) or len(backlog) > ceiling,
+        "forced": bool(late or overdue_parks) or len(backlog) > ceiling,
     }
 
 
@@ -147,6 +161,10 @@ def main(argv: list[str]) -> int:
           f"(ceiling {state['ceiling']}), {len(state['overrun'])} past their bound")
     for line in state["unread"]:
         print(f"  told {line.get('t')}: {line.get('message')}")
+    for line in state["parks"]:
+        overdue = " — past its bound" if line in state["overdue_parks"] else ""
+        print(f"  parked {line.get('t')}: {line.get('why')} — waiting on harbourmaster "
+              f"{line['waited']:.0f}m{overdue}")
     if state["over_ceiling"]:
         print(f"  over the decision ceiling — this fairway parks until a person reads them")
     return 0

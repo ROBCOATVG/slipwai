@@ -1,0 +1,61 @@
+feature: phase-7-responsiveness
+fairways:
+  phase-7-responsiveness:
+    owns:
+      - Makefile # Existing harbourmaster suite shells out and must join SLOW.
+      - src/slipwai/logs.py
+      - assets/toolkit/scripts/agents/logs.py # Generated via make shared.
+      - assets/toolkit/scripts/agents/captain.py
+      - assets/toolkit/agents/drive-captain.md
+      - assets/toolkit/agents/harbour-harbourmaster.md
+      - assets/toolkit/scripts/agents/inbox.py
+      - assets/toolkit/scripts/agents/clearance.py
+      - assets/toolkit/scripts/agents/harbourmaster.py
+      - src/slipwai/fleet.py
+      - src/slipwai/cli_fleet.py
+      - src/slipwai/bridge_page.py
+      - src/slipwai/mcp.py
+      - tests/test_fleet.py
+      - tests/test_logs.py
+      - tests/test_captain.py
+      - tests/test_inbox.py
+      - tests/test_clearance.py
+      - tests/test_captain_gate.py
+      - tests/test_harbourmaster.py
+      - docs/charts/phase-7-responsiveness.yaml
+      - docs/slipwai-2-plan.md # Row7.11 and requested sections1/13 vocabulary/lease repair.
+      - GLOSSARY.md # Generated from plan section1.
+slices:
+  '7.11':
+    fairway: phase-7-responsiveness
+    sets: [ParkClearanceReceipt, ParkWaitClock, IdleReadyCount]
+    steers_by: [DeckPark, HarbourLog, SliceClearance]
+marks:
+  ParkClearanceReceipt:
+    kind: schema
+    schema:
+      type: object
+      required: [v, t, kind, fairway, parked, what]
+      properties:
+        kind: {const: cleared}
+        fairway: {type: string}
+        parked: {type: string, description: Timestamp of the original deck parked line.}
+        what: {type: string}
+  ParkWaitClock:
+    kind: port
+    inputs: {park: DeckPark, receipts: ParkClearanceReceipt, now: UTC-timestamp, wait_bound: minutes}
+    outputs: {unanswered: boolean, waited: minutes, waiting_on: harbourmaster, overdue: boolean}
+  IdleReadyCount:
+    kind: port
+    inputs: {clearance: SliceClearance, deck_history: JSONL}
+    outputs: {state: idle-or-finished, waiting: integer}
+  DeckPark:
+    kind: schema
+    schema: {type: object, required: [v, t, kind, fairway, why]}
+  HarbourLog:
+    kind: schema
+    schema: {type: object, required: [v, t, kind]}
+  SliceClearance:
+    kind: port
+    inputs: {chart: YAML, marks: deck-and-harbour-logs, feature: optional-feature-name}
+    outputs: {feature: string, ready: fairway-to-slice-id-array}

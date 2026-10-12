@@ -45,6 +45,8 @@ HARBOUR_LOGS = LOGS / "harbour"
 #: The log format this reader knows. A newer line is refused rather than guessed at.
 V = 1
 MARK_SET = "mark-set"
+#: Offline machine-readable query supported by this script, checked before a board invokes it.
+QUERY_VERSION = 1
 
 
 def load_yaml(text: str) -> object:
@@ -56,9 +58,11 @@ def load_yaml(text: str) -> object:
     return yaml.safe_load(text)
 
 
-def chart() -> tuple[dict, str]:
+def chart(feature: str = "") -> tuple[dict, str]:
     """The first feature with a chart, and its name. One feature is in flight at a time."""
     for path in sorted(SPECS.glob("*/chart.yaml")) if SPECS.is_dir() else []:
+        if feature and path.parent.name != feature:
+            continue
         loaded = load_yaml(path.read_text(encoding="utf-8"))
         if isinstance(loaded, dict):
             return loaded, path.parent.name
@@ -162,7 +166,34 @@ def cleared_slices(charted: dict, settled: set[str]) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    charted, feature = chart()
+    if "--json" in argv:
+        # A board's read query never installs a dependency or reaches the network.
+        try:
+            import yaml  # noqa: F401
+        except ImportError:
+            print(json.dumps({"v": QUERY_VERSION, "error": "PyYAML is not installed. Run `python3 -m pip install PyYAML` "
+                                       "in this project's Python environment"}))
+            return 1
+    requested = ""
+    if "--json" in argv and "--feature" in argv:
+        index = argv.index("--feature") + 1
+        if index >= len(argv) or argv[index].startswith("--"):
+            print(json.dumps({"v": QUERY_VERSION, "error": "give a feature name. Run "
+                             "`python3 scripts/agents/clearance.py --json --feature <feature>`"}))
+            return 1
+        requested = argv[index]
+    charted, feature = chart(requested)
+    if "--json" in argv:
+        if not charted:
+            print(json.dumps({"v": QUERY_VERSION, "error": "no readable chart exists. Run `make chart`"}))
+            return 1
+        settled = marks_set(feature) | already_set(charted)
+        ready: dict[str, list[str]] = {}
+        for slice_id in cleared_slices(charted, settled):
+            fairway = str((charted.get("slices") or {})[slice_id].get("fairway", ""))
+            ready.setdefault(fairway, []).append(slice_id)
+        print(json.dumps({"v": QUERY_VERSION, "feature": feature, "ready": ready}))
+        return 0
     if not charted:
         print("clearance: no chart yet, so nothing is waiting on anything")
         return 0

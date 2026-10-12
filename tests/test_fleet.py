@@ -126,6 +126,32 @@ class InboxTest(Fixture):
         self.assertEqual(self.board()["inbox"][0]["kind"], "parked")
 
 
+class ParkReceiptTest(Fixture):
+    def test_a_park_clock_is_the_original_park_and_later_life_never_resets_it(self) -> None:
+        self.deck("ORD", logs.entry("parked", fairway="ORD", why="choose the storage", t=when(120)),
+                  logs.entry("heartbeat", fairway="ORD", t=when(1)))
+        row = self.board()["inbox"][0]
+        self.assertEqual((row["t"], row["waited"], row["waiting_on"], row["overdue"]),
+                         (when(120), "120m", "harbourmaster", "yes"))
+        self.assertIn("waiting on harbourmaster for 120m", fleet.inbox_detail(row))
+        self.assertIn("waiting on harbourmaster", "\n".join(lines(self.root)))
+
+    def test_a_matching_receipt_removes_the_park_and_its_parked_state(self) -> None:
+        self.deck("ORD", logs.entry("parked", fairway="ORD", why="choose the storage", t=when(2)))
+        self.harbour(logs.entry("cleared", harbour=True, fairway="ORD", parked=when(2),
+                                what="use the existing store", t=when(1)), machine="another")
+        self.assertEqual(self.board()["inbox"], [])
+        self.assertNotEqual(self.board()["berths"][0]["state"], "parked")
+
+    def test_another_fairway_or_a_previous_park_receipt_cannot_answer_this_one(self) -> None:
+        self.deck("ORD", logs.entry("parked", fairway="ORD", why="old", t=when(5)),
+                  logs.entry("parked", fairway="ORD", why="new", t=when(2)))
+        self.harbour(logs.entry("cleared", harbour=True, fairway="ORD", parked=when(5), what="old answer"),
+                     logs.entry("cleared", harbour=True, fairway="BIL", parked=when(2), what="other answer"))
+        self.assertEqual([row["what"] for row in self.board()["inbox"]], ["new"])
+        self.assertEqual(self.board()["berths"][0]["state"], "parked")
+
+
 class FeedTest(Fixture):
     def test_both_logs_are_merged_by_time(self) -> None:
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(3)))

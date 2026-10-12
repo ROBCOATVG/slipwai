@@ -6,12 +6,16 @@ places it was not: a turn that wrote none of what closes a slice, and a merge no
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import unittest
 
 import checkout_packages  # noqa: F401
 from captain_fixture import SLICES, WORKS, Fixture, fake_drive  # noqa: F401
 
-from slipwai import logs
+from slipwai import fleet, logs
+from slipwai.bridge_page import page
 
 
 class GateTest(Fixture):
@@ -135,6 +139,89 @@ class FixTrunkTest(Fixture):
         # a slice it has already fixed.
         self.assertIn("ORD-02 waits on", done.stdout)
         self.assertEqual([e.fields["slice"] for e in self.read("ORD") if e.kind == "claimed"], ["ORD-01"])
+
+
+
+
+
+class IdleFairwayTest(Fixture):
+    """The actual clearance script drives the board; no mocked ready set can prove these agree."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.chart = self.root / "specs/ordering/chart.yaml"
+        self.chart.write_text(json.dumps({"slices": {
+            "ORD-00": {"fairway": "ORD", "observed": True, "sets": ["Known"]},
+            "ORD-01": {"fairway": "ORD", "sets": ["Placed"]},
+            "ORD-02": {"fairway": "ORD", "steers_by": ["Placed"]},
+            "ORD-03": {"fairway": "ORD", "steers_by": ["Known"]},
+            "ORD-04": {"fairway": "ORD"},
+            "ORD-05": {"fairway": "ORD", "steers_by": ["NotSet"]},
+            "BIL-01": {"fairway": "BIL"},
+        }}), encoding="utf-8")
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),
+                  logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"),
+                  logs.entry("merged", fairway="ORD", slice="ORD-01", commit="abc"))
+
+    def board(self) -> dict:
+        return fleet.board(self.root)
+
+    def test_a_merged_fairway_with_three_cleared_slices_is_idle_with_three_waiting(self) -> None:
+        row = self.board()["berths"][0]
+        self.assertEqual((row["state"], row["waiting"]), ("idle", 3))
+        rendered = page(self.board(), {})
+        self.assertIn("data-state=\"idle\"", rendered)
+        self.assertIn("<th>Waiting</th>", rendered)
+
+    def test_claimed_and_merged_work_is_excluded_and_finished_means_no_work_left(self) -> None:
+        for slice_id in ("ORD-02", "ORD-03", "ORD-04"):
+            self.deck("ORD", logs.entry("claimed", fairway="ORD", slice=slice_id),
+                      logs.entry("merged", fairway="ORD", slice=slice_id, commit="abc"))
+        row = self.board()["berths"][0]
+        self.assertEqual((row["state"], row["waiting"]), ("finished", 0))
+
+    def test_a_missing_read_port_is_visible_and_never_guesses_finished(self) -> None:
+        script = self.root / "scripts/agents/clearance.py"
+        script.write_text("raise AssertionError('an old script must never run an install')\n", encoding="utf-8")
+        board = self.board()
+        self.assertEqual(board["berths"][0]["state"], "unknown")
+        self.assertEqual(board["berths"][0]["waiting"], fleet.NOTHING)
+        self.assertIn("offline JSON query port", board["unreadable"]["clearance"])
+        self.assertIn("Waiting counts unavailable", page(board, {}))
+        self.assertIn("slipwai migrate", page(board, {}))
+
+    def test_each_feature_reports_its_own_three_ready_slices(self) -> None:
+        chart = self.root / "specs/payments/chart.yaml"
+        chart.parent.mkdir()
+        chart.write_text(json.dumps({"slices": {
+            "PAY-01": {"fairway": "PAY"}, "PAY-02": {"fairway": "PAY"},
+            "PAY-03": {"fairway": "PAY"}, "PAY-04": {"fairway": "PAY"},
+        }}), encoding="utf-8")
+        path = self.root / logs.deck_path("payments", "PAY")
+        path.parent.mkdir(parents=True)
+        path.write_text(logs.entry("claimed", fairway="PAY", slice="PAY-01").line()
+                        + logs.entry("merged", fairway="PAY", slice="PAY-01", commit="def").line(), encoding="utf-8")
+        rows = self.board()["berths"]
+        self.assertEqual({row["feature"]: (row["state"], row["waiting"]) for row in rows},
+                         {"ordering": ("idle", 3), "payments": ("idle", 3)})
+
+    def test_a_query_refusal_preserves_the_actual_log_fault_and_repair(self) -> None:
+        path = self.root / logs.deck_path("ordering", "ORD")
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write('{"v": 99, "kind": "mark-set"}\n')
+        board = self.board()
+        self.assertIn("says v99", board["unreadable"]["clearance"])
+        self.assertIn("Run `slipwai upgrade`", board["unreadable"]["clearance"])
+
+    def test_the_json_query_without_yaml_refuses_without_installing_anything(self) -> None:
+        script = self.root / "scripts/agents/clearance.py"
+        done = subprocess.run([sys.executable, "-B", "-S", str(script), "--json"],
+                              capture_output=True, text=True, timeout=30,
+                              env={**os.environ, "PYTHONPATH": "", "PIP_NO_INDEX": "1"})
+        self.assertNotEqual(done.returncode, 0)
+        error = json.loads(done.stdout)["error"]
+        self.assertIn("PyYAML is not installed", error)
+        self.assertIn("python3 -m pip install PyYAML", error)
 
 
 if __name__ == "__main__":

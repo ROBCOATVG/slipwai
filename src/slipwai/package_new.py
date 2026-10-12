@@ -44,8 +44,7 @@ from .target_templates import BOOTSTRAP_STACK, SCRIPT, SERVICE_STACK, TARGET_MOD
 KEEL_REPO = "ROBCOATVG/slipwai_v2_Fork"
 KINDS = ("extension", "language", "quickstart", "target")
 #: The release a package that has cut none is a snapshot of, which is what `conformance.version_rule` asks
-#: of one. The language and extension scaffolds were written before that rule was and still carry `0.1.0`, which
-#: fails their own `version` check; a target's does not.
+#: of one. Language, extension and target scaffolds open this release rather than claiming it was cut.
 FIRST_RELEASE = "1.0.0"
 #: The publisher's verbs, in the order they are used. `plugin` is the odd one and is here rather than in a
 #: verb of its own on purpose: it renders a package of the keel's *own* material for a harness to install,
@@ -101,7 +100,7 @@ def extension_files(name: str, schema: str) -> dict[str, str]:
                             for index, (key, said) in enumerate(OBLIGATIONS, start=1))
     return {
         "extension.json": json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-        "VERSION": "0.1.0\n",
+        "VERSION": f"{FIRST_RELEASE}.dev0\n",
         "init.py": ENTRY_POINT.format(name=name, title=title_of(name)),
         "README.md": README.format(name=name, title=title_of(name), obligations=obligations,
                                    command=this_command()),
@@ -126,7 +125,7 @@ def language_files(name: str, schema: str) -> dict[str, str]:
     module = module_of(name)
     return {
         "language.json": json.dumps(fragment, indent=2, ensure_ascii=False) + "\n",
-        "VERSION": "0.1.0\n",
+        "VERSION": f"{FIRST_RELEASE}.dev0\n",
         f"{module}/__init__.py": LANGUAGE_MODULE.format(name=name, module=module, title=title_of(name)),
         "README.md": LANGUAGE_README.format(name=name, title=title_of(name), command=this_command()),
         "Makefile": MAKEFILE.format(name=name, kind="language"),

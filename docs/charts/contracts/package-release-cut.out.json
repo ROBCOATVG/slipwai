@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"array","prefixItems":[{"type":"string"},{"enum":["","PATCH","MINOR","MAJOR"]},{"type":"integer","minimum":1}],"minItems":3,"maxItems":3,"description":"cut returns release version, claimed level and number of assembled fragments; an inferred snapshot is cut at its release base."}

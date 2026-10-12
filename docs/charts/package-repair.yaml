@@ -1,0 +1,20 @@
+v: 1
+feature: package-repair
+fairways:
+  package-repair:
+    context: package snapshot scaffolds and first release cutting
+    owns: [src/slipwai/package_new.py, src/slipwai/package_version.py, tests/test_package_snapshot.py, tests/test_package_version.py, tests/test_package_release.py, Makefile]
+marks:
+  PackageFirstSnapshot:
+    kind: schema
+    schema: docs/charts/contracts/package-first-snapshot.json
+  PackageReleaseCut:
+    kind: port
+    inputs: docs/charts/contracts/package-release-cut.in.json
+    outputs: docs/charts/contracts/package-release-cut.out.json
+slices:
+  first-release-correctness:
+    fairway: package-repair
+    capability: a publisher can scaffold and cut a first package release without hand-editing its version
+    sets: [PackageFirstSnapshot, PackageReleaseCut]
+    steers_by: []

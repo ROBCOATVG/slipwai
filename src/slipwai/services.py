@@ -25,13 +25,13 @@ the model gate makes every slice say which one it is in; the manifest field is w
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 from .backends import ENV_FEATURES, SERVICE_PORT, WEB_PORT
 from .catalog import family_of, framework_of, resolve_backend
 from .errors import GenerationError
+from .naming import check_name, checked_contexts
 from .npm_workspace import browser_language
 from .selection import Selection, transport_feature
 
@@ -41,13 +41,6 @@ FIRST_WEB = "web"
 APPLICATIONS = "apps"
 # The one browser framework this keel offers; a second would arrive through `add-framework`.
 WEB_FRAMEWORK = "react-vite"
-
-# A service name is a directory under `apps/`, an npm package suffix, a Go module segment and a Compose
-# service name at once, so it takes the intersection of what all four accept.
-SERVICE_NAME = re.compile(r"[a-z][a-z0-9-]*[a-z0-9]|[a-z]")
-# A bounded context's name is also a directory (`src/<context>/` inside a service) and a heading, so it
-# takes the same shape.
-CONTEXT_NAME = SERVICE_NAME
 
 
 @dataclass(frozen=True, eq=False)
@@ -77,6 +70,12 @@ class App:
     # For a wrapped one, what its build runs on: `kind` and `version` (what CI sets up), `ecosystem`, `packaging`.
     toolchain: Mapping[str, str] | None = None
     structure: str | None = None  # `hexagonal` where a wrapped application declares the layers the gate checks
+    # The rung a *wrapped* application is on, where a person has said: `events` or `state`. A generated
+    # service answers the same question on the `write-model` axis and reads it off its selection, so this is
+    # None for one. None here is not `state` by another name — it is the written form of *nobody has claimed
+    # this application's past*, which is what every wrapped application starts as and what `eventSourced`
+    # reports it as. Only `/ground` or `adopt --confirm <name> --write-model events` fills it in (15.9).
+    write_model: str | None = None
     # Where each recorded fact came from — `detected`, `confirmed` or `overridden`, per field — for an
     # application the keel described rather than chose. Empty for a generated one: its facts are answers.
     provenance: Mapping[str, str] = field(default_factory=dict)
@@ -144,6 +143,7 @@ class App:
             **({"commands": dict(self.commands)} if not self.generated and self.commands is not None else {}),
             **({"toolchain": dict(self.toolchain)} if not self.generated and self.toolchain else {}),
             **({"layout": self.structure} if not self.generated and self.structure else {}),
+            **({"writeModel": self.write_model} if not self.generated and self.write_model else {}),
             **({"purpose": self.purpose} if (self.is_service or not self.generated) and self.purpose else {}),
             **({"contexts": list(self.contexts)} if (self.is_service or not self.generated) and self.contexts else {}),
             **({"api": self.api} if not self.is_service and self.api else {}),
@@ -186,7 +186,7 @@ def default_apps(
         )
     ]
     if frontend != "none":
-        check_name(apps, web_name)
+        check_name((app.name for app in apps), web_name)
         apps.append(web_app(web_name, WEB_PORT, service_name, first=True))
     return apps
 
@@ -293,34 +293,9 @@ def next_web_port(apps: list[App]) -> int:
     return max((app.port for app in web_apps(apps)), default=WEB_PORT - 1) + 1
 
 
-def check_name(apps: list[App], name: str) -> None:
-    if not SERVICE_NAME.fullmatch(name):
-        raise GenerationError(
-            f"'{name}' cannot name an application: use lowercase letters, digits and hyphens, starting with a "
-            "letter — it has to be a directory, an npm package, a Go module segment and a Compose service"
-        )
-    if any(app.name == name for app in apps):
-        raise GenerationError(f"this project already has an application named '{name}'")
-
-
-def check_context(name: str) -> None:
-    if not CONTEXT_NAME.fullmatch(name):
-        raise GenerationError(
-            f"'{name}' cannot name a bounded context: use lowercase letters, digits and hyphens, starting "
-            "with a letter — it is a directory inside a service and a heading in the model"
-        )
-
-
-def checked_contexts(names: Sequence[str] | None) -> tuple[str, ...]:
-    """The contexts a service was given, each a legal name, once each and in the order given."""
-    for name in names or ():
-        check_context(name)
-    return tuple(dict.fromkeys(names or ()))
-
-
 def add_web(apps: list[App], name: str, api: str | None) -> list[App]:
     """The list with one more browser app on it, proxying `/api` to `api` (the first service by default)."""
-    check_name(apps, name)
+    check_name((app.name for app in apps), name)
     services = services_of(apps)
     if not services:
         raise GenerationError(
@@ -340,7 +315,7 @@ def add_service(
     purpose: str | None = None, contexts: Sequence[str] | None = None,
 ) -> list[App]:
     """The list with one more service on it, refusing a name that cannot be a service here."""
-    check_name(apps, name)
+    check_name((app.name for app in apps), name)
     # The first service the keel makes takes the role (`make dev`, `PORT`) even beside pre-existing ones.
     first = not services_of(apps)
     return [

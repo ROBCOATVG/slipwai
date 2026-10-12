@@ -113,12 +113,23 @@ def survey_command(apps: list[App], layout: Layout, event: bool) -> str:
     model = """
 ## The event model
 
-This project keeps a global event model in `docs/event-model/model.yaml`. The code that existed before the
-method is an **external system** in it — never a set of invented events. Read `skills/event-modeling/SKILL.md`
-first. Where a slice needs what the legacy system does, model it as the translation pattern that skill
-describes: an event marked `external: true` for what the legacy system emits or exposes, the process that
-reads it, and the command and event that are this project's own. Nothing in the legacy system's tables or
-tables' history becomes an event by being renamed; `docs/adoption.md` says why that honesty matters here.
+This project keeps a global event model in `docs/event-model/model.yaml`. Read `skills/event-modeling/SKILL.md`
+first. The code that existed before the method is in that model as one of two things, and which one turns on
+whether its behaviour has been modelled or only read:
+
+- **An external system**, where this project reads what it emits or exposes and nobody has modelled what it
+  does inside. Model it as the translation pattern that skill describes: an event marked `external: true`
+  for what the legacy system emits, the process that reads it, and the command and event that are this
+  project's own. This is the honest reading on the day the method arrives, and it stays the reading for
+  everything nobody has looked at.
+- **A state-stored service of this project**, where somebody has modelled its behaviour against the code —
+  its slices written at `observed`, each with the handler it was read off. It is then a service on the
+  timeline like any other, on the `state` rung unless a person has recorded `writeModel: events` for it,
+  which `slipwai adopt --confirm <name> --write-model events` is how to do.
+
+Neither reading licenses the one thing that is always wrong: nothing in the legacy system's tables, and
+nothing in those tables' history, becomes an event by being renamed. `docs/change-strategy.md`, *Be honest
+about the event model*, says why that honesty matters here, and what the rung has to do with it.
 """ if event else ""
     return f"""---
 description: Re-survey this repository with the factory and reconcile what it finds with what project.json records

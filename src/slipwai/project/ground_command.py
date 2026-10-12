@@ -14,6 +14,7 @@ from ..convergence import AXES, Axis
 from ..layout import Layout
 from ..origin import Adoption
 from ..services import App, wrapped_of
+from .write_model_prose import rung_question
 
 # What to ask for each axis, and where the answer is written. The constitution is not asked: `/speckit-constitution`
 # and the gate establish it, and a person saying "ratified" does not make it so.
@@ -161,6 +162,7 @@ def candidate_section(adoption: Adoption, layout: Layout) -> str:
     candidates = [row for row in (adoption.candidates or []) if isinstance(row, dict)]
     if not candidates:
         return ""
+    rung = rung_question([row for row in candidates if row.get("writeModel")])
     rows = "\n".join(
         f"   - `{row.get('name')}` at `{row.get('path')}` — {row.get('language')}, from `{row.get('evidence')}`"
         + (f"; the tree says {row.get('kind')} ({row.get('roleEvidence')})" if row.get("roleEvidence")
@@ -207,6 +209,7 @@ def candidate_section(adoption: Adoption, layout: Layout) -> str:
         "the delivery gate says nothing about this directory* are answers somebody can choose between. *Yes*\n"
         "and *No* are not. Where they asked for the short form, the labels stand alone and your reading above\n"
         "them carries the reasoning.\n\n"
+        f"{rung}"
         "**Write:** one `slipwai adopt --confirm <name>` per application — with `--as <name>=<new>` where the\n"
         "directory's name is not its name, and `--kind`, `--purpose` and `--command` for what you established —\n"
         "and `--decline <name>` for each that is not one. The command builds the record and regenerates\n"

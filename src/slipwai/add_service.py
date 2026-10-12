@@ -42,11 +42,12 @@ from .catalog import CATALOG, axis_options
 from .errors import GenerationError
 from .layout import layout_of
 from .manifest import apps_from_manifest, check_known, read_manifest, wrote_here
+from .naming import checked_contexts
 from .origin import adoption_of
 from .project.pruner import pruner
 from .scaffold import project_files
 from .selection import Selection, resolve_selection
-from .services import App, add_service, add_web, checked_contexts, contexts_phrase, frontend_of, services_of
+from .services import App, add_service, add_web, contexts_phrase, frontend_of, services_of
 from .targets import managed, offered_backends
 from .toolkit import executable_paths
 

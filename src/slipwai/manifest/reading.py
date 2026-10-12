@@ -18,6 +18,7 @@ from ..errors import GenerationError
 from ..loaded import refusals
 from ..npm_workspace import npm
 from ..registry import registry
+from ..rungs import EVENTS, STATE
 from ..selection import Selection
 from ..services import App, services_of, wrapped_of
 from .languages import answered, loaded_versions, recorded_languages, refuse_unreadable
@@ -79,6 +80,19 @@ def recorded_structure(record: dict) -> str | None:
     if structure is not None and structure != "hexagonal":
         raise TypeError("'layout' as \"hexagonal\", or absent")
     return structure
+
+
+def recorded_write_model(record: dict) -> str | None:
+    """The rung a person recorded for a wrapped application — `events` or `state` — or nothing.
+
+    Refused rather than coerced, because the two answers are not two shades of one: `events` says the log is
+    this service's truth, and a reader that took `Events` or `event-sourced` for it would record a claim
+    about somebody's past that nobody made.
+    """
+    rung = record.get("writeModel")
+    if rung is not None and rung not in (EVENTS, STATE):
+        raise TypeError(f"'writeModel' as \"{EVENTS}\" or \"{STATE}\", or absent")
+    return rung
 
 
 def recorded_provenance(record: dict) -> dict[str, str]:
@@ -156,6 +170,7 @@ def apps_from_manifest(document: dict, allow_empty: bool = False) -> list[App]:
                     commands=wrapped_commands(record) if not generated else None,
                     toolchain=recorded_toolchain(record) if not generated else None,
                     structure=recorded_structure(record) if not generated else None,
+                    write_model=recorded_write_model(record) if not generated else None,
                     provenance=recorded_provenance(record),
                 )
             )

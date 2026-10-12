@@ -23,6 +23,7 @@ from .adopt_report import MAKEFILE, SETTINGS, Adopted, report, survey_page
 from .assets import VERSION, contained
 from .errors import GenerationError
 from .layout import Layout
+from .naming import check_name
 from .origin import FORGES, RELEASE_PATHS, Adoption
 from .platform import with_platform
 from .project.adopted import WRITTEN, agents_block, gitignore_block, makefile_block
@@ -34,7 +35,7 @@ from .project.run_skill import RUNNING, running_ledger
 from .project.strangle_command import RETIREMENT, RETIREMENT_LEDGER
 from .project.structure_page import structure_page
 from .scaffold import FACTORY_IDENTITY, NO_MAINTENANCE, project_files
-from .services import App, check_name, wrapped_of
+from .services import App, wrapped_of
 from .strategy import with_recommendation
 from .structure import structure
 from .survey import Survey, survey
@@ -154,6 +155,13 @@ def candidates_of(found: Survey, name: str) -> list[dict]:
             # `application` with nothing here is one nobody and nothing has placed — the commonest case, and
             # the one the confirming agent has to read the directory to answer.
             **({"roleEvidence": root.role_evidence} if root.role_evidence else {}),
+            # The rung, proposed from an event-store dependency and nowhere else. It is on the candidate
+            # because a candidate *is* a proposal: confirming one takes its language and its commands as
+            # somebody's word, and takes this as nothing at all, because a log nobody vouched for is a guess
+            # wearing a fact's clothes. `--write-model events` is the vouching (15.9).
+            **({"writeModel": "events",
+                "writeModelEvidence": f"{root.event_store[0]} in {root.event_store[1]}"}
+               if root.event_store else {}),
         }
         for app, root in zip(proposed(found, name), found.roots, strict=True)
     ]

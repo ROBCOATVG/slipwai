@@ -31,7 +31,7 @@ from .catalog import (
     resolve_backend,
 )
 from .errors import GenerationError
-from .services import check_context, check_name
+from .naming import check_context, check_name
 from .targets import offered_backends
 
 

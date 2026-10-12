@@ -88,6 +88,11 @@ def as_application(root: Path, candidate: dict, overrides: dict) -> App:
         # stays the open question it was rather than becoming an answer by being passed over.
         "kind": "unrecorded" if kind == "application" else ("overridden" if overrides.get("kind") else "confirmed"),
         **({"toolchain": "overridden"} if brought else {}),
+        # The rung is `confirmed` whichever way it was answered and whatever the candidate proposed, because
+        # there is only one way to answer it: a person saying so. Unlike the fields above, the candidate's
+        # proposal is *not* taken by silence — `events` is never recorded by detection alone, and `state` by
+        # silence would read as somebody's word for the one fact that cannot be walked back (15.9).
+        **({"writeModel": "confirmed"} if overrides.get("write_model") else {}),
     }
     app = wrapped_app(
         name, candidate["path"], language, commands, brought or toolchain,
@@ -96,7 +101,7 @@ def as_application(root: Path, candidate: dict, overrides: dict) -> App:
     return App(
         app.name, app.path, app.kind, app.language, None, 0, generated=False, commands=app.commands,
         toolchain=app.toolchain, purpose=app.purpose, structure=overrides.get("structure"),
-        provenance=app.provenance,
+        write_model=overrides.get("write_model"), provenance=app.provenance,
     )
 
 

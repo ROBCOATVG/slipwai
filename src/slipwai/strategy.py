@@ -66,6 +66,11 @@ TRIGGERS: tuple[tuple[str, str, str, str], ...] = (
 # first real ADR had "the `Strategy:` line here reads" in its Consequences, which read as the strategy `line`.
 ADR_STRATEGY = re.compile(r"^\W*strategy\W*:\W*([a-z-]+)\W*$", re.IGNORECASE | re.MULTILINE)
 ADR_ACCEPTED = re.compile(r"^## Status\s*\n+\s*Accepted\b", re.MULTILINE)
+# The strangler's precondition, on the same ADR as the strategy it belongs to: `Freeze: agreed — <who, when>`
+# or `Freeze: absent — <what the programme does instead>`. Both are answers; only silence is not, because a
+# legacy system that keeps growing under a side-car is a side-car that drifts and a ledger nobody can read.
+# Unlike `Strategy:`, the rest of the line is kept: who agreed it is the whole value of the record.
+ADR_FREEZE = re.compile(r"^\W*freeze\W*:\W*(agreed|absent)\b\W*(.*?)\s*$", re.IGNORECASE | re.MULTILINE)
 
 
 def rung_of(rows: list[dict], axis: str) -> str:
@@ -163,10 +168,22 @@ def recommend(why: str | None, rows: list[dict], products: list[dict] = ()) -> d
             "before": [*behind, *preconditions(rows, strategy)], "stop": stop}
 
 
+def freeze_of(text: str) -> dict | None:
+    """What the strategy ADR records about the freeze: `agreed` with who agreed it, `absent` with what is done
+    instead, or nothing at all — which is a question `/strangle` asks and never an answer it invents."""
+    match = ADR_FREEZE.search(text)
+    return {"state": match.group(1).lower(), "said": match.group(2).strip(" —-")} if match else None
+
+
 def decision_of(root: Path, layout: Layout) -> dict:
     """The strategy an accepted ADR decides, with the ADR — the highest-numbered accepted one naming a strategy — or
-    nothing, which is what a recommendation is until a person writes one."""
-    decided: dict = {"decided": None, "adr": None}
+    nothing, which is what a recommendation is until a person writes one.
+
+    The freeze rides on the same ADR and is read with it, because it is the same decision seen from the
+    legacy system's side: a strangler is a strangler only while the old system is standing still, and the
+    one place both halves can be held together is the document a person accepted.
+    """
+    decided: dict = {"decided": None, "adr": None, "freeze": None}
     for path in sorted((root / layout.under("docs/adr")).glob("*.md")):
         text = path.read_text(errors="replace", encoding="utf-8")
         # An ADR accepted under an older factory's spelling still decides — `Strategy: modernise-in-place` is read
@@ -174,7 +191,8 @@ def decision_of(root: Path, layout: Layout) -> dict:
         named = [current(match.group(1).lower()) for match in ADR_STRATEGY.finditer(text)]
         strategy = next((name for name in named if name in STRATEGIES), None)
         if strategy and ADR_ACCEPTED.search(text):
-            decided = {"decided": strategy, "adr": layout.under(f"docs/adr/{path.name}")}
+            decided = {"decided": strategy, "adr": layout.under(f"docs/adr/{path.name}"),
+                       "freeze": freeze_of(text)}
     return decided
 
 

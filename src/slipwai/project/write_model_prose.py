@@ -227,3 +227,30 @@ def run_seed(apps: list[App]) -> str:
         for key in dict.fromkeys(seen)
         if key in RUN_SEEDS
     )
+
+
+def rung_question(proposed: list[dict]) -> str:
+    """The rung, asked of the candidates whose own dependencies name an event store — and of no others.
+
+    A question nobody has evidence for is a question that manufactures an answer, so this is not asked of a
+    repository where the survey found nothing: a wrapped application with no answer here is `state`, which is
+    the honest reading of *nobody has claimed this application's past*, and the rung is recorded only when
+    somebody vouches for it (15.9).
+    """
+    if not proposed:
+        return ""
+    rows = "\n".join(
+        f"   - `{row.get('name')}` — {row.get('writeModelEvidence')}" for row in proposed
+    )
+    return (
+        "**Ask, of these and only these — the rung.** The survey found an event-store library in their own\n"
+        "dependencies, which is the one thing a tree can say about whether an application's log is its truth:\n\n"
+        f"{rows}\n\n"
+        "   Ask whether that library is what this application's writes actually go through, or something a\n"
+        "   corner of it uses. The answer matters because the model is read against it: a service on the\n"
+        "   `events` rung is modelled against its own events module, and one on `state` against its tables and\n"
+        "   the transitions in them. Say what you read in the code and why you think it is one or the other.\n\n"
+        "   **Write:** `--write-model events` on that application's `--confirm`, and nothing at all where the\n"
+        "   answer is no or the person does not know. Silence records `state`, which is what the record should\n"
+        "   say while nobody has claimed this application's past — the detection alone never records a log.\n\n"
+    )

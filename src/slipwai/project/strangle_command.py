@@ -114,6 +114,37 @@ def routing_seam(target: str) -> str:
     )
 
 
+def the_rung() -> str:
+    """Which rung the new home stands on, asked before `add-service` runs.
+
+    The answer is per service and cannot be walked back once the service holds data, which is why it is a
+    question here rather than a default the factory supplies: a capability that has just moved rarely has a
+    past worth keeping, and the ladder's second rung — in-process events — is the honest place for it.
+    """
+    return """### Which rung is the new home on
+
+`add-service` asks it, and it is the one answer about a service that cannot be walked back once it holds
+data, so decide it here with the capability in front of you rather than at the prompt:
+
+- **`--write-model state`** — the new home keeps current state and the events the model names are contracts
+  raised after the write. The capability's data arrives by **change data capture** from the legacy store or
+  by an **outbox** written in the legacy system's own transaction, and there is **no genesis event**, because
+  there is no log for one to open. This is rung 2 of the ladder and the right answer for most of the first
+  capabilities to move: their past lives in the legacy tables, where reconstructing it would be invention.
+- **`--write-model events`** — the log is the truth. Its history starts at a **genesis event** that records
+  the state the legacy system handed over, and that genesis is what makes the rung honest: everything before
+  it is stated once, as handover, rather than backfilled from `created_at` and `updated_at`.
+
+Say which, and why, in the slice's plan. The model is the same either way — the actors, the timeline, the
+four patterns and the slices do not move — and `docs/change-strategy.md`, *Be honest about the event model*,
+is the argument. A capability whose past nobody will ask about is finished at `state`; climbing later means
+reconstructing history that was never recorded, so a rung chosen for consistency is a rung chosen for nothing.
+
+### Where the new home runs
+
+"""
+
+
 def new_home(apps: list[App]) -> str:
     wrapped = wrapped_of(apps)
     generatable = [app for app in wrapped if app.language in families()]
@@ -148,6 +179,20 @@ def decision_line(adoption: Adoption | None) -> str:
     return f"`null` — recommended `{record.get('recommended', 'leave-it')}`, decided nothing"
 
 
+def freeze_line(adoption: Adoption | None, layout: Layout) -> str:
+    """What the strategy ADR says about the freeze today, in one line — including when it says nothing.
+
+    Silence reads as `absent` and names the file it is absent from, because the command's refusal is about a
+    line a person has to write, and a refusal that does not say where to write it costs the reader a search.
+    """
+    record = (adoption.strategy if adoption else None) or {}
+    freeze = record.get("freeze")
+    if freeze:
+        return f"`{freeze['state']}` — {freeze['said']}" if freeze.get("said") else f"`{freeze['state']}`"
+    where = record.get("adr") or f"{layout.under('docs/adr')}/ (no accepted ADR names a strategy yet)"
+    return f"`absent` — nothing in `{where}` records one"
+
+
 def strangle_command(apps: list[App], layout: Layout, target: str, adoption: Adoption | None = None) -> str:
     ledger = layout.under(RETIREMENT)
     pinned = layout.under("survey/pinned.md")
@@ -178,6 +223,18 @@ seam, one row in `{ledger}`. It is the Slice stage of adopting the method around
   decide — an accepted ADR under `docs/adr/` with a `Strategy: strangler-fig` line, then `/survey`
   (`docs/change-strategy.md`, *Recommended for this repository*). Going beyond the recorded decision is how a
   programme quietly becomes a second system beside the first.
+- **No freeze, no first capability.** A strangler grows beside a system that is standing still, so before
+  anything moves the programme has an agreement —
+  no new features in the legacy system, bug fixes only, no schema changes —
+  agreed by somebody who can hold other teams to it, and recorded on the strategy ADR as
+  `Freeze: agreed — <who, when>`. Where nobody will agree to one, that is recorded instead, as
+  `Freeze: absent — <what is done instead>`: re-pinning every legacy release before the next capability
+  moves, a shorter programme, fewer capabilities. Both are answers. Silence is not — a freeze nobody
+  recorded is one nobody agreed to, and the retirement ledger cannot show the drift it lets in.
+  Today it reads {freeze_line(adoption, layout)}.
+  Where it reads `absent` with nothing after it, stop at the first capability: put the question to the
+  person, write their answer on the ADR in that form, and run this command again. You do not invent either
+  answer, and `{ledger}` is not a place to record one.
 
 ## Decide the seam
 
@@ -196,14 +253,14 @@ the same release-constraint decision `/sail` asks for, made concrete.
 `project.json`'s `database.schema` says where the schema lives; `docs/deployment.md` says who else reads the
 tables. One writer per fact: the capability's data reaches its new home by change data capture from the legacy
 store or by an outbox written in the legacy system's own transaction — never by writing the same fact in two
-places. Where the new home is event-sourced, its history starts at a genesis event that records what the
-legacy system handed over, and the legacy system is an external system in the model. Rehearse the move against
-a copy with a reconciliation report; dual-run in shadow before an actor is served; roll back at least once in
-rehearsal.
+places. That is the whole of the data move where the new home is on the `state` rung. Where it is
+event-sourced, its history starts in addition at a genesis event that records what the legacy system handed
+over, and nothing before that genesis is invented. Rehearse the move against a copy with a reconciliation
+report; dual-run in shadow before an actor is served; roll back at least once in rehearsal.
 
 ## Decide the new home
 
-{new_home(apps)}
+{the_rung()}{new_home(apps)}
 
 ## Do the slice
 

@@ -105,14 +105,18 @@ class StrategyTest(unittest.TestCase):
             root = Path(directory)
             adr = root / "delivery/docs/adr"
             adr.mkdir(parents=True)
-            self.assertEqual(decision_of(root, DELIVERY), {"decided": None, "adr": None})
+            # `freeze` rides on the same ADR and is read with the decision, because it is that decision seen
+            # from the legacy system's side (`tests/test_freeze.py`); None is nothing recorded either way.
+            self.assertEqual(decision_of(root, DELIVERY), {"decided": None, "adr": None, "freeze": None})
             (adr / "0002-change-strategy.md").write_text(
                 ADR.format(status="Proposed", strategy="strangler-fig"), encoding="utf-8")
             self.assertIsNone(decision_of(root, DELIVERY)["decided"], "proposed is not decided")
             (adr / "0002-change-strategy.md").write_text(
                 ADR.format(status="Accepted", strategy="strangler-fig"), encoding="utf-8")
-            self.assertEqual(decision_of(root, DELIVERY),
-                             {"decided": "strangler-fig", "adr": "delivery/docs/adr/0002-change-strategy.md"})
+            self.assertEqual(
+                decision_of(root, DELIVERY),
+                {"decided": "strangler-fig", "adr": "delivery/docs/adr/0002-change-strategy.md", "freeze": None},
+            )
             (adr / "0003-leave-it.md").write_text(ADR.format(status="Accepted", strategy="**leave-it**"),
                 encoding="utf-8")
             self.assertEqual(decision_of(root, DELIVERY)["decided"], "leave-it", "the later ADR supersedes")

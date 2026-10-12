@@ -46,6 +46,12 @@ NOTES = ".slipwai/catch-up.md"
 # person had edited the first answer's files.
 WRITTEN_RECORD = ".delivery-tools/written.json"
 TOOLKIT_ROOT = ROOT / "assets/toolkit"
+# The pages `project/guidance.py` renders rather than copies: `AGENTS.md`, `docs/architecture.md` and the
+# per-answer rules either of them is made of. Beside the toolkit and not inside it, because everything under
+# `TOOLKIT_ROOT` is copied into a generated project at the path it sits at — which is right for a page that
+# is then written over by its resolved self, and wrong for a file of rule fragments, which would ship into
+# somebody's repository as a page of markers nobody asked for.
+GUIDANCE_ROOT = ROOT / "assets/guidance"
 PROFILE_ROOT = ROOT / "assets/profiles"
 FRONTEND_ROOT = ROOT / "assets/frontends"
 BACKING_SERVICE_ROOT = ROOT / "assets/backing-services"

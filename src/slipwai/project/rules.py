@@ -9,7 +9,18 @@ it rather than back in the module whose budget this file exists to keep.
 """
 from __future__ import annotations
 
+from ..assets import GUIDANCE_ROOT
 from ..services import App, services_of, web_apps
+from .prose import render
+
+
+def page(name: str, named: dict[str, str], wanted: tuple[str, ...] | None = None) -> str:
+    """One page under `assets/guidance/`, rendered for this project: the sections `wanted`, tokens resolved.
+
+    The read is here rather than in `prose.py` because a root is not a mechanism: `prose` is the substitution
+    and the section marker, and the next slice of phase 16 renders a different tree with the same two.
+    """
+    return render(name, (GUIDANCE_ROOT / name).read_text(encoding="utf-8"), named, wanted)
 
 # Where each transport publishes its service's API contract, keyed by the feature that answered the `http`
 # axis; `__APP__` is the service's own directory. A transport absent from here publishes nothing this

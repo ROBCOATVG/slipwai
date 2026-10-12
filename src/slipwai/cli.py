@@ -55,6 +55,7 @@ from .cli_prompts import (
     validate_project_name,
 )
 from .cli_search import search_main, show_main
+from .cli_start import board_or_usage
 from .cli_telegraph import telegraph_main
 from .cli_trust import trust_main
 from .errors import GenerationError, failure, refuse
@@ -164,6 +165,8 @@ def dispatch(argv: list[str]) -> None:
     if argv[:1] == ["install"]:
         language_main(["install", *argv[1:]])
         return
+    # No verb: the board, or — nobody there to see it — the usage message this always printed (`cli_start`).
+    argv = board_or_usage(argv)
     parser = argparse.ArgumentParser(
         prog="slipwai",
         description="Scaffold a new product monorepo from a delivery foundation, and grow one afterwards",
@@ -173,10 +176,7 @@ def dispatch(argv: list[str]) -> None:
         "with the slices that bring them back.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
-    parser.add_argument(
-        "verb", nargs="?", choices=VERBS,
-        help="generate",
-    )
+    parser.add_argument("verb", nargs="?", choices=VERBS, help="what to do; each takes a `--help` of its own")
     parser.parse_args(argv)
     # Every verb returned above, so reaching here means none was given.
     # Built from VERBS, not written out: the list was version 1's for an afternoon and named six verbs

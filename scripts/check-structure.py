@@ -91,8 +91,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "package_version", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",
               "cli_telegraph", "cli_fleet",
-              # The board, as a page a person answers from: the render, the server and the verb.
-              "bridge", "bridge_page", "cli_bridge",
+              # The board, as a page a person answers from: the render, the server and the verb — and
+              # what bare `slipwai` does, which is open that same board.
+              "bridge", "bridge_page", "cli_bridge", "cli_start",
               # The conformance suite a package runs against itself, and its generated-variant
               # matrix: entry points the keel exports rather than modules it reads.
               "conformance", "matrix")),

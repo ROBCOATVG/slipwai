@@ -21,6 +21,7 @@ from __future__ import annotations
 import html
 import json
 
+from .assets import this_command
 from .brand import favicon, inline
 from .fleet import NOTHING
 from .telegraph import MEANS, POSITIONS
@@ -230,6 +231,27 @@ def answer_boxes(rows: list[dict]) -> str:
     return f'<div class="card"><h2>Say something to a stream</h2>{boxes}</div>'
 
 
+#: The two things a person does *before* there is anything to watch, each with the verb that does it. They
+#: are on the board because the board is where somebody who typed one word arrives, and a board that could
+#: only show an empty harbour would be a page telling them to go back to the terminal.
+STARTING = (
+    ("Start a new project", "generate",
+     "The interview, asked here: the delivery foundation, the language, what the first service owns, and "
+     "where it goes to production."),
+    ("Adopt a repository you already have", "adopt",
+     "The method installed around code that exists, with what it found and what it would write shown "
+     "before anything is written."),
+)
+
+
+def starting_points(command: str | None = None) -> str:
+    """What can be started from here, whether or not there is a project in this directory."""
+    command = this_command() if command is None else command
+    rows = "".join(f"<dt><b>{esc(title)}</b><div class=\"empty\">{esc(why)}</div></dt>"
+                   f"<dd><code>{esc(command)} {esc(verb)}</code></dd>" for title, verb, why in STARTING)
+    return f'<div class="card"><h2>Start something</h2><dl>{rows}</dl></div>'
+
+
 def dial(position: str, controls: bool) -> str:
     buttons = []
     for name in POSITIONS:
@@ -266,6 +288,10 @@ def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge"
            + f" · {spent if spent is not None else NOTHING}/{bunker['allowed']}k today")
     banked = f'<p class="empty">{esc(pressure["banked"])}</p>' if pressure["banked"] else ""
     feed = "".join(f"<li>{esc(w)}  {esc(who)}  {esc(kind)}</li>" for w, who, kind in found["feed"][-15:])
+    # What can be started leads where there is no fleet to lead with, and follows it where there is: a
+    # harbour with ten streams running is not a page about making an eleventh project. The published copy
+    # has it at neither end — it is a file on somebody's Pages site, and nothing can be started from there.
+    start = starting_points() if controls else ""
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -275,12 +301,14 @@ def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge"
 <body><div class="wrap">
 <div class="top"><div><h1>{esc(title)}</h1><div class="sub">{esc(sub)}</div></div>
 <div class="corner">{THEME}{inline(title="slipwai — the little tug that moves the big one")}</div></div>
+{start if not berths else ""}
 <div class="card"><h2>Waiting on you</h2>{inbox_rows(waiting, controls)}</div>
 {answer_boxes(berths) if controls else ""}
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {})}</div>
 <div class="card"><h2>Speed</h2>{dial(str(pressure["position"]), controls)}{banked}</div>
 {tune(config, controls)}
 <div class="card"><h2>Last lines</h2><ul class="feed">{feed or "<li>nothing yet</li>"}</ul></div>
+{start if berths else ""}
 </div>{"<script>" + SCRIPT + "</script>" if controls else ""}</body></html>
 """
 

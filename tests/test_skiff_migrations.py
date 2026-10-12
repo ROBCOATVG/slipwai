@@ -123,6 +123,33 @@ class MigrationReceiptTest(unittest.TestCase):
         self.assertEqual(cloud.payload["containers"]["migration"]["environment"]["DATABASE_URL"],
                          "postgres://app:very-secret@private:5432/app")
 
+    def test_every_refusal_this_controller_can_raise_ends_with_a_command(self) -> None:
+        """AGENTS.md's rule, held over the whole module rather than over the two cases a suite happens to
+        reach. A migration that stops mid-deploy and says only what went wrong leaves whoever is on the end
+        of it searching for how to try again; two refusals here — a bounded command exiting non-zero, and a
+        cleanup fault after a retained log — said exactly that and nothing else."""
+        import ast
+        source = (PACKAGE / "scripts/skiff_migrations.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        said = []
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call)
+                    and isinstance(node.exc.func, ast.Name) and node.exc.func.id == "Failure"):
+                continue
+            words = []
+            for argument in node.exc.args:
+                for part in ast.walk(argument):
+                    if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                        words.append(part.value)
+            said.append((node.lineno, " ".join(words)))
+        self.assertTrue(said)
+        for line, text in said:
+            with self.subTest(line=line):
+                self.assertTrue(
+                    any(verb in text for verb in ("make ", "aws ", "slipwai ", "tofu ", "docker ")),
+                    f"line {line} refuses without naming the command that fixes it: {text!r}",
+                )
+
     def test_nonzero_receipt_refuses_deploy_but_still_cleans_up_and_retains_redacted_diagnostics(self):
         cloud = CloudCLI(verdict="7")
         failure, text = self.exercise(cloud)

@@ -36,7 +36,10 @@ def run(command: list[str], *, capture: bool = True, cwd: Path | None = None) ->
             f"{command[0]} exceeded its bounded command deadline; re-run make migrate-remote ENV=production"
         ) from fault
     if done.returncode:
-        raise Failure(f"{command[0]} exited {done.returncode}: {done.stderr.strip()}")
+        raise Failure(
+            f"{command[0]} exited {done.returncode}: {done.stderr.strip()}; fix what it reports, then "
+            "re-run make migrate-remote ENV=production"
+        )
     if not capture:
         print(done.stdout, file=sys.stderr, end="")
     return done.stdout
@@ -249,4 +252,7 @@ def migrate(project: str, service: str, image: str, command: list[str] | None,
             except (Failure, KeyError, ValueError) as fault:
                 errors.append(f"cleanup: {fault}")
         if errors:
-            raise Failure(f"{'; '.join(errors)}. Retained migration log: {path}")
+            raise Failure(
+                f"{'; '.join(errors)}. Retained migration log: {path} — read it, then re-run "
+                "make migrate-remote ENV=production"
+            )

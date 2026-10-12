@@ -170,6 +170,10 @@ class OwnProseTest(unittest.TestCase):
         "docs/slipwai-2-plan.md": {"workstation", "workstream", "lane", "runner"},
         # Written from the plan's vocabulary table; its third column is version 1's own names.
         "GLOSSARY.md": {"workstation", "workstream", "lane", "runner"},
+        # The page whose whole subject is what changed since version 1, and which therefore names version
+        # 1's words as version 1's — "version 1 called this a value stream, or a workstream" — and ends on
+        # a table of them. The same case as the glossary's third column.
+        "docs/whats-new.md": {"workstation", "workstream", "lane", "runner"},
         # Version 1's loop, named as version 1's — which `AGENTS.md` permits in as many words.
         "README.md": {"runner"},
         "docs/guide/let-it-cruise.md": {"runner"},

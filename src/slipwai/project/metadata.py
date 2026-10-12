@@ -61,6 +61,13 @@ def metadata(
     phase 15: `modelled` — is there a model? — is the profile and is project-wide, and `sourced` — is the
     log the truth? — is this service's answer to the `write-model` axis.
 
+    `publishes` is the other half of that answer and is **not written here**, on purpose. It says how a
+    state-stored service gets an event across its own boundary — `outbox`, `bus` or `cdc` — and nothing
+    asks for it at `./init`, because the question has no answer until another service reads one of this
+    one's events. `check-model` is what puts it, on the slice that reads across the boundary (15.13), and
+    the project records it on the deployable by hand. A field the generator leaves absent and a gate asks
+    for later is the shape this one wants: written when it is true, rather than defaulted when it is not.
+
     `adoption` is how the repository came to have this material: None for a generated one; for one the method
     was installed around, `"origin": "adopted"` after the generator and its facts after the layout, with its
     applications recorded `"generated": false`, claiming no capability and event-sourced in nobody's eyes.

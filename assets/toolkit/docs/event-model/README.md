@@ -304,8 +304,28 @@ either of its slices is on. What changes is three fields on the write side:
 | `model-matches-code` | unchanged | unchanged — an event is a file on either rung |
 
 The rung is per service, so a project with one context that earns the log beside three that do not is one
-model with one timeline. A cross-service `reads` whose producer is state-stored is a separate question and
-a later one.
+model with one timeline.
+
+**A cross-service `reads` whose producer is state-stored needs a publisher, and the gate asks for one.**
+On the `state` rung an event is modelled always and emitted only where something reads it: within one
+service the next step after a write is a call the use case makes — the `pcr` frame — and no message is
+sent at all. The moment the reader is *another* service that stops being true. There is no log for it to
+subscribe to, so the event is raised in process and lost on the one failure that matters, and the model
+names a mark nobody can consume — which is the failure `check-chart` exists to prevent.
+
+So `check-model` refuses it, naming the producing service, until that service records how it publishes:
+
+| On the producer's deployable in `project.json` | What it means |
+|---|---|
+| `"publishes": "outbox"` | the events are written to an outbox table in the same transaction as the state write |
+| `"publishes": "bus"` | the project already publishes to a bus, and this slice uses that |
+| `"publishes": "cdc"` | change data capture off the producer's own tables |
+| absent | nothing carries the event across the boundary — the refusal |
+
+`publishes` is absent on every service the keel generates, and deliberately: the question has no answer
+until something reads the event, which is when the gate puts it. Where the project already publishes
+somehow, name *that* — a second mechanism beside a working one is what this rule is trying not to cause.
+On the `events` rung it is not asked, because the log is the publication.
 
 **And it is the one answer that cannot be walked back.** A log folds down into tables whenever somebody
 decides it should; state cannot be turned back into history it never recorded. Nothing in the model

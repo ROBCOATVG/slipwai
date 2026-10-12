@@ -51,6 +51,14 @@ export interface ServiceRecord {
    * say it of keeps current state, which is the axis's own `absent`.
    */
   eventSourced: boolean;
+  /**
+   * How this service gets its events across its own boundary, where it has said — `publishes` in the
+   * manifest, one of `outbox`, `bus` or `cdc`. Absent on every service the keel generates, and
+   * deliberately: the question only has an answer once another service reads one of its events, which is
+   * when `check-model` puts it (15.13). Meaningless on the event-sourced rung, where the log is the
+   * publication, and read by nothing there.
+   */
+  publishes?: string | undefined;
 }
 
 /**
@@ -96,6 +104,8 @@ export function loadServices(): ServiceRecord[] {
         purpose: typeof entry['purpose'] === 'string' && entry['purpose'] !== '' ? entry['purpose'] : undefined,
         contexts: listed.length > 0 ? listed : single,
         eventSourced: entry['eventSourced'] === true,
+        publishes:
+          typeof entry['publishes'] === 'string' && entry['publishes'] !== '' ? entry['publishes'] : undefined,
       },
     ];
   });
@@ -206,6 +216,9 @@ export function createWorkspace(model: Model): Workspace {
     },
     isEventSourced(service: string): boolean {
       return loadServices().find((record) => record.name === service)?.eventSourced ?? false;
+    },
+    publishesBy(service: string): string | undefined {
+      return loadServices().find((record) => record.name === service)?.publishes;
     },
   };
 }

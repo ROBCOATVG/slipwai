@@ -38,6 +38,12 @@ export interface Workspace {
    * service nothing says it of keeps current state, which is the axis's own `absent`.
    */
   isEventSourced(service: string): boolean;
+  /**
+   * How this service gets its events across its own boundary, where `project.json` says — `outbox`, `bus`
+   * or `cdc`, and undefined where it has not been asked. Only meaningful on the state-stored rung: on the
+   * event-sourced one the log is the publication.
+   */
+  publishesBy(service: string): string | undefined;
 }
 
 export interface Violation {
@@ -180,6 +186,13 @@ function checkGrammar(slice: Slice): Violation[] {
  * page and a settings record honestly are field updates.
  */
 const CRUD_VERBS = ['Created', 'Updated', 'Deleted', 'Changed', 'Modified'] as const;
+
+/**
+ * How a state-stored service may get an event across its own boundary. An outbox table written in the same
+ * transaction as the state write is the one the templates build (T023); a project already publishing some
+ * other way names that instead, rather than growing a second mechanism beside a working one.
+ */
+const PUBLISHERS = ['outbox', 'bus', 'cdc'] as const;
 
 /**
  * `OrderNotShipped` names the absence of a thing, and nothing raises an absence. The fact underneath is a
@@ -338,6 +351,44 @@ export function validate(model: Model, workspace: Workspace): Violation[] {
             'A projection cannot fold an event that has not happened yet, and Mermaid drops the arrow',
         });
       }
+
+      // A mark nobody can consume (15.13). Within one service the next step after a write is a call the
+      // use case makes — the `pcr` frame — and needs no publisher. Across a boundary it is a message, and
+      // a service that keeps current state has no log for the reader to subscribe to: the event is raised
+      // in process and lost on the one failure that matters. So the outbox stops being optional the
+      // moment another service reads the event, and the refusal names whose rung has to move.
+      const producingSlice = model.slices[producerIndex];
+      const producingService =
+        producingSlice?.service !== undefined && workspace.services().includes(producingSlice.service)
+          ? producingSlice.service
+          : workspace.services().length === 1 ? workspace.services()[0] : undefined;
+      if (
+        producingService === undefined ||
+        onService === undefined ||
+        producingService === onService ||
+        workspace.isEventSourced(producingService)
+      ) {
+        continue;
+      }
+      const recorded = workspace.publishesBy(producingService);
+      if (recorded !== undefined && (PUBLISHERS as readonly string[]).includes(recorded)) {
+        continue;
+      }
+      violations.push({
+        slice: slice.id,
+        rule: 'cross-service-read-needs-a-publisher',
+        message:
+          `reads \`${name}\`, which \`${producingService}\` raises — a service that keeps current state ` +
+          (recorded === undefined
+            ? 'and records no `publishes`'
+            : `and records \`publishes: ${recorded}\`, which is not a mechanism this gate knows`) +
+          `. Within \`${producingService}\` the next step is a call its use case makes, but this read ` +
+          'crosses a service boundary and there is no log here to subscribe to. ' +
+          `\`${producingService}\` climbs to the outbox rung — its events written to an outbox table in ` +
+          'the same transaction as the state write — and `project.json` records that on the ' +
+          `\`${producingService}\` deployable as \`publishes: outbox\`, or \`bus\` or \`cdc\` where the ` +
+          'project already publishes that way and this slice should use the mechanism it has',
+      });
     }
 
     // ── Where the read model lives ─────────────────────────────────────────────────────────────────

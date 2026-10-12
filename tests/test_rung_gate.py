@@ -18,8 +18,11 @@ it is kept.
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
@@ -72,9 +75,25 @@ def slice_of(service: str, **over: object) -> dict:
     return item
 
 
-def findings(*slices: dict, rungs: dict[str, bool] | None = None) -> list[str]:
+def findings(
+    *slices: dict,
+    rungs: dict[str, bool] | None = None,
+    publishes: dict[str, str] | None = None,
+) -> list[str]:
     model = {"version": 1, "slices": list(slices)}
-    return CHECK.validate(model, SERVICES, MIXED if rungs is None else rungs)
+    return CHECK.validate(model, SERVICES, MIXED if rungs is None else rungs, publishes or {})
+
+
+def view_on(service: str, reads: list[str], **over: object) -> dict:
+    """A planned `async` read model on `service`, folding events some other slice produced."""
+    item: dict = {
+        "id": f"V-{service}", "pattern": "state-view", "status": "planned", "capability": "ordering",
+        "service": service, "context": service, "materialisation": "async",
+        "reads": reads, "gwt": ["docs/event-model/model.yaml"], "code": ["docs/event-model/model.yaml"],
+        "frames": [{"type": "rmo", "name": f"{service.title()}View"}],
+    }
+    item.update(over)
+    return item
 
 
 class BothRungsTest(unittest.TestCase):
@@ -85,6 +104,84 @@ class BothRungsTest(unittest.TestCase):
         """`state` is the `write-model` axis's own `absent`, and a log nobody vouched for is a guess."""
         guarded = slice_of("orders", stream=None, guard={"by": ["seat"], "because": "one seat, one hold"})
         self.assertTrue(any("keeps current state" in line for line in findings(guarded, rungs={})))
+
+
+class OutboxTest(unittest.TestCase):
+    """A mark nobody can consume, which is the failure `check-chart` exists to prevent (15.13).
+
+    On the `state` rung an event is modelled always and emitted only where something reads it (15.14), and
+    the moment the reader is *another service* the outbox stops being optional: the producing service
+    raised a fact in its own transaction and nothing carries it across the boundary. The refusal names the
+    producing service, because that is whose rung has to move, and `project.json` records the answer as
+    `publishes` beside `eventSourced` — `outbox`, `bus` or `cdc`, whichever the project already has.
+
+    Three ways this is *not* a finding, each for its own reason: the reader is the producer's own service
+    and the link is a call the use case makes; the producer keeps a log, which is publication; or the
+    producer has recorded how it publishes.
+    """
+
+    def test_a_cross_service_read_of_a_state_stored_event_is_refused(self) -> None:
+        found = findings(slice_of("billing"), view_on("orders", ["BillingPlaced"]))
+        said = "\n".join(found)
+        self.assertIn("BillingPlaced", said)
+        self.assertIn("billing", said, "the refusal names the producing service")
+        self.assertIn("outbox", said, "the refusal names the rung that would clear it")
+
+    def test_the_producing_service_is_named_and_not_the_reading_one(self) -> None:
+        """`orders` is where the finding is raised and `billing` is whose rung has to move."""
+        said = "\n".join(findings(slice_of("billing"), view_on("orders", ["BillingPlaced"])))
+        self.assertIn("`billing`", said)
+
+    def test_a_read_inside_the_producers_own_service_is_not_refused(self) -> None:
+        """Within one service the next step is a call the use case makes, not a message it sends itself."""
+        found = findings(slice_of("billing"), view_on("billing", ["BillingPlaced"]))
+        self.assertEqual([line for line in found if "outbox" in line], [])
+
+    def test_a_cross_service_read_of_an_event_sourced_producer_is_not_refused(self) -> None:
+        """The log is the publication: there is nothing for an outbox to do that the stream does not."""
+        found = findings(slice_of("orders"), view_on("billing", ["OrdersPlaced"]))
+        self.assertEqual([line for line in found if "outbox" in line], [])
+
+    def test_a_producer_that_records_how_it_publishes_clears_the_refusal(self) -> None:
+        for mechanism in ("outbox", "bus", "cdc"):
+            with self.subTest(mechanism=mechanism):
+                found = findings(slice_of("billing"), view_on("orders", ["BillingPlaced"]),
+                                 publishes={"billing": mechanism})
+                self.assertEqual([line for line in found if "outbox" in line], [])
+
+
+class ManifestTest(unittest.TestCase):
+    """`publishes` as `project.json` carries it, which is what a project runs the gate against."""
+
+    def read(self, document: dict) -> dict:
+        directory = Path(tempfile.mkdtemp())
+        (directory / "project.json").write_text(json.dumps(document), encoding="utf-8")
+        was = CHECK.MANIFEST
+        CHECK.MANIFEST = directory / "project.json"
+        try:
+            return CHECK.project_publishes()
+        finally:
+            CHECK.MANIFEST = was
+
+    def test_a_service_that_names_a_mechanism_is_read(self) -> None:
+        found = self.read({"deployables": {"billing": {"kind": "service", "publishes": "outbox"}}})
+        self.assertEqual(found, {"billing": "outbox"})
+
+    def test_a_service_that_names_none_is_absent_rather_than_empty(self) -> None:
+        self.assertEqual(self.read({"deployables": {"billing": {"kind": "service"}}}), {})
+
+    def test_only_services_answer_it(self) -> None:
+        """A browser app has no write side to publish from, so `publishes` on one is not an answer."""
+        found = self.read({"deployables": {"web": {"kind": "browser", "publishes": "outbox"}}})
+        self.assertEqual(found, {})
+
+    def test_a_manifest_that_is_not_there_is_no_answers_and_not_a_traceback(self) -> None:
+        was = CHECK.MANIFEST
+        CHECK.MANIFEST = Path(tempfile.mkdtemp()) / "project.json"
+        try:
+            self.assertEqual(CHECK.project_publishes(), {})
+        finally:
+            CHECK.MANIFEST = was
 
 
 class StateStoredTest(unittest.TestCase):

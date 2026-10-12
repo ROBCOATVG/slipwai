@@ -91,6 +91,34 @@ def project_rungs() -> dict[str, bool]:
     }
 
 
+#: How a service that keeps current state gets its events across its own boundary, as `project.json`
+#: records it per deployable. An outbox table written in the same transaction as the state write is the
+#: one the templates build (T023); a project that already publishes some other way names that instead,
+#: because a second mechanism beside a working one is the thing 15.14 exists to stop.
+PUBLISHERS = ("outbox", "bus", "cdc")
+
+
+def project_publishes() -> dict[str, str]:
+    """How each service publishes, where it has said — `publishes` beside `eventSourced` per deployable.
+
+    Absent on every service the keel generates, and deliberately: nothing asks for it at `./init`, because
+    the question only has an answer once something reads the event. It is recorded when a cross-service
+    `reads` puts it to the project, which is the refusal below.
+    """
+    try:
+        document = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    deployables = document.get("deployables") if isinstance(document, dict) else None
+    if not isinstance(deployables, dict):
+        return {}
+    return {
+        name: str(record["publishes"])
+        for name, record in deployables.items()
+        if isinstance(record, dict) and record.get("kind") == "service" and record.get("publishes")
+    }
+
+
 def load_yaml() -> object:
     sys.path.insert(0, str(TOOLS))
     try:
@@ -120,11 +148,13 @@ def validate(
     model: object,
     services: dict[str, list[str]] | None = None,
     rungs: dict[str, bool] | None = None,
+    publishes: dict[str, str] | None = None,
 ) -> list[str]:
     if not isinstance(model, dict):
         return ["model root must be a mapping"]
     services = project_services() if services is None else services
     rungs = project_rungs() if rungs is None else rungs
+    publishes = project_publishes() if publishes is None else publishes
     placed = {"modelled", "planned", "implemented"}
     findings: list[str] = []
     if model.get("version") != 1:
@@ -134,6 +164,9 @@ def validate(
         return findings + ["slices must be a list"]
     ids: set[str] = set()
     produced: dict[str, int] = {}
+    #: Event name → the service whose slice raises it, for the cross-service rule below. Filled beside
+    #: `produced`, so it holds only earlier slices when a `reads` is read — the same pass, the same order.
+    raised_by: dict[str, str | None] = {}
     allowed_status = {"proposed", "modelled", "planned", "implemented"}
     shapes = {
         "state-change": ({"ui", "pcr"}, "cmd", "evt"),
@@ -209,6 +242,32 @@ def validate(
             for event in reads:
                 if event not in produced:
                     findings.append(f"{slice_id}: reads {event!r}, which no earlier slice produces")
+                    continue
+                # A mark nobody can consume (15.13). Inside one service the next step after a write is a
+                # call the use case makes — the `pcr` frame — and needs no publisher. Across a service
+                # boundary it is a message, and a service that keeps current state has no log for the
+                # reader to subscribe to: without an outbox the event is raised in process and lost on the
+                # one failure that matters. So the outbox stops being optional the moment another service
+                # reads the event, and the refusal names the service whose rung has to move rather than
+                # the slice that noticed.
+                source = raised_by.get(event)
+                if source is None or owner is None or source == owner or rungs.get(source):
+                    continue
+                recorded = publishes.get(source)
+                if recorded in PUBLISHERS:
+                    continue
+                findings.append(
+                    f"{slice_id}: reads `{event}`, which `{source}` raises — a service that keeps current "
+                    f"state and " + (
+                        f"records `publishes: {recorded}`, which is not a mechanism this gate knows"
+                        if recorded else "records no `publishes`"
+                    ) + f". Within `{source}` the next step is a call its use case makes, but this read "
+                    f"crosses a service boundary and there is no log here to subscribe to. `{source}` "
+                    f"climbs to the outbox rung — its events written to an outbox table in the same "
+                    f"transaction as the state write — and `project.json` records that on the `{source}` "
+                    f"deployable as `publishes: outbox`, or `bus` or `cdc` where the project already "
+                    f"publishes that way and this slice should use the mechanism it has"
+                )
         # What an event carries, and which of it identifies something. The structured form of `data`,
         # and the only place the tag index can be derived from: a tag is `<kind>:<value>`, so an event
         # that marks which attributes identify a course or a seat is an event whose `tags_of` is
@@ -401,6 +460,7 @@ def validate(
                     if name in produced:
                         findings.append(f"{slice_id}: event {name!r} is produced by more than one slice")
                     produced[name] = index
+                    raised_by[name] = owner
         page = model.get("render", {}).get("page") if isinstance(model.get("render"), dict) else None
         for frame in frames:
             if not isinstance(frame, dict):

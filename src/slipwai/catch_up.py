@@ -158,10 +158,15 @@ def entries(root: Path = ROOT, version: str = VERSION) -> list[Entry]:
 
 
 def released(changelog_file: Path = CHANGELOG) -> list[Entry]:
-    """Every entry in the changelog, newest first — all of them out, each one a version somebody has."""
+    """Every entry in the changelog, newest first — all of them out, each one a version somebody has.
+
+    Read as UTF-8 rather than as the machine's locale, because `ENTRY` matches on the em-dash: read as
+    cp1252 the heading is `## 2.0.0 â€" MINOR`, nothing matched, and every released version came back
+    unreleased. Windows was the only runner that said so.
+    """
     if not changelog_file.is_file():
         return []
-    text = changelog_file.read_text()
+    text = changelog_file.read_text(encoding="utf-8")
     found = list(ENTRY.finditer(text))
     read = []
     for index, match in enumerate(found):

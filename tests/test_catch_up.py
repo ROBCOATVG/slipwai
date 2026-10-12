@@ -19,6 +19,9 @@ rather than being dropped or read as asking nothing.
 """
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -33,6 +36,17 @@ FRAGMENT = """{level}
 lines the way the changelog wraps its prose.
 {note}"""
 NOTE = "\n**Catch-up:** {owed}\n"
+# Run by `EncodingTest` in a process whose locale encoding is ASCII. Prints only ASCII, because a probe
+# that cannot write its own answer under `LC_ALL=C` would fail for a reason that is not the one under test.
+PROBE = """
+import sys
+from pathlib import Path
+
+from slipwai import catch_up
+
+found = catch_up.released(Path(sys.argv[1]))
+sys.stdout.write(" ".join(part or "?" for part in found[0][:2]) if found else "no entries")
+"""
 
 
 def written(root: Path, name: str, claim: str, owed: str | None, level: str = "MINOR") -> None:
@@ -134,6 +148,41 @@ class ShippedTest(unittest.TestCase):
         for line in owed.splitlines():
             with self.subTest(line=line[:60]):
                 self.assertTrue(line.startswith("- **"), "a line does not name the change it belongs to")
+
+
+class EncodingTest(unittest.TestCase):
+    """`released` reads a file this repository writes as UTF-8 on a machine whose locale is not.
+
+    `read_text()` with no encoding is UTF-8 on macOS and Linux and cp1252 on Windows, so the defect was
+    invisible on every laptop and red on one CI runner. Forcing the locale in a subprocess is what
+    reproduces it anywhere, which is the point of having it here rather than trusting the Windows job to
+    say so a second time.
+    """
+
+    def test_a_changelog_is_read_as_utf8_whatever_the_locale_says(self) -> None:
+        """The em-dash in `## 3.1.0 — MINOR` is what `ENTRY` matches on, so a wrong decoding reads no
+        entries at all — and `in_flight` then offers a project the release it already has."""
+        root = Path(tempfile.mkdtemp())
+        (root / "CHANGELOG.md").write_text(
+            "# Changelog\n\n## 3.1.0 — MINOR\n\n**The first thing.**\n", encoding="utf-8")
+        self.assertEqual(self.under_a_non_utf8_locale(root / "CHANGELOG.md"), "3.1.0 MINOR")
+
+    def under_a_non_utf8_locale(self, changelog_file: Path) -> str:
+        """What `released` makes of the file in a process whose locale encoding is ASCII.
+
+        `PYTHONIOENCODING` is named so the probe can print what it found; it does not touch
+        `locale.getencoding()`, which is what `read_text()` falls back to and what this is testing.
+        """
+        environment = {
+            **os.environ,
+            "LC_ALL": "C", "LANG": "C",
+            "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "PYTHONIOENCODING": "utf-8",
+            "PYTHONPATH": str(Path(catch_up.__file__).resolve().parents[1]),
+        }
+        result = subprocess.run([sys.executable, "-c", PROBE, str(changelog_file)],
+                                text=True, capture_output=True, env=environment)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.strip()
 
 
 if __name__ == "__main__":  # pragma: no cover

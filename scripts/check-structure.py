@@ -67,7 +67,11 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # to do.
     ("answers", ("selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet", "deck",
                  "toolkit", "platform", "convergence", "delivery_facts", "programme", "quick_wins",
-                 "uncommitted", "wrappers", "strategy", "survey", "structure", "manifest")),
+                 "uncommitted", "wrappers", "strategy", "survey", "structure", "manifest",
+                 # A named set of answers: which languages, which axes, which extensions. It reads the
+                 # document and nothing else, so it sits beside the answers rather than at the edge that
+                 # asks for them.
+                 "quickstart")),
     # One module per part of the repository being generated.
     ("parts", ("project",)),
     # The whole of a project, assembled and written, and the whole of it again from a newer keel.
@@ -76,6 +80,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",
               "cli_prompts", "cli_interview", "cli_offered", "cli_language", "cli_search", "cli_add", "cli_adopt",
+              # The interview `generate` runs when it is given nothing, and the quickstart it offers first.
+              "cli_generate", "cli_quickstart",
               # The chandlery client: the index, a release file, an install as one
               # transaction, the plan a verb shows first, and upkeep after a keel moves.
               "index_schema", "language_index", "language_release", "language_install", "language_plan",

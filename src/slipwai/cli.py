@@ -7,13 +7,11 @@ import tempfile
 from pathlib import Path
 
 from .assets import DEFAULT_OUTPUT, VERSION
-from .browser_app import frontend_menu, no_browser
+from .browser_app import no_browser
 from .catalog import (
     CATALOG,
     PACKAGES,
-    axis_applies,
     axis_choices,
-    default_language,
     families,
 )
 from .catalog_checks import validate_catalog
@@ -30,30 +28,21 @@ from .cli_bridge import bridge_main
 from .cli_channel import channel_main
 from .cli_extension import extension_main, hooks_main
 from .cli_fleet import fleet_main
+from .cli_generate import interview
 from .cli_language import (
     braced,
     language_main,
     list_main,
-    not_installed_frameworks,
-    not_installed_languages,
     nothing_loaded,
     undeclared_target,
 )
 from .cli_offered import resolve_requested_backend
 from .cli_package import package_main
 from .cli_prompts import (
-    prompt_application_name,
-    prompt_axis,
-    prompt_choice,
-    prompt_context,
-    prompt_framework,
-    prompt_output,
-    prompt_profile,
-    prompt_project_name,
-    prompt_purpose,
-    prompt_target,
     validate_project_name,
 )
+from .cli_quickstart import applied as quickstart_applied
+from .cli_quickstart import files_with_record, quickstart_flag, quickstart_main
 from .cli_search import search_main, show_main
 from .cli_telegraph import telegraph_main
 from .cli_trust import trust_main
@@ -73,7 +62,7 @@ from .upgrade import main as upgrade_main
 # back, so an unknown argument is argparse's refusal rather than a stub that half-answers.
 VERBS = ("generate", "add-service", "add-frontend", "describe-service", "migrate", "replay",
          "adopt", "converge", "upgrade", "list", "search", "show", "install", "language", "extension",
-         "hooks", "package", "trust", "channel", "telegraph", "fleet", "bridge")
+         "hooks", "package", "quickstart", "trust", "channel", "telegraph", "fleet", "bridge")
 
 
 def main() -> None:
@@ -139,7 +128,8 @@ def dispatch(argv: list[str]) -> None:
                       ("describe-service", describe_service_main), ("migrate", migrate_main),
                       ("replay", replay_main), ("adopt", adopt_main), ("converge", converge_main),
                       ("extension", extension_main), ("hooks", hooks_main), ("package", package_main),
-                      ("trust", trust_main), ("channel", channel_main), ("telegraph", telegraph_main),
+                      ("quickstart", quickstart_main), ("trust", trust_main), ("channel", channel_main),
+                      ("telegraph", telegraph_main),
                       ("fleet", fleet_main), ("bridge", bridge_main)):
         if argv[:1] == [verb]:
             run(argv[1:])
@@ -253,6 +243,8 @@ def generate_main(argv: list[str]) -> None:
             metavar="|".join(axis_choices(axis)),
             help=f"{spec['prompt'].lower()} to scaffold (default: {spec['absent']})",
         )
+    # A named set of answers given at once. Every one of them is a flag above, and a flag typed here wins.
+    quickstart_flag(parser)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     # A production target needs tools scaffolding does not, and they are checked the moment the target is
     # known rather than at the end of `./init`. Skipped only when another machine will run that.
@@ -263,48 +255,12 @@ def generate_main(argv: list[str]) -> None:
     args = parser.parse_args(argv)
     try:
         named = {axis: getattr(args, axis.replace("-", "_")) for axis in CATALOG["axes"]}
+        # Whatever the caller did not answer, the quickstart does — before anything is resolved or checked.
+        chosen = quickstart_applied(args, named, argv)
         # Bare, or bare but for the one flag that has nothing to prompt about, is the interactive form.
         interactive = all(argument == "--skip-checks" for argument in argv)
         if interactive:
-            if not families():
-                raise GenerationError(nothing_loaded())
-            print("Create a new product monorepo. Press Enter to accept a shown default.")
-            args.name = prompt_project_name()
-            args.profile = prompt_profile()
-            args.target = prompt_target()
-            # Asked before the target and checked against it: a name the target's cloud will not take is
-            # said here, not after another nine questions.
-            check_project_name(CATALOG, args.target, args.name)
-            check_requirements(args.target, args.skip_checks)
-            # Only the languages with a backend offered under the target: the target decides the menus.
-            offered = offered_backends(CATALOG, args.target)
-            languages = [family for family, members in families().items() if set(members) & set(offered)]
-            preferred = default_language()
-            # What the index offers that is not installed is named under the menu, with the line that installs it.
-            uninstalled, unreachable = not_installed_languages()
-            if unreachable is not None:
-                print(unreachable)
-            language = prompt_choice(
-                "Language", languages, preferred if preferred in languages else languages[0], unavailable=uninstalled
-            )
-            backend = prompt_framework(language, args.target, not_installed_frameworks(language))
-            args.service_name = prompt_application_name("Service name", FIRST_SERVICE, set())
-            args.purpose = prompt_purpose(args.service_name)
-            args.context = prompt_context(args.service_name)
-            frontends, default, unavailable = frontend_menu()
-            args.frontend = prompt_choice("Frontend", frontends, default, unavailable=unavailable, status="unavailable")
-            if args.frontend != "none":
-                args.frontend_name = prompt_application_name("Browser app name", FIRST_WEB, {args.service_name})
-            # One question per axis, asked separately, because they are separate questions: where events
-            # are stored has nothing to do with who issues identities. An axis is asked only when this
-            # profile and backend can actually be given a choice, so the prompt never offers a combination
-            # that `resolve_selection` would then refuse.
-            for axis in CATALOG["axes"]:
-                if not axis_applies(axis, args.profile, backend, args.target):
-                    continue
-                named[axis] = prompt_axis(axis, args.profile, backend, args.target)
-            args.output = prompt_output(DEFAULT_OUTPUT)
-            args.backend = backend
+            interview(args, named)
         elif args.name is None:
             raise GenerationError("project name is required")
         validate_project_name(args.name)
@@ -340,7 +296,8 @@ def generate_main(argv: list[str]) -> None:
             raise GenerationError(f"refusing to overwrite existing target: {destination}")
         with tempfile.TemporaryDirectory(prefix=f".{args.name}-", dir=output) as staging:
             staging_path = Path(staging)
-            write_project(staging_path, args.name, args.profile, args.target, apps)
+            write_project(staging_path, args.name, args.profile, args.target, apps,
+                          files=files_with_record(chosen, args, apps))
             staging_path.rename(destination)
         print(f"created: {destination}")
     except GenerationError as error:

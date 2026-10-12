@@ -69,7 +69,10 @@ OWN = {"catalog_checks", "catalog_options", "cli_offered", "cli_search",
        "package_version", "cli_extension", "cli_package",
        "conformance.extension", "index_schema", "trust", "cli_trust", "ed25519", "rungs", "renamed",
        "channel", "channel_new", "channel_page", "cli_channel", "telegraph", "cli_telegraph", "fleet", "cli_fleet",
-       "bridge", "bridge_page", "cli_bridge", "whats_new", "deck", "brand"}
+       "bridge", "bridge_page", "cli_bridge", "whats_new", "deck", "brand",
+       # Phase 13: a named set of answers, the verb over it, and the interview that offers one first —
+       # which the experiment had no equivalent of, because it asked every question every time.
+       "quickstart", "cli_quickstart", "cli_generate"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will
 # grow a verb per slice, `assets` holds the paths and not the asset trees, `__init__` and `__main__` are
 # the package's own. The ledger's row for each describes what it becomes, not what is here, so they are

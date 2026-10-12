@@ -17,46 +17,25 @@ visible in `git status` and an obligation is not.
 
 The first two name the project's current applications, so they change when one is added — which means
 `add-service` regenerates them, and the file an agent reads always lists what is there now.
+
+Both pages are under `assets/toolkit/commands/`, and each says *Find the keel* and *Run it* in full rather
+than sharing a Python template with the other. They are not the same words: the verb differs, the
+invocation differs, and what to say afterwards differs — and a page a person edits a paragraph at a time
+is worth more than the three lines the template saved.
 """
 from __future__ import annotations
 
+from ..assets import TOOLKIT_ROOT
 from ..catalog import CATALOG, families
 from ..loaded_targets import answer
 from ..services import App, contexts_phrase, services_of, web_apps
 from ..target_protocol import ADD_COMMANDS
 from ..targets import managed
 from ..toolkit import example_of
+from .prose import page
 
-# The command is the keel's, not this repository's, and a generated project does not know where its
-# factory is: a released executable on the PATH, or a checkout somewhere the user knows.
-FACTORY = """## Find the keel
-
-The command belongs to the keel that generated this repository, not to the repository. It is
-`slipwai {verb}` where `slipwai` is on the `PATH` — installed with pip, or a released executable — and
-`path/to/slipwai/slipwai {verb}` from a checkout. If neither is at hand, ask where the
-factory is. {stop}"""
-
-# What a wrong guess at the keel's location must not be allowed to become. Only the two that add an
-# application need it: `catch-up` runs no factory command — it reads what `migrate` left in the project.
-BY_HAND = """A wrong guess at its location is a stop, not a reason to start copying `{first_path}`: building
-the application by hand is the thing this command exists to prevent."""
-
-RUN = """## Run it
-
-1. `git status --porcelain` prints nothing. The command refuses an unclean tree so that `git checkout . &&
-   git clean -fd` undoes exactly what it wrote and nothing else; commit or stash first rather than working
-   around the refusal.
-2. `{invocation}`, from this directory.
-3. Read its report: what it added under `apps/<name>`, and which files it regenerated from the list.
-
-## Then
-
-- `git diff` over the regenerated files. A hand edit that came back changed there was made to a file the
-  list drives; move it somewhere the generator does not own, then rerun.
-- `make verify` — green with the new application before anything else is done to it.
-{afterwards}
-Nothing is committed by the command. Commit the result as one change, and say what was added and how to
-run it."""
+# Where the pages live: beside the three a project has always received verbatim.
+COMMANDS = TOOLKIT_ROOT / "commands"
 
 
 def listed(apps: list[App]) -> str:
@@ -82,136 +61,57 @@ def afterwards(target: str, what: str) -> str:
     return str(answer(target, ADD_COMMANDS, default={}).get(what, ""))
 
 
+def values(apps: list[App] | None = None, target: str = "none") -> dict[str, str]:
+    """Every value the two pages here may name, and the whole of what one may name.
 
-
-def add_service_command(apps: list[App], target: str = "none") -> str:
+    All of it is read off the catalogue, the target or the project's own list: which applications are here,
+    which language and answers a new one inherits, what the axes and the frameworks are called, and what
+    this project's destination says to do afterwards. Nothing on either page is a sentence somebody edits
+    through this dictionary — the pages say what they say in their own words.
+    """
+    apps = [] if apps is None else apps
     services = services_of(apps)
     example_name, example_path = example_of(apps)
-    default_language = (
-        f"without `--language` the new service is `{services[0].backend}`, like `{services[0].name}`."
-        if services
-        else "this project has no service the factory made to take a language from, so `--language` is required."
-    )
-    inherits = (
-        f"inherits `{services[0].name}`'s answer where the new backend offers it, and takes that\n  backend's own "
-        "default where it cannot (a transport is per framework)."
-        if services
-        else "takes the backend's own default."
-    )
-    axes = ", ".join(f"`--{axis}`" for axis in CATALOG["axes"])
     frameworks = sorted(
         {backend["framework"] for backend in CATALOG["backends"].values() if backend.get("framework")}
     )
-    languages = "|".join(families())
-    return f"""---
-description: Add a service to this project with the factory's add-service, and leave it green
-argument-hint: <name> --purpose "<what it owns>" [--context <name>]... [--language <language>] [--framework <framework>] [--<axis> <answer>]
----
+    return {
+        "example-name": example_name,
+        "example-path": example_path,
+        "applications": listed(apps),
+        "axes": ", ".join(f"`--{axis}`" for axis in CATALOG["axes"]),
+        "languages": "|".join(families()),
+        "frameworks": "|".join(frameworks),
+        "default-language": (
+            f"without `--language` the new service is `{services[0].backend}`, like `{services[0].name}`."
+            if services
+            else "this project has no service the factory made to take a language from, so `--language` is required."
+        ),
+        "inherits": (
+            f"inherits `{services[0].name}`'s answer where the new backend offers it, and takes that\n  backend's own "
+            "default where it cannot (a transport is per framework)."
+            if services
+            else "takes the backend's own default."
+        ),
+        "default-api": (
+            f"Without it, `{services[0].name}`."
+            if services
+            else "This project has no service the factory made, so `--api` has to name one — `/add-service` first."
+        ),
+        "after-service": afterwards(target, "service"),
+        "after-web": afterwards(target, "web"),
+    }
 
-# Add service
 
-A service is a change to the list in `project.json` and a regeneration of everything that reads it — the
-Makefile, Compose, CI, the workspace, `scripts/verify`, the prose that lists the services. The factory's
-`add-service` makes both. Nothing here is copied from `{example_path}` by hand: a copy has to find the nine
-files that name it, and misses the tenth.
-
-## What is here
-
-{listed(apps)}
-
-## Decide with the user, not for them
-
-- **Name** — `apps/<name>` and its Compose service: lowercase letters, digits and hyphens, and none of the
-  names above.
-- **Language and framework** — {default_language}
-  Another language beside it is
-  `--language {languages}`; a language with more than one framework also takes
-  `--framework {"|".join(frameworks)}`.
-- **Answers** — one flag per question: {axes}.
-  An axis without a flag {inherits} `add-service --help` lists the
-  options this project's target allows.
-- **Purpose and contexts** — `--purpose "<what it owns, in a sentence or two>"` and `--context <name>`, once
-  per bounded context the service holds. The purpose is what `/sail` reads when it decides which service a
-  slice belongs to: a service added without one is a directory the loop cannot place work in, and it will
-  stop to ask before it does. A context is one already on the list above, or a new one; without any the
-  service is a context of its own. A context may span several services; the tree stays `apps/<name>`.
-  A service already listed is described after the fact: `<factory> describe-service <name> --purpose "..." --context <name>`.
-
-The language, the store, and what the service owns are product decisions. When the request does not name
-them, ask; taking `{example_name}`'s answers is the default for the first two, and saying so is part of
-asking. Someone asking for a service has a reason for wanting it separate — the purpose is that reason,
-written down. The port is the command's own decision — the next one free — and is not asked.
-
-## Is a service the right shape?
-
-A new bounded context is not by itself a reason for a new service. This project starts as one service that
-may hold several contexts as `src/<context>/`, each behind its own `public` module, with `make check-imports`
-keeping them apart — and that is where a context whose boundary is still being found belongs. A service is
-the right shape when there is a *deployment* reason: its own release cadence, its own scaling or runtime, a
-data store of its own, another team, another language. When the request is "a context for X" rather than
-one of those, say so, and offer to add `X` to `{example_name}`'s `contexts` in `project.json` instead —
-`docs/architecture.md`, *Bounded contexts*, has the three rungs and the reasoning to point at.
-
-{FACTORY.format(verb="add-service", stop=BY_HAND.format(first_path=example_path))}
-
-{RUN.format(
-    invocation='<factory> add-service <name> --purpose "<what it owns>" [--context <name>] [--language <language>] [--<axis> <answer>]',
-    afterwards='''- Say how it runs: `make dev-<name>` in the foreground, `make demo` with the rest, and its port from the
-  report. Its health example is the placeholder the first slice replaces; `/sail` from there.
-- It shares the local backing services with every other service — one `DATABASE_URL`, one database. That is
-  right for a walking skeleton and wrong for a product: give it its own database or schema before it owns
-  any data, and say so when handing it over.
-''' + afterwards(target, "service"),
-)}
-"""
+def add_service_command(apps: list[App], target: str = "none") -> str:
+    return page(COMMANDS, "add-service.md", values(apps, target))
 
 
 def add_frontend_command(apps: list[App], target: str = "none") -> str:
-    services = services_of(apps)
-    _, example_path = example_of(apps)
-    default_api = (
-        f"Without it, `{services[0].name}`."
-        if services
-        else "This project has no service the factory made, so `--api` has to name one — `/add-service` first."
-    )
-    present = "" if web_apps(apps) else "\n\nNo browser app yet; this command adds the first."
-    return f"""---
-description: Add a browser app to this project with the factory's add-frontend, and leave it green
-argument-hint: <name> [--api <service>]
----
-
-# Add frontend
-
-A browser app is a change to the list in `project.json` and a regeneration of everything that reads it —
-the npm workspace and lock, the Makefile, Compose, `.gitignore`, the agent settings, the prose that lists
-the applications. The factory's `add-frontend` makes both. Nothing here is copied from another `apps/`
-directory by hand.
-
-## What is here
-
-{listed(apps)}{present}
-
-## Decide with the user, not for them
-
-- **Name** — `apps/<name>` and its Compose service: lowercase letters, digits and hyphens, and none of the
-  names above.
-- **Which service** — `--api <service>` names the service its `/api` calls are proxied to, by the Vite dev
-  server in the foreground and by `API_ORIGIN` inside Compose. {default_api} A browser app
-  talks to one service through that boundary and never reads a store directly.
-
-The framework is not a question: every browser app is the one the project was generated with, and the
-dev-server port is the command's own decision — the next one free.
-
-{FACTORY.format(verb="add-frontend", stop=BY_HAND.format(first_path=example_path))}
-
-{RUN.format(
-    invocation="<factory> add-frontend <name> [--api <service>]",
-    afterwards='''- Say how it runs: `make dev-<name>` in the foreground — with `WEB_HOST=0.0.0.0` when the browser is not on
-  this machine — `make demo` with the rest, and its port from the report. Its page is the placeholder the
-  first slice replaces; `/sail` from there.
-''' + afterwards(target, "web"),
-)}
-"""
+    """The sentence saying there is no browser app yet is a whole section, and a project that has one has
+    nothing to say about not having one."""
+    return page(COMMANDS, "add-frontend.md", values(apps, target),
+                () if web_apps(apps) else ("no-browser-app",))
 
 
 def add_command_files(apps: list[App], target: str = "none") -> dict[str, str]:

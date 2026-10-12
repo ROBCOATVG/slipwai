@@ -46,6 +46,11 @@ def new_package(parsed: argparse.Namespace) -> None:
     print(f"  {this_command()} package check {place}")
 
 
+#: Where the decision about which install route is supported is written down (slice 12.4). Printed by both
+#: of the conveniences, because a decision on a page nobody opens is a decision nobody has.
+ROUTES = "docs/reference/install-routes.md"
+
+
 def render_plugin(parsed: argparse.Namespace) -> None:
     """Render the keel's own material as a plugin a harness installs with no project generated."""
     into = Path(parsed.name).expanduser()
@@ -57,6 +62,7 @@ def render_plugin(parsed: argparse.Namespace) -> None:
         if not path.startswith("skills/"):
             print(f"  {path}")
     print(f"  skills/ — {len(skills)} skill(s): {', '.join(skills)}")
+    print(f"A convenience, not the supported route — {ROUTES} says which is, and what this cannot carry.")
     print(f"Install it from {into}, or publish it:")
     print(f"  {this_command()} package register {into} --channel <a channel checkout>")
 
@@ -75,6 +81,7 @@ def render_harness(parsed: argparse.Namespace) -> None:
         print(f"  {place:<20} {len(held)} file(s)")
     for line in native.unplaceable(parsed.harness):
         print(f"  not here: {line}")
+    print(f"A convenience, not the supported route — {ROUTES} says which is, and what this cannot carry.")
     print(f"Copy these into the project, or into {name_of(parsed.harness)}'s own location for them.")
 
 

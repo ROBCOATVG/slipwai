@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import re
 
+from ..assets import PAGE_ROOT
 from ..errors import GenerationError
 
 #: A placeholder, in the spelling `examples.py` already uses under `assets/`. Lower case and hyphenated so
@@ -111,6 +112,19 @@ def render(name: str, text: str, named: dict[str, str], wanted: tuple[str, ...] 
         position = end.end()
     out.append(text[position:])
     return resolve(name, "".join(out), named)
+
+
+def page(name: str, named: dict[str, str], wanted: tuple[str, ...] | None = None) -> str:
+    """The page under `assets/pages/` named, as a project receives it: sections selected, tokens resolved.
+
+    `name` is where the page lands in a generated project — `README.md`, `docs/gates.md` — so a refusal from
+    anywhere below names the file somebody will open rather than the file a contributor edits, and the two
+    are the same path anyway.
+    """
+    path = PAGE_ROOT / name
+    if not path.is_file():
+        raise GenerationError(f"{name} has no page: {path} is missing")
+    return render(name, path.read_text(encoding="utf-8"), named, wanted)
 
 
 def unresolved(text: str) -> list[str]:

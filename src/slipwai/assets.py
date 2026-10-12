@@ -46,6 +46,11 @@ NOTES = ".slipwai/catch-up.md"
 # person had edited the first answer's files.
 WRITTEN_RECORD = ".delivery-tools/written.json"
 TOOLKIT_ROOT = ROOT / "assets/toolkit"
+# The pages a project is given that are rendered rather than copied: the README, the pages under
+# `docs/`, the run-the-app skill. A root of their own rather than a corner of the toolkit, because the
+# toolkit is copied into a project verbatim at the path each file sits at, and a page here is never
+# copied — it is written once, resolved, by the module that selects its sections (`project/prose.py`).
+PAGE_ROOT = ROOT / "assets/pages"
 PROFILE_ROOT = ROOT / "assets/profiles"
 FRONTEND_ROOT = ROOT / "assets/frontends"
 BACKING_SERVICE_ROOT = ROOT / "assets/backing-services"

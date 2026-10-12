@@ -67,8 +67,8 @@ class GeneratedProjectTest(unittest.TestCase):
         carried: dict[str, list[str]] = {}
         for _directory, lands, _provider in TEMPLATED:
             where = self.project / lands
-            self.assertTrue(where.is_dir(), f"{lands}/ is not in a generated project")
-            for path in sorted(where.rglob("*")):
+            self.assertTrue(where.exists(), f"{lands} is not in a generated project")
+            for path in sorted(where.rglob("*")) if where.is_dir() else [where]:
                 if path.is_file() and (left := prose.unresolved(path.read_text(encoding="utf-8"))):
                     carried[str(path.relative_to(self.project))] = left
         self.assertEqual(carried, {}, f"rendered files still carrying a placeholder: {carried}")

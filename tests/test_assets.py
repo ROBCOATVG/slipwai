@@ -21,6 +21,7 @@ from slipwai import harness, toolkit
 from slipwai.assets import (
     ADOPTION_ROOT,
     FRONTEND_ROOT,
+    PAGE_ROOT,
     PROFILE_ROOT,
     ROOT,
     TOOLKIT_ROOT,
@@ -35,7 +36,8 @@ class TreesTest(unittest.TestCase):
     def test_every_tree_the_keel_names_is_there(self) -> None:
         """A root naming a directory that does not exist is a generation that fails halfway through."""
         for name, root in (("toolkit", TOOLKIT_ROOT), ("profiles", PROFILE_ROOT),
-                           ("frontends", FRONTEND_ROOT), ("adoption", ADOPTION_ROOT)):
+                           ("frontends", FRONTEND_ROOT), ("adoption", ADOPTION_ROOT),
+                           ("pages", PAGE_ROOT)):
             with self.subTest(tree=name):
                 self.assertTrue(root.is_dir(), root)
 

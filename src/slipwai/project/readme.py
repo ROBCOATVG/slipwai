@@ -1,8 +1,21 @@
-"""`README.md` and `project.json`: what this project is, how to start it, and what it was given.
+"""`README.md`: what this project is, how to start it, and what it was given — rendered from a page.
 
-The README is the one generated file a person reads before anything else, so it answers in order: what
-this is, how to start it, how to *run* it, and what each axis was answered with. `project.json` records the
-same answers for a tool to read.
+The README is the one generated file a person reads before anything else, so it answers in order: what this
+is, how to start it, how to *run* it, and what each axis was answered with. Those words are the same in every
+project, so they are `assets/pages/README.md` and what is left here is what the words are not: which sections
+this project's answers select, and the closed set of values they may name (`docs/generated-prose.md`).
+
+The conditionals divide the way 16.1 said they would. *Before `./init`*, *Services*, *Run it*, *Profile
+boundary* and *Event workflow* are whole sections — a reader can point at where each begins and ends, and the
+words inside are the same in every project that gets them — so the page carries each behind a marker and this
+module names the ones it wants. The branches that are smaller than a paragraph stay here, because they are
+rendering rather than prose: the comment appended to `./init` in the block a reader runs first, the sentence
+spliced into the paragraph under it, the clause naming the browser apps, and the numbers the cloud's own
+prerequisite rows push the rows below them down to.
+
+Two passages the page names are another module's: *Production* is the target's and the shape's from its first
+word to its last (`target_docs.py`), and the backing services' section is written per feature from what the
+services actually need (`backing_service_prose.py`). Each arrives as a value rather than as words here.
 """
 from __future__ import annotations
 
@@ -12,156 +25,85 @@ from ..services import App, described, frontend_of, services_of, web_apps
 from ..targets import managed
 from .backing_service_prose import backing_services_readme
 from .event_model import event_model_page_url
+from .prose import page
 from .target_docs import prerequisites, production_readme
 from .write_model_prose import readme_write_model
+
+PAGE = "README.md"
 
 
 def readme(
     project_name: str, profile: str, apps: list[App], target: str = "none", shape: str = "liner",
 ) -> str:
-    event = profile == "event-modelling"
-    frontend = frontend_of(apps)
-    title = project_name.replace("-", " ").replace("_", " ").title()
-    capabilities = CATALOG["profiles"][profile]["capabilities"]
-    frontend_capabilities = CATALOG["frontends"][frontend]["capabilities"]
+    """`README.md` as this project receives it, with whatever its services need running appended.
+
+    The backing services' section is appended here rather than named as a value because it is the last thing
+    on the page: a value would have to carry its own trailing newline into the asset, and a page that ends
+    without one is a page every editor fights.
+    """
+    rendered = page(PAGE, values(project_name, profile, apps, target, shape), wanted(profile, apps, target))
+    return rendered + backing_services_readme(apps)
+
+
+def wanted(profile: str, apps: list[App], target: str) -> tuple[str, ...]:
+    """The sections this project's answers select, in the order the page carries them."""
     services = services_of(apps)
     web = web_apps(apps)
-    listed = "; ".join(f"`{service.backend}` in `{service.path}`" for service in services)
-    web_listed = ", ".join(f"`{app.path}`" for app in web)
-    text = f"""# {title}
-
-This is an independently evolvable product monorepo scaffolded by `slipwai`. Which version scaffolded it, and which version last wrote a file here, are both recorded in `project.json`'s `generator` — the one place either number lives, so a replay cannot leave this page claiming the other. The factory's own `CHANGELOG.md`, read against that pair, says what later versions bring and what a repository already generated owes to catch up.
-
-- Project: `{project_name}`
-- Profile: `{profile}`
-- Production target: `{target}`
-- Services: {listed}
-- Frontend: `{frontend}`{(" in " + web_listed if web else "")}
-- Backend capabilities: {", ".join(capabilities)}
-- Frontend capabilities: {", ".join(frontend_capabilities) if frontend_capabilities else "none"}
-{selection_summary(services)}
-{before_init(target)}
-## Start here
-
-```sh
-./init{start_here_production(target)}
-make verify
-```
-
-`./init` installs Spec Kit for the selected agent; it is not vendored in this repository.{init_production(target)} `make verify` is
-the repository's local and CI quality gate. Add one small vertical slice at a time and keep the main branch
-releasable.
-
-{services_readme(services, web)}{running_readme(services, web)}{production_readme(target, services, web, shape)}
-## Documentation
-
-[`docs/workflow.md`](docs/workflow.md) diagrams the delivery loop each slice travels, from the constitution
-through to the hardening passes. [`docs/getting-started.md`](docs/getting-started.md) walks the first slice
-end to end{documentation_production(target)}, and [`docs/README.md`](docs/README.md) indexes every page.
-"""
-    if not event:
-        text += """
-## Profile boundary
-
-This standard profile does not adopt Event Modeling or event sourcing. Native Spec Kit cannot
-infer that boundary from constitution text you paste: keep the constitution architecture-neutral, or
-generate the `event-modelling` profile when those capabilities are intentional. `make verify` rejects a
-constitution that mandates event sourcing in this profile.
-"""
-    if event:
-        page_url = event_model_page_url(project_name)
-        text += f"""
-## Event workflow
-
-{readme_write_model(apps)}
-
-### One command runs the loop: `/sail`
-
-```text
-/sail          # start the loop, or resume the slice already in flight
-/sail S2       # drive a named slice to its demo
-```
-
-`/sail` enters at the first incomplete stage proven by durable artifacts, and its ladder starts above the
-slice loop: principles, product specification, the event model, the split, then example map, a `/gaps` pass
-over it, the installed Spec Kit plan and tasks, implementation, convergence, and the actor-visible demo. Invoking it before the model exists is
-a valid start rather than an error — it steps back to the stage that owes an artifact and says so. It never
-reruns a completed stage merely to check. It pauses at the demo before hardening so feedback can return to the stage that owns it. Once the
-demo is accepted, it runs the mutation pass — plus the adversarial pass when the slice changed attack
-surface or closed the split — verifies and archives the slice, and starts the next ready slice without
-another invocation. A real product question or unavailable external input is
-the other stopping boundary.
-
-`/cruise` runs the same ladder with nobody at the wheel — deciding as the owner, demoing as the actor, recording
-both under `specs/` — until the specification is satisfied. It ships switched off: `/cruise-settings enabled=true`,
-then `/cruise` in any session starts the runner and watches it; `/cruise-tell` steers it, `make cruise-stop` stops it.
-
-### The browsable model
-
-The event-model workflow renders `docs/event-model/model.yaml` into a zoomable timeline with per-slice
-views and embedded wireframe mockups, and publishes it on every push to `main` that touches the model.
-Your forge's pages host serves it from the `pages` branch at:
-
-{page_url}
-
-On GitHub the same workflow deploys through GitHub Pages instead; when that URL differs, update
-`render.page` in `model.yaml` and the link below. Regenerate locally with `make model` (needs Node).
-
-<!-- event-model:start -->
-_Run `make model` after the first modelling session to generate this section._
-<!-- event-model:end -->
-"""
-    text += backing_services_readme(apps)
-    return text
+    chosen = ["before-init-cloud" if managed(CATALOG, target) else "before-init"]
+    chosen.append("services" if services else "services-none")
+    if web or [service for service in services if service.transport is not None]:
+        chosen.append("run-it")
+    chosen.append("event-workflow" if profile == "event-modelling" else "profile-boundary")
+    return tuple(chosen)
 
 
-def services_readme(services: list[App], web: list[App]) -> str:
-    """The README's account of `apps/`: one directory per service, what each owes, and how to add one."""
-    if not services:
-        return """## Services
+def values(
+    project_name: str, profile: str, apps: list[App], target: str = "none", shape: str = "liner",
+) -> dict[str, str]:
+    """Every value the page may name, and the whole of what it may name.
 
-No service here was made by the keel. The applications this repository already had are recorded in
-`project.json` as `"generated": false`, each with how its own build answers the Make targets; `apps/` is
-where a service the keel adds would go, with the keel that installed this method:
-
-```sh
-path/to/slipwai/slipwai add-service <name> --language python  # the language is required: nothing here to inherit
-```
-"""
-    listed = ", ".join(described(service) for service in services)
-    browser = (
-        " " + ", ".join(f"`{app.path}`" for app in web)
-        + (" are the browser apps, which are" if len(web) > 1 else " is the browser app, which is")
-        + " not a service and owe" + ("" if len(web) > 1 else "s") + " none of this."
-    ) if web else ""
-    return f"""## Services
-
-`apps/` holds one directory per service: {listed}.{browser} Each service has its own language,
-framework and backing-service answers, recorded in `project.json`; every one owes the same eight Make
-targets (`make help` lists them; every recipe runs for every service), answers a liveness and a readiness
-probe on its own port,
-and keeps the hexagonal layout `make check-imports` enforces. Which services exist is recorded once, in
-`project.json`'s `deployables`; the Makefile, `docker-compose.yml`, the CI workflow,
-`scripts/check-imports.py` and `scripts/backing-services.py` read that list, and none keeps a copy.
-
-Add one with the factory that generated this repository, from this directory:
-
-```sh
-path/to/slipwai/slipwai add-service <name>                  # the first service's language and answers
-path/to/slipwai/slipwai add-service <name> --language python  # another language, its own answers
-```
-
-It scaffolds `apps/<name>` with the walking skeleton, adapters and tests a service of that language starts
-with, on the next free port, registers it in `project.json`, and regenerates the files that list drives —
-the skills' example snippets included, so a second language shows up beside the first at every example.
-Say what the service is for while adding it — `--purpose "<what it owns>"` and `--context <bounded
-context>`, repeated for each context it holds — because that is what the delivery loop reads when it decides
-which service a slice belongs to; `describe-service <name>` takes the same flags for a service already there.
-`docs/architecture.md` has the contexts as recorded, and says when a context should become a service.
-`add-frontend <name> [--api <service>]` does the same for a browser app, proxying `/api` to the service it
-names. Code shared between services goes under `packages/`, and the hexagonal rule applies inside it too;
-`docs/architecture.md` says what a shared package is in each language and what each service owes.
-"""
+    The same keys whatever the answers, so the closed set is closed: a section the page did not select still
+    provides its values, and a token that moved into a section this project does not get is a refusal here
+    rather than a marker shipped into somebody's repository.
+    """
+    services = services_of(apps)
+    web = web_apps(apps)
+    frontend_capabilities = CATALOG["frontends"][frontend_of(apps)]["capabilities"]
+    # Only a cloud has prerequisite rows of its own, and only a cloud may be asked for them: the rest
+    # of the set is the same whatever the answers, so a value is never a key that is sometimes absent.
+    cloud_rows = prerequisites(target) if managed(CATALOG, target) else ()
+    # The cloud's own rows land in the middle, so the numbering either side of them is counted rather than
+    # written: a target that asks for one more tool moves every row below it, and the sentence under the
+    # table names the range it checks.
+    last_checked = len(cloud_rows) + 2
+    return {
+        "title": project_name.replace("-", " ").replace("_", " ").title(),
+        "project-name": project_name,
+        "profile": profile,
+        "target": target,
+        "services": "; ".join(f"`{service.backend}` in `{service.path}`" for service in services),
+        "frontend": frontend_of(apps),
+        "frontend-paths": (" in " + ", ".join(f"`{app.path}`" for app in web)) if web else "",
+        "capabilities": ", ".join(CATALOG["profiles"][profile]["capabilities"]),
+        "frontend-capabilities": ", ".join(frontend_capabilities) if frontend_capabilities else "none",
+        "axes": selection_summary(services),
+        "cloud": cloud_of(target),
+        "prerequisites": "\n".join(
+            f"| {number} | {have} | {proof} |" for number, (have, proof) in enumerate(cloud_rows, start=2)
+        ),
+        "last-checked": str(last_checked),
+        "repository-row": str(last_checked + 1),
+        "passphrase-row": str(last_checked + 2),
+        "start-here-production": start_here_production(target),
+        "init-production": init_production(target),
+        "services-described": ", ".join(described(service) for service in services),
+        "browser-apps": browser_apps(web),
+        "run-commands": run_commands(services, web),
+        "production": production_readme(target, services, web, shape),
+        "documentation-production": documentation_production(target),
+        "write-model": readme_write_model(apps),
+        "model-page": event_model_page_url(project_name),
+    }
 
 
 def selection_summary(services: list[App]) -> str:
@@ -186,52 +128,35 @@ def selection_summary(services: list[App]) -> str:
     return text
 
 
-def before_init(target: str) -> str:
-    """Everything `./init` will need, listed before the command a reader runs first — because in a project
-    going to production, `./init` pushes the repository and applies to an account, and finding out what it
-    wanted halfway through is the worst moment to."""
-    if not managed(CATALOG, target):
-        return """## Before `./init`
-
-`./init` installs Spec Kit for the agent you choose. It needs **Python 3**, and **`uv`** or network access
-for `pip`. Nothing else has to be set up first.
-"""
-    # The cloud's own rows land in the middle, so the numbering either side of them is counted rather than
-    # written: a target that asks for one more tool moves every row below it, and the sentence under the
-    # table names the range it checks.
-    cloud_rows = prerequisites(target)
-    rows = "\n".join(
-        f"| {number} | {have} | {proof} |" for number, (have, proof) in enumerate(cloud_rows, start=2)
+def browser_apps(web: list[App]) -> str:
+    """The clause naming the browser apps, inside the *Services* paragraph's first sentence: a count the
+    declaration already answers, so it is rendered rather than written."""
+    if not web:
+        return ""
+    return (
+        " " + ", ".join(f"`{app.path}`" for app in web)
+        + (" are the browser apps, which are" if len(web) > 1 else " is the browser app, which is")
+        + " not a service and owe" + ("" if len(web) > 1 else "s") + " none of this."
     )
-    last_checked = len(cloud_rows) + 2
-    return f"""## Before `./init`
 
-In this project `./init` does the first day's work: it installs Spec Kit, pushes this repository to your
-forge, and runs `make bootstrap` against your {cloud_of(target)} account — so the push is the first deploy. Have every row
-below ready on the machine that runs it. It checks, and stops before pushing if something is missing, but
-knowing first is quicker.
 
-| | Have | Proof it is there |
-|---|---|---|
-| 1 | **Python 3**, and **`uv`** or network access for `pip` — Spec Kit is installed with one of them | `uv --version` |
-{rows}
-| {last_checked} | **Access to your forge.** GitHub: `gh` signed in (`gh auth login`). Gitea: `GITEA_TOKEN` set to a token with `read:user` and `write:repository` — plus `write:organization` if the repository will belong to an organisation | `gh auth status` · `echo ${{GITEA_TOKEN:+set}}` |
-| {last_checked + 1} | **The repository's URL** — `https://github.com/<owner>/<name>`, `http://localhost:3300/<owner>/<name>` — created on the forge if it does not exist | — |
-| {last_checked + 2} | **Somewhere to keep a passphrase.** `make bootstrap` prints one, once; it encrypts the committed bootstrap state and every later `make bootstrap` needs it | a password manager |
-
-Whether rows 2–{last_checked} are on the machine is checked when the project is generated, too; who the CLI is signed
-in as, `make bootstrap` checks before it applies anything. Missing a tool, `./init` still installs Spec Kit,
-says which and leaves the push and bootstrap for later — `./init --repository <url>`, or push and
-`make bootstrap`. `./init --skip-bootstrap` leaves them deliberately. Once the bootstrap has run, a later
-`./init` — to answer an axis again, add an extension, or switch agent — sees its committed state and leaves
-the account alone; re-applying the stack is `make bootstrap`, by hand.
-
-`make bootstrap` also asks the one question that decides the bill: whether production is deployed on every
-green push, or only when you say so. Answer `n` — or `./init --auto-promote false` — and the pipeline deploys
-staging alone, production is never created, and `make promote` is what creates it when you want it. Either
-way an environment costs money from the moment it exists;
-[`docs/adr/0002-production-target.md`](docs/adr/0002-production-target.md) says how much.
-"""
+def run_commands(services: list[App], web: list[App]) -> str:
+    """The block under *Run it*: one line per thing this project can be started with, and the address each
+    answers on. The section is the README's answer to "how do I see it?", directly after "Start here",
+    because a starter whose only verb is `make verify` teaches that the way to know something works is to
+    run its tests — and the demo a slice is supposed to end with then has to be invented from scratch by
+    whoever reaches one first."""
+    lines: list[str] = []
+    for service in [one for one in services if one.transport is not None]:
+        lines.append(
+            f"make {service.dev_target:<10} # {service.name} alone, in the foreground on "
+            f"http://localhost:{service.port}"
+        )
+    for app in web:
+        what = "the browser app" if len(web) == 1 else app.name
+        lines.append(f"make {app.dev_target:<10} # {what}, in the foreground on http://localhost:{app.port}")
+    lines.append("make demo       # or the whole thing in containers, addresses printed when it answers")
+    return "\n".join(lines)
 
 
 def documentation_production(target: str) -> str:
@@ -265,38 +190,3 @@ def start_here_production(target: str) -> str:
         f"    # then asks where to push, pushes, and runs `make bootstrap`: once, with admin "
         f"{cloud_of(target)} credentials"
     )
-
-
-def running_readme(services: list[App], web: list[App]) -> str:
-    """The README's answer to "how do I see it?".
-
-    Directly after "Start here", because a starter whose only verb is `make verify` teaches that the way to
-    know something works is to run its tests — and the demo a slice is supposed to end with then has to be
-    invented from scratch by whoever reaches one first.
-    """
-    served = [service for service in services if service.transport is not None]
-    if not served and not web:
-        return ""
-    lines: list[str] = []
-    for service in served:
-        lines.append(
-            f"make {service.dev_target:<10} # {service.name} alone, in the foreground on "
-            f"http://localhost:{service.port}"
-        )
-    for app in web:
-        what = "the browser app" if len(web) == 1 else app.name
-        lines.append(f"make {app.dev_target:<10} # {what}, in the foreground on http://localhost:{app.port}")
-    lines.append("make demo       # or the whole thing in containers, addresses printed when it answers")
-    commands = "\n".join(lines)
-    return f"""
-## Run it
-
-```sh
-{commands}
-```
-
-`make demo` runs that same `make dev` inside a container over this checkout, so the two paths cannot
-disagree about how this project starts, and there is no image to rebuild between an edit and a demo.
-`skills/run-the-app/SKILL.md` is the full account: what it serves today, what has to be seeded first, and
-how far to go before opening a browser.
-"""

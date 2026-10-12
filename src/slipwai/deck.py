@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .logs import LOGS, Entry, Unreadable, deck_path, fold
+from .logs import Entry, Unreadable, deck_logs, deck_path, fold
 
 #: How many lines one stream shows by default. Enough to cover a slice; short enough to read.
 RECENT = 60
@@ -61,13 +61,7 @@ def said(entry: Entry) -> str:
 
 def streams(root: Path) -> list[tuple[str, str]]:
     """Every stream with a log, as (feature, fairway), in name order."""
-    place = root / LOGS
-    harbour = (root / LOGS / "harbour.jsonl").resolve()
-    found = []
-    for path in sorted(place.rglob("*.jsonl")) if place.is_dir() else []:
-        if path.resolve() != harbour:
-            found.append((path.parent.name, path.stem))
-    return found
+    return [(path.parent.name, path.stem) for path in deck_logs(root)]
 
 
 def feature_of(root: Path, fairway: str) -> str:

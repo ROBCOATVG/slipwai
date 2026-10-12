@@ -127,17 +127,14 @@ def wait_bound() -> float:
 
 
 def harbour_entries() -> list[logs.Entry]:
-    """The harbour log, or nothing where it cannot be read.
+    """Every machine's harbour log as one history, or nothing where it cannot be read.
 
-    Read rather than refused, unlike this fairway's own deck log: the harbour log is somebody else's file
-    and a captain that stopped dead because of a line in it would be stopped by another fairway's fault.
+    Read rather than refused, unlike this fairway's own deck log: a harbour log is somebody else's file and
+    a captain that stopped dead because of a line in one would be stopped by another machine's fault.
     """
-    path = ROOT / logs.HARBOUR
-    if not path.is_file():
-        return []
     try:
-        return logs.fold(path.read_text(encoding="utf-8").splitlines(), harbour=True)
-    except logs.Unreadable:
+        return logs.harbour_fold(ROOT)
+    except (logs.Unreadable, OSError, UnicodeDecodeError):
         return []
 
 

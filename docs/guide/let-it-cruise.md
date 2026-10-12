@@ -40,13 +40,24 @@ A captain holds no credential and never merges. It asks:
 
 ## The harbourmaster
 
-One per repository. It is the only thing that writes the harbour log, and it does three jobs:
+One per **machine**. It writes its own harbour log, `.slipwai/logs/harbour/<machine>.jsonl`, and reads
+every machine's — folded into one history by the instant each line records, exactly the way the deck logs
+are. One writer per file is the rule everything here rests on, and three people's harbourmasters writing
+one file would break it; electing one of them would need an election, and the elected one could not see
+the other machines' berths anyway. It does three jobs:
 
 - **Carries marks.** A `mark-set` line in one fairway's deck log becomes a harbour-log line every other
   fairway reads. That is the mechanism behind "nothing merged and the sibling started".
 - **Answers requests.** A captain asks; it writes `granted` or `refused`, with the reason. A request that
   was refused and left no line is one a captain waits on for ever and nobody can explain afterwards.
-- **Allocates berths.** Up to the number of boilers lit.
+- **Allocates berths.** Up to the number of boilers lit, out of its own machine's allocations — ports are
+  local to a machine, so two machines allocating independently cannot collide, and a berth's database name
+  carries the machine for the case where you point both at one database server.
+
+**The merge is the one thing that still needs a decider**, and it is serialised by a ref rather than by a
+process: a harbourmaster takes `refs/slipwai/merge` before it rebases and gives it back afterwards, the
+same compare-and-swap a captain uses to claim a fairway. The machine that loses the race waits; the one
+that is still waiting when `wait_bound` runs out says which machine has it and since when.
 
 ## The telegraph: one lever for the whole run
 

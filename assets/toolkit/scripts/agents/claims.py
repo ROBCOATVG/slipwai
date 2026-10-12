@@ -48,6 +48,12 @@ import logs  # noqa: E402
 #: Where a claim lives. One ref per fairway, under a namespace no forge's branch protection covers and no
 #: clone fetches by default — the logs are already there, for the same reasons.
 REFS = "refs/slipwai/claims"
+#: The one thing in a harbour that genuinely needs a decider, taken and released exactly as a claim is.
+#: The harbour log became one file per machine so the single writer could be removed rather than elected —
+#: and the merge is what that costs: two harbourmasters rebasing onto one trunk at once is two gates each
+#: measured against a trunk the other is about to move. Section 14 settled that merges are one at a time in
+#: request order, so the same mechanism serialises them across machines as within one.
+MERGE = "refs/slipwai/merge"
 #: The two things a claim's tip can say. Nothing else is written, and a tip saying anything else is read as
 #: held, because an unreadable claim must never read as free.
 HELD = "held"
@@ -92,7 +98,12 @@ class Taken:
 
 
 def ref(fairway: str) -> str:
-    return f"{REFS}/{fairway}"
+    """Where one claim lives: a fairway's under `refs/slipwai/claims/`, or a ref named outright.
+
+    The merge is named outright, because there is one of it and it is not a fairway — and because a
+    fairway's name can never begin `refs/`, the two can never collide on one ref by accident.
+    """
+    return fairway if fairway.startswith("refs/") else f"{REFS}/{fairway}"
 
 
 def git(root: Path, *argv: str, machine: str = "") -> subprocess.CompletedProcess[str]:

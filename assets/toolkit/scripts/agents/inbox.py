@@ -39,6 +39,9 @@ def project_root(script: Path) -> Path:
 
 ROOT = project_root(Path(__file__).resolve())
 LOGS = ROOT / ".slipwai/logs"
+#: Where each machine's harbourmaster writes its own log. One per machine since 11.3, so this is a
+#: directory of files rather than one file, and it is not a feature's.
+HARBOUR_LOGS = LOGS / "harbour"
 HARBOUR = ROOT / "harbour.json"
 V = 1
 #: Used where `harbour.json` is absent or unreadable. The file is the answer; these keep the rules working
@@ -57,11 +60,18 @@ def settings() -> tuple[int, int]:
 
 
 def lines(fairway: str) -> list[dict]:
-    """This fairway's deck log and the harbour log, which is where a person's messages arrive."""
-    paths = [path for path in LOGS.glob(f"*/{fairway}.jsonl")] if LOGS.is_dir() else []
-    harbour = LOGS / "harbour.jsonl"
-    if harbour.is_file():
-        paths.append(harbour)
+    """This fairway's deck log and every harbour log, which is where a person's messages arrive.
+
+    Every machine's, since the harbour log became one file per machine: a message that reached the harbour
+    on one of them is still a message to this fairway, and reading only this machine's would make whether a
+    person is waiting depend on which machine happened to be running when they wrote.
+    """
+    paths = [path for path in LOGS.glob(f"*/{fairway}.jsonl")
+             if path.parent.name != HARBOUR_LOGS.name] if LOGS.is_dir() else []
+    paths += sorted(HARBOUR_LOGS.glob("*.jsonl")) if HARBOUR_LOGS.is_dir() else []
+    older = LOGS / "harbour.jsonl"
+    if older.is_file():
+        paths.append(older)
     found: list[dict] = []
     for path in sorted(paths):
         for number, text in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):

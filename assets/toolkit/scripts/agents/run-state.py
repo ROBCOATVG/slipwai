@@ -46,10 +46,7 @@ STATES = ("not started", "claimed", "marks set", "demoed", "merged", "parked")
 
 
 def deck_logs() -> list[Path]:
-    place = ROOT / logs.LOGS
-    harbour = (ROOT / logs.HARBOUR).resolve()
-    return [path for path in sorted(place.rglob("*.jsonl")) if path.resolve() != harbour] \
-        if place.is_dir() else []
+    return logs.deck_logs(ROOT)
 
 
 def entries() -> tuple[list[logs.Entry], list[str]]:

@@ -33,6 +33,7 @@ import platform
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 
 #: The format every line declares. A reader refuses anything higher and names what reads it.
 V = 1
@@ -40,6 +41,15 @@ V = 1
 #: and token lines arrive every few seconds and have no place in trunk's history. The harbourmaster syncs
 #: them through `refs/slipwai/logs`, so a captain on another machine reads the same lines with no commit.
 LOGS = ".slipwai/logs"
+#: Where this machine's harbourmaster writes. **One harbour log per machine, folded on read**, exactly like
+#: the deck logs: "one writer per harbour" is unambiguous on one machine and meaningless on three, one
+#: elected writer needs an election, and three writers on one file breaks the rule the whole design rests
+#: on. A directory per machine costs nothing at read time and removes the single writer rather than
+#: electing one.
+HARBOUR_DIR = f"{LOGS}/harbour"
+#: The one harbour log a project written before there were three writers already has. Still read and folded
+#: in with the rest, and nothing moves it: a migration that relocates somebody's log is one that can lose a
+#: line, and these lines are the only record there is of what happened.
 HARBOUR = f"{LOGS}/harbour.jsonl"
 
 #: How long a machine's identity may be. Short because it is spent inside other names — a database called
@@ -233,6 +243,46 @@ def read(line: str, harbour: bool = False) -> Entry:
 def deck_path(feature: str, fairway: str) -> str:
     """A fairway's own log. One writer, its captain, so two fairways never meet on one line."""
     return f"{LOGS}/{feature}/{fairway}.jsonl"
+
+
+def harbour_path(machine: str) -> str:
+    """One machine's harbour log. One writer, its harbourmaster, for the same reason a deck log has one."""
+    return f"{HARBOUR_DIR}/{machine}.jsonl"
+
+
+def harbour_logs(root: Path) -> list[Path]:
+    """Every harbour log there is: one per machine, plus the single file older projects still have."""
+    directory = root / HARBOUR_DIR
+    found = sorted(directory.glob("*.jsonl")) if directory.is_dir() else []
+    older = root / HARBOUR
+    return ([older] if older.is_file() else []) + found
+
+
+def deck_logs(root: Path) -> list[Path]:
+    """Every fairway's log, in name order, and no harbour log.
+
+    The exclusion is by directory and not by one resolved path: every reader of the deck logs globs the
+    whole tree, and when there was one harbour log they each compared against it by name. Three of them in
+    a directory of their own is a rule a reader can hold instead of a list it has to keep.
+    """
+    place = root / LOGS
+    harbour = (root / HARBOUR_DIR).resolve()
+    older = (root / HARBOUR).resolve()
+    return [path for path in sorted(place.rglob("*.jsonl")) if place.is_dir()
+            if path.parent.resolve() != harbour and path.resolve() != older]
+
+
+def harbour_fold(root: Path) -> list[Entry]:
+    """Every machine's harbour log as one history, ordered by the instant each line records.
+
+    Interleaved by time rather than concatenated by machine, which is what makes three files read as one
+    harbour rather than three lists stapled together — `render-fairways.py` folds the decisions by the same
+    rule and for the same reason. Ties keep the machines' own file order, so the result is stable.
+    """
+    found: list[Entry] = []
+    for path in harbour_logs(root):
+        found.extend(fold(path.read_text(encoding="utf-8").splitlines(), harbour=True))
+    return sorted(found, key=lambda entry: entry.t)
 
 
 def fold(lines: list[str], harbour: bool = False) -> list[Entry]:

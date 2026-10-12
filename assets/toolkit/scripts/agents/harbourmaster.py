@@ -86,6 +86,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import berths  # noqa: E402
+import claims  # noqa: E402
 import logs  # noqa: E402
 import telegraph  # noqa: E402
 
@@ -154,10 +155,8 @@ def write_cursors(held: dict[str, int]) -> None:
 
 
 def deck_logs() -> list[Path]:
-    """Every fairway's log, in a stable order. The harbour log is not one of them: it is the output."""
-    place = ROOT / logs.LOGS
-    harbour = ROOT / logs.HARBOUR
-    return sorted(path for path in place.rglob("*.jsonl") if path.resolve() != harbour.resolve())
+    """Every fairway's log, in a stable order. No harbour log is one of them: they are the output."""
+    return logs.deck_logs(ROOT)
 
 
 def new_lines(path: Path, cursors: dict[str, int]) -> tuple[list[str], int]:
@@ -366,6 +365,44 @@ def fire(point: str, **given: str) -> None:
     subprocess.run(argv, cwd=ROOT, capture_output=True, text=True)
 
 
+#: How often `refs/slipwai/merge` is tried again while another machine holds it. A merge is a rebase and a
+#: whole `make verify`, so there is nothing to gain by asking faster than this.
+MERGE_POLL = 5.0
+#: Minutes to wait for the merge ref where `harbour.json` says nothing. `wait_bound`'s own default, because
+#: it is the same question — how long a wait may last before it is a line somebody has to read.
+DEFAULT_MERGE_WAIT = 60
+
+
+def merge_wait() -> float:
+    """Seconds this machine will wait for another machine's merge before saying so."""
+    held = config().get("wait_bound")
+    return (held if isinstance(held, int | float) and held > 0 else DEFAULT_MERGE_WAIT) * 60.0
+
+
+def take_the_merge() -> tuple[bool, str]:
+    """Take `refs/slipwai/merge`, waiting while another machine has it. (taken, why not).
+
+    Waiting *is* queueing: the loser of the race sits on the ref rather than refusing at once, because a
+    merge is a rebase and a whole gate and the machine ahead will be some minutes. What the bound catches
+    is not a busy harbour but a dead one — a machine that took the ref and was killed before it could give
+    it back — and that is a line a person has to read, so it is said rather than waited on for ever.
+    """
+    until = time.monotonic() + merge_wait()
+    while True:
+        taken = claims.take(ROOT, claims.MERGE, logs.machine())
+        if taken.ours:
+            return True, ""
+        if time.monotonic() >= until:
+            holder = taken.holder
+            who = holder.machine if holder is not None else "another machine"
+            since = f" since {holder.since}" if holder is not None else ""
+            return False, (f"{who} has been merging{since} and still holds {claims.MERGE}, which is taken "
+                           f"for one merge at a time so that two machines never rebase onto one trunk at "
+                           f"once. If that machine is gone, free it there with "
+                           f"`python3 scripts/agents/claims.py --release {claims.MERGE}`")
+        time.sleep(MERGE_POLL)
+
+
 def merge(slice_id: str) -> tuple[str, str, bool]:
     """Rebase this slice onto trunk, gate it there, and advance trunk.
 
@@ -385,12 +422,18 @@ def merge(slice_id: str) -> tuple[str, str, bool]:
     if git("var", "GIT_COMMITTER_IDENT").returncode != 0:
         return "", ("this repository has no `user.name` and `user.email`, and a rebase writes commits. "
                     "`git config user.email you@example.com` here, or set one globally"), False
+    # Taken before the fetch, because `base()` is read after it and the whole point is that trunk does not
+    # move between the gate and the advance. Released in the `finally` below, whichever way this ends.
+    held, why = take_the_merge()
+    if not held:
+        return "", why, False
     git("fetch", "--quiet", "origin", trunk())
     onto = base()
     git("worktree", "remove", "--force", str(SCRATCH))  # a worktree left by a run that was killed
     SCRATCH.parent.mkdir(parents=True, exist_ok=True)
     made = git("worktree", "add", "--quiet", "--detach", str(SCRATCH), branch)
     if made.returncode != 0:
+        claims.release(ROOT, claims.MERGE, logs.machine())
         return "", f"a worktree for {branch} could not be made ({(made.stderr or made.stdout).strip()})", False
     try:
         rebased = git("rebase", onto, where=SCRATCH)
@@ -412,6 +455,9 @@ def merge(slice_id: str) -> tuple[str, str, bool]:
         return commit, "", False
     finally:
         git("worktree", "remove", "--force", str(SCRATCH))
+        # Given back the moment this merge is over, or the first merge of a run would be the last one any
+        # machine ever did.
+        claims.release(ROOT, claims.MERGE, logs.machine())
 
 
 def ci_command(trunk_name: str) -> tuple[list[str], str]:
@@ -639,9 +685,16 @@ def carried(entries: list[logs.Entry], taken: list[str], trunk_state: str = "unv
 
 
 def allocated_already() -> list[str]:
-    """Every berth the harbour log has already allocated, in the order it did, so a restart repeats none."""
+    """Every berth *this machine* has already allocated, in the order it did, so a restart repeats none.
+
+    This machine's own log and not the harbour's, which is the one place that distinction matters. A berth
+    is ports and a database on one machine: the ports are local, so two machines allocating the same index
+    cannot collide, and the database carries the machine's name for the case where they share a server.
+    Reading every machine's allocations would make the second machine skip indices the first took — berths
+    nobody has, ports nobody is using — for a collision that cannot happen.
+    """
     taken: list[str] = []
-    for entry in harbour_entries():
+    for entry in mine():
         if entry.kind == "berth-allocated":
             berth = str(entry.fields.get("berth", ""))
             if berth not in taken:
@@ -649,8 +702,27 @@ def allocated_already() -> list[str]:
     return taken
 
 
+def written_to() -> Path:
+    """This machine's own harbour log — the only file this process ever appends to."""
+    return ROOT / logs.harbour_path(logs.machine())
+
+
 def harbour_entries() -> list[logs.Entry]:
-    path = ROOT / logs.HARBOUR
+    """Every machine's harbour log, folded into one by the instant each line records.
+
+    Trunk's state, the telegraph and the bunker are the harbour's and not one machine's, so what this
+    process reads is all of them. What it *writes* is its own file alone, which is how the single writer
+    was removed rather than elected.
+    """
+    try:
+        return logs.harbour_fold(ROOT)
+    except (logs.Unreadable, OSError, UnicodeDecodeError):
+        return []
+
+
+def mine() -> list[logs.Entry]:
+    """This machine's own harbour lines."""
+    path = written_to()
     if not path.is_file():
         return []
     try:
@@ -660,7 +732,7 @@ def harbour_entries() -> list[logs.Entry]:
 
 
 def append(entries: list[logs.Entry]) -> None:
-    path = ROOT / logs.HARBOUR
+    path = written_to()
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         for entry in entries:
@@ -726,7 +798,7 @@ def main(argv: list[str]) -> int:
             fetch()
         count = once()
         if count:
-            print(f"harbourmaster: {count} line(s) carried to {logs.HARBOUR}")
+            print(f"harbourmaster: {count} line(s) carried to {logs.harbour_path(logs.machine())}")
         if parsed.once:
             return 0
         time.sleep(parsed.interval)

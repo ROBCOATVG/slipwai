@@ -298,8 +298,12 @@ class LoopTest(unittest.TestCase):
         self.run_in("scripts/event-model/chart.py")
         self.run_in("scripts/agents/captain.py", "ordering", "--once", sail=True)
         self.run_in("scripts/agents/harbourmaster.py", "--once", "--no-fetch")
-        harbour = (self.project / ".slipwai/logs/harbour.jsonl").read_text(encoding="utf-8")
-        lines = [json.loads(line) for line in harbour.splitlines() if line.strip()]
+        # This machine's own harbour log, wherever it named itself: one file per machine since 11.3, and
+        # the name is derived from the hostname of whatever is running the suite.
+        written = sorted((self.project / ".slipwai/logs/harbour").glob("*.jsonl"))
+        self.assertEqual(len(written), 1, [path.name for path in written])
+        lines = [json.loads(line) for line in written[0].read_text(encoding="utf-8").splitlines()
+                 if line.strip()]
         self.assertIn("mark-set", [one["kind"] for one in lines])
         answers = [one for one in lines if one["kind"] in ("granted", "refused")]
         self.assertEqual(len(answers), 1, lines)

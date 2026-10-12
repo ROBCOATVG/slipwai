@@ -39,6 +39,9 @@ def project_root(script: Path) -> Path:
 ROOT = project_root(Path(__file__).resolve())
 SPECS = ROOT / "specs"
 LOGS = ROOT / ".slipwai/logs"
+#: Where each machine's harbourmaster writes its own log. A directory of files rather than one file since
+#: 11.3, and never a feature's — a `feature` directory and this one are both under `.slipwai/logs`.
+HARBOUR_LOGS = LOGS / "harbour"
 #: The log format this reader knows. A newer line is refused rather than guessed at.
 V = 1
 MARK_SET = "mark-set"
@@ -72,6 +75,10 @@ def marks_set(feature: str) -> set[str]:
     """
     found: set[str] = set()
     paths = [*(LOGS / feature).glob("*.jsonl")] if (LOGS / feature).is_dir() else []
+    # Every machine's harbour log, since there is one per machine: a mark another machine's harbourmaster
+    # carried is what clears a slice here, and reading only one of them would make clearance depend on
+    # which machine happened to carry it.
+    paths += [*HARBOUR_LOGS.glob("*.jsonl")] if HARBOUR_LOGS.is_dir() else []
     harbour = LOGS / "harbour.jsonl"
     if harbour.is_file():
         paths.append(harbour)

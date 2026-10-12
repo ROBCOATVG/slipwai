@@ -33,7 +33,7 @@ class Fixture(unittest.TestCase):
         (self.root / "project.json").write_text("{}", encoding="utf-8")
         place = self.root / "scripts/agents"
         place.mkdir(parents=True)
-        for name in ("harbourmaster.py", "logs.py", "berths.py", "telegraph.py"):
+        for name in ("harbourmaster.py", "logs.py", "berths.py", "telegraph.py", "claims.py"):
             (place / name).write_text((AGENTS / name).read_text(encoding="utf-8"), encoding="utf-8")
         self.script = place / "harbourmaster.py"
 
@@ -50,10 +50,8 @@ class Fixture(unittest.TestCase):
                               capture_output=True, text=True, cwd=self.root)
 
     def harbour(self) -> list[logs.Entry]:
-        path = self.root / logs.HARBOUR
-        if not path.is_file():
-            return []
-        return logs.fold(path.read_text(encoding="utf-8").splitlines(), harbour=True)
+        """Every machine's harbour log as one, which is what every reader of it now sees."""
+        return logs.harbour_fold(self.root)
 
 class MergeFixture(Fixture):
     """A real repository, because a merge is the one thing here that is entirely git.

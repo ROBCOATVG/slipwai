@@ -1,0 +1,17 @@
+v: 1
+feature: release-prep
+fairways:
+  release-prep:
+    context: release distributions can be built and exercised before publication
+    owns: [scripts/build-wheel, scripts/smoke-wheel.py, scripts/smoke-executable.py, scripts/smoke_distribution.py, requirements-publish.txt, .github/workflows/release-artifacts.yml, Makefile, docs/release-2.md]
+marks:
+  DistributionSmoke:
+    kind: port
+    inputs: docs/charts/contracts/distribution-smoke.in.json
+    outputs: docs/charts/contracts/distribution-smoke.out.json
+slices:
+  artifact-preparation:
+    fairway: release-prep
+    capability: a maintainer proves both distribution formats before spending a release version
+    sets: [DistributionSmoke]
+    steers_by: []

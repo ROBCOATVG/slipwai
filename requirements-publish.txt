@@ -3,3 +3,4 @@
 # run the gate.
 build==1.2.2.post1
 twine==6.1.0
+hatchling==1.32.0

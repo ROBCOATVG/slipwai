@@ -1,0 +1,1 @@
+{"type":"object","required":["command","version"],"properties":{"command":{"type":"array","items":{"type":"string"},"minItems":1},"version":{"type":"string"}}}

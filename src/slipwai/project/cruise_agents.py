@@ -9,8 +9,17 @@ in the three words the benchmark already knows.
 
 Their briefs used to be written out here, because `agents.py` was at its budget and three more briefs would
 not fit in it. They are now assets like every other brief — `assets/toolkit/agents/sail-decide-skipper.md` and its
-two siblings — and what is left is what was never prose: the paths those three delegates read and write, which
-are named in half a dozen modules of the cruise besides their own briefs, and so are declared once here.
+two siblings — and what is left is what was never prose: the paths those three delegates read and write.
+
+**This module stays, and the reason is no longer the budget that made it.** Nine modules of the cruise read
+these names — `briefs.py`, `cruise.py`, `cruise_seat.py`, `cruise_hand.py`, `cruise_record.py`,
+`cruise_stops.py`, `cruise_told.py`, `cruise_unblock.py` and `decisions.py` — and every one of them is a
+writer of prose that `cruise.py` itself imports. Slice 16.6 tried the rejoin the plan asked for, putting these
+constants back into `cruise.py` and pointing the nine at it: `check-structure.py` answered with seven import
+cycles, `project.cruise_record -> project.cruise -> project.cruise_record` among them. The seam is real and it
+is the direction of the arrows: the names the delegates are known by sit *below* everything that writes about
+them, and `/cruise`'s own page is one of those writers rather than their home. It is the shape `metadata.py`
+settled for the manifest in 16.4, met a second time.
 """
 from __future__ import annotations
 

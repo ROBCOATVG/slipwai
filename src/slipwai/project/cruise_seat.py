@@ -17,6 +17,13 @@ each; `parts.md` is what more than one page is assembled from — the watch seat
 and the section `/where-are-we` and `/whats-next` end with, which are not this tree's pages at all. One text
 per part, so two pages cannot say two different things, which is the guarantee these functions were written
 for and the one an asset per page would have given up.
+
+**Kept apart from `cruise.py` for what it does rather than for its length.** `/cruise` is the ladder with
+nobody at the wheel; these are what a person types *beside* a fleet that is already going, and one of them is
+not a command of this tree at all — `under_cruise_section` is the last section of `/where-are-we` and
+`/whats-next`, which `whats_next.py` and `where_are_we.py` read and which have nothing to do with casting
+off. Putting these back in `cruise.py` would have those two modules import the page writer for `/cruise` in
+order to ask how a board reads while a fleet is running.
 """
 from __future__ import annotations
 

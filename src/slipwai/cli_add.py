@@ -220,8 +220,6 @@ def migrate_main(argv: list[str]) -> None:
         document = checked(Path.cwd())
         from .migration_claims import ahead
         from .migration_crossing import crossing, version
-        if version(document):
-            ahead(Path.cwd(), with_claims=args.with_claims)
         if args.check:
             needed = project_names(document, Resolver(directory(), None, snapshots()))
             steps, notices = plan_install(needed, directory(), None, snapshots()) if needed else ([], [])
@@ -234,6 +232,11 @@ def migrate_main(argv: list[str]) -> None:
             else:
                 print("Packages are installed; `slipwai replay` offers the current version beside this project.")
             return
+        # After the check branch, never before it: a check writes nothing, and refusing an open claim here
+        # was refusing to tell the person the one thing they ran `--check` to find out. Before the language
+        # install, though, so nothing is installed for a crossing that is about to refuse.
+        if version(document):
+            ahead(Path.cwd(), with_claims=args.with_claims)
         if args.no_install:
             needed = project_names(document, Resolver(directory(), None, snapshots()))
             if needed:

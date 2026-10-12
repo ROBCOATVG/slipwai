@@ -141,7 +141,10 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
     """Prepare the entire crossing before its first working-tree write, or report its read-only check."""
     recorded = version(document)
     assert recorded is not None
-    branches = ahead(root, with_claims=with_claims)
+    # A check writes nothing, so an open claim is reported rather than refused over: `--check` exists to
+    # say what the crossing would do, and that is exactly what a project with a claim in flight needs.
+    blocking: list[str] = []
+    branches = ahead(root, with_claims=with_claims, notes=blocking if check else None)
     rows = table()
     own = answers(renamed(tracked(root), rows))
     with runtime(recorded) as legacy, tempfile.TemporaryDirectory(prefix="slipwai-crossing-") as scratch:
@@ -181,7 +184,9 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
                            branches, left)
         if check:
             conflict_names = ", ".join(sorted(result.conflicts)) or "none"
-            return f"{message}\nMerge conflicts to resolve: {conflict_names}. No project file or claim branch changed."
+            stopping = "".join(f"\n`slipwai migrate` would refuse: {note}" for note in blocking)
+            return (f"{message}\nMerge conflicts to resolve: {conflict_names}. "
+                    f"No project file or claim branch changed.{stopping}")
         prepared = prepare(root, branches, rows)
         git(root, "fetch", "--quiet", str(offered.destination), "main")
         tip = git(root, "rev-parse", "FETCH_HEAD").decode().strip()

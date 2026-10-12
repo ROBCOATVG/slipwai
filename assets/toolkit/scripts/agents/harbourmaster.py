@@ -614,7 +614,7 @@ def allocation(fairway: str, taken: list[str]) -> logs.Entry:
     name = berths.named(fairway.lower().replace("_", "-"))
     index = taken.index(name) if name in taken else len(taken)
     return logs.entry("berth-allocated", harbour=True, fairway=fairway,
-                      berth=berths.berth(name, index).name)
+                      berth=berths.berth(name, index, logs.machine()).name)
 
 
 def carried(entries: list[logs.Entry], taken: list[str], trunk_state: str = "unverified") -> list[logs.Entry]:

@@ -73,7 +73,7 @@ class BerthTest(Fixture):
         self.run_once()
         names = [str(e.fields["berth"]) for e in self.harbour() if e.kind == "berth-allocated"]
         self.assertEqual(len(set(names)), 2)
-        self.assertEqual(collisions(allocate(names)), [])
+        self.assertEqual(collisions(allocate(names, logs.machine())), [])
 
     def test_a_restart_does_not_allocate_a_block_twice(self) -> None:
         """The cursor is a bookmark; what was allocated is read back out of the harbour log itself."""

@@ -47,7 +47,11 @@ slipwai berth remove orca               # and leave nothing
 ## What `add` does
 
 1. **Allocates.** Ports, database name and scratch directory all fall out of the berth's index and name
-   (`src/slipwai/berths.py`). Nobody chooses a number, so nobody chooses the same number twice.
+   (`src/slipwai/berths.py`). Nobody chooses a number, so nobody chooses the same number twice. The
+   database carries **this machine's** identity too — `app_<machine>_<berth>` — so two people pointing two
+   harbours at one database server cannot collide either, and nothing has to be configured to stop them.
+   Ports do not, and that is not an oversight: a port is reachable from one machine, so two machines'
+   blocks are not in the same space at all.
 2. **Makes the worktree**, a sibling directory on a branch of its own.
 3. **Writes the record** to `{BERTHS}/<name>.json`, which is what `status` reads and `remove` undoes.
 4. **Creates the sandbox**, where the kind is `sbx`.
@@ -87,4 +91,6 @@ def status_line(berth: Berth, worktree_exists: bool, sandbox_running: bool) -> s
     ports = f"{min(berth.ports)}-{max(berth.ports)}"
     where = "worktree" if worktree_exists else "NO WORKTREE"
     sandbox = ("sandbox up" if sandbox_running else "SANDBOX DOWN") if berth.sandbox == "sbx" else "no sandbox"
-    return f"{berth.name:12} {ports:12} {berth.database:20} {where:12} {sandbox}"
+    # The database column is wide because the name carries the machine now: `app_<machine>_<berth>` is up
+    # to 52 characters, and a column that wraps is a column nobody reads down.
+    return f"{berth.name:12} {ports:12} {berth.database:34} {where:12} {sandbox}"

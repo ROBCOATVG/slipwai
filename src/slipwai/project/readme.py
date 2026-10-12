@@ -304,7 +304,7 @@ make promote                                   # ask the forge to deploy product
 make rollback ENV=staging                      # what the rollback workflow does, from a laptop
 ```
 
-`make bootstrap` is the one thing a person does, once, with administrator credentials the `aws` CLI can
+`make bootstrap` is the one thing a person does, once, with the credentials {words['credentials']} can
 find — `./init` runs it after asking where to push. It applies `infra/bootstrap` — the state bucket, the pipeline's identity, the image repositories — and
 configures the repository on the forge from the outputs (variables; and, on a forge without OIDC such as
 Gitea, the two secrets of a key that can only assume the deploy role). Run it again after `add-service`.

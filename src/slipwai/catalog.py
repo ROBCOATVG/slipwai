@@ -158,7 +158,8 @@ def axis_prunable(axis: str) -> bool:
 
 
 def axis_required(axis: str, target: str) -> bool:
-    """Whether this target refuses the axis's no-infrastructure answer — `aws` deploys an HTTP service."""
+    """Whether this target refuses the axis's no-infrastructure answer: a target that deploys an HTTP
+    service and proves the deploy by asking it for `/health` cannot be given `--http none`."""
     return axis in required_axes(CATALOG, target)
 
 

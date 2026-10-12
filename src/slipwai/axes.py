@@ -158,8 +158,9 @@ def validate_axes(catalog: dict, packaged: Collection[str] = ()) -> None:
             # A feature is named for an option of its axis — `postgres` — or, where another axis already has
             # an option of that name, for the axis and the option together: `users-keycloak`, because a marker
             # named `keycloak` in a project answering both identity questions would say nothing. Any option of
-            # the axis, not only this one: `auth/cognito` owns the `keycloak` feature, because the files a
-            # Cognito project carries *are* Keycloak's — the local stand-in — and one region cannot have two
+            # the axis, not only this one: a target's own identity answer owns the `keycloak` feature,
+            # because the files such a project carries *are* Keycloak's — the local stand-in — and one
+            # region cannot have two
             # names.
             names = {f"{axis}-{other}" for other in options} | set(options)
             if set(option.get("features", [])) - names:

@@ -5,7 +5,8 @@ A backend whose builder is `pack` publishes to a registry: Docker Desktop's cont
 `pack` export directly (buildpacks/pack#2272), so a throwaway `registry:2` is started on the daemon's own loopback — on
 the host network, listening on 127.0.0.1 itself rather than behind a published port, the proxy of which
 intermittently refused the connection (run 216) — and `pack`'s containers share that network to reach it. Those
-backends are built for Fargate's platform, `linux/amd64`, wherever this machine can run such a container, and for its
+backends are built for `linux/amd64`, which is what a managed target runs, wherever this machine can run such
+a container, and for its
 own otherwise: one platform for every `pack` build on a daemon, because `--pull-policy if-not-present` hands pack
 whichever variant of the builder the daemon already holds (run 228). `IMAGE_REGISTRY` in the environment names a
 registry to use instead; `PACK_FLAGS` is passed on, for a machine that needs more.
@@ -35,12 +36,12 @@ def unavailable() -> str | None:
     if shutil.which("docker") is None:
         return "docker is needed to start the images"
     if machine() is None:
-        return f"no Fargate-shaped platform for {platform.machine()}"
+        return f"no production-shaped platform for {platform.machine()}"
     return None
 
 
 def machine() -> str | None:
-    """This machine's own container platform, where it is one Fargate runs."""
+    """This machine's own container platform, where it is one a managed target runs."""
     return PLATFORMS.get(platform.machine())
 
 
@@ -53,7 +54,8 @@ def can_run(wanted: str) -> bool:
 
 
 def pack_platform(own: str) -> str:
-    """The one platform every `pack` build is for: Fargate's where this daemon can run it, `own` otherwise."""
+    """The one platform every `pack` build is for: production's where this daemon can run it, `own`
+    otherwise."""
     return "linux/amd64" if can_run("linux/amd64") else own
 
 

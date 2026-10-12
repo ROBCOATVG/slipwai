@@ -192,7 +192,8 @@ def resolve_selection(
         if chosen == spec["absent"]:
             # Asking for no infrastructure is always a legal answer, including on a backend where the axis
             # offers nothing else and is therefore never asked — except under a target that deploys the
-            # answer: `aws` runs an HTTP service and proves a deploy by asking it `/health`, so a service
+            # answer: a managed target runs an HTTP service and proves a deploy by asking it `/health`,
+            # so a service
             # with nothing listening cannot be taken there.
             if axis_required(axis, target) and profile in spec["profiles"]:
                 usable = [name for name in offered if name != spec["absent"]]

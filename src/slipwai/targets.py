@@ -34,8 +34,15 @@ means one of those cannot express the other two. The classes are `anywhere` (a s
 (delimited by `.`, `_`, `-` or an end of the name, since those are the separators a project name may
 contain) and `prefix`. A target declares the classes it needs and omits the rest.
 
+**No module in `src/slipwai/` names a cloud, and that is a gate rather than a habit.** There is no `aws`
+here, no `azure`, no Cognito and no Fargate: every place a project can be deployed to is a package, and
+every answer the keel used to hold a row of per place is a member that place answers for itself
+(`target_protocol.py`, read through `loaded_targets.py`). `tests/test_no_cloud_named.py` is what holds it,
+and it carries the eight lines in the keel where a cloud's name still appears — a CI system, the format of
+a leaked access key, a JDK distribution — each with why taking the name out would make it worse.
+
 Where an option is provisioned differently per target, that lives on the option under the target's key —
-`{"provisions": "rds"}` under the target that provisions Postgres that way — so the infrastructure generator
+`{"provisions": "<what it becomes>"}` under that target's key — so the infrastructure generator
 reads a declaration rather than a product name, exactly as the traits in `features.py` are read. The
 declaration is the target package's own, folded in by `target_directory.merge_targets`.
 """
@@ -263,7 +270,7 @@ def check_project_name(catalog: dict, target: str, name: str) -> None:
 
 
 def provisioned_as(catalog: dict, axis: str, option: str, target: str) -> str | None:
-    """What this option is provisioned as under this target — `rds`, `cognito` — or None where the target
-    does nothing for it beyond carrying it."""
+    """What this option is provisioned as under this target — the product name the target package
+    records against it — or None where the target does nothing for it beyond carrying it."""
     entry = catalog["axes"][axis]["options"][option].get(target)
     return entry["provisions"] if entry else None

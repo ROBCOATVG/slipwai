@@ -69,8 +69,8 @@ PIPELINE: TargetMember[Any] = M("pipeline", True, dict, "the deploy workflow's p
 README_WORDS: TargetMember[Any] = M("readme_words", True, dict, "the nouns the Production section is written round")
 AGENT_RULES: TargetMember[Any] = M("agent_rules", True, str, "the production paragraph an agent is held to")
 ADD_COMMANDS: TargetMember[Any] = M("add_commands", True, dict, "what adding a service or a frontend means here")
-#: Never required: absence is the answer "this cloud has no ambient region", which is Azure's, where every
-#: resource carries its own `location` and there is nothing for `preflight` to read.
+#: Never required: absence is the answer "this place has no ambient region", which is true of at least one
+#: of them — every resource carries its own location and there is nothing for `preflight` to read.
 REGION: TargetMember[Any] = M("region", False, tuple, "(variable, how to read it, what to say when it is unset)")
 #: What a person needs before `make bootstrap` — an account, a signed-in CLI — as the docs page lists them.
 PREREQUISITES: TargetMember[Any] = M("prerequisites", False, tuple, "a line per prerequisite")

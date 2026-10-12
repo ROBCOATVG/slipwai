@@ -26,7 +26,8 @@ DOC_HOOKS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
         ("evolving-the-project.md", "this repository owns every file: change anything, and merge a newer factory's output when offered"),
     )),
     ("Production", (
-        ("deployment.md", "what runs in AWS for this project's services and how a commit gets there, drawn from its own answers"),
+        ("deployment.md", "what runs in production for this project's services and how a commit gets "
+                          "there, drawn from its own answers"),
         ("adr/0002-production-target.md", "why each part of the production target is what it is, and what it costs"),
     )),
     ("The event model", (

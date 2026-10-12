@@ -5,7 +5,8 @@ difference between the two. The HCL is copied from the target package as committ
 the service stack, the environments' tfvars, named by its `shapes` — and what the *project* decides is
 written beside it as data:
 `project.auto.tfvars.json`, one map of the services with each answer translated into what the target provisions
-for it (`store = "rds"`, `auth = "cognito"`), how each service's migrations run once it is an image, and the
+for it (`store` and `auth` as that target provisions them), how each service's migrations run once it is an
+image, and the
 environment its backend needs in production. The stack reads that map with `for_each`, so `add-service` is a
 change to the data and never to the HCL.
 
@@ -31,8 +32,8 @@ from .flag_route import wire_transports
 from .provisioning import provisioned
 from .target_docs import pages
 
-# `frontend.tf` is emitted whichever way, with one of two contents: the site behind CloudFront when the project
-# has a browser app, and only the public address otherwise. One file rather than two chosen between, because
+# `frontend.tf` is emitted whichever way, with one of two contents: the site behind whatever the target
+# puts in front of it when the project has a browser app, and only the public address otherwise. One file rather than two chosen between, because
 # `add-frontend` rewrites the files whose content changes and deletes nothing — two files would leave the
 # old one behind, defining the address twice.
 WITH_FRONTEND = "service/frontend.tf"
@@ -42,7 +43,8 @@ WITHOUT_FRONTEND = "service/no-frontend.tf"
 # Auth0 is a third party: the provider is configured the moment anything in the module refers to it — a
 # `count = 0` resource is enough — and it refuses to configure without a tenant credential. A project that
 # did not choose Auth0 has none, so it must not carry the provider at all, and the choice cannot be left to
-# the pruner: `keycloak` is the feature behind Cognito, Entra *and* Auth0, so no marker can tell them apart.
+# the pruner: `keycloak` is the feature behind every target's own identity answer *and* Auth0, so no
+# marker can tell them apart.
 WITH_AUTH0 = "service/auth0.tf"
 WITHOUT_AUTH0 = "service/no-auth0.tf"
 
@@ -68,10 +70,10 @@ def production_environment(service: App, target: str) -> dict[str, str]:
     - The migration strategy, for a framework that applies the schema as the service starts (both Java
       backends). Gated on there being something to migrate at all.
     - The **store**, for the client half of a managed Postgres's TLS policy (the backend's
-      `postgres_sslmode`; `images.py` writes the per-driver divergence down above `POSTGRES_SSLMODE_KINDS`,
-      `None` included — a backend whose driver ignores `PGSSLMODE` is told nothing rather than told
-      something inert). Keyed by what the target provisions
-      the store as, because the policy is the managed Postgres's and not the cloud's. Gated on the store
+      `postgres_sslmode`; `images.py` writes the per-driver divergence down above
+      `postgres_sslmode_kinds`, `None` included — a backend whose driver ignores `PGSSLMODE` is told
+      nothing rather than told something inert). Keyed by what the target provisions the store as,
+      because the policy is the managed Postgres's and not the cloud's. Gated on the store
       and nothing else: a service that reads Postgres and never migrates it still cannot connect without
       this, so gating it on the migration strategy would have given the fix to only some of the services
       that need it.

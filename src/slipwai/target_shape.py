@@ -61,7 +61,8 @@ def validate(manifest: dict) -> None:
                          "its pipeline — and false where a project deploys somewhere the keel does not own")
     if not strings(manifest.get("requires", [])):
         raise ValueError("`requires` is a list of the axes this target cannot take the no-infrastructure "
-                         "answer to, as `aws` requires `http`: a deploy nothing can prove is not a deploy")
+                         "answer to: a deploy nothing can prove is not a deploy, so a target that deploys an "
+                         "HTTP service cannot be given `--http none`")
     reserved_fault(manifest)
     if "tags" in manifest and not strings(manifest["tags"]):
         raise ValueError("`tags` is a list of strings, which is what `slipwai search` matches against")
@@ -130,7 +131,8 @@ def menu_fault(manifest: dict) -> None:
         for options in provisions.values()
     ):
         raise ValueError("`provisions` is a mapping from an axis to what each option becomes here, as "
-                         "`{\"persistence\": {\"postgres\": \"rds\"}}`: provisioning an option offers it")
+                         "`{\"persistence\": {\"postgres\": \"<what it becomes here>\"}}`: provisioning an "
+                         "option offers it")
     axes = manifest.get("axes", {})
     if not isinstance(axes, dict) or not all(
         isinstance(options, dict) and all(isinstance(option, dict) for option in options.values())

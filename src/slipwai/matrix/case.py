@@ -84,7 +84,8 @@ class MatrixCase(unittest.TestCase):
 
     def generate(self, name: str, profile: str, backend: str, frontend: str = "none", **answers: str) -> Path:
         """Generate a project the way a project maker would, into a directory removed when the test ends. Answers are
-        passed by name — `persistence="postgres"`, `target="aws"` — and any axis left unnamed keeps its default."""
+        passed by name — `persistence="postgres"`, `target="<a place>"` — and any axis left unnamed keeps its
+        default."""
         return self.generated(Row(name, profile, backend, frontend,
                                   tuple((axis.replace("_", "-"), option) for axis, option in answers.items())))
 
@@ -113,7 +114,7 @@ class MatrixCase(unittest.TestCase):
         if reason:
             self.skipTest(reason)
         own = images.machine() or ""
-        fargate: list[str] = []  # asked once, at the first `pack` build: it starts a container
+        production: list[str] = []  # asked once, at the first `pack` build: it starts a container
         with images.Registry() as registry:
             for image in self.plan.images:
                 with self.subTest(backend=image.row.backend):
@@ -133,8 +134,8 @@ class MatrixCase(unittest.TestCase):
                     environment = {**os.environ, "GIT_SHA": "test"}
                     built_for = own
                     if image.tool == "pack":
-                        fargate = fargate or [images.pack_platform(own)]
-                        built_for = fargate[0]
+                        production = production or [images.pack_platform(own)]
+                        built_for = production[0]
                         environment["IMAGE_REGISTRY"] = registry.address()
                         environment["PACK_FLAGS"] = (f"--network host --timestamps --cache "
                                                      f"'{images.pack_cache(image.row.backend)}' "

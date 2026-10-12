@@ -9,9 +9,9 @@ that only its code can answer. A menu that listed the installed clouds by import
 `REGION[target]`, `PAGES[target]`, `CLOUD_STEPS[target]`, `WORDS[target]` — each was a dict the keel had to
 grow a row in for every new cloud, and each is now a member the cloud answers for itself.
 
-**The refusals are the point.** A keel with no cloud installed is the ordinary case, so `--target aws` on a
-machine without the package has to end on the command that installs it. A `KeyError` out of the middle of a
-page generator was what the old dicts gave, and only because every cloud they could be asked about was in
+**The refusals are the point.** A keel with no place installed is the ordinary case, so `--target <name>` on
+a machine without that package has to end on the command that installs it. A `KeyError` out of the middle of
+a page generator was what the old dicts gave, and only because every place they could be asked about was in
 the same repository as the dict.
 """
 from __future__ import annotations
@@ -108,7 +108,8 @@ def answer(target: str, member: TargetMember[Any], default: Any = UNASKED) -> An
 
 
 def cloud_of(target: str) -> str:
-    """What this target is called in prose — `AWS`, `Azure` — or its own name where it has no prose name.
+    """What this target is called in prose — a place's own capitalised name — or its own key where it
+    has no prose name.
 
     Never refuses, because every caller of it is writing a sentence rather than making a decision: a README
     paragraph, a line of agent guidance, a prompt in `./init`. A target with no package answers with its own

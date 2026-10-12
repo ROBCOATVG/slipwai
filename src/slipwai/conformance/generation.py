@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..catalog import CATALOG, axis_options
-from ..images import POSTGRES_SSLMODE_KINDS
+from ..images import postgres_sslmode_kinds
 from ..project.flag_route import transports_of
 from ..registry import (
     EVENT_MODEL_PATHS,
@@ -196,7 +196,7 @@ def target_findings(loaded: Registry, backend: str, done: list[Run], named: Coll
     for run in done:
         for axis, option in run.choices:
             kind = CATALOG["axes"][axis]["options"][option].get(run.target, {}).get("provisions")
-            if kind in POSTGRES_SSLMODE_KINDS and (not isinstance(modes, dict) or kind not in modes):
+            if kind in postgres_sslmode_kinds(dict(CATALOG)) and (not isinstance(modes, dict) or kind not in modes):
                 findings.append(f"backend {backend} answers postgres_sslmode with no {kind}, which {run.target} "
                                 f"provisions {option} as")
     # A backend may name only a target that *has* a second transport to opt into. Asked of each target

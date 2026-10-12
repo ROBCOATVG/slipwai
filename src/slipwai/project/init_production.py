@@ -8,8 +8,9 @@ from __future__ import annotations
 
 # `./init` is run more than once: to answer an axis again, to add an extension, to switch or add a harness.
 # Every one of those is local, and none of them should need administrator credentials to end green — which
-# is what every rerun on an AWS project did need before reruns were fixed, because nothing asked whether the account
-# had already been bootstrapped, and an expired `aws` session then failed a run whose real work was done.
+# is what every rerun on a deployed project did need before reruns were fixed, because nothing asked whether
+# the account had already been bootstrapped, and an expired cloud session then failed a run whose real work
+# was done.
 # The committed bootstrap state is the evidence: `make bootstrap` writes `infra/bootstrap/terraform.tfstate`
 # (encrypted, and committed with the outputs it wrote), so where it exists the bootstrap has run and
 # `make bootstrap` is the way to run it again — after `add-service`, or when the stack changes — with the

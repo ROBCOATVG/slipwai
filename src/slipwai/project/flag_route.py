@@ -10,7 +10,7 @@ The service already holds the answer, and `Source.snapshot()` is it. So the serv
 asks, and the two halves of one flag finally move together.
 
 Under `/api` because that is the service's product surface: `vite.config.ts` forwards `/api` with the prefix
-intact, and CloudFront's `/api/*` behaviour has no `origin_path` and no rewrite function, so the path is the
+intact, and the edge's `/api/*` behaviour has no origin path and no rewrite function, so the path is the
 same in both places. `/health` stays outside it, being a probe rather than something a browser calls.
 
 Nothing here is emitted under `--target none`, for the reason the reader is not: a project with nowhere to

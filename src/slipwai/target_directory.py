@@ -68,7 +68,7 @@ def module_name(name: str) -> str:
 
 
 def named(name: str, root: Path) -> str:
-    """How a refusal says which target: `target aws (/path/to/aws)`."""
+    """How a refusal says which target: `target <name> (/path/to/<name>)`."""
     return f"target {name} ({root})"
 
 

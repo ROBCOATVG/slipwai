@@ -260,7 +260,7 @@ def generate_main(argv: list[str]) -> None:
     # known rather than at the end of `./init`. Skipped only when another machine will run that.
     parser.add_argument(
         "--skip-checks", action="store_true",
-        help="do not check that this machine has what the target's ./init needs (tofu, the aws CLI, a forge)",
+        help="do not check that this machine has what the target's ./init needs (its own tools and a forge)",
     )
     args = parser.parse_args(argv)
     try:

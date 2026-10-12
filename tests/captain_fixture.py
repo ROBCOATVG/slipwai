@@ -24,8 +24,9 @@ CARRIED = ("captain.py", "clearance.py", "inbox.py", "logs.py", "berths.py", "id
            # module that decides which one and the registry that module reads. Every case here sets
            # `SLIPWAI_SAIL`, so neither is consulted — but the import has to resolve.
            "harness.py", "registry.json",
-           # The claim a captain takes before it writes `claimed`.
-           "claims.py")
+           # The claim a captain takes before it writes `claimed`, and what travels between machines when
+           # a lapsed one is taken over.
+           "claims.py", "travel.py")
 #: The chart these tests run against, as data, so the fake `/sail` below sets the marks this says it does.
 #: They were two copies and the fake set `Placed` whatever it was driving, which passed only because the
 #: captain did not read the chart's `sets` — exactly the gap slice 7.8 closes.

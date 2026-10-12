@@ -89,6 +89,7 @@ import berths  # noqa: E402
 import claims  # noqa: E402
 import logs  # noqa: E402
 import telegraph  # noqa: E402
+import travel  # noqa: E402
 
 
 def project_root() -> Path:
@@ -774,15 +775,73 @@ def once() -> int:
     return len(written)
 
 
-def fetch() -> None:
-    """Bring in what other machines' captains have written. Never fatal: a harbour on one machine has no
-    remote, and one that cannot reach its forge still has every local fairway to carry between."""
-    run = subprocess.run(["git", "fetch", "--quiet", "origin", "refs/slipwai/logs/*:refs/slipwai/logs/*"],
-                         cwd=ROOT, capture_output=True, text=True)
-    if run.returncode != 0:
-        said = (run.stderr or run.stdout).strip().splitlines()
-        print(f"harbourmaster: the logs could not be fetched ({said[-1] if said else 'git failed'}); "
-              f"carrying what is here", file=sys.stderr)
+def ours() -> list[str]:
+    """The fairways this machine holds the claim for, which are the only deck logs it may push.
+
+    One ref per writer, and a fairway's writer is whichever captain holds it: a machine pushing the log of
+    a fairway it does not hold would be a second writer on that ref, which is the one thing there may never
+    be. Asked in one fetch rather than one per fairway.
+    """
+    machine = logs.machine()
+    fairways = [path.stem for path in deck_logs()]
+    return [fairway for fairway, claim in claims.every(ROOT, fairways).items()
+            if claim is not None and claim.machine == machine]
+
+
+def in_flight(path: Path) -> str:
+    """The slice this fairway is still working on — claimed, and not merged — or `""` where there is none.
+
+    What travels is work that is *in flight*: a merged slice's branch is in trunk already, and a WIP ref
+    that went on being pushed after the merge would be a ref nobody reads growing for ever.
+    """
+    try:
+        found = logs.fold(path.read_text(encoding="utf-8").splitlines())
+    except (OSError, UnicodeDecodeError, logs.Unreadable):
+        return ""
+    merged = {str(e.fields.get("slice", "")) for e in found if e.kind == "merged"}
+    for entry in reversed(found):
+        if entry.kind == "claimed" and str(entry.fields.get("slice", "")) not in merged:
+            return str(entry.fields.get("slice", ""))
+    return ""
+
+
+def arrive() -> None:
+    """Bring in what other machines have written, and put it where this harbour's readers already look.
+
+    Never fatal: a harbour on one machine has no remote, and one that cannot reach its forge still has
+    every local fairway to carry between.
+    """
+    travel.land(ROOT, logs.machine(), ours())
+
+
+def depart() -> None:
+    """Put this machine's logs and in-flight branches where the other machines can read them.
+
+    This is section 14's fourth broken link, closed from the writing end: both processes fetched
+    `refs/slipwai/logs/*` and neither ever wrote them, so the fetch was ceremony and getting one machine's
+    log onto another was a person with `scp`. A captain holds no credential, so this is the process that
+    pushes — its own harbour log, the deck log of every fairway it holds, and that fairway's in-flight
+    branch, which is what makes a lapsed claim recoverable rather than merely transferable.
+    """
+    machine = logs.machine()
+    if not travel.forge(ROOT):
+        return
+    for path, ref in [(written_to(), travel.harbour_ref(machine))] + [
+            (path, travel.deck_ref(path.stem)) for path in deck_logs() if path.stem in ours()]:
+        if not path.is_file():
+            continue
+        went, why = travel.push_log(ROOT, path, ref, machine)
+        if not went:
+            print(f"harbourmaster: {why}", file=sys.stderr)
+    for path in deck_logs():
+        if path.stem not in ours():
+            continue
+        slice_id = in_flight(path)
+        if not slice_id:
+            continue
+        went, why = travel.push_wip(ROOT, BRANCH.format(slice=slice_id), travel.wip_ref(path.stem))
+        if not went:
+            print(f"harbourmaster: {why}", file=sys.stderr)
 
 
 def main(argv: list[str]) -> int:
@@ -791,14 +850,20 @@ def main(argv: list[str]) -> int:
         description="Carry between fairways, allocate berths, and answer a captain's requests")
     parser.add_argument("--once", action="store_true", help="one pass, rather than the loop")
     parser.add_argument("--interval", type=float, default=HEARTBEAT, help="seconds between passes")
-    parser.add_argument("--no-fetch", action="store_true", help="do not reach the forge for other machines")
+    parser.add_argument("--no-fetch", action="store_true",
+                        help="carry between this machine's own fairways only: reach the forge neither for "
+                             "what other machines have written nor to push what this one has")
     parsed = parser.parse_args(argv)
     while True:
         if not parsed.no_fetch:
-            fetch()
+            arrive()
         count = once()
         if count:
             print(f"harbourmaster: {count} line(s) carried to {logs.harbour_path(logs.machine())}")
+        if not parsed.no_fetch:
+            # After the pass and not before it: what this machine has to say about this pass is written by
+            # `once()`, and pushing first would carry every line but the ones just made.
+            depart()
         if parsed.once:
             return 0
         time.sleep(parsed.interval)

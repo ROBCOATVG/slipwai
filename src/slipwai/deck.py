@@ -49,6 +49,8 @@ def said(entry: Entry) -> str:
         return "still going" + (f", {spent}k spent" if spent is not None else "")
     if kind == "stowed":
         return f"stowed {at.get('what')} from {at.get('from')} — {at.get('slice')}"
+    if kind == "taken-over":
+        return f"took {at.get('slice')} over from {at.get('from')}, mid-slice"
     if kind == "parked":
         return f"parked: {at.get('why')}"
     if kind == "request":

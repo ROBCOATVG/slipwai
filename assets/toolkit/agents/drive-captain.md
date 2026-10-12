@@ -55,6 +55,7 @@ believed. Every line carries `fairway`.
 | `request` | something outside your berth, asked for | `id`, `what`, `detail` |
 | `berth-request` | you need a berth allocated | — |
 | `stowed` | work set aside for another slice to pick up | `slice`, `from`, `what` |
+| `taken-over` | this stream was another machine's and you have carried it on | `slice`, `from` (that machine) |
 | `parked` | you have stopped, and this is why | `why` |
 
 Write `heartbeat` often enough that a stall is told from a finish. They are told apart by your last line: a

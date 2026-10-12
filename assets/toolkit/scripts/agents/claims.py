@@ -38,6 +38,7 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -95,6 +96,10 @@ class Taken:
     ours: bool
     holder: Claim | None
     why: str = ""
+    #: Whether this was taken off another machine on a lapsed lease, rather than taken free. The caller
+    #: has to know: a takeover inherits a stream somebody else was mid-slice in, so the work on that
+    #: machine's branch has to be brought over before anything is dispatched. `holder` is who it was.
+    took_over: bool = False
 
 
 def ref(fairway: str) -> str:
@@ -195,26 +200,78 @@ def swap(root: Path, fairway: str, commit: str, was: str) -> bool:
     return git(root, "update-ref", ref(fairway), commit, was).returncode == 0
 
 
-def take(root: Path, fairway: str, machine: str) -> Taken:
+def instant(said: str) -> datetime | None:
+    """One of our own timestamps as a moment, or None where it is not one we wrote.
+
+    None and not a guess: an instant nothing can read is not evidence that a captain is gone, and the one
+    thing a lease may never do is take a stream from somebody who is working.
+    """
+    try:
+        return datetime.fromisoformat(said.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def lapsed(found: Claim, lease: float, heard: str) -> bool:
+    """Whether this claim's holder has gone quiet for longer than the lease allows.
+
+    Measured from the later of *when it was taken* and *when its captain last wrote*, because a captain
+    that has just taken its claim and not yet written a line is starting rather than gone — a lease run
+    from an empty log would take the stream off it before its first rung.
+
+    `heard` is read off the **pushed** log, because what one machine can know about another is exactly what
+    the other has pushed. `lease` of `0` is off, and off is the default: working the number out from the
+    harbour's own stage budgets is the caller's job, and a caller that has not done it did not mean *take
+    this off them*.
+    """
+    if lease <= 0:
+        return False
+    since = instant(found.since)
+    if since is None:
+        return False
+    last = since
+    if heard:
+        spoke = instant(heard)
+        if spoke is None:
+            return False
+        last = max(last, spoke)
+    return (datetime.now(UTC) - last).total_seconds() > lease
+
+
+def take(root: Path, fairway: str, machine: str, lease: float = 0.0, heard: str = "") -> Taken:
     """Take this fairway's claim, or say who has it. Idempotent: holding it already is taking it.
 
     Idempotent because a captain takes the claim on every turn, so taking what you already hold is the
     common case rather than an error — a restarted captain that could not re-take its own fairway would
     have locked itself out of its own work.
+
+    **A claim held by a machine nothing has been heard from for `lease` seconds is taken over**, which is
+    what stops a closed laptop parking a stream for ever: a captain killed outright never releases its
+    claim, and until there was a lease the only answer was a person running `--release` on a machine that
+    may be shut. The push is still the same compare-and-swap — a child of the tip that was read — so two
+    machines deciding at once that a third has gone cannot both win.
     """
     if not repository(root):
         return Taken(True, None, "there is no git repository here, so nothing can hold a fairway and a "
                                  "second captain on this one cannot be refused; `git init` is what fixes it")
     found = holder(root, fairway)
+    over = False
     if found is not None and found.held():
         if found.machine == machine:
             return Taken(True, found)
-        return Taken(False, found, found.said())
+        if not lapsed(found, lease, heard):
+            return Taken(False, found, found.said())
+        over = True
     try:
         commit = mint(root, fairway, machine, HELD, parent=found.commit if found else "")
     except RuntimeError as fault:
         return Taken(False, found, f"the claim on {fairway} could not be written: {fault}")
     if swap(root, fairway, commit, found.commit if found else ""):
+        if over and found is not None:
+            # `holder` is who it was taken *from*, not who has it now: the caller's next move is to bring
+            # that machine's in-flight work over, and for that it has to know whose it was.
+            return Taken(True, found, f"{fairway} was taken over from {found.machine}, which has written "
+                                      f"nothing since {found.since} and is past its lease", took_over=True)
         return Taken(True, read(root, fairway))
     again = holder(root, fairway)
     if again is not None and again.held():

@@ -14,10 +14,12 @@ of it would prove the fake.
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -147,6 +149,89 @@ class ReleasingTest(Fixture):
     def test_a_fairway_nobody_has_ever_claimed_is_held_by_nobody(self) -> None:
         self.assertIsNone(claims.held_by(self.one, "ordering"))
         self.assertIsNone(claims.holder(self.one, "ordering"))
+
+
+class LeaseTest(Fixture):
+    """What a claim lapses on, and the one thing a lease may never do.
+
+    A person closing their laptop must not park a stream for ever — a captain killed outright never
+    releases its claim, and until there was a lease the only answer was somebody running `claims.py
+    --release` on a machine that may be shut. But a stream must never be taken from somebody who is
+    mid-slice, so the lease is derived from `stage_bound` and sits above it: a captain that writes nothing
+    for `stage_bound` ends that stage itself, so the guarantee falls out rather than being asserted.
+
+    Liveness is judged on the *pushed* log, because what one machine can know about another is exactly what
+    the other has pushed. `heard` is that instant, and these cases pass it directly: what is being proved
+    here is the arithmetic over it, and `test_travel.py` proves where it comes from.
+    """
+
+    def ago(self, seconds: float) -> str:
+        return (datetime.now(UTC) - timedelta(seconds=seconds)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def held_since(self, fairway: str, seconds_ago: float) -> None:
+        """The first machine took this fairway that long ago, which is what `since` on a real claim says.
+
+        Through git's own author date rather than by editing the ref, because `since` *is* the commit's
+        author date and a fixture that wrote it some other way would be proving something else.
+        """
+        os.environ["GIT_AUTHOR_DATE"] = self.ago(seconds_ago)
+        try:
+            taken = claims.take(self.one, fairway, ONE)
+        finally:
+            os.environ.pop("GIT_AUTHOR_DATE", None)
+        self.assertTrue(taken.ours, taken.why)
+
+    def test_no_lease_ever_lapses_under_a_captain_that_is_writing(self) -> None:
+        """The slice's own done-when, and the half that matters: a lease that took a stream from a working
+        captain would lose the work it was built to save. The claim here is an hour old and its captain
+        wrote a line a moment ago, which is what every long slice looks like."""
+        self.held_since("ordering", 3600)
+        second = claims.take(self.two, "ordering", TWO, lease=60.0, heard=self.ago(0))
+        self.assertFalse(second.ours)
+        self.assertFalse(second.took_over)
+        self.assertIn(ONE, second.why)
+
+    def test_a_claim_nobody_has_been_heard_from_within_the_lease_is_taken_over(self) -> None:
+        self.held_since("ordering", 3600)
+        second = claims.take(self.two, "ordering", TWO, lease=60.0, heard=self.ago(600))
+        self.assertTrue(second.ours, second.why)
+        self.assertTrue(second.took_over)
+        assert second.holder is not None
+        self.assertEqual(second.holder.machine, ONE)
+        self.assertIn(ONE, second.why)
+
+    def test_a_takeover_leaves_the_fairway_this_machines_and_says_who_it_was(self) -> None:
+        """Nothing is deleted, here least of all: *who had this stream when it stopped* is the first
+        question somebody asks about a takeover."""
+        self.held_since("ordering", 3600)
+        claims.take(self.two, "ordering", TWO, lease=60.0, heard=self.ago(600))
+        now = claims.held_by(self.one, "ordering")
+        assert now is not None
+        self.assertEqual(now.machine, TWO)
+        shown = git("log", "--format=%an", claims.ref("ordering"), where=self.two)
+        self.assertEqual(shown.stdout.split(), [TWO, ONE])
+
+    def test_a_claim_with_no_lease_at_all_is_never_taken_however_old(self) -> None:
+        """`0` is off, and off is the default: a lease is a thing the captain works out from the harbour's
+        own numbers, and a caller that did not is not one that meant *take it from them*."""
+        self.held_since("ordering", 100000)
+        second = claims.take(self.two, "ordering", TWO, lease=0.0, heard=self.ago(100000))
+        self.assertFalse(second.ours)
+
+    def test_a_claim_nothing_has_been_heard_from_at_all_runs_from_when_it_was_taken(self) -> None:
+        """A captain that has taken its claim and not yet written a line is starting, not gone — and a
+        lease measured from an empty log would take the stream off it before its first rung."""
+        self.held_since("ordering", 10)
+        second = claims.take(self.two, "ordering", TWO, lease=60.0, heard="")
+        self.assertFalse(second.ours)
+        self.assertIn(ONE, second.why)
+
+    def test_an_instant_nothing_can_read_is_not_evidence_that_a_captain_is_gone(self) -> None:
+        """An unreadable claim must never read as free, and the same holds for an unreadable instant: the
+        safe answer is that somebody holds it."""
+        self.held_since("ordering", 100000)
+        second = claims.take(self.two, "ordering", TWO, lease=60.0, heard="not a timestamp")
+        self.assertFalse(second.ours)
 
 
 class NoForgeTest(unittest.TestCase):

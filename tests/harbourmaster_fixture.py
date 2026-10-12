@@ -6,6 +6,7 @@ inherited across suites — a subclass of a case re-runs every test in it, under
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -33,7 +34,8 @@ class Fixture(unittest.TestCase):
         (self.root / "project.json").write_text("{}", encoding="utf-8")
         place = self.root / "scripts/agents"
         place.mkdir(parents=True)
-        for name in ("harbourmaster.py", "logs.py", "berths.py", "telegraph.py", "claims.py"):
+        for name in ("harbourmaster.py", "logs.py", "berths.py", "telegraph.py", "claims.py",
+                     "travel.py"):
             (place / name).write_text((AGENTS / name).read_text(encoding="utf-8"), encoding="utf-8")
         self.script = place / "harbourmaster.py"
 
@@ -52,6 +54,48 @@ class Fixture(unittest.TestCase):
     def harbour(self) -> list[logs.Entry]:
         """Every machine's harbour log as one, which is what every reader of it now sees."""
         return logs.harbour_fold(self.root)
+
+
+class TravelFixture(Fixture):
+    """A project with somewhere to push to, which is what makes anything here travel at all.
+
+    A bare repository standing in for the forge, because that is what a forge is as far as a push is
+    concerned, and a second clone standing in for a second machine. Nothing reaches a network and nothing
+    is pushed anywhere real — `origin` is a directory beside the project.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.forge = self.root.parent / f"{self.root.name}.git"
+        self.git("init", "--quiet", "--bare", "--initial-branch=main", str(self.forge), where=self.root)
+        self.git("init", "--quiet", "--initial-branch=main")
+        self.git("config", "user.name", "t")
+        self.git("config", "user.email", "t@local")
+        (self.root / ".gitignore").write_text(".slipwai/\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "--quiet", "-m", "the skeleton")
+        self.git("remote", "add", "origin", str(self.forge))
+        self.git("push", "--quiet", "origin", "main")
+
+    def git(self, *argv: str, where: Path | None = None) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@local", *argv],
+                              cwd=where or self.root, capture_output=True, text=True, check=False)
+
+    def run_as(self, machine: str, *extra: str) -> subprocess.CompletedProcess:
+        """One pass, as a named machine, reaching the forge — which is what `--no-fetch` turns off."""
+        return subprocess.run([sys.executable, str(self.script), "--once", *extra],
+                              capture_output=True, text=True, cwd=self.root,
+                              env={**os.environ, "SLIPWAI_MACHINE": machine})
+
+    def refs(self, namespace: str) -> list[str]:
+        found = self.git("for-each-ref", "--format=%(refname)", namespace, where=self.forge)
+        return sorted(line.strip() for line in found.stdout.splitlines() if line.strip())
+
+    def carried(self, ref: str) -> str:
+        """What a log ref holds, read out of the forge itself rather than out of any clone."""
+        listed = self.git("ls-tree", "-r", "--name-only", ref, where=self.forge).stdout.split()
+        return self.git("show", f"{ref}:{listed[0]}", where=self.forge).stdout if listed else ""
+
 
 class MergeFixture(Fixture):
     """A real repository, because a merge is the one thing here that is entirely git.

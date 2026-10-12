@@ -56,13 +56,13 @@ class RemoveTest(unittest.TestCase):
 
 class StatusTest(unittest.TestCase):
     def line(self, sandbox: str, worktree: bool, running: bool) -> str:
-        return berth_commands.status_line(berths.berth("orca", 0, sandbox), worktree, running)
+        return berth_commands.status_line(berths.berth("orca", 0, "harbour_one", sandbox), worktree, running)
 
     def test_a_healthy_berth_shows_its_ports_and_database(self) -> None:
         written = self.line("none", True, False)
         self.assertIn("orca", written)
         self.assertIn("8100-8119", written)
-        self.assertIn("app_orca", written)
+        self.assertIn("app_harbour_one_orca", written)
 
     def test_a_missing_worktree_is_shouted_rather_than_omitted(self) -> None:
         self.assertIn("NO WORKTREE", self.line("none", False, False))

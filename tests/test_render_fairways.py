@@ -12,8 +12,12 @@ about it.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
+import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -116,6 +120,125 @@ class CheckTest(Fixture):
         self.assertEqual(self.module.main(["--check"]), 1)
 
     def test_a_project_with_no_fairway_files_is_not_a_failure(self) -> None:
+        self.assertEqual(self.module.main(["--check"]), 0)
+
+
+SPLIT = """# The split
+
+## Fairways
+
+| Fairway | Context | Slices, in split order | held_by | Notes |
+|---|---|---|---|---|
+| ordering | Ordering | ORD-01; ORD-02 | — | the first |
+| billing | Billing | BIL-01 | whoever typed this | and nobody can tell when |
+
+## Slice graph
+| Slice | depends_on | parallel_ok_with | Notes |
+|---|---|---|---|
+| ORD-01 | — | — | — |
+"""
+
+
+class HeldByTest(unittest.TestCase):
+    """`held_by` is rendered from the claim refs and written by nothing.
+
+    There were two answers to *who holds this fairway* — a name somebody typed in this table, and a running
+    process with a pid file — and the table's was the one the loop reads. A field only a hand edit reaches
+    is exactly the state this method is built around not keeping, so the column is folded from the refs the
+    way every other status here is folded from a log, and `make check-rendered` refuses one that is not.
+    """
+
+    def setUp(self) -> None:
+        self.tree = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tree, True)
+        (self.tree / "scripts/agents").mkdir(parents=True)
+        shutil.copy(SCRIPT, self.tree / "scripts/render-fairways.py")
+        for name in ("claims.py", "logs.py"):
+            shutil.copy(ROOT / f"assets/toolkit/scripts/agents/{name}", self.tree / f"scripts/agents/{name}")
+        (self.tree / "project.json").write_text("{}", encoding="utf-8")
+        (self.tree / "specs/ordering/slices").mkdir(parents=True)
+        self.split = self.tree / "specs/ordering/story-split.md"
+        self.split.write_text(SPLIT, encoding="utf-8")
+        self.git("init", "--quiet", "--initial-branch=main")
+        self.git("add", "-A")
+        self.git("commit", "--quiet", "-m", "the split")
+        spec = importlib.util.spec_from_file_location("render", self.tree / "scripts/render-fairways.py")
+        assert spec is not None and spec.loader is not None
+        self.module = importlib.util.module_from_spec(spec)
+        sys.dont_write_bytecode = True
+        spec.loader.exec_module(self.module)
+
+    def git(self, *argv: str, where: Path | None = None) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@local", *argv],
+                              cwd=where or self.tree, capture_output=True, text=True, check=False)
+
+    def forge(self) -> None:
+        """Somewhere to push a claim to, which is what makes a claim mean anything to a second machine."""
+        bare = self.tree.parent / f"{self.tree.name}-forge.git"
+        self.addCleanup(shutil.rmtree, bare, True)
+        self.git("init", "--quiet", "--bare", "--initial-branch=main", str(bare), where=self.tree.parent)
+        self.git("remote", "add", "origin", str(bare))
+        self.git("push", "--quiet", "origin", "main")
+
+    def hold(self, fairway: str, machine: str) -> None:
+        done = subprocess.run([sys.executable, str(self.tree / "scripts/agents/claims.py"),
+                               "--take", fairway], cwd=self.tree, capture_output=True, text=True,
+                              env={**os.environ, "SLIPWAI_MACHINE": machine})
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def rows(self) -> dict[str, str]:
+        """Each fairway against what the split's `held_by` cell now says."""
+        found = {}
+        for line in self.split.read_text(encoding="utf-8").splitlines():
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(cells) == 5 and cells[0] not in ("Fairway", "---"):
+                found[cells[0]] = cells[3]
+        return found
+
+    def test_the_cell_is_the_machine_the_ref_names(self) -> None:
+        self.forge()
+        self.hold("ordering", "harbour_one")
+        self.assertEqual(self.module.main([]), 0)
+        self.assertEqual(self.rows()["ordering"], "harbour_one")
+
+    def test_a_name_somebody_typed_is_overwritten_by_what_the_refs_say(self) -> None:
+        """The column is a rendering, so a hand edit is not an error to report — it is a thing that does
+        not survive the next fold, which is what makes the refs the only answer."""
+        self.forge()
+        self.assertEqual(self.module.main([]), 0)
+        self.assertEqual(self.rows()["billing"], "—")
+
+    def test_a_hand_edit_is_refused_by_the_check(self) -> None:
+        self.forge()
+        self.hold("ordering", "harbour_one")
+        self.module.main([])
+        held = self.split.read_text(encoding="utf-8")
+        self.split.write_text(held.replace("harbour_one", "me, actually"), encoding="utf-8")
+        self.assertEqual(self.module.main(["--check"]), 1)
+
+    def test_a_released_fairway_goes_back_to_a_dash(self) -> None:
+        self.forge()
+        self.hold("ordering", "harbour_one")
+        self.module.main([])
+        done = subprocess.run([sys.executable, str(self.tree / "scripts/agents/claims.py"),
+                               "--release", "ordering"], cwd=self.tree, capture_output=True, text=True,
+                              env={**os.environ, "SLIPWAI_MACHINE": "harbour_one"})
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.module.main([]), 0)
+        self.assertEqual(self.rows()["ordering"], "—")
+
+    def test_a_harbour_with_no_forge_renders_a_dash_and_says_the_claim_is_local(self) -> None:
+        """A claim no other machine can see is not routing, whatever this machine's ref says. The column
+        says nothing and the command says why, rather than naming a machine nobody else can reach."""
+        self.hold("ordering", "harbour_one")
+        done = io.StringIO()
+        with contextlib.redirect_stdout(done):
+            self.assertEqual(self.module.main([]), 0)
+        self.assertEqual(self.rows()["ordering"], "—")
+        self.assertIn("local to this machine", done.getvalue())
+
+    def test_a_project_with_no_split_is_not_a_failure(self) -> None:
+        self.split.unlink()
         self.assertEqual(self.module.main(["--check"]), 0)
 
 

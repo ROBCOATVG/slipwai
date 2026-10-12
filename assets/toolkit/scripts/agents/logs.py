@@ -28,8 +28,12 @@ this file exists to prevent.
 from __future__ import annotations
 
 import json
+import os
+import platform
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 
 #: The format every line declares. A reader refuses anything higher and names what reads it.
 V = 1
@@ -37,7 +41,24 @@ V = 1
 #: and token lines arrive every few seconds and have no place in trunk's history. The harbourmaster syncs
 #: them through `refs/slipwai/logs`, so a captain on another machine reads the same lines with no commit.
 LOGS = ".slipwai/logs"
+#: Where this machine's harbourmaster writes. **One harbour log per machine, folded on read**, exactly like
+#: the deck logs: "one writer per harbour" is unambiguous on one machine and meaningless on three, one
+#: elected writer needs an election, and three writers on one file breaks the rule the whole design rests
+#: on. A directory per machine costs nothing at read time and removes the single writer rather than
+#: electing one.
+HARBOUR_DIR = f"{LOGS}/harbour"
+#: The one harbour log a project written before there were three writers already has. Still read and folded
+#: in with the rest, and nothing moves it: a migration that relocates somebody's log is one that can lose a
+#: line, and these lines are the only record there is of what happened.
 HARBOUR = f"{LOGS}/harbour.jsonl"
+
+#: How long a machine's identity may be. Short because it is spent inside other names — a database called
+#: `bookings_<machine>_booking` reaching PostgreSQL's 63-byte limit is a berth that cannot connect and a
+#: refusal nobody traces back to a hostname.
+MACHINE_WIDTH = 16
+#: What a machine's identity may be made of, which is the intersection of three alphabets: a git ref
+#: component, a path component on every platform, and an unquoted SQL identifier.
+UNUSABLE = re.compile(r"[^a-z0-9]+")
 
 #: What every line carries, whichever log it is in.
 COMMON = ("v", "t", "kind")
@@ -109,6 +130,31 @@ class Unreadable(Exception):
 def now() -> str:
     """The timestamp a line carries: UTC, to the second, which is what sorts two logs into one order."""
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def machine() -> str:
+    """Which machine this is: one identity, derived from the hostname, used everywhere two of them meet.
+
+    It names the claim ref a captain takes (`refs/slipwai/claims/<fairway>` carries it as the commit's
+    author), the harbour log this machine writes, and the database a berth allocates. Three answers to
+    *which machine* would be three ways for two of them to disagree about whether a collision is one, which
+    is why there is this one and it is in the module both runtimes already share.
+
+    **Derived and not chosen**, which is the berth rule: nobody picks a number, so nobody picks the same
+    one twice. The hostname's first label, lowercased, with everything outside the three alphabets it has
+    to survive — a git ref component, a path component, an unquoted SQL identifier — folded to `_`.
+
+    `SLIPWAI_MACHINE` is the one place a name is typed, and it is typed once. Two containers off one image
+    share a hostname, and a shared database is where that is found out rather than said.
+    """
+    given = os.environ.get("SLIPWAI_MACHINE") or platform.node() or ""
+    slug = UNUSABLE.sub("_", given.split(".")[0].strip().lower()).strip("_")
+    if not slug[:1].isalpha():
+        # A name that begins with a digit is not an SQL identifier and a name with nothing usable in it is
+        # not a path component. Neither is a fault worth refusing a run over, so both become a machine
+        # whose name says it was not readable rather than an empty string nothing can be built out of.
+        slug = f"m_{slug}" if slug else "machine"
+    return slug[:MACHINE_WIDTH].rstrip("_")
 
 
 @dataclass(frozen=True)
@@ -197,6 +243,46 @@ def read(line: str, harbour: bool = False) -> Entry:
 def deck_path(feature: str, fairway: str) -> str:
     """A fairway's own log. One writer, its captain, so two fairways never meet on one line."""
     return f"{LOGS}/{feature}/{fairway}.jsonl"
+
+
+def harbour_path(machine: str) -> str:
+    """One machine's harbour log. One writer, its harbourmaster, for the same reason a deck log has one."""
+    return f"{HARBOUR_DIR}/{machine}.jsonl"
+
+
+def harbour_logs(root: Path) -> list[Path]:
+    """Every harbour log there is: one per machine, plus the single file older projects still have."""
+    directory = root / HARBOUR_DIR
+    found = sorted(directory.glob("*.jsonl")) if directory.is_dir() else []
+    older = root / HARBOUR
+    return ([older] if older.is_file() else []) + found
+
+
+def deck_logs(root: Path) -> list[Path]:
+    """Every fairway's log, in name order, and no harbour log.
+
+    The exclusion is by directory and not by one resolved path: every reader of the deck logs globs the
+    whole tree, and when there was one harbour log they each compared against it by name. Three of them in
+    a directory of their own is a rule a reader can hold instead of a list it has to keep.
+    """
+    place = root / LOGS
+    harbour = (root / HARBOUR_DIR).resolve()
+    older = (root / HARBOUR).resolve()
+    return [path for path in sorted(place.rglob("*.jsonl")) if place.is_dir()
+            if path.parent.resolve() != harbour and path.resolve() != older]
+
+
+def harbour_fold(root: Path) -> list[Entry]:
+    """Every machine's harbour log as one history, ordered by the instant each line records.
+
+    Interleaved by time rather than concatenated by machine, which is what makes three files read as one
+    harbour rather than three lists stapled together — `render-fairways.py` folds the decisions by the same
+    rule and for the same reason. Ties keep the machines' own file order, so the result is stable.
+    """
+    found: list[Entry] = []
+    for path in harbour_logs(root):
+        found.extend(fold(path.read_text(encoding="utf-8").splitlines(), harbour=True))
+    return sorted(found, key=lambda entry: entry.t)
 
 
 def fold(lines: list[str], harbour: bool = False) -> list[Entry]:

@@ -307,6 +307,14 @@ whoever is named there gets that fairway's slices left alone, and the claim is s
 branch. A slice whose work straddles two contexts is two slices, or a boundary question for the chart, and
 never one slice in two fairways.
 
+**Leave `held_by` as `—` and never type a name in it.** The column is *rendered* from
+`refs/slipwai/claims/<fairway>` by `make decisions`, and `make check-rendered` refuses a split whose cells
+are not what the refs say — so a name written here is one that disappears at the next fold and is a gate
+failure until it does. A person takes a fairway the way a captain does, with `python3
+scripts/agents/claims.py --take <fairway>`: a push a second taker cannot win, which is why it is the one
+answer to *who holds this* rather than the third. A harbour with no `origin` to push to renders `—` on
+every row and says so, because a claim no other machine can see is not routing.
+
 ## Slice graph
 | Slice | depends_on | parallel_ok_with | Notes |
 |---|---|---|---|

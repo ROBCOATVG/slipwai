@@ -6,6 +6,10 @@ half: the rebase, the gate, the advance, and each of the four ways it can refuse
 """
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
 import unittest
 
 import checkout_packages  # noqa: F401
@@ -132,6 +136,55 @@ class MergeTest(MergeFixture):
         self.assertEqual(self.answer().kind, "granted")
         self.assertTrue((self.root / "ordering.txt").is_file(),
                         "the working tree moved with the ref, rather than being left behind it")
+
+
+class SerialisedTest(MergeFixture):
+    """One merge at a time across every machine, and the one that loses queues.
+
+    The harbour log became one file per machine so the single writer could be removed rather than elected,
+    and the plan named the cost when it guessed that: the merge is the one thing that genuinely needs a
+    decider. Two harbourmasters rebasing onto one trunk at once is two gates each measured against a trunk
+    the other is about to move. So it is serialised by `refs/slipwai/merge`, taken and released exactly the
+    way a claim on a fairway is — no election, no failover, nothing of ours running.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        # Seconds rather than the hour a real harbour allows: this case is about the refusal when the wait
+        # runs out, and the wait running out is the thing being tested rather than something to sit through.
+        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", "wait_bound": 0.02}),
+                                                encoding="utf-8")
+
+    def hold_the_merge(self, machine: str) -> None:
+        done = subprocess.run([sys.executable, str(self.root / "scripts/agents/claims.py"),
+                               "--take", "refs/slipwai/merge"], cwd=self.root, capture_output=True,
+                              text=True, env={**os.environ, "SLIPWAI_MACHINE": machine})
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_machine_that_loses_the_race_waits_and_then_says_who_has_it(self) -> None:
+        self.hold_the_merge("harbour_two")
+        self.slice_branch("ORD-01", "service.txt", "one\ntwo\n")
+        self.ask("ORD-01")
+        self.run_once()
+        answer = self.answer()
+        self.assertEqual(answer.kind, "refused", answer.fields)
+        self.assertIn("harbour_two", str(answer.fields["why"]))
+        self.assertEqual(self.head("main"), self.trunk_was, "trunk moved while another machine held it")
+
+    def test_the_merge_ref_is_given_back_so_the_next_machine_gets_it(self) -> None:
+        """Held for the rebase and the gate and no longer, or the first merge of a run would be the last."""
+        self.slice_branch("ORD-01", "service.txt", "one\ntwo\n")
+        self.ask("ORD-01")
+        self.run_once()
+        self.assertEqual(self.answer().kind, "granted")
+        self.hold_the_merge("harbour_two")
+
+    def test_nobody_else_holding_it_merges_as_before(self) -> None:
+        self.slice_branch("ORD-01", "service.txt", "one\ntwo\n")
+        self.ask("ORD-01")
+        self.run_once()
+        self.assertEqual(self.answer().kind, "granted")
+        self.assertNotEqual(self.head("main"), self.trunk_was)
 
 
 if __name__ == "__main__":

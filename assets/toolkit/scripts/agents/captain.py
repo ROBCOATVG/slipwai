@@ -53,6 +53,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+import claims  # noqa: E402
 import clearance  # noqa: E402
 import harness  # noqa: E402
 import inbox  # noqa: E402
@@ -87,7 +88,11 @@ DEFAULT_ATTEMPTS = 2
 ACCEPTED = "accepted"
 #: How often the harbour log is re-read while waiting for an answer to a request.
 ANSWER_POLL = 2.0
-#: Minutes a wait may last where `harbour.json` does not say. `half-ahead`'s number.
+#: What a turn can say that ends the run rather than inviting another: a park is a person's to clear, there
+#: is nothing to start, or another machine holds this fairway and nothing here changes that by waiting.
+STOPS = (" is parked — ", "nothing to start", " is held by ")
+#: Minutes a harbour may be *silent* for before a wait on it is a park, where `harbour.json` does not say.
+#: `half-ahead`'s number. Silence and not elapsed time: see `await_answer`.
 DEFAULT_WAIT_MINUTES = 60
 
 
@@ -116,23 +121,20 @@ def attempts() -> int:
 
 
 def wait_bound() -> float:
-    """Seconds any wait may last before it is a parked line with a reason."""
+    """Seconds a wait may go with the harbour log silent before it is a parked line with a reason."""
     held = harbour().get("wait_bound")
     return (held if isinstance(held, int | float) and held > 0 else DEFAULT_WAIT_MINUTES) * 60.0
 
 
 def harbour_entries() -> list[logs.Entry]:
-    """The harbour log, or nothing where it cannot be read.
+    """Every machine's harbour log as one history, or nothing where it cannot be read.
 
-    Read rather than refused, unlike this fairway's own deck log: the harbour log is somebody else's file
-    and a captain that stopped dead because of a line in it would be stopped by another fairway's fault.
+    Read rather than refused, unlike this fairway's own deck log: a harbour log is somebody else's file and
+    a captain that stopped dead because of a line in one would be stopped by another machine's fault.
     """
-    path = ROOT / logs.HARBOUR
-    if not path.is_file():
-        return []
     try:
-        return logs.fold(path.read_text(encoding="utf-8").splitlines(), harbour=True)
-    except logs.Unreadable:
+        return logs.harbour_fold(ROOT)
+    except (logs.Unreadable, OSError, UnicodeDecodeError):
         return []
 
 
@@ -167,16 +169,29 @@ def answered(request: str) -> logs.Entry | None:
 
 
 def await_answer(request: str, bound: float) -> logs.Entry | None:
-    """Wait for the answer to one request. None where the bound ran out before it came.
+    """Wait for the answer to one request. None where the harbour went silent for the bound.
 
     A captain holds no credential, so this is the one place its own progress depends on another process —
     and a wait with no bound is indistinguishable from a run that has stopped, which is why there is one.
+
+    **What the bound is on is silence, not elapsed time**, which is the same inversion as everything else
+    here: a process that wrote a line made progress. A harbourmaster's answer to a merge is on the far side
+    of a fetch, a rebase and the project's whole `make verify`, and every one of those is a different length
+    on a different machine — so a clock started at the request is a clock measuring the gate rather than the
+    harbourmaster's health, and the number that works on a laptop parks a merge that is being gated at that
+    moment on a loaded runner. Any new line in the harbour log is the harbour saying it is still there, and
+    it starts the bound again. What still parks is a harbour that has stopped writing altogether, which is
+    the failure the bound exists for and the only one it can honestly detect.
     """
+    seen = len(harbour_entries())
     until = time.monotonic() + bound
     while True:
         found = answered(request)
         if found is not None:
             return found
+        count = len(harbour_entries())
+        if count > seen:
+            seen, until = count, time.monotonic() + bound
         if time.monotonic() >= until:
             return None
         time.sleep(ANSWER_POLL)
@@ -478,8 +493,9 @@ def ask_to_merge(slice_id: str, feature: str, fairway: str,
         detail=f"merge slice/{slice_id} into trunk after the full gate"))
     found = await_answer(request, wait_bound())
     if found is None:
-        return False, (f"the harbourmaster did not answer {request} within the wait bound. Nothing merges "
-                       f"without it, and a wait with no end is indistinguishable from a run that stopped"), False
+        return False, (f"the harbourmaster did not answer {request}, and the harbour log has been silent for "
+                       f"the wait bound. Nothing merges without it, and a wait with no end is "
+                       f"indistinguishable from a run that stopped"), False
     if found.kind == "refused":
         why = str(found.fields.get("why", "no reason given"))
         return False, f"the merge was refused: {why}", bool(found.fields.get("resolve"))
@@ -499,8 +515,23 @@ def fetch() -> None:
 
 
 def turn(fairway: str) -> str:
-    """One turn: what happened, as the line the command prints."""
+    """One turn: what happened, as the line the command prints.
+
+    **The claim comes before anything is written.** A fairway's deck log has one writer by rule, and
+    nothing enforced it across machines: two captains for `ordering` were two processes appending to one
+    file through two worktrees, which is a conflict in the file the design promised would never have one.
+    So the claim ref is taken here, before the first line of the turn, and a captain that cannot take it
+    writes nothing at all — not even its reason, which would be the damage done while explaining it.
+    """
     fetch()
+    taken = claims.take(ROOT, fairway, logs.machine())
+    if not taken.ours:
+        return f"captain: {taken.why}"
+    if taken.why:
+        # Taken, with something to say about it — a harbour that is not a git repository, where nothing can
+        # hold a fairway and a second captain cannot be refused. Said and carried on from, because a project
+        # without git has no berths and no merges either, and this is not where that is refused.
+        print(f"captain: {taken.why}", flush=True)
     _, feature = clearance.chart()
     found = entries(feature, fairway)
     claimed, merged, parked = state(found)
@@ -529,12 +560,18 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--once", action="store_true", help="one slice, rather than the loop")
     parser.add_argument("--interval", type=float, default=30.0, help="seconds between turns")
     parsed = parser.parse_args(argv)
-    while True:
-        said = turn(parsed.fairway)
-        print(said, flush=True)
-        if parsed.once or " is parked — " in said or "nothing to start" in said:
-            return 0
-        time.sleep(parsed.interval)
+    try:
+        while True:
+            said = turn(parsed.fairway)
+            print(said, flush=True)
+            if parsed.once or any(mark in said for mark in STOPS):
+                return 0
+            time.sleep(parsed.interval)
+    finally:
+        # The claim is given back whichever way the loop ended, including the park. A captain that kept it
+        # would hold the fairway against every other machine until somebody went looking for a ref — and a
+        # captain killed outright still does, which is what 11.2's lease is for.
+        claims.release(ROOT, parsed.fairway, logs.machine())
 
 
 if __name__ == "__main__":

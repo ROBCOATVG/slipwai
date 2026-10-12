@@ -38,8 +38,9 @@ class Fixture(unittest.TestCase):
             for entry in entries:
                 handle.write(entry.line())
 
-    def harbour(self, *entries: logs.Entry) -> None:
-        path = self.root / logs.HARBOUR
+    def harbour(self, *entries: logs.Entry, machine: str = "") -> None:
+        """One machine's harbour log — the one a project already had, where none is named."""
+        path = self.root / (logs.harbour_path(machine) if machine else logs.HARBOUR)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in entries:
@@ -142,6 +143,43 @@ class UnreadableTest(Fixture):
         path.write_text("not json\n", encoding="utf-8")
         self.assertIn("ORD", self.board()["unreadable"])
         self.assertIn("cannot be read", "\n".join(lines(self.root)))
+
+
+class ThreeMachinesTest(Fixture):
+    """Three machines write three harbour logs and the board folds them into one.
+
+    The harbour log had exactly one writer — unambiguous on one machine, meaningless on three. An elected
+    writer needs an election; three writers on one file breaks the rule the whole log design rests on. One
+    file per machine folded on read costs nothing here and removes the single writer rather than electing
+    one, and the board is where that has to be invisible: a board showing one machine's harbour would be
+    confidently wrong about the other two, which is worse than no board.
+    """
+
+    def test_the_board_folds_three_harbour_logs_into_one_feed(self) -> None:
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(9)))
+        for minutes, machine, position in ((8, "one", "slow-ahead"), (6, "two", "half-ahead"),
+                                           (7, "three", "dead-slow")):
+            self.harbour(logs.entry("telegraph", harbour=True, position=position, t=when(minutes)),
+                         machine=machine)
+        feed = [(who, kind) for _, who, kind in self.board()["feed"]]
+        self.assertEqual(feed.count(("harbour", "telegraph")), 3)
+
+    def test_and_in_the_order_the_lines_were_written_rather_than_by_machine(self) -> None:
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(5)))
+        self.harbour(logs.entry("flag-hoisted", harbour=True, flag="late", where="x", t=when(2)),
+                     machine="zulu")
+        self.harbour(logs.entry("flag-struck", harbour=True, flag="early", t=when(8)), machine="alpha")
+        self.assertEqual([kind for _, _, kind in self.board()["feed"]],
+                         ["flag-struck", "claimed", "flag-hoisted"])
+
+    def test_the_last_word_on_the_fires_is_the_harbour_s_and_not_one_machine_s(self) -> None:
+        """What the board says the harbour is doing has to be the latest line any machine wrote, or two
+        people looking at two boards disagree about whether the fires are banked."""
+        self.harbour(logs.entry("fires-banked", harbour=True, step="boilers", why="early", t=when(9)),
+                     machine="alpha")
+        self.harbour(logs.entry("fires-banked", harbour=True, step="fanout", why="late", t=when(1)),
+                     machine="zulu")
+        self.assertEqual(self.board()["pressure"]["banked"], "late")
 
 
 class FoldTest(Fixture):

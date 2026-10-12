@@ -179,14 +179,17 @@ def logs_root() -> Path:
 
 
 def deck_files() -> list[Path]:
-    """Every log a stream writes, plus the harbour's. Sorted, so two runs print in the same order."""
-    directory = logs_root()
-    return sorted(directory.glob("*/*.jsonl")) + sorted(directory.glob("harbour.jsonl"))
+    """Every log a stream writes, plus every machine's harbour log. Sorted, so two runs print alike."""
+    return logs.deck_logs(ROOT) + logs.harbour_logs(ROOT)
+
+
+def harbour_log(path: Path) -> bool:
+    return path.parent.name == Path(logs.HARBOUR_DIR).name or path.name == Path(logs.HARBOUR).name
 
 
 def said(path: Path, entry: dict) -> str:
     """One line, in the words a person reads rather than the JSON a captain writes."""
-    stream = str(entry.get("fairway") or ("harbour" if path.name == "harbour.jsonl" else path.stem))
+    stream = str(entry.get("fairway") or (f"harbour/{path.stem}" if harbour_log(path) else path.stem))
     kind = str(entry.get("kind", "?"))
     rest = " ".join(f"{word}={value}" for word, value in entry.items()
                     if word not in ("v", "t", "kind", "fairway"))

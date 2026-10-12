@@ -170,7 +170,7 @@ class BankingTest(unittest.TestCase):
         (self.root / "project.json").write_text("{}", encoding="utf-8")
         place = self.root / "scripts/agents"
         place.mkdir(parents=True)
-        for name in ("harbourmaster.py", "logs.py", "berths.py", "telegraph.py"):
+        for name in ("harbourmaster.py", "logs.py", "berths.py", "telegraph.py", "claims.py"):
             (place / name).write_text((AGENTS / name).read_text(encoding="utf-8"), encoding="utf-8")
         (self.root / "harbour.json").write_text(harbour_config(), encoding="utf-8")
         self.script = place / "harbourmaster.py"
@@ -186,10 +186,7 @@ class BankingTest(unittest.TestCase):
             handle.write(logs.entry("heartbeat", fairway="ORD", tokens=thousands).line())
 
     def harbour(self) -> list[logs.Entry]:
-        path = self.root / logs.HARBOUR
-        if not path.is_file():
-            return []
-        return logs.fold(path.read_text(encoding="utf-8").splitlines(), harbour=True)
+        return logs.harbour_fold(self.root)
 
     def position(self) -> str:
         return json.loads((self.root / "harbour.json").read_text(encoding="utf-8"))["position"]

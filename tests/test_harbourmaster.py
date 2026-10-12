@@ -5,12 +5,61 @@ directory laid out the way a project is — rather than imported into the keel's
 """
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import unittest
 
 import checkout_packages  # noqa: F401
 from harbourmaster_fixture import Fixture, MergeFixture  # noqa: F401
 
 from slipwai import logs
+
+
+class PerMachineTest(Fixture):
+    """One harbourmaster per machine: it writes its own file and reads everybody's.
+
+    Not an elected writer, which needs an election, and not three writers on one file, which breaks the
+    rule the whole log design rests on. The same answer the deck logs already use, one step out.
+    """
+
+    def run_as(self, machine: str) -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, str(self.script), "--once", "--no-fetch"],
+                              capture_output=True, text=True, cwd=self.root,
+                              env={**os.environ, "SLIPWAI_MACHINE": machine})
+
+    def test_it_writes_its_own_machine_s_log_and_no_other_file(self) -> None:
+        self.deck("ordering", "ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"))
+        self.run_as("harbour_one")
+        self.assertEqual([path.name for path in logs.harbour_logs(self.root)], ["harbour_one.jsonl"])
+
+    def test_three_machines_write_three_logs_that_read_as_one(self) -> None:
+        for index, machine in enumerate(("harbour_one", "harbour_two", "harbour_three")):
+            self.deck(f"feature{index}", f"F{index}",
+                      logs.entry("mark-set", fairway=f"F{index}", slice=f"F{index}-01", mark=f"M{index}"))
+            self.run_as(machine)
+        self.assertEqual(len(logs.harbour_logs(self.root)), 3)
+        marks = sorted(str(e.fields["mark"]) for e in self.harbour() if e.kind == "mark-set")
+        self.assertEqual(marks, ["M0", "M1", "M2"])
+
+    def test_a_second_machine_does_not_re_carry_what_the_first_already_did(self) -> None:
+        """The cursors are this machine's bookmark into somebody else's file, which is what they always
+        were — the harbour log it writes into is the thing that changed, not what it reads."""
+        self.deck("ordering", "ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"))
+        self.run_as("harbour_one")
+        self.run_as("harbour_one")
+        self.assertEqual(len([e for e in self.harbour() if e.kind == "mark-set"]), 1)
+
+    def test_a_berth_index_is_counted_from_this_machine_s_own_allocations(self) -> None:
+        """Berths are local: the ports are this machine's and the database carries its name, so a machine
+        that skipped the indices another had taken would leave ports nobody is using behind berths nobody
+        has, for a collision that cannot happen."""
+        self.deck("ordering", "ORD", logs.entry("berth-request", fairway="ORD"))
+        self.run_as("harbour_one")
+        self.deck("billing", "BIL", logs.entry("berth-request", fairway="BIL"))
+        self.run_as("harbour_two")
+        allocated = [str(e.fields["berth"]) for e in self.harbour() if e.kind == "berth-allocated"]
+        self.assertEqual(sorted(allocated), ["bil", "ord"])
 
 
 class HarbourTest(Fixture):
@@ -73,7 +122,7 @@ class BerthTest(Fixture):
         self.run_once()
         names = [str(e.fields["berth"]) for e in self.harbour() if e.kind == "berth-allocated"]
         self.assertEqual(len(set(names)), 2)
-        self.assertEqual(collisions(allocate(names)), [])
+        self.assertEqual(collisions(allocate(names, logs.machine())), [])
 
     def test_a_restart_does_not_allocate_a_block_twice(self) -> None:
         """The cursor is a bookmark; what was allocated is read back out of the harbour log itself."""

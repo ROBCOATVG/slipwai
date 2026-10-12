@@ -24,7 +24,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .deck import recent
-from .logs import HARBOUR, LOGS, Entry, Unreadable, fold
+from .logs import Entry, Unreadable, deck_logs, fold, harbour_logs
 
 #: Minutes since the last line after which a berth that has not finished is drawn as stalled. The default
 #: where `harbour.json` says nothing: a wait with no bound is indistinguishable from a run that has stopped.
@@ -126,13 +126,9 @@ def read_log(path: Path, harbour: bool = False) -> tuple[list[Entry], str]:
 
 def fairways(root: Path) -> tuple[list[Fairway], dict[str, str]]:
     """Every fairway with a deck log, in name order, and a line for each log that could not be read."""
-    place = root / LOGS
-    harbour = (root / HARBOUR).resolve()
     found: list[Fairway] = []
     faults: dict[str, str] = {}
-    for path in sorted(place.rglob("*.jsonl")) if place.is_dir() else []:
-        if path.resolve() == harbour:
-            continue
+    for path in deck_logs(root):
         entries, fault = read_log(path)
         if fault:
             faults[path.stem] = fault
@@ -141,8 +137,17 @@ def fairways(root: Path) -> tuple[list[Fairway], dict[str, str]]:
 
 
 def harbour_log(root: Path) -> list[Entry]:
-    path = root / HARBOUR
-    return read_log(path, harbour=True)[0] if path.is_file() else []
+    """Every machine's harbour log, folded into one by the instant each line records.
+
+    A board that read one machine's would show one machine's harbour and say nothing about the others,
+    which is the failure mode the per-machine split exists to avoid rather than create. A log that cannot
+    be read is skipped with its fault reported the way a deck log's is — one machine's broken file must not
+    blank the board for all of them.
+    """
+    found: list[Entry] = []
+    for path in harbour_logs(root):
+        found.extend(read_log(path, harbour=True)[0])
+    return sorted(found, key=lambda entry: entry.t)
 
 
 def feed(found: list[Fairway], harbour: list[Entry], limit: int = FEED) -> list[tuple[str, str, str]]:

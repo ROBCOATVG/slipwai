@@ -23,7 +23,9 @@ CARRIED = ("captain.py", "clearance.py", "inbox.py", "logs.py", "berths.py", "id
            # The captain dispatches a headless session of the installed harness, so it imports the
            # module that decides which one and the registry that module reads. Every case here sets
            # `SLIPWAI_SAIL`, so neither is consulted — but the import has to resolve.
-           "harness.py", "registry.json")
+           "harness.py", "registry.json",
+           # The claim a captain takes before it writes `claimed`.
+           "claims.py")
 #: The chart these tests run against, as data, so the fake `/sail` below sets the marks this says it does.
 #: They were two copies and the fake set `Placed` whatever it was driving, which passed only because the
 #: captain did not read the chart's `sets` — exactly the gap slice 7.8 closes.
@@ -82,6 +84,11 @@ class Fixture(unittest.TestCase):
         self.script = place / "captain.py"
         (self.root / "specs/ordering").mkdir(parents=True)
         (self.root / "specs/ordering/chart.yaml").write_text(CHART, encoding="utf-8")
+        # A git repository, because a generated project is one and because the claim a captain takes before
+        # it writes `claimed` is a ref. No remote: a harbour with no forge is the case that has to keep
+        # working with no network, and it is where the claim is the local ref rather than a mirror of one.
+        subprocess.run(["git", "init", "--quiet", "--initial-branch=main"], cwd=self.root, check=False,
+                       capture_output=True)
         self.budget(minutes=5)
 
     def budget(self, minutes: float, **held: object) -> None:
@@ -126,11 +133,31 @@ class Fixture(unittest.TestCase):
         path.write_text(body, encoding="utf-8")
         return f"{sys.executable} {path}"
 
-    def captain(self, fairway: str, sail: str, timeout: float = 90) -> subprocess.CompletedProcess:
+    def captain(self, fairway: str, sail: str, timeout: float = 90,
+                machine: str = "") -> subprocess.CompletedProcess:
         import os
+        named = {"SLIPWAI_MACHINE": machine} if machine else {}
         return subprocess.run([sys.executable, str(self.script), fairway, "--once"],
                               capture_output=True, text=True, cwd=self.root, timeout=timeout,
-                              env={**os.environ, "SLIPWAI_SAIL": sail})
+                              env={**os.environ, "SLIPWAI_SAIL": sail, **named})
+
+    def hold(self, fairway: str, machine: str) -> None:
+        """Another machine takes this fairway's claim, through the same command its captain would."""
+        import os
+        done = subprocess.run([sys.executable, str(self.root / "scripts/agents/claims.py"),
+                               "--take", fairway], capture_output=True, text=True, cwd=self.root,
+                              env={**os.environ, "SLIPWAI_MACHINE": machine})
+        assert done.returncode == 0, done.stdout + done.stderr
+
+    def claimed_by(self, fairway: str) -> str:
+        """The machine the claim ref says holds this fairway, or `""` where nobody does."""
+        shown = subprocess.run(["git", "show", "-s", "--format=%an%x1f%s",
+                                f"refs/slipwai/claims/{fairway}"], capture_output=True, text=True,
+                               cwd=self.root, check=False)
+        if shown.returncode != 0:
+            return ""
+        who, _, state = shown.stdout.strip().partition("\x1f")
+        return "" if state.strip() == "released" else who
 
     def deck(self, fairway: str, *entries: logs.Entry) -> None:
         path = self.root / logs.deck_path("ordering", fairway)

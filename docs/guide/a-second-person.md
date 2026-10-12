@@ -93,10 +93,19 @@ Where you do want to divide the lanes, name one:
 ```
 
 That confines the ready set to `booking`; the other fairways' ready slices are named as another fairway's
-and left. The split's own table has a `held_by` column for saying the same thing durably, and it is
-**routing rather than a lock**: whoever is named there gets that fairway's slices left alone and the board
-shows them as held, but the claim is still the branch, so two sessions on one fairway are two claims and
-the second finds the first.
+and left. To say it durably, take the fairway:
+
+```sh
+python3 scripts/agents/claims.py --take booking    # and --release when you are done with it
+```
+
+That is a push of `refs/slipwai/claims/booking` which a second taker cannot win, so the second machine to
+try is told who holds it and since when rather than both of you appending to one deck log. A captain does
+exactly this before it claims a slice, and the split's `held_by` column is **rendered** from those refs —
+you never type a name into it, and `make check-rendered` refuses a split where somebody has. It is still
+**routing rather than a lock**: the claim on the work itself is the `slice/<id>` branch, so two sessions on
+one fairway are two claims and the second finds the first. A harbour with no `origin` shows `—` in the
+column and says the claim is local to that machine, because a claim nobody else can see routes nobody.
 
 ## The board
 

@@ -13,6 +13,16 @@ and the failure reads as a broken service rather than as a collision.
 its index, its database is suffixed with its own name, and both fall out of the berth existing. Nobody
 chooses a number, so nobody chooses the same number twice.
 
+**And the arithmetic is per machine, because two of them share a database server and nothing else.** Ports
+needed nothing: a port is reachable from one machine, so two machines' blocks are not in the same space at
+all and shifting one of them by machine would waste the very arithmetic that makes a block safe. The
+database was the whole exposure, and only where people point at a shared instance — every generated default
+is local, being in-memory, a SQLite file, or a container from the project's own compose file. So the
+machine's identity goes *into the name*, `app_<machine>_<berth>`, which removes the collision instead of
+refusing the configuration. It arrives as an argument rather than being looked up here: this module is
+carried into a generated project byte for byte and may import nothing beside it, and `logs.machine()` is
+where the one identity lives.
+
 **A berth holds no credential.** Not for the forge, not for the cloud, not for the chandlery. Anything
 needing one goes through the harbourmaster, which holds them and checks each request against what a run
 never does. A berth that held a token would be a sandbox with a way out of it.
@@ -46,6 +56,7 @@ class Berth:
 
     name: str
     index: int
+    machine: str
     worktree: str
     database: str
     scratch: str
@@ -62,13 +73,16 @@ def port_block(index: int) -> range:
     return range(base, base + BLOCK)
 
 
-def database_of(name: str) -> str:
-    """One database per berth, named after it.
+def database_of(name: str, machine: str) -> str:
+    """One database per berth per machine, named after both.
 
     Suffixing rather than sharing with a schema per berth: a migration that drops a table drops it for
-    everybody in a shared database, and the failure arrives in a fairway that changed nothing.
+    everybody in a shared database, and the failure arrives in a fairway that changed nothing. The machine
+    is in the name for the same reason one step out — two people pointing two harbours at one instance is
+    the same collision with nothing local to make it visible — and `machine` is required rather than
+    defaulted, so a caller that has not decided whose berth this is cannot quietly make one that collides.
     """
-    return f"app_{name.replace('-', '_')}"
+    return f"app_{machine.replace('-', '_')}_{name.replace('-', '_')}"
 
 
 def named(name: str) -> str:
@@ -84,34 +98,41 @@ def named(name: str) -> str:
     return name
 
 
-def berth(name: str, index: int, sandbox: str = "none", root: str = ".") -> Berth:
-    """One berth's record from its name and index. Everything else is derived, which is the point."""
+def berth(name: str, index: int, machine: str, sandbox: str = "none", root: str = ".") -> Berth:
+    """One berth's record from its name, its index and the machine it is on. The rest is derived."""
     checked = named(name)
     return Berth(
         name=checked,
         index=index,
+        machine=machine,
         worktree=f"{root}/../{checked}",
-        database=database_of(checked),
+        database=database_of(checked, machine),
         scratch=f"{BERTHS}/{checked}/scratch",
         sandbox=sandbox,
     )
 
 
-def allocate(names: list[str], sandbox: str = "none", root: str = ".") -> list[Berth]:
-    """Every berth, in the order given, each with a block no other berth has."""
-    return [berth(name, index, sandbox, root) for index, name in enumerate(names)]
+def allocate(names: list[str], machine: str, sandbox: str = "none", root: str = ".") -> list[Berth]:
+    """Every berth, in the order given, each with a block no other berth on this machine has."""
+    return [berth(name, index, machine, sandbox, root) for index, name in enumerate(names)]
 
 
 def collisions(berths: list[Berth]) -> list[str]:
-    """Anything two berths share. Empty by construction, and checked because 'by construction' is a claim."""
+    """Anything two berths share. Empty by construction, and checked because 'by construction' is a claim.
+
+    Ports are compared within a machine and databases across every machine given, which is the split the
+    arithmetic rests on: a port is local and a database server is not. Hand it two machines' berths and it
+    is the check that the machine in the name does what it is there for.
+    """
     found: list[str] = []
-    seen_ports: dict[int, str] = {}
+    seen_ports: dict[tuple[str, int], str] = {}
     seen_databases: dict[str, str] = {}
     for one in berths:
         for port in one.ports:
-            if port in seen_ports:
-                found.append(f"{one.name} and {seen_ports[port]} both take port {port}")
-            seen_ports[port] = one.name
+            if (one.machine, port) in seen_ports:
+                found.append(f"{one.name} and {seen_ports[(one.machine, port)]} both take port {port} "
+                             f"on {one.machine}")
+            seen_ports[(one.machine, port)] = one.name
         if one.database in seen_databases:
             found.append(f"{one.name} and {seen_databases[one.database]} both use {one.database}")
         seen_databases[one.database] = one.name

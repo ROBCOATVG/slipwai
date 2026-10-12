@@ -67,6 +67,58 @@ class ChoosingTest(Fixture):
         self.assertIn("no slices", done.stdout)
 
 
+class ClaimTest(Fixture):
+    """One machine holds a fairway at a time, and the ref is what says so.
+
+    Nothing stopped two machines running a captain for one fairway, and the whole log design rests on one
+    writer per file: two captains for `ordering` is two processes appending to one `.jsonl` through two
+    worktrees. A `claimed` line could never fix it, being the thing protected.
+    """
+
+    def test_it_holds_the_claim_ref_while_the_slice_is_being_worked(self) -> None:
+        """Asked from inside `/sail`, because that is the only moment the question matters: while this
+        machine is writing to the deck log, the ref has to say the fairway is this machine's."""
+        watcher = ("import subprocess, pathlib\n"
+                   "shown = subprocess.run(['git', 'show', '-s', '--format=%an',"
+                   " 'refs/slipwai/claims/ORD'], capture_output=True, text=True)\n"
+                   "pathlib.Path('held.txt').write_text(shown.stdout.strip(), encoding='utf-8')\n")
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(watcher + WORKS), machine="harbour_one")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual((self.root / "held.txt").read_text(encoding="utf-8"), "harbour_one", done.stdout)
+
+    def test_a_fairway_another_machine_holds_is_refused_by_name(self) -> None:
+        """The refusal is the whole point: the silent corruption becomes a message naming who and when."""
+        self.hold("ORD", "harbour_one")
+        done = self.captain("ORD", self.sail(WORKS), machine="harbour_two")
+        self.assertIn("harbour_one", done.stdout)
+        self.assertIn("ORD is held by", done.stdout)
+
+    def test_and_writes_nothing_at_all_to_the_other_machine_s_log(self) -> None:
+        """Not even a `parked`: the deck log is the file the claim exists to keep one writer on, so a
+        captain that was refused the claim and then wrote its reason into it would have done the damage
+        while explaining that it must not."""
+        self.hold("ORD", "harbour_one")
+        self.grant("ORD-01")
+        self.captain("ORD", self.sail(WORKS), machine="harbour_two")
+        self.assertEqual(self.read("ORD"), [])
+
+    def test_the_claim_is_given_back_when_the_captain_stops(self) -> None:
+        """A captain that kept the claim after it stopped would park the fairway for every other machine
+        until somebody went looking for a ref."""
+        self.grant("ORD-01")
+        self.captain("ORD", self.sail(WORKS), machine="harbour_one")
+        self.assertEqual(self.claimed_by("ORD"), "")
+
+    def test_the_machine_that_holds_it_runs_again(self) -> None:
+        """Re-taking your own claim is the common case: a captain takes it every turn."""
+        self.hold("ORD", "harbour_one")
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(WORKS), machine="harbour_one")
+        self.assertIn("ORD-01", done.stdout)
+        self.assertEqual([e.fields["slice"] for e in self.read("ORD") if e.kind == "claimed"], ["ORD-01"])
+
+
 class WatchingTest(Fixture):
     def test_a_drive_that_writes_nothing_is_ended_and_parked_with_the_reason(self) -> None:
         """Not because the agent said it was stuck — a stuck agent cannot say so — but because the log stopped."""
@@ -144,6 +196,45 @@ class MergeTest(Fixture):
         parked = [str(e.fields["why"]) for e in self.read("ORD") if e.kind == "parked"]
         self.assertIn("did not answer", parked[0], done.stdout)
         self.assertEqual([e for e in self.read("ORD") if e.kind == "merged"], [])
+
+    def test_a_harbourmaster_that_is_writing_is_waited_for_past_the_bound(self) -> None:
+        """The bound is on the harbourmaster's silence, not on the clock since the request.
+
+        This is the inversion the rest of this file is built on, applied to the one wait a captain has: a
+        harbour that is writing lines is a harbour that is working, and a bound measured from the request
+        parks a slice whose merge is being gated at that moment. It cost
+        `test_loop.test_the_whole_loop_reaches_trunk_with_no_person_in_the_path` one Windows run in two — the
+        captain reached `request`, the harbourmaster's pass took longer than a bound chosen for the cases
+        that have no harbourmaster at all, and a slice that merged was reported parked.
+
+        Here the harbour writes a line a second for four seconds against a bound of three, then answers. A
+        clock from the request gives up at the fourth second; silence is what has to run out.
+        """
+        import threading
+        import time
+        answered = threading.Event()
+
+        def harbourmaster() -> None:
+            for _ in range(2000):
+                if any(e.kind == "request" for e in self.read("ORD")):
+                    break
+                time.sleep(0.02)
+            else:
+                return
+            for mark in ("Shipped", "Invoiced", "Refunded", "Settled"):
+                time.sleep(1.0)
+                self.harbour(logs.entry("mark-set", harbour=True, fairway="BIL", slice="BIL-09", mark=mark))
+            self.grant("ORD-01", commit="latecom")
+            answered.set()
+
+        keeper = threading.Thread(target=harbourmaster, daemon=True)
+        keeper.start()
+        done = self.captain("ORD", self.sail(WORKS))
+        keeper.join(30)
+        self.assertTrue(answered.is_set(), "the answer was never written, so this proved nothing")
+        landed = [e for e in self.read("ORD") if e.kind == "merged"]
+        self.assertEqual(len(landed), 1, done.stdout + done.stderr)
+        self.assertEqual(landed[0].fields["commit"], "latecom")
 
     def test_a_refusal_nothing_in_a_berth_can_fix_parks_at_once(self) -> None:
         self.refuse("ORD-01", "there is no branch slice/ORD-01 to merge")

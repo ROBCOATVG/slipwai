@@ -22,6 +22,7 @@ from pathlib import Path
 import checkout_packages
 
 from slipwai import native
+from slipwai.assets import ADOPTION_ROOT
 from slipwai.project import prose
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -66,7 +67,12 @@ class GeneratedProjectTest(unittest.TestCase):
         from test_generated_prose import TEMPLATED
 
         carried: dict[str, list[str]] = {}
-        for _directory, lands, _provider in TEMPLATED:
+        for directory, lands, _provider in TEMPLATED:
+            if directory.is_relative_to(ADOPTION_ROOT):
+                # A tree only a repository the method was installed around receives, and some of it lands
+                # at a path a generated project has not got at all. `test_adopt_page.py` adopts a real
+                # repository and reads these there, which is where they can actually be read.
+                continue
             for landing in lands:
                 where = self.project / landing
                 self.assertTrue(where.exists(), f"{landing} is not in a generated project")

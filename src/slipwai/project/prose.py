@@ -134,6 +134,18 @@ def page(root: Path, name: str, named: dict[str, str], wanted: tuple[str, ...] |
     return render(name, path.read_text(encoding="utf-8"), named, wanted)
 
 
+def part(root: Path, name: str, section: str, named: dict[str, str] | None = None) -> str:
+    """One section of a page of parts, without the newline its end marker forces.
+
+    A page of parts is sections and nothing between them: it lands nowhere itself, and each section is a
+    passage more than one page — or a page this tree has not got — is assembled from. The strip is the
+    whole difference from `page`: a part is spliced into a sentence or a paragraph by whatever names it,
+    so the line break before `<!-- end section -->` belongs to the marker and not to the words. A part
+    that does end in a blank line says so in the asset, by leaving one.
+    """
+    return page(root, name, named or {}, (section,)).removesuffix("\n")
+
+
 def unresolved(text: str) -> list[str]:
     """Every placeholder still in `text`. A generated file carrying one is a file that shipped the marker."""
     return sorted({match.group(0) for match in MARKER.finditer(text)})

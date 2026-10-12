@@ -31,7 +31,7 @@ class SeatTest(unittest.TestCase):
 
     def test_the_harness_output_is_repeated_unchanged_rather_than_summarised(self) -> None:
         """A summary of what the harness printed is the one thing the reader cannot check."""
-        self.assertIn("unchanged", cruise_seat.VERBATIM)
+        self.assertIn("unchanged", cruise_seat.part("verbatim"))
 
     def test_each_seat_command_is_written_and_is_not_the_others(self) -> None:
         written = {write(): name for name, write in (

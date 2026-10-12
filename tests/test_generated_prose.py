@@ -32,13 +32,22 @@ from collections.abc import Callable
 
 import checkout_packages  # noqa: F401
 
-from slipwai.assets import ADOPTION_ROOT, GUIDANCE_ROOT, MODEL_PAGE_ROOT, PAGE_ROOT, TOOLKIT_ROOT
+from slipwai.assets import (
+    ADOPTION_ROOT,
+    CRUISE_ROOT,
+    GUIDANCE_ROOT,
+    MODEL_PAGE_ROOT,
+    PAGE_ROOT,
+    TOOLKIT_ROOT,
+)
 from slipwai.errors import GenerationError
 from slipwai.layout import AT_ROOT
 from slipwai.project import (
     add_commands,
+    adopted,
     briefs,
     commands,
+    cruise,
     docs,
     event_model,
     flags,
@@ -49,8 +58,18 @@ from slipwai.project import (
     readme,
     rules,
     run_skill,
+    sail_adoption,
     sail_section,
 )
+
+#: What a templated asset is spelled as. Markdown for a page or a page of parts; YAML for the one tree
+#: whose asset is appended to a file Spec Kit reads, which is the adoption's hooks.
+SPELLINGS = ("*.md", "*.yml")
+
+
+def assets(directory: object) -> list:
+    """Every templated asset in one tree, in a stable order."""
+    return sorted(path for spelling in SPELLINGS for path in directory.glob(spelling))  # type: ignore[attr-defined]
 
 
 def pooled(*providers: Callable[[], dict[str, str]]) -> dict[str, str]:
@@ -102,6 +121,18 @@ TEMPLATED = (
     # `{{make}}` still in it, which is the third refusal catching the first slice to need the distinction.
     (ADOPTION_ROOT / "commands", ("commands",),
      lambda: pooled(pin_commands.values, ground_command.values)),
+    # The cruise's six pages and `parts.md`, which is what more than one of them — and `where-are-we.md`
+    # and `whats-next.md`, which are not this tree's at all — is assembled from. One provider rather than
+    # a pool, because `cruise.values` is already the pool: the seat's values and the cruise's own, which
+    # is how `commands/cruise.md` comes to carry the watch seat and a seat command the sentence about a
+    # folded output.
+    (CRUISE_ROOT, ("commands",), cruise.values),
+    # What only a repository that adopted the method receives, in three trees because three different
+    # things are written: the page under `docs/`, the block appended to a file the repository owns, and
+    # the stages the `/sail` ladder gains with the hooks that say the same to a `/speckit-*` session.
+    (ADOPTION_ROOT / "docs", ("docs/adoption.md",), adopted.values),
+    (ADOPTION_ROOT / "blocks", ("AGENTS.md",), adopted.block_values),
+    (ADOPTION_ROOT / "sail", ("commands/sail.md", ".specify/extensions.yml"), sail_adoption.values),
 
 )
 
@@ -152,14 +183,14 @@ class TokenTest(unittest.TestCase):
     def test_every_token_an_asset_names_is_one_some_value_provides(self) -> None:
         for directory, _lands, provider in TEMPLATED:
             named = provider()
-            for path in sorted(directory.glob("*.md")):
+            for path in assets(directory):
                 with self.subTest(asset=path.name):
                     for token in prose.MARKER.findall(path.read_text(encoding="utf-8")):
                         self.assertIn(token, named, f"{path.name} names {{{{{token}}}}}, which nothing provides")
 
     def test_every_value_provided_is_named_by_some_asset(self) -> None:
         for directory, _lands, provider in TEMPLATED:
-            text = "".join(path.read_text(encoding="utf-8") for path in sorted(directory.glob("*.md")))
+            text = "".join(path.read_text(encoding="utf-8") for path in assets(directory))
             used = set(prose.MARKER.findall(text))
             for token in provider():
                 with self.subTest(value=token):

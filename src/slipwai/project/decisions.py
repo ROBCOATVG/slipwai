@@ -11,9 +11,8 @@ says so in each entry. The entries themselves (`decisions.md`, `demo-log.md`) ta
 """
 from __future__ import annotations
 
-from .cruise import CONFIG
 from .cruise_agents import DECISIONS, DEMO_LOG, HAND, OWNER_BRIEF, SKIPPER
-from .cruise_record import DECISION_ENTRY, DEMO_ENTRY
+from .cruise_record import CONFIG, DECISION_ENTRY, DEMO_ENTRY
 
 PAGE = OWNER_BRIEF
 

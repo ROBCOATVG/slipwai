@@ -65,6 +65,14 @@ PAGE_ROOT = ROOT / "assets/pages"
 # once per service, which is what `assets/guidance/rules.md` is to `AGENTS.md`. Not to be confused with the
 # toolkit's `docs/event-model/`, which is the model itself and the format's own documentation.
 MODEL_PAGE_ROOT = ROOT / "assets/event-model"
+
+# The cruise's own pages — `commands/cruise.md` and the five beside it — and the parts more than one of
+# them is assembled from: the watch seat, which `cruise.md` and `cruise-watch.md` both carry, and the
+# section `/where-are-we` and `/whats-next` end with. A root of its own rather than a corner of the
+# toolkit for the reason `GUIDANCE_ROOT` is: the toolkit is copied into a project file by file at the path
+# each one sits at, so a file of parts kept there would ship into somebody's repository as a page of
+# markers nobody asked for.
+CRUISE_ROOT = ROOT / "assets/cruise"
 PROFILE_ROOT = ROOT / "assets/profiles"
 FRONTEND_ROOT = ROOT / "assets/frontends"
 BACKING_SERVICE_ROOT = ROOT / "assets/backing-services"

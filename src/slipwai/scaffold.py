@@ -157,7 +157,7 @@ def project_files(
         generated[".github/workflows/deploy.yml"] = deploy_workflow(apps, target, auth0, shape or "liner")
         if shape != "skiff":
             generated[".github/workflows/production.yml"] = promotion_workflow(bool(web_apps(apps)), target, auth0)
-        generated[".github/workflows/rollback.yml"] = rollback_workflow(target, auth0)
+        generated[".github/workflows/rollback.yml"] = rollback_workflow(target, auth0, shape or "liner")
     generated.update(pin_files(apps))
     generated.update(repository_files(project_name, profile, apps, target))
     generated.update(agent_files(layout))

@@ -254,11 +254,19 @@ env:
 """
 
 
-def rollback_workflow(target: str, auth0: bool) -> str:
+def rollback_workflow(target: str, auth0: bool, shape: str = "liner") -> str:
     # Nothing is built and no toolchain is installed: a rollback promotes images that already ran here, and
     # the site comes back from the copy of index.html `make deploy` kept. The same concurrency group as the
     # deploy, so it waits for an apply in flight rather than crossing it.
+    #
+    # The environments offered are the shape's, from the same row the deploy workflow and the Makefile are
+    # written from. Hard-coded, this was the one workflow a skiff owner could start against an environment
+    # the project has never had — a run that gets as far as `make rollback ENV=staging` and fails inside a
+    # workspace that does not exist. A target with no deployment rows keeps the two it always had.
     cloud = pipeline(target)
+    choice = row(target, shape) or {}
+    environments = choice.get("environments") or ("staging", "production")
+    options = "".join(f"          - {name}\n" for name in environments)
     return f"""name: rollback
 # Started by hand, from the Actions tab, when a release is wrong: re-apply the release before the current one
 # in the environment named — the previous digests, and the previous index.html where there is a site — then
@@ -273,9 +281,7 @@ on:
         type: choice
         required: true
         options:
-          - staging
-          - production
-permissions:
+{options}permissions:
   id-token: write
   contents: read
 concurrency:

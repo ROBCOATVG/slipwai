@@ -91,6 +91,27 @@ class GeneratedShapeTest(unittest.TestCase):
                 liner = project_files("a-staff-tool", "event-modelling", target, self.apps(), shape="liner")
                 self.assertNotIn(login, liner[".github/workflows/deploy.yml"].split("\n  staging:", 1)[1])
 
+    def test_a_rollback_offers_only_the_environments_the_shape_has(self) -> None:
+        """`rollback.yml` was the one workflow generated without the shape.
+
+        It hard-coded `options: [staging, production]`, so a skiff owner starting it by hand could pick an
+        environment the project has never had: the run then gets as far as `make rollback ENV=staging` and
+        fails inside a workspace that does not exist. The choice comes from the shape row's environments,
+        which is the same list the deploy workflow and the Makefile are written from.
+        """
+        from slipwai.deployment_shapes import row
+        from slipwai.scaffold import project_files
+        for target in ("aws", "azure"):
+            with self.subTest(target=target):
+                skiff = project_files("a-staff-tool", "event-modelling", target, self.apps())
+                rollback = skiff[".github/workflows/rollback.yml"]
+                self.assertIn("        options:\n          - production\npermissions:", rollback)
+                self.assertNotIn("- staging", rollback)
+                self.assertEqual((row(target, "skiff") or {})["environments"], ("production",))
+                liner = project_files("a-staff-tool", "event-modelling", target, self.apps(), shape="liner")
+                self.assertIn("        options:\n          - staging\n          - production\n",
+                              liner[".github/workflows/rollback.yml"])
+
     def test_each_direction_warns_about_the_shape_it_is_being_asked_to_leave(self) -> None:
         """A package's `transition` is written as "how to leave this shape", so the direction decides whose.
 

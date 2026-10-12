@@ -12,6 +12,7 @@ It stands up a server and shells out to git, so it is in the Makefile's `SLOW` l
 """
 from __future__ import annotations
 
+import io
 import json
 import os
 import subprocess
@@ -25,10 +26,13 @@ from unittest.mock import patch
 
 import checkout_packages  # noqa: F401
 
+from slipwai.adopt import Answers, adopt, proposed
 from slipwai.adopt_page import NOT_A_REPOSITORY, found, looked, page, run, would_write
 from slipwai.assets import relaunch
 from slipwai.bridge import serve
 from slipwai.errors import GenerationError
+from slipwai.resurvey import refresh
+from slipwai.survey import survey
 
 IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
@@ -54,6 +58,56 @@ class Fixture(unittest.TestCase):
     def dirty(self) -> str:
         return subprocess.run(["git", "status", "--porcelain"], cwd=self.repo, text=True,
                               capture_output=True, check=True).stdout.strip()
+
+
+class LocaleEncodingTest(Fixture):
+    """Force only Path's unspecified text encoding to the Windows CP1252 default.
+
+    Actual adoption, retained source, generated pages and refresh run without replacement. Explicit
+    UTF-8 calls retain their real codec, so an omitted encoding reproduces either encoding failure or
+    a corrupt read even on a UTF-8 host.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.actor = "class 顧客:\n    pass\n"
+        self.guidance = "# 顧客 → 注文\n"
+        (self.repo / "actors.py").write_text(self.actor, encoding="utf-8")
+        (self.repo / "AGENTS.md").write_text(self.guidance, encoding="utf-8")
+        env = {**os.environ, **IDENTITY}
+        subprocess.run(["git", "add", "actors.py", "AGENTS.md"], cwd=self.repo, check=True, env=env)
+        subprocess.run(["git", "commit", "-qm", "the actor and its guidance"],
+                       cwd=self.repo, check=True, env=env)
+
+    def legacy_default(self):
+        original = io.text_encoding
+        return patch("io.text_encoding", side_effect=lambda encoding, *args:
+                     "cp1252" if encoding is None else original(encoding, *args))
+
+    def adopt_for_real(self) -> None:
+        found = survey(self.repo)
+        adopt(self.repo, Answers("shop", applications=proposed(found, "shop")), found)
+
+    def check_utf8(self) -> None:
+        self.assertEqual((self.repo / "actors.py").read_text(encoding="utf-8"), self.actor)
+        self.assertTrue((self.repo / "AGENTS.md").read_text(encoding="utf-8").startswith(self.guidance))
+        page = (self.repo / "delivery/survey/structure.md").read_text(encoding="utf-8")
+        self.assertIn("→", page)
+        self.assertEqual(self.dirty(), "")
+
+    def test_real_adoption_preserves_utf8_under_a_cp1252_default(self) -> None:
+        with self.legacy_default():
+            self.assertEqual(io.text_encoding(None), "cp1252")
+            self.adopt_for_real()
+        self.check_utf8()
+
+    def test_real_refresh_reads_existing_utf8_and_leaves_it_stable(self) -> None:
+        self.adopt_for_real()
+        self.check_utf8()
+        with self.legacy_default():
+            refreshed = refresh(self.repo)
+        self.assertEqual(refreshed.rewritten, [])
+        self.check_utf8()
 
 
 class FoundTest(Fixture):

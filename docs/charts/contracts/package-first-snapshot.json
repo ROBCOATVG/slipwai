@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"string","const":"1.0.0.dev0","description":"VERSION written for a newly scaffolded language, extension or target package."}

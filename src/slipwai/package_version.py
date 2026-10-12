@@ -22,6 +22,7 @@ from pathlib import Path
 from .changelog import GUIDE, LEVELS, entry, fragments, implied, level
 from .errors import GenerationError
 from .language_release import read_package
+from .versions import base, is_snapshot
 
 CHANGELOG = "CHANGELOG.md"
 #: Written above the first entry when a package has no changelog at all. Short on purpose: a package's
@@ -64,7 +65,10 @@ def cut(root: Path, release: str | None = None) -> tuple[str, str, int]:
     text = path.read_text(encoding="utf-8") if path.is_file() else HEADER
     found = fragments(root)
     last = next(iter(released(text)), None)
-    wanted = release or (implied(last, found) if last and found else None) or source.version
+    opening = source.version
+    if is_snapshot(opening):
+        opening = base(opening) or opening
+    wanted = release or (implied(last, found) if last and found else None) or opening
     for fault in faults(root, found, wanted if found else None):
         raise GenerationError(fault)
     if wanted in released(text):

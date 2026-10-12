@@ -208,10 +208,10 @@ class ScaffoldShipsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.area = Path(tempfile.mkdtemp())
 
-    def test_an_extension_arrives_with_a_version_so_it_can_be_released_at_once(self) -> None:
+    def test_an_extension_arrives_with_a_snapshot_so_it_can_be_built_at_once(self) -> None:
         package_new.write("extension", "lens", self.area, CORE)
         _, _, entry = package_release.release(self.area / "lens", self.area / "dist")
-        self.assertEqual(entry["version"], "0.1.0")
+        self.assertEqual(entry["version"], "1.0.0.dev0")
 
     def test_both_kinds_arrive_with_a_make_and_a_ci_that_calls_the_keel_s_workflow(self) -> None:
         for kind, key in (("extension", "lens"), ("language", "rust")):

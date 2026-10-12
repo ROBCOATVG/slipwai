@@ -158,6 +158,28 @@ class FlightTest(unittest.TestCase):
                                                       return_value=history(subject)):
                 self.assertIsNone(shipped(self.root, "ORD-01"))
 
+    def test_a_commit_message_that_is_not_utf_8_does_not_stop_the_crossing(self) -> None:
+        with patch("slipwai.migration_flight.git",
+                   return_value=b"c0ffee\x00Merge branch 'slice/ORD-01'\n\xff\n\x00"):
+            self.assertEqual(shipped(self.root, "ORD-01"), "c0ffee")
+
+    def test_a_flag_file_whose_history_is_not_utf_8_does_not_stop_the_crossing(self) -> None:
+        flags = self.root / "infra/service/flags.auto.tfvars"
+        flags.parent.mkdir(parents=True)
+        flags.write_text('checkout = "on"\n', encoding="utf-8")
+
+        def fake(root: Path, *arguments: str, data: bytes | None = None) -> bytes:
+            if arguments[0] == "ls-files":
+                return b"infra/service/flags.auto.tfvars"
+            if arguments[0] == "show":
+                return b'checkout = "\xff"\n'
+            return b"" if "--name-only" in arguments else b"c0ffee\n"
+
+        files = {"project.json": json_bytes(self.document)}
+        with patch("slipwai.migration_settings.git", side_effect=fake):
+            settings(self.root, self.document, files)
+        self.assertIn(b"hoisted:", files["infra/service/flags.auto.tfvars"])
+
     def test_the_queued_inbox_crosses_as_unanswered_told_lines_in_version_1_s_own_order(self) -> None:
         said = self.root / ".specify"
         said.mkdir()
@@ -231,6 +253,11 @@ class FlightTest(unittest.TestCase):
                                (reasons[5], "no last line")):
             self.assertIn(ending, reason)
             self.assertIn("without recording", reason)
+
+    def test_a_last_line_that_merely_mentions_a_park_is_not_read_as_one(self) -> None:
+        reason = self.park("the gate output said parked: nothing")[0]
+        self.assertIn("without recording", reason)
+        self.assertIn("the gate output said parked: nothing", reason)
 
     def test_an_open_claim_branch_crosses_as_the_slice_still_in_flight(self) -> None:
         for slice_id in ("ORD-01", "ORD-03"):

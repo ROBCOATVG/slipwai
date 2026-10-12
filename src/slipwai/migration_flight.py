@@ -113,8 +113,12 @@ def stopped(root: Path) -> str:
     last = lines[-1]
     where = f" at iteration {last['iteration']}" if last.get("iteration") is not None else ""
     ending = str(last.get("last_line") or "").strip()
-    if "parked:" in ending:
-        return ending.split("parked:", 1)[1].strip() or f"version 1 parked{where} and recorded no reason"
+    # Anchored, and tested before nothing else: a model wrote these last lines, and one that reads `the
+    # gate output said parked: nothing` is a run that stopped without saying why, not a park with the
+    # reason `nothing`.
+    park = re.match(r"cruise:\s*parked:", ending)
+    if park:
+        return ending[park.end():].strip() or f"version 1 parked{where} and recorded no reason"
     if ending == "cruise: done":
         return ""
     if ending == "cruise: stopped: human":

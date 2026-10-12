@@ -121,6 +121,21 @@ class TakingTest(Fixture):
 
 
 class ReleasingTest(Fixture):
+    def test_the_shared_merge_claim_moves_between_clones_without_losing_its_owner(self) -> None:
+        self.assertTrue(claims.take(self.one, claims.MERGE, ONE).ours)
+        refused = claims.take(self.two, claims.MERGE, TWO)
+        self.assertFalse(refused.ours)
+        self.assertIsNotNone(refused.holder)
+        assert refused.holder is not None
+        self.assertEqual(refused.holder.machine, ONE)
+        self.assertFalse(claims.release(self.two, claims.MERGE, TWO))
+        self.assertTrue(claims.release(self.one, claims.MERGE, ONE))
+        taken = claims.take(self.two, claims.MERGE, TWO)
+        self.assertTrue(taken.ours, taken.why)
+        held = claims.holder(self.one, claims.MERGE)
+        assert held is not None
+        self.assertEqual(held.machine, TWO)
+
     def test_a_released_fairway_is_taken_by_the_other_machine(self) -> None:
         claims.take(self.one, "ordering", ONE)
         self.assertTrue(claims.release(self.one, "ordering", ONE))

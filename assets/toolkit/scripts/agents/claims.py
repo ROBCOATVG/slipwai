@@ -140,7 +140,9 @@ def fetch(root: Path) -> None:
     """Bring every claim ref up to date. Forced, because what the forge says is the answer and the local
     copy is a cache of it — a non-fast-forward here is another machine having taken a fairway, which is the
     normal case and not a conflict."""
-    git(root, "fetch", "--quiet", "--force", "origin", f"{REFS}/*:{REFS}/*")
+    # The shared merge lock is a raw ref outside the fairway namespace. A wildcard allows it
+    # to be absent before the first merge; an exact missing ref would abort the entire fetch.
+    git(root, "fetch", "--quiet", "--force", "origin", f"{REFS}/*:{REFS}/*", f"{MERGE}*:{MERGE}*")
 
 
 def read(root: Path, fairway: str) -> Claim | None:

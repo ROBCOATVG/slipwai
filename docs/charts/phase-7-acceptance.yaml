@@ -1,0 +1,23 @@
+v: 1
+feature: phase-7-acceptance
+fairways:
+  phase-7-acceptance:
+    owns: [assets/toolkit/scripts/agents/claims.py, tests/test_claims.py, tests/test_two_machines.py, docs/charts/phase-7-acceptance.yaml, docs/slipwai-2-plan.md]
+marks:
+  GreenfieldCaptainCloneProof:
+    kind: port
+    inputs: {forge: bare-git-repository, clones: two, fairways: [ORD, BIL], scheduling: sequential-fairway-order}
+    outputs: {merged_slices: [ORD-01, ORD-02, BIL-01, BIL-02], board: both-fairways-finished}
+  SharedMergeClaim:
+    kind: port
+    inputs: {forge: bare-git-repository, ref: refs/slipwai/merge}
+    outputs: {second_clone: current-held-or-released-owner, acquisition: compare-and-swap}
+  DeckLogCaptain:
+    kind: port
+    inputs: {fairway: string, chart: typed-slices, trunk: main}
+    outputs: {claim: ref, request: merge, receipt: merged}
+slices:
+  '7.7d':
+    fairway: phase-7-acceptance
+    sets: [GreenfieldCaptainCloneProof, SharedMergeClaim]
+    steers_by: [DeckLogCaptain]

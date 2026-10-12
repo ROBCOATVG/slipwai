@@ -1,0 +1,219 @@
+"""One interview, two faces: the questions of 3.x asked on a page, and the project that comes out.
+
+The plan's rule for this slice is that the questions, their order and their refusals are read from the
+catalogue and never written twice, and the gate it names is the two trees being identical. So two tests here
+matter and the rest are about them:
+
+* **In step.** The terminal interview is driven with a recording `input`, and the questions the page would
+  ask are found in what it printed, in that order. A page asking the same things in a different order would
+  be a second interview wearing the first one's name.
+* **Byte-identical.** A project generated from the board, and the same answers given in the terminal, are
+  one tree file for file. That is the only check prose cannot satisfy.
+
+It generates projects, so it is in the Makefile's `SLOW` list.
+"""
+from __future__ import annotations
+
+import contextlib
+import filecmp
+import io
+import json
+import tempfile
+import threading
+import unittest
+import urllib.error
+import urllib.request
+from collections.abc import Callable
+from pathlib import Path
+from unittest import mock
+
+import checkout_packages
+
+from slipwai.bridge import serve
+from slipwai.catalog import CATALOG, axis_applies
+from slipwai.interview_page import asked, form, run, settled
+from slipwai.targets import offered_backends
+
+#: Where in the terminal's transcript each question of the page is. Both faces read the catalogue; this is
+#: the seam that holds the two readings in step, and it lives here rather than in the module because it is a
+#: fact about the *other* face.
+IN_THE_TERMINAL = {
+    "name": "Project name",
+    "profile": "Use Event Modeling?",
+    "target": "Production target",
+    "language": "Language",
+    "framework": "Application framework",
+    "service-name": "Service name",
+    "purpose": "What does",
+    "context": "Bounded contexts",
+    "frontend": "Frontend",
+    "frontend-name": "Browser app name",
+    "output": "Output parent",
+}
+
+
+def in_the_terminal(name: str) -> str:
+    """What the terminal prints when it asks the question the page calls `name`."""
+    return str(CATALOG["axes"][name]["prompt"]) if name in CATALOG["axes"] else IN_THE_TERMINAL[name]
+
+
+def terminal_interview(answer: Callable[[str], str]) -> str:
+    """The interview of 3.x, run, with `answer` deciding what is typed at each prompt. What it printed."""
+    from slipwai.cli import generate_main
+
+    said = io.StringIO()
+
+    def typed(prompt: str = "") -> str:
+        said.write(prompt)
+        return answer(prompt)
+
+    with (contextlib.redirect_stdout(said),
+          mock.patch("builtins.input", typed),
+          mock.patch("slipwai.cli_prompts.terminal_can_select", lambda: False)):
+        generate_main([])
+    return said.getvalue()
+
+
+def every_default(name: str, output: Path) -> Callable[[str], str]:
+    """Enter at every question but the two a default cannot answer: the project's name and where it goes."""
+    def answer(prompt: str) -> str:
+        if IN_THE_TERMINAL["name"] in prompt:
+            return name
+        return str(output) if IN_THE_TERMINAL["output"] in prompt else ""
+    return answer
+
+
+class QuestionsTest(unittest.TestCase):
+    """What is asked, before anything is generated."""
+
+    def test_the_first_question_is_the_project_s_name(self) -> None:
+        self.assertEqual(asked({})[0].name, "name")
+
+    def test_a_question_with_one_answer_is_not_asked(self) -> None:
+        """The terminal's own rule: something with one answer is not a choice, and offering it teaches the
+        reader that it is."""
+        declared = [name for name in CATALOG["targets"] if offered_backends(CATALOG, name)]
+        asked_now = [question.name for question in asked({})]
+        self.assertEqual("target" in asked_now, len(declared) > 1)
+
+    def test_every_axis_the_answers_make_applicable_is_asked_and_no_other(self) -> None:
+        """Read from the catalogue, so an axis added to `catalog.json` is asked here with no edit."""
+        answers = settled({"name": "demo"})
+        applicable = [axis for axis in CATALOG["axes"]
+                      if axis_applies(axis, answers["profile"], answers["backend"], answers["target"])]
+        self.assertEqual([q.name for q in asked({"name": "demo"}) if q.name in CATALOG["axes"]], applicable)
+
+    def test_the_form_asks_every_question_by_its_label(self) -> None:
+        said = form({"name": "demo"})
+        for question in asked({"name": "demo"}):
+            with self.subTest(question=question.name):
+                self.assertIn(question.label, said)
+
+    def test_an_answer_a_person_typed_is_escaped_and_never_rendered_as_markup(self) -> None:
+        self.assertNotIn("<script>alert(1)</script>", form({"name": "<script>alert(1)</script>"}))
+
+    def test_a_refusal_the_catalogue_makes_is_the_page_s_refusal_too(self) -> None:
+        """A name the generator will not take is said here rather than after every other question."""
+        ok, said = run({"name": "Not A Name"}, Path(tempfile.gettempdir()))
+        self.assertFalse(ok)
+        self.assertIn("project name", said.lower())
+
+
+@unittest.skipUnless(checkout_packages.installed("toy"), "needs the toy package: slice 3.8")
+class InStepTest(unittest.TestCase):
+    """The terminal interview, driven, with the page's questions looked for in what it printed."""
+
+    def test_the_page_asks_the_same_questions_in_the_same_order(self) -> None:
+        with tempfile.TemporaryDirectory() as scratch:
+            said = terminal_interview(every_default("demo", Path(scratch)))
+        at = -1
+        for question in asked({"name": "demo"}):
+            marker = in_the_terminal(question.name)
+            with self.subTest(question=question.name):
+                found = said.find(marker, at + 1)
+                self.assertNotEqual(found, -1, f"the terminal never asked {question.name}: {marker!r}")
+                at = found
+
+
+@unittest.skipUnless(checkout_packages.installed("toy"), "needs the toy package: slice 3.8")
+class ByteIdenticalTest(unittest.TestCase):
+    """The gate the plan names: the same answers, two faces, one tree."""
+
+    def test_a_project_from_the_board_is_the_project_from_the_terminal(self) -> None:
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            terminal, board = Path(one), Path(two)
+            terminal_interview(every_default("demo", terminal))
+            ok, said = run({"name": "demo", "output": str(board)}, board)
+            self.assertTrue(ok, said)
+            # Guarded, because two empty trees are identical and prove nothing.
+            self.assertGreater(len(list((terminal / "demo").rglob("*"))), 100)
+            self.assertEqual(differences(terminal / "demo", board / "demo"), [])
+
+    def test_the_board_says_where_it_put_the_project(self) -> None:
+        with tempfile.TemporaryDirectory() as scratch:
+            ok, said = run({"name": "demo", "output": scratch}, Path(scratch))
+            self.assertTrue(ok, said)
+            self.assertIn("demo", said)
+
+
+class ServedTest(unittest.TestCase):
+    """The interview, over the one server the board already is."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.server = serve(self.root, "127.0.0.1", 0)
+        self.port = self.server.server_address[1]
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.addCleanup(self.server.shutdown)
+        self.addCleanup(self.server.server_close)
+
+    def get(self, path: str) -> str:
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=10) as answer:
+            return answer.read().decode("utf-8")
+
+    def post(self, path: str, body: dict) -> tuple[int, str]:
+        request = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}",
+                                         data=json.dumps(body).encode("utf-8"),
+                                         headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=120) as answer:
+                return answer.status, answer.read().decode("utf-8")
+        except urllib.error.HTTPError as answer:
+            with answer:
+                return answer.code, answer.read().decode("utf-8")
+
+    def test_the_interview_is_a_page_on_the_board_s_own_server(self) -> None:
+        self.assertIn("Start a new project", self.get("/generate"))
+
+    def test_the_board_links_to_it_rather_than_naming_a_command(self) -> None:
+        self.assertIn('href="/generate"', self.get("/"))
+
+    def test_an_answer_that_decides_a_later_question_asks_the_rest_again(self) -> None:
+        """The catalogue decides which questions follow which answers, and it is read on this side of the
+        wire. A browser working that out for itself would be the second reading this slice exists to avoid."""
+        code, said = self.post("/generate/ask", {"name": "demo", "profile": "standard"})
+        self.assertEqual(code, 200)
+        self.assertIn('value="standard" selected', said)
+
+    def test_a_refusal_comes_back_as_a_refusal_and_not_as_a_traceback(self) -> None:
+        code, said = self.post("/generate/run", {"name": "Not A Name"})
+        self.assertEqual(code, 400)
+        self.assertIn("project name", said.lower())
+
+
+def differences(one: Path, two: Path) -> list[str]:
+    """Every path the two trees disagree about, `.git` left out: two commits are two timestamps, and the
+    question here is what was written, not when."""
+    def files(root: Path) -> set[str]:
+        return {path.relative_to(root).as_posix() for path in root.rglob("*")
+                if path.is_file() and ".git" not in path.relative_to(root).parts}
+
+    here, there = files(one), files(two)
+    return ([f"only in the terminal's tree: {name}" for name in sorted(here - there)]
+            + [f"only in the board's tree: {name}" for name in sorted(there - here)]
+            + [f"different bytes: {name}" for name in sorted(here & there)
+               if not filecmp.cmp(one / name, two / name, shallow=False)])
+
+
+if __name__ == "__main__":  # pragma: no cover
+    unittest.main()

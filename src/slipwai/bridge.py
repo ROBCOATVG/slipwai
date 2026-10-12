@@ -27,6 +27,9 @@ from .bridge_page import page, payload
 from .cli_fleet import config
 from .cli_telegraph import ring, set_one
 from .fleet import board
+from .interview_page import form
+from .interview_page import page as interview
+from .interview_page import run as generate
 from .logs import deck_path, entry
 from .telegraph import Refused
 
@@ -78,15 +81,22 @@ class Bridge(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self) -> None:  # noqa: N802 — http.server's own spelling
+        where = self.path.rstrip("/")
+        if where == "/board.json":
+            held = config(self.root)
+            self.send(200, payload(board(self.root, held)), "application/json; charset=utf-8")
+            return
+        # Generation is the one thing on this server that is not a fold of the logs, and it is here rather
+        # than on a server of its own because the two things a person does before there is anything to
+        # watch are the two the board could not do.
+        if where == "/generate" and self.controls:
+            self.send(200, interview({}))
+            return
+        if where not in ("", "/index.html"):
+            self.send(404, "<p>Nothing here. The board serves /, /generate and /board.json.</p>")
+            return
         held = config(self.root)
-        found = board(self.root, held)
-        if self.path.rstrip("/") == "/board.json":
-            self.send(200, payload(found), "application/json; charset=utf-8")
-            return
-        if self.path.rstrip("/") not in ("", "/index.html"):
-            self.send(404, "<p>Nothing here. The bridge serves / and /board.json.</p>")
-            return
-        self.send(200, page(found, held, controls=self.controls))
+        self.send(200, page(board(self.root, held), held, controls=self.controls))
 
     def body(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
@@ -103,6 +113,15 @@ class Bridge(BaseHTTPRequestHandler):
             return
         try:
             held = self.body()
+            if self.path.rstrip("/") == "/generate/ask":
+                # The questions again, for the answers given so far: one of them decides what the next one
+                # offers, and which that is, is the catalogue's business and not the browser's.
+                self.send(200, form({str(a): str(b) for a, b in held.items()}))
+                return
+            if self.path.rstrip("/") == "/generate/run":
+                worked, out = generate({str(a): str(b) for a, b in held.items()}, self.root)
+                self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
+                return
             if self.path.rstrip("/") == "/tell":
                 said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")))
             elif self.path.rstrip("/") == "/ring":

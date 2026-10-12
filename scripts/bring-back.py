@@ -73,7 +73,7 @@ OWN = {"catalog_checks", "catalog_options", "cli_offered", "cli_search",
        # The third kind of package. The experiment had clouds in the keel and so had no target package to
        # bring back: its declaration, the protocol its `TARGET` answers, and what `package new` writes.
        "target_shape", "target_protocol", "target_templates",
-       "conformance.target", "conformance.target_probe"}
+       "conformance.target", "conformance.target_probe", "page_shell", "interview_page"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will
 # grow a verb per slice, `assets` holds the paths and not the asset trees, `__init__` and `__main__` are
 # the package's own. The ledger's row for each describes what it becomes, not what is here, so they are

@@ -14,7 +14,7 @@ from ..extensions import known_extensions
 from ..layout import AT_ROOT, Layout
 from ..services import App, axes_of, services_of
 from ..targets import managed, tools_for
-from .init_extensions import RUN_EXTENSIONS, prompt_extensions
+from .init_extensions import ELECTED_FROM_QUICKSTART, RUN_EXTENSIONS, prompt_extensions
 from .init_languages import LANGUAGES_CHECK
 from .init_production import ALREADY_BOOTSTRAPPED, PRODUCTION_BOOTSTRAP, PRODUCTION_CHECK
 from .pins import SPECKIT_SOURCE
@@ -197,7 +197,7 @@ def init_script(apps: list[App], target: str = "none", layout: Layout = AT_ROOT)
         if production
         else ""
     )
-    prompt = prompt_extensions(known_extensions(CATALOG)) if extensions else ""
+    prompt = (ELECTED_FROM_QUICKSTART + prompt_extensions(known_extensions(CATALOG))) if extensions else ""
     run_extensions = RUN_EXTENSIONS if extensions else ""
     bootstrap = PRODUCTION_BOOTSTRAP.format(cloud=cloud) if production else ""
     # Spec Kit writes to the working directory, so this runs from the repository root wherever it was

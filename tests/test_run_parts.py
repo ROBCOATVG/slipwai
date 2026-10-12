@@ -91,6 +91,14 @@ class InitScriptTest(unittest.TestCase):
         self.assertIn("toy", offered)
         self.assertNotIn("codegraph", offered)
 
+    def test_a_quickstart_s_election_is_read_before_the_menu_is_shown(self) -> None:
+        """A person who chose a quickstart has already answered the menu's question. Both are gated on
+        `selected_extensions` being empty, so whichever runs first wins — and the record runs first."""
+        written = init_extensions.ELECTED_FROM_QUICKSTART + init_extensions.prompt_extensions(
+            {"toy": {"name": "Toy", "description": "a toy"}})
+        self.assertLess(written.index("elected.py"), written.index("menu.py"))
+        self.assertEqual(written.count('[ -z "$selected_extensions" ]'), 2)
+
 
 class CiWorkflowsTest(unittest.TestCase):
     """`toolchain_setup` asks the first service's backend for its family's answer, so it needs a loaded

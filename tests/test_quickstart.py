@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -231,6 +232,44 @@ class VerbTest(unittest.TestCase):
             done = self.run_it("save", "ours", where=Path(area) / "q", cwd=project)
             self.assertEqual(done.returncode, 2)
             self.assertIn("--suits", done.stderr)
+
+
+class ElectedTest(unittest.TestCase):
+    """`scripts/extensions/elected.py`, the copy a generated project reads its own record with."""
+
+    RUNNER = Path(__file__).resolve().parents[1] / "assets/toolkit/scripts/extensions/elected.py"
+
+    def project(self, area: str, record: dict | None) -> Path:
+        root = Path(area)
+        (root / "project.json").write_text("{}", encoding="utf-8")
+        scripts = root / "scripts/extensions"
+        scripts.mkdir(parents=True)
+        (scripts / "elected.py").write_text(self.RUNNER.read_text(encoding="utf-8"), encoding="utf-8")
+        if record is not None:
+            (root / ".slipwai").mkdir()
+            (root / quickstart.RECORD).write_text(json.dumps(record), encoding="utf-8")
+        return root
+
+    def run_in(self, root: Path) -> str:
+        done = subprocess.run([sys.executable, "scripts/extensions/elected.py"], cwd=root,
+                              text=True, capture_output=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout.strip()
+
+    def test_the_record_s_extensions_are_what_init_elects(self) -> None:
+        with tempfile.TemporaryDirectory() as area:
+            root = self.project(area, {"v": 1, "name": "toy-ui", "extensions": ["codegraph", "uipro"]})
+            self.assertEqual(self.run_in(root), "codegraph uipro")
+
+    def test_a_project_that_came_from_no_quickstart_elects_nothing_and_says_nothing(self) -> None:
+        """Which is most projects: the menu then appears exactly as it always has."""
+        with tempfile.TemporaryDirectory() as area:
+            self.assertEqual(self.run_in(self.project(area, None)), "")
+
+    def test_a_record_nobody_can_read_elects_nothing_rather_than_stopping_the_bootstrap(self) -> None:
+        with tempfile.TemporaryDirectory() as area:
+            root = self.project(area, {"v": 1, "extensions": "codegraph"})
+            self.assertEqual(self.run_in(root), "")
 
 
 class GenerateTest(unittest.TestCase):

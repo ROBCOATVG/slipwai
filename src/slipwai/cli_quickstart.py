@@ -133,16 +133,21 @@ def quickstart_flag(parser: argparse.ArgumentParser) -> None:
                              "`slipwai quickstart show <name>` says what one would do")
 
 
-def files_with_record(one: Quickstart | None, args: Any, apps: list[Any]) -> dict[str, str] | None:
+def files_with_record(args: Any, apps: list[Any]) -> dict[str, str] | None:
     """The project's files with the quickstart's record among them, or None where there is no quickstart.
 
     One file, `.slipwai/quickstart.json`: which quickstart this project came from, which extensions it
     elects and which guards were already agreed to. `./init` reads it instead of showing the extension
     menu, and `guards.py --offer` instead of asking a question somebody answered when they wrote the
     quickstart (13.4). None is what `write_project` already takes to mean "assemble them yourself".
+
+    Read off `args.quickstart` rather than passed in, because there are two ways a quickstart is chosen —
+    the flag, and the interview's own offer — and a record written for only one of them would be a project
+    that elects nothing because the person was asked rather than having typed it.
     """
-    if one is None:
+    if not getattr(args, "quickstart", None):
         return None
+    one = quickstart.find(args.quickstart)
     from .scaffold import project_files
     return {**project_files(args.name, args.profile, args.target, apps),
             quickstart.RECORD: quickstart.record(one)}

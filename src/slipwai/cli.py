@@ -256,7 +256,7 @@ def generate_main(argv: list[str]) -> None:
     try:
         named = {axis: getattr(args, axis.replace("-", "_")) for axis in CATALOG["axes"]}
         # Whatever the caller did not answer, the quickstart does — before anything is resolved or checked.
-        chosen = quickstart_applied(args, named, argv)
+        quickstart_applied(args, named, argv)
         # Bare, or bare but for the one flag that has nothing to prompt about, is the interactive form.
         interactive = all(argument == "--skip-checks" for argument in argv)
         if interactive:
@@ -297,7 +297,7 @@ def generate_main(argv: list[str]) -> None:
         with tempfile.TemporaryDirectory(prefix=f".{args.name}-", dir=output) as staging:
             staging_path = Path(staging)
             write_project(staging_path, args.name, args.profile, args.target, apps,
-                          files=files_with_record(chosen, args, apps))
+                          files=files_with_record(args, apps))
             staging_path.rename(destination)
         print(f"created: {destination}")
     except GenerationError as error:

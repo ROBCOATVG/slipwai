@@ -13,11 +13,13 @@ and nothing downstream can tell which of the two put them there.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
-from .assets import DEFAULT_OUTPUT
+from . import quickstart
+from .assets import DEFAULT_OUTPUT, this_command
 from .browser_app import frontend_menu
-from .catalog import CATALOG, axis_applies, default_language, families
+from .catalog import CATALOG, axis_applies, default_language, families, resolve_backend
 from .cli_language import not_installed_frameworks, not_installed_languages, nothing_loaded
 from .cli_prompts import (
     prompt_application_name,
@@ -31,37 +33,118 @@ from .cli_prompts import (
     prompt_purpose,
     prompt_target,
 )
+from .cli_quickstart import missing
 from .errors import GenerationError
 from .preflight import check as check_requirements
 from .services import FIRST_SERVICE, FIRST_WEB
 from .targets import check_project_name, offered_backends
 
+#: The row that declines, which is the first one and the default. There is deliberately no default
+#: quickstart: a quickstart elects third-party extensions, and nobody asked this keel to choose those.
+DECLINE = "none"
+DECLINED = "ask me every question — the interview as it has always been"
+
+
+def quickstart_menu() -> tuple[list[str], Callable[[str], str]]:
+    """The rows the offer shows: declining first, then every saved quickstart this machine can carry out.
+
+    A row is the quickstart's own sentence about *the product it suits*, never the packages it names. The
+    person this slice exists for does not know what `uipro` is, and a menu of package names is addressed to
+    somebody who already does.
+    """
+    usable = [name for name in quickstart.saved_names() if name not in unavailable_quickstarts()]
+    suits = {name: quickstart.find(name).suits for name in usable}
+
+    def describe(name: str) -> str:
+        return DECLINED if name == DECLINE else suits[name]
+
+    return [DECLINE, *usable], describe
+
+
+def unavailable_quickstarts() -> dict[str, str]:
+    """Each saved quickstart that cannot be carried out here, with the line that would fix it.
+
+    Said under the menu rather than left out of it: somebody who wrote that quickstart should see it is
+    still theirs and be told the one command that makes it work, not conclude it was lost.
+    """
+    absent = {}
+    for name in quickstart.saved_names():
+        try:
+            one = quickstart.find(name)
+        except GenerationError as fault:  # a file somebody edited by hand, said and not offered
+            absent[name] = str(fault)
+            continue
+        if missing(one):
+            absent[name] = f"`{this_command()} install {' '.join(missing(one))}` installs what it names"
+    return absent
+
+
+def offer_quickstart(args: Any, named: dict[str, str | None]) -> dict[str, str]:
+    """Ask, once, whether to start from a saved quickstart, and return the answers the chosen one gives.
+
+    `{}` where it was declined — and where none is saved, in which case nothing is asked at all, because an
+    interview that gained a question for people who have no quickstarts would have made the common path
+    worse to serve the uncommon one.
+    """
+    choices, describe = quickstart_menu()
+    if len(choices) == 1:
+        return {}
+    chosen = prompt_choice(
+        "Start from", choices, DECLINE, describe, unavailable=unavailable_quickstarts(),
+        status="not ready",
+        question="Start from a quickstart? Each one is a set of answers somebody already settled — which "
+                 "languages, how the project is laid out, and which optional tooling it switches on.",
+    )
+    if chosen == DECLINE:
+        return {}
+    one = quickstart.find(chosen)
+    given = quickstart.answered(one)
+    print(f"\nFrom the {one.name} quickstart — {one.suits}")
+    for flag, value in given.items():
+        if flag in named:
+            named[flag] = value
+        else:
+            setattr(args, flag.replace("-", "_"), value)
+        print(f"  --{flag} {value}")
+    for each in one.extensions:
+        print(f"  --extension {each.name}" + (f"  (may refuse: {', '.join(each.guards)})" if each.guards else ""))
+    args.quickstart = one.name
+    print("Each of these is a flag you could have given, and `./init` can change any of them later.\n")
+    return given
+
 
 def interview(args: Any, named: dict[str, str | None]) -> None:
-    """Ask every question, in order, writing each answer onto `args` and `named` as the flag it stands for."""
+    """Ask every question a quickstart has not already answered, in order, writing each answer onto `args`
+    and `named` as the flag it stands for."""
     if not families():
         raise GenerationError(nothing_loaded())
     print("Create a new product monorepo. Press Enter to accept a shown default.")
     args.name = prompt_project_name()
-    args.profile = prompt_profile()
-    args.target = prompt_target()
+    # Before the delivery foundation, because the foundation is the first thing a quickstart answers.
+    given = offer_quickstart(args, named)
+    if "profile" not in given:
+        args.profile = prompt_profile()
+    if "target" not in given:
+        args.target = prompt_target()
     # Asked before the target and checked against it: a name the target's cloud will not take is
     # said here, not after another nine questions.
     check_project_name(CATALOG, args.target, args.name)
     check_requirements(args.target, args.skip_checks)
-    args.backend = ask_language(args)
+    args.backend = resolve_backend(args.language, args.framework or None) if "language" in given \
+        else ask_language(args)
     args.service_name = prompt_application_name("Service name", FIRST_SERVICE, set())
     args.purpose = prompt_purpose(args.service_name)
     args.context = prompt_context(args.service_name)
-    frontends, default, unavailable = frontend_menu()
-    args.frontend = prompt_choice("Frontend", frontends, default, unavailable=unavailable, status="unavailable")
+    if "frontend" not in given:
+        frontends, default, unavailable = frontend_menu()
+        args.frontend = prompt_choice("Frontend", frontends, default, unavailable=unavailable, status="unavailable")
     if args.frontend != "none":
         args.frontend_name = prompt_application_name("Browser app name", FIRST_WEB, {args.service_name})
     # One question per axis, asked separately, because they are separate questions: where events are stored
     # has nothing to do with who issues identities. An axis is asked only when this profile and backend can
     # actually be given a choice, so the prompt never offers a combination `resolve_selection` would refuse.
     for axis in CATALOG["axes"]:
-        if axis_applies(axis, args.profile, args.backend, args.target):
+        if named[axis] is None and axis_applies(axis, args.profile, args.backend, args.target):
             named[axis] = prompt_axis(axis, args.profile, args.backend, args.target)
     args.output = prompt_output(DEFAULT_OUTPUT)
 

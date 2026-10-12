@@ -1,0 +1,14 @@
+v: 1
+feature: docs-gate-repair
+fairways:
+  docs-gate-repair:
+    context: executable guide programme drift
+    owns: [scripts/test-docs.py, tests/fixtures/docs/**]
+marks: {}
+slices:
+  claimed-fairway-command:
+    fairway: docs-gate-repair
+    capability: every printed guide command executes or has truthful evidence
+    sets: []
+    steers_by: []
+    done_when: make test-docs executes the guide's claim against a bare forge and passes with no additional skips.

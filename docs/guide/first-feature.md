@@ -43,6 +43,18 @@ are approved one state at a time, and the demo is accepted by somebody watching 
 
 The stages are the ladder, and `commands/sail.md` in your own project carries its full text.
 
+**All of it in one figure.** Where a slice comes from, and what one worker is handed when it starts:
+
+![From a spec to a delegate on the event-modelling profile: the specification, the mock-up review and the
+event model once per feature; the chart and the split; then per slice, clearance, the claim and the
+dispatch; then what one delegate is handed, the example map it opens with, and the marks it sets in its
+own worktree](../images/spec-to-delegate-event-modelling.svg)
+
+A project that answered no to Event Modeling reads
+[the same figure with two boxes different](../images/spec-to-delegate-standard.svg): what the feature is
+typed in, and where the example map's examples come from. Everything else — the chart, the split,
+clearance, the claim, the brief, the width — is the same on both.
+
 ### 1. Principles
 
 `/speckit-constitution`, which fills `.specify/memory/constitution.md` and asks you to ratify it. These

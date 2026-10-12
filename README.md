@@ -28,6 +28,9 @@ demoed in front of you — and they are on the next page.
 
 → **[Start here](docs/guide/start-here.md)**
 
+Coming from version 1? → **[What is new since version 1](docs/whats-new.md)** — every change that affects
+you, what each is for, and the one command that moves your project across.
+
 ---
 
 ## What it is for
@@ -105,6 +108,6 @@ confirmed once; the checksum is checked every time, whoever published it. Publis
 
 This is slipwai 2, in a fork, under construction. The tree was cleared on 2026-10-06 and is being brought
 back in version 2 shape one module at a time; `docs/slipwai-2-plan.md` has the order of work and what is
-left. Until 2.0.0 is cut, nothing here maintains 1.x's working contract — there is no `migrate` yet — and
-the fork merges back to [ROBCOATVG/slipwai](https://github.com/ROBCOATVG/slipwai) as version 2 once, when
-complete.
+left. The 1.x working contract came back with phase 8: `slipwai migrate` crosses a version 1 project, and
+[what is new since version 1](docs/whats-new.md) says what that costs. The fork merges back to
+[ROBCOATVG/slipwai](https://github.com/ROBCOATVG/slipwai) as version 2 once, when complete.

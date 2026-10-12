@@ -32,13 +32,21 @@ from collections.abc import Callable
 
 import checkout_packages  # noqa: F401
 
-from slipwai.assets import ADOPTION_ROOT, GUIDANCE_ROOT, MODEL_PAGE_ROOT, PAGE_ROOT, TOOLKIT_ROOT
+from slipwai.assets import (
+    ADOPTION_ROOT,
+    CRUISE_ROOT,
+    GUIDANCE_ROOT,
+    MODEL_PAGE_ROOT,
+    PAGE_ROOT,
+    TOOLKIT_ROOT,
+)
 from slipwai.errors import GenerationError
 from slipwai.layout import AT_ROOT
 from slipwai.project import (
     add_commands,
     briefs,
     commands,
+    cruise,
     docs,
     event_model,
     flags,
@@ -102,6 +110,12 @@ TEMPLATED = (
     # `{{make}}` still in it, which is the third refusal catching the first slice to need the distinction.
     (ADOPTION_ROOT / "commands", ("commands",),
      lambda: pooled(pin_commands.values, ground_command.values)),
+    # The cruise's six pages and `parts.md`, which is what more than one of them — and `where-are-we.md`
+    # and `whats-next.md`, which are not this tree's at all — is assembled from. One provider rather than
+    # a pool, because `cruise.values` is already the pool: the seat's values and the cruise's own, which
+    # is how `commands/cruise.md` comes to carry the watch seat and a seat command the sentence about a
+    # folded output.
+    (CRUISE_ROOT, ("commands",), cruise.values),
 
 )
 

@@ -12,13 +12,13 @@ from ..services import App, described, frontend_of, services_of, web_apps
 from ..targets import managed
 from .backing_service_prose import backing_services_readme
 from .event_model import event_model_page_url
-from .existing import EXISTING_README
-from .target_docs import prerequisites
-from .target_docs import words as target_words
+from .target_docs import prerequisites, production_readme
 from .write_model_prose import readme_write_model
 
 
-def readme(project_name: str, profile: str, apps: list[App], target: str = "none") -> str:
+def readme(
+    project_name: str, profile: str, apps: list[App], target: str = "none", shape: str = "liner",
+) -> str:
     event = profile == "event-modelling"
     frontend = frontend_of(apps)
     title = project_name.replace("-", " ").replace("_", " ").title()
@@ -52,7 +52,7 @@ make verify
 the repository's local and CI quality gate. Add one small vertical slice at a time and keep the main branch
 releasable.
 
-{services_readme(services, web)}{running_readme(services, web)}{production_readme(target, services, web)}
+{services_readme(services, web)}{running_readme(services, web)}{production_readme(target, services, web, shape)}
 ## Documentation
 
 [`docs/workflow.md`](docs/workflow.md) diagrams the delivery loop each slice travels, from the constitution
@@ -265,53 +265,6 @@ def start_here_production(target: str) -> str:
         f"    # then asks where to push, pushes, and runs `make bootstrap`: once, with admin "
         f"{cloud_of(target)} credentials"
     )
-
-
-def production_readme(target: str, services: list[App], web: list[App]) -> str:
-    """The README's account of where this project goes to production, for a project that goes anywhere."""
-    if target == "existing":
-        return EXISTING_README
-    if not managed(CATALOG, target):
-        return ""
-    words = target_words(target)
-    site = words["site"] if web else ""
-    return f"""
-## Production
-
-This project deploys to {cloud_of(target)}, and the pipeline is the way it gets there: every commit that passes `verify` on
-`main` runs `.github/workflows/deploy.yml`, which builds one image per service with the ecosystem's own
-builder, pushes each by digest, applies `staging`, proves it with `make smoke`, applies `production` and
-proves that. It starts when `verify` completes, and only if it passed — never beside it or ahead of it.{site}
-
-Whether that last step runs is the `AUTO_PROMOTE` variable `make bootstrap` wrote to the forge. `true`,
-the default, is the pipeline just described. `false` stops it at staging: production is deployed by
-`.github/workflows/production.yml` instead, started by `make promote` or from the Actions tab, with the
-commit staging is running — and without auto-promotion that first promotion is also what creates
-production, so a project pays for one environment until it wants two. Either way production is only ever given the images
-staging has already run, and the apply happens on the runner with the deploy role, never on a laptop.
-`make bootstrap AUTO_PROMOTE=true` changes this project's mind, in either direction.
-
-When a release is wrong, `.github/workflows/rollback.yml` is started by hand from the Actions tab with the
-environment to roll back; it re-applies the release before the current one and proves it the same way.
-`infra/` is the whole of the infrastructure — OpenTofu, {words["runtime"]} — [`docs/deployment.md`](docs/deployment.md) draws it for this project's services, and
-[`docs/adr/0002-production-target.md`](docs/adr/0002-production-target.md) is why each part is what it is, with what it costs.
-
-```sh
-make build smoke-image PLATFORM=linux/arm64   # every service's image, run locally and asked its probe
-make deploy ENV=staging                        # what the pipeline does, from a laptop with credentials
-make smoke URL=$(make -s url ENV=staging)     # what proves a deploy
-make promote                                   # ask the forge to deploy production with what staging runs
-make rollback ENV=staging                      # what the rollback workflow does, from a laptop
-```
-
-`make bootstrap` is the one thing a person does, once, with the credentials {words['credentials']} can
-find — `./init` runs it after asking where to push. It applies `infra/bootstrap` — the state bucket, the pipeline's identity, the image repositories — and
-configures the repository on the forge from the outputs (variables; and, on a forge without OIDC such as
-Gitea, the two secrets of a key that can only assume the deploy role). Run it again after `add-service`.
-[`infra/README.md`](infra/README.md) says what it decides and how. `make ci` builds every image and proves
-it answers, which is the half of a deploy that can be proved without an account; `tofu validate` is what the
-gate holds the stacks to.
-"""
 
 
 def running_readme(services: list[App], web: list[App]) -> str:

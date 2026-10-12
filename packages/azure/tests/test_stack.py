@@ -33,6 +33,7 @@ class AzureStackTest(FactoryTestCase):
     ):
         return self.generate(
             directory, name, "event-modelling", backend, frontend, target="azure",
+            shape=axes.pop("shape", "liner"),
             persistence=axes.pop("persistence", "postgres"), http=axis_default("http", backend, "azure"),
             **axes,
         )
@@ -154,3 +155,24 @@ class AzureStackTest(FactoryTestCase):
                 (maximal / "infra/service/main.tf").read_text(encoding="utf-8"))
             self.validate(maximal / "infra/service")
             self.validate(maximal / "infra/bootstrap")
+
+    def test_a_skiff_with_a_browser_app_validates_against_the_real_providers(self) -> None:
+        """The shape's own "done when": both shapes validate, with the skiff's own environment file.
+
+        Every other stack proof here generates a liner. Azure's skiff keeps the liner's HCL and changes
+        the environment it is given — one `production.tfvars` with a zero replica floor and no staging —
+        so what this proves is that the set the skiff actually ships is a set the providers accept.
+        """
+        if shutil.which("tofu") is None:
+            self.skipTest("tofu is not installed; the factory's CI installs it")
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate_azure(directory, "skiffweb", shape="skiff")
+            # The skiff's own set, not the liner's: one environment, and it is the zero-floor one.
+            self.assertFalse((repo / "infra/service/staging.tfvars").exists())
+            self.assertRegex((repo / "infra/service/production.tfvars").read_text(encoding="utf-8"),
+                             r"min_replicas\s*=\s*0")
+            self.assertIn('"azurerm_static_web_app" "web"',
+                          (repo / "infra/service/frontend.tf").read_text(encoding="utf-8"))
+            for stack in ("bootstrap", "service"):
+                with self.subTest(stack=stack):
+                    self.validate(repo / "infra" / stack)

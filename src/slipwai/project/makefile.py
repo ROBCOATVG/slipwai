@@ -152,7 +152,10 @@ export WEB_HOST
     return targets
 
 
-def makefile(project_name: str, profile: str, apps: list[App], target: str = "none", layout: Layout = AT_ROOT) -> str:
+def makefile(
+    project_name: str, profile: str, apps: list[App], target: str = "none",
+    layout: Layout = AT_ROOT, shape: str = "liner",
+) -> str:
     event = profile == "event-modelling"
     services = services_of(apps)
     web = web_apps(apps)
@@ -276,7 +279,7 @@ demo-down: ## Stop the demo, keeping any volume
         if integrating
         else f"ci: verify audit test-integration{production}{adoption} ## Local equivalent of the extended CI gate\n"
     )
-    production_section = production_targets(project_name, apps, target) if managed(CATALOG, target) else ""
+    production_section = production_targets(project_name, apps, target, shape) if managed(CATALOG, target) else ""
     # The published document's gate, as a prerequisite line per transport rather than a word on `verify`'s
     # own: a project that drops its transport drops the check with it and keeps a gate that runs.
     document_gate = "".join(

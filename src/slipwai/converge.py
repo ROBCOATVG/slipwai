@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .assets import VERSION
+from .deployment_shapes import recorded
 from .errors import GenerationError
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import apps_from_manifest, read_manifest
@@ -101,7 +102,11 @@ def clashes(root: Path, document: dict, adoption: Adoption, layout: Layout) -> l
     has, and what sits under the delivery directory whose place at the root is taken. The `Makefile` `adopt` wrote
     is the keel's and is replaced; a `Makefile` of the repository's own is a clash, and the usual one."""
     apps = apps_from_manifest(document)
-    generated = project_files(str(document["name"]), document["profile"], document["target"], apps, AT_ROOT, adoption)
+    # With the shape the manifest records, like every other caller: an adopted repository cannot name a
+    # managed target today, so nothing differs yet — but a list of paths the move would write over that was
+    # assembled for the wrong shape would name the wrong files the day it can.
+    generated = project_files(str(document["name"]), document["profile"], document["target"], apps, AT_ROOT,
+                              adoption, recorded(document))
     listing = root / layout.under(WRITTEN)
     already = set(listing.read_text().split()) if listing.is_file() else set()
     found = []

@@ -45,7 +45,7 @@ def sourced(app: App) -> bool:
 
 def metadata(
     project_name: str, profile: str, target: str, apps: list[App], layout: Layout = AT_ROOT,
-    adoption: Adoption | None = None,
+    adoption: Adoption | None = None, shape: str | None = None,
 ) -> str:
     """`project.json`: the answers this project was generated from, for a tool rather than a reader.
 
@@ -92,6 +92,7 @@ def metadata(
         # Where it goes to production; `none` is local only. The project's own pruner reads this, so a
         # later `./init` offers an axis only the answers this target carries.
         "target": target,
+        **({"shape": shape} if shape is not None else {}),
         "capabilities": capabilities,
         "deployables": {
             app.name: {

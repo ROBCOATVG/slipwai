@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from ..target_protocol import SCRIPTS, SHAPES, Target, faults
+from ..target_protocol import DEPLOYMENT_SHAPES, SCRIPTS, SHAPES, Target, faults
 
 #: Why `shapes` was not read: the package did not import, so there is no `TARGET` to ask.
 UNLOADED = "the package did not load, so nothing it answers can be read"
@@ -61,6 +61,15 @@ def shape_findings(package: Path, target: Target) -> list[str]:
     if isinstance(shapes, dict):
         named += [(f"the {shape} stack", str(path)) for shape, paths in shapes.items()
                   if isinstance(paths, (list, tuple)) for path in paths]
+    choices = target.answers.get(DEPLOYMENT_SHAPES, {})
+    if isinstance(choices, dict):
+        for shape, row in choices.items():
+            if not isinstance(row, dict):
+                continue
+            for phase, files in row.get("stacks", {}).items():
+                if isinstance(files, dict):
+                    named += [(f"{shape} {phase}/{where}", str(source)) for where, source in files.items()]
+            named += [(f"{shape} {where}", str(source)) for where, source in row.get("scripts", {}).items()]
     scripts: Any = target.answers.get(SCRIPTS, {})
     if isinstance(scripts, dict):
         named += [(f"{where}", str(source)) for where, source in scripts.items()]

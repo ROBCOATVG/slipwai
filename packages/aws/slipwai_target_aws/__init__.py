@@ -18,6 +18,7 @@ from __future__ import annotations
 from slipwai.target_protocol import (
     ADD_COMMANDS,
     AGENT_RULES,
+    DEPLOYMENT_SHAPES,
     DOCS_PAGES,
     FLAG_TRANSPORTS,
     IMAGE_REGISTRY,
@@ -161,10 +162,69 @@ WHERE = ('AWS_REGION',
     'the region the project lives in: `export AWS_REGION=eu-west-2`, or `aws configure set region eu-west-2`',
     'https://docs.aws.amazon.com/general/latest/gr/rande.html'))
 
+# Deployment choices are independent of the bootstrap/service phase names in STACKS.
+LINER_STACKS = {phase: {path: path for path in files} for phase, files in STACKS.items()}
+SKIFF_STACKS = {
+    "bootstrap": LINER_STACKS["bootstrap"],
+    "service": {
+        **{f"service/{name}": f"skiff/{name}" for name in (
+            "main.tf", "database.tf", "versions.tf", "variables.tf", "outputs.tf", "flags.tf",
+            "frontend.tf", "production.tfvars",
+        )},
+        **{path: path for path in (
+            "service/cognito_internal.tf", "service/cognito_external.tf", "service/auth0.tf",
+            "service/no-auth0.tf", "service/no-frontend.tf", "service/flags.auto.tfvars",
+        )},
+    },
+}
+SHAPE_ROWS = {
+    "skiff": {
+        "compute": "Lightsail container service",
+        "database": "private Lightsail managed PostgreSQL in the same Region",
+        "stacks": SKIFF_STACKS,
+        "scripts": {**PROJECT_SCRIPTS, "scripts/deploy.py": "scripts/skiff_deploy.py",
+                    "scripts/_deploy_common.py": "scripts/deploy.py",
+                    "scripts/skiff_migrations.py": "scripts/skiff_migrations.py"},
+        "environments": ("production",),
+        # `make deploy` on a skiff is also the migration: `scripts/skiff_migrations.py` builds a bounded
+        # wrapper over the immutable migration image and pushes it to ECR, because Lightsail has no
+        # one-off task to run it in. So the job that deploys has to be signed in to the registry, where a
+        # liner's deploy job never touches it — the liner migrates with an ECS task the stack declares.
+        "registry_at_deploy": True,
+        "guidance": "One production environment, managed HTTPS readiness checks and rolling deployments. "
+                    "The database stays private, backed up and protected from destruction. Database TLS "
+                    "enforcement is checked before migrations or applications start. Lightsail operators can "
+                    "read container environment secrets: restrict deployment/inspection authority. Remote "
+                    "migrations use a bounded, tagged temporary service with an exact result marker; failures "
+                    "retain redacted logs under .build/migration-logs. Flags use live SSM values at deployment "
+                    "and make flag rolls the current images. See https://docs.aws.amazon.com/lightsail/latest/"
+                    "userguide/amazon-lightsail-connecting-container-service-to-database.html. PostgreSQL "
+                    "connectivity follows the managed-database contract; the published tutorial uses MySQL.",
+        "transition": "Converge prepares a reviewable candidate and cutover runbook; it never applies or "
+                      "destroys the current module. Private Lightsail databases cannot be reached from ECS "
+                      "through VPC peering. Keep the original skiff state and database until export/import "
+                      "into RDS and data verification are complete, then change DNS explicitly. Snapshot "
+                      "and compare counts/checksums before cutover; never turn on public database access.",
+    },
+    "liner": {
+        "compute": "ECS Fargate",
+        "database": "private RDS PostgreSQL",
+        "stacks": LINER_STACKS,
+        "scripts": PROJECT_SCRIPTS,
+        "environments": ("staging", "production"),
+        "guidance": "The full product stack: separate staging and production workspaces, private RDS, "
+                    "readiness-gated blue/green services and optional site distribution.",
+        "transition": "Preserve every existing database and state until a person verifies the prepared "
+                      "shape transition and explicitly completes data transfer and DNS cutover. A downgrade "
+                      "is never selected automatically for a data-holding product.",
+    },
+}
+
 TARGET = Target(
     name="aws",
     answers={
         SHAPES: STACKS,
+        DEPLOYMENT_SHAPES: SHAPE_ROWS,
         SCRIPTS: PROJECT_SCRIPTS,
         DOCS_PAGES: {
             "docs/adr/0002-production-target.md": production_adr,

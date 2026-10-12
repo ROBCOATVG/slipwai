@@ -825,7 +825,7 @@ down.
 
 | Shape | For | What it is on AWS | What it is on Azure | What it drops |
 |---|---|---|---|---|
-| **Skiff** | A staff or internal tool: the team, or named colleagues; an outage is an inconvenience | One environment. A Lightsail container service from the same image, with the smallest RDS or an Aurora Serverless v2 instance at its floor, staff identity through Cognito, flags through SSM, no CloudFront unless there is a site, no load balancer, rolling deploys | One environment. One Container App that scales to zero, the smallest Flexible Server, Entra app roles | The second environment, the per-service balancer, blue/green, CloudFront for an API, the customer identity pool. Roughly a third of the idle bill |
+| **Skiff** | A staff or internal tool: the team, or named colleagues; an outage is an inconvenience | One environment. A Lightsail container service from the same image, with a private Lightsail managed PostgreSQL database in the same Region, staff identity through Cognito, flags through SSM, no CloudFront unless there is a site, no load balancer, rolling deploys | One environment. One Container App that scales to zero, the smallest Flexible Server, Entra app roles | The second environment, the per-service balancer, blue/green, CloudFront for an API, the customer identity pool. Roughly a third of the idle bill |
 | **Liner** | A product with customers, or anything whose outage is an incident | Today's stack, unchanged | Today's stack, unchanged | Nothing |
 
 Rules that hold the shapes to the same bar:
@@ -834,8 +834,11 @@ Rules that hold the shapes to the same bar:
   gives a skiff, `in service` gives a liner, and the interview's question decides sea trials. A person can
   override it either way at generation.
 - **Moving up is a step, not a rewrite.** `slipwai converge --shape liner` regenerates the target's module
-  for the liner shape, keeps the database and its data, writes the runbook for the one step a person does by
-  hand (the DNS move), and records the change in the convergence map's platform axis. Nothing moves a project
+  for the liner shape as a proposed diff, retains the original infrastructure, state and data, and writes
+  the provider's runbook for explicit cutover. It never applies or destroys the old infrastructure. Where
+  the existing database is compatible, it stays; where the provider requires a different database, a
+  person exports, imports and verifies the data before moving DNS. The convergence map records the
+  platform change only after that cutover is confirmed. Nothing moves a project
   down a shape without a person asking.
 - **The skiff's compute is a row, because managed services get retired.** Version 2's skiff was written
   around AWS App Runner. App Runner is being sunsetted, and the first real project generated on the shape —
@@ -844,6 +847,17 @@ Rules that hold the shapes to the same bar:
   runs on is one named row in the target's table and one stack file, never a choice spread through the
   infrastructure, the deploy pipeline and the docs. Replacing it should cost a day, not a phase. The same
   holds for the liner. Decided 2026-10-06, on warbook's evidence.
+
+- **Provider constraints are written into the shape row.** Reviewed on 2026-10-12 for slice 3.4b:
+  the [AWS container-to-database tutorial](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-connecting-container-service-to-database.html)
+  demonstrates a container service using a managed Lightsail database in the same Region. Combined with
+  the [database private-mode contract](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-faq-databases.html),
+  this supports choosing a private Lightsail PostgreSQL database for the skiff; the tutorial itself uses
+  MySQL, so PostgreSQL connectivity is an inference from that common service contract, not a paid live
+  apply proof. A private Lightsail database cannot be reached from EC2 through VPC peering, so moving to
+  the liner's RDS requires an explicit data transfer. A DNS-only promise would hide that transfer; the
+  original database and state must remain until the person verifies the import. Azure retains its actual
+  Flexible Server endpoint, firewall and TLS policy rather than claiming a new private network.
 
 - **The same gate, the same flags, the same images.** A skiff runs the same `make verify`, the same release
   modes, the same flag reader and the same images as a liner; languages answer nothing new. Only the

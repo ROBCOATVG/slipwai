@@ -1,0 +1,74 @@
+feature: phase-3-skiff
+fairways:
+  phase-3-skiff:
+    owns:
+      - src/slipwai/target_protocol.py
+      - src/slipwai/conformance/target_probe.py
+      - src/slipwai/deployment_shapes.py
+      - src/slipwai/shape_converge.py
+      - src/slipwai/cli.py
+      - src/slipwai/cli_generate.py
+      - src/slipwai/cli_add.py
+      - src/slipwai/scaffold.py
+      - src/slipwai/replay.py
+      - src/slipwai/project/metadata.py
+      - src/slipwai/project/infra.py
+      - src/slipwai/project/deploy_workflow.py
+      - src/slipwai/project/production.py
+      - src/slipwai/project/readme.py
+      - src/slipwai/project/guidance.py
+      - src/slipwai/project/target_docs.py
+      - packages/aws/
+      - packages/azure/
+      - tests/test_deployment_shapes.py
+      - tests/test_skiff_migrations.py
+      - tests/test_target_conformance.py
+      - Makefile
+      - scripts/check-structure.py
+      - scripts/bring-back.py
+      - src/slipwai/cli_quickstart.py
+      - src/slipwai/add_service.py
+      - src/slipwai/resurvey.py
+      - src/slipwai/project/makefile.py
+      - docs/charts/phase-3-skiff.yaml
+      - docs/slipwai-2-plan.md # Own row and provider-backed shape decision only.
+slices:
+  '3.4b':
+    fairway: phase-3-skiff
+    sets: [DeploymentShapeChoice, DeploymentShapeRow, ShapeConvergence]
+    steers_by: [TargetStackPhases, ProjectManifest, VerifiedDeployment]
+marks:
+  DeploymentShapeChoice:
+    kind: schema
+    schema:
+      type: object
+      required: [shape]
+      properties:
+        shape: {enum: [skiff, liner]}
+      description: Project-wide choice; new slipway defaults skiff, existing manifests without shape retain liner.
+  DeploymentShapeRow:
+    kind: port
+    inputs: {target: target-package, shape: DeploymentShapeChoice}
+    outputs:
+      compute: package-owned-name
+      stacks: phase-to-file-list
+      environments: environment-name-array
+      scripts: generated-script-map
+      guidance: actor-facing-prose
+  ShapeConvergence:
+    kind: port
+    inputs: {manifest: ProjectManifest, requested: DeploymentShapeChoice, target: target-package}
+    outputs:
+      files: reviewable-generated-diff
+      runbook: explicit-data-preservation-and-cutover-steps
+      original_infrastructure: retained-until-person-confirmed-cutover
+  TargetStackPhases:
+    kind: schema
+    schema: {type: object, required: [bootstrap, service]}
+  ProjectManifest:
+    kind: schema
+    schema: {type: object, required: [schema, name, target, deployables]}
+  VerifiedDeployment:
+    kind: port
+    inputs: {commit: verified-git-commit, images: immutable-image-digests}
+    outputs: {apply: serial-environment-deployment, smoke: verified-runtime-response}

@@ -33,7 +33,7 @@ class AwsStackTest(FactoryTestCase):
         self, directory: str, name: str, backend: str = "typescript", frontend: str = "react-vite", **axes
     ):
         return self.generate(
-            directory, name, "event-modelling", backend, frontend, target="aws",
+            directory, name, "event-modelling", backend, frontend, target="aws", shape=axes.pop("shape", "liner"),
             persistence=axes.pop("persistence", "postgres"), http=axis_default("http", backend, "aws"),
             **axes,
         )
@@ -137,3 +137,27 @@ class AwsStackTest(FactoryTestCase):
             self.assertNotIn("backing-service:postgres",
                 (maximal / "infra/service/main.tf").read_text(encoding="utf-8"))
             self.validate(maximal / "infra/service")
+
+    def test_a_skiff_with_a_browser_app_validates_against_the_real_provider(self) -> None:
+        """The shape's own "done when": both shapes validate, and the skiff ships its own frontend.
+
+        Every other stack proof here generates a liner, so the skiff's service stack — its own
+        `frontend.tf`, `database.tf` and `main.tf`, assembled without the liner's `ingress.tf` — had never
+        been handed to the provider at all. A data source the skiff's distribution refers to and no file in
+        the skiff's set declares is an `Error: Reference to undeclared resource` at `tofu validate`, which
+        is every apply of every generated skiff that has a browser app.
+        """
+        if shutil.which("tofu") is None:
+            self.skipTest("tofu is not installed; the factory's CI installs it")
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.generate_aws(directory, "skiffweb", shape="skiff")
+            # The skiff's own set, not the liner's: its database file is there, the liner's ingress and
+            # second environment are not. Without this the proof below could pass on a liner.
+            self.assertTrue((repo / "infra/service/database.tf").is_file())
+            self.assertFalse((repo / "infra/service/ingress.tf").exists())
+            self.assertFalse((repo / "infra/service/staging.tfvars").exists())
+            self.assertIn('"aws_cloudfront_distribution" "web"',
+                          (repo / "infra/service/frontend.tf").read_text(encoding="utf-8"))
+            for stack in ("bootstrap", "service"):
+                with self.subTest(stack=stack):
+                    self.validate(repo / "infra" / stack)

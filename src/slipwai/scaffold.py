@@ -13,7 +13,9 @@ from pathlib import Path
 
 from .assets import ADOPTION_ROOT, contained
 from .catalog import CATALOG
+from .deployment_shapes import row, selected
 from .layout import AT_ROOT, Layout
+from .loaded_targets import answer
 from .origin import Adoption
 from .project.adopted import adopted_files, adoption_page
 from .project.agent_settings import claude_settings
@@ -54,6 +56,7 @@ from .project.shared_packages import PACKAGES
 from .project.stage_models import stage_models
 from .project.strangle_command import strangle_files
 from .services import App, prunable_features_of, services_of, web_apps, wrapped_of
+from .target_protocol import DEPLOYMENT_SHAPES
 from .targets import managed
 from .toolkit import executable_paths, extension_files, own_paths, toolkit_files_from_assets
 
@@ -72,7 +75,7 @@ FACTORY_IDENTITY = os.environ | {
 
 def project_files(
     project_name: str, profile: str, target: str, apps: list[App], layout: Layout = AT_ROOT,
-    adoption: Adoption | None = None,
+    adoption: Adoption | None = None, shape: str | None = None,
 ) -> dict[str, str]:
     """Every file a generated project starts with, keyed by its path in the new repository.
 
@@ -97,15 +100,20 @@ def project_files(
     the keel did not make (`generated: false`) is recorded and otherwise nothing any part here names —
     `services_of` and `web_apps` mean the generated ones.
     """
+    if managed(CATALOG, target):
+        shape = selected(shape) if shape is not None or answer(target, DEPLOYMENT_SHAPES, default={}) else "liner"
+        row(target, shape)
+    else:
+        shape = None
     event = profile == "event-modelling"
     generated = {
-        "README.md": readme(project_name, profile, apps, target),
-        "project.json": metadata(project_name, profile, target, apps, layout, adoption),
+        "README.md": readme(project_name, profile, apps, target, shape or "liner"),
+        "project.json": metadata(project_name, profile, target, apps, layout, adoption, shape),
         "init": init_script(apps, target, layout),
         ".gitignore": build_artifacts(event, apps, target),
         "renovate.json": renovate_config(apps),
-        "Makefile": makefile(project_name, profile, apps, target, layout),
-        "AGENTS.md": agent_guidance(profile, apps, target),
+        "Makefile": makefile(project_name, profile, apps, target, layout, shape or "liner"),
+        "AGENTS.md": agent_guidance(profile, apps, target, shape or "liner"),
         ".claude/settings.json": claude_settings(apps, target, layout),
         ".specify/models.json": stage_models(),
         ".specify/sail.json": sail_config(),
@@ -146,9 +154,10 @@ def project_files(
             for app in services_of(apps)
             for axis in ("auth", "users")
         )
-        generated[".github/workflows/deploy.yml"] = deploy_workflow(apps, target, auth0)
-        generated[".github/workflows/production.yml"] = promotion_workflow(bool(web_apps(apps)), target, auth0)
-        generated[".github/workflows/rollback.yml"] = rollback_workflow(target, auth0)
+        generated[".github/workflows/deploy.yml"] = deploy_workflow(apps, target, auth0, shape or "liner")
+        if shape != "skiff":
+            generated[".github/workflows/production.yml"] = promotion_workflow(bool(web_apps(apps)), target, auth0)
+        generated[".github/workflows/rollback.yml"] = rollback_workflow(target, auth0, shape or "liner")
     generated.update(pin_files(apps))
     generated.update(repository_files(project_name, profile, apps, target))
     generated.update(agent_files(layout))
@@ -157,7 +166,7 @@ def project_files(
     generated.update(command_files(event, apps, target, layout, adoption))
     generated.update(documentation_files(project_name, profile, apps, target))
     generated.update(backing_service_files(apps))
-    generated.update(target_files(project_name, profile, target, apps))
+    generated.update(target_files(project_name, profile, target, apps, shape or "liner"))
     # The copied assets first, so that anything generated above wins where both have an opinion. What a
     # copied asset means by `apps/service` and `apps/web` is spelled for this project on the way in.
     files = toolkit_files_from_assets(profile, apps)
@@ -207,6 +216,7 @@ def write_project(
     settled: set[str] | None = None,
     layout: Layout = AT_ROOT,
     adoption: Adoption | None = None,
+    shape: str | None = None,
 ) -> None:
     """Write the project and commit it, once, as the repository it starts life as.
 
@@ -216,7 +226,7 @@ def write_project(
     shed. Left unsaid, a project keeps every feature its answers selected and stays open to choose again.
     `layout` is the one `files` was assembled for.
     """
-    files = project_files(project_name, profile, target, apps, layout, adoption) if files is None else files
+    files = project_files(project_name, profile, target, apps, layout, adoption, shape) if files is None else files
     executables = {layout.place(path) for path in executable_paths(profile, apps)}
     # Every path held inside the destination before the first byte is written: generation never writes outside
     # the directory it was given, whatever a language answered.

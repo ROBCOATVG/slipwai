@@ -6,6 +6,7 @@ project does not have is a rule that teaches the reader to ignore the file.
 from __future__ import annotations
 
 from ..catalog import CATALOG
+from ..deployment_shapes import row
 from ..loaded_targets import answer, cloud_of
 from ..npm_workspace import npm
 from ..registry import SHARED_CODE, registry
@@ -178,7 +179,9 @@ frontend's API boundary, and navigational state in the URL. Share generated cont
     return base
 
 
-def agent_guidance(profile: str, apps: list[App], target: str = "none") -> str:
+def agent_guidance(
+    profile: str, apps: list[App], target: str = "none", shape: str = "liner",
+) -> str:
     services = services_of(apps)
     web = web_apps(apps)
     ownership = "".join(
@@ -279,7 +282,14 @@ type: a brief adds only its task-specific contract and file manifest, and restat
     if managed(CATALOG, target):
         # The flag rule names the file each service reads one through, rather than describing the
         # convention: an author who has to derive `FLAG_<KEY>` for themselves eventually derives it wrong.
-        guidance += answer(target, AGENT_RULES, default="") + FLAG_GUIDANCE.format(
+        deployment = answer(target, AGENT_RULES, default="")
+        if shape == "skiff" and (choice := row(target, shape)):
+            deployment = ("- This skiff deploys one production environment after verify passes; there is no staging "
+                          "promotion. Use immutable images, make smoke and the recorded rollback.\n"
+                          f"- Compute: {choice['compute']}. Database: {choice['database']}.\n"
+                          "- Read infra/SHAPE.md and infra/README.md before changing infrastructure. Shape convergence "
+                          "prepares only: retain the current database/state until verified cutover.\n")
+        guidance += deployment + FLAG_GUIDANCE.format(
             readers=reader_paths(apps), calls=reader_calls(apps), cloud=cloud_of(target)
         )
         # The browser half only where there is a browser: the flag rule for an app that does not exist is

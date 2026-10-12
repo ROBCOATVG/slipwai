@@ -19,9 +19,12 @@ phase 10 takes them out into packages, so read `docs/slipwai-2-plan.md`'s phase 
 **Write the liner first and cut it down.** A skiff written first grows into a liner by accident, and what
 it grows is the half of a liner somebody remembered.
 
-The shape defaults from where the product is — `slipway` gives a skiff, `in service` a liner — and
-`slipwai converge --shape liner` is a step up that keeps the database and its data and writes the runbook
-for the one thing a person does by hand.
+A new project starts as a skiff unless `--shape liner` says otherwise, and a manifest written before
+shapes existed keeps the liner it was generated as — never guessed from anything else, because a shape
+guessed from a field nobody maintains is a staging environment somebody loses. `slipwai converge --shape
+liner` is the step up: it keeps the database and its data and writes the runbook for the one thing a
+person does by hand. Each shape's row carries the warning for *leaving* that shape, which is the one
+converge prints.
 
 ## The compute is one row
 
@@ -35,8 +38,15 @@ day.
 
 1. **The stacks**, under `assets/targets/<name>/`: a bootstrap module and a service module, one file per
    concern, every provider pinned. Both shapes, and both validating against the real provider before and
-   after a prune.
-2. **The pipeline** the trunk runs: build, push, deploy, and the one that undoes it.
+   after a prune. **A shape's set is closed.** A file in the skiff's set may not read a declaration that
+   lives only in a file the skiff leaves out: that is an `Error: Reference to undeclared resource` on
+   every generated project, and it is invisible until something generates that shape and runs `tofu
+   validate` on it — so write the test that does, with a browser app, for both shapes.
+2. **The pipeline** the trunk runs: build, push, deploy, and the one that undoes it. The workflow that
+   undoes it offers the environments the *shape* has, not two. And if a shape's `make deploy` reaches the
+   image registry itself — a shape with no one-off task to migrate in does — say so with
+   `registry_at_deploy` on its row, so the job that deploys is signed in; a shape that does not must not
+   ask for a sign-in it never uses.
 3. **The preflight**: what has to be true before the first deploy, checked and said rather than discovered
    by a failing apply.
 4. **The axis provisioning**: for each option a backend may answer — a Postgres, an OIDC issuer, a bucket —

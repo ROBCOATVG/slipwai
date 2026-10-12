@@ -27,6 +27,7 @@ and no laptop ever applies it.
 """
 from __future__ import annotations
 
+from ..deployment_shapes import row
 from ..images import KO_VERSION, PACK_VERSION, tools_needed
 from ..loaded_targets import answer
 from ..services import App, backends_of, families_of, services_of, web_apps
@@ -64,17 +65,46 @@ AUTH0_ENVIRONMENT = (
     "  AUTH0_CLIENT_SECRET: ${{ secrets.AUTH0_CLIENT_SECRET }}\n"
 )
 
+# What this pipeline is, in its own words, which is not the same pipeline on both shapes: a liner builds once
+# and walks the commit through staging to production, and a skiff has one environment to reach. So the two
+# are written out whole and the shape picks one. The liner's was assembled and the skiff's cut back out of
+# the result by searching for the wording of a comment, which is a line that stops working the day somebody
+# improves the wording — and stops by raising from the middle of a generation rather than by failing a test.
+DEPLOY_HEADERS = {
+    "liner": """name: deploy
+# Every commit that passes `verify` on main goes all the way to production, in one pipeline: build once, push
+# by digest, apply staging, prove it, apply production, prove it. The gate is `verify`: this workflow starts
+# when that one completes on main, and only goes on if it passed, so the deploy never runs beside the gate
+# or ahead of it. There is no approval step, and no second pipeline for a hotfix, because this is the only
+# path. Every job checks out the commit `verify` passed, not the head of main at the time the job starts.
+""",
+    "skiff": """name: deploy
+# Every verified main commit builds immutable images, deploys the one production
+# environment and proves its endpoint. Every job checks out the verified commit.
+""",
+}
+
+
 def pipeline(target: str) -> dict[str, str]:
     """The five parts of these workflows that are this target's. The job around them is this module's."""
     return dict(answer(target, PIPELINE, default={}))
 
 
-def deploy_job(environment: str, needs: str, web: bool, target: str, condition: str = "") -> str:
+def deploy_job(
+    environment: str, needs: str, web: bool, target: str, condition: str = "", *, registry: bool = False,
+) -> str:
     # The site is built in the deploy job rather than the build job because Vite bakes VITE_* values into the
     # bundle, and where there is a customer login those are the environment's.
+    #
+    # `registry` is the deployment row's `registry_at_deploy`: whether this shape's `make deploy` itself
+    # reaches the image registry. A liner's does not — it applies, and the migration is a task the stack
+    # declares, which pulls its own image with the platform's credentials — so the registry sign-in belongs
+    # to the build job alone and nothing here asks for it. A shape whose deploy *is* the migration needs it
+    # in this job, and a job that signs in to a registry it never touches is configuration doing nothing.
     cloud = pipeline(target)
     node = NODE_SETUP if web else ""
     gate = f"    if: {condition}\n" if condition else ""
+    login = cloud["registry_login"] if registry else ""
     return f"""
   {environment}:
     needs: {needs}
@@ -84,7 +114,7 @@ def deploy_job(environment: str, needs: str, web: bool, target: str, condition: 
 {CHECKOUT}{cloud['cli']}      - uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: {TOFU_VERSION}
-{node}{cloud['credentials']}      - run: make deploy ENV={environment}
+{node}{cloud['credentials']}{login}      - run: make deploy ENV={environment}
       - run: make smoke URL=$(make -s url ENV={environment})
 """
 
@@ -94,7 +124,7 @@ def cloud_environment(target: str, auth0: bool) -> str:
     return pipeline(target)["environment"] + (AUTH0_ENVIRONMENT if auth0 else "")
 
 
-def deploy_workflow(apps: list[App], target: str, auth0: bool) -> str:
+def deploy_workflow(apps: list[App], target: str, auth0: bool, shape: str = "liner") -> str:
     services = services_of(apps)
     families = families_of(apps)
     setups = "".join(
@@ -103,14 +133,19 @@ def deploy_workflow(apps: list[App], target: str, auth0: bool) -> str:
     tools = "".join(TOOL_SETUPS[tool] for tool in tools_needed(backends_of(apps)))
     cloud = pipeline(target)
     web = bool(web_apps(apps))
-    return (
-        """name: deploy
-# Every commit that passes `verify` on main goes all the way to production, in one pipeline: build once, push
-# by digest, apply staging, prove it, apply production, prove it. The gate is `verify`: this workflow starts
-# when that one completes on main, and only goes on if it passed, so the deploy never runs beside the gate
-# or ahead of it. There is no approval step, and no second pipeline for a hotfix, because this is the only
-# path. Every job checks out the commit `verify` passed, not the head of main at the time the job starts.
-on:
+    # Whether the job that runs `make deploy` has to be signed in to the image registry is the deployment
+    # row's to say, because it follows from how that shape migrates and nothing here can know that. A shape
+    # with no one-off task to migrate in builds and pushes a bounded migration wrapper from inside `make
+    # deploy`, and without the login every deploy of such a shape ends in `no basic auth credentials`.
+    choice = row(target, shape) or {}
+    at_deploy = bool(choice.get("registry_at_deploy"))
+    deployment = (deploy_job("production", "build", web, target, registry=at_deploy) if shape == "skiff" else
+                  deploy_job("staging", "build", web, target, registry=at_deploy)
+                  + deploy_job("production", "staging", web, target, condition="vars.AUTO_PROMOTE != 'false'",
+                               registry=at_deploy))
+    result = (
+        DEPLOY_HEADERS[shape]
+        + """on:
   workflow_run:
     workflows:
       - verify
@@ -142,12 +177,9 @@ env:
         + cloud["registry_login"]
         + """      - run: make build push
 """
-        + deploy_job("staging", "build", web, target)
-        # `!=`, not `== 'true'`: a project bootstrapped before this variable existed has no variable, and
-        # absent has to keep meaning what it has always meant here — deploy production. Only an explicit
-        # `false`, which `make bootstrap` writes on purpose, holds this job back.
-        + deploy_job("production", "staging", web, target, condition="vars.AUTO_PROMOTE != 'false'")
+        + deployment
     )
+    return result
 
 
 def promotion_workflow(web: bool, target: str, auth0: bool) -> str:
@@ -222,11 +254,19 @@ env:
 """
 
 
-def rollback_workflow(target: str, auth0: bool) -> str:
+def rollback_workflow(target: str, auth0: bool, shape: str = "liner") -> str:
     # Nothing is built and no toolchain is installed: a rollback promotes images that already ran here, and
     # the site comes back from the copy of index.html `make deploy` kept. The same concurrency group as the
     # deploy, so it waits for an apply in flight rather than crossing it.
+    #
+    # The environments offered are the shape's, from the same row the deploy workflow and the Makefile are
+    # written from. Hard-coded, this was the one workflow a skiff owner could start against an environment
+    # the project has never had — a run that gets as far as `make rollback ENV=staging` and fails inside a
+    # workspace that does not exist. A target with no deployment rows keeps the two it always had.
     cloud = pipeline(target)
+    choice = row(target, shape) or {}
+    environments = choice.get("environments") or ("staging", "production")
+    options = "".join(f"          - {name}\n" for name in environments)
     return f"""name: rollback
 # Started by hand, from the Actions tab, when a release is wrong: re-apply the release before the current one
 # in the environment named — the previous digests, and the previous index.html where there is a site — then
@@ -241,9 +281,7 @@ on:
         type: choice
         required: true
         options:
-          - staging
-          - production
-permissions:
+{options}permissions:
   id-token: write
   contents: read
 concurrency:

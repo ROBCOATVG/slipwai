@@ -32,6 +32,13 @@ the declaration would be two places that answer "how many browser apps does this
 A marker is an HTML comment because an asset is copied into a generated project verbatim before the resolved
 one is written over it, and a marker that leaked would be invisible in rendered Markdown rather than a
 stray word in somebody's `AGENTS.md`.
+
+**Pages.** `assets/pages/` is where a page that is rendered rather than copied lives, at the path it lands at
+in a generated project — `README.md`, `docs/gates.md`, `skills/run-the-app/SKILL.md`. A root of its own rather
+than a corner of `assets/toolkit/`, which is copied into a project file by file at the path each one sits at:
+a page there arrives raw and is written over by the resolved one, which works and which the briefs rely on,
+but only for a page the generator always writes, and `skills/run-the-app/` would also have joined the skill
+catalogue it is deliberately not in. `page` below is how a module reads one.
 """
 from __future__ import annotations
 

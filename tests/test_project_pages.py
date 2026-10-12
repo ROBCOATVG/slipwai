@@ -6,12 +6,14 @@ exactly. "Generate before and after" cannot be run across one commit, so `tests/
 is what these modules rendered at 074aa35, the commit this slice was written on top of, and the tests below
 are the only reason that file exists.
 
-**The matrix, and what it honestly covers.** Forty-eight combinations of five application sets, two profiles,
+**The matrix, and what it honestly covers.** Fifty-six combinations of six application sets, two profiles,
 four target-and-shape answers and — for the set with no generated service, the only one whose pages read it —
 two delivery layouts. The application sets are the branches these three modules actually have: a repository
 the method was installed around and whose services the keel did not make; one service alone; a service with a
-browser app; two services on different rungs with two browser apps; and a service with no inbound transport,
-which `run_skill` has a whole separate page for.
+browser app; two services on different rungs with two browser apps; a service with no inbound transport,
+which `run_skill` has a whole separate page for; and that same service with a browser app beside it, which is
+the only combination that reaches the run skill's *there is no HTTP transport* section — a browser app alone
+keeps the full page, and a transportless service alone is handed the separate one.
 
 Two limits are worth stating rather than implying. The browser apps here are built as `App` directly instead
 of through `services.web_app`, because that function asks for the browser language's package and this
@@ -84,8 +86,16 @@ def quiet() -> list[App]:
     return [service_app("service", TOY, 3000, QUIET, first=True)]
 
 
+def quiet_browser() -> list[App]:
+    """A browser app with nothing to proxy to: the one set where the run skill is the full page and still
+    has no transport to describe, and the README offers a way to run it that starts no service."""
+    return [service_app("service", TOY, 3000, QUIET, first=True),
+            browser("web", 5173, "service", first=True)]
+
+
 #: One row per application set, in the order the record carries them.
-SETS = (("adopted", adopted), ("solo", solo), ("browser", with_browser), ("pair", pair), ("quiet", quiet))
+SETS = (("adopted", adopted), ("solo", solo), ("browser", with_browser), ("pair", pair),
+        ("quiet", quiet), ("quiet-browser", quiet_browser))
 PROFILES = ("standard", "event-modelling")
 #: Where this project goes, and in what shape: nowhere, a repository that already deploys, a cloud in each
 #: of the two shapes. Two clouds because the README is written round nouns each target answers for itself.

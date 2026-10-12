@@ -11,10 +11,17 @@
 # and compare it with the lines below. The module that prints them changes nothing the generator does, so
 # the reading is the same whether it is taken at 074aa35 or at the commit that added it.
 #
-# Forty-eight combinations: five application sets — a repository the keel made none of, one service, a
-# service with a browser app, two services on two rungs with two browser apps, a service with no inbound
-# transport — against both profiles and four target-and-shape answers, plus the delivery layout for the set
-# whose pages read it. `<digest>  <apps>/<profile>/<target>-<shape>/<delivery>  <path>`.
+# Fifty-six combinations: six application sets — a repository the keel made none of, one service, a service
+# with a browser app, two services on two rungs with two browser apps, a service with no inbound transport,
+# and that service with a browser app beside it — against both profiles and four target-and-shape answers,
+# plus the delivery layout for the set whose pages read it.
+# `<digest>  <apps>/<profile>/<target>-<shape>/<delivery>  <path>`.
+#
+# The sixth set was added after the first five were recorded, because it is the only one that reaches the
+# run skill's no-transport section and the README's run block with no service to start. Its rows were read
+# the same way, at 074aa35 restored from the history — and re-reading the other five there reproduced the
+# lines already here byte for byte, which is what makes appending to a record safe rather than a second
+# reading of a moved target.
 #
 # A deliberate edit to one of these pages changes these lines, which is the point: the diff a reviewer has
 # to see is the prose, and this file is what refuses to let it pass unseen.
@@ -362,6 +369,98 @@ fc94fd7ed84b75fcd797d140be48a82e87037c22fb61e21b1d9f89c5666ae209  pair/standard/
 bc09743f7d45f4fa506040c96d747b5ad1fc7d8866a0c0ff74a02459c9dc41bf  pair/standard/none-liner/.  docs/workflow.md
 26c1cf350de0e00c5f556ef621b79ce86a1c1c9fc21e3b95fdaf943fd539aff2  pair/standard/none-liner/.  project.json
 039c42d90ee883c57ba87d2e6d7434daa1ce54e85627ef408444574a9b63f075  pair/standard/none-liner/.  skills/run-the-app/SKILL.md
+d5f10ca05b440cd9f73d03de7f316aa6df837e6d409b65f2694468d09b226f49  quiet-browser/event-modelling/aws-liner/.  README.md
+152fe67b9fc34ed92f7c1c92b46f79a89cbe93f9533e009c1ae3d7ed9ead1391  quiet-browser/event-modelling/aws-liner/.  docs/design.md
+62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet-browser/event-modelling/aws-liner/.  docs/event-model/model.yaml
+09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet-browser/event-modelling/aws-liner/.  docs/event-modeling-to-code.md
+88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/event-modelling/aws-liner/.  docs/evolving-the-project.md
+c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet-browser/event-modelling/aws-liner/.  docs/first-slice.md
+6776868b3b63272e6f391f73d08e86140a54ddfab57732f8bafd2be58acbcd37  quiet-browser/event-modelling/aws-liner/.  docs/gates.md
+29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  quiet-browser/event-modelling/aws-liner/.  docs/getting-started.md
+315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  quiet-browser/event-modelling/aws-liner/.  docs/skills-and-commands.md
+2fbc61b36971a89ff2145e12097d32450bdf05379bd35b1b65df984fc6572167  quiet-browser/event-modelling/aws-liner/.  docs/whats-included.md
+55c65c39bca54f0ac3fc6f0a3763e7c6cb8cc2a603fd3d272babc97c3b537439  quiet-browser/event-modelling/aws-liner/.  docs/workflow.md
+45df4b7d76ecd2bb675bfecb2707ec92a46a5762bda110d6806810bf0f2fc72d  quiet-browser/event-modelling/aws-liner/.  project.json
+180ca5b5b93afad10e65f81f0887276aaa6e63a795e39c617c810066c8d80979  quiet-browser/event-modelling/aws-liner/.  skills/run-the-app/SKILL.md
+a41b562cbd3dd81e454090bfbf89a526b870c0b65586d83fdd9960d8980f619f  quiet-browser/event-modelling/azure-skiff/.  README.md
+152fe67b9fc34ed92f7c1c92b46f79a89cbe93f9533e009c1ae3d7ed9ead1391  quiet-browser/event-modelling/azure-skiff/.  docs/design.md
+62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet-browser/event-modelling/azure-skiff/.  docs/event-model/model.yaml
+09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet-browser/event-modelling/azure-skiff/.  docs/event-modeling-to-code.md
+88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/event-modelling/azure-skiff/.  docs/evolving-the-project.md
+c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet-browser/event-modelling/azure-skiff/.  docs/first-slice.md
+6776868b3b63272e6f391f73d08e86140a54ddfab57732f8bafd2be58acbcd37  quiet-browser/event-modelling/azure-skiff/.  docs/gates.md
+29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  quiet-browser/event-modelling/azure-skiff/.  docs/getting-started.md
+315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  quiet-browser/event-modelling/azure-skiff/.  docs/skills-and-commands.md
+2fbc61b36971a89ff2145e12097d32450bdf05379bd35b1b65df984fc6572167  quiet-browser/event-modelling/azure-skiff/.  docs/whats-included.md
+55c65c39bca54f0ac3fc6f0a3763e7c6cb8cc2a603fd3d272babc97c3b537439  quiet-browser/event-modelling/azure-skiff/.  docs/workflow.md
+3f37c8a7ff94111b86b8d41ef84c13e52bc80aef4a092e38543c98e2d3f8cfdc  quiet-browser/event-modelling/azure-skiff/.  project.json
+180ca5b5b93afad10e65f81f0887276aaa6e63a795e39c617c810066c8d80979  quiet-browser/event-modelling/azure-skiff/.  skills/run-the-app/SKILL.md
+88ac37ff01474a0bf25371dde72143de14fc457f31159fe4f1083b16a4321ca4  quiet-browser/event-modelling/existing-liner/.  README.md
+152fe67b9fc34ed92f7c1c92b46f79a89cbe93f9533e009c1ae3d7ed9ead1391  quiet-browser/event-modelling/existing-liner/.  docs/design.md
+62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet-browser/event-modelling/existing-liner/.  docs/event-model/model.yaml
+09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet-browser/event-modelling/existing-liner/.  docs/event-modeling-to-code.md
+88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/event-modelling/existing-liner/.  docs/evolving-the-project.md
+c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet-browser/event-modelling/existing-liner/.  docs/first-slice.md
+113e81f064adde2d655d3dab88f64a77fe8560efcd4260304643ec03ae7d203f  quiet-browser/event-modelling/existing-liner/.  docs/gates.md
+29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  quiet-browser/event-modelling/existing-liner/.  docs/getting-started.md
+315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  quiet-browser/event-modelling/existing-liner/.  docs/skills-and-commands.md
+3ccbccab391ebbfc25c1cfb4ea50b1a03d33c5e4d9f373fa90ab50f55e1026a3  quiet-browser/event-modelling/existing-liner/.  docs/whats-included.md
+55c65c39bca54f0ac3fc6f0a3763e7c6cb8cc2a603fd3d272babc97c3b537439  quiet-browser/event-modelling/existing-liner/.  docs/workflow.md
+177d45fe7bf9f95e9eb11227fabf7d4f139f584b969e54ec3592f28e168b4dc6  quiet-browser/event-modelling/existing-liner/.  project.json
+180ca5b5b93afad10e65f81f0887276aaa6e63a795e39c617c810066c8d80979  quiet-browser/event-modelling/existing-liner/.  skills/run-the-app/SKILL.md
+d19a92e5688960d5520b47cedfbe11c02f1ce7a5e4fb95ecddc4e78165360346  quiet-browser/event-modelling/none-liner/.  README.md
+152fe67b9fc34ed92f7c1c92b46f79a89cbe93f9533e009c1ae3d7ed9ead1391  quiet-browser/event-modelling/none-liner/.  docs/design.md
+62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet-browser/event-modelling/none-liner/.  docs/event-model/model.yaml
+09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet-browser/event-modelling/none-liner/.  docs/event-modeling-to-code.md
+88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/event-modelling/none-liner/.  docs/evolving-the-project.md
+c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet-browser/event-modelling/none-liner/.  docs/first-slice.md
+113e81f064adde2d655d3dab88f64a77fe8560efcd4260304643ec03ae7d203f  quiet-browser/event-modelling/none-liner/.  docs/gates.md
+29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  quiet-browser/event-modelling/none-liner/.  docs/getting-started.md
+315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  quiet-browser/event-modelling/none-liner/.  docs/skills-and-commands.md
+503356ebfff24f0a0507d0a58e967104cebf0220f633619386888aa41981be62  quiet-browser/event-modelling/none-liner/.  docs/whats-included.md
+55c65c39bca54f0ac3fc6f0a3763e7c6cb8cc2a603fd3d272babc97c3b537439  quiet-browser/event-modelling/none-liner/.  docs/workflow.md
+5f8b01c3f9a526ac05a79c1080496b3f70242efa372d52d0b2edc148ef03e4b7  quiet-browser/event-modelling/none-liner/.  project.json
+180ca5b5b93afad10e65f81f0887276aaa6e63a795e39c617c810066c8d80979  quiet-browser/event-modelling/none-liner/.  skills/run-the-app/SKILL.md
+d31103baa701dbf911a1be41be0499ffb6b5baa513964791e07e18ce59419e13  quiet-browser/standard/aws-liner/.  README.md
+152fe67b9fc34ed92f7c1c92b46f79a89cbe93f9533e009c1ae3d7ed9ead1391  quiet-browser/standard/aws-liner/.  docs/design.md
+88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/standard/aws-liner/.  docs/evolving-the-project.md
+c449dc18f3e55bce4cf161ac6e103ee0bf446024d5f7f483161eae7b2507bd2c  quiet-browser/standard/aws-liner/.  docs/gates.md
+2cec75975b7a7f295e397655d07812248497db60ada03d1a593aaff08d3c0bf4  quiet-browser/standard/aws-liner/.  docs/getting-started.md
+a6d688e4e54312202a390e37d43ac51466451b07a1d431120adb67cd99b35aa8  quiet-browser/standard/aws-liner/.  docs/skills-and-commands.md
+02a7258c4921b8802390d2ab5a91a8ddc3f9598dca50c3f7c49d102e665d0b6b  quiet-browser/standard/aws-liner/.  docs/whats-included.md
+bc09743f7d45f4fa506040c96d747b5ad1fc7d8866a0c0ff74a02459c9dc41bf  quiet-browser/standard/aws-liner/.  docs/workflow.md
+fabc8d7785440823494542c0550b1ac6b1410cfd8ec6650f1cac235ef1c33b86  quiet-browser/standard/aws-liner/.  project.json
+180ca5b5b93afad10e65f81f0887276aaa6e63a795e39c617c810066c8d80979  quiet-browser/standard/aws-liner/.  skills/run-the-app/SKILL.md
+b26e6f8e718c01a1b5f176e60037431b23b42fba840f57bb6a0f53431f7cbdb6  quiet-browser/standard/azure-skiff/.  README.md
+152fe67b9fc34ed92f7c1c92b46f79a89cbe93f9533e009c1ae3d7ed9ead1391  quiet-browser/standard/azure-skiff/.  docs/design.md
+88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/standard/azure-skiff/.  docs/evolving-the-project.md
+c449dc18f3e55bce4cf161ac6e103ee0bf446024d5f7f483161eae7b2507bd2c  quiet-browser/standard/azure-skiff/.  docs/gates.md
+2cec75975b7a7f295e397655d07812248497db60ada03d1a593aaff08d3c0bf4  quiet-browser/standard/azure-skiff/.  docs/getting-started.md
+a6d688e4e54312202a390e37d43ac51466451b07a1d431120adb67cd99b35aa8  quiet-browser/standard/azure-skiff/.  docs/skills-and-commands.md
+02a7258c4921b8802390d2ab5a91a8ddc3f9598dca50c3f7c49d102e665d0b6b  quiet-browser/standard/azure-skiff/.  docs/whats-included.md
+bc09743f7d45f4fa506040c96d747b5ad1fc7d8866a0c0ff74a02459c9dc41bf  quiet-browser/standard/azure-skiff/.  docs/workflow.md
+829f9e3ff7bba28a07b982ecc3dc31c41574115c8de4e833723609b29cbc3d2a  quiet-browser/standard/azure-skiff/.  project.json
+180ca5b5b93afad10e65f81f0887276aaa6e63a795e39c617c810066c8d80979  quiet-browser/standard/azure-skiff/.  skills/run-the-app/SKILL.md
+ce02f509547999490a8428ad4a9c88386e2c8e4d4c758b27f8d8a071eb355332  quiet-browser/standard/existing-liner/.  README.md
+152fe67b9fc34ed92f7c1c92b46f79a89cbe93f9533e009c1ae3d7ed9ead1391  quiet-browser/standard/existing-liner/.  docs/design.md
+88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/standard/existing-liner/.  docs/evolving-the-project.md
+3873f2a858fbcb100fbcc7097d49b801ecda02cc472725c60c42cb6eeaf2155d  quiet-browser/standard/existing-liner/.  docs/gates.md
+2cec75975b7a7f295e397655d07812248497db60ada03d1a593aaff08d3c0bf4  quiet-browser/standard/existing-liner/.  docs/getting-started.md
+a6d688e4e54312202a390e37d43ac51466451b07a1d431120adb67cd99b35aa8  quiet-browser/standard/existing-liner/.  docs/skills-and-commands.md
+5ef710e786efdb8fbe23c34e754ef0d70737b5acb2865d310035c056d7acc70a  quiet-browser/standard/existing-liner/.  docs/whats-included.md
+bc09743f7d45f4fa506040c96d747b5ad1fc7d8866a0c0ff74a02459c9dc41bf  quiet-browser/standard/existing-liner/.  docs/workflow.md
+f4dd48f37b867afe1fd01351060c43c1301b3316c4ef15b4c3806a8866127e9e  quiet-browser/standard/existing-liner/.  project.json
+180ca5b5b93afad10e65f81f0887276aaa6e63a795e39c617c810066c8d80979  quiet-browser/standard/existing-liner/.  skills/run-the-app/SKILL.md
+778e885c3e84c46adc548caff555983adee7a70a111800d3bb039926c5d39c28  quiet-browser/standard/none-liner/.  README.md
+152fe67b9fc34ed92f7c1c92b46f79a89cbe93f9533e009c1ae3d7ed9ead1391  quiet-browser/standard/none-liner/.  docs/design.md
+88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/standard/none-liner/.  docs/evolving-the-project.md
+3873f2a858fbcb100fbcc7097d49b801ecda02cc472725c60c42cb6eeaf2155d  quiet-browser/standard/none-liner/.  docs/gates.md
+2cec75975b7a7f295e397655d07812248497db60ada03d1a593aaff08d3c0bf4  quiet-browser/standard/none-liner/.  docs/getting-started.md
+a6d688e4e54312202a390e37d43ac51466451b07a1d431120adb67cd99b35aa8  quiet-browser/standard/none-liner/.  docs/skills-and-commands.md
+31bd28c008005a4705bc799b7aacf4fb318496cca98e66237b9fb42b33563488  quiet-browser/standard/none-liner/.  docs/whats-included.md
+bc09743f7d45f4fa506040c96d747b5ad1fc7d8866a0c0ff74a02459c9dc41bf  quiet-browser/standard/none-liner/.  docs/workflow.md
+6697428cbea5e323fd05104e598bd69f8fcd3189b583a92948a56c9630fe0af1  quiet-browser/standard/none-liner/.  project.json
+180ca5b5b93afad10e65f81f0887276aaa6e63a795e39c617c810066c8d80979  quiet-browser/standard/none-liner/.  skills/run-the-app/SKILL.md
 4eea0ab457098ebe10db82011a399cab218cbf3d3c121d09b296994193ed7193  quiet/event-modelling/aws-liner/.  README.md
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet/event-modelling/aws-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet/event-modelling/aws-liner/.  docs/event-modeling-to-code.md

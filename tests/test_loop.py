@@ -101,7 +101,11 @@ class LoopTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.scratch = tempfile.TemporaryDirectory()
+        # `ignore_cleanup_errors` because what is being removed is a git repository: loose objects are mode
+        # 444, and Windows refuses to unlink a read-only file, so the tear-down of a directory nothing reads
+        # again was failing the suite under the name of the case that happened to run last. A scratch
+        # directory that will not delete is a fact about the filesystem and not a claim about the loop.
+        cls.scratch = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         done = subprocess.run(
             [sys.executable, "-m", "slipwai", "generate", "demo", "--backend", TOY,
              "--frontend", "none", "--target", "none", "--profile", "event-modelling",
@@ -118,9 +122,11 @@ class LoopTest(unittest.TestCase):
         assert "slices: []" in held, "the seeded model no longer ends on an empty slice list"
         model.write_text(held.replace("slices: []\n", SLICES), encoding="utf-8")
         (cls.project / "sail-stand-in.py").write_text(SAIL, encoding="utf-8")
-        # A captain waits for the harbourmaster's answer to its merge request, bounded by `wait_bound`.
-        # Most of these cases run a captain with no harbourmaster behind it, which is the state they are
-        # about — so the bound is seconds here rather than the hour a real harbour allows.
+        # A captain waits for the harbourmaster's answer to its merge request, bounded by `wait_bound` —
+        # which is a bound on the harbour log going *silent*, not on elapsed time. Most of these cases run a
+        # captain with no harbourmaster behind it at all, so the harbour is silent from the first instant
+        # and the bound is the whole wait: seconds here rather than the hour a real harbour allows. The one
+        # case that runs a harbourmaster sets its own, below, because the quantity there is a different one.
         harbour = cls.project / "harbour.json"
         config = json.loads(harbour.read_text(encoding="utf-8"))
         harbour.write_text(json.dumps({**config, "wait_bound": 0.05}, indent=2) + "\n", encoding="utf-8")
@@ -220,6 +226,20 @@ class LoopTest(unittest.TestCase):
         fresh generation is `make test-docs`'s job, and running it per case would make this suite minutes
         long.
         """
+        # The one case with a harbourmaster behind the captain, so the one where `wait_bound` is a bound on
+        # something that exists. What has to fit inside it is the harbourmaster's *first* pass — a Python
+        # start, a `git fetch`, a rebase in a fresh worktree and the project's gate — before it has written
+        # any line to restart the bound. The three seconds the harbourmaster-less cases want is less than
+        # that start costs on a loaded CI runner, and this case failed one Windows run in two reporting a
+        # slice parked whose merge was being gated at that moment. A minute is sixty of the harbourmaster's
+        # own `--interval` below: what it still catches is a harbourmaster that never starts or never
+        # writes, and `run_in`'s 180-second timeout is the backstop behind that.
+        harbour = self.project / "harbour.json"
+        was = harbour.read_text(encoding="utf-8")
+        self.addCleanup(harbour.write_text, was, encoding="utf-8")
+        harbour.write_text(json.dumps({**json.loads(was), "wait_bound": 1.0}, indent=2) + "\n",
+                           encoding="utf-8")
+
         gate = self.project / "gate"
         gate.mkdir(exist_ok=True)
         (gate / "Makefile").write_text("verify:\n\t@echo 'verify: all gates passed'\n", encoding="utf-8")

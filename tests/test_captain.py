@@ -145,6 +145,45 @@ class MergeTest(Fixture):
         self.assertIn("did not answer", parked[0], done.stdout)
         self.assertEqual([e for e in self.read("ORD") if e.kind == "merged"], [])
 
+    def test_a_harbourmaster_that_is_writing_is_waited_for_past_the_bound(self) -> None:
+        """The bound is on the harbourmaster's silence, not on the clock since the request.
+
+        This is the inversion the rest of this file is built on, applied to the one wait a captain has: a
+        harbour that is writing lines is a harbour that is working, and a bound measured from the request
+        parks a slice whose merge is being gated at that moment. It cost
+        `test_loop.test_the_whole_loop_reaches_trunk_with_no_person_in_the_path` one Windows run in two — the
+        captain reached `request`, the harbourmaster's pass took longer than a bound chosen for the cases
+        that have no harbourmaster at all, and a slice that merged was reported parked.
+
+        Here the harbour writes a line a second for four seconds against a bound of three, then answers. A
+        clock from the request gives up at the fourth second; silence is what has to run out.
+        """
+        import threading
+        import time
+        answered = threading.Event()
+
+        def harbourmaster() -> None:
+            for _ in range(2000):
+                if any(e.kind == "request" for e in self.read("ORD")):
+                    break
+                time.sleep(0.02)
+            else:
+                return
+            for mark in ("Shipped", "Invoiced", "Refunded", "Settled"):
+                time.sleep(1.0)
+                self.harbour(logs.entry("mark-set", harbour=True, fairway="BIL", slice="BIL-09", mark=mark))
+            self.grant("ORD-01", commit="latecom")
+            answered.set()
+
+        keeper = threading.Thread(target=harbourmaster, daemon=True)
+        keeper.start()
+        done = self.captain("ORD", self.sail(WORKS))
+        keeper.join(30)
+        self.assertTrue(answered.is_set(), "the answer was never written, so this proved nothing")
+        landed = [e for e in self.read("ORD") if e.kind == "merged"]
+        self.assertEqual(len(landed), 1, done.stdout + done.stderr)
+        self.assertEqual(landed[0].fields["commit"], "latecom")
+
     def test_a_refusal_nothing_in_a_berth_can_fix_parks_at_once(self) -> None:
         self.refuse("ORD-01", "there is no branch slice/ORD-01 to merge")
         done = self.captain("ORD", self.sail(WORKS))

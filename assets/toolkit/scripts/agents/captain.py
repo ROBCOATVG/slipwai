@@ -87,7 +87,8 @@ DEFAULT_ATTEMPTS = 2
 ACCEPTED = "accepted"
 #: How often the harbour log is re-read while waiting for an answer to a request.
 ANSWER_POLL = 2.0
-#: Minutes a wait may last where `harbour.json` does not say. `half-ahead`'s number.
+#: Minutes a harbour may be *silent* for before a wait on it is a park, where `harbour.json` does not say.
+#: `half-ahead`'s number. Silence and not elapsed time: see `await_answer`.
 DEFAULT_WAIT_MINUTES = 60
 
 
@@ -116,7 +117,7 @@ def attempts() -> int:
 
 
 def wait_bound() -> float:
-    """Seconds any wait may last before it is a parked line with a reason."""
+    """Seconds a wait may go with the harbour log silent before it is a parked line with a reason."""
     held = harbour().get("wait_bound")
     return (held if isinstance(held, int | float) and held > 0 else DEFAULT_WAIT_MINUTES) * 60.0
 
@@ -167,16 +168,29 @@ def answered(request: str) -> logs.Entry | None:
 
 
 def await_answer(request: str, bound: float) -> logs.Entry | None:
-    """Wait for the answer to one request. None where the bound ran out before it came.
+    """Wait for the answer to one request. None where the harbour went silent for the bound.
 
     A captain holds no credential, so this is the one place its own progress depends on another process —
     and a wait with no bound is indistinguishable from a run that has stopped, which is why there is one.
+
+    **What the bound is on is silence, not elapsed time**, which is the same inversion as everything else
+    here: a process that wrote a line made progress. A harbourmaster's answer to a merge is on the far side
+    of a fetch, a rebase and the project's whole `make verify`, and every one of those is a different length
+    on a different machine — so a clock started at the request is a clock measuring the gate rather than the
+    harbourmaster's health, and the number that works on a laptop parks a merge that is being gated at that
+    moment on a loaded runner. Any new line in the harbour log is the harbour saying it is still there, and
+    it starts the bound again. What still parks is a harbour that has stopped writing altogether, which is
+    the failure the bound exists for and the only one it can honestly detect.
     """
+    seen = len(harbour_entries())
     until = time.monotonic() + bound
     while True:
         found = answered(request)
         if found is not None:
             return found
+        count = len(harbour_entries())
+        if count > seen:
+            seen, until = count, time.monotonic() + bound
         if time.monotonic() >= until:
             return None
         time.sleep(ANSWER_POLL)
@@ -478,8 +492,9 @@ def ask_to_merge(slice_id: str, feature: str, fairway: str,
         detail=f"merge slice/{slice_id} into trunk after the full gate"))
     found = await_answer(request, wait_bound())
     if found is None:
-        return False, (f"the harbourmaster did not answer {request} within the wait bound. Nothing merges "
-                       f"without it, and a wait with no end is indistinguishable from a run that stopped"), False
+        return False, (f"the harbourmaster did not answer {request}, and the harbour log has been silent for "
+                       f"the wait bound. Nothing merges without it, and a wait with no end is "
+                       f"indistinguishable from a run that stopped"), False
     if found.kind == "refused":
         why = str(found.fields.get("why", "no reason given"))
         return False, f"the merge was refused: {why}", bool(found.fields.get("resolve"))

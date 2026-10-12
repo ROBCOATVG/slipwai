@@ -60,7 +60,7 @@ telegraph: half-ahead
   stage_scale       1.0       what every stage budget in `stages` is multiplied by
   bar               MEDIUM    the severity at or above which an adversary finding must close before a merge
   decision_ceiling  10        decisions that may stand unread before a fairway parks
-  wait_bound        60        minutes any wait may last before it is a parked line with a reason
+  wait_bound        60        minutes a wait may go with the harbour log silent before it is a parked line
 ```
 
 Five positions, fastest first:

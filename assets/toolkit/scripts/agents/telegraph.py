@@ -49,7 +49,7 @@ MEANS = {
     "stage_scale": "what every stage budget in `stages` is multiplied by",
     "bar": "the severity at or above which an adversary finding must close before a merge",
     "decision_ceiling": "decisions that may stand unread before a fairway parks",
-    "wait_bound": "minutes any wait may last before it is a parked line with a reason",
+    "wait_bound": "minutes a wait may go with the harbour log silent before it is a parked line",
     # Added with slice 7.8, which needed a retry bound and found that `cycle` is not one — `cycle` is the
     # TDD unit (`rule` or `example`), not a count, and the captain needs to know how many times it may
     # re-dispatch `/sail` for one slice before parking. A send-back at the demo is the case that matters:

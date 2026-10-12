@@ -47,8 +47,12 @@ STAGE_BUDGETS: dict[str, dict[str, int]] = {
 #: How many decisions may stand unread by a person before a fairway parks. The experiment reached 125
 #: decisions with 105 of them never reviewed, which is not a record of judgement, it is a backlog of it.
 DECISION_CEILING = 10
-#: Minutes any wait may last — for a mark, for a person, for a lock — before it becomes a `parked` line with
-#: a reason. In the first attempt a wait with no bound was indistinguishable from a run that had stopped.
+#: Minutes a wait may go with nothing written to the harbour log — waiting for a mark, for a person, for a
+#: lock — before it becomes a `parked` line with a reason. In the first attempt a wait with no bound was
+#: indistinguishable from a run that had stopped. What it is a bound on is *silence* and not elapsed time:
+#: a harbourmaster answering a merge is on the far side of a rebase and the project's whole gate, which is
+#: a different length on every machine, so a clock started at the request measures the gate rather than the
+#: harbour's health. Any new line restarts it; a harbour that has stopped writing is what it still catches.
 WAIT_BOUND = 60
 
 COMMENT = (
@@ -56,7 +60,8 @@ COMMENT = (
     "any not named. `bar` is the severity at or above which an adversary finding must close before the "
     "merge; below it a finding is stowed into the fairway's careen and the slice merges, and nothing "
     "CRITICAL is ever stowed. `decision_ceiling` is how many decisions may stand unread before a fairway "
-    "parks. `wait_bound` is how long any wait may last before it is a parked line with a reason. "
+    "parks. `wait_bound` is how long a wait may go with nothing written to the harbour log before it is a "
+    "parked line with a reason — a bound on silence, so a harbourmaster that is writing is waited for. "
     "`attempts` is how many times a captain may re-dispatch `/sail` for one slice — a demo sent back is a "
     "retry, not a park — before the fairway parks naming what is still missing. `ci` is how the "
     "harbourmaster asks the forge whether trunk is green before it grants any merge: absent means `gh` "

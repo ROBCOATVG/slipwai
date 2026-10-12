@@ -66,8 +66,13 @@ class Runtime:
                        "SLIPWAI_LANGUAGES": str(self.python.parent / ".no-language-packages")}
         for name in ("GITHUB_HEAD_REF", "CI_COMMIT_REF_NAME"):
             environment.pop(name, None)
-        done = subprocess.run([str(self.python), "-I", *arguments], cwd=cwd, env=environment, input=data,
-                              capture_output=True, text=True, encoding="utf-8", timeout=300)
+        try:
+            done = subprocess.run([str(self.python), "-I", *arguments], cwd=cwd, env=environment, input=data,
+                                  capture_output=True, text=True, encoding="utf-8", timeout=300)
+        except subprocess.TimeoutExpired as hung:
+            raise GenerationError(f"the installed {self.used} factory did not answer within 300s "
+                                  f"({' '.join(arguments[:2])}); set {VARIABLE} to an installed version 1 "
+                                  "interpreter and rerun `slipwai migrate --check`") from hung
         if done.returncode:
             raise GenerationError(f"the installed {self.used} factory could not supply its base: "
                                   f"{done.stderr.strip() or done.stdout.strip()}. "
@@ -110,9 +115,14 @@ def runtime(recorded: str, existing: Path | None = None) -> Iterator[Runtime]:
         environment = Path(scratch)
         venv.EnvBuilder(with_pip=True).create(environment)
         python = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-        installed = subprocess.run([str(python), "-m", "pip", "install", "--disable-pip-version-check",
-                                    f"slipwai=={used}", "PyYAML==6.0.3"],
-                                   capture_output=True, text=True, encoding="utf-8", timeout=300)
+        try:
+            installed = subprocess.run([str(python), "-m", "pip", "install", "--disable-pip-version-check",
+                                        f"slipwai=={used}", "PyYAML==6.0.3"],
+                                       capture_output=True, text=True, encoding="utf-8", timeout=300)
+        except subprocess.TimeoutExpired as hung:
+            raise GenerationError(f"installing slipwai {used} to reconstruct its base did not finish within "
+                                  f"300s. Install it separately, set {VARIABLE}, then retry "
+                                  "`slipwai migrate --check`") from hung
         if installed.returncode:
             raise GenerationError(f"slipwai {used} could not be installed to reconstruct its base: "
                                   f"{installed.stderr.strip()}. Install it separately, set {VARIABLE}, "

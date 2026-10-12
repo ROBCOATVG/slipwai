@@ -32,16 +32,20 @@ def settings(root: Path, document: dict, files: Tree, *, contested: bool = False
     """
     notes: list[str] = []
     today = datetime.now(UTC).date().isoformat()
+    # Every read of git here is surrogateescaped, as the rest of the crossing is: one commit message or
+    # one blob that is not UTF-8 is not a reason a person's migration stops with a traceback.
     historical = git(root, "log", "main", "--diff-filter=AM", "--format=", "--name-only", "--",
-                     "*flags.auto.tfvars").decode().splitlines()
-    current = set(git(root, "ls-files", "-z", "--", "*flags.auto.tfvars").decode().split("\0")) - {""}
+                     "*flags.auto.tfvars").decode(errors="surrogateescape").splitlines()
+    current = set(git(root, "ls-files", "-z", "--", "*flags.auto.tfvars")
+                  .decode(errors="surrogateescape").split("\0")) - {""}
     names = current | {name for name in historical if name.endswith("flags.auto.tfvars")}
     ever_on = False
     for name in sorted(names):
         path = root / name
-        history = git(root, "log", "main", "--diff-filter=AM", "--format=%H", "--", name).decode().splitlines()
+        history = git(root, "log", "main", "--diff-filter=AM", "--format=%H", "--",
+                      name).decode(errors="surrogateescape").splitlines()
         for commit in history:
-            old = git(root, "show", f"{commit}:{name}").decode("utf-8")
+            old = git(root, "show", f"{commit}:{name}").decode("utf-8", errors="surrogateescape")
             ever_on |= bool(re.search(r'(?m)^\s*[A-Za-z_][A-Za-z0-9_]*\s*=\s*(?:true\b|"on"(?:\s*(?:#.*)?$))', old))
         if name not in current:
             continue  # a struck/removed flag still establishes product history, but is not recreated

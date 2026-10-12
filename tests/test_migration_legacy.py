@@ -1,12 +1,15 @@
 """A snapshot's installed base is the actual stable release below it, never its future release."""
 from __future__ import annotations
 
+import subprocess
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import checkout_packages  # noqa: F401
 
 from slipwai.errors import GenerationError
-from slipwai.migration_legacy import selected
+from slipwai.migration_legacy import Runtime, runtime, selected
 
 
 class SelectionTest(unittest.TestCase):
@@ -27,6 +30,23 @@ class SelectionTest(unittest.TestCase):
         for value in ("unknown", "2.0.0", "1.2.0rc1"):
             with self.subTest(version=value), self.assertRaises(GenerationError):
                 selected(value, ["1.1.0"])
+
+
+class HangTest(unittest.TestCase):
+    """A version 1 factory that never answers is a refusal that names the way round it, not a traceback."""
+
+    def test_a_legacy_factory_that_runs_past_its_timeout_names_the_installed_interpreter(self) -> None:
+        hung = subprocess.TimeoutExpired(cmd="slipwai", timeout=300)
+        with patch("slipwai.migration_legacy.subprocess.run", side_effect=hung), \
+                self.assertRaisesRegex(GenerationError, "SLIPWAI_LEGACY_PYTHON"):
+            Runtime(Path("python"), "1.5.1", "1.5.1").run(["-m", "slipwai", "replay"], Path.cwd())
+
+    def test_an_install_that_runs_past_its_timeout_names_the_installed_interpreter(self) -> None:
+        hung = subprocess.TimeoutExpired(cmd="pip", timeout=300)
+        with patch("slipwai.migration_legacy.venv.EnvBuilder"), \
+                patch("slipwai.migration_legacy.subprocess.run", side_effect=hung), \
+                self.assertRaisesRegex(GenerationError, "SLIPWAI_LEGACY_PYTHON"), runtime("1.5.1"):
+            pass  # pragma: no cover
 
 
 if __name__ == "__main__":  # pragma: no cover

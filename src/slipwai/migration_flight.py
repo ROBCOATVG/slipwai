@@ -123,12 +123,19 @@ def stopped(root: Path) -> str:
 
 
 def shipped(root: Path, slice_id: str) -> str | None:
-    """A committed slice merge or explicit trailer on trunk, never a model's optimistic status."""
-    history = git(root, "log", "main", "--format=%H%x00%B%x00").decode("utf-8").split("\0")
+    """A committed slice merge or explicit trailer on trunk, never a model's optimistic status.
+
+    A merge subject counts whenever it names the claim branch: Git's own default (`Merge branch
+    'slice/X'`), GitLab's (`... into 'main'`) and a GitHub pull-request merge (`Merge pull request #12
+    from acme/slice/X`). A *squash* merge through either forge keeps no branch name — its subject is the
+    pull request's title — so there is nothing here to read, and reading a subject that merely mentions
+    an id would call `Start slice/X` a merge. Hence no demotion above: unproven is unknown, not unstarted.
+    """
+    history = git(root, "log", "main", "--format=%H%x00%B%x00").decode("utf-8", errors="surrogateescape").split("\0")
     for at in range(0, len(history) - 1, 2):
         commit, body = history[at].strip(), history[at + 1]
         if re.search(rf"(?m)^Slice-done:\s*{re.escape(slice_id)}\s*$", body) or re.search(
-            rf"(?m)^Merge .*['\"]slice/{re.escape(slice_id)}['\"]", body
+            rf"(?m)^Merge\b[^\n]*\bslice/{re.escape(slice_id)}(?![\w./-])", body
         ):
             return commit
     return None
@@ -267,7 +274,15 @@ def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str]
                 flight.logs.append((name, fairway, entry("claimed", fairway=fairway, slice=slice_id)))
             for original in items:
                 if original["id"] == slice_id:
-                    original["status"] = "implemented" if commit else "planned"
+                    # Section 6 authorises one direction: a slice whose code is on `main` is
+                    # `implemented`, whatever the field said. Nothing authorises the other. Writing
+                    # `planned` over an unproven slice promoted a `proposed` one to a rung nobody
+                    # modelled — `check-model` then asks it for the stream, guard, materialisation and
+                    # live budget `planned` commits to, and the migrated project's own `make verify`
+                    # goes red — and demoted every slice squash-merged through a forge default, which
+                    # keeps no branch name for `shipped` to read.
+                    if commit:
+                        original["status"] = "implemented"
                     original["context"] = item["context"]
                     original.setdefault("capability", item["capability"])
     if items:

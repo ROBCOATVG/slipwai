@@ -12,7 +12,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai.assets import ROOT
 from slipwai.fleet import Fairway, inbox, state_of
-from slipwai.migration_flight import json_bytes, plan_context, read
+from slipwai.migration_flight import json_bytes, plan_context, read, shipped
 from slipwai.migration_settings import settings
 
 
@@ -76,6 +76,44 @@ class FlightTest(unittest.TestCase):
             (self.feature / "chart.yaml").write_bytes(json_bytes(chart))
             self.assertEqual(confirmation.main(["--confirm"]), 0)
         self.assertIs(guard.cleared(chart, set(), "ORD-01"), True)
+
+    def model(self, *slices: dict) -> dict:
+        path = self.root / "docs/event-model/model.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(json_bytes({"slices": list(slices)}))
+        with patch("slipwai.migration_flight.shipped",
+                   side_effect=lambda root, slice_id: "abc" if slice_id == "ORD-01" else None):
+            flight = read(self.root, self.document, YAML())
+        written = json.loads(flight.files["docs/event-model/model.yaml"])
+        return {str(item["id"]): item.get("status") for item in written["slices"]}
+
+    def test_trunk_promotes_a_slice_and_never_demotes_one_the_person_placed(self) -> None:
+        self.assertEqual(
+            self.model({"id": "ORD-01", "status": "proposed"}, {"id": "ORD-02", "status": "proposed"},
+                       {"id": "ORD-03", "status": "implemented"}),
+            {"ORD-01": "implemented", "ORD-02": "proposed", "ORD-03": "implemented"})
+
+    def test_a_slice_with_no_recorded_status_is_not_given_one_the_crossing_invented(self) -> None:
+        self.assertEqual(self.model({"id": "ORD-02", "context": "billing"}), {"ORD-02": None})
+
+    def test_a_forge_merge_naming_the_claim_branch_is_the_same_evidence_as_gits_own(self) -> None:
+        def history(subject: str) -> bytes:
+            return b"c0ffee\x00" + subject.encode("utf-8") + b"\n\x00"
+
+        for subject in ("Merge branch 'slice/ORD-01'",
+                        "Merge branch 'slice/ORD-01' into 'main'",
+                        "Merge pull request #12 from acme/slice/ORD-01",
+                        "Merge remote-tracking branch \"origin/slice/ORD-01\"",
+                        "a squashed subject\n\nSlice-done: ORD-01"):
+            with self.subTest(subject=subject), patch("slipwai.migration_flight.git",
+                                                      return_value=history(subject)):
+                self.assertEqual(shipped(self.root, "ORD-01"), "c0ffee")
+        for subject in ("Merge branch 'slice/ORD-010'", "Merged slice/ORD-01",
+                        "Start work on slice/ORD-01 and its chart",
+                        "Revert \"Merge branch 'slice/ORD-01'\""):
+            with self.subTest(subject=subject), patch("slipwai.migration_flight.git",
+                                                      return_value=history(subject)):
+                self.assertIsNone(shipped(self.root, "ORD-01"))
 
     def test_the_queued_inbox_crosses_as_unanswered_told_lines_in_version_1_s_own_order(self) -> None:
         said = self.root / ".specify"

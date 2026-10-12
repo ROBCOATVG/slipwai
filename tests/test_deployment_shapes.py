@@ -94,6 +94,42 @@ class GeneratedShapeTest(unittest.TestCase):
                 liner = project_files("a-staff-tool", "event-modelling", target, self.apps(), shape="liner")
                 self.assertNotIn(login, liner[".github/workflows/deploy.yml"].split("\n  staging:", 1)[1])
 
+    def test_replaying_a_manifest_written_before_the_shape_existed_offers_a_liner(self) -> None:
+        """The guarantee `recorded()` is threaded through `replay` for, proved through `replay` itself.
+
+        Every project generated before this slice has a `project.json` with no `shape`, and every one of
+        them is a liner with a staging workspace and a database in it. `replay` is how such a project is
+        offered this keel's output to merge, so a replay that read no shape would default a *new* project's
+        answer — skiff — and offer to delete the staging environment and move the store. The only test of
+        this called `recorded()` on a dict literal, which would have passed with the call in `replay.py`
+        deleted; this one fails if it is.
+        """
+        import json
+        import tempfile
+        from pathlib import Path as _Path
+
+        from slipwai.replay import replay
+        from slipwai.scaffold import project_files
+        with tempfile.TemporaryDirectory() as directory:
+            root, into = _Path(directory) / "before-shapes", _Path(directory) / "offered"
+            generated = project_files("a-real-product", "event-modelling", "aws", self.apps(), shape="liner")
+            # A manifest as it was written before the shape existed: every other answer, and no shape.
+            manifest = json.loads(generated["project.json"])
+            del manifest["shape"]
+            generated["project.json"] = json.dumps(manifest, indent=2) + "\n"
+            for relative, content in generated.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8", newline="")
+            replay(root, into=into)
+            self.assertEqual(json.loads((into / "project.json").read_text(encoding="utf-8"))["shape"], "liner")
+            # The three things a silent shrink would have taken: the second environment, the workflow that
+            # promotes into it, and the stack file that declares it.
+            self.assertTrue((into / ".github/workflows/production.yml").is_file())
+            self.assertTrue((into / "infra/service/staging.tfvars").is_file())
+            self.assertIn("\n  staging:",
+                          (into / ".github/workflows/deploy.yml").read_text(encoding="utf-8"))
+
     def test_a_rollback_offers_only_the_environments_the_shape_has(self) -> None:
         """`rollback.yml` was the one workflow generated without the shape.
 

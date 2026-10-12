@@ -94,7 +94,10 @@ class FlightTest(unittest.TestCase):
         (self.feature / "slices/ORD-02").mkdir()
         (self.feature / "slices/ORD-02/plan.md").write_text("# Structure Decision\nContext: billing\n")
         old = "# Decisions\n\n## D1 — keep this id\n**When:** 2026-01-01\n\n## D2 — next\n"
-        (self.feature / "decisions.md").write_text(old, encoding="utf-8")
+        # `write_bytes`, not `write_text`: this case asserts the carried bytes are the written ones, and
+        # text mode on Windows would write `\r\n` for every `\n` — so the crossing would carry CRLF
+        # faithfully and the comparison against `old` would fail for what the fixture did.
+        (self.feature / "decisions.md").write_bytes(old.encode("utf-8"))
         with patch("slipwai.migration_flight.shipped",
                    side_effect=lambda root, slice_id: "abc" if slice_id == "ORD-01" else None):
             flight = read(self.root, self.document, YAML())

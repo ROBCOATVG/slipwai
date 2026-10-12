@@ -6,8 +6,9 @@ fairways:
       - assets/toolkit/scripts/agents/harbourmaster.py
       - assets/toolkit/scripts/agents/captain.py
       - Makefile
+      - docs/release-2.md
       - docs/charts/phase-11-proof.yaml
-      - docs/slipwai-2-plan.md # Own row 11.5 only; no completion without two people.
+      - docs/slipwai-2-plan.md # Own row 11.5 only; owner accepted automated two-clone proof on 2026-10-12.
 slices:
   '11.5':
     fairway: phase-11-multiplayer
@@ -22,7 +23,7 @@ marks:
   TwoMachineTakeoverProof:
     kind: port
     inputs: {forge: bare-git-repository, machines: two-clones, stopped_slice: ORD-01}
-    outputs: {trunk: resumed-commit, board_on_first_machine: finished}
+    outputs: {trunk: resumed-commit, board_on_first_machine: merged-slice-recorded-and-following-work-idle}
   FairwayClaimRef:
     kind: port
     inputs: {fairway: string, machine: string}

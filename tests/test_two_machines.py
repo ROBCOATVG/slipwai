@@ -2,8 +2,8 @@
 
 The stopped state and elapsed lease are seeded as in test_take_over; /sail and the project's gate are
 stand-ins as in test_loop; CI reports no runs through a local stand-in. Git, the captain, the
-harbourmaster and the board are real. This regression proof does not certify the plan's separate live
-demo with two people on two physical machines.
+harbourmaster and the board are real. The owner accepted this automated exercise as the final
+multiplayer criterion on 2026-10-12; it does not claim two people on separate physical hardware.
 """
 from __future__ import annotations
 
@@ -187,7 +187,13 @@ class TwoMachinesTest(TravelFixture):
         self.assertEqual(faults, {})
         self.assertEqual(len(board), 1)
         self.assertEqual(board[0].merged, ["ORD-01"])
-        self.assertEqual(fleet.state_of(board[0]), "finished")
+        observed = fleet.board(self.root)
+        self.assertEqual(observed["unreadable"], {})
+        rows = observed["berths"]
+        assert isinstance(rows, list)
+        row = rows[0]
+        assert isinstance(row, dict)
+        self.assertEqual((row["merged"], row["state"], row["waiting"]), (1, "idle", 1))
         # No notification or hand-written status was supplied to the first machine.
         self.assertFalse(any(entry.kind == "told" for entry in board[0].entries))
 

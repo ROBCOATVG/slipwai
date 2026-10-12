@@ -39,8 +39,9 @@ Keep all of these reviewable before cutting the release:
 
 - Migration passes for both profiles, every supported backend and adopted repositories, including
   an installed 1.x base, renamed files, legacy package directories and in-flight work.
-- The live multiplayer acceptance exercise and fresh native-captain exercise have recorded outcomes.
-  Automated two-clone tests do not replace the second person's separate machine.
+- The automated two-clone multiplayer acceptance exercise and fresh native-captain exercise have
+  recorded outcomes. The owner accepted the automated exercise on 2026-10-12 in place of the live
+  second-person/separate-hardware requirement; seeded interruption and ladder/gate stand-ins stay explicit.
 - The reference pages, feature-to-delegate figures, version-1 comparison and assembled changelog describe
   the final tree.
 - The published-package backstop passes against the candidate. Prepare any required package releases

@@ -8,14 +8,6 @@ The test that matters is the one that holds the preview to the truth — a fixtu
 really adopted, with every path the preview named a file afterwards and every file the adoption added in the
 preview. A preview that is nearly right is worse than none: it is believed.
 
-**That test is excluded here, once and in writing (rule 5), and it says when it stops being.** `adopt` cannot
-run in this keel at all: `toolkit.CANON` is `typescript` and an adopted project has no service of the keel's,
-so every `{{example:}}` marker in the toolkit is resolved against `assets/languages/typescript/examples/` in
-the keel's own root — a directory version 2 does not have. `ADOPTION_RUNS` is that directory, and the day it
-arrives these tests run with no edit. What is proved meanwhile is the half that does not need it: the survey,
-the refusals, that looking writes nothing, and that the missing snippets reach the page as a refusal rather
-than a traceback.
-
 It stands up a server and shells out to git, so it is in the Makefile's `SLOW` list.
 """
 from __future__ import annotations
@@ -29,20 +21,14 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 import checkout_packages  # noqa: F401
 
 from slipwai.adopt_page import NOT_A_REPOSITORY, found, looked, page, run, would_write
-from slipwai.assets import ROOT, relaunch
+from slipwai.assets import relaunch
 from slipwai.bridge import serve
 from slipwai.errors import GenerationError
-from slipwai.toolkit import CANON
-
-#: Adoption resolves the toolkit's example markers against the keel's own canonical snippets. Until they are
-#: here, the verb refuses whatever it is run against, and so does the preview.
-CANONICAL = ROOT / "assets/languages" / CANON / "examples"
-ADOPTION_RUNS = CANONICAL.is_dir()
-WHY_NOT = f"adoption needs the canonical {CANON} snippets at {CANONICAL.relative_to(ROOT)}, which the keel has not got"
 
 IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
@@ -100,20 +86,19 @@ class FoundTest(Fixture):
     def test_a_fault_in_the_keel_s_own_material_reaches_the_page_as_a_refusal(self) -> None:
         """`would_write` assembles what adoption would write, and anything that refuses the assembly is
         said where the list would have been rather than becoming a traceback in a server thread."""
-        said = looked({"root": str(self.repo)}, self.scratch)
+        with patch("slipwai.toolkit.resolve_canonical_examples", side_effect=GenerationError("missing guidance")):
+            said = looked({"root": str(self.repo)}, self.scratch)
         self.assertIn("card", said)
-        if not ADOPTION_RUNS:
-            self.assertIn("missing", said)
-            self.assertIn(CANON, said)
+        self.assertIn("missing guidance", said)
 
 
-@unittest.skipUnless(ADOPTION_RUNS, WHY_NOT)
 class PreviewTest(Fixture):
     """The list, held to what the adoption then does. A preview that is nearly right is believed."""
 
     def adopt_for_real(self) -> dict[str, list[str]]:
+        env = {**os.environ, **IDENTITY, "SLIPWAI_LANGUAGES": str(self.scratch / "no-packages")}
         done = subprocess.run([*relaunch(), "adopt", "--yes", "--no-init"], cwd=self.repo,
-                              capture_output=True, text=True, env={**os.environ, **IDENTITY})
+                              capture_output=True, text=True, env=env)
         if done.returncode != 0:
             raise AssertionError(done.stdout + done.stderr)
         changed = subprocess.run(["git", "diff", "--name-status", "HEAD^", "HEAD"], cwd=self.repo,
@@ -137,6 +122,20 @@ class PreviewTest(Fixture):
         plan = would_write(self.repo)
         landed = self.adopt_for_real()
         self.assertEqual(sorted(plan["appended"]), sorted(landed["M"]))
+
+    def test_existing_managed_files_are_appended_and_the_rest_are_added(self) -> None:
+        for name in ("AGENTS.md", ".gitignore"):
+            (self.repo / name).write_text("# theirs\n", encoding="utf-8")
+        env = {**os.environ, **IDENTITY}
+        subprocess.run(["git", "add", "AGENTS.md", ".gitignore"], cwd=self.repo, check=True, env=env)
+        subprocess.run(["git", "commit", "-qm", "their guidance"], cwd=self.repo, check=True, env=env)
+        plan = would_write(self.repo)
+        landed = self.adopt_for_real()
+        self.assertEqual(sorted(plan["written"]), sorted(landed["A"]))
+        self.assertEqual(sorted(plan["appended"]), sorted(landed["M"]))
+        self.assertEqual(plan["appended"], [".gitignore", "AGENTS.md"])
+        for name in plan["appended"]:
+            self.assertTrue((self.repo / name).read_text(encoding="utf-8").startswith("# theirs\n"))
 
 
 class ServedTest(Fixture):
@@ -189,7 +188,6 @@ class ServedTest(Fixture):
         self.assertEqual(code, 400)
         self.assertIn(NOT_A_REPOSITORY, said)
 
-    @unittest.skipUnless(ADOPTION_RUNS, WHY_NOT)
     def test_adopting_from_the_page_is_the_verb_and_leaves_its_one_commit(self) -> None:
         code, said = self.post("/adopt/run", {"root": str(self.repo)})
         self.assertEqual(code, 200, said)
@@ -209,9 +207,10 @@ class RefusalTest(Fixture):
     def test_the_assembly_refuses_rather_than_half_listing(self) -> None:
         """Where the keel cannot assemble what it would write, the preview says so. A partial list is the
         failure this slice exists to prevent."""
-        if ADOPTION_RUNS:
-            self.skipTest("the canonical snippets are here, so the assembly does not refuse")
-        with self.assertRaises(GenerationError):
+        with (
+            patch("slipwai.toolkit.resolve_canonical_examples", side_effect=GenerationError("missing guidance")),
+            self.assertRaisesRegex(GenerationError, "missing guidance"),
+        ):
             would_write(self.repo)
 
 

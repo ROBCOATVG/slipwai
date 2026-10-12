@@ -10,10 +10,10 @@ import json
 import re
 from functools import lru_cache
 
-from .assets import PROFILE_ROOT, ROOT, TOOLKIT_ROOT, asset_files
+from .assets import PROFILE_ROOT, TOOLKIT_ROOT, asset_files
 from .capabilities import declared_for, pruning_capabilities, serves
 from .catalog import CATALOG, EXTENSIONS, family_of, framework_of
-from .examples import Speaker, resolve_examples_for, stamp_pseudocode_notes
+from .examples import Speaker, resolve_canonical_examples, resolve_examples_for, stamp_pseudocode_notes
 from .extension_directory import files as package_files
 from .extension_tools import declared as tools_declared
 from .guards import declared as guards_declared
@@ -25,7 +25,7 @@ from .tooling import for_app, verify_path
 # The language the toolkit's own prose and canonical snippets are written in: the keel's
 # material, not a language package.
 # Where no service the keel made speaks (an adoption), every marker resolves to these, from the keel's own copy under
-# `assets/languages/<CANON>/examples/`, so adopting needs no language installed (S09 Q2).
+# `assets/examples/`, so adopting needs no language installed (S09 Q2).
 CANON = "typescript"
 
 STANDARD_OVERRIDES = {
@@ -171,14 +171,16 @@ def toolkit_files_from_assets(profile: str, apps: list[App]) -> dict[str, str]:
     # TypeScript examples for — which is none of them when one of the services is TypeScript.
     # Where nothing here was made by the keel, the first application that existed before the method did
     # is what the prose's `apps/service` means, and its language is the one the snippets are not in.
-    first = next(iter(services_of(apps) or wrapped_of(apps)), None)
+    services = services_of(apps)
+    first = next(iter(services or wrapped_of(apps)), None)
     web = web_apps(apps)
     speakers = speakers_of(apps)
     families = families_of(apps) or list(dict.fromkeys(app.language for app in wrapped_of(apps)))
 
     def copied(source) -> str:
         text = source.read_text(encoding="utf-8")
-        resolved = resolve_examples_for(text, speakers, None if services_of(apps) else ROOT)
+        resolved = (resolve_examples_for(text, speakers) if services
+                    else resolve_canonical_examples(text))
         return spoken_for(resolved, first, web[0] if web else None)
 
     capabilities = pruning_capabilities(profile, apps)

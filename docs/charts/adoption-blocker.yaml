@@ -1,0 +1,14 @@
+v: 1
+feature: adoption-blocker
+fairways:
+  adoption-repair:
+    context: canonical toolkit guidance without installed languages
+    owns: [src/slipwai/examples.py, src/slipwai/toolkit.py, src/slipwai/adopt_page.py, assets/examples/**, tests/test_canonical_examples.py, tests/test_adopt_page.py]
+marks: {}
+slices:
+  canonical-guidance:
+    fairway: adoption-repair
+    capability: adoption with no installed language package
+    sets: []
+    steers_by: []
+    done_when: Every toolkit marker resolves from keel guidance; actual adoption agrees with the board preview without any language installed.

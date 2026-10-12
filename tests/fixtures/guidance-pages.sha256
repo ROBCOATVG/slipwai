@@ -1,0 +1,242 @@
+# What `project/guidance.py` and `project/rules.py` rendered for `AGENTS.md` and `docs/architecture.md`
+# before their standing text moved out of Python string literals and into `assets/guidance/`, as SHA-256
+# over the UTF-8 bytes of each page.
+#
+# The move is only worth doing if it changed nothing a project receives, and "generate before and after"
+# cannot be run across one commit. So these were captured on the commit slice 16.3 was written on top of,
+# and the new path has to reproduce them exactly (`tests/test_guidance_prose.py`, which also says what the
+# matrix below does and does not span). Anyone can re-take the same reading:
+#
+#     SLIPWAI_LANGUAGES=$PWD/packages PYTHONPATH=src:tests python3 -c \
+#         "import test_guidance_prose as t; print(t.record(), end='')"
+#
+# and compare it with the lines below.
+#
+# Two profiles, four targets, two deployment shapes and twelve projects, chosen against the conditional
+# blocks either page has rather than against plausibility; `docs/architecture.md` is given neither a target
+# nor a shape, so it is recorded once per profile and project. Every service is `toy-plain`, because that is
+# the one backend `packages/` pins here — so these digests say the pages did not move, not that three
+# backends' pages did not move.
+#
+# A deliberate edit to either page changes these, which is the point: the line a reviewer has to see change
+# is the one saying which page's bytes a wording change moved. Re-take them the same way after the edit, and
+# say in the commit which page was reworded.
+#
+# <sha256>  <profile>/<project>[/<target>/<shape>]  <path in the generated project>
+
+b6ad4cf0b949af83565f80a81e0a632aa21047aa1ceeda77fe80995dbe0ee52e  event-modelling/bare  docs/architecture.md
+4104dd3186baa27e068b407df4c0df413122cef71e39806362bbbd9272193e09  event-modelling/bare/aws/liner  AGENTS.md
+596ce69e24953129160dca56d1d95e3832a1e9dde89889c2310f4ea9c11de994  event-modelling/bare/aws/skiff  AGENTS.md
+fe0f025da10ff1093b41b1ec016831eb3ce9ebe723972cb05f64565831633c86  event-modelling/bare/azure/liner  AGENTS.md
+10bab33a4e41b58b6b16d2d47739850c716d1cc74c356b7ac58d8f554416e382  event-modelling/bare/azure/skiff  AGENTS.md
+a93a91b5e6dc594588b54d94f082e48c7d2a2831dd417fba1e508a1f603d0023  event-modelling/bare/existing/liner  AGENTS.md
+a93a91b5e6dc594588b54d94f082e48c7d2a2831dd417fba1e508a1f603d0023  event-modelling/bare/existing/skiff  AGENTS.md
+730eabfc9f336d0609abbff5f23d32ae983c59ad31f76d1cd16ac96e66e66048  event-modelling/bare/none/liner  AGENTS.md
+730eabfc9f336d0609abbff5f23d32ae983c59ad31f76d1cd16ac96e66e66048  event-modelling/bare/none/skiff  AGENTS.md
+01a444875560b9127fada94fd58500a6607cdf8f86a3f51e5b7120079f4e2e76  event-modelling/everything  docs/architecture.md
+57737820ab1b671d6f666b8c508dcabe5d84ad9bc5f908593dcb363519f37a37  event-modelling/everything/aws/liner  AGENTS.md
+8fcf06a73357c4a48a0c6ddaafb8dc395d99217a647c9477b9c1b9a11983495e  event-modelling/everything/aws/skiff  AGENTS.md
+ab121c7c7129f0600bdc98d634f91d21e80154b5ecc214f9c68ec75ad86235b9  event-modelling/everything/azure/liner  AGENTS.md
+b3ab30bb7dd912fd0364bc807bf0973a064680d06f160903ae779050a65af649  event-modelling/everything/azure/skiff  AGENTS.md
+40a3d28e2b9cb381a2193e72cec991925452d5f7dc105384de62e81e9d3437fc  event-modelling/everything/existing/liner  AGENTS.md
+40a3d28e2b9cb381a2193e72cec991925452d5f7dc105384de62e81e9d3437fc  event-modelling/everything/existing/skiff  AGENTS.md
+bed0de5b206bc8c9ed4b06ca20ffa81f76969f1e1ac8d6136d7a4c3205f3d1e2  event-modelling/everything/none/liner  AGENTS.md
+bed0de5b206bc8c9ed4b06ca20ffa81f76969f1e1ac8d6136d7a4c3205f3d1e2  event-modelling/everything/none/skiff  AGENTS.md
+b6ad4cf0b949af83565f80a81e0a632aa21047aa1ceeda77fe80995dbe0ee52e  event-modelling/identity  docs/architecture.md
+5c5307206be83f761a5599c99646d5024707d45a14c2329ee06a9aa963d2df7b  event-modelling/identity/aws/liner  AGENTS.md
+9a6c207a297a957c6955eee1eb15e3672e900441d6a97155ca7be5882ba3461e  event-modelling/identity/aws/skiff  AGENTS.md
+4ad37d7898d4409978a9521f18a4dc2df5f0702b5c73883def25b274d9bf806c  event-modelling/identity/azure/liner  AGENTS.md
+aa534915f966a91d82ff4b156eddb5c06c4362e505f07e406aef54c1158464e4  event-modelling/identity/azure/skiff  AGENTS.md
+24359fe1e4beabd95b2c927d3be2b46ea78d458865eeda1aa5df776321b3e654  event-modelling/identity/existing/liner  AGENTS.md
+24359fe1e4beabd95b2c927d3be2b46ea78d458865eeda1aa5df776321b3e654  event-modelling/identity/existing/skiff  AGENTS.md
+26cf659afda67268e3a3e2036828a9ebdd19896cfaebc15ec6ae540bac0fe6ec  event-modelling/identity/none/liner  AGENTS.md
+26cf659afda67268e3a3e2036828a9ebdd19896cfaebc15ec6ae540bac0fe6ec  event-modelling/identity/none/skiff  AGENTS.md
+651badb084a15dc114282aefe3a4ca3df49036f341bf13dfe883b3d4e0f8acd6  event-modelling/memory-events  docs/architecture.md
+577cf2b45e1e3cbc1c14dbcd345028f26cfba493d9d88e0d9385d2de0a35d35d  event-modelling/memory-events/aws/liner  AGENTS.md
+290929877253a9eac2973eb2333afa3057ea3f03dca99887429588f718da9297  event-modelling/memory-events/aws/skiff  AGENTS.md
+e89dcbbfa05d4c01a40b843f9fd13e817bf3f2fd221518988d0912be5470cb72  event-modelling/memory-events/azure/liner  AGENTS.md
+77216c6f0ec72cec92ead3d1ae3be5a40d9e24e45215467cde37d05a5d0f0a16  event-modelling/memory-events/azure/skiff  AGENTS.md
+805ed9908af14f9e04d6e301b2946e9893984d7b0d450583c93e20794bc81df3  event-modelling/memory-events/existing/liner  AGENTS.md
+805ed9908af14f9e04d6e301b2946e9893984d7b0d450583c93e20794bc81df3  event-modelling/memory-events/existing/skiff  AGENTS.md
+27948b9baebfd07a985bb19a9f3ca82f24ba7f9f53232b0b28af9bbb0587a1b7  event-modelling/memory-events/none/liner  AGENTS.md
+27948b9baebfd07a985bb19a9f3ca82f24ba7f9f53232b0b28af9bbb0587a1b7  event-modelling/memory-events/none/skiff  AGENTS.md
+1a796b1b5269929d4f2aac061fcd7add4b5dacf45aae38435fce39ae7f14854d  event-modelling/mixed-rungs  docs/architecture.md
+a0313c42827c3ddb3b999ff6a89e9b10651dcb8b1698ea2e6b3be3c757e46959  event-modelling/mixed-rungs/aws/liner  AGENTS.md
+1a7c96899d665d5b41cd5314eb1ec8984ece2810247cc37b31c14a40ffae1397  event-modelling/mixed-rungs/aws/skiff  AGENTS.md
+528201f6611315915c85718df3e5e781f6c67bcdbab981916d524e54ff18e7a7  event-modelling/mixed-rungs/azure/liner  AGENTS.md
+c8a244c65f0bd8abcd950514f42c908bbc859bce54f8d28eba3014bfc138e6f2  event-modelling/mixed-rungs/azure/skiff  AGENTS.md
+d7f57731c044a09b6c55a400a286d24745371d50e75593b9d3cbe1613395c340  event-modelling/mixed-rungs/existing/liner  AGENTS.md
+d7f57731c044a09b6c55a400a286d24745371d50e75593b9d3cbe1613395c340  event-modelling/mixed-rungs/existing/skiff  AGENTS.md
+adfb7190c4522582700ea882c79ef2d2cc3aed9d4f9209ae7d36f97384ade184  event-modelling/mixed-rungs/none/liner  AGENTS.md
+adfb7190c4522582700ea882c79ef2d2cc3aed9d4f9209ae7d36f97384ade184  event-modelling/mixed-rungs/none/skiff  AGENTS.md
+8b11610bdc4490c35cf5bfa3a02ecd2ecc6c2622841fe8cfb3d80de57cb32eec  event-modelling/one-browser-app  docs/architecture.md
+e7e3ac2d4e9983500b956456d10287cc3e9699f58d72fad5253b203fae1bb4a7  event-modelling/one-browser-app/aws/liner  AGENTS.md
+40666139aead9783f3dd3d8b3c2de7876e97f7ff81574d1115988a9ade23a425  event-modelling/one-browser-app/aws/skiff  AGENTS.md
+8264645858e92c36a106cc1e17d409cbf506e3c1db258eecac90956a022083c6  event-modelling/one-browser-app/azure/liner  AGENTS.md
+260c6bfe3da2c62c556f31bc548dd56358e88c32450b0fcb758ab45f7fea323b  event-modelling/one-browser-app/azure/skiff  AGENTS.md
+aacc4cc3f583ba58fc7d07cc884ccd7bc2d336385844b4debf3be119353275cf  event-modelling/one-browser-app/existing/liner  AGENTS.md
+aacc4cc3f583ba58fc7d07cc884ccd7bc2d336385844b4debf3be119353275cf  event-modelling/one-browser-app/existing/skiff  AGENTS.md
+f13b041970cd7195bf6d4020d7fac04b41e2277082b1fab67d9ba06379ef6cfe  event-modelling/one-browser-app/none/liner  AGENTS.md
+f13b041970cd7195bf6d4020d7fac04b41e2277082b1fab67d9ba06379ef6cfe  event-modelling/one-browser-app/none/skiff  AGENTS.md
+651badb084a15dc114282aefe3a4ca3df49036f341bf13dfe883b3d4e0f8acd6  event-modelling/postgres-events  docs/architecture.md
+a5edddcf60839922d1b61b3ea8825deb5a3f6063d4f3a8866fb5c0042d9918f5  event-modelling/postgres-events/aws/liner  AGENTS.md
+082d053dabd37f234bc14d74b745e8aecf7ed00b2da5fb2ae04a2a71d31d7cd0  event-modelling/postgres-events/aws/skiff  AGENTS.md
+0caa6d18dcc8727c7e6b3d4343cfcf53259bbc85dbacda0c0b6e2384f9184447  event-modelling/postgres-events/azure/liner  AGENTS.md
+800253dabbe1c6b0948d478917acd4b003b63f95dd6bf5c515f79adc616a0428  event-modelling/postgres-events/azure/skiff  AGENTS.md
+d149ed0d4d90cd5a1afba68a6a97818b23849e622f116de7a03135db2cedb1ed  event-modelling/postgres-events/existing/liner  AGENTS.md
+d149ed0d4d90cd5a1afba68a6a97818b23849e622f116de7a03135db2cedb1ed  event-modelling/postgres-events/existing/skiff  AGENTS.md
+8ab6ff48e27981041316e9dd17c63e873e402b62f11dcae06e4b478a966ab501  event-modelling/postgres-events/none/liner  AGENTS.md
+8ab6ff48e27981041316e9dd17c63e873e402b62f11dcae06e4b478a966ab501  event-modelling/postgres-events/none/skiff  AGENTS.md
+b6ad4cf0b949af83565f80a81e0a632aa21047aa1ceeda77fe80995dbe0ee52e  event-modelling/postgres-state  docs/architecture.md
+4afd65e319652dce641b876fabca1a9bebe60ec2e99addc98f5754326fd323de  event-modelling/postgres-state/aws/liner  AGENTS.md
+a6c09c8f781263d5d0950ca3de8a6fe3d04bc14930e8ac9cd516692c7a922ad2  event-modelling/postgres-state/aws/skiff  AGENTS.md
+57b9e6f1d8262a3294fd9844b2937dc5aff8d80111056371d89e86c78d3fe617  event-modelling/postgres-state/azure/liner  AGENTS.md
+6771c6a01b3e28dd339d32c8e1a789b8f7fb882844b6494ba5ce689cf43706e1  event-modelling/postgres-state/azure/skiff  AGENTS.md
+1a9dd974fea18b9470cb9d12531eb9e46b66880fc3dabb09ddbcb8ce770a709f  event-modelling/postgres-state/existing/liner  AGENTS.md
+1a9dd974fea18b9470cb9d12531eb9e46b66880fc3dabb09ddbcb8ce770a709f  event-modelling/postgres-state/existing/skiff  AGENTS.md
+fc875f14a032b2a24bc79b93918f6e537f3419c64749c61319a86b70888bbbcb  event-modelling/postgres-state/none/liner  AGENTS.md
+fc875f14a032b2a24bc79b93918f6e537f3419c64749c61319a86b70888bbbcb  event-modelling/postgres-state/none/skiff  AGENTS.md
+651badb084a15dc114282aefe3a4ca3df49036f341bf13dfe883b3d4e0f8acd6  event-modelling/sqlite-events  docs/architecture.md
+5e5fc12e52a2ccc6e868cb32fc32b29704f98f173ec0aa1a49b68e4dbe14de1a  event-modelling/sqlite-events/aws/liner  AGENTS.md
+2719de661cc553cf8170aa9c126d4ae15e95cd89b3e73c25ae2055142d657cfa  event-modelling/sqlite-events/aws/skiff  AGENTS.md
+c439351cac71eaaa97fd5856a6ec38e23b5501538d9b65f806207a9bab014c05  event-modelling/sqlite-events/azure/liner  AGENTS.md
+f9d2bbef28523afdfa0c122f7a485c07a38162e2ffaaafdc15b095f8f6ec9cbc  event-modelling/sqlite-events/azure/skiff  AGENTS.md
+9580a8ae126cd355022a2ccc3f310700aac19f785a1a786d4fb354256cc476ad  event-modelling/sqlite-events/existing/liner  AGENTS.md
+9580a8ae126cd355022a2ccc3f310700aac19f785a1a786d4fb354256cc476ad  event-modelling/sqlite-events/existing/skiff  AGENTS.md
+773c92d53e451208fc2658662c6d794c3f7528c45ae85cef8f9fc04393025128  event-modelling/sqlite-events/none/liner  AGENTS.md
+773c92d53e451208fc2658662c6d794c3f7528c45ae85cef8f9fc04393025128  event-modelling/sqlite-events/none/skiff  AGENTS.md
+b6ad4cf0b949af83565f80a81e0a632aa21047aa1ceeda77fe80995dbe0ee52e  event-modelling/sqlite-state  docs/architecture.md
+030940a21d2597810f595ec98ee3ea30cc6321e7f55dfcdb79312df8de1d31cc  event-modelling/sqlite-state/aws/liner  AGENTS.md
+fb5638077e6775d3da0ae94da2aa620de64b6f7d33132ac87fda61a80e4e29f1  event-modelling/sqlite-state/aws/skiff  AGENTS.md
+5f5aadb0799bce8109b9b931b5eda3613e9755f45bb99cc0281c0d00638133e4  event-modelling/sqlite-state/azure/liner  AGENTS.md
+a730f9f5a311da08d747a96ef9ec67a1e38c988945e8e0b49380548be20b44e7  event-modelling/sqlite-state/azure/skiff  AGENTS.md
+356f67f40e6c73e22aaf06915e4b6b44a64d0a6f795656935c5ef9223e40a36d  event-modelling/sqlite-state/existing/liner  AGENTS.md
+356f67f40e6c73e22aaf06915e4b6b44a64d0a6f795656935c5ef9223e40a36d  event-modelling/sqlite-state/existing/skiff  AGENTS.md
+365e5825939de941c46d8badbcdcb490286931084ef39ff028211130b2b088f4  event-modelling/sqlite-state/none/liner  AGENTS.md
+365e5825939de941c46d8badbcdcb490286931084ef39ff028211130b2b088f4  event-modelling/sqlite-state/none/skiff  AGENTS.md
+b6ad4cf0b949af83565f80a81e0a632aa21047aa1ceeda77fe80995dbe0ee52e  event-modelling/transport  docs/architecture.md
+155b33061f9cea8bb2bd6123547b0a8d4c2379d0269fc9095f5beaf045300a07  event-modelling/transport/aws/liner  AGENTS.md
+2fb7e0509c80859213cbf6c52dd500900839eeee0e884d3958a3570f65b281ce  event-modelling/transport/aws/skiff  AGENTS.md
+fd1833173528e40ef31fa4b5af492da4e3d535f9af7df1e73692ea35dd3984fc  event-modelling/transport/azure/liner  AGENTS.md
+26a39cb03c791b5c67ae4a838b3c22328b4fd985d7ea1ced7e102fd2a6e62ff9  event-modelling/transport/azure/skiff  AGENTS.md
+1a239bf2394d5a990f2e3cd0634613b503d02bbbeab341d0c06414f3f72c7f1b  event-modelling/transport/existing/liner  AGENTS.md
+1a239bf2394d5a990f2e3cd0634613b503d02bbbeab341d0c06414f3f72c7f1b  event-modelling/transport/existing/skiff  AGENTS.md
+c61bdbc1428bb0d6de42d04e56cf77fc4d7b954b5dfbf186d58b701fc5d26517  event-modelling/transport/none/liner  AGENTS.md
+c61bdbc1428bb0d6de42d04e56cf77fc4d7b954b5dfbf186d58b701fc5d26517  event-modelling/transport/none/skiff  AGENTS.md
+630213f992ebb32fe29bc15b3d17ba6040c94fd8f90c67ee61a53e0e7949910d  event-modelling/two-browser-apps  docs/architecture.md
+89c1afa403a314485f89770310bc5474ff841fca2100d4fa8577aea5b9c8be80  event-modelling/two-browser-apps/aws/liner  AGENTS.md
+b0220a89969873551b9f9114a28863b9792f97376b3626a7f474757ed1a1c22b  event-modelling/two-browser-apps/aws/skiff  AGENTS.md
+0ba67b5abe8ba0921648ca629b74c330142946237d0f1b74cd2a5ea92821d149  event-modelling/two-browser-apps/azure/liner  AGENTS.md
+cfb10fde031d7efa13b6c432a6220013469521cf61f278b3df1a012c17f4b841  event-modelling/two-browser-apps/azure/skiff  AGENTS.md
+28aee0dea5e58d91c8a3a1ea8c541a609898e0de9e5ba4a3024aa8c552844cdb  event-modelling/two-browser-apps/existing/liner  AGENTS.md
+28aee0dea5e58d91c8a3a1ea8c541a609898e0de9e5ba4a3024aa8c552844cdb  event-modelling/two-browser-apps/existing/skiff  AGENTS.md
+f71ae5fe17ae99280f16dcda4dfd28dcdd690f9eb2cc262af7edb192ec8f05c1  event-modelling/two-browser-apps/none/liner  AGENTS.md
+f71ae5fe17ae99280f16dcda4dfd28dcdd690f9eb2cc262af7edb192ec8f05c1  event-modelling/two-browser-apps/none/skiff  AGENTS.md
+c47987b358873fc32bdaea36a830888edc575a56f44ef2a462e5c0612911c5ac  standard/bare  docs/architecture.md
+b8ff6c19047c0a246abdd04542acef4f8c8bffa632916b9bc052064f8dec12e5  standard/bare/aws/liner  AGENTS.md
+73d0c1990ac69fdb1967ba1393cbf20ef34ac585f2083f0f97d5ac23beb48003  standard/bare/aws/skiff  AGENTS.md
+f86dd5d959ad3a1933a0f17719111e6c565f419f3b48f400be07cd3b77ae537f  standard/bare/azure/liner  AGENTS.md
+68b678c92fdc546050a22016b2c79bf4aa14b58eb55498de3803e21a3f9b3e21  standard/bare/azure/skiff  AGENTS.md
+dc0b73c8c5cbd6e1ef4a916485d90fa78a2c3128de9a7494481c1d605579eed1  standard/bare/existing/liner  AGENTS.md
+dc0b73c8c5cbd6e1ef4a916485d90fa78a2c3128de9a7494481c1d605579eed1  standard/bare/existing/skiff  AGENTS.md
+155d9c4a946d2b2c98d063edeebca0b03c5dca07ffa2f0c0452de8ea6826a29f  standard/bare/none/liner  AGENTS.md
+155d9c4a946d2b2c98d063edeebca0b03c5dca07ffa2f0c0452de8ea6826a29f  standard/bare/none/skiff  AGENTS.md
+ceb7a5c68ec2ba8ec4c99a30e2990963c34fc19b32f8cd6a64e3efcfa3669caa  standard/everything  docs/architecture.md
+38679325406a74fd78e0f62ee67a7be28f487712db9204047d52defe8558d8aa  standard/everything/aws/liner  AGENTS.md
+a44ff466ce8be8b6ae0363910bfd182b8c91be83cd803e35a45ff9bb1fb0aad2  standard/everything/aws/skiff  AGENTS.md
+e955afb2518fda5f17c10533872e7cec2b368b340e120e5f03dc7391d3be37a8  standard/everything/azure/liner  AGENTS.md
+54c1ce83510305790c59d3bf8e590811f8f69c597658ed67d434ec3cfe8fb35b  standard/everything/azure/skiff  AGENTS.md
+e2a9cddee8e32e7633d6c032721ecc9fe6cb0d4cbb5578ece54556156ef5cefb  standard/everything/existing/liner  AGENTS.md
+e2a9cddee8e32e7633d6c032721ecc9fe6cb0d4cbb5578ece54556156ef5cefb  standard/everything/existing/skiff  AGENTS.md
+f391b7ef2b687601623e09e844ae02c2d19d5e82ab070b6b393da49837fdf258  standard/everything/none/liner  AGENTS.md
+f391b7ef2b687601623e09e844ae02c2d19d5e82ab070b6b393da49837fdf258  standard/everything/none/skiff  AGENTS.md
+c47987b358873fc32bdaea36a830888edc575a56f44ef2a462e5c0612911c5ac  standard/identity  docs/architecture.md
+388ad6b7f5baaca6d19ed80faccde1f6983c06e089ba6ad02f706c04f9572057  standard/identity/aws/liner  AGENTS.md
+921932bee5041b3ddf8678b17acac8fe2ab16c75f32d7d11f7e94f9bb392967f  standard/identity/aws/skiff  AGENTS.md
+c3c4abec082e4b62bb3420b8528909e836db5be3130d3b3877a26be5b77fa371  standard/identity/azure/liner  AGENTS.md
+dc0b7086a5453e53a36553161ae31e6ccfcbe8a08007cffe6b762d98f981e848  standard/identity/azure/skiff  AGENTS.md
+624d13f763dc3a8c7bddc460c7967276ddd12289e893488d611d2d6fea9f6963  standard/identity/existing/liner  AGENTS.md
+624d13f763dc3a8c7bddc460c7967276ddd12289e893488d611d2d6fea9f6963  standard/identity/existing/skiff  AGENTS.md
+927ef1eb88958a2655db300aa4a202cdb887bc9ecf0a02b72f308674f2fcdd3c  standard/identity/none/liner  AGENTS.md
+927ef1eb88958a2655db300aa4a202cdb887bc9ecf0a02b72f308674f2fcdd3c  standard/identity/none/skiff  AGENTS.md
+c47987b358873fc32bdaea36a830888edc575a56f44ef2a462e5c0612911c5ac  standard/memory-events  docs/architecture.md
+6e1ec56902851ba9ab94ac553c7cadcf7a5082f1d522b540f3cedefcda8d5b85  standard/memory-events/aws/liner  AGENTS.md
+c48112a7220c088b74991b35e4a50d1acd1cd685fa3dade786a567cc8a5ba919  standard/memory-events/aws/skiff  AGENTS.md
+0606ae2e8c9c9496818145aac5a8fd9567103afcc4b16370e8fc8814b5b31122  standard/memory-events/azure/liner  AGENTS.md
+fb216b7721bc603fa85d4cdbe640cc5364ae8241f33a3d738765e789149f3ecd  standard/memory-events/azure/skiff  AGENTS.md
+43b7555bccc2b8cc2416ea98d45201ed3d821cc70e93b9016cad7f90c383c705  standard/memory-events/existing/liner  AGENTS.md
+43b7555bccc2b8cc2416ea98d45201ed3d821cc70e93b9016cad7f90c383c705  standard/memory-events/existing/skiff  AGENTS.md
+59070eb53e6a104fa9f58d2e9bec5a89f358038ead8ae82a8b40e1451574c8ba  standard/memory-events/none/liner  AGENTS.md
+59070eb53e6a104fa9f58d2e9bec5a89f358038ead8ae82a8b40e1451574c8ba  standard/memory-events/none/skiff  AGENTS.md
+ebd6a5eb80815fc6afe4679464b6e50950a499b07998ef05aa3d1df17bdb5161  standard/mixed-rungs  docs/architecture.md
+29464737421f3c74ba79343a691b2fae3774c1c0e38fdb034e252883bc88e0e7  standard/mixed-rungs/aws/liner  AGENTS.md
+b699a54bbf473fa51a455fcf0eed58ae7a8dbad34275a835982343504ed988c3  standard/mixed-rungs/aws/skiff  AGENTS.md
+6727941443f9d9a912b8cbdc00ed88e933424f12bc62b12f5640299d326de7c3  standard/mixed-rungs/azure/liner  AGENTS.md
+20f5392fa66c89754cac6fdc33fe8e2815b26ec673363d049d4659d46dce80d2  standard/mixed-rungs/azure/skiff  AGENTS.md
+9c4fc35c89b2c3e59957b56b71dce7a4e0b27f9716965f1e94587bcf77bb34ea  standard/mixed-rungs/existing/liner  AGENTS.md
+9c4fc35c89b2c3e59957b56b71dce7a4e0b27f9716965f1e94587bcf77bb34ea  standard/mixed-rungs/existing/skiff  AGENTS.md
+5232474f1a6dbc2d9b384f3457ac0b4d14d37fa5a6c2338fdfa0615cd8e77e3b  standard/mixed-rungs/none/liner  AGENTS.md
+5232474f1a6dbc2d9b384f3457ac0b4d14d37fa5a6c2338fdfa0615cd8e77e3b  standard/mixed-rungs/none/skiff  AGENTS.md
+447a994c5421ae274da041396a0153b82fe649d8419e1b302854c996ae1832d3  standard/one-browser-app  docs/architecture.md
+a937239a4ce205b8db002b2e6d8e4ffb57ed5f2537d13b0f2e71f3788466f231  standard/one-browser-app/aws/liner  AGENTS.md
+b6b507a7f900bb4769a0904070322a4e7aa28ff44af4bb185c7cb95251d391a1  standard/one-browser-app/aws/skiff  AGENTS.md
+141824ec54b7b3610b1259153863d4f141d4ef1d8827feb3c0eddf1f7ed212df  standard/one-browser-app/azure/liner  AGENTS.md
+d83ebdc210a775bab99722264fa5fc541e331a571219c3c2208825366a73cfb2  standard/one-browser-app/azure/skiff  AGENTS.md
+023c696601fab1b5f62da0031e8589b89a4ef43b42eff0c7949e419ebe8d23d2  standard/one-browser-app/existing/liner  AGENTS.md
+023c696601fab1b5f62da0031e8589b89a4ef43b42eff0c7949e419ebe8d23d2  standard/one-browser-app/existing/skiff  AGENTS.md
+7515087396444a6a5a568c014b5c72c49c8fd9b3c050b68b656047b6208a184a  standard/one-browser-app/none/liner  AGENTS.md
+7515087396444a6a5a568c014b5c72c49c8fd9b3c050b68b656047b6208a184a  standard/one-browser-app/none/skiff  AGENTS.md
+c47987b358873fc32bdaea36a830888edc575a56f44ef2a462e5c0612911c5ac  standard/postgres-events  docs/architecture.md
+c020e5f7f70ac09a36d9571ce8e166937652b487baaac0858fceb14e62f9a3fa  standard/postgres-events/aws/liner  AGENTS.md
+09e19e30d4ccc7856a1df8090bec12293b45cab031b2c6b55de64a33ac255f57  standard/postgres-events/aws/skiff  AGENTS.md
+8c0b3d4fec650d4608b66023f7e003dd8df6e28ac0d3c858452cff808ef27895  standard/postgres-events/azure/liner  AGENTS.md
+8cb892d75849061655756db9c00cca61756cf2325812241940fa22c918d22bc6  standard/postgres-events/azure/skiff  AGENTS.md
+462ae02353c9c57350a32541f79eef2002f5f0f9510154857a5751bbbad6f261  standard/postgres-events/existing/liner  AGENTS.md
+462ae02353c9c57350a32541f79eef2002f5f0f9510154857a5751bbbad6f261  standard/postgres-events/existing/skiff  AGENTS.md
+4d39940084de90a7efa4bfa68684f9617197090cdf009ba4f0ea4cf2edbc7d6b  standard/postgres-events/none/liner  AGENTS.md
+4d39940084de90a7efa4bfa68684f9617197090cdf009ba4f0ea4cf2edbc7d6b  standard/postgres-events/none/skiff  AGENTS.md
+c47987b358873fc32bdaea36a830888edc575a56f44ef2a462e5c0612911c5ac  standard/postgres-state  docs/architecture.md
+c80c3bf82acb2d414aa4708ec7e0919b7eee0826cac4ff1fa317247acb4458f5  standard/postgres-state/aws/liner  AGENTS.md
+b3e56ac044c0eedd96f925efd80cfaad43656d4b3baaba939d4ea61a59580d94  standard/postgres-state/aws/skiff  AGENTS.md
+2ff674f92672318e10dca0894e163e1dea1eb289f8af7276b86eed804bc0bc65  standard/postgres-state/azure/liner  AGENTS.md
+2592889e698530adb025b5813ce23d8f9ee71336d2ff827c83532d1bfdf8d90d  standard/postgres-state/azure/skiff  AGENTS.md
+5f35328e55fa90b75e98eff655fa19c7d93a76d37774371b21a5e518990d286b  standard/postgres-state/existing/liner  AGENTS.md
+5f35328e55fa90b75e98eff655fa19c7d93a76d37774371b21a5e518990d286b  standard/postgres-state/existing/skiff  AGENTS.md
+644bc6221f7a7ec65c11e2ab2c925195f7d1e054b1f794628b96e4812774c9cc  standard/postgres-state/none/liner  AGENTS.md
+644bc6221f7a7ec65c11e2ab2c925195f7d1e054b1f794628b96e4812774c9cc  standard/postgres-state/none/skiff  AGENTS.md
+c47987b358873fc32bdaea36a830888edc575a56f44ef2a462e5c0612911c5ac  standard/sqlite-events  docs/architecture.md
+a7958679c29b362a9cf8876efea54b6478b967ec392cc202ff94a55cf69bd1b8  standard/sqlite-events/aws/liner  AGENTS.md
+3c2fb0a526f38563d160c24690dc586a654de42b71ebd59bdacb3a6486f02c30  standard/sqlite-events/aws/skiff  AGENTS.md
+b03dbf4ca456ab3d889874f61ae8fce44ef54c93266867cc47c763af33b5389d  standard/sqlite-events/azure/liner  AGENTS.md
+082e4e52d8b7e8d44cdd92f3246ec95eb0c053d69edabd79abc1b7c75ad5b476  standard/sqlite-events/azure/skiff  AGENTS.md
+71de526d5721e5543cf6156d5042c10c6cd0b78562f5f7535d756dea15d146f5  standard/sqlite-events/existing/liner  AGENTS.md
+71de526d5721e5543cf6156d5042c10c6cd0b78562f5f7535d756dea15d146f5  standard/sqlite-events/existing/skiff  AGENTS.md
+7ae099d2dce95998a429b0e4ea2b5a3ed16816d3bf6d56534af88d7441d66536  standard/sqlite-events/none/liner  AGENTS.md
+7ae099d2dce95998a429b0e4ea2b5a3ed16816d3bf6d56534af88d7441d66536  standard/sqlite-events/none/skiff  AGENTS.md
+c47987b358873fc32bdaea36a830888edc575a56f44ef2a462e5c0612911c5ac  standard/sqlite-state  docs/architecture.md
+f3cccf50c76b43c19ada303222812d0b55feadca3f2099c8b3a410e331241acc  standard/sqlite-state/aws/liner  AGENTS.md
+e2e02b8257e9e2da1cc71d814601bacbd841dc5592dc6bdc98c8861e7a390776  standard/sqlite-state/aws/skiff  AGENTS.md
+e363081b8587b02b9115ccd63d23fa022e8c74e9127151fc540b9fb40e320d2a  standard/sqlite-state/azure/liner  AGENTS.md
+078018b39c065cda4242f3a917038ba6166521f975c7eb20f4dafda5fd3d9ba9  standard/sqlite-state/azure/skiff  AGENTS.md
+e71755ebe93a34856ad618892af27a7aecf3cb09cdd4969f90f94b50ed5e24e3  standard/sqlite-state/existing/liner  AGENTS.md
+e71755ebe93a34856ad618892af27a7aecf3cb09cdd4969f90f94b50ed5e24e3  standard/sqlite-state/existing/skiff  AGENTS.md
+6f885dd48ef31e99a6394a7a8079426b959622ee294785b82a9831ace4f67145  standard/sqlite-state/none/liner  AGENTS.md
+6f885dd48ef31e99a6394a7a8079426b959622ee294785b82a9831ace4f67145  standard/sqlite-state/none/skiff  AGENTS.md
+c47987b358873fc32bdaea36a830888edc575a56f44ef2a462e5c0612911c5ac  standard/transport  docs/architecture.md
+adc73f2ca802d9907e0ef97d474b7fad327d2afe6e674d9119512f284116f419  standard/transport/aws/liner  AGENTS.md
+41c2a4ab1819a259079603911407f6acbea3a842c6ed98498e168e843e30e73b  standard/transport/aws/skiff  AGENTS.md
+027e5655529e3d2ca6ed08e608c659dc975ab7f12e4ca2fcfb41a94ce157adb5  standard/transport/azure/liner  AGENTS.md
+8dd6b413c98392e597bf0b9c2673f513099a73b591abd51c053e70350dbcd35c  standard/transport/azure/skiff  AGENTS.md
+5002d07ef7c0f8f399eca7ef16b42f5ffecc4200dd52be22770fa6edd0e0a95a  standard/transport/existing/liner  AGENTS.md
+5002d07ef7c0f8f399eca7ef16b42f5ffecc4200dd52be22770fa6edd0e0a95a  standard/transport/existing/skiff  AGENTS.md
+56751cf250f2639c66189a403622f01e47150c9550fe50e22f4d9f60a4ec03f6  standard/transport/none/liner  AGENTS.md
+56751cf250f2639c66189a403622f01e47150c9550fe50e22f4d9f60a4ec03f6  standard/transport/none/skiff  AGENTS.md
+fa05ab5b2e41ca97eb7233c80236ea11a9bf299e4709b68d6ba80c2fcdfd2b01  standard/two-browser-apps  docs/architecture.md
+ed702fe6ba6f97a7bd6a386862258b07e08c2793b08501cb78ecc5bd45edc1d9  standard/two-browser-apps/aws/liner  AGENTS.md
+105f3063c349cb87422ca6905f66ecb4b43d43290557479b960278e5dbf2a9ce  standard/two-browser-apps/aws/skiff  AGENTS.md
+eeff35a24a782c0d7dd1c0ddba365b31bc5676f7d32978b63d2b766652a40721  standard/two-browser-apps/azure/liner  AGENTS.md
+848a4978f8fb0ddf383bbb75a307f578289fcaed86c424e4dbb595a1d900c5af  standard/two-browser-apps/azure/skiff  AGENTS.md
+a50081de8e91496e3eda1af943b9cc231d768364587418383f4814afc7a4e64d  standard/two-browser-apps/existing/liner  AGENTS.md
+a50081de8e91496e3eda1af943b9cc231d768364587418383f4814afc7a4e64d  standard/two-browser-apps/existing/skiff  AGENTS.md
+c67048067153a0af985ac982db723747ce7725b2133fb5b6eeecbc89ee2440fc  standard/two-browser-apps/none/liner  AGENTS.md
+c67048067153a0af985ac982db723747ce7725b2133fb5b6eeecbc89ee2440fc  standard/two-browser-apps/none/skiff  AGENTS.md

@@ -47,10 +47,10 @@ version 1, it uses version 1's own names and says so.
 | **Clearance** | The rule that lets a slice start. A slice has clearance when every mark it steers by has been set by a slice that is planned or implemented. A slice sets its own marks itself, as its first stage, in its own worktree | "consumption gate" (issue #32) |
 | **Careen** | One hardening slice per fairway. It holds the findings below the severity bar and the work that stages stowed. It runs before the fairway's flag is hoisted. Its demo is: the findings are closed | "hardening slice" |
 | **Stow** | What a stage does with its open work when it runs out of budget: it moves the work into the careen. Work is never dropped. A CRITICAL finding is never stowed | "backload" |
-| **Telegraph** | The dial between speed and cost: the engine order telegraph on the bridge. A person rings it; the engine room answers by raising or lowering steam. Its positions are `full-ahead`, `half-ahead`, `slow-ahead`, `dead-slow` and `stop`. Each position sets, as a group, how many boilers are lit, how many delegates a captain may run at once, which model role each stage uses, and the bunker per slice and per day. `slipwai telegraph half-ahead` rings it. Each number underneath can also be set alone | "concurrency setting", "cost cap", "trim" |
+| **Telegraph** | The dial between speed and cost: the engine order telegraph on the bridge. A person rings it; the engine room answers by raising or lowering steam. Its positions are `full-ahead`, `half-ahead`, `slow-ahead`, `dead-slow` and `stop`. Each position sets, as a group, the nine numbers underneath it: how many boilers are lit, how many delegates a captain may run at once, the bunker per slice and per day, the stage budget, the severity bar, the unreviewed-decision ceiling, the wait bound and the attempts. The model role each stage uses is **not** one of them: a role per stage lives in `.specify/models.json`, is set by `/model-delegation-settings` and read by `scripts/agents/models.py`, and ringing the telegraph does not move it. `slipwai telegraph half-ahead` rings it. Each number underneath can also be set alone | "concurrency setting", "cost cap", "trim" |
 | **Boiler** | One berth under steam. A lit boiler is a captain working. The telegraph says how many may be lit at once | "max concurrency" |
 | **Bunker** | The coal store: the token budget, per slice and per day. Tokens are the coal. The pressure gauge on the fleet board shows the rate they burn at | "token budget", "cost cap" |
-| **Bank the fires** | What the harbourmaster does when the bunker runs down faster than the telegraph position allows: optional stages stowed into the careen, fewer delegates, cheaper model roles, then one boiler put out. Each step is a line in the harbour log. A person stokes the fires back up | "throttle", "reef" |
+| **Bank the fires** | What the harbourmaster does when the bunker runs down faster than the telegraph position allows: it rings the position down one notch, which lowers every number together — delegates and boilers among them — and writes `fires-banked` with the step it rang and why. One notch at a time rather than straight to `stop`, because a run that stops dead loses what was in flight and a run that slows finishes it. A person stokes the fires back up | "throttle", "reef" |
 | **Hoist, strike** | To hoist a flag is to turn a release flag on for real actors. To strike a flag is to remove it after it has been on everywhere for long enough. Only a person hoists | "turn on", "remove the flag" |
 | **Slipway, sea trials, in service** | The three states of a product, recorded once in `project.json`. Slipway: no production yet. Sea trials: a production with a known set of pilot actors. In service: real actors. The release mode defaults from this state | "pre-launch", "beta", "GA" |
 | **Release mode** | How dark a merge is. One of: open, keystone, flagged, promoted. Section 4, theme E, defines each | `release: flagged` |
@@ -1366,6 +1366,21 @@ The first attempt paid for these rules. They apply from phase 1, inside the fork
   moved to `assets/pages/docs/deployment-release.md`, proved byte-identical across three application sets.
   The lesson for the slices after it is that the row's question was the wrong grain: these three modules
   had three different answers, and only a per-module measurement found them.
+
+- **The telegraph sets numbers, not model roles.** Section 1's vocabulary said a position sets "which model
+  role each stage uses", and `GLOSSARY.md` is written from that table, so the contract said it too. The code
+  never did: `telegraph.SETTINGS` carries nine keys — `boilers`, `fanout`, `bunker_per_slice`,
+  `bunker_per_day`, `stage_scale`, `bar`, `decision_ceiling`, `wait_bound`, `attempts` — and the module's own
+  docstring opens "one lever a person rings, and the nine numbers it sets". A role per stage lives in
+  `.specify/models.json`, is set by `/model-delegation-settings`, and ringing the telegraph does not move it.
+  Banking the fires does not move it either: it rings the position down one notch and writes `fires-banked`
+  with `(step, why)`, which is the whole of what that log line carries — not the four-stage ladder the
+  vocabulary described, where optional stages were stowed and roles made cheaper before a boiler went out.
+  **The words are corrected to the code rather than the code to the words**, because the two numbers the old
+  wording promised were never wired and nothing asked for them: the telegraph is one lever over cost and
+  concurrency, and which model runs a stage is a choice a person makes per project and keeps across
+  positions. Found writing the reference pages (9.2), which documented the code and reported the gap rather
+  than repeating the plan.
 
 ### Still open
 

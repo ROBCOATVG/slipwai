@@ -38,6 +38,10 @@ from .versions import below, satisfies
 
 VARIABLE = "SLIPWAI_LANGUAGES"
 EXTENSION_MANIFEST = "extension.json"  # the other kind of package, read by `extension_directory`
+TARGET_MANIFEST = "target.json"  # and the third, read by `target_directory`
+#: The manifests that say a directory belongs to another walk. Here rather than in each of those modules
+#: because this is the walk that has to know what is *not* its own, and the one they import from.
+OTHER_MANIFESTS = (EXTENSION_MANIFEST, TARGET_MANIFEST)
 NO_FRAGMENT = "has no language.json"  # not a language at all: removed, never installed back (T017)
 # Each required key of `language.json`, with what it must be.
 REQUIRED: tuple[tuple[str, type, str], ...] = (
@@ -259,10 +263,12 @@ def read(root: Path, core: str, installed: bool = False) -> tuple[list[Package],
         return packages, refusals
     for entry in entries:
         try:
-            # An extension lives in the same directory and is read by `extension_directory`. Skipped rather
-            # than refused: "has no language.json" about a thing that never claimed to be one is a line that
-            # sends its reader to fix something that is not broken.
-            if entry.name.startswith(".") or not entry.is_dir() or (entry / EXTENSION_MANIFEST).is_file():
+            # An extension and a target live in the same directory and are read by their own modules.
+            # Skipped rather than refused: "has no language.json" about a thing that never claimed to be one
+            # is a line that sends its reader to fix something that is not broken.
+            if entry.name.startswith(".") or not entry.is_dir():
+                continue
+            if any((entry / manifest).is_file() for manifest in OTHER_MANIFESTS):
                 continue
         except OSError:
             continue

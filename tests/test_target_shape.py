@@ -57,8 +57,8 @@ class ValidateTest(unittest.TestCase):
                 self.assertIn(f"`{field}`", refusal(**{field: None}))
 
     def test_a_field_the_keel_does_not_read_is_refused_with_the_list_of_what_it_does(self) -> None:
-        said = refusal(provisions={"postgres": "cumulus-sql"})
-        self.assertIn("provisions", said)
+        said = refusal(weather={"forecast": "fine"})
+        self.assertIn("weather", said)
         self.assertIn("label", said)
 
     def test_an_axis_list_that_is_not_a_list_of_names_is_refused(self) -> None:
@@ -106,3 +106,31 @@ class CatalogueEntryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MenuTest(unittest.TestCase):
+    """The three blocks that say what this target does to the menus — the ones that let a cloud leave the
+    keel at all, because every option that named a cloud named it because the cloud offered it."""
+
+    def test_a_whole_set_of_menu_blocks_is_accepted(self) -> None:
+        target_shape.validate({**MANIFEST,
+                               "offers": {"persistence": ["memory"]},
+                               "provisions": {"persistence": {"postgres": "cumulus-sql"}},
+                               "axes": {"auth": {"cirrus-id": {"label": "Cirrus ID"}}}})
+
+    def test_offers_that_is_not_a_mapping_to_names_is_refused(self) -> None:
+        self.assertIn("offers", refusal(offers={"persistence": "memory"}))
+
+    def test_provisions_that_does_not_say_what_an_option_becomes_is_refused(self) -> None:
+        self.assertIn("provisions", refusal(provisions={"persistence": {"postgres": ""}}))
+
+    def test_provisions_that_is_not_a_mapping_per_axis_is_refused(self) -> None:
+        self.assertIn("provisions", refusal(provisions={"persistence": ["postgres"]}))
+
+    def test_an_axes_block_whose_options_are_not_entries_is_refused(self) -> None:
+        self.assertIn("axes", refusal(axes={"auth": {"cirrus-id": "Cirrus ID"}}))
+
+    def test_an_unmanaged_target_brings_no_answer_of_its_own(self) -> None:
+        """An option offered only where this target is installed is one nothing here could build."""
+        said = refusal(managed=None, reserved=None, axes={"auth": {"cirrus-id": {"label": "x"}}})
+        self.assertIn("brings no answer of its own", said)

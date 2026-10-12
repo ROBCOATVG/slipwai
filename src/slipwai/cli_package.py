@@ -23,7 +23,7 @@ from . import ed25519
 from .assets import this_command
 from .catalog import CORE
 from .errors import GenerationError, refuse
-from .index_schema import EXTENSION
+from .index_schema import EXTENSION, QUICKSTART
 from .package_new import KINDS, VERBS, write
 from .package_release import kind_of, register, release
 from .package_version import cut
@@ -48,6 +48,11 @@ def check_package(root: Path) -> int:
     """
     from .conformance.__main__ import main as conformance
     whole = root.resolve()
+    # A quickstart holds no code, so there is no suite to run it against: what `check` answers for one is
+    # whether the document reads, that every package it names is named by a range, and what it would do.
+    if kind_of(whole) == QUICKSTART:
+        from .cli_quickstart import check_quickstart
+        return check_quickstart(whole)
     if kind_of(whole) == EXTENSION:
         return conformance(["--extension", str(whole)])
     return conformance([str(whole.parent), whole.name])
@@ -125,7 +130,8 @@ def package_main(argv: list[str]) -> None:
     parser.add_argument("verb", choices=VERBS)
     parser.add_argument("name", help="the package's key for `new`; its directory for the others")
     parser.add_argument("--kind", choices=KINDS, default="extension",
-                        help="`new` only: what the package is (default: extension). The others read the manifest")
+                        help="`new` only: what the package is (default: extension) — a language, an "
+                             "extension or a quickstart. The others read the manifest")
     parser.add_argument("--into", default=".", metavar="<directory>",
                         help="`new` only: where the package directory is written (default: here)")
     parser.add_argument("--out", default="dist", metavar="<directory>",

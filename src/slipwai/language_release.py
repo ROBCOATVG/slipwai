@@ -76,6 +76,9 @@ def read_package(root: Path) -> Source:
     with a name and a version — so this is where the two kinds stop being different, rather than there being
     a second packer that differs in one `json.loads`.
     """
+    quickstart = root / "quickstart.json"
+    if quickstart.is_file():
+        return read_quickstart(root, quickstart)
     manifest = root / "extension.json"
     if not manifest.is_file():
         return read_directory(root)
@@ -87,6 +90,19 @@ def read_package(root: Path) -> Source:
     if not isinstance(key, str) or name_fault("extension", key) is not None:
         raise ReleaseError(f"{manifest} gives no `key`, which is the name its release file is called after")
     return Source(key, version_in(root), declared, root, "directory")
+
+
+def read_quickstart(root: Path, manifest: Path) -> Source:
+    """A quickstart package directory as a source. It is listed under the name its document declares,
+    which is also the name a person types after `--quickstart`."""
+    try:
+        declared = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError) as error:
+        raise ReleaseError(f"{manifest} cannot be read as a quickstart.json: {error}") from None
+    name = declared.get("name") if isinstance(declared, dict) else None
+    if not isinstance(name, str) or name_fault("quickstart", name) is not None:
+        raise ReleaseError(f"{manifest} gives no `name`, which is the name its release file is called after")
+    return Source(name, version_in(root), declared, root, "directory")
 
 
 def read_directory(root: Path) -> Source:

@@ -31,6 +31,7 @@ from .package_templates import (
     LANGUAGE_MODULE,
     LANGUAGE_README,
     MAKEFILE,
+    QUICKSTART_README,
     README,
     WORKFLOW,
 )
@@ -40,7 +41,7 @@ from .package_templates import (
 #: inputs that workflow has never heard of. This becomes `ROBCOATVG/slipwai` when version 2 merges back
 #: there (slice 8.5), and that row says so.
 KEEL_REPO = "ROBCOATVG/slipwai_v2_Fork"
-KINDS = ("extension", "language")
+KINDS = ("extension", "language", "quickstart")
 #: The publisher's verbs, in the order they are used.
 VERBS = ("new", "check", "version", "release", "register", "key")
 #: What a scaffolded manifest declares it needs: this keel's schema, and everything up to the next major.
@@ -122,6 +123,34 @@ def language_files(name: str, schema: str) -> dict[str, str]:
     }
 
 
+def quickstart_files(name: str, schema: str) -> dict[str, str]:
+    """A quickstart package: the document, and the version a release of it is of.
+
+    No Makefile and no workflow, and that is not an omission. A quickstart holds no code, so there is
+    nothing for a gate to run that `package check` does not already do — and a scaffold that wrote a CI
+    workflow which only ever ran one command would be teaching a publisher to maintain a file for nothing.
+    """
+    document = {
+        "quickstart": 1,
+        "name": name,
+        "suits": f"TODO: one sentence about the product {name} suits — what it is like, not which packages "
+                 f"it names. This is the row `slipwai generate` offers it by, to somebody who has never "
+                 f"heard of a chandlery.",
+        "core": core_range(schema),
+        "answers": {"profile": "event-modelling"},
+        "languages": [{"name": "todo-the-language-this-starts-from", "version": ">=1.0,<2"}],
+        "extensions": [],
+    }
+    return {
+        "quickstart.json": json.dumps(document, indent=2, ensure_ascii=False) + "\n",
+        "VERSION": "0.1.0\n",
+        "README.md": QUICKSTART_README.format(name=name, title=title_of(name), command=this_command()),
+        "CHANGELOG.md": CHANGELOG.format(name=name),
+        "changelog.d/README.md": FRAGMENTS,
+        f"changelog.d/first-{name}.md": FIRST.format(name=name, kind="quickstart"),
+    }
+
+
 def write(kind: str, name: str, into: Path, schema: str) -> list[str]:
     """Write the package under `into/<name>`, or refuse a directory that already holds something."""
     checked(kind, name)
@@ -129,7 +158,8 @@ def write(kind: str, name: str, into: Path, schema: str) -> list[str]:
     if root.exists() and any(root.iterdir()):
         raise GenerationError(f"{root} already holds something. A scaffold writes a whole package, so it "
                               f"writes into an empty directory or none at all")
-    files = extension_files(name, schema) if kind == "extension" else language_files(name, schema)
+    written = {"extension": extension_files, "language": language_files, "quickstart": quickstart_files}
+    files = written[kind](name, schema)
     for path, text in files.items():
         target = root / path
         target.parent.mkdir(parents=True, exist_ok=True)

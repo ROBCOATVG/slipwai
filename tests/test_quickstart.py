@@ -19,7 +19,7 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 from support import command
 
-from slipwai import quickstart
+from slipwai import cli_quickstart, quickstart
 from slipwai.errors import GenerationError
 
 ANSWERS: dict[str, object] = {
@@ -171,7 +171,7 @@ class FromProjectTest(unittest.TestCase):
     }
 
     def test_it_reads_the_answers_off_the_project_and_the_versions_off_what_is_installed(self) -> None:
-        one = quickstart.from_project("toy-ui", "A sentence about the product.", self.MANIFEST,
+        one = cli_quickstart.from_project("toy-ui", "A sentence about the product.", self.MANIFEST,
                                       elected={"codegraph": ("before-search",)})
         self.assertEqual(one.profile, "event-modelling")
         self.assertEqual(one.language, "toy")
@@ -181,7 +181,7 @@ class FromProjectTest(unittest.TestCase):
 
     def test_a_language_is_named_by_range_rather_than_by_the_version_installed_today(self) -> None:
         """A snapshot would pin a team to the day the quickstart was written."""
-        one = quickstart.from_project("toy-ui", "A sentence.", self.MANIFEST, elected={})
+        one = cli_quickstart.from_project("toy-ui", "A sentence.", self.MANIFEST, elected={})
         self.assertEqual(one.languages, (quickstart.Wanted("toy", ">=1.2,<2"),))
 
 

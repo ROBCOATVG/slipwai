@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .language_shape import name_fault
+from .quickstart import is_document
 from .versions import parse
 
 #: Where the channels are named, in order: an organisation's own first, the public one after it. Comma
@@ -39,8 +40,13 @@ CHANDLERY = "SLIPWAI_CHANDLERY"
 FORMATS = (1, 2)
 #: Where each format's entries live, and what version 1 called the one kind it had.
 BLOCK = {1: "languages", 2: "packages"}
-LANGUAGE, EXTENSION = "language", "extension"
-KINDS = (LANGUAGE, EXTENSION)
+LANGUAGE, EXTENSION, QUICKSTART = "language", "extension", "quickstart"
+#: The third kind arrives with phase 13 and is read exactly like the other two: an entry declares its
+#: `kind` and carries its manifest under the key that names it. A quickstart is not code and installs
+#: nothing into the package directory — it is the set of answers somebody already settled — but it is
+#: published, versioned, searched and fetched the way a language is, which is the whole reason it is a
+#: package at all rather than a file people send each other.
+KINDS = (LANGUAGE, EXTENSION, QUICKSTART)
 DIGEST = re.compile(r"[0-9a-f]{64}")
 #: The declared-never-required family members an entry's `answers` may name: what a verb needs to know a
 #: release answers before it is installed (D122, ADR 0010). A value a reader does not know is ignored.
@@ -82,6 +88,10 @@ class Release:
     @property
     def is_extension(self) -> bool:
         return self.kind == EXTENSION
+
+    @property
+    def is_quickstart(self) -> bool:
+        return self.kind == QUICKSTART
 
     @property
     def signed(self) -> bool:
@@ -198,6 +208,8 @@ def entry_of(document: str, name: str, entry: Any, channel: str = "", origin: st
     if kind == LANGUAGE and not language_entry(name, fragment):
         return None
     if kind == EXTENSION and not extension_entry(name, fragment):
+        return None
+    if kind == QUICKSTART and not is_document(name, fragment):
         return None
     assert isinstance(fragment, dict)  # both checks above refuse anything else
     said = entry.get("answers")

@@ -32,7 +32,7 @@ from typing import Any
 from .assets import moved_home, this_command
 from .errors import GenerationError
 from .language_shape import name_fault
-from .versions import parse
+from .versions import parse_range
 
 #: What the document declares, and the one format this keel writes. A reader meeting a higher one says so
 #: rather than guessing which fields moved, exactly as a log line's `v` does.
@@ -109,11 +109,33 @@ def wanted(entry: Any, kind: str) -> Wanted:
     version = entry.get("version", "")
     if not isinstance(version, str):
         raise GenerationError(f"{name}'s `version` is a range such as `>=1.2,<2`, and this one is {version!r}")
+    range_fault(name, version.strip())
     guards = entry.get("guards", [])
     if not isinstance(guards, list) or not all(isinstance(one, str) for one in guards):
         raise GenerationError(f"{name}'s `guards` is the list of guard names agreed to when this quickstart "
                               f"was written, and this one is {guards!r}")
     return Wanted(name, version.strip(), tuple(guards))
+
+
+def range_fault(name: str, version: str) -> None:
+    """Refuse a package named by anything but a range: a pin, a snapshot, or something that is neither.
+
+    This is the rule a quickstart has that no other package does, and it is held where the document is read
+    rather than where it is published, so a hand-written one is refused by the same sentence a fetched one
+    is. A quickstart is given to a team and kept for years; one that named `==1.2.3` would hold every
+    project generated from it to the afternoon somebody wrote it, and the first thing anyone would do is
+    edit the file — at which point it is not a shared decision any more.
+    """
+    if not version:
+        return
+    advice = ("A quickstart names a range, so that it does not pin a team to the day it was written: "
+              "`>=1.2,<2`, never `==1.2.3` or `1.2.3`")
+    try:
+        clauses = parse_range(version, "version")
+    except ValueError:
+        raise GenerationError(f"{name} is named by `{version}`, which is not a range. {advice}") from None
+    if any(operator == "==" for operator, _ in clauses):
+        raise GenerationError(f"{name} is pinned to one version by `{version}`. {advice}")
 
 
 def read(document: Mapping[str, Any]) -> Quickstart:
@@ -164,6 +186,22 @@ def listed(name: str, document: Mapping[str, Any], key: str) -> list[Any]:
     if not isinstance(found, list):
         raise GenerationError(f"{name}: `{key}` is a list of the packages this quickstart names")
     return found
+
+
+def is_document(name: str, fragment: Any) -> bool:
+    """Whether an index entry's manifest is a quickstart this keel could use, listed under the right name.
+
+    What the chandlery asks, where `language_shape` answers it for a language: a bad entry is dropped from a
+    listing rather than refused, because an index is a file on somebody else's server and one unreadable
+    entry in it is not a reason the other forty do not install.
+    """
+    if not isinstance(fragment, Mapping) or fragment.get("name") != name:
+        return False
+    try:
+        read(fragment)
+    except GenerationError:
+        return False
+    return True
 
 
 def document(one: Quickstart) -> dict:
@@ -253,57 +291,6 @@ def record(one: Quickstart) -> str:
         "extensions": [each.name for each in one.extensions],
         "guards": {each.name: list(each.guards) for each in one.extensions if each.guards},
     }, indent=2) + "\n"
-
-
-def range_for(version: str) -> str:
-    """The range a saved package is named by: at least what is installed, below its next major.
-
-    Never the version itself. A quickstart that pinned the snapshot it was written from would hold a team
-    to the afternoon somebody saved it, and the first thing anybody would do is edit it.
-    """
-    numbers = parse(version)
-    if numbers is None:
-        return ""
-    major, minor = numbers.group(1), numbers.group(2)
-    return f">={major}.{minor},<{int(major) + 1}"
-
-
-def first_service(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
-    """The service a project's answers are read off: the first generated one `project.json` records."""
-    deployables = manifest.get("deployables", {})
-    rows = deployables.values() if isinstance(deployables, Mapping) else []
-    for row in rows:
-        if isinstance(row, Mapping) and row.get("kind") == "service" and row.get("generated") is not False:
-            return row
-    raise GenerationError("this project records no generated service, so there are no answers to save. "
-                          "A quickstart is saved from a project this command made")
-
-
-def from_project(name: str, suits: str, manifest: Mapping[str, Any],
-                 elected: Mapping[str, tuple[str, ...]]) -> Quickstart:
-    """What this project actually has, as a quickstart: its answers, its languages and its extensions.
-
-    `elected` is what the project elected and agreed to — the keys, each with the guards the person said
-    yes to — which is read off the project rather than off the catalogue: the question is what *this*
-    project does, not what this machine happens to have installed.
-    """
-    service = first_service(manifest)
-    recorded = (manifest.get("generator") or {}).get("languages") or {}
-    language = str(service.get("language", ""))
-    axes = service.get("selection") or {}
-    one = Quickstart(
-        name=name, suits=suits,
-        profile=str(manifest.get("profile", "")),
-        target=str(manifest.get("target", "")),
-        language=language,
-        framework=str(service.get("framework", "")),
-        frontend=str(manifest.get("frontend", "")),
-        axes={axis: str(answer) for axis, answer in axes.items()} if isinstance(axes, Mapping) else {},
-        languages=tuple(Wanted(package_name, range_for(str(version)))
-                        for package_name, version in sorted(recorded.items())),
-        extensions=tuple(Wanted(key, "", tuple(guards)) for key, guards in sorted(elected.items())),
-    )
-    return read(document(one))  # written and read back, so a `save` cannot write one `find` would refuse
 
 
 def in_words(one: Quickstart) -> list[str]:

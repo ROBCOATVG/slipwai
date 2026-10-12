@@ -1,16 +1,16 @@
-"""`slipwai quickstart save|show|list`, and what `generate --quickstart` does with one.
+"""`slipwai quickstart install|save|show|list|remove`, and what `generate --quickstart` does with one.
 
-Three verbs and no fourth, because the fourth is `generate`: a quickstart is not a thing to run, it is a
-set of answers to give. `save` writes what this project actually has, so the decision somebody already made
-is recorded rather than described from memory; `show` says in plain words what it would do **before it does
-any of it**, which is the only way a person who does not know what an extension is can agree to electing
-one; `list` is what is saved here.
+No verb that *runs* one, because that verb is `generate`: a quickstart is not a thing to run, it is a set
+of answers to give. `install` fetches somebody else's out of the chandlery. `save` writes what this project
+actually has, so the decision somebody already made is recorded rather than described from memory. `show`
+says in plain words what it would do **before it does any of it**, which is the only way a person who does
+not know what an extension is can agree to electing one. `list` is what is saved here, and `remove` takes
+one out again.
 
-**Nothing here installs anything.** The catalogue is read once, when this process starts, so a language
-installed halfway through a generation could not answer a single question asked after it. A quickstart that
-names a package this machine has not got is refused with the exact command that installs it, and 13.3 makes
-`slipwai install <quickstart>` fetch the kit and its packages together — which is the moment there is a
-whole process in front of it.
+**Installing a quickstart installs no packages**, and the distinction matters at exactly one moment. The
+catalogue is read once, when this process starts, so a language fetched halfway through could not answer a
+single question asked after it. A quickstart that names a package this machine has not got is therefore
+refused — by `generate`, with every missing name in one line and the one command that fetches them all.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from . import quickstart
+from . import quickstart, quickstart_install
 from .assets import this_command
 from .catalog import CORE, families
 from .errors import GenerationError, refuse
@@ -29,12 +29,15 @@ from .guards import REGISTRY as GUARD_REGISTRY
 from .language_directory import directory as package_directory
 from .package_new import core_range
 from .quickstart import Quickstart
+from .versions import parse
 
 #: The election record `./init` and an extension's own `init.py` keep, read here to say what this project
 #: elected. Not the hook registry: that says what is attached, and an extension with no hooks is elected
 #: all the same.
 ELECTED = ".slipwai/extensions.json"
 MANIFEST = "project.json"
+#: The verbs, in the order a person meets them: one that fetches somebody else's, three over their own.
+VERBS = ("install", "save", "show", "list", "remove")
 
 
 def read_json(path: Path) -> dict:
@@ -71,6 +74,58 @@ def elected_in(root: Path) -> dict[str, tuple[str, ...]]:
     return {key: tuple(sorted(agreed.get(key, []))) for key in sorted(set(keys) | set(agreed))}
 
 
+def range_for(version: str) -> str:
+    """The range a saved package is named by: at least what is installed, below its next major.
+
+    Never the version itself. A quickstart that pinned the snapshot it was written from would hold a team
+    to the afternoon somebody saved it, and the first thing anybody would do is edit it.
+    """
+    numbers = parse(version)
+    if numbers is None:
+        return ""
+    major, minor = numbers.group(1), numbers.group(2)
+    return f">={major}.{minor},<{int(major) + 1}"
+
+
+def first_service(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
+    """The service a project's answers are read off: the first generated one `project.json` records."""
+    deployables = manifest.get("deployables", {})
+    rows = deployables.values() if isinstance(deployables, Mapping) else []
+    for row in rows:
+        if isinstance(row, Mapping) and row.get("kind") == "service" and row.get("generated") is not False:
+            return row
+    raise GenerationError("this project records no generated service, so there are no answers to save. "
+                          "A quickstart is saved from a project this command made")
+
+
+def from_project(name: str, suits: str, manifest: Mapping[str, Any],
+                 elected: Mapping[str, tuple[str, ...]]) -> Quickstart:
+    """What this project actually has, as a quickstart: its answers, its languages and its extensions.
+
+    `elected` is what the project elected and agreed to — the keys, each with the guards the person said
+    yes to — which is read off the project rather than off the catalogue: the question is what *this*
+    project does, not what this machine happens to have installed.
+    """
+    service = first_service(manifest)
+    recorded = (manifest.get("generator") or {}).get("languages") or {}
+    language = str(service.get("language", ""))
+    axes = service.get("selection") or {}
+    one = quickstart.Quickstart(
+        name=name, suits=suits,
+        profile=str(manifest.get("profile", "")),
+        target=str(manifest.get("target", "")),
+        language=language,
+        framework=str(service.get("framework", "")),
+        frontend=str(manifest.get("frontend", "")),
+        axes={axis: str(answer) for axis, answer in axes.items()} if isinstance(axes, Mapping) else {},
+        languages=tuple(quickstart.Wanted(package_name, range_for(str(version)))
+                        for package_name, version in sorted(recorded.items())),
+        extensions=tuple(quickstart.Wanted(key, "", tuple(guards)) for key, guards in sorted(elected.items())),
+    )
+    # Written and read back, so that a `save` can never write one `find` would then refuse.
+    return quickstart.read(quickstart.document(one))
+
+
 def save(name: str, suits: str, root: Path, into: Path | None) -> Path:
     """Write this project's answers as a quickstart, and say where it went."""
     if not suits.strip():
@@ -84,7 +139,7 @@ def save(name: str, suits: str, root: Path, into: Path | None) -> Path:
                               f"from a project this command generated, or pass `--from <directory>`")
     # The keel range this quickstart was written against, as `package new` writes one: a quickstart is a
     # package in 13.3, and one saved here is the same document as one published there.
-    one = dataclasses.replace(quickstart.from_project(name, suits, manifest, elected_in(root)),
+    one = dataclasses.replace(from_project(name, suits, manifest, elected_in(root)),
                               core=core_range(CORE["schemaVersion"]))
     place = into or quickstart.directory()
     place.mkdir(parents=True, exist_ok=True)
@@ -92,6 +147,23 @@ def save(name: str, suits: str, root: Path, into: Path | None) -> Path:
     path.write_text(json.dumps(quickstart.document(one), indent=2, ensure_ascii=False) + "\n",
                     encoding="utf-8")
     return path
+
+
+def check_quickstart(root: Path) -> int:
+    """`package check` for a quickstart: that it reads, and what it would do. 0 when it does, 1 when not.
+
+    There is no conformance suite to run, because there is no code to run it against — a quickstart is a
+    document. What a publisher needs to know before they put one in front of a team is the same thing a
+    person needs before they accept one, so this prints `show`'s own words rather than a second report:
+    whether it reads, every package named by a range rather than a version, and the answers it gives.
+    """
+    try:
+        one = quickstart.load(root / quickstart.MANIFEST)
+    except GenerationError as fault:
+        print(f"quickstart: {fault}")
+        return 1
+    print("\n".join(quickstart.in_words(one)))
+    return 0
 
 
 def missing(one: Quickstart) -> list[str]:
@@ -195,33 +267,39 @@ def quickstart_main(argv: list[str]) -> None:
     prog = f"{this_command()} quickstart"
     parser = argparse.ArgumentParser(
         prog=prog,
-        description="Save, read and list a named set of languages, answers and extensions",
+        description="Install, save, read and list a named set of languages, answers and extensions",
         epilog="A quickstart is given to a generation: `%(prog)s show <name>` says what it would do, and "
                "`slipwai generate <project> --quickstart <name>` carries it out. A name is looked up in "
                "~/.slipwai/quickstarts; a path is read where it is.",
     )
-    parser.add_argument("verb", choices=("save", "show", "list"))
-    parser.add_argument("name", nargs="?", help="the quickstart's name, or a path to one")
+    parser.add_argument("verb", choices=VERBS)
+    parser.add_argument("name", nargs="*", help="the quickstart's name, or a path to one")
     parser.add_argument("--suits", default="", metavar="<sentence>",
                         help="`save` only: what the product this suits is like, in one sentence")
     parser.add_argument("--from", dest="root", default=".", metavar="<directory>",
                         help="`save` only: the project to read the answers off (default: here)")
     parser.add_argument("--into", default="", metavar="<directory>",
-                        help="`save` only: where to write it (default: ~/.slipwai/quickstarts)")
+                        help="`save`, `install` and `remove`: which directory of quickstarts to work in "
+                             "(default: ~/.slipwai/quickstarts)")
     parsed = parser.parse_args(argv)
     try:
         if parsed.verb == "list":
             print("\n".join(listing()))
             return
-        if parsed.name is None:
+        if not parsed.name:
             raise GenerationError(f"`{prog} {parsed.verb}` names a quickstart")
-        if parsed.verb == "show":
-            print("\n".join(quickstart.in_words(quickstart.find(parsed.name))))
+        into = Path(parsed.into).expanduser() if parsed.into else None
+        if parsed.verb in ("install", "remove"):
+            run = quickstart_install.install if parsed.verb == "install" else quickstart_install.remove
+            print("\n".join(run(parsed.name, into or quickstart.directory())))
             return
-        path = save(parsed.name, parsed.suits, Path(parsed.root).expanduser(),
-                    Path(parsed.into).expanduser() if parsed.into else None)
-        print(f"{parsed.name} saved: {path}")
-        print(f"  read it       {prog} show {parsed.name}")
-        print(f"  use it        {this_command()} generate <name> --quickstart {parsed.name}")
+        first = parsed.name[0]
+        if parsed.verb == "show":
+            print("\n".join(quickstart.in_words(quickstart.find(first))))
+            return
+        path = save(first, parsed.suits, Path(parsed.root).expanduser(), into)
+        print(f"{first} saved: {path}")
+        print(f"  read it       {prog} show {first}")
+        print(f"  use it        {this_command()} generate <name> --quickstart {first}")
     except GenerationError as error:
         refuse(prog, error)

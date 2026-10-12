@@ -38,7 +38,7 @@ from pathlib import Path
 from . import ed25519
 from .assets import this_command
 from .errors import GenerationError
-from .index_schema import BLOCK, EXTENSION, LANGUAGE
+from .index_schema import BLOCK, EXTENSION, LANGUAGE, QUICKSTART
 from .language_release import ReleaseError, pack, read_package
 from .trust import ED25519
 
@@ -70,11 +70,14 @@ def digest(path: Path) -> str:
 
 def kind_of(root: Path) -> str:
     """Which kind of package this directory is, by the manifest it holds."""
+    if (root / "quickstart.json").is_file():
+        return QUICKSTART
     if (root / "extension.json").is_file():
         return EXTENSION
     if (root / "language.json").is_file():
         return LANGUAGE
-    raise GenerationError(f"{root} holds neither a language.json nor an extension.json, so it is no package")
+    raise GenerationError(f"{root} holds no language.json, extension.json or quickstart.json, so it is "
+                          f"no package")
 
 
 def signing_key(path: Path) -> bytes:

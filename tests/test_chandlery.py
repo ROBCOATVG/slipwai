@@ -30,6 +30,8 @@ def release(name: str, version: str = "1.0.0", **fragment: object) -> Release:
     whole = {"name": name, "core": ">=9.0,<10", "family": name, **fragment}
     if kind == "extension":
         whole = {"key": name, "name": name.title(), "core": ">=9.0,<10", **fragment}
+    if kind == "quickstart":
+        whole = {"quickstart": 1, "name": name, "core": ">=9.0,<10", "answers": {}, **fragment}
     return Release(name, version, f"https://example.invalid/{name}-{version}.tar.gz", "0" * 64, whole,
                    kind=kind, description=str(fragment.get("description", "")),
                    publisher=str(entry.get("publisher", "")), signature=str(entry.get("signature", "")),
@@ -53,6 +55,10 @@ INDEX = Index(
         "java-spring": [release("java-spring", "1.0.0", family="java",
                                 backends={"java-spring": {"framework": "spring", "label": "Spring Web"}})],
         "codegraph": [release("codegraph", "1.0.0", kind="extension", description="A local code index")],
+        # A published quickstart, listed beside the languages it would install (13.3).
+        "python-ui": [release("python-ui", "1.0.0", kind="quickstart",
+                              suits="A product whose browser app is the product",
+                              languages=[{"name": "python", "version": ">=1.0,<2"}])],
         "empty": [],
     },
 )
@@ -91,7 +97,7 @@ class MatchesTest(unittest.TestCase):
 
     def test_no_term_lists_everything_the_index_has_a_release_for(self) -> None:
         self.assertEqual([r.name for r in matches(INDEX, "")],
-                         ["codegraph", "go", "java-spring", "python"])
+                         ["codegraph", "go", "java-spring", "python", "python-ui"])
 
     def test_a_name_with_no_release_is_not_listed(self) -> None:
         self.assertNotIn("empty", [r.name for r in matches(INDEX, "")])
@@ -99,6 +105,16 @@ class MatchesTest(unittest.TestCase):
     def test_the_kind_narrows_languages_from_extensions(self) -> None:
         self.assertEqual([r.name for r in matches(INDEX, "", kind="extension")], ["codegraph"])
         self.assertNotIn("codegraph", [r.name for r in matches(INDEX, "", kind="language")])
+
+    def test_a_published_quickstart_is_listed_beside_the_languages(self) -> None:
+        """13.3: one listing, three kinds. A quickstart nobody could find in `search` would be a kit of
+        parts people pass around in a message, which is what publishing it exists to stop."""
+        self.assertIn("python-ui", [r.name for r in matches(INDEX, "")])
+        self.assertEqual([r.name for r in matches(INDEX, "", kind="quickstart")], ["python-ui"])
+
+    def test_a_quickstart_is_found_by_the_product_it_suits(self) -> None:
+        """Its `suits` sentence is the only prose it has, and what somebody is actually searching."""
+        self.assertEqual([r.name for r in matches(INDEX, "browser app")], ["python-ui"])
 
     def test_a_package_that_does_not_say_its_kind_is_a_language(self) -> None:
         """Every package of version 1 is one, and the field arrived with extensions."""
@@ -128,6 +144,9 @@ class SearchLinesTest(unittest.TestCase):
     def test_a_package_with_no_description_says_what_it_offers(self) -> None:
         self.assertIn("backends:", describe(INDEX.releases["java-spring"][0]))
 
+    def test_a_quickstart_with_no_description_is_said_by_what_it_suits(self) -> None:
+        self.assertIn("browser app", describe(INDEX.releases["python-ui"][0]))
+
 
 class ShowLinesTest(unittest.TestCase):
     def test_it_prints_the_newest_release_and_every_version_there_is(self) -> None:
@@ -144,6 +163,12 @@ class ShowLinesTest(unittest.TestCase):
     def test_a_package_the_index_has_not_got_points_at_search(self) -> None:
         said = show_lines(INDEX, [], "nothing-by-that-name")
         self.assertIn("search", said[0])
+
+    def test_a_quickstart_says_what_it_would_install_and_how_it_is_used(self) -> None:
+        said = "\n".join(show_lines(INDEX, [], "python-ui"))
+        self.assertIn("python >=1.0,<2", said)
+        self.assertIn("--quickstart python-ui", said)
+        self.assertIn("quickstart install python-ui", said)
 
     def test_it_lists_each_backend_with_the_options_it_answers(self) -> None:
         said = "\n".join(show_lines(INDEX, [], "python"))

@@ -1,18 +1,20 @@
 """`commands/characterise.md` and `commands/survey.md`: the Pin stage of adopting the method around code that existed before it.
 
-Only an adopted repository (brownfield adoption) gets these two. `/characterise` scopes the shipped
+Only an adopted repository (brownfield adoption) gets these commands. `/characterise` scopes the shipped
 `characterisation-tests` and `finding-seams` skills to the one behaviour a slice is about to change, at the seam where
 it can be observed, and refuses "full coverage first" — which is where these programmes die. `/survey` runs the
 factory's `adopt --refresh` the way `/add-service` runs `add-service`, and reconciles what a fresh survey finds with
 what `project.json` recorded: a fact recorded as detected is refreshed, a fact a person confirmed or overrode is never
 changed behind their back. Both write to `survey/`, beside the survey `adopt` left: `pinned.md` is the ledger of what
-has been pinned, and `survey.md` is the survey as it stands.
+has been pinned, and `survey.md` is the survey as it stands. On the event profile `/observe` reads one pinned
+capability into the model, with its source evidence, before a requirement changes it.
 """
 from __future__ import annotations
 
 from ..layout import Layout
 from ..services import App, wrapped_of
 from .add_commands import FACTORY
+from .observe_command import observe_command
 
 PINNED_LEDGER = """# Pinned behaviour
 
@@ -130,6 +132,9 @@ whether its behaviour has been modelled or only read:
 Neither reading licenses the one thing that is always wrong: nothing in the legacy system's tables, and
 nothing in those tables' history, becomes an event by being renamed. `docs/change-strategy.md`, *Be honest
 about the event model*, says why that honesty matters here, and what the rung has to do with it.
+Run `/observe <capability> <service> <handler>` for the one capability a requirement touches whose behaviour
+the model has not yet recorded. It runs the nine steps from source and the passing `/characterise` examples;
+the big picture's process proposals remain on its survey page until this evidence exists.
 """ if event else ""
     return f"""---
 description: Re-survey this repository with the factory and reconcile what it finds with what project.json records
@@ -177,8 +182,11 @@ history and a code index's graph where this project has adopted one.
 
 
 def pin_command_files(apps: list[App], layout: Layout, event: bool) -> dict[str, str]:
-    """The two commands an adopted repository has that a generated one does not."""
-    return {
+    """Adoption's two survey/pin commands, plus capability observation on the event profile."""
+    files = {
         "commands/characterise.md": characterise_command(apps, layout),
         "commands/survey.md": survey_command(apps, layout, event),
     }
+    if event:
+        files["commands/observe.md"] = observe_command(apps, layout)
+    return files

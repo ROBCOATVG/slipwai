@@ -43,6 +43,7 @@ test: ## Run the keel's test suite, or a slice: TESTS="test_a test_b", or SKIP="
 # `/drive` process and waits for a wall budget to run out (23s), which is the shape of what it proves.
 SLOW := test_generated test_quickstart_generated test_upgrade test_conformance test_target_conformance test_chart test_chart_render test_slice_scope test_surfaces test_captain test_captain_gate test_merge test_bridge test_loop test_start test_interview_page test_adopt_page test_board test_mcp test_claims test_travel test_take_over
 SLOW += test_big_picture_adoption
+SLOW += test_observe_model
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

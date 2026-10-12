@@ -211,8 +211,9 @@ def rule_faults(chart: dict, path: Path) -> list[str]:
 
 def model_drift(path: Path) -> list[str]:
     """On the event profile, what the model means against what is committed. Empty where there is no model."""
-    renderer = ROOT / "scripts/event-model/chart.py"
-    if not renderer.is_file() or not (ROOT / "docs/event-model/model.yaml").is_file():
+    delivery = Path(__file__).resolve().parents[1]
+    renderer = delivery / "scripts/event-model/chart.py"
+    if not renderer.is_file() or not (delivery / "docs/event-model/model.yaml").is_file():
         return []
     spec = importlib.util.spec_from_file_location("chart_renderer", renderer)
     if spec is None or spec.loader is None:  # pragma: no cover - a renderer that will not load

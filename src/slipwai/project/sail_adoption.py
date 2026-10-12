@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from ..layout import Layout
 from ..services import App, wrapped_of
+from .observe_command import observation_stage
 
 MAP = "docs/convergence.md"
 
@@ -134,6 +135,9 @@ def adoption_ladder(stages: list[str], apps: list[App], layout: Layout) -> list[
     here is tested, and the Convergence stage re-checking the map. The stages are found by their titles, so the
     ladder's own order holds whatever a profile adds between them."""
     ladder = [ground_stage(apps, layout), *stages]
+    for index, stage in enumerate(ladder):
+        if stage.startswith("**Event model**"):
+            ladder[index] = stage.rstrip() + observation_stage(layout)
     plan = next(index for index, stage in enumerate(ladder) if stage.startswith("**Plan and tasks**"))
     ladder[plan] = ladder[plan].rstrip() + plan_addendum(apps, layout)
     implementation = next(index for index, stage in enumerate(ladder) if stage.startswith("**Implementation**"))

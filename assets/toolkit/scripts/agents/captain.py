@@ -58,6 +58,7 @@ import clearance  # noqa: E402
 import harness  # noqa: E402
 import inbox  # noqa: E402
 import logs  # noqa: E402
+import travel  # noqa: E402
 
 
 def project_root() -> Path:
@@ -94,6 +95,10 @@ STOPS = (" is parked — ", "nothing to start", " is held by ")
 #: Minutes a harbour may be *silent* for before a wait on it is a park, where `harbour.json` does not say.
 #: `half-ahead`'s number. Silence and not elapsed time: see `await_answer`.
 DEFAULT_WAIT_MINUTES = 60
+#: What a slice's branch is called, which `check-slice-scope` holds every branch to and the harbourmaster
+#: rebases. A taken-over stream's branch arrives under this name, because that is the name `/sail` expects
+#: to find its own work on.
+BRANCH = "slice/{slice}"
 
 
 def harbour() -> dict:
@@ -508,10 +513,67 @@ def ask_to_merge(slice_id: str, feature: str, fairway: str,
 
 
 def fetch() -> None:
-    """Trunk and both logs. Never fatal: a harbour on one machine has no remote to fetch from."""
-    for argv in (["git", "fetch", "--quiet", "origin"],
-                 ["git", "fetch", "--quiet", "origin", "refs/slipwai/logs/*:refs/slipwai/logs/*"]):
-        subprocess.run(argv, cwd=ROOT, capture_output=True, text=True)
+    """Trunk, every log and every in-flight branch. Never fatal: a harbour on one machine has no remote."""
+    subprocess.run(["git", "fetch", "--quiet", "origin"], cwd=ROOT, capture_output=True, text=True)
+    travel.fetch(ROOT)
+
+
+def lease() -> float:
+    """Seconds this fairway's holder may go unheard from before this captain may take it over.
+
+    Derived from `stage_bound` and never chosen, which is the berth rule: a captain that writes nothing for
+    `stage_bound` ends that stage itself and says so, so a lease above it cannot take a stream from a
+    captain that is working — the guarantee falls out rather than being asserted — and it moves with the
+    telegraph for free, because `stage_scale` multiplies every stage budget.
+    """
+    return travel.lease(stage_bound())
+
+
+def heard(feature: str, fairway: str) -> str:
+    """When this fairway's holder was last heard from: the later of its pushed log and the one here.
+
+    The pushed log is the honest evidence across machines — what one machine can know about another is
+    exactly what the other has pushed — and it is the only evidence where the holder is somewhere else.
+    But a harbour with no forge pushes nothing, and there two captains under two names share one file: the
+    local log is then the only evidence there is, and a lease judged without it would take a stream off a
+    captain writing into the very file this one is reading.
+
+    So the later of the two, always. More evidence of life can only make a lease *less* likely to fire,
+    which is the safe direction: the one thing a lease may never do is take a stream from somebody working.
+    """
+    found = entries(feature, fairway)
+    return max(travel.last_heard(ROOT, travel.deck_ref(fairway)), found[-1].t if found else "")
+
+
+def resuming(found: list[logs.Entry]) -> str:
+    """The slice a taken-over stream was in the middle of: claimed, and not merged. `""` where none was."""
+    done = {str(e.fields.get("slice", "")) for e in found if e.kind == "merged"}
+    for entry in reversed(found):
+        if entry.kind == "claimed" and str(entry.fields.get("slice", "")) not in done:
+            return str(entry.fields.get("slice", ""))
+    return ""
+
+
+def take_over(feature: str, fairway: str, from_machine: str) -> tuple[str, str]:
+    """Bring a lapsed stream's work over before anything is dispatched. (the slice to resume, why not).
+
+    Two things travel and both have to arrive. **The lines**, so that this captain knows what the stream
+    was on and so that nothing it appends is written over the top of a log the ref is ahead of — a deck log
+    is one chain per fairway, and taking the claim is taking the pen. **The branch**, because a captain
+    holds no credential and a slice branch lives only on the machine that built it: a lapsed claim whose
+    work never travelled leaves four rungs of it unreachable, and carrying on as though it had not would
+    discard them in silence. That is why the lease was refused on its own.
+    """
+    travel.land_ref(ROOT, travel.deck_ref(fairway))
+    slice_id = resuming(entries(feature, fairway))
+    if not slice_id:
+        return "", ""
+    landed, why = travel.land_wip(ROOT, travel.wip_ref(fairway), BRANCH.format(slice=slice_id))
+    if not landed:
+        return "", (f"{fairway} was taken over from {from_machine}, which was working {slice_id}, and its "
+                    f"work did not come with it: {why}")
+    write(feature, fairway, logs.entry("taken-over", fairway=fairway, slice=slice_id, **{"from": from_machine}))
+    return slice_id, ""
 
 
 def turn(fairway: str) -> str:
@@ -524,24 +586,38 @@ def turn(fairway: str) -> str:
     writes nothing at all — not even its reason, which would be the damage done while explaining it.
     """
     fetch()
-    taken = claims.take(ROOT, fairway, logs.machine())
+    # The chart before the claim, because working out whether the holder is still alive means reading this
+    # fairway's log, and reading it means knowing which feature it is under. Nothing is written by either.
+    _, feature = clearance.chart()
+    taken = claims.take(ROOT, fairway, logs.machine(), lease=lease(), heard=heard(feature, fairway))
     if not taken.ours:
         return f"captain: {taken.why}"
     if taken.why:
         # Taken, with something to say about it — a harbour that is not a git repository, where nothing can
-        # hold a fairway and a second captain cannot be refused. Said and carried on from, because a project
-        # without git has no berths and no merges either, and this is not where that is refused.
+        # hold a fairway and a second captain cannot be refused; or a stream taken over past its lease.
+        # Said and carried on from, because a project without git has no berths and no merges either, and
+        # this is not where that is refused.
         print(f"captain: {taken.why}", flush=True)
-    _, feature = clearance.chart()
+    resume, stranded = "", ""
+    if taken.took_over:
+        resume, stranded = take_over(feature, fairway,
+                                     taken.holder.machine if taken.holder else "another machine")
     found = entries(feature, fairway)
     claimed, merged, parked = state(found)
     if parked:
         return f"captain: {fairway} is parked — {parked}"
+    if stranded:
+        write(feature, fairway, logs.entry("parked", fairway=fairway, why=stranded))
+        return f"captain: {fairway} parked — {stranded}"
     fix = fix_owed(fairway, found)
     if fix is not None:
         slice_id, why = str(fix.fields["slice"]), ""
         print(f"captain: trunk is red at {str(fix.fields['commit'])[:8]} ({fix.fields['job']}) and "
               f"{fairway} merged it; fixing {slice_id} before anything new", flush=True)
+    elif resume:
+        # The stream was mid-slice when its machine stopped, and `next_slice` would step past a slice that
+        # is claimed — which is exactly the four rungs of work this slice exists to carry over.
+        slice_id, why = resume, ""
     else:
         slice_id, why = next_slice(fairway, claimed, merged)
     if slice_id is None:

@@ -11,7 +11,7 @@ import sys
 import unittest
 
 import checkout_packages  # noqa: F401
-from harbourmaster_fixture import Fixture, MergeFixture  # noqa: F401
+from harbourmaster_fixture import Fixture, MergeFixture, TravelFixture  # noqa: F401
 
 from slipwai import logs
 
@@ -201,3 +201,81 @@ class CursorTest(Fixture):
         self.run_once()
         self.run_once()
         self.assertEqual(len([e for e in self.harbour() if e.kind == "mark-set"]), 1)
+
+
+class TravelTest(TravelFixture):
+    """What leaves this machine on a pass, and what arrives.
+
+    Section 14's fourth broken link: both this process and the captain fetched `refs/slipwai/logs/*` and
+    neither ever wrote them, so a second machine saw nothing the first did. This is the pass that writes
+    them — and the shape is one ref per writer, so a harbour log travels under its machine's name and a
+    deck log under its fairway's, and this machine pushes only what it is the writer of.
+    """
+
+    def claim(self, fairway: str, machine: str) -> None:
+        subprocess.run([sys.executable, str(self.root / "scripts/agents/claims.py"), "--take", fairway],
+                       capture_output=True, text=True, cwd=self.root,
+                       env={**os.environ, "SLIPWAI_MACHINE": machine}, check=True)
+
+    def test_this_machines_harbour_log_leaves_on_its_own_ref(self) -> None:
+        self.deck("ordering", "ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"))
+        self.run_as("harbour_one")
+        self.assertIn("refs/slipwai/logs/harbour/harbour_one", self.refs("refs/slipwai/logs"))
+        self.assertIn("Placed", self.carried("refs/slipwai/logs/harbour/harbour_one"))
+
+    def test_a_deck_log_leaves_only_where_this_machine_holds_the_fairway(self) -> None:
+        """One ref per writer is the whole rule, and the writer of a fairway's deck log is whichever
+        captain holds the claim. A machine pushing a fairway it does not hold is a second writer."""
+        self.claim("ORD", "harbour_one")
+        self.deck("ordering", "ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
+        self.deck("billing", "BIL", logs.entry("claimed", fairway="BIL", slice="BIL-01"))
+        self.run_as("harbour_one")
+        self.assertIn("refs/slipwai/logs/ORD", self.refs("refs/slipwai/logs"))
+        self.assertNotIn("refs/slipwai/logs/BIL", self.refs("refs/slipwai/logs"))
+        self.assertIn("ORD-01", self.carried("refs/slipwai/logs/ORD"))
+
+    def test_the_in_flight_branch_leaves_with_it(self) -> None:
+        """A captain holds no credential, so a slice branch lives only on the machine that built it — and
+        a lapsed claim would leave the work not merely unclaimed but unreachable."""
+        self.claim("ORD", "harbour_one")
+        self.deck("ordering", "ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
+        self.git("checkout", "--quiet", "-b", "slice/ORD-01")
+        (self.root / "rungs.txt").write_text("one\ntwo\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "--quiet", "-m", "four rungs in")
+        made = self.git("rev-parse", "HEAD").stdout.strip()
+        self.run_as("harbour_one")
+        self.assertEqual(self.refs("refs/slipwai/wip"), ["refs/slipwai/wip/ORD"])
+        self.assertEqual(self.git("rev-parse", "refs/slipwai/wip/ORD", where=self.forge).stdout.strip(),
+                         made)
+
+    def test_a_slice_that_has_merged_leaves_no_in_flight_branch_behind(self) -> None:
+        """What travels is work that is still in flight. A merged slice's branch is in trunk, and pushing
+        it every pass afterwards would be a ref nobody reads growing for ever."""
+        self.claim("ORD", "harbour_one")
+        self.deck("ordering", "ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),
+                  logs.entry("merged", fairway="ORD", slice="ORD-01", commit="abc1234"))
+        self.git("checkout", "--quiet", "-b", "slice/ORD-01")
+        self.run_as("harbour_one")
+        self.assertEqual(self.refs("refs/slipwai/wip"), [])
+
+    def test_another_machines_harbour_log_arrives_as_its_own_file(self) -> None:
+        """One file per machine, folded on read — which is what 11.3 built the directory for, and this is
+        what finally puts a second machine's file in it without a person carrying it."""
+        self.deck("ordering", "ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"))
+        self.run_as("harbour_one")
+        elsewhere = self.root / ".slipwai/logs/harbour/harbour_one.jsonl"
+        was = elsewhere.read_text(encoding="utf-8")
+        elsewhere.unlink()
+        self.run_as("harbour_two")
+        self.assertEqual(elsewhere.read_text(encoding="utf-8"), was)
+        self.assertIn("Placed", [str(e.fields.get("mark", "")) for e in self.harbour()])
+
+    def test_a_harbour_with_nothing_to_push_to_says_nothing_and_carries_on(self) -> None:
+        """A harbour on one machine with no forge is the case that has to keep working with no network at
+        all, and it is also the common one."""
+        self.git("remote", "remove", "origin")
+        self.deck("ordering", "ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"))
+        done = self.run_as("harbour_one")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("Placed", [str(e.fields.get("mark", "")) for e in self.harbour()])

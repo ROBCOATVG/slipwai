@@ -85,6 +85,13 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     "request": ("fairway", "id", "what", "detail"),
     "berth-request": ("fairway",),
     "stowed": ("fairway", "slice", "from", "what"),
+    # A stream that changed hands: the machine holding it went past its lease, and this captain took the
+    # claim, the log and the in-flight branch over mid-slice. `from` is the machine it was taken from. Not
+    # a `told`, which is a message to a person and owes a `read` receipt — nobody is being asked anything
+    # here — and not a `claimed`, which says a slice was started rather than continued. A takeover is the
+    # one thing in a fairway's history that a later reader cannot work out from any other line: two
+    # machines' work in one chain, with nothing saying where the join is.
+    "taken-over": ("fairway", "slice", "from"),
     "parked": ("fairway", "why"),
 }
 

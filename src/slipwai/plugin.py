@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .assets import PROFILE_ROOT, TOOLKIT_ROOT, VERSION, asset_files, contained, read_faithfully
+from .assets import PROFILE_ROOT, TOOLKIT_ROOT, VERSION, asset_files, contained
 from .capabilities import pruning_capabilities
 from .catalog import CATALOG
 from .errors import GenerationError
@@ -147,7 +147,9 @@ def sources(profile: str) -> dict[str, str]:
             treatment = toolkit_treatment(path, profile, capabilities)
             if treatment == "capability-excluded" or (not overlay and treatment != "copied"):
                 continue
-            found[path] = read_faithfully(source)
+            # These are text assets, read exactly as toolkit_files_from_assets reads them. A Windows
+            # checkout may hold CRLF; preserving it here alone would make the two install routes differ.
+            found[path] = source.read_text(encoding="utf-8")
     return found
 
 

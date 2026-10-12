@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 
 from .errors import GenerationError
+from .rungs import EVENTS, STATE
 
 
 def paired(given: list[str], flag: str, shape: str) -> dict[str, str]:
@@ -23,6 +24,35 @@ def paired(given: list[str], flag: str, shape: str) -> dict[str, str]:
     return pairs
 
 
+def rungs(given: list[str], confirming: list[str]) -> dict[str, str]:
+    """`--write-model` as a mapping from application to rung, in either of the two spellings it takes.
+
+    The plan writes it bare — `slipwai adopt --confirm shop --write-model events` — and the other describing
+    flags are all `NAME=VALUE`, because a run can settle several candidates at once. Both are read: bare where
+    exactly one candidate is being confirmed, which is the only case where it can only mean one thing, and
+    `NAME=VALUE` otherwise. The bare form against two candidates is refused rather than applied to both: a
+    rung is the one answer about a service that cannot be walked back, and guessing which service it was
+    about is not a guess worth making.
+    """
+    answers: dict[str, str] = {}
+    for entry in given:
+        name, separator, value = entry.partition("=")
+        if not separator:
+            if len(confirming) != 1:
+                raise GenerationError(
+                    f"--write-model {entry} does not say which application is on that rung, and this run "
+                    f"confirms {len(confirming)}: write it as --write-model NAME={entry}"
+                )
+            name, value = confirming[0], entry
+        if value not in (EVENTS, STATE):
+            raise GenerationError(
+                f"--write-model takes `{EVENTS}` — the service's own log is its truth — or `{STATE}`, where it "
+                f"keeps current state and raises the events the model names; not {value!r}"
+            )
+        answers[name] = value
+    return answers
+
+
 def confirmations(args: argparse.Namespace) -> dict[str, dict]:
     """What each `--confirm`ed candidate is to be recorded as: the describing flags, gathered by name.
 
@@ -34,6 +64,7 @@ def confirmations(args: argparse.Namespace) -> dict[str, dict]:
     purposes = paired(args.purpose, "purpose", "NAME=TEXT")
     kinds = paired(args.kind, "kind", "NAME=KIND")
     renames = paired(args.renamed, "as", "NAME=NEW")
+    write_models = rungs(args.write_model, args.confirm)
     commands: dict[str, dict[str, str | None]] = {}
     for entry in args.command:
         named, separator, command = entry.partition("=")
@@ -44,7 +75,7 @@ def confirmations(args: argparse.Namespace) -> dict[str, dict]:
         # a variable is unset, and recording the empty string there wrote a command that runs nothing and
         # reads as one somebody chose.
         commands.setdefault(app_name, {})[target] = None if command in ("-", "") else command
-    described = {*languages, *purposes, *kinds, *renames, *commands, *args.hexagonal}
+    described = {*languages, *purposes, *kinds, *renames, *commands, *write_models, *args.hexagonal}
     stray = sorted(described - set(args.confirm))
     if stray:
         raise GenerationError(
@@ -59,6 +90,38 @@ def confirmations(args: argparse.Namespace) -> dict[str, dict]:
             **({"name": renames[name]} if name in renames else {}),
             **({"commands": commands[name]} if name in commands else {}),
             **({"structure": "hexagonal"} if name in args.hexagonal else {}),
+            **({"write_model": write_models[name]} if name in write_models else {}),
         }
         for name in args.confirm
     }
+
+
+# What `--confirm` and `--decline` have no use for: every flag that describes the adoption itself rather than
+# the candidate being settled. Passed alongside one, each was read, ignored and never mentioned — `adopt
+# --confirm shop --integration cursor` looked like it recorded a harness and recorded nothing. A flag that
+# silently does nothing is worse than one that is refused, which is the rule the intro already
+# applies to the flags that describe an application.
+SETTLING_IGNORES = (
+    "yes", "refresh", "next_steps", "integration", "run_init", "name", "profile",
+    "target", "delivery", "why", "skip", "database", "database_repository", "infrastructure",
+    "infrastructure_repository", "forge", "release",
+)
+
+
+def ignored_by_settling(args: argparse.Namespace, parser: argparse.ArgumentParser) -> list[str]:
+    """The adoption's own flags a `--confirm` or `--decline` run was given and would have thrown away."""
+    # The *first* declared default per dest, not the last: two actions can share one (`--init` / `--no-init`),
+    # and a later one's default would otherwise decide what "unset" means for both.
+    defaults: dict[str, object] = {}
+    for action in parser._actions:
+        defaults.setdefault(action.dest, action.default)
+    given = []
+    for dest in SETTLING_IGNORES:
+        if not hasattr(args, dest) or getattr(args, dest) == defaults.get(dest):
+            continue
+        option = next(
+            (action.option_strings[0] for action in parser._actions if action.dest == dest),
+            f"--{dest.replace('_', '-')}",
+        )
+        given.append(option)
+    return given

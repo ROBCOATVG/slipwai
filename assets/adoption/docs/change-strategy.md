@@ -11,7 +11,7 @@ to do about data and infrastructure, and the one rule that holds all of it toget
 
 | Strategy | What it is | When it is right | What it needs |
 |---|---|---|---|
-| **Strangler fig** | New capability grows beside the old system and takes its traffic one capability at a time, until the old system serves nothing and is removed | The system is large, alive and cannot stop; there is a seam requests enter through; the business trigger (`project.json`'s `why`) is a capability that has to change, not a platform that has to go | A routing seam, a data strategy that is not dual-write, and the retirement ledger |
+| **Strangler fig** | New capability grows beside the old system and takes its traffic one capability at a time, until the old system serves nothing and is removed | The system is large, alive and cannot stop; there is a seam requests enter through; the business trigger (`project.json`'s `why`) is a capability that has to change, not a platform that has to go | A **freeze** on the old system (below), a routing seam, a data strategy that is not dual-write, and the retirement ledger |
 | **Modular monolith in place** | The code is restructured behind its characterisation tests — contexts found, seams made, layers separated — without a second deployable or a routing seam | The system is one deployable that mostly works, the trigger is "cannot change it safely" rather than "cannot run it", and the team is small | `/characterise` before every move, `refactoring` and `improve-codebase-architecture`, and patience; the import gate's rule can be adopted context by context (`"layout": "hexagonal"`) |
 | **Rewrite** | A new system replaces the old one, and the old one is switched off | The system is small enough to hold in one head; there is no seam to strangle through; the platform is dead and cannot be upgraded in place | Characterisation of everything the rewrite claims to preserve, a cut-over plan with a rollback, and the honesty that most rewrites are cancelled halfway |
 
@@ -20,16 +20,63 @@ A programme is allowed to change its mind: a strangler that finds one context is
 become a rewrite of that context, and a rewrite that turns out to have a seam after all may become a
 strangler. What is not allowed is to do neither and call the refactoring a strategy.
 
+## The freeze, which the strangler is not a strangler without
+
+A strangler grows beside a system that is standing still. Where the old system keeps gaining features, the
+new home is chasing a target: every capability that moves has to be re-read against what the old one did
+last fortnight, the pinned tests go stale on somebody else's release, and the retirement ledger stops
+meaning anything — a row that says *moved* is about a capability the old system has since extended. That is
+how a strangler quietly becomes a second system beside the first, which is the one failure this page exists
+to prevent.
+
+So the strangler has a precondition, and it is an agreement rather than a technique: **no new features in
+the legacy system, bug fixes only, no schema changes**, for as long as capabilities are moving. Somebody
+with the authority to hold other teams to it agrees to it, by name, and it is recorded on the strategy ADR
+as one line:
+
+```
+Freeze: agreed — <who agreed it, and when>
+```
+
+Where nobody will agree to it — and often nobody will, which is an answer and not a failure — that is
+recorded too, with what the programme does instead:
+
+```
+Freeze: absent — <what is done instead: re-pinning every legacy release before the next capability moves,
+                 a shorter programme, fewer capabilities, a different strategy>
+```
+
+`/strangle` asks for the line before the first capability moves and will not invent either answer. A freeze
+nobody recorded is one nobody agreed to.
+
 ## Be honest about the event model
 
-The generated method carries Event Modeling and event sourcing as one bundle, and the factory's own position
-is that "start standard and adopt events where a subdomain earns it" is an option that mostly does not
-exist: state cannot be turned back into history it never recorded. Brownfield does not change that. What
-event modelling means here is **new slices at the edge**: a capability that moves to a new home is modelled
-as events from the day it moves, with its history starting at a **genesis event** that records the state
-the legacy system handed over, or with a change-data-capture stream translating the legacy tables into
-events the new home reads. The legacy system itself is an **external system** in the model — an actor and
-a swimlane, its events marked `external: true`, never a set of events invented by renaming its tables.
+**Event Modeling and event sourcing are two decisions, and only one of them is hard to reverse.** The model
+— the actors, the timeline, the four patterns, the slices — is the same on every rung, and a repository
+that was here already pays for it only in the understanding it was going to need anyway. The **rung** is
+the other decision, taken per service and recorded in `project.json` as `eventSourced` from the
+`write-model` axis: `events`, where the log is the truth and state is a fold of it, or `state`, where the
+service keeps current state and the events the model names are contracts raised after the write. That one
+cannot be walked back once a service holds data — state cannot be turned back into history it never
+recorded — while a log folds down into tables whenever somebody decides.
+
+So a capability that moves out of the code that was here is **modelled from the day it moves, and
+event-sourced only where its past is worth keeping**. For the first few capabilities it rarely is, and the
+honest answer is **rung 2** of the ladder — explicit returns → **in-process events** → outbox → event
+sourcing. That is `--write-model state`: the new home keeps current state, the events are on the timeline
+because that is how the slice was found at all, they are raised after the write, and a publisher — an
+outbox, the bus, change data capture — is earned when something actually reads one. There is
+**no genesis event** on that rung, because there is no log for one to open; the capability's data reaches
+its new home by change data capture from the legacy store or by an outbox written in the legacy system's
+own transaction, and that is the whole of the data move.
+
+Where the new home is `--write-model events`, and only there, its history starts at a **genesis event** that
+records the state the legacy system handed over. Nothing before that genesis is invented.
+
+Neither rung licenses the one thing that is always wrong: **nothing in the legacy tables, and nothing in
+their history, becomes an event by being renamed.** The code that was here is an **external system** in the
+model where only its outputs are read — an actor and a swimlane, its events marked `external: true` — and a
+**state-stored service of this project** where somebody has modelled its behaviour against the code.
 `/survey` says the same in the event-modelling profile; do not promise more than this.
 
 ## Separate the layers, and do one at a time

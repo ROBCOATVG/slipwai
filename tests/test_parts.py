@@ -131,16 +131,16 @@ class ServicesTest(unittest.TestCase):
 
     def test_a_service_name_is_lower_case_and_hyphenated(self) -> None:
         for good in ("billing", "order-entry", "a"):
-            self.assertRegex(good, services.SERVICE_NAME)
+            self.assertRegex(good, naming.SERVICE_NAME)
 
     def test_a_name_the_pattern_refuses_is_refused_whole_and_not_in_part(self) -> None:
         """`fullmatch`, not `match`: `Billing!` must not pass because `illing` would."""
         for bad in ("Billing", "order_entry", "-billing", "billing-", ""):
             with self.subTest(name=bad):
-                self.assertIsNone(services.SERVICE_NAME.fullmatch(bad))
+                self.assertIsNone(naming.SERVICE_NAME.fullmatch(bad))
 
     def test_a_context_is_named_like_a_service(self) -> None:
-        self.assertIs(services.CONTEXT_NAME, services.SERVICE_NAME)
+        self.assertIs(naming.CONTEXT_NAME, naming.SERVICE_NAME)
 
 
 class SelectionTest(unittest.TestCase):

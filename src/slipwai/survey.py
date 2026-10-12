@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -24,6 +24,8 @@ from .delivery_facts import (
     CI_FORGES,
     HOST_FORGES,
     default_branch,
+    drivers_in,
+    event_store_of,
     matching,
     origin_remote,
     release_evidence_in,
@@ -69,17 +71,6 @@ SCHEMA_TOOLS = (
     ("django", ("*/migrations/0001_*.py",)),
     ("dbmate", ("db/migrations/*.sql",)),
 )
-# A database driver in a dependency manifest: the database is talked to from here, wherever its schema lives.
-DRIVERS = (
-    "pg", "postgres", "postgresql", "psycopg", "psycopg2", "asyncpg", "mysql", "mysql2", "pymysql", "sqlite3",
-    "better-sqlite3", "npgsql", "sqlclient", "mongodb", "pymongo", "mongoose", "oracledb", "jdbc", "sequelize",
-    "typeorm", "prisma", "knex", "sqlalchemy", "gorm", "pgx", "hibernate", "dapper", "entityframeworkcore",
-    "activerecord", "doctrine",
-)
-DEPENDENCY_MANIFESTS = (
-    "package.json", "requirements.txt", "requirements-dev.txt", "pyproject.toml", "go.mod", "pom.xml",
-    "build.gradle", "build.gradle.kts", "composer.json", "Gemfile", "*.csproj", "*.fsproj", "build.xml", "ivy.xml",
-)
 NAME = re.compile(r"[^a-z0-9-]+")
 
 
@@ -93,6 +84,10 @@ class Root:
     found: Detected
     role: str | None = None
     role_evidence: str = ""
+    # An event-store library this directory's own dependency manifests declare, as `(library, manifest)` —
+    # the one piece of evidence the tree can give about the rung. A *proposal* and never a record: what it
+    # says is `writeModel: events` on the candidate, which a person confirms or leaves (15.9).
+    event_store: tuple[str, str] | None = None
 
     def name(self, project: str) -> str:
         """What the manifest calls this application: the project's own name at the root, else the directory's."""
@@ -241,22 +236,6 @@ def buildable(root: Path, skipped: frozenset[str] = frozenset()) -> tuple[Root, 
     return tuple(sorted(roots, key=lambda found: found.path))
 
 
-def drivers_in(root: Path, paths: list[str]) -> tuple[tuple[str, str], ...]:
-    """Every database driver named by a dependency manifest, with the manifest that names it — or by the name of a
-    committed jar, which is how an Ant build declares one (`lib/mysql-connector-java-5.1.23-bin.jar`)."""
-    found: list[tuple[str, str]] = []
-    for path in matching(paths, DEPENDENCY_MANIFESTS):
-        text = read(root / path).lower()
-        for driver in DRIVERS:
-            if re.search(rf"(?<![\w.-]){re.escape(driver)}(?![\w-])", text) and (driver, path) not in found:
-                found.append((driver, path))
-    for path in paths:
-        if path.endswith(".jar"):
-            words = set(re.split(r"[-_.]", path.rsplit("/", 1)[-1].lower()))
-            found += [(driver, path) for driver in DRIVERS if driver in words and (driver, path) not in found]
-    return tuple(found)
-
-
 def own_makefile(root: Path) -> bool:
     """Whether the repository has a root Makefile of its own — not the one `adopt` writes where there was none,
     which opens with the delivery marker, so that the fact holds still across the adoption it drives."""
@@ -284,8 +263,17 @@ def survey(root: Path) -> Survey:
         or ((root / path).is_dir() and any(f"{path}/{p.name}" not in written for p in (root / path).glob("*.y*ml")))
     )
     makefile = own_makefile(root)
+    # The rung's one piece of tree evidence, read per buildable directory once the whole list is known, so
+    # that a build nested inside another is read as its own and not as its parent's.
+    found = buildable(root, skipped)
+    roots = tuple(
+        replace(where, event_store=event_store_of(
+            root, paths, where.path, tuple(other.path for other in found if other.path != where.path),
+        ))
+        for where in found
+    )
     return Survey(
-        roots=buildable(root, skipped),
+        roots=roots,
         ci=ci,
         containers=tuple(path for path in paths if path.rsplit("/", 1)[-1] in CONTAINER_FILES),
         infrastructure=infrastructure,

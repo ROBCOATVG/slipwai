@@ -20,7 +20,7 @@ from . import confirm as confirming
 from . import next_steps, resurvey
 from .adopt import Answers, adopt, candidates_of, check_repository, proposed, report
 from .catalog import CATALOG
-from .cli_confirm import confirmations
+from .cli_confirm import confirmations, ignored_by_settling
 from .cli_init import agent_line, projection_line, reproject, run_init
 from .cli_interview import NOTHING_TO_ASK, shape, with_override
 from .cli_prompts import validate_project_name
@@ -30,6 +30,7 @@ from .harness import chosen, detect, keys
 from .layout import layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import FORGES, HOMES, RELEASE_PATHS, WRAPPED_KINDS, adoption_of
+from .rungs import EVENTS, STATE
 from .survey import survey
 
 NOTHING_FOUND = (
@@ -39,37 +40,6 @@ NOTHING_FOUND = (
     "A build this repository does have and the survey cannot read is a gap in the factory: raise it, naming the file."
 )
 NOTHING_LEFT = "every application the survey found was skipped or left unwrapped; nothing is left to install around"
-# What `--confirm` and `--decline` have no use for: every flag that describes the adoption itself rather than
-# the candidate being settled. Passed alongside one, each was read, ignored and never mentioned — `adopt
-# --confirm shop --integration cursor` looked like it recorded a harness and recorded nothing. A flag that
-# silently does nothing is worse than one that is refused, which is the rule the intro already
-# applies to the flags that describe an application.
-SETTLING_IGNORES = (
-    "yes", "refresh", "next_steps", "integration", "run_init", "name", "profile",
-    "target", "delivery", "why", "skip", "database", "database_repository", "infrastructure",
-    "infrastructure_repository", "forge", "release",
-)
-
-
-def ignored_by_settling(args: argparse.Namespace, parser: argparse.ArgumentParser) -> list[str]:
-    """The adoption's own flags a `--confirm` or `--decline` run was given and would have thrown away."""
-    # The *first* declared default per dest, not the last: two actions can share one (`--init` / `--no-init`),
-    # and a later one's default would otherwise decide what "unset" means for both.
-    defaults: dict[str, object] = {}
-    for action in parser._actions:
-        defaults.setdefault(action.dest, action.default)
-    given = []
-    for dest in SETTLING_IGNORES:
-        if not hasattr(args, dest) or getattr(args, dest) == defaults.get(dest):
-            continue
-        option = next(
-            (action.option_strings[0] for action in parser._actions if action.dest == dest),
-            f"--{dest.replace('_', '-')}",
-        )
-        given.append(option)
-    return given
-
-
 def next_report(root: Path) -> str:
     """`--next` in a repository the method was installed around: the sequence, as the tree has it now."""
     document = read_manifest(root, "slipwai adopt --next")
@@ -82,7 +52,13 @@ def next_report(root: Path) -> str:
     return next_steps.report(root, layout_of(document), adoption, apps_from_manifest(document, True))
 
 
-def adopt_main(argv: list[str]) -> None:
+def adopt_parser() -> argparse.ArgumentParser:
+    """Every flag `slipwai adopt` takes, built apart from the run so that the flags can be read without one.
+
+    Split out when `--write-model` arrived: the describing flags are now a small language of their own —
+    which candidate, under what name, in which language, on which rung — and a language nothing can parse
+    without running the command is one nothing can test either.
+    """
     parser = argparse.ArgumentParser(
         prog="slipwai adopt",
         description="install the delivery method around the repository in the current directory",
@@ -163,6 +139,13 @@ def adopt_main(argv: list[str]) -> None:
         "--hexagonal", action="append", default=[], metavar="NAME",
         help="an application that keeps the hexagonal layers, so the import gate holds it to them",
     )
+    parser.add_argument(
+        "--write-model", action="append", default=[], dest="write_model", metavar="[NAME=]RUNG",
+        help=f"the rung an application that was already here is on: {EVENTS} where its own log is its truth, "
+        f"{STATE} where it keeps current state. Recorded only from this flag — the survey may propose "
+        f"{EVENTS} off an event-store dependency and never records it, because a log nobody vouched for is a "
+        "guess wearing a fact's clothes. The bare form names the one candidate being confirmed",
+    )
     parser.add_argument("--database", choices=HOMES, default=None, help="where the schema is versioned")
     parser.add_argument("--database-repository", default=None, metavar="URL")
     parser.add_argument("--infrastructure", choices=HOMES, default=None, help="where the infrastructure is described")
@@ -175,6 +158,11 @@ def adopt_main(argv: list[str]) -> None:
         "--release", choices=RELEASE_PATHS, default=None,
         help="how a change reaches production today (default: what the tree says, or unknown, recorded as such)",
     )
+    return parser
+
+
+def adopt_main(argv: list[str]) -> None:
+    parser = adopt_parser()
     args = parser.parse_args(argv)
     root = Path.cwd()
     if args.next_steps:

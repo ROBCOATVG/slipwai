@@ -1,5 +1,5 @@
 """What the tree says about how a repository is delivered: which forge runs its CI, how a change reaches
-production, and what each buildable directory is for.
+production, what each buildable directory is for, and what its dependency manifests declare.
 
 Three facts brownfield adoption used to assume — a GitHub workflow for every repository, a service in every directory,
 nothing about the release path — and the first real adoptions showed each assumption wrong. Read here the way
@@ -145,3 +145,64 @@ def release_evidence_in(
     if makefile and re.search(r"^(deploy|release)\s*:", read(root / "Makefile"), re.MULTILINE):
         found.append(("scripted", "Makefile"))
     return tuple(dict.fromkeys(found))
+
+
+# A database driver in a dependency manifest: the database is talked to from here, wherever its schema lives.
+DRIVERS = (
+    "pg", "postgres", "postgresql", "psycopg", "psycopg2", "asyncpg", "mysql", "mysql2", "pymysql", "sqlite3",
+    "better-sqlite3", "npgsql", "sqlclient", "mongodb", "pymongo", "mongoose", "oracledb", "jdbc", "sequelize",
+    "typeorm", "prisma", "knex", "sqlalchemy", "gorm", "pgx", "hibernate", "dapper", "entityframeworkcore",
+    "activerecord", "doctrine",
+)
+# A library whose whole job is to keep an append-only log: an application that depends on one is already
+# event-sourced, whatever `project.json` says. Narrow on purpose — every name here does one thing, and a
+# general message broker is not on the list, because a bus carries events a service may keep nothing of. The
+# reading is a *proposal*: the rung is recorded only when a person confirms it (15.9), so a false positive
+# here costs a question and never a record.
+EVENT_STORES = (
+    "marten", "axon", "axoniq", "eventstore", "eventstoredb", "kurrentdb", "eventflow", "equinox",
+    "eventsourcing", "pyeventsourcing", "rails_event_store", "commanded", "emmett", "eventuate",
+    "eventstore-client", "esdb-node", "aggregatesource",
+)
+DEPENDENCY_MANIFESTS = (
+    "package.json", "requirements.txt", "requirements-dev.txt", "pyproject.toml", "go.mod", "pom.xml",
+    "build.gradle", "build.gradle.kts", "composer.json", "Gemfile", "*.csproj", "*.fsproj", "build.xml", "ivy.xml",
+)
+
+
+def named_in(root: Path, paths: list[str], names: tuple[str, ...]) -> tuple[tuple[str, str], ...]:
+    """Every one of `names` a dependency manifest declares, with the manifest that declares it — or by the name of
+    a committed jar, which is how an Ant build declares one (`lib/mysql-connector-java-5.1.23-bin.jar`)."""
+    found: list[tuple[str, str]] = []
+    for path in matching(paths, DEPENDENCY_MANIFESTS):
+        text = read(root / path).lower()
+        for name in names:
+            if re.search(rf"(?<![\w.-]){re.escape(name)}(?![\w-])", text) and (name, path) not in found:
+                found.append((name, path))
+    for path in paths:
+        if path.endswith(".jar"):
+            words = set(re.split(r"[-_.]", path.rsplit("/", 1)[-1].lower()))
+            found += [(name, path) for name in names if name in words and (name, path) not in found]
+    return tuple(found)
+
+
+def drivers_in(root: Path, paths: list[str]) -> tuple[tuple[str, str], ...]:
+    """Every database driver named by a dependency manifest, with the manifest that names it."""
+    return named_in(root, paths, DRIVERS)
+
+
+def event_store_of(root: Path, paths: list[str], directory: str, below: tuple[str, ...]) -> tuple[str, str] | None:
+    """The event store *this* directory's own dependency manifests name, with the manifest that names them.
+
+    Per directory and not per repository, because the rung is per service: a monorepo with one event-sourced
+    context beside three CRUD ones is the shape the whole of phase 15 exists for, and a repository-wide
+    reading would propose the log for all four. A manifest belonging to a build nested inside this one is
+    that build's evidence, not this one's, so it is left out.
+    """
+    own = [
+        path for path in paths
+        if (directory == "." or path == directory or path.startswith(f"{directory}/"))
+        and not any(path.startswith(f"{nested}/") for nested in below)
+    ]
+    found = named_in(root, own, EVENT_STORES)
+    return found[0] if found else None

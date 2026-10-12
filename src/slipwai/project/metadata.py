@@ -29,13 +29,16 @@ def sourced(app: App) -> bool:
     beside three that do not, and the catalogue forbade saying so until `write-model` became an axis. A
     service of the standard profile was never asked, and the axis's `absent` answers for it — `state`.
 
-    A browser app has no write side to be a rung of. An application the keel did not make is `state` too,
-    and never `events` by detection alone: a log nobody vouched for is a guess wearing a fact's clothes,
-    and the slice allowed to record one is `adopt --confirm <name> --write-model events`, with `confirmed`
-    provenance (15.9). Until then this says the thing that is true of a wrapped application whatever is
-    inside it — that nobody here has claimed its past.
+    A browser app has no write side to be a rung of. An application the keel did not make is `state` until
+    a person says otherwise, and never `events` by detection alone: a log nobody vouched for is a guess
+    wearing a fact's clothes. The survey *proposes* the rung off an event-store dependency, on the
+    candidate, where every proposal lives; what records it is `/ground` or
+    `adopt --confirm <name> --write-model events`, with `confirmed` provenance (15.9). Confirming a
+    candidate in silence records nothing, which is why this reads `writeModel` and not the proposal.
     """
-    if not app.is_service or not app.generated:
+    if not app.generated:
+        return app.write_model == EVENTS
+    if not app.is_service:
         return False
     return app.selection.write_model == EVENTS
 

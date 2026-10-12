@@ -6,6 +6,7 @@ fairways:
       - assets/toolkit/scripts/agents/harbourmaster.py
       - assets/toolkit/scripts/agents/captain.py
       - Makefile
+      - docs/release-2.md
       - docs/charts/phase-11-proof.yaml
       - docs/slipwai-2-plan.md # Own row 11.5 only; owner accepted automated two-clone proof on 2026-10-12.
 slices:

@@ -10,11 +10,13 @@ up the toolchains the wrapped applications recorded rather than the ones the cat
 """
 from __future__ import annotations
 
+from ..assets import ADOPTION_ROOT, VERSION
 from ..catalog import CATALOG, families
-from ..layout import Layout
+from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
 from ..services import App, wrapped_of
 from .adopted_ci import ACTIONS_GATE, delivery_workflow, gitlab_job
+from .prose import page
 from .sail_adoption import adoption_hooks
 from .shared_packages import PACKAGES
 
@@ -94,10 +96,49 @@ def home_paragraph(what: str, record: dict, key: str) -> str:
     return f"**{what}** is {said} (`{record.get('provenance', 'detected')}`)."
 
 
-def adoption_page(project_name: str, apps: list[App], adoption: Adoption, layout: Layout) -> str:
-    """`docs/adoption.md`: what was wrapped, what that forfeits, where the facts came from, and what is next."""
-    wrapped = wrapped_of(apps)
-    applications = "\n\n".join(
+def block_values(layout: Layout = AT_ROOT, version: str = VERSION) -> dict[str, str]:
+    """Every value `assets/adoption/blocks/` may name. Its own set, not the page's: the block names the
+    version that installed it and the page does not, and a pooled set would let either name the other's."""
+    return {"where": where(layout), "make": layout.make, "written": WRITTEN, "version": version}
+
+
+def values(
+    project_name: str = "project", apps: list[App] | None = None, adoption: Adoption | None = None,
+    layout: Layout = AT_ROOT,
+) -> dict[str, str]:
+    """Every value `assets/adoption/docs/adoption.md` may name, and the whole of what it may name.
+
+    The four that are not a path or a name are each a sentence agreeing with a record rather than a
+    paragraph somebody edits: what was wrapped, where the schema and the infrastructure live, where the
+    gate runs in CI, and which step a repository that already had a `Makefile` is given. Each branches
+    inside a sentence or inside a numbered item, which `docs/generated-prose.md` keeps in Python.
+    """
+    apps = [] if apps is None else apps
+    adoption = Adoption() if adoption is None else adoption
+    release = adoption.release
+    evidence = ", ".join(f"`{one}`" for one in release.get("evidence") or [])
+    return {
+        "project": project_name,
+        "where": where(layout),
+        "make": layout.make,
+        "written": WRITTEN,
+        "backends": ", ".join(CATALOG["backends"]),
+        "applications": applications(apps),
+        "database": home_paragraph("The database schema", adoption.database, "schema"),
+        "infrastructure": home_paragraph("The deployment infrastructure", adoption.infrastructure, "home"),
+        "ci": ci_paragraph(adoption, layout),
+        "makefile-step": makefile_step(adoption, layout),
+        "why": adoption.why or "",
+        "converged-with": str(adoption.converged.get("with")),
+        "converged-from": str(adoption.converged.get("from")),
+        "release-provenance": release.get("provenance", "unrecorded"),
+        "release-evidence": f", from {evidence}" if evidence else "",
+    }
+
+
+def applications(apps: list[App]) -> str:
+    """What was wrapped, one record at a time — read off `project.json`, never an asset's to hand-write."""
+    return "\n\n".join(
         f"### `{app.path}` — `{app.name}`, {kind_phrase(app)} in {app.language}"
         + (f" ({app.toolchain.get('ecosystem')}{', ' + app.toolchain['packaging'] if app.toolchain.get('packaging') else ''}"
            f"{', ' + app.toolchain['kind'] + ' ' + app.toolchain['version'] if app.toolchain.get('version') else ''})"
@@ -105,128 +146,44 @@ def adoption_page(project_name: str, apps: list[App], adoption: Adoption, layout
         + (f"\n\n{app.purpose}" if app.purpose else "")
         + f"\n\nProvenance: {', '.join(f'{k} `{v}`' for k, v in app.provenance.items()) or 'none recorded'}.\n\n"
         + commands_table(app) + "\n" + unavailable(app.language)
-        for app in wrapped
+        for app in wrapped_of(apps)
     ) or "No buildable directory was found, so nothing was wrapped: the gate is the method's own checks alone."
-    make = layout.make
-    why = f"\n\n**Why:** {adoption.why}\n" if adoption.why else ""
-    makefile_step = (
+
+
+def makefile_step(adoption: Adoption, layout: Layout) -> str:
+    """The fourth of *Next*: offer the targets, or say the `Makefile` `adopt` wrote is where they are.
+
+    A branch inside a numbered item rather than around one — it begins after `4. ` — so `OPEN` and `CLOSE`,
+    which are anchored to the start of a line, cannot mark it. It stays here and the asset carries the
+    frame around it with a token (`docs/generated-prose.md`, *The branch*).
+    """
+    return (
         f"Offer the targets as the repository's own: add `-include {where(layout)}Makefile` to the root `Makefile`,\n"
         "   and `make verify` is one word again."
         if adoption.survey.get("makefile")
         else f"`make verify` is one word: the repository had no `Makefile`, so `adopt` wrote one that includes\n"
         f"   `{where(layout)}Makefile`, in a marked block. Targets of the repository's own go around it."
     )
-    return f"""# How the delivery method was installed here
 
-`{project_name}` existed before this method did. `slipwai adopt` surveyed the tree, proposed what it found, and
-wrote the method's material under `{where(layout)}` beside the code — nothing of the repository's own was
-written over, and `project.json` records every fact with where it came from: `detected` from the tree,
-`confirmed` by the person who accepted it, `overridden` by the person who changed it.{why}{converged_paragraph(adoption)}
 
-## What was wrapped
+def adoption_page(project_name: str, apps: list[App], adoption: Adoption, layout: Layout) -> str:
+    """`docs/adoption.md`: what was wrapped, what that forfeits, where the facts came from, and what is next.
 
-{applications}
-
-## Where the rest lives
-
-{home_paragraph("The database schema", adoption.database, "schema")}
-
-{home_paragraph("The deployment infrastructure", adoption.infrastructure, "home")}
-
-Neither is something the factory manages here: `adopt` owns no environment and applies nothing. Where either
-is `here`, the rule is import or reference — never manage a resource in two places. Where it is `elsewhere`,
-the other repository is the contract. Where it is `unmanaged`, the finding is written down and the first step
-is named.
-
-## What runs
-
-`{make} verify` is the gate: the method's own checks — agent projections, Spec Kit, the constitution floor,
-the import rule over anything the factory generates — and then every wrapped application's recorded commands,
-in the order above. A target recorded `null` passes with a line saying so; it is a written no, not a gap to
-fill by guessing. `lint` and `typecheck` run through the ratchet (`{where(layout)}scripts/ratchet.py`): the
-first local run records the findings that are there into `{where(layout)}baseline.json` — commit it — and
-from then on the gate fails only on a finding that is new; `make ratchet-tighten` re-records what is left once
-somebody has looked. `test` runs through the same ratchet with one difference: a suite that is red on day one
-stops the first run and says so — a red suite is a fact a person reads, never one the gate records behind them —
-and `make ratchet-tighten`, once they have, records it as **quarantined**: the gate passes on the state it
-recorded and says so every run, until the suite is green and `ratchet-tighten` clears it. A new failure is still
-a failure, whether the output names a file at a position or the runner names the test (`--- FAIL: TestX`,
-`not ok 3 - adds`, `FAILED tests/test_a.py::test_b`, Surefire's `[ERROR]   ShopTest.adds`). `smoke` is the one
-command the gate cannot compose from the eight: the application started and proved to answer, recorded as
-`commands.smoke` once `{where(layout)}survey/running.md` says how (`/ground` asks; `null` is a written no with
-its reason there). `{make} smoke` runs it, `{make} ci` and the gate's own smoke job run it in CI, and `verify`
-never does, since it needs what the application needs. A Maven or Gradle build runs through its wrapper
-(`./mvnw`, `./gradlew`): where the repository had none, `adopt` wrote one beside the build file, so the machine
-needs a JDK and no Maven or Gradle of its own. Any other recorded command whose tool is not on the machine
-running it cannot be baselined — the ratchet fails, names the tool, and records nothing until it is installed or
-`project.json` records what this machine does run. A suite recorded as `test-full` is too slow for the gate and
-has a target of its own. {ci_paragraph(adoption, layout)}
-
-## How a change reaches production
-
-{release_paragraph(adoption)}
-
-## Next
-
-1. `./{where(layout)}init` — first, as in any project the factory made. It installs Spec Kit and asks which
-   coding agent to project the skills and commands into (`./{where(layout)}init --integration claude` names it
-   outright; `python3 {where(layout)}scripts/agents/project.py --list` shows every agent it knows).
-   Electing a code-index extension in the same run — `./{where(layout)}init --extension <key>`, and
-   `./{where(layout)}init --help` lists what this copy offers — indexes the code, which is what makes a legacy
-   codebase safe for an agent to work in; the two flags go together in one run.
-2. `/ground`, in the agent — the question set the tree could not answer: one row of
-   `{where(layout)}docs/convergence.md` at a time, the evidence and the rungs shown first, each answer written
-   with `confirmed` provenance; then `/survey` so the pages and the strategy recommendation follow. What
-   the tree could not say, or `--yes` left `unrecorded`, is settled here rather than one slice at a time —
-   or skip straight to `/sail`, whose Ground stage runs the same questions for the rows a slice touches.
-3. `{make} verify` — green on day one is the promise for a linter or type checker that arrived after the
-   code, and the first run records the ratchet baseline: commit `{where(layout)}baseline.json` with what `init`
-   wrote. A test suite that is red on day one is the one exception: the run stops and says so, and
-   `{make} ratchet-tighten` quarantines it once you have read the failures. Anything else not green is the
-   repository's own command failing, and `project.json` is where to correct what the survey got wrong.
-4. {makefile_step}
-5. Read `{where(layout)}docs/convergence.md`: where this repository stands on every ladder a generated project
-   sits at the top of, what is planned to move each row, and what nobody has established yet; and
-   `{where(layout)}survey/structure.md`, the architecture view — where anything starts, what depends on what,
-   where change happens — which says what moves the Structure row and where `/strangle` would cut. Then
-   `{where(layout)}docs/getting-started.md` and `{where(layout)}docs/architecture.md`, then `/sail`,
-   whose ladder here begins at *Ground* (no map, no principles), pins wrapped code before *Implementation*,
-   and holds the map to each slice at *Convergence* before offering the next row as a method slice.
-   Three more commands are this adoption's own: `/characterise` pins the current behaviour of the code a slice is about
-   to change, at the seam where it can be observed (`{where(layout)}survey/pinned.md` is the ledger) — with
-   fakes written in the test tree, never a mocking framework it would have to add — and
-   `/survey` runs `slipwai adopt --refresh` to reconcile a fresh survey with what `project.json` records.
-   How each application is *run* is written, once proven, in `{where(layout)}survey/running.md` — the
-   repository's own file, which the `run-the-app` skill points to and the factory never rewrites.
-   When the code is ready to move, `{where(layout)}docs/change-strategy.md` opens with the strategy `why` and
-   the map recommend for this repository — *leave it* included — then the three strategies and the order to
-   change in; an accepted ADR with a `Strategy:` line is the decision, and `/strangle` moves one capability
-   at a time only under a decision that says `strangler-fig`, writing `{where(layout)}retirement.md` as it goes.
-6. Merge this adoption alone, before the first slice, and from then on one pull request per slice — a slice's
-   after-acceptance commits ride in its own PR. A reviewer can read a slice; nobody reads five at once.
-7. Later, `slipwai migrate` brings a newer factory's material here as one merge; the files it wrote are listed
-   in `{where(layout)}{WRITTEN}`, and nothing else is ever touched.
-
-Profiles, axes and everything else the factory offers a generated project are described in
-`{where(layout)}docs/`; `{', '.join(CATALOG['backends'])}` are the backends it can add beside what is here.
-"""
+    Three of the page's branches are whole paragraphs and so are sections it carries: why this repository is
+    being worked on, that it has converged, and which of the four things is true about how a change reaches
+    production. The last is four sections of which exactly one is selected, the way `rules.py` carries one
+    section per answer to an axis.
+    """
+    wanted = (*(("why",) if adoption.why else ()),
+              *(("converged",) if adoption.converged else ()),
+              f"release-{adoption.release.get('path', 'unknown')}")
+    return page(ADOPTION_ROOT / "docs", "adoption.md", values(project_name, apps, adoption, layout), wanted)
 
 
 def where(layout: Layout) -> str:
     """The delivery directory as a path prefix: `delivery/`, or nothing at the root."""
     return f"{layout.delivery}/" if layout.moved else ""
 
-
-def converged_paragraph(adoption: Adoption) -> str:
-    record = adoption.converged
-    if not record:
-        return ""
-    return (
-        f"\n\n**Converged.** With slipwai {record.get('with')}, every row of the map read *as generated* and the "
-        f"material moved from `{record.get('from')}/` to the root, as one merge. From here on this repository follows "
-        "the generated workflow, `slipwai migrate` included; `origin: adopted`, the survey and this page are its "
-        "history.\n"
-    )
 
 
 def kind_phrase(app: App) -> str:
@@ -263,62 +220,15 @@ def ci_paragraph(adoption: Adoption, layout: Layout) -> str:
     )
 
 
-def release_paragraph(adoption: Adoption) -> str:
-    """What is recorded about how a change reaches production, and what the record's honesty asks next."""
-    release = adoption.release
-    path, provenance = release.get("path", "unknown"), release.get("provenance", "unrecorded")
-    evidence = ", ".join(f"`{e}`" for e in release.get("evidence") or [])
-    return {
-        "pipeline": f"**A pipeline deploys** (`{provenance}`{f', from {evidence}' if evidence else ''}). Which "
-        "environments it passes through, what gates each, and how a release is undone belong in "
-        "`docs/deployment.md`; `/sail` asks every slice how it reaches production.",
-        "scripted": f"**Somebody runs a script** (`{provenance}`{f', from {evidence}' if evidence else ''}). A "
-        "scripted release is one rung below a pipeline: the next step is a CI job that runs the same script on "
-        "every commit that passes `verify`, described in `docs/deployment.md` before it is built.",
-        "manual": f"**By hand** (`{provenance}`). Nothing here deploys; the first rung of the path to production is a "
-        "script that does what the hands do, versioned here, and `docs/deployment.md` is where to write down what "
-        "the hands do today.",
-        "unknown": f"**Not recorded** (`{provenance}`): nothing in the tree says how a change reaches production, and "
-        "nobody has said yet. This is the first Minimum CD fact and the method will not guess it: say it in "
-        "`project.json` under `release.path` (`pipeline`, `scripted` or `manual`) or with `slipwai adopt --release`, "
-        "and `/sail` asks before the first slice.",
-    }[path]
-
 
 def agents_block(layout: Layout, version: str) -> str:
     """The marked section `adopt` appends to the repository's `AGENTS.md`, in the shape an extension's block has,
-    so that a harness reading a copy of the file receives it too (`scripts/agents/project.py`)."""
-    return f"""
-<!-- extension:delivery:begin -->
-## Delivery method (installed by slipwai {version})
+    so that a harness reading a copy of the file receives it too (`scripts/agents/project.py`).
 
-This repository adopted the factory's delivery method: its material lives under `{where(layout)}`, beside
-the code, and `project.json` records what was here and what was confirmed about it. Read
-`{where(layout)}docs/adoption.md` first, then `{where(layout)}docs/convergence.md` — where this repository
-stands on each ladder a generated project sits at the top of; a rung is claimed only from a fact, an
-`unrecorded` row is a question to ask, and `project.json`'s `convergence` is where an answer is written. The
-gate is `{layout.make} verify`; the skills are under
-`{where(layout)}skills/` and the commands under `{where(layout)}commands/` (`{layout.make} agents`
-projects them into your harness). The rules in `{where(layout)}docs/architecture.md` bind code the factory
-generates; existing code is held to its own recorded commands and to nothing it did not have before. Change
-what `project.json` says only by editing it deliberately, and never edit anything listed in
-`{where(layout)}{WRITTEN}` by hand — those files are the factory's, and `slipwai migrate` replaces them.
-
-**Tests written here** — for new code and for code that was here alike — stand in at a seam with a fake
-written in the test tree, a class or function implementing the real interface, never with a mocking framework
-this repository would have to add: Mockito, Moq, gomock, `unittest.mock` and `jest.mock` are the same last
-resort in every language, and "what should I add?" is never answered with one. Where the test framework that
-was here is out of support — JUnit 3 or 4, nose, a runner nobody maintains — new tests use the ecosystem's
-*current* framework and keep the old tests running beside them (JUnit 5 through its vintage engine; pytest
-runs `unittest` suites as they are), as a slice on the map's Platform row: never the next-oldest version,
-never an upgrade decided in passing.
-
-**One pull request per slice.** The adoption commit merges alone, before any slice; each slice is its own pull
-request, and a slice's after-acceptance commits — the adversary pass, the archive — ride in its own PR, never
-the next one's. A first PR of five slices and 566 files was reviewed by nobody, and a framework's major version
-moved inside it unseen.
-<!-- extension:delivery:end -->
-"""
+    The markers stay here and the words are the asset's: `converge.py` matches this pair by name when it
+    respells the block, so the pair is machinery rather than a paragraph anybody edits."""
+    body = page(ADOPTION_ROOT / "blocks", "agents.md", block_values(layout, version))
+    return f"\n<!-- extension:delivery:begin -->\n{body}<!-- extension:delivery:end -->\n"
 
 
 def makefile_block(layout: Layout) -> str:

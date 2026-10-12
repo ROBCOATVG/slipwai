@@ -28,9 +28,11 @@ import checkout_packages  # noqa: F401
 
 from slipwai.adopt import Answers, adopt, proposed
 from slipwai.adopt_page import NOT_A_REPOSITORY, found, looked, page, run, would_write
-from slipwai.assets import relaunch
+from slipwai.assets import ADOPTION_ROOT, relaunch
 from slipwai.bridge import serve
 from slipwai.errors import GenerationError
+from slipwai.layout import Layout
+from slipwai.project import prose
 from slipwai.resurvey import refresh
 from slipwai.survey import survey
 
@@ -270,3 +272,33 @@ class RefusalTest(Fixture):
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+class PlaceholderTest(Fixture):
+    """The third rule of `docs/generated-prose.md`, for the trees only an adopted repository receives.
+
+    A token can be provided, named, and still reach somebody unresolved if a page is copied by a path that
+    does not render it — the one failure the other two rules cannot make. `test_generated.py` reads it over
+    a generated project and skips the trees under `assets/adoption/`, because a generated project has no
+    `docs/adoption.md` to read. This is where those are read: a repository really adopted, every landing the
+    rows name, and no marker left in any of them.
+    """
+
+    def test_nothing_an_adoption_renders_still_carries_a_placeholder(self) -> None:
+        from test_generated_prose import TEMPLATED
+
+        found = survey(self.repo)
+        adopt(self.repo, Answers("shop", applications=proposed(found, "shop")), found)
+        layout = Layout(json.loads(
+            (self.repo / "project.json").read_text(encoding="utf-8"))["layout"]["delivery"])
+        carried: dict[str, list[str]] = {}
+        for directory, lands, _provider in TEMPLATED:
+            if not directory.is_relative_to(ADOPTION_ROOT):
+                continue
+            for landing in lands:
+                where = self.repo / layout.place(landing)
+                self.assertTrue(where.exists(), f"{landing} is not in an adopted repository")
+                for path in (sorted(where.rglob("*")) if where.is_dir() else [where]):
+                    if path.is_file() and (left := prose.unresolved(path.read_text(encoding="utf-8"))):
+                        carried[str(path.relative_to(self.repo))] = left
+        self.assertEqual(carried, {}, f"rendered files still carrying a placeholder: {carried}")

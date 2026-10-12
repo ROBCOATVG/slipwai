@@ -25,7 +25,8 @@ from ..layout import AT_ROOT, Layout
 from .cruise_agents import DECISIONS
 from .cruise_record import CONFIG, SCRIPT
 from .cruise_told import seat_queues, seat_stands
-from .prose import page, render
+from .prose import page
+from .prose import part as one_part
 
 #: The script that starts, stops, watches and tells — everything about the fleet that is not a setting.
 FLEET = "scripts/agents/fleet.py"
@@ -36,14 +37,8 @@ PARTS = "parts.md"
 
 
 def part(name: str, named: dict[str, str] | None = None) -> str:
-    """One section of `parts.md`, without the newline its end marker forces.
-
-    A part is spliced into a sentence or a paragraph by the page that names it — `{{verbatim}}` lands
-    mid-paragraph — so the line break before `<!-- end section -->` belongs to the marker and not to the
-    words. A part that does end in a blank line says so in the asset, by leaving one.
-    """
-    text = (CRUISE_ROOT / PARTS).read_text(encoding="utf-8")
-    return render(PARTS, text, named or {}, (name,)).removesuffix("\n")
+    """One section of `parts.md`: a passage more than one page here is assembled from."""
+    return one_part(CRUISE_ROOT, PARTS, name, named)
 
 
 def values(layout: Layout = AT_ROOT) -> dict[str, str]:

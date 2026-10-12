@@ -1,0 +1,42 @@
+
+    - extension: "convergence-map"
+      command: "drive"
+      description: "Hold the convergence map to what this slice did, and offer the next row"
+      optional: true
+      enabled: true
+      prompt: >-
+        This repository adopted the delivery method around code that was already here, and `{{convergence}}` is
+        where it stands on each ladder a generated project sits at the top of. Now that the slice has
+        converged, run `make check-convergence` and read the map against the diff. A rung this slice reached
+        flips its row in `project.json`'s `convergence` (`rung`, `evidence`, `provenance` `confirmed`,
+        `planned` cleared), then `/survey` redraws the page. A rung it did not reach stays: the map is never
+        moved to match a hope. Then name the lowest row still below its target with nothing planned — that is
+        the next method slice, offered to the split. `{{drive}}`, the Convergence stage, has the rule.
+
+  before_specify:
+    - extension: "convergence-map"
+      command: "drive"
+      description: "Read the convergence map before specifying: which rows does this slice touch or move?"
+      optional: true
+      enabled: true
+      prompt: >-
+        Read `{{convergence}}` before writing a word of the specification. A slice through {{wrapped-or-many}}
+        touches at least the Safety net, Structure and Strategy rows; a method slice moves exactly one row
+        one rung, and says which in the row's `planned`. A row whose provenance is `unrecorded` or `detected` on
+        an axis this slice touches is a question for the person before the specification is written, never a
+        default — the release path first of all, and a change strategy the map only recommends;
+        `/ground` asks it, one row at a time, and records the answer. `{{drive}}`, the Ground stage, has the
+        rule; `/sail` enters there.
+
+  before_plan:
+    - extension: "pin"
+      command: "characterise"
+      description: "Wrapped code the plan will change is pinned at its seam before the plan is written"
+      optional: true
+      enabled: true
+      prompt: >-
+        The plan is about to say which code changes. Where that code existed before the method did (under
+        {{wrapped-or-many}}), its current behaviour at the seam is recorded first: `{{pinned}}` carries a row
+        for each behaviour this slice changes, or `/characterise <behaviour>` writes one — one behaviour at a
+        time, never "everything". Code the factory generated needs no pin. `{{drive}}`, the Pin
+        stage, has the rule; a slice that touches no code that was here says so and moves on.

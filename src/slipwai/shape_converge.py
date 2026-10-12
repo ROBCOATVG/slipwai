@@ -25,10 +25,10 @@ def transition(root: Path, requested: str) -> tuple[dict, dict, str]:
     """The manifest, the row whose warning this move has to carry, and the shape being left.
 
     A package writes each row's `transition` as *how to leave this shape*, so the row the operator needs is
-    the current one's and not the destination's. Printing the destination's meant `converge --shape liner`
-    — a skiff leaving a private Lightsail database that ECS cannot reach — never showed its export/import
-    warning, while `converge --shape skiff` told somebody leaving RDS to import into RDS. Both rows are
-    still read here, so a target missing either is refused before anything is written.
+    the current one's and not the destination's. Printing the destination's meant each direction showed the
+    other one's warning: the move that leaves a database the destination's compute cannot reach never said
+    so, and the move that leaves a full stack told the operator to import into the store being left behind.
+    Both rows are still read here, so a target missing either is refused before anything is written.
     """
     document = read_manifest(root, "converge --shape")
     selected(requested)

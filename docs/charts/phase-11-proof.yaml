@@ -1,0 +1,40 @@
+feature: phase-11-proof
+fairways:
+  phase-11-multiplayer:
+    owns:
+      - tests/test_two_machines.py
+      - assets/toolkit/scripts/agents/harbourmaster.py
+      - assets/toolkit/scripts/agents/captain.py
+      - Makefile
+      - docs/charts/phase-11-proof.yaml
+      - docs/slipwai-2-plan.md # Own row 11.5 only; no completion without two people.
+slices:
+  '11.5':
+    fairway: phase-11-multiplayer
+    sets:
+      - TwoMachineTakeoverProof
+    steers_by:
+      - FairwayClaimRef
+      - LeasedTakeoverWithWip
+      - PerMachineHarbourLog
+      - RefBackedDeckCache
+marks:
+  TwoMachineTakeoverProof:
+    kind: port
+    inputs: {forge: bare-git-repository, machines: two-clones, stopped_slice: ORD-01}
+    outputs: {trunk: resumed-commit, board_on_first_machine: finished}
+  FairwayClaimRef:
+    kind: port
+    inputs: {fairway: string, machine: string}
+    outputs: {claim: refs/slipwai/claims/<fairway>}
+  LeasedTakeoverWithWip:
+    kind: port
+    inputs: {claim: lapsed, branch: refs/slipwai/wip/<fairway>}
+    outputs: {resumed_slice: string}
+  PerMachineHarbourLog:
+    kind: schema
+    schema: {type: object, required: [v, t, kind]}
+  RefBackedDeckCache:
+    kind: port
+    inputs: {authoritative_log: refs/slipwai/logs/<fairway>, local_claim: not-held}
+    outputs: {deck_path: cache-of-ref}

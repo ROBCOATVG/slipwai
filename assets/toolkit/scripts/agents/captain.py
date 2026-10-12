@@ -629,6 +629,37 @@ def turn(fairway: str) -> str:
     return f"captain: {fairway} parked at {slice_id} — {fault}"
 
 
+def release_after_publication(fairway: str) -> None:
+    """Give the pen back only after the final local suffix is durable on the forge.
+
+    Publication stays the harbourmaster's job. Releasing first lets a new captain take the free claim
+    and read a log missing the final merged or parked line. A timeout retains the claim and names the
+    publisher to restart, so the next pass can publish before another captain is handed the pen.
+    """
+    machine = logs.machine()
+    found = claims.holder(ROOT, fairway)
+    if found is None or found.machine != machine or not found.held():
+        return
+    if travel.forge(ROOT):
+        _, feature = clearance.chart()
+        path = deck(feature, fairway)
+        local = path.read_text(encoding="utf-8") if path.is_file() else ""
+        until = time.monotonic() + wait_bound()
+        while local:
+            travel.fetch(ROOT)
+            published = travel.held(ROOT, travel.deck_ref(fairway)) or ""
+            if travel.appends(local, published):
+                break
+            if time.monotonic() >= until:
+                print(f"captain: {fairway}'s final deck lines have not travelled, so its claim is "
+                      f"retained. Run `python3 scripts/agents/harbourmaster.py --once` on {machine}, "
+                      f"then `python3 scripts/agents/captain.py {fairway} --once` to publish and release",
+                      flush=True)
+                return
+            time.sleep(min(ANSWER_POLL, max(0.0, until - time.monotonic())))
+    claims.release(ROOT, fairway, machine)
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="captain", description="Run one fairway: claim, dispatch, watch the log, ask for the merge")
@@ -644,10 +675,9 @@ def main(argv: list[str]) -> int:
                 return 0
             time.sleep(parsed.interval)
     finally:
-        # The claim is given back whichever way the loop ended, including the park. A captain that kept it
-        # would hold the fairway against every other machine until somebody went looking for a ref — and a
-        # captain killed outright still does, which is what 11.2's lease is for.
-        claims.release(ROOT, parsed.fairway, logs.machine())
+        # The final line must travel while this captain still holds the pen. A captain killed outright
+        # still leaves its claim behind, which is what 11.2's lease is for.
+        release_after_publication(parsed.fairway)
 
 
 if __name__ == "__main__":

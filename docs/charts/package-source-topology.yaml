@@ -1,0 +1,24 @@
+feature: package-source-topology
+fairways:
+  phase-15-event-modelling:
+    owns:
+      - .github/workflows/package.yml
+      - src/slipwai/package_sources.py
+      - scripts/check-structure.py
+      - scripts/bring-back.py
+      - tests/test_package_sources.py
+      - docs/charts/package-source-topology.yaml
+slices:
+  '15.8':
+    fairway: phase-15-event-modelling
+    sets: [SourceSiblingTopology]
+    steers_by: [DeclaredPackageTargets]
+marks:
+  SourceSiblingTopology:
+    kind: port
+    inputs: {repository: public-github-slug, ref: full-commit-sha, packages: validated-package-names}
+    outputs: {siblings: contained-source-packages, provenance: tested-source-commit}
+  DeclaredPackageTargets:
+    kind: port
+    inputs: {manifest: package-declarations}
+    outputs: {catalog: language-plus-target-siblings}

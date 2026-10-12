@@ -44,6 +44,21 @@ on:
         required: false
         default: ''
         type: string
+      beside_source_repository:
+        description: Public GitHub repository carrying unpublished sibling packages under packages/
+        required: false
+        default: ''
+        type: string
+      beside_source_ref:
+        description: Full tested commit SHA of beside_source_repository, never a moving branch
+        required: false
+        default: ''
+        type: string
+      beside_source_packages:
+        description: Space-separated package names to expose from that pinned source beside the checkout
+        required: false
+        default: ''
+        type: string
       toolchains:
         description: >
           What the runner needs installed before the matrix runs, space-separated, from `go`, `node`,
@@ -97,6 +112,33 @@ jobs:
             esac)"
           slipwai --version
 
+      # Explicit source topology until these siblings have chandlery releases. The installed keel owns
+      # validation; checkout accepts structured inputs, and no source value is interpolated into a shell.
+      - name: Validate source sibling declaration
+        if: inputs.beside_source_packages != ''
+        env:
+          PACKAGE_SOURCES_REPOSITORY: ${{ inputs.beside_source_repository }}
+          PACKAGE_SOURCES_REF: ${{ inputs.beside_source_ref }}
+          PACKAGE_SOURCES_NAMES: ${{ inputs.beside_source_packages }}
+          PACKAGE_UNDER_TEST: ${{ inputs.package }}
+        run: python -m slipwai.package_sources --validate
+      - name: Checkout pinned public sibling source
+        if: inputs.beside_source_packages != ''
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.beside_source_repository }}
+          ref: ${{ inputs.beside_source_ref }}
+          path: .package-sources
+          persist-credentials: false
+      - name: Expose declared source siblings
+        if: inputs.beside_source_packages != ''
+        env:
+          PACKAGE_SOURCES_REPOSITORY: ${{ inputs.beside_source_repository }}
+          PACKAGE_SOURCES_REF: ${{ inputs.beside_source_ref }}
+          PACKAGE_SOURCES_NAMES: ${{ inputs.beside_source_packages }}
+          PACKAGE_UNDER_TEST: ${{ inputs.package }}
+        run: python -m slipwai.package_sources
+
       # **A package is proved with whatever it is proved through beside it.** The checkout is one directory
       # under `$PWD` and conformance reads `$PWD`, so without this step a framework meets its own family
       # missing — `requires java >=1.0,<2; java is not loaded` — and a family meets no framework to be
@@ -126,6 +168,8 @@ jobs:
             # test is false, which is every sibling that is not this package — so the skip would be the
             # whole step.
             if [ "$word" = "${{ inputs.package }}" ]; then continue; fi
+            # A validated source sibling is already here and must not be overwritten by a registry copy.
+            if [ -d "$PWD/$word" ]; then continue; fi
             beside="$beside $word"
           done
           if [ -z "$(printf '%s' "$beside" | tr -d ' ')" ]; then
@@ -226,6 +270,33 @@ jobs:
               *)       echo "${{ inputs.keel }}" ;;
             esac)"
           slipwai --version
+
+      # Explicit source topology until these siblings have chandlery releases. The installed keel owns
+      # validation; checkout accepts structured inputs, and no source value is interpolated into a shell.
+      - name: Validate source sibling declaration
+        if: inputs.beside_source_packages != ''
+        env:
+          PACKAGE_SOURCES_REPOSITORY: ${{ inputs.beside_source_repository }}
+          PACKAGE_SOURCES_REF: ${{ inputs.beside_source_ref }}
+          PACKAGE_SOURCES_NAMES: ${{ inputs.beside_source_packages }}
+          PACKAGE_UNDER_TEST: ${{ inputs.package }}
+        run: python -m slipwai.package_sources --validate
+      - name: Checkout pinned public sibling source
+        if: inputs.beside_source_packages != ''
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.beside_source_repository }}
+          ref: ${{ inputs.beside_source_ref }}
+          path: .package-sources
+          persist-credentials: false
+      - name: Expose declared source siblings
+        if: inputs.beside_source_packages != ''
+        env:
+          PACKAGE_SOURCES_REPOSITORY: ${{ inputs.beside_source_repository }}
+          PACKAGE_SOURCES_REF: ${{ inputs.beside_source_ref }}
+          PACKAGE_SOURCES_NAMES: ${{ inputs.beside_source_packages }}
+          PACKAGE_UNDER_TEST: ${{ inputs.package }}
+        run: python -m slipwai.package_sources
 
       # Built here rather than taken from the publisher's machine: a release file nobody can reproduce is
       # a release file nobody can check, and this is the one place the bytes and the tag are known to

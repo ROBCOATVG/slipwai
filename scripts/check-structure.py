@@ -98,7 +98,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # The other kind of package: its install, its scaffold, and the two verbs over them.
               "extension_install", "target_install", "cli_target",
               "package_new", "package_templates", "target_templates", "package_release",
-              "package_version", "cli_extension", "cli_package",
+              "package_version", "package_sources", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",
               "cli_telegraph", "harbour", "cli_fleet",
               # The read side served to whatever is doing the work: the tools and the stdio session.

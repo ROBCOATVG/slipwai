@@ -73,6 +73,19 @@ def stamp(root: Path, paths: Iterable[str]) -> None:
         where.write_text(json.dumps(dict(sorted(kept.items())), indent=2) + "\n", encoding="utf-8")
 
 
+def owned_paths(
+    root: Path, before: dict, after: dict, listed: set[str], listing: str, optional: tuple[str, ...] = (),
+) -> set[str]:
+    """Files a person took over by removing their listing row; optional surveyed files may vanish."""
+    if not (root / listing).is_file():
+        return set()
+    return {
+        relative for relative in set(after) | set(optional)
+        if (relative in before or relative in optional) and relative not in listed
+        and relative != listing and (root / relative).is_file()
+    }
+
+
 def refuse_foreign(root: Path, writes: set[str], verb: str) -> None:
     """Refuse where a path this run writes holds an uncommitted change slipwai did not make."""
     now = changed(root)

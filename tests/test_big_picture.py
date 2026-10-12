@@ -27,6 +27,7 @@ import unittest
 from pathlib import Path
 
 import checkout_packages  # noqa: F401
+import yaml  # type: ignore[import-untyped]
 
 from slipwai.big_picture import BigPicture, big_picture
 from slipwai.layout import Layout
@@ -97,8 +98,8 @@ class ActorsTest(unittest.TestCase):
             root = Path(directory)
             repository(root, ROUTES)
             named = {actor.name: actor for actor in read(root).actors}
-            self.assertEqual(named["clerk"].does, ("/orders",))
-            self.assertEqual(named["manager"].does, ("/orders/:id/refund",))
+            self.assertEqual(named["clerk"].does, ("GET /orders (src/routes.js:4)",))
+            self.assertEqual(named["manager"].does, ("POST /orders/:id/refund (src/routes.js:5)",))
 
     def test_what_it_cannot_do_is_a_surface_another_role_guards_and_it_is_never_named_on(self) -> None:
         """The one thing a slice's `actor` field has nowhere to carry, and the whole reason for the file."""
@@ -106,8 +107,8 @@ class ActorsTest(unittest.TestCase):
             root = Path(directory)
             repository(root, ROUTES)
             named = {actor.name: actor for actor in read(root).actors}
-            self.assertEqual(named["clerk"].cannot, ("/orders/:id/refund",))
-            self.assertEqual(named["manager"].cannot, ("/orders",))
+            self.assertEqual(named["clerk"].cannot, ("POST /orders/:id/refund (src/routes.js:5)",))
+            self.assertEqual(named["manager"].cannot, ("GET /orders (src/routes.js:4)",))
 
     def test_a_scheduled_job_is_a_system_actor_and_its_cannot_is_a_question_not_a_blank(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -119,6 +120,35 @@ class ActorsTest(unittest.TestCase):
             self.assertEqual(cron.cannot, ())
             self.assertTrue(any("systems/cron" in gap.question for gap in found.gaps),
                             "a `cannot` the code cannot name is asked, never defaulted")
+
+    def test_a_queue_consumer_is_an_evidenced_system_actor_with_its_limits_asked(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository(root, "channel.consume('orders', onOrder);\n")
+            found = read(root)
+            actor = next(actor for actor in found.actors if actor.name == "systems/consumer")
+            self.assertEqual(actor.evidence, ("src/routes.js:1",))
+            self.assertEqual(actor.cannot, ())
+            self.assertTrue(any("systems/consumer" in gap.question for gap in found.gaps))
+
+    def test_bare_role_constant_does_not_turn_a_public_route_into_a_guarded_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository(root, 'const ROLE_ADMIN = "admin";\n'
+                             "app.get('/public', publicPage);\n"
+                             "app.post('/refund', requireRole('manager'), refund);\n")
+            named = {actor.name: actor for actor in read(root).actors}
+            self.assertEqual(named['admin'].does, ())
+            self.assertEqual(named['manager'].cannot, ())
+
+    def test_multi_role_guard_does_not_deny_a_role_explicitly_allowed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository(root, "app.get('/report', requireAnyRole('clerk', 'manager'), report);\n"
+                             "app.post('/report', requireRole('manager'), report);\n")
+            named = {actor.name: actor for actor in read(root).actors}
+            self.assertEqual(named['manager'].cannot, ())
+            self.assertEqual(named['clerk'].cannot, ("POST /report (src/routes.js:2)",))
 
     def test_a_repository_whose_code_names_no_role_proposes_no_actor(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -214,11 +244,18 @@ class PageTest(unittest.TestCase):
             catalogue = self.files(root)[DELIVERY.under(ACTORS)]
             self.assertIn("version: 1", catalogue)
             self.assertIn("actors:", catalogue)
-            self.assertIn("  - name: clerk", catalogue)
-            self.assertIn("    kind: human", catalogue)
+            self.assertIn('  - name: "clerk"', catalogue)
+            self.assertIn('    kind: "human"', catalogue)
             self.assertIn("    does:", catalogue)
             self.assertIn("    cannot:", catalogue)
             self.assertIn("/orders/:id/refund", catalogue)
+
+    def test_yaml_reserved_role_names_stay_strings(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository(root, "app.get('/a', requireRole('on'), read);\n")
+            actors = yaml.safe_load(self.files(root)[DELIVERY.under(ACTORS)])["actors"]
+            self.assertEqual(actors[0]["name"], "on")
 
     def test_a_repository_the_code_says_nothing_about_gets_a_page_that_says_so(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

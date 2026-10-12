@@ -1,0 +1,36 @@
+feature: slipwai-2
+fairway: phase-15-event-modelling
+slices:
+  '15.11':
+    steers-by:
+      - structure(root, apps, delivery) provides source entry points
+      - big_picture(root, apps, shape, delivery) reads evidenced actors and systems
+      - resurvey respects paths removed from delivery/.written
+    sets:
+      - adopt writes survey/big-picture.md on both profiles, without model events
+      - adopt writes docs/event-model/actors.yaml where source names actors
+      - refresh updates survey evidence and respects a person-owned catalogue
+    owns:
+      - src/slipwai/adopt.py
+      - src/slipwai/resurvey.py
+      - src/slipwai/big_picture.py
+      - src/slipwai/big_picture_guards.py
+      - src/slipwai/adopt_page.py
+      - src/slipwai/project/big_picture_page.py
+      - src/slipwai/uncommitted.py
+      - tests/test_big_picture.py
+      - tests/test_big_picture_adoption.py
+  '15.12':
+    steers-by:
+      - big picture lists evidenced capabilities without model events
+      - observed model slices are confined to wrapped services
+      - characterise pins examples before observation
+    sets:
+      - observe command reads one capability using its confirmed rung
+      - extraction table traces business facts to source transitions
+      - observed model passes check-model and chart rendering
+    owns:
+      - src/slipwai/project/observe_command.py
+      - src/slipwai/project/commands.py
+      - src/slipwai/project/event_model.py
+      - tests/test_observe_command.py

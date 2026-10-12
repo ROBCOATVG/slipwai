@@ -20,6 +20,7 @@ from pathlib import Path
 
 from .adopt import STRUCTURE_PAGE, SURVEY_PAGE, facts
 from .adopt_report import survey_page
+from .big_picture import big_picture
 from .convergence import reconciled
 from .errors import GenerationError
 from .layout import Layout, layout_of
@@ -28,6 +29,7 @@ from .origin import Adoption, adoption_of
 from .platform import with_platform
 from .programme import expired
 from .project.adopted import WRITTEN
+from .project.big_picture_page import ACTORS, BIG_PICTURE, big_picture_files, with_picture
 from .project.structure_page import structure_page
 from .scaffold import FACTORY_IDENTITY, project_files
 from .services import App, wrapped_of
@@ -35,7 +37,7 @@ from .strategy import with_recommendation
 from .structure import structure
 from .survey import Survey, survey
 from .toolkit import executable_paths
-from .uncommitted import refuse_foreign, stamp
+from .uncommitted import owned_paths, refuse_foreign, stamp
 from .wrappers import wrapper_lines, write_wrappers
 
 
@@ -49,9 +51,7 @@ class Refreshed:
     rewritten: list[str] = field(default_factory=list)
     # Files the keel wrote that the record no longer drives — a gate for a forge the record left — and so removed.
     removed: list[str] = field(default_factory=list)
-    # Files the keel wrote that a person took over by deleting their line from `.written`: left alone, and said.
     owned: list[str] = field(default_factory=list)
-    # Build wrappers written where a Maven or Gradle build had none, as report lines (`wrappers.py`).
     wrappers: list[str] = field(default_factory=list)
 
 
@@ -59,7 +59,9 @@ def writes(root: Path, layout: Layout) -> set[str]:
     """Every path a refresh may write or remove: the keel's listing, and the pages the record drives."""
     listing = root / layout.under(WRITTEN)
     listed = set(listing.read_text(encoding="utf-8").split()) if listing.is_file() else set()
-    return listed | {layout.under(page) for page in (SURVEY_PAGE, STRUCTURE_PAGE, "docs/convergence.md")}
+    pages = (SURVEY_PAGE, STRUCTURE_PAGE, "docs/convergence.md")
+    listed |= {layout.under(p) for p in (BIG_PICTURE, ACTORS) if not (root / layout.under(p)).exists()}
+    return listed | {layout.under(page) for page in pages}
 
 
 def reconciled_app(app: App, found: Survey, done: Refreshed) -> App:
@@ -203,7 +205,6 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
         ci=refreshed_facts.ci, release=refreshed_facts.release,
         candidates=list(adoption.candidates), agent=dict(adoption.agent),
     )
-    # Quick wins are read from the tree again: what was fixed is said, and what remains stays on the survey page.
     was = {w.get("where") for w in (adoption.survey or {}).get("quickWins") or []}
     now = {w.get("where") for w in refreshed_facts.survey.get("quickWins") or []}
     if was - now:
@@ -244,18 +245,17 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
 
     arguments = (document["name"], document["profile"], document["target"])
     before = project_files(*arguments, apps, layout, adoption)
-    after = project_files(*arguments, updated, layout, after_adoption)
+    shape = structure(root, updated, layout.delivery, FACTORY_IDENTITY["GIT_AUTHOR_EMAIL"])
+    picture = big_picture_files(big_picture(root, updated, shape, layout.delivery), layout)
+    before = with_picture(before, picture, layout)
+    after = with_picture(project_files(*arguments, updated, layout, after_adoption), picture, layout)
     executables = {layout.place(path) for path in executable_paths(document["profile"], updated)}
     # A file the keel wrote before, still on disk and no longer listed in `.written`, is the repository's own from
     # then on: taking one over is deleting its line, and the keel leaves it alone and says so — the third real
     # adoption could not edit the gate's workflow for its own default branch and had to add a second one beside it.
     listing = root / layout.under(WRITTEN)
     listed = set(listing.read_text(encoding="utf-8").split()) if listing.is_file() else set()
-    owned = {
-        relative for relative in after
-        if listing.is_file() and relative in before and relative not in listed and relative != layout.under(WRITTEN)
-        and (root / relative).is_file()
-    }
+    owned = owned_paths(root, before, after, listed, layout.under(WRITTEN), (layout.under(ACTORS),))
     if owned:
         done.owned.extend(sorted(owned))
         after[layout.under(WRITTEN)] = "".join(
@@ -269,7 +269,7 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
                 or (path.is_file() and path.read_text(encoding="utf-8") == content)):
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8", newline="")
+        path.write_text(content, newline="", encoding="utf-8")
         path.chmod(0o755 if relative in executables else 0o644)
         done.rewritten.append(relative)
     # What the keel wrote before and does not write now is removed with its reason, not left in the tree: the
@@ -290,10 +290,7 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
     for key in ("database", "infrastructure", "ci", "release", "platform", "strategy", "convergence", "survey"):
         document[key] = manifest[key]
     document["generator"] = wrote_here(document.get("generator"))
-    # Four files follow the record as it now stands rather than the assembly before: the manifest, the survey
-    # page, the architecture view, and the map's page — a row a person moved by hand is what the page catches up with.
     convergence_page = layout.under("docs/convergence.md")
-    shape = structure(root, updated, layout.delivery, FACTORY_IDENTITY["GIT_AUTHOR_EMAIL"])
     view = structure_page(shape, after_adoption, layout)
     for relative, content in (("project.json", json.dumps(document, indent=2) + "\n"),
                               (layout.under(SURVEY_PAGE), survey_page(found, updated)),

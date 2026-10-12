@@ -35,6 +35,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from .big_picture_guards import operation
+from .big_picture_guards import roles as guarded_roles
 from .services import App, wrapped_of
 from .structure import LANGUAGES, Structure, code_files, prefixed
 
@@ -196,15 +198,14 @@ def matched(rules: tuple[re.Pattern[str], ...], lines: list[str]) -> list[tuple[
 def roles_and_routes(files: list[tuple[str, list[str]]]) -> tuple[dict[str, dict], list[str]]:
     """Each role the code names — where it was read, and the routes written next to it — and every route.
 
-    Nearness in one file is the join and is the whole of it: a guard and the route it guards are adjacent
-    in every framework here, and anything looser attributes a surface to a role that never guarded it.
+    Join guards to nearby declarations, retaining method and source identity for every operation.
     """
     roles: dict[str, dict] = {}
     routes: list[str] = []
     for path, lines in files:
-        found_routes = matched(ROUTE_RULES, lines)
+        found_routes = [(at, operation(path, at, route, lines)) for at, route in matched(ROUTE_RULES, lines)]
         routes += [route for _, route in found_routes]
-        for number, role in matched(ROLE_RULES, lines):
+        for number, role, guarded in guarded_roles(lines, ROLE_RULES):
             name = role.lower()
             record = roles.setdefault(name, {"evidence": [], "does": []})
             where = f"{path}:{number}"
@@ -215,7 +216,7 @@ def roles_and_routes(files: list[tuple[str, list[str]]]) -> tuple[dict[str, dict
             # other's surface — which is a `cannot` that is wrong, and a wrong `cannot` is worse than a
             # missing one, because somebody designs against it.
             near = [(abs(at - number), at, route) for at, route in found_routes if abs(at - number) <= NEAR]
-            if near:
+            if near and guarded:
                 route = min(near)[2]
                 if route not in record["does"]:
                     record["does"].append(route)
@@ -239,21 +240,24 @@ def human_actors(roles: dict[str, dict]) -> tuple[Actor, ...]:
 
 
 def system_actors(files: list[tuple[str, list[str]]]) -> tuple[Actor, ...]:
-    """The actors that are not people: today, the clock.
-
-    `cannot` is empty and stays empty. A job's limits are a business statement — *it may expire a hold and
-    may not issue a refund, because money leaving needs a person* — and nothing in a scheduler says it. The
-    blank is a question (`gaps_of`), which is what the modelling skill asks for in place of a guess.
-    """
-    where = [
-        f"{path}:{number}"
-        for path, lines in files
-        for number, line in enumerate(lines, start=1)
-        if any(rule.search(line) for rule in SCHEDULE_RULES)
-    ]
-    if not where:
-        return ()
-    return (Actor("systems/cron", "system", ("runs work on a clock",), (), tuple(where[:4])),)
+    """Clock and queue consumers, with limits left as questions rather than inferred permissions."""
+    consumers = re.compile(
+        r"\b(?:consumer|channel|client|bus)\.(?:consume|subscribe)\(|@KafkaListener\(|@RabbitListener\("
+    )
+    scheduled, queued = [], []
+    for path, lines in files:
+        for number, line in enumerate(lines, start=1):
+            where = f"{path}:{number}"
+            if any(rule.search(line) for rule in SCHEDULE_RULES):
+                scheduled.append(where)
+            if consumers.search(line):
+                queued.append(where)
+    actors = []
+    if scheduled:
+        actors.append(Actor("systems/cron", "system", ("runs work on a clock",), (), tuple(scheduled[:4])))
+    if queued:
+        actors.append(Actor("systems/consumer", "system", ("consumes queued messages",), (), tuple(queued[:4])))
+    return tuple(actors)
 
 
 def a_system(host: str) -> bool:
@@ -310,7 +314,7 @@ def gaps_of(found: BigPicture) -> tuple[Gap, ...]:
     for actor in found.actors:
         if actor.kind == "system" and not actor.cannot:
             gaps.append(Gap(
-                question=f"What may `{actor.name}` **not** do? Nothing in a scheduler says it.",
+                question=f"What may `{actor.name}` **not** do? Nothing in a scheduler or consumer declaration says it.",
                 intention="A system actor without a `cannot` is the one the next incident is about: work "
                           "that runs with nobody watching and no stated limit.",
                 assumption="That it does what its jobs do today and that nothing else was intended.",

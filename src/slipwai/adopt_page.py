@@ -221,7 +221,8 @@ document.addEventListener('click', async event => {
 def page(answers: Mapping[str, str], title: str = "Adopt a repository") -> str:
     """The adoption tab: pick a directory, look at it, and only then adopt it."""
     body = picker(str(answers.get("root") or "")) + '<div id="report"></div>'
-    return document(title, "what it found, and what it would write, before it writes it", body, SCRIPT)
+    return document(title, "what it found, and what it would write, before it writes it",
+                    body, SCRIPT, now="/adopt")
 
 
 def looked(answers: Mapping[str, str], here: Path) -> str:

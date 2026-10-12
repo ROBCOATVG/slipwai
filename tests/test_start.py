@@ -53,6 +53,8 @@ class OpenedBoardTest(unittest.TestCase):
 
     def board(self, root: Path) -> str:
         server = open_board(root, "127.0.0.1", 0, open_page=self.opened.append)
+        # Port 0 is a port nothing can already be serving on, so one is always bound here.
+        assert server is not None
         threading.Thread(target=server.serve_forever, daemon=True).start()
         self.addCleanup(server.server_close)
         self.addCleanup(server.shutdown)

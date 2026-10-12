@@ -260,4 +260,5 @@ document.addEventListener('click', async event => {
 
 def page(answers: Mapping[str, str], title: str = "Start a new project") -> str:
     """The interview as a page of its own. 14.4 makes it a tab of the board; the questions do not change."""
-    return document(title, f"{len(asked(answers))} questions, read from the catalogue", form(answers), SCRIPT)
+    return document(title, f"{len(asked(answers))} questions, read from the catalogue",
+                    form(answers), SCRIPT, now="/generate")

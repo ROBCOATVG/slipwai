@@ -90,7 +90,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "extension_install", "package_new", "package_templates", "target_templates", "package_release",
               "package_version", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",
-              "cli_telegraph", "cli_fleet",
+              "cli_telegraph", "harbour", "cli_fleet",
               # The board, as a page a person answers from: the render, the server and the verb — and
               # what bare `slipwai` does, which is open that same board.
               "page_shell", "bridge", "bridge_page", "cli_bridge", "cli_start", "interview_page", "adopt_page",

@@ -122,14 +122,45 @@ form.ask-page .no{color:var(--brass);font-size:.8rem}
 pre.said{background:var(--ground);border-radius:7px;padding:10px 12px;font-family:var(--mono);
 font-size:.8rem;white-space:pre-wrap;overflow-x:auto;margin:10px 0 0}
 pre.said.bad{color:var(--critical)}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-top:14px;border-bottom:1px solid var(--rule)}
+nav.tabs a{font-size:.88rem;color:var(--ink-2);text-decoration:none;padding:8px 14px;border-radius:7px 7px 0 0;
+border:1px solid transparent;border-bottom:none;margin-bottom:-1px}
+nav.tabs a:hover{color:var(--ink)}
+nav.tabs a[aria-current="page"]{background:var(--paper);border-color:var(--rule);color:var(--ink);
+font-weight:600}
 """
 
 
-def document(title: str, sub: str, body: str, script: str = "") -> str:
+#: The board's three places, in the order a person meets them: where the work is, and the two things that
+#: start some. Written once and read by the bar, by the server's routes and by the suite, so a fourth tab is
+#: a row here rather than an edit in three files.
+TABS: tuple[tuple[str, str], ...] = (
+    ("/", "Board"),
+    ("/generate", "Start a project"),
+    ("/adopt", "Adopt a repository"),
+)
+
+
+def tabs(now: str) -> str:
+    """The bar, with the tab being shown marked as the one it is.
+
+    Links, not a script: a tab is a place, and a place has a URL somebody can keep. That is also what makes
+    `slipwai fleet` and `slipwai bridge` deep links into one page rather than three commands that each open
+    something of their own.
+    """
+    here = ' aria-current="page"'
+    rows = "".join(f'<a href="{esc(where)}"{here if where == now else ""}>{esc(name)}</a>'
+                   for where, name in TABS)
+    return f'<nav class="tabs" aria-label="Board">{rows}</nav>'
+
+
+def document(title: str, sub: str, body: str, script: str = "", now: str = "") -> str:
     """One page, whatever started it: the mark in the corner, the theme toggle, and the cards it was given.
 
     `script` is left out of the published copy by its caller, not by this: a page with nothing to press is
-    a decision about the controls, and this only knows how to put a document around them.
+    a decision about the controls, and this only knows how to put a document around them. `now` is which tab
+    this is; unsaid, there is no bar at all, which is what the published copy has — one file, and a link to
+    a route it does not carry would be the two copies disagreeing.
     """
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -140,6 +171,7 @@ def document(title: str, sub: str, body: str, script: str = "") -> str:
 <body><div class="wrap">
 <div class="top"><div><h1>{esc(title)}</h1><div class="sub">{esc(sub)}</div></div>
 <div class="corner">{THEME}{inline(title="slipwai — the little tug that moves the big one")}</div></div>
+{tabs(now) if now else ""}
 {body}
 </div>{"<script>" + script + "</script>" if script else ""}</body></html>
 """

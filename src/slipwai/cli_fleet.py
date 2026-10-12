@@ -11,26 +11,19 @@ whole board is a fold and one that cached anything could be wrong about what hap
 from __future__ import annotations
 
 import argparse
-import json
 import shutil
 import time
 from pathlib import Path
 
 from .assets import this_command
+from .cli_start import start_main
 from .deck import RECENT, recent, streams
 from .errors import GenerationError, refuse
 from .fleet import NOTHING, board
+from .harbour import config
 from .project.harbour import CONFIG
 
 CLEAR = "\x1b[H\x1b[2J"
-
-
-def config(root: Path) -> dict:
-    try:
-        held = json.loads((root / CONFIG).read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError):
-        return {}
-    return held if isinstance(held, dict) else {}
 
 
 def table(rows: list[dict], columns: list[tuple[str, str]]) -> list[str]:
@@ -117,12 +110,18 @@ def fleet_main(argv: list[str]) -> None:
     parser.add_argument("--root", default=".", metavar="<directory>", help="the harbour (default: here)")
     parser.add_argument("--interval", type=float, default=5.0, help="seconds between redraws, for watch")
     parser.add_argument("--limit", type=int, default=RECENT, help="lines to show for one stream")
+    # The board is one page whatever started it, and this verb is one of its deep links: `--page` opens the
+    # board at the fleet rather than printing it, joining the board already serving where there is one.
+    parser.add_argument("--page", action="store_true", help="open the board in a browser instead of printing it")
     parsed = parser.parse_args(argv)
     root = Path(parsed.root).expanduser()
     try:
         if not (root / ".slipwai").is_dir() and not (root / CONFIG).is_file():
             raise GenerationError(f"{root} is not a harbour: it has no .slipwai/ and no {CONFIG}. Run this "
                                   f"in a project `slipwai generate` or `slipwai adopt` made")
+        if parsed.page:
+            start_main(["--root", str(root)], interactive=True)
+            return
         if parsed.verb not in ("show", "watch"):
             print("\n".join(stream_lines(root, parsed.verb, parsed.limit)))
             return

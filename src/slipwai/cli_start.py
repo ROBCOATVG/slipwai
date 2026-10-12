@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import urllib.request
 import webbrowser
 from collections.abc import Callable
 from http.server import ThreadingHTTPServer
@@ -67,15 +68,39 @@ def will_open(argv: list[str], interactive: bool) -> bool:
     return interactive and NO_BROWSER not in argv
 
 
+def running(host: str = HOST, port: int = PORT, timeout: float = 0.5) -> bool:
+    """Whether a board is already serving there.
+
+    Asked of `/board.json`, which every board answers and nothing else on the machine would: the question is
+    not "is this port taken" but "is the board already up", and the answer decides whether a verb joins it
+    or binds one. `Server` is `http.server`'s own header, which the bridge names itself in.
+    """
+    try:
+        with urllib.request.urlopen(f"http://{host}:{port}/board.json", timeout=timeout) as answer:
+            return str(answer.headers.get("Server", "")).startswith("slipwai")
+    except (OSError, ValueError):  # HTTPError and URLError are both OSError; a bad URL is a ValueError
+        return False
+
+
 def open_board(root: Path, host: str = HOST, port: int = PORT,
-               open_page: Callable[[str], object] = webbrowser.open) -> ThreadingHTTPServer:
-    """A bound server with the browser pointed at it, not yet serving.
+               open_page: Callable[[str], object] = webbrowser.open,
+               at: str = "/") -> ThreadingHTTPServer | None:
+    """The browser pointed at the board, and the server that was bound for it — `None` where one was already
+    serving and this joined it instead.
+
+    There is one board, so a second verb opens a tab on the first rather than starting a rival on another
+    port. Two servers each sure they are the board is the failure this prevents, and it is not theoretical:
+    a person who ran `slipwai bridge` in one terminal and `slipwai` in another had two.
 
     Bound first and opened second, always: a browser sent to a port nothing is listening on is a blank tab
-    and a person who concludes the command is broken. Returned rather than run so a test can drive it.
+    and a person who concludes the command is broken. The server is returned rather than run, so a test can
+    drive it and close it.
     """
+    if running(host, port):
+        open_page(f"http://{host}:{port}{at}")
+        return None
     server = serve(root, host, port)
-    open_page(f"http://{host}:{server.server_address[1]}/")
+    open_page(f"http://{host}:{server.server_address[1]}{at}")
     return server
 
 
@@ -106,6 +131,9 @@ def start_main(argv: list[str], *, interactive: bool | None = None,
     except OSError as error:
         refuse(prog, f"the board could not bind {parsed.host}:{parsed.port} ({error}). "
                      f"`{prog} --port <n>` moves it")
+    if server is None:
+        print(f"board: http://{parsed.host}:{parsed.port}/  — already open, so this opened a tab on it")
+        return True
     print(f"board: http://{parsed.host}:{server.server_address[1]}/  — ctrl-c to stop")
     try:
         server.serve_forever()

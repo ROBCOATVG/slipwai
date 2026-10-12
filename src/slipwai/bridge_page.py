@@ -198,19 +198,20 @@ def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge"
            + f" · {spent if spent is not None else NOTHING}/{bunker['allowed']}k today")
     banked = f'<p class="empty">{esc(pressure["banked"])}</p>' if pressure["banked"] else ""
     feed = "".join(f"<li>{esc(w)}  {esc(who)}  {esc(kind)}</li>" for w, who, kind in found["feed"][-15:])
-    # What can be started leads where there is no fleet to lead with, and follows it where there is: a
-    # harbour with ten streams running is not a page about making an eleventh project. The published copy
-    # has it at neither end — it is a file on somebody's Pages site, and nothing can be started from there.
-    start = starting_points() if controls else ""
-    body = f"""{start if not berths else ""}
+    # What can be started leads where there is no fleet to lead with, and is the tab bar's business where
+    # there is: a harbour with ten streams running is not a page about making an eleventh project, and a
+    # card saying twice what the tabs already say is a page repeating itself. The published copy has it
+    # nowhere — it is a file on somebody's Pages site, and nothing can be started from there.
+    start = starting_points() if controls and not berths else ""
+    body = f"""{start}
 <div class="card"><h2>Waiting on you</h2>{inbox_rows(waiting, controls)}</div>
 {answer_boxes(berths) if controls else ""}
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {})}</div>
 <div class="card"><h2>Speed</h2>{dial(str(pressure["position"]), controls)}{banked}</div>
 {tune(config, controls)}
-<div class="card"><h2>Last lines</h2><ul class="feed">{feed or "<li>nothing yet</li>"}</ul></div>
-{start if berths else ""}"""
-    return document(title, sub, body, SCRIPT if controls else "")
+<div class="card"><h2>Last lines</h2><ul class="feed">{feed or "<li>nothing yet</li>"}</ul></div>"""
+    # The published copy is one file and has no other tab to reach, so it gets no bar.
+    return document(title, sub, body, SCRIPT if controls else "", now="/" if controls else "")
 
 
 def read_only(found: dict, config: dict, title: str = "Bridge") -> str:

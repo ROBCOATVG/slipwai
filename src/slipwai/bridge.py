@@ -27,9 +27,9 @@ from .adopt_page import looked
 from .adopt_page import page as adoption
 from .adopt_page import run as adopt
 from .bridge_page import page, payload
-from .cli_fleet import config
 from .cli_telegraph import ring, set_one
 from .fleet import board
+from .harbour import config
 from .interview_page import form
 from .interview_page import page as interview
 from .interview_page import run as generate

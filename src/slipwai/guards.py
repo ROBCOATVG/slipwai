@@ -28,6 +28,12 @@ things a person asked for, so election names the guards an extension declares an
 once. An extension that declares a guard nobody agreed to fires none — `.slipwai/guards.json` is written
 from the agreement, not from the manifest, and like `.slipwai/hooks.json` it is a controlled file.
 
+**And once per quickstart, not once per project** (13.4). The agreement travels in the quickstart that
+elected the extension, because a person who said yes when they wrote it has said yes; a project generated
+from one is asked nothing it already carries. An extension that has *gained* a guard since is asked about
+again, naming only the new point — which is why the agreement is recorded per guard rather than per
+extension, here and in the project's own `guards.py`.
+
 **Why there are seven and not three.** The set is closed, so widening it is a keel change, and a keel change
 to add a point is the cost this file exists to avoid paying twice. The three it opened with were the three
 `codegraph` needed. The four added on 2026-10-08 are the *shapes* the three leave out, and each was added

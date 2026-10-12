@@ -178,6 +178,66 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(written["guards"], {})
 
 
+class AskedOncePerQuickstartTest(unittest.TestCase):
+    """13.4: a person who said yes when they wrote the quickstart has said yes.
+
+    The guard question is the one question in `./init` that is about *refusing what somebody asked for*,
+    and asking it again in every project generated from one quickstart is how a person learns to answer it
+    without reading it. So the agreement travels with the quickstart — and only as far as it goes: an
+    extension that has *gained* a guard since is asked about again, naming the new one and nothing else.
+    """
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        (self.root / "project.json").write_text("{}", encoding="utf-8")
+        place = self.root / "scripts/extensions"
+        place.mkdir(parents=True)
+        self.script = place / "guards.py"
+        self.script.write_text(RUNNER.read_text(encoding="utf-8"), encoding="utf-8")
+
+    def available(self, declared: dict) -> None:
+        (self.root / "scripts/extensions/available-guards.json").write_text(
+            json.dumps(declared), encoding="utf-8")
+
+    def record(self, agreed: dict) -> None:
+        (self.root / ".slipwai").mkdir(exist_ok=True)
+        (self.root / ".slipwai/quickstart.json").write_text(
+            json.dumps({"v": 1, "name": "ours", "extensions": sorted(agreed), "guards": agreed}),
+            encoding="utf-8")
+
+    def offer(self, *keys: str) -> subprocess.CompletedProcess:
+        """`--offer` with nobody at a terminal, which is how a question that is asked would be refused."""
+        return subprocess.run([sys.executable, str(self.script), "--offer", *keys],
+                              capture_output=True, text=True, cwd=self.root,
+                              stdin=subprocess.DEVNULL, timeout=60)
+
+    def written(self) -> dict:
+        return json.loads((self.root / ".slipwai/guards.json").read_text(encoding="utf-8"))["guards"]
+
+    def test_a_guard_agreed_when_the_quickstart_was_written_fires_without_being_asked_about(self) -> None:
+        self.available({"cg": {"before-search": {"run": "g.py"}}})
+        self.record({"cg": ["before-search"]})
+        done = self.offer("cg")
+        self.assertEqual(done.returncode, 0)
+        self.assertEqual(self.written()["before-search"][0]["extension"], "cg")
+        self.assertIn("quickstart", done.stdout)
+
+    def test_a_guard_the_extension_gained_since_is_the_only_one_asked_about(self) -> None:
+        """And with nobody there to answer, silence is still no — for the new one alone. The agreement
+        already given is not withdrawn by a question nobody was present for."""
+        self.available({"cg": {"before-search": {"run": "g.py"}, "before-write": {"run": "w.py"}}})
+        self.record({"cg": ["before-search"]})
+        self.offer("cg")
+        self.assertIn("before-search", self.written())
+        self.assertNotIn("before-write", self.written())
+
+    def test_an_extension_the_quickstart_did_not_agree_to_is_asked_about_as_it_always_was(self) -> None:
+        self.available({"cg": {"before-search": {"run": "g.py"}}})
+        self.record({"other": ["before-search"]})
+        self.offer("cg")
+        self.assertEqual(self.written(), {})
+
+
 class CarriedTest(unittest.TestCase):
     """The runner's own copy of what each guard can stop, held to the keel's."""
 
@@ -197,6 +257,15 @@ class CarriedTest(unittest.TestCase):
 
     def test_both_sides_refuse_on_the_same_exit_code(self) -> None:
         self.assertEqual(self.runner.REFUSE, guards.REFUSE)
+
+    def test_only_what_nobody_has_agreed_to_is_what_a_person_is_asked(self) -> None:
+        """The arithmetic 13.4 rests on, where a terminal is not needed to read it: what is asked is the
+        declared guards minus the agreed ones, per extension, and an extension with nothing new drops out
+        of the question entirely rather than appearing with an empty list."""
+        offered: dict[str, dict] = {"cg": {"before-search": {}, "before-write": {}},
+                                    "ux": {"before-stop": {}}}
+        asked = self.runner.newly(offered, {"cg": ["before-search"], "ux": ["before-stop"]})
+        self.assertEqual(asked, {"cg": {"before-write": {}}})
 
     def test_both_sides_default_to_the_same_budget(self) -> None:
         self.assertEqual(self.runner.DEFAULT_BUDGET, guards.DEFAULT_BUDGET)

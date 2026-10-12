@@ -5,9 +5,11 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import checkout_packages  # noqa: F401
 
+from slipwai import migration_merge
 from slipwai.errors import GenerationError
 from slipwai.migration_merge import git, install, merge, modes, tracked
 
@@ -125,6 +127,27 @@ class GitMergeTest(unittest.TestCase):
         with self.assertRaises(GenerationError) as late:
             git(self.root, "rev-parse", "--verify", "refs/heads/absent")
         self.assertIn("git reset --hard ORIG_HEAD", str(late.exception))
+
+    def test_no_one_git_command_line_carries_a_whole_projects_paths(self) -> None:
+        before, theirs, commit = self.fixture(b"person\nkeep\nkeep\nkeep\nlast\n",
+                                              b"first\nkeep\nkeep\nkeep\nfactory\n")
+        result = merge(before, tracked(self.root), theirs)
+        result.files.update({f"apps/service/src/main/java/com/example/orders/Order{number:05d}.java": b"x\n"
+                             for number in range(1000)})
+        original, lengths = migration_merge.git, []
+
+        def spy(root: Path, *arguments: str, data: bytes | None = None) -> bytes:
+            lengths.append(sum(len(part) + 1 for part in arguments))
+            return original(root, *arguments, data=data)
+
+        with patch("slipwai.migration_merge.git", spy):
+            install(self.root, result, commit, "Crossing", modes(self.root))
+        # Windows refuses a command line over 32767 characters, and the OSError it would raise here lands
+        # after `materialise` has already rewritten the working tree.
+        self.assertGreater(sum(len(name) for name in result.files), 32767)
+        self.assertLess(max(lengths), 32000)
+        self.assertEqual(self.command("status", "--porcelain"), "")
+        self.assertEqual(len(tracked(self.root)), len(result.files))
 
     def test_conflict_is_normal_git_state_and_abort_restores_the_persons_work(self) -> None:
         before, theirs, commit = self.fixture(b"person\nkeep\nkeep\nkeep\nlast\n",

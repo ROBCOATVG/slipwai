@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import subprocess
 import tempfile
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,6 +41,28 @@ def git(root: Path, *arguments: str, data: bytes | None = None) -> bytes:
         raise GenerationError(f"git {arguments[0]} failed: {done.stderr.decode(errors='replace').strip()}. "
                               f"{remedy(root)}")
     return done.stdout
+
+
+#: How much of one command line this will fill with paths. Well under the smallest limit any supported
+#: platform has — Windows refuses a command line over 32767 characters — because the alternative is an
+#: `OSError` raised after `materialise` has already rewritten the working tree, which nothing on the way
+#: out of `migrate` catches: it reaches the person as a traceback over a half-crossed project.
+LINE = 24_000
+
+
+def stage(root: Path, names: Collection[str]) -> None:
+    """Stage every path by name, in as many commands as it takes. Never `-A`: `.python-tools` and every
+    other untracked local thing stays untracked."""
+    batch: list[str] = []
+    length = 0
+    for name in sorted(names):
+        if batch and length + len(name) + 1 > LINE:
+            git(root, "add", "-f", "--", *batch)
+            batch, length = [], 0
+        batch.append(name)
+        length += len(name) + 1
+    if batch:
+        git(root, "add", "-f", "--", *batch)
 
 
 def tracked(root: Path) -> Tree:
@@ -158,7 +181,7 @@ def install(root: Path, result: Merged, theirs: str, message: str, executable: d
     UNDOABLE.add(root.resolve())
     materialise(root, result.files, executable)
     git(root, "add", "-A")
-    git(root, "add", "-f", "--", *result.files)
+    stage(root, result.files)
     head_path = git(root, "rev-parse", "--git-path", "MERGE_HEAD").decode().strip()
     (root / head_path).write_text(theirs + "\n", encoding="ascii")
     mode_path = git(root, "rev-parse", "--git-path", "MERGE_MODE").decode().strip()

@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 from .errors import GenerationError
-from .migration_merge import git, materialise, modes, tracked
+from .migration_merge import git, materialise, modes, stage, tracked
 from .migration_renames import moved, renamed
 
 
@@ -44,7 +44,7 @@ def prepare(root: Path, branches: dict[str, str], rows: list[dict[str, str]]) ->
             executable = {moved(name, rows): mode for name, mode in modes(clone).items()}
             materialise(clone, updated, executable)
             git(clone, "add", "-A")
-            git(clone, "add", "-f", "--", *updated)
+            stage(clone, updated)
             git(clone, "-c", "user.name=slipwai migration", "-c", "user.email=migration@slipwai.invalid",
                 "commit", "--quiet", "-m", "Apply version 2's declared renames before rebasing this claim")
             commit = git(clone, "rev-parse", "HEAD").decode().strip()

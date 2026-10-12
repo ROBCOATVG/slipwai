@@ -182,12 +182,15 @@ def install(root: Path, result: Merged, theirs: str, message: str, executable: d
     materialise(root, result.files, executable)
     git(root, "add", "-A")
     stage(root, result.files)
+    # `newline=""` on all three: these are Git's own control files and the newline in them is a byte, not
+    # a line ending to translate. Python's text mode writes `\r\n` for `\n` on Windows, which git reads as
+    # part of the object name — "Corrupt MERGE_HEAD file (<sha>?)", mid-crossing, with the merge half made.
     head_path = git(root, "rev-parse", "--git-path", "MERGE_HEAD").decode().strip()
-    (root / head_path).write_text(theirs + "\n", encoding="ascii")
+    (root / head_path).write_text(theirs + "\n", encoding="ascii", newline="")
     mode_path = git(root, "rev-parse", "--git-path", "MERGE_MODE").decode().strip()
-    (root / mode_path).write_text("no-ff", encoding="ascii")
+    (root / mode_path).write_text("no-ff", encoding="ascii", newline="")
     location = git(root, "rev-parse", "--git-path", "MERGE_MSG").decode().strip()
-    (root / location).write_text(message + "\n", encoding="utf-8")
+    (root / location).write_text(message + "\n", encoding="utf-8", newline="")
     if result.conflicts:
         index = bytearray()
         for name, entries in result.conflicts.items():

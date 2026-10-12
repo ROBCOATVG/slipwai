@@ -89,6 +89,26 @@ class GitMergeTest(unittest.TestCase):
         self.command("commit", "-qm", "person")
         return before, theirs, commit
 
+    def test_gits_own_control_files_are_written_with_the_newline_git_reads(self) -> None:
+        """A `\\n` in MERGE_HEAD is a byte, not a line ending, and Python's text mode does not know it.
+
+        On Windows the default translation wrote `<sha>\\r\\n`; git read the object name as `<sha>\\r` and
+        the crossing died with "Corrupt MERGE_HEAD file" *after* the merge was half made — the worst
+        moment for it, in somebody else's repository. Read as bytes and on every platform, because the
+        platform this was written on cannot reproduce it.
+
+        Down the conflict path, which is where these files survive: a clean commit removes them.
+        """
+        before, theirs, commit = self.fixture(b"person\nkeep\nkeep\nkeep\nlast\n",
+                                              b"factory\nkeep\nkeep\nkeep\nlast\n")
+        install(self.root, merge(before, tracked(self.root), theirs), commit, "Crossing", modes(self.root))
+        self.assertEqual(self.command("rev-parse", "MERGE_HEAD"), commit)
+        for name in ("MERGE_HEAD", "MERGE_MODE", "MERGE_MSG"):
+            path = self.root / self.command("rev-parse", "--git-path", name)
+            with self.subTest(control=name):
+                self.assertTrue(path.is_file(), f"{name} is not there to check")
+                self.assertNotIn(b"\r\n", path.read_bytes(), f"{name} carries a translated line ending")
+
     def test_clean_crossing_is_one_merge_commit_with_the_real_project_undo_point(self) -> None:
         before, theirs, commit = self.fixture(b"person\nkeep\nkeep\nkeep\nlast\n",
                                               b"first\nkeep\nkeep\nkeep\nfactory\n")

@@ -188,7 +188,10 @@ class OwnProseTest(unittest.TestCase):
         return sorted([*ROOT.glob("*.md"), *(ROOT / "docs").rglob("*.md")])
 
     def allowance(self, path: Path) -> set[str]:
-        name = str(path.relative_to(ROOT))
+        # `as_posix`, because the keys below are written with forward slashes and `str(PurePath)` on
+        # Windows is backslashed — so every allowance missed and every page this test exists to permit
+        # failed there, while the platform that wrote the rule passed.
+        name = path.relative_to(ROOT).as_posix()
         for prefix, words in self.ALLOWED.items():
             if name == prefix or name.startswith(f"{prefix}/"):
                 return words
@@ -200,9 +203,10 @@ class OwnProseTest(unittest.TestCase):
             for word, pattern in RETIRED.items():
                 if word in allowed:
                     continue
-                with self.subTest(page=str(path.relative_to(ROOT)), word=word):
+                shown = path.relative_to(ROOT).as_posix()
+                with self.subTest(page=shown, word=word):
                     found = re.findall(rf"\b{pattern}\b", text, re.I)
-                    self.assertEqual(found, [], f"{path.relative_to(ROOT)} says {found}; use the slipway's word")
+                    self.assertEqual(found, [], f"{shown} says {found}; use the slipway's word")
 
     def test_an_allowance_with_nothing_behind_it_is_refused(self) -> None:
         """An allowance outlives the text it was written for, and is then a hole nobody can see."""

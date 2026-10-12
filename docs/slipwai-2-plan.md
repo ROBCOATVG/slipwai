@@ -1322,6 +1322,23 @@ Opened 2026-10-09 by phase 15, each with the answer that phase is written to and
   brownfield repository — goes away with 15.9, and what is left is a preference not to maintain
   `model.yaml`. Revisit when 15.11 gives an adopted repository a model page on the day it is adopted.
 
+Taken 2026-10-12 by the harbourmaster, clearing the park on 11.2:
+
+- **The log sync is one ref per writer, and nothing is ever merged into one file.** Section 12 sketched
+  `refs/slipwai/logs/<fairway>` — a blob per fairway — and section 14's 11.3 made the harbour log one file
+  per machine, and the phase 11 captain parked 11.2 rather than guess which was meant, because the wrong
+  answer loses lines silently. They are not two answers. They are one rule over two partitions: a deck
+  log's only writer is that fairway's captain, a harbour log's only writer is that machine's
+  harbourmaster, so `refs/slipwai/logs/<fairway>` and `refs/slipwai/logs/harbour/<machine>` each have
+  exactly one writer and neither can conflict. The question the captain could not answer — where another
+  machine's deck log lands locally — is dissolved rather than decided: **it lands nowhere.** It is read
+  from the ref. A local `.slipwai/logs/<feature>/<fairway>.jsonl` is written only by this machine's
+  captain for its own fairway, and a reader that wants another machine's lines fetches the ref and reads
+  the blob. Nothing ever folds two writers' lines into one file, which is the only way a line can be lost:
+  the append-only property holds per writer, and merging is what would break it. 11.2's branch travel
+  takes the same shape for the same reason — one ref per fairway's in-flight work, pushed by the captain
+  that owns it.
+
 Opened 2026-10-09 by the owner, reading 15.5 back:
 
 - **On the `state` rung an event is modelled always and emitted only where something reads it, and two

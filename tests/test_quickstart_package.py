@@ -170,5 +170,56 @@ class InstallTest(unittest.TestCase):
         self.assertIn("search --kind quickstart", str(refused.exception))
 
 
+class ShippedExampleTest(unittest.TestCase):
+    """13.5: the one the owner asked for, shipped as an example rather than as a default.
+
+    The whole of the slice is in the second half of that sentence. A default quickstart would be a default
+    set of third-party extensions, chosen for every project anybody generates, on no evidence beyond one
+    person's preference. So this suite holds two things: that the example is a real quickstart the commands
+    can carry out, and that nothing anywhere reaches for it on its own.
+    """
+
+    ROOT = Path(__file__).resolve().parents[1]
+    EXAMPLE = ROOT / "docs/reference/typescript-ui"
+
+    def test_it_is_a_quickstart_this_keel_can_read_and_check(self) -> None:
+        self.assertEqual(kind_of(self.EXAMPLE), QUICKSTART)
+        self.assertEqual(check_quickstart(self.EXAMPLE), 0)
+
+    def test_it_is_what_the_owner_asked_for(self) -> None:
+        one = quickstart.load(self.EXAMPLE / quickstart.MANIFEST)
+        self.assertEqual(one.language, "typescript")
+        self.assertEqual([each.name for each in one.extensions], ["codegraph", "uipro", "ux-gates"])
+        self.assertEqual(one.frontend, "react-vite")
+
+    def test_the_guard_it_agreed_to_is_named_where_a_person_reads_it(self) -> None:
+        """It carries an agreement for `codegraph` to refuse a search (13.4). A quickstart that carried
+        that silently would be the one thing a guard must never be: a permission nobody was shown."""
+        one = quickstart.load(self.EXAMPLE / quickstart.MANIFEST)
+        self.assertEqual(one.extensions[0].guards, ("before-search",))
+        self.assertIn("before-search", "\n".join(quickstart.in_words(one)))
+
+    def test_nothing_in_the_keel_ships_it_or_installs_it(self) -> None:
+        """Not in the assets, so no generated project carries it; not in the catalogue, so no command
+        offers it. The only way it reaches anybody is somebody installing it by name."""
+        self.assertEqual(sorted((self.ROOT / "assets").rglob(quickstart.MANIFEST)), [])
+        self.assertEqual(sorted((self.ROOT / "src").rglob(quickstart.MANIFEST)), [])
+
+    def test_the_interview_offers_no_quickstart_where_none_is_installed(self) -> None:
+        """The example exists in this checkout and the menu is still one row: declining. There is no
+        default quickstart, and a person who has installed none is asked nothing."""
+        from slipwai import cli_generate
+        with tempfile.TemporaryDirectory() as empty, \
+                mock.patch.dict(os.environ, {quickstart.VARIABLE: empty}):
+            self.assertEqual(cli_generate.quickstart_menu()[0], [cli_generate.DECLINE])
+
+    def test_it_names_its_packages_by_range_like_any_other(self) -> None:
+        one = quickstart.load(self.EXAMPLE / quickstart.MANIFEST)
+        for each in (*one.languages, *one.extensions):
+            with self.subTest(package=each.name):
+                self.assertIn(">=", each.version)
+                self.assertNotIn("==", each.version)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

@@ -1,0 +1,38 @@
+{
+  "quickstart": 1,
+  "name": "typescript-ui",
+  "suits": "A product whose browser app is the product: TypeScript on both sides, with the code index and the two UI review gates already switched on.",
+  "core": ">=9.0,<10",
+  "answers": {
+    "profile": "event-modelling",
+    "target": "none",
+    "language": "typescript",
+    "frontend": "react-vite",
+    "axes": {
+      "persistence": "postgres"
+    }
+  },
+  "languages": [
+    {
+      "name": "typescript",
+      "version": ">=1.0,<2"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "codegraph",
+      "version": ">=1.0,<2",
+      "guards": [
+        "before-search"
+      ]
+    },
+    {
+      "name": "uipro",
+      "version": ">=1.0,<2"
+    },
+    {
+      "name": "ux-gates",
+      "version": ">=1.0,<2"
+    }
+  ]
+}

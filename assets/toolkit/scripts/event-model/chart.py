@@ -25,8 +25,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-MODEL = ROOT / "docs/event-model/model.yaml"
+def project_root(script: Path) -> Path:
+    """Specs and the manifest stay at the repository root when adoption relocates delivery material."""
+    for candidate in script.parents:
+        if (candidate / "project.json").is_file():
+            return candidate
+    return script.parents[2]
+
+
+DELIVERY = Path(__file__).resolve().parents[2]
+ROOT = project_root(Path(__file__).resolve())
+MODEL = DELIVERY / "docs/event-model/model.yaml"
 MANIFEST = ROOT / "project.json"
 SPECS = ROOT / "specs"
 #: What an event mark names. The fragment is the event; the file is the model, which is the contract here.
@@ -119,7 +128,7 @@ def service_for(item: dict, deployables: dict[str, dict]) -> tuple[str, dict] | 
     return (only, deployables[only]) if only else None
 
 
-def render(model: object, deployables: dict[str, dict]) -> dict:
+def render(model: object, deployables: dict[str, dict], model_path: str = MODEL_PATH) -> dict:
     """The chart this model means. Sorted throughout, so two renders of one model are one chart."""
     slices = model.get("slices") if isinstance(model, dict) else None
     items = [item for item in slices if isinstance(item, dict) and item.get("id")] if isinstance(slices, list) else []
@@ -137,7 +146,7 @@ def render(model: object, deployables: dict[str, dict]) -> dict:
                              "owns": owns(service, record, context)}
     for item in sorted(items, key=lambda entry: str(entry["id"])):
         for event in events_of(item):
-            marks[event] = {"kind": "event", "schema": f"{MODEL_PATH}#{event}"}
+            marks[event] = {"kind": "event", "schema": f"{model_path}#{event}"}
     for item in sorted(items, key=lambda entry: str(entry["id"])):
         reads = item.get("reads")
         charted[str(item["id"])] = {
@@ -168,7 +177,7 @@ def rendered() -> dict | None:
     """The chart the model means, or None where there is no model to mean one."""
     if not MODEL.is_file():
         return None
-    return render(load_yaml(MODEL.read_text(encoding="utf-8")), services())
+    return render(load_yaml(MODEL.read_text(encoding="utf-8")), services(), MODEL.relative_to(ROOT).as_posix())
 
 
 def main() -> int:
@@ -192,7 +201,7 @@ def main() -> int:
     path = chart_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     document = (
-        "# Rendered from docs/event-model/model.yaml by `make chart`. Never edit by hand:\n"
+        f"# Rendered from {MODEL.relative_to(ROOT).as_posix()} by `make chart`. Never edit by hand:\n"
         "# `make check-chart` refuses a chart that disagrees with the model.\n"
         + yaml.safe_dump(chart, sort_keys=True, default_flow_style=False, allow_unicode=True)
     )

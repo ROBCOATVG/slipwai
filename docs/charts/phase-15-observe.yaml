@@ -1,0 +1,34 @@
+feature: phase-15-observe
+fairways:
+  phase-15-event-modelling:
+    owns:
+      - src/slipwai/project/observe_command.py
+      - src/slipwai/project/pin_commands.py
+      - src/slipwai/project/sail_adoption.py
+      - assets/toolkit/scripts/event-model/chart.py
+      - assets/toolkit/scripts/check-chart.py
+      - scripts/bring-back.py
+      - tests/test_observe_command.py
+      - tests/test_observe_model.py
+      - Makefile
+      - docs/charts/phase-15-observe.yaml
+slices:
+  '15.12':
+    fairway: phase-15-event-modelling
+    sets: [CapabilityObservationCommand]
+    steers_by: [ObservedWrappedSlice, CharacterisedBehaviour, ConfirmedWriteModel]
+marks:
+  CapabilityObservationCommand:
+    kind: port
+    inputs: {capability: one-behaviour, service: confirmed-wrapped-service, evidence: source-and-pinned-tests}
+    outputs: {model: observed-slices, extraction: transition-business-fact-source-line, examples: pinned-given-when-then}
+  ObservedWrappedSlice:
+    kind: schema
+    schema: {type: object, required: [id, capability, service, status, frames, code, gwt]}
+  CharacterisedBehaviour:
+    kind: port
+    inputs: {behaviour: one-seam}
+    outputs: {tests: passing-characterisation-tests, ledger: survey/pinned.md}
+  ConfirmedWriteModel:
+    kind: schema
+    schema: {type: object, required: [generated, eventSourced, provenance]}

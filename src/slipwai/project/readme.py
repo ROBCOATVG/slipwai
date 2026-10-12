@@ -7,6 +7,7 @@ same answers for a tool to read.
 from __future__ import annotations
 
 from ..catalog import CATALOG
+from ..deployment_shapes import row
 from ..loaded_targets import cloud_of
 from ..services import App, described, frontend_of, services_of, web_apps
 from ..targets import managed
@@ -18,7 +19,9 @@ from .target_docs import words as target_words
 from .write_model_prose import readme_write_model
 
 
-def readme(project_name: str, profile: str, apps: list[App], target: str = "none") -> str:
+def readme(
+    project_name: str, profile: str, apps: list[App], target: str = "none", shape: str = "liner",
+) -> str:
     event = profile == "event-modelling"
     frontend = frontend_of(apps)
     title = project_name.replace("-", " ").replace("_", " ").title()
@@ -52,7 +55,7 @@ make verify
 the repository's local and CI quality gate. Add one small vertical slice at a time and keep the main branch
 releasable.
 
-{services_readme(services, web)}{running_readme(services, web)}{production_readme(target, services, web)}
+{services_readme(services, web)}{running_readme(services, web)}{production_readme(target, services, web, shape)}
 ## Documentation
 
 [`docs/workflow.md`](docs/workflow.md) diagrams the delivery loop each slice travels, from the constitution
@@ -267,12 +270,31 @@ def start_here_production(target: str) -> str:
     )
 
 
-def production_readme(target: str, services: list[App], web: list[App]) -> str:
+def production_readme(target: str, services: list[App], web: list[App], shape: str = "liner") -> str:
     """The README's account of where this project goes to production, for a project that goes anywhere."""
     if target == "existing":
         return EXISTING_README
     if not managed(CATALOG, target):
         return ""
+    if shape == "skiff" and (choice := row(target, shape)):
+        return f"""
+## Production
+
+This project's skiff deploys one production environment. Every verified main-branch commit builds and
+pushes immutable images, deploys production and proves its endpoint with a smoke check. There is no
+staging promotion step. Compute is {choice['compute']}; the database is {choice['database']}.
+
+```sh
+make bootstrap                    # configure the account and forge once, with explicit credentials
+make deploy ENV=production        # the pipeline's deployment operation
+make smoke URL=$(make -s url ENV=production)
+make rollback ENV=production      # restore the recorded previous images
+```
+
+[Deployment details](docs/deployment.md) and [infrastructure operations](infra/README.md) describe this
+shape. `slipwai converge --shape liner` prepares a proposed change and its data-preserving cutover runbook;
+it never applies infrastructure or discards the current database.
+"""
     words = target_words(target)
     site = words["site"] if web else ""
     return f"""

@@ -19,6 +19,7 @@ from slipwai.target_protocol import (
     ADD_COMMANDS,
     AGENT_RULES,
     DOCS_PAGES,
+    DEPLOYMENT_SHAPES,
     FLAG_TRANSPORTS,
     IMAGE_REGISTRY,
     PIPELINE,
@@ -32,6 +33,7 @@ from slipwai.target_protocol import (
 )
 
 from .docs import deployment_diagram, production_adr
+from .deployment import choices
 
 #: The account's stack, applied once by `make bootstrap`, and the service's, applied per environment by
 #: `make deploy`. The files are this package's own, by the path they have in it.
@@ -182,6 +184,7 @@ TARGET = Target(
     name="azure",
     answers={
         SHAPES: STACKS,
+        DEPLOYMENT_SHAPES: choices(STACKS, PROJECT_SCRIPTS),
         SCRIPTS: PROJECT_SCRIPTS,
         DOCS_PAGES: {
             "docs/adr/0002-production-target.md": production_adr,

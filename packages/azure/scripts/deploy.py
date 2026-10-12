@@ -9,7 +9,7 @@ failure reads as the command that failed.
 
     scripts/deploy.py push <name>=<image> ...         push each built image, record the digests in .build/images.json
     scripts/deploy.py smoke-image <name>=<image> ...  run each built image locally and prove its probe answers
-    scripts/deploy.py deploy <env>                    migrate, apply the service stack, upload the site, record the release
+    scripts/deploy.py deploy <env>                    migrate, apply, upload the site, record the release
     scripts/deploy.py rollback <env>                  re-apply the release before the current one
     scripts/deploy.py promote [<commit>]              ask the forge to deploy production with what staging runs
     scripts/deploy.py promoting <env> [<commit>]      print the commit that would be promoted, and nothing else
@@ -268,6 +268,9 @@ def tofu(*arguments: str, capture: bool = False) -> str:
 
 
 def select_workspace(environment: str) -> None:
+    if manifest().get("shape", "liner") == "skiff" and environment != "production":
+        raise Failure("a skiff has only production, so no staging workspace may be created. "
+                      "Run: make deploy ENV=production")
     which("tofu")
     which("az")
     tofu(
@@ -769,6 +772,9 @@ def promote(arguments: list[str]) -> None:
     could not when it cannot: the answer belongs to the run, which resolves it again for itself, and a
     laptop without access to the state account can still promote.
     """
+    if manifest().get("shape", "liner") == "skiff":
+        raise Failure("a skiff deploys directly to its sole production environment. "
+                      "Run: make deploy ENV=production")
     if len(arguments) > 1:
         raise Failure("expected: promote [<commit>]")
     wanted = (arguments[0] if arguments else "").strip()
@@ -975,7 +981,8 @@ def flag(arguments: list[str]) -> None:
             "az", "containerapp", "revision", "restart", "--name", app,
             "--resource-group", found["resource_group"], "--revision", name, "--output", "json",
         ], capture=True)
-    print(f"{environment}: {identifier} = {value}. {app} is restarting to read it; `make flags ENV={environment}` shows the environment.")
+    print(f"{environment}: {identifier} = {value}. {app} is restarting to read it; "
+          f"`make flags ENV={environment}` shows the environment.")
     web = web_app()
     if web is not None and web.get("api") == service:
         # Both halves move on this one restart. Worth saying at the moment of the flip, because the browser

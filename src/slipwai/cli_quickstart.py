@@ -221,7 +221,7 @@ def files_with_record(args: Any, apps: list[Any]) -> dict[str, str] | None:
         return None
     one = quickstart.find(args.quickstart)
     from .scaffold import project_files
-    return {**project_files(args.name, args.profile, args.target, apps),
+    return {**project_files(args.name, args.profile, args.target, apps, shape=getattr(args, "shape", None)),
             quickstart.RECORD: quickstart.record(one)}
 
 

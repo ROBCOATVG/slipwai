@@ -22,6 +22,7 @@ from .adopt import STRUCTURE_PAGE, SURVEY_PAGE, facts
 from .adopt_report import survey_page
 from .big_picture import big_picture
 from .convergence import reconciled
+from .deployment_shapes import recorded
 from .errors import GenerationError
 from .layout import Layout, layout_of
 from .manifest import apps_from_manifest, read_manifest, wrote_here
@@ -244,11 +245,13 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
     )
 
     arguments = (document["name"], document["profile"], document["target"])
-    before = project_files(*arguments, apps, layout, adoption)
+    before = project_files(*arguments, apps, layout, adoption, recorded(document))
     shape = structure(root, updated, layout.delivery, FACTORY_IDENTITY["GIT_AUTHOR_EMAIL"])
     picture = big_picture_files(big_picture(root, updated, shape, layout.delivery), layout)
     before = with_picture(before, picture, layout)
-    after = with_picture(project_files(*arguments, updated, layout, after_adoption), picture, layout)
+    after = with_picture(
+        project_files(*arguments, updated, layout, after_adoption, recorded(document)), picture, layout,
+    )
     executables = {layout.place(path) for path in executable_paths(document["profile"], updated)}
     # A file the keel wrote before, still on disk and no longer listed in `.written`, is the repository's own from
     # then on: taking one over is deleting its line, and the keel leaves it alone and says so — the third real

@@ -94,7 +94,7 @@ def cloud_environment(target: str, auth0: bool) -> str:
     return pipeline(target)["environment"] + (AUTH0_ENVIRONMENT if auth0 else "")
 
 
-def deploy_workflow(apps: list[App], target: str, auth0: bool) -> str:
+def deploy_workflow(apps: list[App], target: str, auth0: bool, shape: str = "liner") -> str:
     services = services_of(apps)
     families = families_of(apps)
     setups = "".join(
@@ -103,7 +103,10 @@ def deploy_workflow(apps: list[App], target: str, auth0: bool) -> str:
     tools = "".join(TOOL_SETUPS[tool] for tool in tools_needed(backends_of(apps)))
     cloud = pipeline(target)
     web = bool(web_apps(apps))
-    return (
+    deployment = (deploy_job("production", "build", web, target) if shape == "skiff" else
+                  deploy_job("staging", "build", web, target)
+                  + deploy_job("production", "staging", web, target, condition="vars.AUTO_PROMOTE != 'false'"))
+    result = (
         """name: deploy
 # Every commit that passes `verify` on main goes all the way to production, in one pipeline: build once, push
 # by digest, apply staging, prove it, apply production, prove it. The gate is `verify`: this workflow starts
@@ -142,12 +145,14 @@ env:
         + cloud["registry_login"]
         + """      - run: make build push
 """
-        + deploy_job("staging", "build", web, target)
-        # `!=`, not `== 'true'`: a project bootstrapped before this variable existed has no variable, and
-        # absent has to keep meaning what it has always meant here — deploy production. Only an explicit
-        # `false`, which `make bootstrap` writes on purpose, holds this job back.
-        + deploy_job("production", "staging", web, target, condition="vars.AUTO_PROMOTE != 'false'")
+        + deployment
     )
+    if shape == "skiff":
+        start = result.index("# Every commit")
+        end = result.index("on:\n", start)
+        result = (result[:start] + "# Every verified main commit builds immutable images, deploys the one production\n"
+                  "# environment and proves its endpoint. Every job checks out the verified commit.\n" + result[end:])
+    return result
 
 
 def promotion_workflow(web: bool, target: str, auth0: bool) -> str:

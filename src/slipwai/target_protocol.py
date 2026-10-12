@@ -78,9 +78,14 @@ PREREQUISITES: TargetMember[Any] = M("prerequisites", False, tuple, "a line per 
 #: its flags the one way every project can — out of the environment the platform resolved them into.
 FLAG_TRANSPORTS: TargetMember[Any] = M("flag_transports", False, dict, "the default transport, and the opt-in one")
 
+#: Project deployment choices, distinct from the bootstrap/service stack phases above.
+DEPLOYMENT_SHAPES: TargetMember[Any] = M(
+    "deployment_shapes", False, dict, "skiff or liner -> compute, database, stacks, scripts, environments and guidance",
+)
+
 PROTOCOL: tuple[TargetMember[Any], ...] = (
     SHAPES, SCRIPTS, DOCS_PAGES, TOOLS, IMAGE_REGISTRY, PIPELINE, README_WORDS, AGENT_RULES, ADD_COMMANDS,
-    REGION, PREREQUISITES, FLAG_TRANSPORTS,
+    REGION, PREREQUISITES, FLAG_TRANSPORTS, DEPLOYMENT_SHAPES,
 )
 
 #: What each dict-shaped member has to have in it, because the keel reads each of these by name. A member
@@ -156,6 +161,8 @@ def content_faults(said: str, member: TargetMember[Any], value: object) -> list[
         return shape_faults(said, value)
     if member is TOOLS:
         return tool_faults(said, value)
+    if member is DEPLOYMENT_SHAPES:
+        return deployment_faults(said, value)
     return key_faults(said, member, value)
 
 
@@ -195,3 +202,26 @@ def tool_faults(said: str, value: object) -> list[str]:
             f"told a tool is missing and not told where it comes from is a person left searching"
             for row in rows
             if not (isinstance(row, tuple) and len(row) == 3 and all(isinstance(part, str) and part for part in row))]
+
+
+def deployment_faults(said: str, value: object) -> list[str]:
+    """Optional deployment rows are complete choices, never a partially understood provider answer."""
+    rows = value if isinstance(value, dict) else {}
+    found = []
+    if set(rows) != {"skiff", "liner"}:
+        found.append(f"{said} deployment_shapes must name skiff and liner; update the target package")
+    for name, row in rows.items():
+        if not isinstance(row, dict):
+            found.append(f"{said} {name} is not a deployment row; update the target package")
+            continue
+        for key in ("compute", "database", "guidance", "transition"):
+            if not isinstance(row.get(key), str) or not row[key].strip():
+                found.append(f"{said} {name} is missing {key}; update the target package")
+        if not isinstance(row.get("stacks"), dict) or set(row["stacks"]) != set(BOTH_SHAPES):
+            found.append(f"{said} {name} needs both stack phases; update the target package")
+        if not isinstance(row.get("scripts"), dict) or not row["scripts"]:
+            found.append(f"{said} {name} needs project scripts; update the target package")
+        expected = ("production",) if name == "skiff" else ("staging", "production")
+        if row.get("environments") != expected:
+            found.append(f"{said} {name} environments must be {expected}; update the target package")
+    return found

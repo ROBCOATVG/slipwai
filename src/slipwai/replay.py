@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .assets import STYLE_CHECKER, VERSION
+from .deployment_shapes import recorded as recorded_shape
 from .errors import GenerationError
 from .layout import Layout, layout_of
 from .manifest import apps_from_manifest, check_known, read_manifest, recorded_languages, refuse_older, wrote_here
@@ -105,7 +106,9 @@ def replay(
     installed = pruner().features_installed(root, services)
     present = pruner().features_present(root, services)
 
-    files = project_files(name, document["profile"], document["target"], apps, target, adoption)
+    files = project_files(
+        name, document["profile"], document["target"], apps, target, adoption, recorded_shape(document),
+    )
     preserve_project_styles(root, parent, apps, files, target)
     manifest = json.loads(files["project.json"])
     used, recorded = manifest["generator"]["languages"], recorded_languages(document) or {}

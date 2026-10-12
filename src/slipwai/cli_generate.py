@@ -35,9 +35,11 @@ from .cli_prompts import (
 )
 from .cli_quickstart import missing
 from .errors import GenerationError
+from .loaded_targets import answer
 from .preflight import check as check_requirements
 from .services import FIRST_SERVICE, FIRST_WEB
-from .targets import check_project_name, offered_backends
+from .target_protocol import DEPLOYMENT_SHAPES
+from .targets import check_project_name, managed, offered_backends
 
 #: The row that declines, which is the first one and the default. There is deliberately no default
 #: quickstart: a quickstart elects third-party extensions, and nobody asked this keel to choose those.
@@ -126,6 +128,13 @@ def interview(args: Any, named: dict[str, str | None]) -> None:
         args.profile = prompt_profile()
     if "target" not in given:
         args.target = prompt_target()
+    if managed(CATALOG, args.target) and answer(args.target, DEPLOYMENT_SHAPES, default={}):
+        args.shape = prompt_choice(
+            "Deployment size", ["skiff", "liner"], "skiff",
+            lambda choice: ("one environment for colleagues; an outage is an inconvenience" if choice == "skiff"
+                            else "the full product stack; an outage is an incident"),
+            question="Who will use this product, and what happens when it is down?",
+        )
     # Asked before the target and checked against it: a name the target's cloud will not take is
     # said here, not after another nine questions.
     check_project_name(CATALOG, args.target, args.name)

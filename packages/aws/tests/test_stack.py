@@ -33,7 +33,7 @@ class AwsStackTest(FactoryTestCase):
         self, directory: str, name: str, backend: str = "typescript", frontend: str = "react-vite", **axes
     ):
         return self.generate(
-            directory, name, "event-modelling", backend, frontend, target="aws",
+            directory, name, "event-modelling", backend, frontend, target="aws", shape=axes.pop("shape", "liner"),
             persistence=axes.pop("persistence", "postgres"), http=axis_default("http", backend, "aws"),
             **axes,
         )

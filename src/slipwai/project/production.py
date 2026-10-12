@@ -91,9 +91,13 @@ def named_images(services: list[App]) -> str:
     return " ".join(pairs)
 
 
-def production_targets(project_name: str, apps: list[App], target: str) -> str:
+def production_targets(project_name: str, apps: list[App], target: str, shape: str = "liner") -> str:
     """The whole production section, for a project with a destination."""
     services = services_of(apps)
+    environment = "production" if shape == "skiff" else "staging"
+    promotion = "" if shape == "skiff" else """promote: ## Deploy production with the commit staging is running (the forge runs it): make promote
+\tpython3 scripts/deploy.py promote $(COMMIT)
+"""
     builds = " ".join(f"build-{service.name}" for service in services)
     migrating = [s for s in services if s.selection.migrating_feature is not None]
     # Only a store applied by a task — not by the framework at start-up — gives a person something to run by
@@ -105,7 +109,7 @@ def production_targets(project_name: str, apps: list[App], target: str) -> str:
     for feature in features:
         remote += f"""# backing-service:{feature}:begin
 .PHONY: migrate-remote
-migrate-remote: ## Run the services' migrations inside an environment, as a one-off task: make migrate-remote ENV=staging
+migrate-remote: ## Run the services' migrations inside an environment, as a one-off task: make migrate-remote ENV={environment}
 \tpython3 scripts/deploy.py migrate $(ENV)
 # backing-service:{feature}:end
 """
@@ -131,9 +135,9 @@ GIT_SHA ?= $(shell git rev-parse HEAD)
 IMAGE_REGISTRY ?=
 PLATFORM ?= linux/amd64
 PACK_FLAGS ?=
-ENV ?= staging
+ENV ?= {"production" if shape == "skiff" else "staging"}
 {flag_service}{image_variables(project_name, services)}
-.PHONY: bootstrap build {builds} push smoke-image smoke deploy promote rollback url flag flags
+.PHONY: bootstrap build {builds} push smoke-image smoke deploy {"promote " if shape != "skiff" else ""}rollback url flag flags
 bootstrap: ## Once, with admin {cloud} credentials: create what the pipeline needs and configure the repository on the forge
 	python3 scripts/bootstrap.py $(if $(REPOSITORY),--repository $(REPOSITORY),) $(if $(FORGE),--forge $(FORGE),) $(if $(AUTO_PROMOTE),--auto-promote $(AUTO_PROMOTE),)
 build: {builds} ## Build every service's production image (into the daemon, or --publish to IMAGE_REGISTRY)
@@ -141,18 +145,16 @@ build: {builds} ## Build every service's production image (into the daemon, or -
 \tpython3 scripts/deploy.py push {named_images(services)}
 smoke-image: ## Run each built image locally and prove it starts, listens and answers its probe
 \tpython3 scripts/deploy.py smoke-image {named_images(services)}
-deploy: ## Apply an environment from .build/images.json, migrate, upload the site, record the release: make deploy ENV=staging
+deploy: ## Apply an environment from .build/images.json, migrate, upload the site, record the release: make deploy ENV={environment}
 \tpython3 scripts/deploy.py deploy $(ENV)
-promote: ## Deploy production with the commit staging is running (the forge runs it): make promote
-	python3 scripts/deploy.py promote $(COMMIT)
-rollback: ## Re-apply the release before the current one: make rollback ENV=production
+{promotion}rollback: ## Re-apply the release before the current one: make rollback ENV=production
 \tpython3 scripts/deploy.py rollback $(ENV)
-url: ## Print an environment's address: make url ENV=staging
+url: ## Print an environment's address: make url ENV={environment}
 \t@python3 scripts/deploy.py url $(ENV)
 flag: ## Set a feature flag and restart the service that reads it: {flag_example}
 \tpython3 scripts/deploy.py flag $(ENV) $(SERVICE) $(KEY) $(VALUE)
-flags: ## Print an environment's feature flags and what they are set to now: make flags ENV=staging
+flags: ## Print an environment's feature flags and what they are set to now: make flags ENV={environment}
 \t@python3 scripts/deploy.py flags $(ENV)
-smoke: ## Prove a deployed environment answers: make smoke URL=$$(make -s url ENV=staging)
+smoke: ## Prove a deployed environment answers: make smoke URL=$$(make -s url ENV={environment})
 \tpython3 scripts/deploy.py smoke $(URL)
 {remote}"""

@@ -33,6 +33,8 @@ from .npm_workspace import NoBrowserLanguage
 from .registry import registry
 from .replay import replay
 from .replay import report as replay_report
+from .shape_converge import check as shape_check
+from .shape_converge import prepare as shape_prepare
 from .upgrade import newer_published
 
 # Set on the `migrate` this one starts once it has installed languages, which then neither installs nor warns again.
@@ -238,8 +240,18 @@ def converge_main(argv: list[str]) -> None:
         "for what the merge cannot carry; `git reset --hard ORIG_HEAD~1` undoes both. Nothing is pushed.",
     )
     parser.add_argument("--check", action="store_true", help="say whether this repository is ready, and stop")
+    parser.add_argument(
+        "--shape", choices=("skiff", "liner"),
+        help="prepare a deployment change and data-preserving cutover runbook",
+    )
     args = parser.parse_args(argv)
     try:
+        if args.shape:
+            if args.check:
+                print(shape_check(Path.cwd(), args.shape))
+            else:
+                print(f"Prepared: {shape_prepare(Path.cwd(), args.shape)}; read RUNBOOK.md before any apply or cutover")
+            return
         if args.check:
             readiness = converge_check(Path.cwd())
             print(converge_check_report(readiness))

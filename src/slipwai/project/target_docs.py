@@ -16,13 +16,14 @@ change of neither name nor number.
 """
 from __future__ import annotations
 
+from ..deployment_shapes import row
 from ..errors import GenerationError
 from ..loaded_targets import answer
 from ..services import App
 from ..target_protocol import DOCS_PAGES, PREREQUISITES, README_WORDS
 
 
-def pages(project_name: str, apps: list[App], target: str) -> dict[str, str]:
+def pages(project_name: str, apps: list[App], target: str, shape: str = "liner") -> dict[str, str]:
     """Both pages for this target, written from this project's own answers."""
     built = answer(target, DOCS_PAGES, default={})
     if not built:
@@ -30,7 +31,35 @@ def pages(project_name: str, apps: list[App], target: str) -> dict[str, str]:
             f"the {target} target provisions infrastructure but answers no docs_pages: a managed target "
             f"arrives with its drawing and its decision record, which is what `docs_pages` is"
         )
-    return {path: build(project_name, apps) for path, build in built.items()}
+    files = {path: build(project_name, apps) for path, build in built.items()}
+    if choice := row(target, shape):
+        detail = (f"Compute: {choice['compute']}.\n\nDatabase: {choice['database']}.\n\n"
+                  f"{choice['guidance']}\n\n## Changing shape\n\n{choice['transition']}\n")
+        files["infra/README.md"] = f"""# {shape.title()} infrastructure
+
+{detail}
+## Bootstrap and deploy
+
+Run `make bootstrap` once with the account credentials described in the project's README. Keep its state
+passphrase safely: the encrypted bootstrap state and passphrase are needed to read the pipeline's outputs.
+The command configures the forge with those outputs. Re-run it after adding a service/image repository.
+
+`make deploy ENV=production` is the production pipeline's apply; run it locally only with the explicitly
+provided deploy credentials. `make smoke URL=$(make -s url ENV=production)` proves the resulting endpoint.
+Run `tofu init -backend=false -input=false` and `tofu validate` inside each stack to validate it without
+applying resources. This check is not a live cloud-connectivity proof.
+"""
+        if shape == "skiff":
+            files["docs/adr/0002-production-target.md"] = f"# Skiff target decision\n\n{detail}"
+            files["docs/deployment.md"] = f"""# {project_name}: skiff deployment
+
+Every commit whose main-branch verify gate passes builds and pushes immutable images, deploys the one
+production environment and runs its smoke probe. Rollback re-applies the previously recorded images;
+there is no staging or promotion workflow. The application's image, gate and flag reader stay the same.
+
+{detail}
+"""
+    return files
 
 
 def prerequisites(target: str) -> tuple[tuple[str, str], ...]:

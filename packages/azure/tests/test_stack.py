@@ -33,6 +33,7 @@ class AzureStackTest(FactoryTestCase):
     ):
         return self.generate(
             directory, name, "event-modelling", backend, frontend, target="azure",
+            shape=axes.pop("shape", "liner"),
             persistence=axes.pop("persistence", "postgres"), http=axis_default("http", backend, "azure"),
             **axes,
         )

@@ -58,7 +58,7 @@ from .registry import RegistryError
 from .scaffold import write_project
 from .selection import resolve_selection
 from .services import FIRST_SERVICE, FIRST_WEB, default_apps
-from .targets import check_project_name, offered_backends
+from .targets import check_project_name, managed, offered_backends
 from .upgrade import main as upgrade_main
 
 # One verb so far. Each of the others is registered here by the slice that brings its module
@@ -185,6 +185,8 @@ def generate_main(argv: list[str]) -> None:
     )
     parser.add_argument("name", nargs="?", help="new project and repository name")
     parser.add_argument("--profile", choices=CATALOG["profiles"], default=CATALOG["default"]["profile"])
+    parser.add_argument("--shape", choices=("skiff", "liner"), default=None,
+                        help="deployment size: one environment for staff tools, or the full product stack")
     # Where the project goes to production. Asked second in the interactive form because it decides the
     # menus that follow; a flag whatever the catalog offers, so a script can say `--target none` today and
     # keep saying it the day there is a second answer.
@@ -268,6 +270,8 @@ def generate_main(argv: list[str]) -> None:
             raise GenerationError("project name is required")
         validate_project_name(args.name)
         check_project_name(CATALOG, args.target, args.name)
+        if args.shape is not None and not managed(CATALOG, args.target):
+            raise GenerationError("--shape requires a managed deployment target; choose --target or omit --shape")
         if not interactive:
             if args.backend is None and args.language is None and not CATALOG["backends"]:
                 raise GenerationError(nothing_loaded())
@@ -300,7 +304,7 @@ def generate_main(argv: list[str]) -> None:
         with tempfile.TemporaryDirectory(prefix=f".{args.name}-", dir=output) as staging:
             staging_path = Path(staging)
             write_project(staging_path, args.name, args.profile, args.target, apps,
-                          files=files_with_record(args, apps))
+                          files=files_with_record(args, apps), shape=args.shape)
             staging_path.rename(destination)
         print(f"created: {destination}")
     except GenerationError as error:

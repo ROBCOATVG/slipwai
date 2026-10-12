@@ -77,7 +77,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # to do.
     ("answers", ("selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet", "deck",
                  "toolkit", "platform", "convergence", "delivery_facts", "programme", "quick_wins",
-                 "uncommitted", "wrappers", "strategy", "survey", "structure", "big_picture",
+                 "uncommitted", "wrappers", "strategy", "survey", "structure", "big_picture", "deployment_shapes",
                  "big_picture_guards", "manifest")),
     # One module per part of the repository being generated.
     ("parts", ("project",)),
@@ -85,7 +85,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # same material assembled for a harness to install with no project at all, which is this tier for the
     # same reason the rest of it is: it reads every part.
     ("assembly", ("plugin", "native", "unlabel", "next_steps", "scaffold", "adopt_report", "add_service", "adopt",
-                  "replay", "catch_up", "migrate", "resurvey", "confirm", "converge")),
+                  "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",
               "cli_prompts", "cli_interview", "cli_offered", "cli_language", "cli_search", "cli_add", "cli_adopt",

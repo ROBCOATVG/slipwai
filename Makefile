@@ -46,6 +46,7 @@ SLOW += test_big_picture_adoption
 SLOW += test_observe_model
 SLOW += test_two_machines
 SLOW += test_harbourmaster
+SLOW += test_deployment_shapes test_skiff_migrations
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out
@@ -116,3 +117,4 @@ check-structure: ## Fail when a module imports against the declared direction, c
 verify: lint typecheck check-structure check-shared check-release test ## Full local gate — the same one CI runs
 	@echo
 	@echo 'verify: all gates passed'
+

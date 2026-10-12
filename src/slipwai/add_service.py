@@ -39,6 +39,7 @@ from pathlib import Path
 
 from .assets import PRUNER, contained
 from .catalog import CATALOG, axis_options
+from .deployment_shapes import recorded
 from .errors import GenerationError
 from .layout import layout_of
 from .manifest import apps_from_manifest, check_known, read_manifest, wrote_here
@@ -214,8 +215,8 @@ def regenerate(
     ones, and the manifest the revised list generates, for the caller to take its entry from."""
     layout, adoption = layout_of(document), adoption_of(document)
     arguments = (document["name"], document["profile"], document["target"])
-    before = project_files(*arguments, apps, layout, adoption)
-    after = project_files(*arguments, revised, layout, adoption)
+    before = project_files(*arguments, apps, layout, adoption, recorded(document))
+    after = project_files(*arguments, revised, layout, adoption, recorded(document))
     executables = {layout.place(path) for path in executable_paths(document["profile"], revised)}
     for relative in after:  # all held inside the project before the first is written
         contained(root, relative)

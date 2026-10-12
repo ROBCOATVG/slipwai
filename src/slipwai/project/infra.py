@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 
 from ..catalog import CATALOG
+from ..deployment_shapes import row
 from ..images import WORKSPACE_DESCRIPTOR, image_builder, migrations_in_production
 from ..loaded_targets import answer, root_of
 from ..probes import HEALTH_PATH, ready_path
@@ -148,25 +149,32 @@ def read_from(target: str, relative: str) -> str:
     return (root_of(target) / relative).read_text(encoding="utf-8")
 
 
-def stack_files(target: str) -> dict[str, str]:
+def stack_files(target: str, shape: str = "liner") -> dict[str, str]:
     """Both stacks, by the path they take under `infra/`, which is the path they have in the package.
 
     The two shapes are named by the protocol and not by each package, so `make bootstrap` applies the first
     and `make deploy` the second on every cloud. What is *in* each is the package's to say.
     """
+    if choice := row(target, shape):
+        return {destination: read_from(target, source)
+                for files in choice["stacks"].values() for destination, source in files.items()}
     shapes = answer(target, SHAPES, default={})
     return {relative: read_from(target, relative)
             for shape in sorted(shapes) for relative in sorted(shapes[shape])}
 
 
-def target_scripts(target: str) -> dict[str, str]:
+def target_scripts(target: str, shape: str = "liner") -> dict[str, str]:
     """What the project gets under `scripts/` to bootstrap the account and deploy into it, by the path it
     lands at — which the package names, because the path in the project and the path in the package are two
     different facts and a package that moved a file should not move it in every project."""
-    return {where: read_from(target, source) for where, source in sorted(answer(target, SCRIPTS, default={}).items())}
+    choice = row(target, shape)
+    scripts = choice["scripts"] if choice else answer(target, SCRIPTS, default={})
+    return {where: read_from(target, source) for where, source in sorted(scripts.items())}
 
 
-def target_files(project_name: str, profile: str, target: str, apps: list[App]) -> dict[str, str]:
+def target_files(
+    project_name: str, profile: str, target: str, apps: list[App], shape: str = "liner",
+) -> dict[str, str]:
     """Everything a managed production target adds to the repository; nothing for `none` or `existing`."""
     if not managed(CATALOG, target):
         return {}
@@ -177,7 +185,7 @@ def target_files(project_name: str, profile: str, target: str, apps: list[App]) 
         for service in services_of(apps)
         for axis in ("auth", "users")
     )
-    for relative, content in stack_files(target).items():
+    for relative, content in stack_files(target, shape).items():
         if relative == (WITH_FRONTEND if not web else WITHOUT_FRONTEND):
             continue
         if relative == WITHOUT_FRONTEND:
@@ -187,14 +195,19 @@ def target_files(project_name: str, profile: str, target: str, apps: list[App]) 
         if relative == WITHOUT_AUTH0:
             relative = WITH_AUTH0
         files[f"infra/{relative}"] = content
-    files.update(target_scripts(target))
+    files.update(target_scripts(target, shape))
     # Which flag transports this project's services can actually read. See `flag_route.wire_transports`.
     wire_transports(files, {service.backend for service in services_of(apps)}, target)
     data = tfvars(project_name, apps, target)
     files["infra/bootstrap/project.auto.tfvars.json"] = data
     files["infra/service/project.auto.tfvars.json"] = data
     files.update(procfiles(project_name, apps))
-    files.update(pages(project_name, apps, target))
+    files.update(pages(project_name, apps, target, shape))
+    if choice := row(target, shape):
+        files["infra/SHAPE.md"] = (
+            f"# {shape.title()} deployment\n\nCompute: {choice['compute']}.\n\n"
+            f"Database: {choice['database']}.\n\n{choice['guidance']}\n\n{choice['transition']}\n"
+        )
     if any(image_builder(s.backend).get("packs_workspace") for s in services_of(apps)):
         files["project.toml"] = WORKSPACE_DESCRIPTOR
     # And one beside each service whose own directory is what gets packed.

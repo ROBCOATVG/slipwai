@@ -23,6 +23,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+from .adopt_page import looked
+from .adopt_page import page as adoption
+from .adopt_page import run as adopt
 from .bridge_page import page, payload
 from .cli_fleet import config
 from .cli_telegraph import ring, set_one
@@ -92,8 +95,11 @@ class Bridge(BaseHTTPRequestHandler):
         if where == "/generate" and self.controls:
             self.send(200, interview({}))
             return
+        if where == "/adopt" and self.controls:
+            self.send(200, adoption({"root": str(self.root.resolve())}))
+            return
         if where not in ("", "/index.html"):
-            self.send(404, "<p>Nothing here. The board serves /, /generate and /board.json.</p>")
+            self.send(404, "<p>Nothing here. The board serves /, /generate, /adopt and /board.json.</p>")
             return
         held = config(self.root)
         self.send(200, page(board(self.root, held), held, controls=self.controls))
@@ -120,6 +126,15 @@ class Bridge(BaseHTTPRequestHandler):
                 return
             if self.path.rstrip("/") == "/generate/run":
                 worked, out = generate({str(a): str(b) for a, b in held.items()}, self.root)
+                self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
+                return
+            # Looking is a read and answers 200 whatever it found, refusal included: what it found is the
+            # page's content, and a repository that cannot be adopted is a finding rather than a fault.
+            if self.path.rstrip("/") == "/adopt/look":
+                self.send(200, looked({str(a): str(b) for a, b in held.items()}, self.root))
+                return
+            if self.path.rstrip("/") == "/adopt/run":
+                worked, out = adopt({str(a): str(b) for a, b in held.items()}, self.root)
                 self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
                 return
             if self.path.rstrip("/") == "/tell":

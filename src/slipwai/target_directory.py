@@ -236,10 +236,18 @@ def claimed_options(packages: list[TargetPackage]) -> dict[tuple[str, str], list
     return found
 
 
-def offers_of(package: TargetPackage) -> dict[str, set[str]]:
-    """Every keel option this target offers, by axis: what it says it offers, plus what it provisions —
-    provisioning an option is offering it, and a manifest carries one statement of one fact."""
-    found: dict[str, set[str]] = {axis: set(options) for axis, options in package.manifest.get("offers", {}).items()}
+def offers_of(catalog: dict[str, Any], package: TargetPackage) -> dict[str, set[str]]:
+    """Every keel option this target is offered under, by axis.
+
+    Three sources and one set, because an option named twice would be a target listed twice among the
+    targets an option is offered under. What it says it offers; what it provisions, because provisioning an
+    option *is* offering it and a manifest states a fact once; and every axis's no-infrastructure answer,
+    because an absent answer is offered everywhere — it is what keeps a menu from coming up empty, so it is
+    neither a thing a target gets to leave out nor a thing a manifest has to remember.
+    """
+    found: dict[str, set[str]] = {axis: {spec["absent"]} for axis, spec in catalog["axes"].items()}
+    for axis, options in package.manifest.get("offers", {}).items():
+        found.setdefault(axis, set()).update(options)
     brought = package.manifest.get("axes", {})
     for axis, options in package.manifest.get("provisions", {}).items():
         found.setdefault(axis, set()).update(set(options) - set(brought.get(axis, {})))
@@ -289,7 +297,7 @@ def declare(catalog: dict[str, Any], package: TargetPackage) -> None:
             entry["backends"] = list(entry.get("backends", ()))
             entry["targets"] = [name]
             catalog["axes"][axis]["options"][option] = entry
-    for axis, options in sorted(offers_of(package).items()):
+    for axis, options in sorted(offers_of(catalog, package).items()):
         for option in sorted(options):
             catalog["axes"][axis]["options"][option]["targets"].append(name)
     for axis, options in package.manifest.get("provisions", {}).items():

@@ -21,7 +21,7 @@ from types import ModuleType
 
 from .assets import PRUNER, this_command
 from .axes import validate_axes
-from .catalog import PACKAGES, SCHEMA_VERSION, catalog_families
+from .catalog import PACKAGES, SCHEMA_VERSION, TARGETS, catalog_families
 from .errors import Fault, Refusal
 from .extensions import validate_extensions
 from .features import known_features
@@ -83,8 +83,9 @@ def _check_catalog(catalog: dict, loaded: Registry | None = None) -> None:
         # a generated project cannot revisit later, so the prompt has to say what each one costs.
         if not profile.get("label"):
             raise ValueError(f"profile {name} must carry the label the prompt shows")
-    validate_targets(catalog)
-    validate_axes(catalog)
+    packaged = [package.name for package in TARGETS]
+    validate_targets(catalog, packaged)
+    validate_axes(catalog, packaged)
     validate_extensions(catalog)
 
 

@@ -40,6 +40,7 @@ than a product name, exactly as the traits in `features.py` are read.
 from __future__ import annotations
 
 import re
+from collections.abc import Collection
 
 from .assets import PRUNER, ROOT
 from .errors import GenerationError
@@ -83,8 +84,15 @@ def managed(catalog: dict, target: str) -> bool:
     return bool(catalog["targets"][target].get("managed"))
 
 
-def validate_targets(catalog: dict) -> None:
-    """The targets block, the default, and every backend's declaration of where it is offered."""
+def validate_targets(catalog: dict, packaged: Collection[str] = ()) -> None:
+    """The targets block, the default, and every backend's declaration of where it is offered.
+
+    `packaged` is the targets that arrived as packages. A managed target arrives with its
+    infrastructure and never before it, and since phase 10 that infrastructure travels inside the
+    package: its stacks are its `TARGET`'s `shapes`, which the loader has already refused it for
+    answering with files it does not ship. So a packaged target has been held to that rule somewhere
+    stricter than here, and what is left for this check is the keel's own rows.
+    """
     targets = catalog.get("targets")
     if not isinstance(targets, dict) or not targets:
         raise ValueError("catalog must define at least one production target")
@@ -118,13 +126,18 @@ def validate_targets(catalog: dict) -> None:
             raise ValueError(
                 f"target {name} provisions nothing, so it names nothing after the project and reserves no words"
             )
+        if name in packaged:
+            continue
         if bool(target.get("managed")) != (TARGET_ROOT / name).is_dir():
             raise ValueError(
                 f"target {name} {'is managed but has no' if target.get('managed') else 'is not managed yet has'} "
                 f"assets/targets/{name}: a managed target arrives with its infrastructure, and only one"
             )
-    if {name: tuple(target.get("requires", [])) for name, target in targets.items()} != {
-        name: tuple(PRUNER.TARGET_REQUIRES.get(name, ())) for name in targets
+    # The keel's own rows only. A package's `requires` reaches a project's pruner through the emission that
+    # writes it there (`project.pruner`), so the keel's own copy has no row for it to disagree with.
+    own = [name for name in targets if name not in packaged]
+    if {name: tuple(targets[name].get("requires", [])) for name in own} != {
+        name: tuple(PRUNER.TARGET_REQUIRES.get(name, ())) for name in own
     }:
         raise ValueError(
             "catalog and assets/backing-services/prune.py disagree about which axes a target requires"
@@ -159,7 +172,7 @@ def check_targets(what: str, entry: dict, targets: dict) -> None:
             raise ValueError(f"{what}'s {target} entry must say what it provisions")
 
 
-def validate_axis_targets(catalog: dict, axis: str, spec: dict) -> None:
+def validate_axis_targets(catalog: dict, axis: str, spec: dict, packaged: Collection[str] = ()) -> None:
     """Every option says where it is offered, "nothing" is offered everywhere, and the default still resolves.
 
     The no-infrastructure answer has to be offered under every target so that an axis always has an answer
@@ -180,9 +193,11 @@ def validate_axis_targets(catalog: dict, axis: str, spec: dict) -> None:
         )
     # Only the options the keel itself declares are mirrored: a package's option is written in one
     # place and copied into a project's pruner from there, so it has no second copy to drift from.
+    # The keel's own targets only. A packaged target's offer reaches a project's pruner through the
+    # emission that writes it there (`project.pruner`), so the keel's static copy has nothing to mirror.
     shipped = PRUNER.AXES.get(axis, {}).get("options", {})
     for name, option in spec["options"].items():
-        if name in shipped and set(shipped[name]["targets"]) != set(option["targets"]):
+        if name in shipped and set(shipped[name]["targets"]) != set(option["targets"]) - set(packaged):
             raise ValueError(
                 f"catalog and assets/backing-services/prune.py disagree about where {axis}/{name} is offered"
             )

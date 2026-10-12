@@ -100,6 +100,18 @@ class OffersTest(unittest.TestCase):
         self.assertEqual(option["targets"], ["none", "existing", "cumulus"])
         self.assertEqual(option["cumulus"], {"provisions": "managed-postgres"})
 
+    def test_every_axiss_no_infrastructure_answer_is_offered_without_being_asked_for(self) -> None:
+        """An absent answer is what keeps a menu from coming up empty, so it is neither a thing a target
+        gets to leave out nor a thing a manifest has to remember."""
+        catalog, _ = merged(package(offers={}, provisions={}, axes={}))
+        for axis, spec in CORE["axes"].items():
+            with self.subTest(axis=axis):
+                self.assertIn("cumulus", catalog["axes"][axis]["options"][spec["absent"]]["targets"])
+
+    def test_an_absent_answer_a_manifest_also_lists_is_not_offered_twice(self) -> None:
+        catalog, _ = merged(package(offers={"persistence": ["memory"]}))
+        self.assertEqual(catalog["axes"]["persistence"]["options"]["memory"]["targets"].count("cumulus"), 1)
+
     def test_offering_an_option_the_keel_does_not_declare_is_refused(self) -> None:
         catalog, refusals = merged(package(offers={"persistence": ["tape"]}))
         self.assertEqual(len(refusals), 1)

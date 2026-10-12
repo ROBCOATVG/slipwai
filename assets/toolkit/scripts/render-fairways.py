@@ -60,7 +60,9 @@ def ordered(parts: list[str]) -> list[str]:
 
 
 def sources(name: str) -> list[Path]:
-    return sorted(FAIRWAYS.glob(f"*/{name}")) if FAIRWAYS.is_dir() else []
+    if not FAIRWAYS.is_dir():
+        return []
+    return sorted([*FAIRWAYS.glob(f"*/{name}"), *FAIRWAYS.glob(f"*/{feature()}/{name}")])
 
 
 def feature() -> str:

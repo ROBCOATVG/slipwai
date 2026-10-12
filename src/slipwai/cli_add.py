@@ -8,14 +8,11 @@ that does not exist yet; these from inside one that does, naming the new applica
 from __future__ import annotations
 
 import argparse
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 from . import browser_app
 from .add_service import add_frontend_to, add_service_to, describe_service_in, described_report, report
-from .assets import VERSION, relaunch
+from .assets import VERSION
 from .catalog import CATALOG, axis_choices, default_language, families, framework_of, resolve_backend
 from .cli_language import braced, missing_backend, missing_framework, missing_language, no_framework
 from .converge import check as converge_check
@@ -23,19 +20,13 @@ from .converge import check_report as converge_check_report
 from .converge import converge
 from .converge import report as converge_report
 from .errors import GenerationError, refuse
-from .language_directory import directory
-from .language_index import snapshots
-from .language_plan import install_for
 from .manifest import read_manifest
-from .migrate import checked, migrate
-from .migrate import report as migrate_report
 from .npm_workspace import NoBrowserLanguage
 from .registry import registry
 from .replay import replay
 from .replay import report as replay_report
 from .shape_converge import check as shape_check
 from .shape_converge import prepare as shape_prepare
-from .upgrade import newer_published
 
 # Set on the `migrate` this one starts once it has installed languages, which then neither installs nor warns again.
 RELAUNCHED = "SLIPWAI_MIGRATE_RELAUNCHED"
@@ -188,46 +179,6 @@ def add_frontend_main(argv: list[str]) -> None:
     print(report(app, added, rewritten))
 
 
-def migrate_main(argv: list[str]) -> None:
-    """`migrate`, run inside a generated project: bring it up to this keel's version, as one merge.
-
-    No flags to speak of — the project's `project.json` has every answer, and the merge base is read from its
-    history. What it leaves behind is one merge commit, or a merge in progress with the conflicts named.
-    """
-    parser = argparse.ArgumentParser(
-        prog="slipwai migrate",
-        description="Bring the generated project in the current directory up to this factory's version: what "
-        "the factory now generates for its answers is merged over what the project has become",
-        epilog="First, the languages the project needs and this machine lacks are installed, as `slipwai language "
-        "install` would, or nothing is and the command names how. One merge commit when it is clean (`git reset "
-        "--hard ORIG_HEAD` undoes it); a merge left in progress with each conflicting file named when it is not. "
-        "Nothing is pushed. `slipwai replay` is the same offer written beside the project instead of merged, to "
-        "look at first. docs/upgrading.md in the factory says what to expect of each part of the tree.",
-    )
-    parser.add_argument(
-        "--no-install", action="store_true",
-        help="refuse, naming the install line, where a language the project needs is not installed, rather than "
-        "installing it first",
-    )
-    args = parser.parse_args(argv)
-    if not os.environ.get(RELAUNCHED):
-        warn_if_behind()
-    try:
-        if not args.no_install and (installed := install_for(checked(Path.cwd()), directory(), snapshots())):
-            print("\n".join(installed), flush=True)
-            finished = subprocess.run([*relaunch(), "migrate", "--no-install"], env=os.environ | {RELAUNCHED: "1"})
-            if finished.returncode != 0:
-                print(f"The language(s) above stay installed in {directory()}: once what stopped this is dealt with, "
-                      "`slipwai migrate` again finishes the job.", file=sys.stderr)
-            raise SystemExit(finished.returncode)
-        done = migrate(Path.cwd())
-    except GenerationError as error:
-        refuse(parser.prog, error)
-    print(migrate_report(done))
-    if done.conflicts:
-        raise SystemExit(1)
-
-
 def converge_main(argv: list[str]) -> None:
     """`converge`, run inside an adopted repository whose every map row reads *as generated*: move the delivery
     material to the root as one merge. `--check` only says whether it is ready, and why not."""
@@ -262,29 +213,6 @@ def converge_main(argv: list[str]) -> None:
     print(converge_report(done))
     if done.conflicts:
         raise SystemExit(1)
-
-
-def warn_if_behind() -> None:
-    """Say, before migrating, when this is not the newest slipwai published — and migrate anyway.
-
-    A project brought up to a version that is already behind is a merge that will be done again next week;
-    the person running this should know that before it starts. Not being able to ask the registry is a note
-    rather than a refusal: the registry is not what is being migrated to, this copy is.
-    """
-    try:
-        newest = newer_published()
-    except GenerationError as error:
-        print(
-            f"note: could not ask the registry whether a newer slipwai is published — {str(error).splitlines()[0]}",
-            file=sys.stderr,
-        )
-        return
-    if newest is not None:
-        print(
-            f"warning: this is slipwai {VERSION} and {newest} is published; migrating to {VERSION} anyway — "
-            "`slipwai upgrade` first to migrate to the newest",
-            file=sys.stderr,
-        )
 
 
 def replay_main(argv: list[str]) -> None:

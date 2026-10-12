@@ -11,7 +11,7 @@ import unittest
 
 import checkout_packages  # noqa: F401
 
-from slipwai.convergence import AXES, BY_KEY, detected, reconciled, summary
+from slipwai.convergence import AXES, BY_KEY, detected, reconciled, row, summary
 from slipwai.origin import Adoption
 from slipwai.services import App
 
@@ -46,7 +46,7 @@ class ConvergenceTest(unittest.TestCase):
             "unrecorded"))
         self.assertTrue(all(row["planned"] is None for row in nothing), "nothing is planned until a slice is")
         self.assertEqual((by_axis["platform"]["rung"], by_axis["platform"]["provenance"]), ("unknown", "unrecorded"))
-        self.assertEqual(summary(nothing), (0, 3, 6))
+        self.assertEqual(summary(nothing), (0, 3, 7))
 
         adoption = Adoption(
             why="the runtime is end of life",
@@ -107,6 +107,26 @@ class ConvergenceTest(unittest.TestCase):
         self.assertEqual([row["axis"] for row in reconciled([], after, [])], [axis.key for axis in AXES],
                          "a record from before the map existed gets every row")
         self.assertEqual(BY_KEY["safety-net"].target, "mutation-measured")
+
+
+class ReleaseModeTest(unittest.TestCase):
+    """The crossing reads an actor-visible release choice; a resurvey of build files cannot see one."""
+
+    def test_a_resurvey_does_not_unrecord_the_release_mode_a_crossing_detected(self) -> None:
+        recorded = [row(BY_KEY["release-mode"], "recorded", "releaseMode: flagged", "detected")]
+        fresh = [row(BY_KEY["release-mode"], "unrecorded", "no release evidence", "unrecorded")]
+        refreshed: list[str] = []
+        kept = reconciled(recorded, fresh, refreshed)
+        self.assertEqual((kept[0]["rung"], kept[0]["evidence"]), ("recorded", "releaseMode: flagged"))
+        self.assertEqual(refreshed, [])
+
+    def test_another_axis_the_tree_no_longer_shows_still_follows_the_tree(self) -> None:
+        axis = BY_KEY["safety-net"]
+        refreshed: list[str] = []
+        kept = reconciled([row(axis, axis.rungs[1], "a test command", "detected")],
+                          [row(axis, axis.rungs[0], "none found", "unrecorded")], refreshed)
+        self.assertEqual(kept[0]["rung"], axis.rungs[0])
+        self.assertEqual(len(refreshed), 1)
 
 
 class AntBuildTest(unittest.TestCase):

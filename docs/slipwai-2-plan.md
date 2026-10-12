@@ -1038,7 +1038,8 @@ Version 2 keeps that mechanism and changes four things about it. The migration i
 7), when the working contract returns. Phase 5 records what the migration needs as it renames files.
 
 **Change 1. The base comes from version 1 itself, not from code that version 2 carries.** `migrate` reads
-`generatedWith`. It installs that exact release of `slipwai` into a throwaway environment, the way
+`updatedWith` (or `generatedWith` before the first upgrade), so the base is the last factory output, not
+the original scaffold. It installs that exact release of `slipwai` into a throwaway environment, the way
 `make test-migration` already does from the last tag. It generates the base there. Version 2 never reproduces
 version 1's output, and carries none of its generator. When the recorded version is a snapshot, for example
 `1.5.2.dev4`, the base is the nearest release below it, and the difference is reported.
@@ -1879,6 +1880,11 @@ the headings that say *after 2.0.0* now mean *after the rest of the plan* — wh
 phase, not behind it. 8.1, 8.2, 8.4 and 8.7 are done and stay done: the machinery is built, and what moved
 is only when the number is written.
 
+**Preparation may run in parallel, decided 2026-10-12 (owner).** Migration implementation and its fixture
+matrix, release checks and cutover preparation may proceed alongside the remaining rebuild slices. Only
+the actual 2.0.0 tag, publication and upstream release in 8.5, and the final 1.x cut in 8.6, stay last.
+This changes preparation order; it authorizes no early version change or actual release.
+
 | Slice | What | From | Size | Done when | Status |
 |---|---|---|---|---|---|
 | 8.1 | `AGENTS.md`'s versioning rules, `changelog.d/`, `make release`, `make changelog`, `requirements-publish.txt`, and `CHANGELOG.md` and `changelog.d/` back in `slipwai.spec`'s datas | upstream | M | The fork's own release machinery is green | done |
@@ -2179,7 +2185,8 @@ Phase 1 ──► 2 ──► 3 ──► 4 ──► Phase 6 ──┐
 
 Phase 5 starts as soon as 1.2 is green and runs beside phases 2 to 4 on the toolkit assets, which do not import
 the scaffold; its slices from 5.3 on need a generated project, so they wait for 4.1. Phases 6 and 7 run beside
-each other. Nothing in phase 8 starts before every other phase is done.
+each other. Phase 8 preparation may run beside them (owner, 2026-10-12); the actual release cuts in
+8.5 and 8.6 wait for every other phase to finish.
 
 Three phases have moved. Two on 2026-10-08, in opposite directions; the release itself on 2026-10-09.
 
@@ -3199,7 +3206,7 @@ on this since slices 1.1 and 3.1 run again. This is the slice where `VERSION` is
 fragments in `changelog.d/` are the source; the entry is rendered.
 
 **8.3 — `migrate`.** Section 6's design. Base from an installed 1.x: read the project's
-`generator.generatedWith`, install the languages its `generator.languages` names first (via the chandlery),
+`generator.updatedWith` (falling back to `generatedWith`), install the languages its `generator.languages` names first (via the chandlery),
 then replay the project at 2.0.0 and merge, as version 1's `migrate` does. The rename table
 (`docs/rename.json`, begun in 5.1) renames files, fields and skills. In-flight work is data: open slices,
 their status, decisions and flags are read from the 1.x files and written as log lines and per-fairway

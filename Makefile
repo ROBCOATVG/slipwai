@@ -41,7 +41,7 @@ test: ## Run the keel's test suite, or a slice: TESTS="test_a test_b", or SKIP="
 # `test_conformance` shells out per check (2.5s), and between them they were nine of this target's twelve
 # seconds while never having been listed. The rest spawn a subprocess per case. `test_captain` runs a real
 # `/drive` process and waits for a wall budget to run out (23s), which is the shape of what it proves.
-SLOW := test_package_snapshot test_generated test_quickstart_generated test_upgrade test_conformance test_target_conformance test_chart test_chart_render test_slice_scope test_surfaces test_captain test_captain_gate test_merge test_bridge test_loop test_start test_interview_page test_adopt_page test_board test_mcp test_claims test_travel test_take_over
+SLOW := test_migration_claims test_migration_merge test_package_snapshot test_generated test_quickstart_generated test_upgrade test_conformance test_target_conformance test_chart test_chart_render test_slice_scope test_surfaces test_captain test_captain_gate test_merge test_bridge test_loop test_start test_interview_page test_adopt_page test_board test_mcp test_claims test_travel test_take_over
 SLOW += test_big_picture_adoption
 SLOW += test_observe_model
 SLOW += test_two_machines
@@ -117,3 +117,7 @@ check-structure: ## Fail when a module imports against the declared direction, c
 verify: lint typecheck check-structure check-shared check-release test ## Full local gate — the same one CI runs
 	@echo
 	@echo 'verify: all gates passed'
+
+.PHONY: test-migration
+test-migration: ## Prove the crossing on installed version 1 fixtures and their own gates
+	PYTHONPATH=src python3 scripts/test-migration.py

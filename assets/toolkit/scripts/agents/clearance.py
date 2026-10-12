@@ -144,6 +144,21 @@ def cleared(charted: dict, settled: set[str], slice_id: str) -> bool | str:
     """
     if slice_id not in (charted.get("slices") or {}):
         return f"{slice_id} is not on the chart, so nothing says what it steers by"
+    migration = ROOT / ".slipwai/migration.json"
+    if migration.is_file():
+        try:
+            state = json.loads(migration.read_text(encoding="utf-8"))
+            if state.get("v") != 1 or not isinstance(state.get("features"), dict):
+                return "migration state is newer or unreadable; run `slipwai upgrade` then `python3 scripts/check-migration.py`"
+            record = state["features"].get(str(charted.get("feature") or ""), {"proposed": [], "unplaced": []})
+            if not isinstance(record, dict) or not all(isinstance(record.get(key), list) and
+                    all(isinstance(name, str) and name for name in record[key]) for key in ("proposed", "unplaced")):
+                raise ValueError("malformed migration feature")
+            fairway = (charted.get("slices") or {})[slice_id].get("fairway")
+            if fairway in (record.get("proposed") or []) or slice_id in (record.get("unplaced") or []):
+                return f"{slice_id}'s fairway needs confirmation; run `python3 scripts/check-migration.py --confirm`"
+        except (OSError, ValueError, TypeError, AttributeError):
+            return "migration state is unreadable; restore .slipwai/migration.json then run `python3 scripts/check-migration.py`"
     waiting = [mark for mark in steered_by(charted, slice_id) if mark not in settled]
     if not waiting:
         return True
@@ -162,7 +177,7 @@ def cleared_slices(charted: dict, settled: set[str]) -> list[str]:
     settled = settled | already_set(charted)
     return [str(slice_id) for slice_id in (charted.get("slices") or {})
             if str(slice_id) not in never
-            and all(mark in settled for mark in steered_by(charted, str(slice_id)))]
+            and cleared(charted, settled, str(slice_id)) is True]
 
 
 def main(argv: list[str]) -> int:

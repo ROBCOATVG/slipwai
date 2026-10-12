@@ -1430,7 +1430,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 128 of 168 slices done** — phase 1 6/6, phase 2 9/9, phase 3 21/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 16/17, phase 8 5/8, phase 9 5/8, phase 10 5/6, phase 11 0/5, phase 12 0/5, phase 13 0/5, phase 14 0/4, phase 15 11/15, phase 16 0/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 129 of 168 slices done** — phase 1 6/6, phase 2 9/9, phase 3 21/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 16/17, phase 8 5/8, phase 9 5/8, phase 10 6/6, phase 11 0/5, phase 12 0/5, phase 13 0/5, phase 14 0/4, phase 15 11/15, phase 16 0/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -1803,7 +1803,7 @@ and 29 modules naming a cloud in 112 places.
 | 10.2 | The import surface widened to what a target package reads, held in both directions as the language surface is | new | M | `check-structure` reads a target package and refuses an import off the list | done |
 | 10.3 | `aws` out of the keel: its assets, scripts, docs page, preflight tools, image builder, and both shapes | upstream | L | The keel's `make verify` passes with no cloud installed, and a project generates on AWS with the package installed | done |
 | 10.4 | `azure` out, the same way | upstream | L | Neither cloud is named anywhere in `src/slipwai/` | done |
-| 10.5 | The twenty-three passing mentions: defaults, examples and prose that name a cloud | new | M | `grep -ri aws src/slipwai` finds nothing but a comment about there being nothing |  |
+| 10.5 | The twenty-three passing mentions: defaults, examples and prose that name a cloud | new | M | `grep -ri aws src/slipwai` finds nothing but a comment about there being nothing | done |
 | 10.6 | `check-structure` refuses a keel module naming a target package, as it already refuses a language one | new | S | The rule is a gate and not a habit | done |
 
 Depends on: phase 2's build list, which proved the package contract on the six real languages on 6 October.

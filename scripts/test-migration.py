@@ -69,7 +69,7 @@ def write(path: Path, text: str) -> None:
 
 
 def feature(root: Path, backend: str, profile: str, delivery: str) -> None:
-    """Two evidenced trunk slices, one stale optimistic status and one inactive, unmerged claim."""
+    """Two evidenced trunk slices, a stale optimistic status, an unmerged claim, and a run that stopped."""
     metadata = json.loads((root / "project.json").read_text(encoding="utf-8"))
     for record in metadata["deployables"].values():
         if record.get("kind") == "service":
@@ -112,6 +112,13 @@ def feature(root: Path, backend: str, profile: str, delivery: str) -> None:
     write(root / code_path, text)
     flags = root / "infra/service/flags.auto.tfvars"
     write(flags, 'create_order = "on"\ncancel_order = "off"\n')
+    # A version 1 run a person stopped, with a word of theirs nobody took: both are work in flight, and
+    # both stay at the root under an adopted layout because `specs/` and `.specify/` are not delivery.
+    write(root / "specs/cruise-log.jsonl", json.dumps(
+        {"iteration": 7, "started": "2026-01-01T09:00:00Z", "ended": "2026-01-01T09:30:00Z",
+         "harness": "claude", "last_line": "cruise: stopped: human", "fingerprint": "abc"}) + "\n")
+    write(root / ".specify/cruise-inbox.jsonl", json.dumps(
+        {"at": "2026-01-01T10:00:00Z", "text": "dispatch needs the carrier id", "now": False}) + "\n")
     if profile == "event-modelling":
         source = root / delivery / "docs/event-model/model.yaml"
         slices = []
@@ -163,6 +170,12 @@ def prove(root: Path, environment: dict[str, str], *, own_gate: bool = True) -> 
              for line in path.read_text(encoding="utf-8").splitlines()]
     if {line["slice"] for line in lines if line["kind"] == "merged"} != {"ORD-01", "ORD-02"}:
         raise GenerationError(f"{root}: trunk reconciliation trusted model status or missed real merges")
+    if {line["slice"] for line in lines if line["kind"] == "claimed"} != {"ORD-03"}:
+        raise GenerationError(f"{root}: the open claim did not cross as the slice still in flight")
+    if [line["message"] for line in lines if line["kind"] == "told"] != ["dispatch needs the carrier id"]:
+        raise GenerationError(f"{root}: a person's queued word was spent by the crossing")
+    if not any(line["kind"] == "parked" and "person" in line["why"] for line in lines):
+        raise GenerationError(f"{root}: a run a person stopped crossed as a fairway that never ran")
     if "## D1" not in (root / "specs/ordering/decisions.md").read_text(encoding="utf-8"):
         raise GenerationError(f"{root}: the grandfathered decision id no longer resolves")
     delivery = metadata["layout"]["delivery"]

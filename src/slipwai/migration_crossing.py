@@ -91,7 +91,8 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         base = staging / "base"
         legacy.replay(root, base)
         before = answers(renamed(tracked(base), rows))
-        flight = read(root, document, legacy)
+        flight = read(root, document, legacy,
+                      claims={ref.removeprefix("refs/heads/slice/") for ref in branches})
         if document.get("origin") == "adopted":
             path = layout_of(document).place("survey/survey.md")
             flight.files[path] = survey_page(survey(root), apps_from_manifest(document)).encode("utf-8")

@@ -11,7 +11,7 @@ from unittest.mock import patch
 import checkout_packages  # noqa: F401
 
 from slipwai.assets import ROOT
-from slipwai.fleet import Fairway, inbox
+from slipwai.fleet import Fairway, inbox, state_of
 from slipwai.migration_flight import json_bytes, plan_context, read, settings
 
 
@@ -118,6 +118,27 @@ class FlightTest(unittest.TestCase):
                                (reasons[5], "no last line")):
             self.assertIn(ending, reason)
             self.assertIn("without recording", reason)
+
+    def test_an_open_claim_branch_crosses_as_the_slice_still_in_flight(self) -> None:
+        for slice_id in ("ORD-01", "ORD-03"):
+            (self.feature / f"slices/{slice_id}").mkdir(parents=True, exist_ok=True)
+            (self.feature / f"slices/{slice_id}/plan.md").write_text("# Structure Decision\nContext: ordering\n")
+        with patch("slipwai.migration_flight.shipped",
+                   side_effect=lambda root, slice_id: "abc" if slice_id == "ORD-01" else None):
+            flight = read(self.root, self.document, YAML(), claims={"ORD-03"})
+        self.assertEqual([(line.kind, line.fields["slice"]) for _, _, line in flight.logs
+                          if line.kind in ("merged", "claimed")],
+                         [("merged", "ORD-01"), ("claimed", "ORD-03")])
+        self.assertEqual({fairway for _, fairway, line in flight.logs if line.kind == "claimed"}, {"ordering"})
+        working = Fairway("ordering", "ordering",
+                          [line for _, fairway, line in flight.logs if fairway == "ordering"])
+        self.assertEqual(working.slice_now, "ORD-03")
+        self.assertEqual(state_of(working), "working")
+
+    def test_no_claim_branch_seeds_nothing_and_a_merged_slice_is_not_claimed_as_well(self) -> None:
+        with patch("slipwai.migration_flight.shipped", return_value="abc"):
+            flight = read(self.root, self.document, YAML(), claims={"ORD-01"})
+        self.assertEqual([line.kind for _, _, line in flight.logs if line.kind == "claimed"], [])
 
     def test_model_choices_are_preserved_and_review_is_null_per_harness(self) -> None:
         (self.root / ".specify").mkdir()

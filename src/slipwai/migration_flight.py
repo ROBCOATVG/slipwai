@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import re
 import runpy
+from collections.abc import Collection
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -205,8 +206,12 @@ def model_bytes(source: Path, model: dict) -> bytes:
     return json_bytes(model)
 
 
-def read(root: Path, document: dict, legacy: YAMLReader) -> Flight:
-    """Immutable migrated data, prepared before any project file or branch is changed."""
+def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str] = ()) -> Flight:
+    """Immutable migrated data, prepared before any project file or branch is changed.
+
+    `claims` are the slices whose version 1 claim branch is ahead of trunk, which only `--with-claims`
+    reaches: without it the crossing refuses before any of this runs.
+    """
     flight = Flight()
     layout = layout_of(document)
     deployables = document.get("deployables") or {}
@@ -255,6 +260,13 @@ def read(root: Path, document: dict, legacy: YAMLReader) -> Flight:
                 flight.logs.append((name, fairway, entry("merged", fairway=fairway, slice=slice_id, commit=commit)))
                 for mark in chart["slices"][slice_id]["sets"]:
                     flight.logs.append((name, fairway, entry("mark-set", fairway=fairway, slice=slice_id, mark=mark)))
+            elif slice_id in claims:
+                # A claim branch ahead of trunk is work in flight, and version 2 reads work in flight from
+                # lines alone. Without this the migrated board draws the slice as never started while the
+                # branch the catch-up page tells the person to rebase sits there holding their commits.
+                # Never beside a `merged`: a slice trunk already has is finished, whatever a branch left
+                # behind still points at, and `slice_now` is the last claim that has not merged.
+                flight.logs.append((name, fairway, entry("claimed", fairway=fairway, slice=slice_id)))
             for original in items:
                 if original["id"] == slice_id:
                     original["status"] = "implemented" if commit else "planned"

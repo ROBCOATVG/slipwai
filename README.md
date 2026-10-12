@@ -96,7 +96,7 @@ confirmed once; the checksum is checked every time, whoever published it. Publis
 ## Reference
 
 [The vocabulary](GLOSSARY.md) · [extensions](docs/extensions.md) ·
-[the backend protocol](docs/backend-protocol.md) · [worked examples](docs/reference/) ·
+[the backend protocol](docs/backend-protocol.md) · [the rules, in detail](docs/reference/) ·
 [the plan this was built to](docs/slipwai-2-plan.md)
 
 ---

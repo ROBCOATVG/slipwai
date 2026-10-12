@@ -22,12 +22,10 @@ from pathlib import Path
 IMAGES = Path(__file__).resolve().parents[1] / "docs/images"
 SVG = "{http://www.w3.org/2000/svg}"
 PAIR = ("spec-to-delegate-event-modelling.svg", "spec-to-delegate-standard.svg")
-#: The two boxes slice 9.6 lets the profiles disagree in: what the feature is typed in, and where the
-#: example map's examples come from. Named by their headings, which are the lines a reader compares.
+#: The headings of the two boxes slice 9.6 lets the profiles disagree in — three names for two boxes,
+#: because the first box is the event model on one profile and the chart stage on the other, which is the
+#: difference being drawn. The second is the example map, which derives its examples from one or the other.
 DIFFER = {"Event model", "Chart", "Example map"}
-#: 12px of the figures' font stack averages a shade over 6 per character. Generous rather than exact: what
-#: is being caught is a line somebody lengthened past its box, not a kerning difference.
-PER_CHAR = 6.2
 
 
 def lines(name: str) -> list[str]:

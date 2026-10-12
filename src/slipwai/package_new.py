@@ -31,6 +31,7 @@ from .package_templates import (
     LANGUAGE_MODULE,
     LANGUAGE_README,
     MAKEFILE,
+    QUICKSTART_README,
     README,
     WORKFLOW,
 )
@@ -41,9 +42,9 @@ from .target_templates import BOOTSTRAP_STACK, SCRIPT, SERVICE_STACK, TARGET_MOD
 #: inputs that workflow has never heard of. This becomes `ROBCOATVG/slipwai` when version 2 merges back
 #: there (slice 8.5), and that row says so.
 KEEL_REPO = "ROBCOATVG/slipwai_v2_Fork"
-KINDS = ("extension", "language", "target")
+KINDS = ("extension", "language", "quickstart", "target")
 #: The release a package that has cut none is a snapshot of, which is what `conformance.version_rule` asks
-#: of one. The other two kinds' scaffolds were written before that rule was and still carry `0.1.0`, which
+#: of one. The language and extension scaffolds were written before that rule was and still carry `0.1.0`, which
 #: fails their own `version` check; a target's does not.
 FIRST_RELEASE = "1.0.0"
 #: The publisher's verbs, in the order they are used. `plugin` is the odd one and is here rather than in a
@@ -182,8 +183,39 @@ def target_files(name: str, schema: str) -> dict[str, str]:
 
 
 #: Which scaffold each kind gets. One mapping rather than a chain of `if kind ==`, because a fourth kind
+
+
+def quickstart_files(name: str, schema: str) -> dict[str, str]:
+    """A quickstart package: the document, and the version a release of it is of.
+
+    No Makefile and no workflow, and that is not an omission. A quickstart holds no code, so there is
+    nothing for a gate to run that `package check` does not already do — and a scaffold that wrote a CI
+    workflow which only ever ran one command would be teaching a publisher to maintain a file for nothing.
+    """
+    document = {
+        "quickstart": 1,
+        "name": name,
+        "suits": f"TODO: one sentence about the product {name} suits — what it is like, not which packages "
+                 f"it names. This is the row `slipwai generate` offers it by, to somebody who has never "
+                 f"heard of a chandlery.",
+        "core": core_range(schema),
+        "answers": {"profile": "event-modelling"},
+        "languages": [{"name": "todo-the-language-this-starts-from", "version": ">=1.0,<2"}],
+        "extensions": [],
+    }
+    return {
+        "quickstart.json": json.dumps(document, indent=2, ensure_ascii=False) + "\n",
+        "VERSION": "0.1.0\n",
+        "README.md": QUICKSTART_README.format(name=name, title=title_of(name), command=this_command()),
+        "CHANGELOG.md": CHANGELOG.format(name=name),
+        "changelog.d/README.md": FRAGMENTS,
+        f"changelog.d/first-{name}.md": FIRST.format(name=name, kind="quickstart"),
+    }
+
+
 #: should be a row here and nothing else.
-SCAFFOLDS = {"extension": extension_files, "language": language_files, "target": target_files}
+SCAFFOLDS = {"extension": extension_files, "language": language_files, "target": target_files,
+             "quickstart": quickstart_files}
 #: What a scaffold writes that is run rather than read, and so lands with its executable bit set. A script
 #: a person has to `chmod` before it works is a script whose first run fails for a reason nothing said.
 EXECUTABLE = {"extension": ("init.py",), "target": ("scripts/bootstrap.py", "scripts/deploy.py")}

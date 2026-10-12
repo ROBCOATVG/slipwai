@@ -40,7 +40,10 @@ def haystack(release: Release) -> str:
     # wrote for people browsing, and a manifest is what the keel reads. Both are searched, because a package
     # published before the entry carried either still has to be findable.
     parts = [release.name, release.description, release.publisher, *release.tags,
-             str(fragment.get("description", "")), str(fragment.get("family", ""))]
+             str(fragment.get("description", "")), str(fragment.get("family", "")),
+             # A quickstart's own sentence about the product it suits: what somebody searching "a browser
+             # app" is actually searching for, and the only prose it has.
+             str(fragment.get("suits", ""))]
     for key_, row in (fragment.get("backends") or {}).items():
         parts += [key_, str(row.get("label", "")), str(row.get("framework", ""))]
         for axis, options in (row.get("options") or {}).items():
@@ -106,6 +109,9 @@ def summary(release: Release) -> str:
 
 def describe(release: Release) -> str:
     """A line for a package that declares no description: what it offers, which is better than nothing."""
+    if release.is_quickstart:
+        # Its own sentence about the product it suits, which is the row the interview offers it by too.
+        return str(release.fragment.get("suits", "")) or "no description"
     if release.is_extension:
         points = ", ".join(sorted(release.fragment.get("hooks") or {}))
         return f"hooks: {points}" if points else "no description"
@@ -128,10 +134,25 @@ def show_lines(found: Index | None, unreachable: list[str], name: str) -> list[s
         lines.append(f"  {summary(release)}")
     lines += provenance(release)
     lines.append(f"  speaks keel   {fragment.get('core', 'unstated')}")
-    lines += extension_lines(release) if release.is_extension else language_lines(fragment)
+    if release.is_quickstart:
+        lines += quickstart_lines(release)
+    else:
+        lines += extension_lines(release) if release.is_extension else language_lines(fragment)
     lines.append(f"  releases      {', '.join(r.version for r in sorted(releases, key=lambda r: key(r.version)))}")
-    verb = "extension" if release.is_extension else "language"
-    lines.append(f"  install       {this_command()} {verb} install {release.name}")
+    # The verb is the kind: `language install`, `extension install`, `quickstart install`. One word, read
+    # off what the entry says it is, rather than a table that grows a row every time a kind is added.
+    lines.append(f"  install       {this_command()} {release.kind} install {release.name}")
+    return lines
+
+
+def quickstart_lines(release: Release) -> list[str]:
+    """What a quickstart's entry says: what it suits, what it would have installed, and how it is used."""
+    fragment = release.fragment
+    lines = [f"  suits         {fragment.get('suits', 'unstated')}"]
+    for named, label in (("languages", "installs"), ("extensions", "elects")):
+        for each in fragment.get(named) or []:
+            lines.append(f"  {label:<13} {each.get('name', '?')} {each.get('version', '')}".rstrip())
+    lines.append(f"  use it        {this_command()} generate <name> --quickstart {release.name}")
     return lines
 
 
@@ -179,7 +200,7 @@ def search_main(argv: list[str]) -> None:
 
     parser = argparse.ArgumentParser(
         prog="slipwai search",
-        description="Find a language or an extension in the chandlery",
+        description="Find a language, an extension or a quickstart in the chandlery",
         epilog="A term matches a package's name, its description, its family, its backends and the axis "
         "options it answers — so `search postgres` finds whatever will talk to Postgres for you, "
         "whichever language it is written in. With no term, everything is listed.",

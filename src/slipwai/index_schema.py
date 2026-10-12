@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .language_shape import name_fault
+from .quickstart import is_document
 from .versions import parse
 
 #: Where the channels are named, in order: an organisation's own first, the public one after it. Comma
@@ -41,12 +42,15 @@ CHANDLERY = "SLIPWAI_CHANDLERY"
 FORMATS = (1, 2)
 #: Where each format's entries live, and what version 1 called the one kind it had.
 BLOCK = {1: "languages", 2: "packages"}
-LANGUAGE, EXTENSION, TARGET = "language", "extension", "target"
+LANGUAGE, EXTENSION, TARGET, QUICKSTART = "language", "extension", "target", "quickstart"
 #: In the order a reader meets them, which is the order they were published in. A kind arriving here is a
 #: kind every index in the world may already be listing: the block, the manifest key and the `kind` field
-#: are one word, so an index written for a keel that reads three kinds still loads on one that reads two —
+#: are one word, so an index written for a keel that reads four kinds still loads on one that reads two —
 #: the entries it cannot read are dropped, which is what `entry_of` does with every entry it cannot read.
-KINDS = (LANGUAGE, EXTENSION, TARGET)
+#: A quickstart is not code and installs nothing into the package directory — it is the set of answers
+#: somebody already settled — but it is published, versioned, searched and fetched the way a language is,
+#: which is the whole reason it is a package at all rather than a file people send each other.
+KINDS = (LANGUAGE, EXTENSION, TARGET, QUICKSTART)
 DIGEST = re.compile(r"[0-9a-f]{64}")
 #: The declared-never-required family members an entry's `answers` may name: what a verb needs to know a
 #: release answers before it is installed (D122, ADR 0010). A value a reader does not know is ignored.
@@ -92,6 +96,9 @@ class Release:
     @property
     def is_target(self) -> bool:
         return self.kind == TARGET
+
+    def is_quickstart(self) -> bool:
+        return self.kind == QUICKSTART
 
     @property
     def signed(self) -> bool:
@@ -199,7 +206,8 @@ def target_entry(name: str, fragment: Any) -> bool:
 
 #: Which reader holds each kind's manifest to the little a line is built from. Everything else a manifest
 #: declares is for the loader to refuse, on the machine that installs it, where the package's files are.
-READERS = {LANGUAGE: language_entry, EXTENSION: extension_entry, TARGET: target_entry}
+READERS = {LANGUAGE: language_entry, EXTENSION: extension_entry, TARGET: target_entry,
+           QUICKSTART: is_document}
 
 
 def entry_of(document: str, name: str, entry: Any, channel: str = "", origin: str = "") -> Release | None:

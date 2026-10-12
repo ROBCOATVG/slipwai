@@ -19,6 +19,22 @@ def _sh_single_quote(text: str) -> str:
     return "'" + text.replace("'", "'\"'\"'") + "'"
 
 
+# A project generated from a quickstart was already told which extensions to elect, by somebody who
+# answered that question when they wrote the quickstart. So the record is read before the menu below, and
+# the menu then never appears: asking again would be asking a person to repeat themselves, which is the
+# whole thing a quickstart exists to stop. `--extension` on the command line still wins, because both are
+# gated on `selected_extensions` being empty and the flag is read first — an explicit answer is never
+# second-guessed — and a project that came from no quickstart gets an empty line here and the menu as it was.
+ELECTED_FROM_QUICKSTART = """
+if [ -z "$selected_extensions" ] && command -v python3 >/dev/null 2>&1; then
+  selected_extensions=$(python3 scripts/extensions/elected.py)
+  if [ -n "$selected_extensions" ]; then
+    printf '%s\\n' "Electing from this project's quickstart:$selected_extensions (./init --extension <key> adds another)"
+  fi
+fi
+"""
+
+
 # Not part of Spec Kit's own interactive flow: `specify init` prompts for `--integration` when it is
 # omitted, but it knows nothing about this project's own `--extension` flags, so without this nothing ever
 # asks. Offered only when no `--extension` was already given — an explicit answer, empty or not, is never

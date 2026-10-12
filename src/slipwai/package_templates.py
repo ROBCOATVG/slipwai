@@ -159,6 +159,34 @@ Every required member answered, and the generated project built and tested.
 '''
 
 
+QUICKSTART_README = '''# {title}
+
+A slipwai quickstart: the languages to install, the answers to give and the extensions to elect, settled
+once and given a name. `slipwai generate <project> --quickstart {name}` carries it out, and
+`slipwai quickstart show {name}` says in plain words what it would do first.
+
+TODO: what kind of product this suits, in two sentences. Write it for somebody who has never installed a
+language package — the `suits` line in `quickstart.json` is the row they choose it by.
+
+## Checking it
+
+```sh
+{command} package check .
+```
+
+That it reads, that every package it names is named by a **range** rather than by one version, and what it
+would answer. A quickstart that pinned a version would hold every team that installs it to the day it was
+written.
+
+## Publishing it
+
+```sh
+{command} package release .
+{command} package register . --channel <a channel checkout>
+```
+'''
+
+
 #: The package's own `make`. Three targets, because a publisher has three questions: is it right, what do I
 #: ship, and where does it go. Each is the keel's verb with the package's own directory already filled in, so
 #: a publisher who forgets the flags still runs the right thing.

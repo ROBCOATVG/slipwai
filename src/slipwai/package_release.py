@@ -38,7 +38,7 @@ from pathlib import Path
 from . import ed25519
 from .assets import this_command
 from .errors import GenerationError
-from .index_schema import BLOCK, EXTENSION, LANGUAGE, TARGET
+from .index_schema import BLOCK, EXTENSION, LANGUAGE, QUICKSTART, TARGET
 from .language_release import ReleaseError, pack, read_package
 from .trust import ED25519
 
@@ -70,7 +70,8 @@ def digest(path: Path) -> str:
 
 #: Each kind against the manifest that declares it. The manifest's name is how a reader and the loader both
 #: tell the kinds apart without being told which they are holding.
-MANIFESTS = {EXTENSION: "extension.json", LANGUAGE: "language.json", TARGET: "target.json"}
+MANIFESTS = {EXTENSION: "extension.json", LANGUAGE: "language.json", TARGET: "target.json",
+             QUICKSTART: "quickstart.json"}
 
 
 def kind_of(root: Path) -> str:

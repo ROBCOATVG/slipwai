@@ -72,7 +72,8 @@ def version_in(root: Path) -> str:
 #: The kinds that are not a language, against the manifest each declares and the field in it that is the
 #: name a release file is called after. A language is the fallback, because it is the one whose manifest
 #: `read_directory` already reads for everything else it needs.
-BESIDE_LANGUAGE = (("extension", "extension.json", "key"), ("target", "target.json", "name"))
+BESIDE_LANGUAGE = (("extension", "extension.json", "key"), ("target", "target.json", "name"),
+                   ("quickstart", "quickstart.json", "name"))
 
 
 def read_package(root: Path) -> Source:
@@ -96,6 +97,7 @@ def read_package(root: Path) -> Source:
                                f"called after")
         return Source(named_key, version_in(root), declared, root, "directory")
     return read_directory(root)
+
 
 
 def read_directory(root: Path) -> Source:

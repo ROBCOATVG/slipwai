@@ -20,9 +20,15 @@ is *elected* by being installed and *agreed to* by answering a question, because
 person asked for. An extension that declares a guard nobody agreed to fires none.
 
 `--offer <key>...` is that question, asked once by `./init` over the elected extensions: it says what each
-one would be able to refuse and in whose words, then elects the ones agreed to. It reads and writes
+one would be able to refuse and in whose words, then allows the ones agreed to. It reads and writes
 `/dev/tty` rather than stdin and stdout, so a scripted or CI `./init` is not asked and agrees to nothing —
 silence is *no*, which is the only safe direction for a question about refusing somebody's tool calls.
+
+**Once per quickstart, not once per project.** A project generated from a quickstart carries
+`.slipwai/quickstart.json`, and the guards it already records a yes for are allowed without being asked
+about again: a person who said yes when they wrote that quickstart has said yes. What an extension has
+*gained* since is asked about on its own, naming the new point and nothing else — so the question a person
+reads is always a question they have not answered.
 
 Standalone and dependency-free: this ships inside a generated project, which has no slipwai to import.
 """
@@ -51,6 +57,9 @@ def project_root() -> Path:
 
 ROOT = project_root()
 REGISTRY = ROOT / ".slipwai/guards.json"
+#: What the quickstart this project came from already carries a person's agreement for, where it came from
+#: one at all. Written by `slipwai generate`, read here and nowhere else.
+RECORD = ROOT / ".slipwai/quickstart.json"
 
 
 def seconds(budget: str) -> float:
@@ -73,15 +82,58 @@ def read(path: Path) -> dict:
 def elect(keys: list[str]) -> int:
     """Write `.slipwai/guards.json` for the extensions `keys` names — the ones a person agreed to."""
     available = read(AVAILABLE)
+    return write_registry({key: list(available.get(key, {})) for key in set(keys)}, available)
+
+
+def write_registry(allowed: dict[str, list[str]], available: dict) -> int:
+    """`.slipwai/guards.json` from exactly what is allowed: per extension, which of its guards may fire.
+
+    Per guard rather than per extension, because an agreement is per guard from 13.4 on. An extension that
+    was agreed to when a quickstart was written and has *gained* a point since fires the one it was agreed
+    for and not the new one, until somebody is asked about that one — which is a sentence that cannot be
+    written if the registry is a list of extension keys.
+    """
     guards: dict[str, list[dict]] = {}
-    for key in sorted(set(keys)):
+    for key in sorted(allowed):
         for name, body in sorted(available.get(key, {}).items()):
-            guards.setdefault(name, []).append({"extension": key, **body})
+            if name in allowed[key]:
+                guards.setdefault(name, []).append({"extension": key, **body})
     REGISTRY.parent.mkdir(parents=True, exist_ok=True)
     REGISTRY.write_text(json.dumps({"v": 1, "guards": guards}, indent=2) + "\n", encoding="utf-8")
     attached = ", ".join(sorted(guards)) or "no guard"
-    print(f"guards: {len(set(keys) & set(available))} extension(s) may refuse at {attached}")
+    firing = sum(1 for key, names in allowed.items() if names and key in available)
+    print(f"guards: {firing} extension(s) may refuse at {attached}")
     return 0
+
+
+def agreed_already() -> dict[str, list[str]]:
+    """Which guards this project's quickstart already carries a person's yes for.
+
+    A quickstart is a set of answers somebody settled once, and one of those answers is *this extension may
+    refuse a tool call*. Asking it again in every project generated from that quickstart is how a person
+    learns to answer a question without reading it, which is the opposite of what the question is for.
+    """
+    document = read(RECORD)
+    found = document.get("guards")
+    if not isinstance(found, dict):
+        return {}
+    return {key: [name for name in names if isinstance(name, str)]
+            for key, names in found.items() if isinstance(key, str) and isinstance(names, list)}
+
+
+def newly(offered: dict[str, dict], already: dict[str, list[str]]) -> dict[str, dict]:
+    """Each extension's guards nobody has agreed to yet: what a person is actually asked about.
+
+    An extension with nothing new drops out of the question entirely rather than appearing with an empty
+    list, because the question names what it asks and a row with nothing in it is a row that reads as a
+    second request for the same permission.
+    """
+    found: dict[str, dict] = {}
+    for key, declared in offered.items():
+        new = {name: body for name, body in declared.items() if name not in already.get(key, ())}
+        if new:
+            found[key] = new
+    return found
 
 
 #: What each guard can stop, in the words a person deciding needs. The keel's `guards.py` is where these
@@ -98,19 +150,36 @@ REFUSING = {
 
 
 def offer(keys: list[str]) -> int:
-    """Ask once whether the elected extensions may refuse tool calls, then elect the ones agreed to.
+    """Ask once whether the elected extensions may refuse tool calls, then allow the ones agreed to.
 
-    Over `/dev/tty`, so a scripted or CI `./init` is never asked — and agrees to nothing. A question about
-    whether software may refuse what a person told it to do has one safe answer when nobody is there.
+    Once per *quickstart*, not once per project (13.4): what the quickstart this project came from already
+    carries a yes for is allowed without being asked about, and what an extension has gained since is asked
+    about on its own. A project that came from no quickstart is asked about everything, as it always was.
+
+    Over `/dev/tty`, so a scripted or CI `./init` is never asked — and agrees to nothing new. A question
+    about whether software may refuse what a person told it to do has one safe answer when nobody is there.
     """
     available = read(AVAILABLE)
     offered = {key: available.get(key, {}) for key in sorted(set(keys)) if available.get(key)}
     if not offered:
         return elect([])
+    already = agreed_already()
+    # Only what this project actually has: a quickstart that agreed to an extension whose guards have gone
+    # away carries a yes for nothing, and an entry for it would write a registry naming a guard nobody has.
+    carried = {key: [name for name in already.get(key, []) if name in offered[key]] for key in offered}
+    asked = newly(offered, carried)
+    if not asked:
+        print("guards: carried from this project's quickstart — "
+              f"{sum(len(names) for names in carried.values())} already agreed to, nothing asked")
+        return write_registry(carried, available)
     try:
         with open("/dev/tty", "r+", encoding="utf-8") as tty:
-            tty.write("\nThese extensions can refuse a tool call:\n")
-            for key, declared in offered.items():
+            if any(carried.values()):
+                tty.write("\nYour quickstart already allows some of these to refuse a tool call. "
+                          "This is what is new:\n")
+            else:
+                tty.write("\nThese extensions can refuse a tool call:\n")
+            for key, declared in asked.items():
                 for name in sorted(declared):
                     tty.write(f"  {key}: {REFUSING.get(name, name)}\n")
             tty.write("A guard never ends a stage — it stops one call and tells the agent why.\n")
@@ -118,10 +187,13 @@ def offer(keys: list[str]) -> int:
             tty.flush()
             answer = tty.readline().strip().lower()
     except OSError:
-        print("guards: nothing asked and nothing allowed — `./init` was not run from a terminal; "
+        print("guards: nothing new asked and nothing new allowed — `./init` was not run from a terminal; "
               "`python3 scripts/extensions/guards.py --elect <keys>` allows them later", file=sys.stderr)
-        return elect([])
-    return elect(list(offered) if answer in ("y", "yes") else [])
+        return write_registry(carried, available)
+    if answer in ("y", "yes"):
+        for key, declared in asked.items():
+            carried[key] = [*carried[key], *declared]
+    return write_registry(carried, available)
 
 
 def applies(body: dict, given: dict[str, str]) -> bool:

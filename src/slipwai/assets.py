@@ -58,6 +58,13 @@ GUIDANCE_ROOT = ROOT / "assets/guidance"
 # toolkit is copied into a project verbatim at the path each file sits at, and a page here is never
 # copied — it is written once, resolved, by the module that selects its sections (`project/prose.py`).
 PAGE_ROOT = ROOT / "assets/pages"
+# The two pages that connect a modelled project's event model to its code: `docs/first-slice.md` and
+# `docs/event-modeling-to-code.md`, plus the per-rung write-model sections the second is assembled from.
+# Its own root rather than a corner of `assets/pages/`, because the three files there are one module's and
+# name their own values, and because `write-model.md` lands nowhere — it is the paragraphs a page carries
+# once per service, which is what `assets/guidance/rules.md` is to `AGENTS.md`. Not to be confused with the
+# toolkit's `docs/event-model/`, which is the model itself and the format's own documentation.
+MODEL_PAGE_ROOT = ROOT / "assets/event-model"
 PROFILE_ROOT = ROOT / "assets/profiles"
 FRONTEND_ROOT = ROOT / "assets/frontends"
 BACKING_SERVICE_ROOT = ROOT / "assets/backing-services"

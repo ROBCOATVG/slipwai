@@ -32,7 +32,7 @@ from collections.abc import Callable
 
 import checkout_packages  # noqa: F401
 
-from slipwai.assets import ADOPTION_ROOT, GUIDANCE_ROOT, PAGE_ROOT, TOOLKIT_ROOT
+from slipwai.assets import ADOPTION_ROOT, GUIDANCE_ROOT, MODEL_PAGE_ROOT, PAGE_ROOT, TOOLKIT_ROOT
 from slipwai.errors import GenerationError
 from slipwai.layout import AT_ROOT
 from slipwai.project import (
@@ -40,8 +40,10 @@ from slipwai.project import (
     briefs,
     commands,
     docs,
+    event_model,
     flags,
     ground_command,
+    model_to_code,
     pin_commands,
     prose,
     readme,
@@ -86,6 +88,12 @@ TEMPLATED = (
     (PAGE_ROOT / "skills/run-the-app", ("skills/run-the-app",),
      lambda: run_skill.values("project", [], AT_ROOT)),
     (GUIDANCE_ROOT, ("AGENTS.md", "docs/architecture.md"), lambda: rules.TOKENS),
+    # The two pages that connect a modelled project's model to its code, and the per-rung sections the
+    # mapping document carries once per service. Pooled across the two modules that write them, as
+    # `commands/` is, because no single render names every token: the page is rendered once and
+    # `write-model.md` once per service.
+    (MODEL_PAGE_ROOT, ("docs/first-slice.md", "docs/event-modeling-to-code.md"),
+     lambda: (*event_model.TOKENS, *model_to_code.TOKENS)),
     (TOOLKIT_ROOT / "commands", ("commands",),
      lambda: pooled(commands.values, sail_section.values, add_commands.values)),
     # The pages only a repository that adopted the method receives. An asset of the adoption rather than of

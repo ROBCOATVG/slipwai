@@ -1,0 +1,120 @@
+<svg viewBox="0 0 1240 740" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The standard profile: one feature from its specification to the brief one delegate is handed — the chart stage, the chart, the split, clearance, the claim, and the example map the delegate opens with">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+<marker id="ah-hl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahhl"/></marker>
+</defs>
+<style>
+svg{color:#172129;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+.box{fill:#fff;stroke:#73828c;stroke-width:1}.box.hl{fill:#dcecea;stroke:#0f6b6b;stroke-width:1.5}.box.dash{stroke-dasharray:4 3;fill:#f4f6f7}
+.band{fill:#eef2f4;stroke:#d7dee2}.bandt{fill:#73828c;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;letter-spacing:.04em}
+.bar{fill:#f1e9d2;stroke:#8a6d24}.trunk{fill:#dcecea;stroke:#0f6b6b;stroke-width:1.2}
+text{fill:#172129}.lbl{fill:#44525c}.arr{stroke:#172129;stroke-width:1.2;fill:none}.arr.hl{stroke:#0f6b6b;stroke-width:1.6}.arr.dash{stroke-dasharray:4 3}
+#ah path{fill:#172129}.ahhl{fill:#0f6b6b}
+</style>
+<rect class="band" x="16" y="16" width="1208" height="196" rx="4"/>
+<text class="bandt" x="28" y="33" font-size="11">ONCE PER FEATURE · host session, a person present · no slice is claimed before the chart is written</text>
+<rect class="box" x="30" y="58" width="200" height="104.0" rx="3"/>
+<text x="130.0" y="82.2" text-anchor="middle" font-size="12" font-weight="600">Product specification</text>
+<text x="130.0" y="98.2" text-anchor="middle" font-size="12">specs/booking/spec.md</text>
+<text x="130.0" y="114.2" text-anchor="middle" font-size="12">a guest holds a table for</text>
+<text x="130.0" y="130.2" text-anchor="middle" font-size="12">four, for an hour</text>
+<text x="130.0" y="146.2" text-anchor="middle" font-size="12">+ gaps review</text>
+<path class="arr " d="M 230,110 L 252,110" marker-end="url(#ah)"/>
+<rect class="box" x="252" y="58" width="210" height="104.0" rx="3"/>
+<text x="357.0" y="82.2" text-anchor="middle" font-size="12" font-weight="600">Mock-up review</text>
+<text x="357.0" y="98.2" text-anchor="middle" font-size="12">every surface drawn,</text>
+<text x="357.0" y="114.2" text-anchor="middle" font-size="12">storyboarded and approved</text>
+<text x="357.0" y="130.2" text-anchor="middle" font-size="12">one state at a time</text>
+<text x="357.0" y="146.2" text-anchor="middle" font-size="12">mock-states.md</text>
+<path class="arr " d="M 462,110 L 484,110" marker-end="url(#ah)"/>
+<rect class="box hl" x="484" y="58" width="230" height="104.0" rx="3"/>
+<text x="599.0" y="82.2" text-anchor="middle" font-size="12" font-weight="600">Chart</text>
+<text x="599.0" y="98.2" text-anchor="middle" font-size="12">a stage, with a person present</text>
+<text x="599.0" y="114.2" text-anchor="middle" font-size="12">contexts named per service</text>
+<text x="599.0" y="130.2" text-anchor="middle" font-size="12">routes, schemas and ports typed</text>
+<text x="599.0" y="146.2" text-anchor="middle" font-size="12">it writes the chart itself</text>
+<path class="arr " d="M 714,110 L 736,110" marker-end="url(#ah)"/>
+<rect class="box" x="736" y="58" width="238" height="104.0" rx="3"/>
+<text x="855.0" y="82.2" text-anchor="middle" font-size="12" font-weight="600">the chart</text>
+<text x="855.0" y="98.2" text-anchor="middle" font-size="12">specs/booking/chart.yaml</text>
+<text x="855.0" y="114.2" text-anchor="middle" font-size="12">fairway · context · service · paths</text>
+<text x="855.0" y="130.2" text-anchor="middle" font-size="12">marks set · marks steered by</text>
+<text x="855.0" y="146.2" text-anchor="middle" font-size="12">check-chart: one setter per mark</text>
+<path class="arr " d="M 974,110 L 996,110" marker-end="url(#ah)"/>
+<rect class="box" x="996" y="58" width="214" height="104.0" rx="3"/>
+<text x="1103.0" y="82.2" text-anchor="middle" font-size="12" font-weight="600">Split</text>
+<text x="1103.0" y="98.2" text-anchor="middle" font-size="12">one feature, three slices</text>
+<text x="1103.0" y="114.2" text-anchor="middle" font-size="12">BOK-01 sets BookingHeld</text>
+<text x="1103.0" y="130.2" text-anchor="middle" font-size="12">BOK-02 steers by it</text>
+<text x="1103.0" y="146.2" text-anchor="middle" font-size="12">each one a row on the chart</text>
+<path class="arr " d="M 1103,162 L 1103,196 L 148,196 L 148,264" marker-end="url(#ah)"/>
+<text class="lbl" x="1095" y="192" text-anchor="end" font-size="11">the feature, cut up</text>
+<rect class="band" x="16" y="228" width="1208" height="186" rx="4"/>
+<text class="bandt" x="28" y="245" font-size="11">PER SLICE · one captain, one fairway, one berth · it reads the logs, and writes to its own deck log</text>
+<rect class="box" x="30" y="264" width="236" height="104.0" rx="3"/>
+<text x="148.0" y="288.2" text-anchor="middle" font-size="12" font-weight="600">clearance</text>
+<text x="148.0" y="304.2" text-anchor="middle" font-size="12">every mark this slice steers by</text>
+<text x="148.0" y="320.2" text-anchor="middle" font-size="12">is set by a planned slice.</text>
+<text x="148.0" y="336.2" text-anchor="middle" font-size="12">BOK-01 steers by none, so it is</text>
+<text x="148.0" y="352.2" text-anchor="middle" font-size="12">the first one cleared</text>
+<path class="arr " d="M 266,316 L 288,316" marker-end="url(#ah)"/>
+<rect class="box" x="288" y="264" width="236" height="104.0" rx="3"/>
+<text x="406.0" y="288.2" text-anchor="middle" font-size="12" font-weight="600">claim</text>
+<text x="406.0" y="304.2" text-anchor="middle" font-size="12">slice/BOK-01, force-with-lease</text>
+<text x="406.0" y="320.2" text-anchor="middle" font-size="12">claimed, in the deck log</text>
+<text x="406.0" y="336.2" text-anchor="middle" font-size="12">one captain holds one slice,</text>
+<text x="406.0" y="352.2" text-anchor="middle" font-size="12">and nothing else may take it</text>
+<path class="arr " d="M 524,316 L 546,316" marker-end="url(#ah)"/>
+<rect class="box" x="546" y="264" width="236" height="104.0" rx="3"/>
+<text x="664.0" y="288.2" text-anchor="middle" font-size="12" font-weight="600">dispatch</text>
+<text x="664.0" y="304.2" text-anchor="middle" font-size="12">a fresh context, in this berth:</text>
+<text x="664.0" y="320.2" text-anchor="middle" font-size="12">worktree, env, ports, database</text>
+<text x="664.0" y="336.2" text-anchor="middle" font-size="12">with this stage&#x27;s budget in</text>
+<text x="664.0" y="352.2" text-anchor="middle" font-size="12">minutes and in tokens</text>
+<rect class="box dash" x="820" y="264" width="390" height="104.0" rx="3"/>
+<text x="1015.0" y="288.2" text-anchor="middle" font-size="12" font-weight="600">how wide a delegate is, and how wide its cycle</text>
+<text x="1015.0" y="304.2" text-anchor="middle" font-size="12">.specify/sail.json — read and shown by the telegraph</text>
+<text x="1015.0" y="320.2" text-anchor="middle" font-size="12">delegate = story (the default) · rule · task</text>
+<text x="1015.0" y="336.2" text-anchor="middle" font-size="12">cycle = rule (the default) · example — never story</text>
+<text x="1015.0" y="352.2" text-anchor="middle" font-size="12">a slice that cannot support it runs narrower, and says so</text>
+<path class="arr " d="M 818,316 L 788,316" marker-end="url(#ah)"/>
+<path class="arr " d="M 664,368 L 664,470" marker-end="url(#ah)"/>
+<text class="lbl" x="672" y="398" text-anchor="start" font-size="11">one slice, one fresh context, at that width</text>
+<rect class="band" x="16" y="434" width="1208" height="290" rx="4"/>
+<text class="bandt" x="28" y="451" font-size="11">ONE DELEGATE · this slice only, in the captain&#x27;s stage boundaries · it never sees another slice</text>
+<rect class="bar" x="30" y="470" width="1180" height="72.0" rx="3"/>
+<text x="620.0" y="494.2" text-anchor="middle" font-size="12" font-weight="600">what BOK-01&#x27;s delegate is handed</text>
+<text x="620.0" y="510.2" text-anchor="middle" font-size="12">its row on the chart — the fairway it is in, the paths that fairway owns, the marks it sets and the marks it steers by, typed</text>
+<text x="620.0" y="526.2" text-anchor="middle" font-size="12">the approved mock-up states it delivers · the berth it works in · its budget in minutes and in tokens · the width above, and nothing wider</text>
+<path class="arr " d="M 155,538 L 155,564" marker-end="url(#ah)"/>
+<rect class="box hl" x="30" y="564" width="250" height="104.0" rx="3"/>
+<text x="155.0" y="588.2" text-anchor="middle" font-size="12" font-weight="600">Example map</text>
+<text x="155.0" y="604.2" text-anchor="middle" font-size="12">rules, an example for each, and</text>
+<text x="155.0" y="620.2" text-anchor="middle" font-size="12">the questions it cannot answer</text>
+<text x="155.0" y="636.2" text-anchor="middle" font-size="12">— written from the chart</text>
+<text x="155.0" y="652.2" text-anchor="middle" font-size="12">and the story</text>
+<path class="arr " d="M 280,616 L 300,616" marker-end="url(#ah)"/>
+<rect class="box" x="300" y="564" width="260" height="104.0" rx="3"/>
+<text x="430.0" y="588.2" text-anchor="middle" font-size="12" font-weight="600">its marks, set</text>
+<text x="430.0" y="604.2" text-anchor="middle" font-size="12">at the example map, in this</text>
+<text x="430.0" y="620.2" text-anchor="middle" font-size="12">worktree — one typed file per mark,</text>
+<text x="430.0" y="636.2" text-anchor="middle" font-size="12">set once and never moved</text>
+<text x="430.0" y="652.2" text-anchor="middle" font-size="12">mark-set, in the deck log</text>
+<path class="arr " d="M 560,616 L 580,616" marker-end="url(#ah)"/>
+<rect class="box" x="580" y="564" width="250" height="104.0" rx="3"/>
+<text x="705.0" y="588.2" text-anchor="middle" font-size="12" font-weight="600">Plan and tasks</text>
+<text x="705.0" y="604.2" text-anchor="middle" font-size="12">the context named, the owned</text>
+<text x="705.0" y="620.2" text-anchor="middle" font-size="12">paths and no others, tasks cut</text>
+<text x="705.0" y="636.2" text-anchor="middle" font-size="12">from a plan that is already</text>
+<text x="705.0" y="652.2" text-anchor="middle" font-size="12">complete</text>
+<path class="arr " d="M 830,616 L 850,616" marker-end="url(#ah)"/>
+<rect class="box" x="850" y="564" width="360" height="120.0" rx="3"/>
+<text x="1030.0" y="588.2" text-anchor="middle" font-size="12" font-weight="600">Implementation</text>
+<text x="1030.0" y="604.2" text-anchor="middle" font-size="12">red · green · refactor, one cycle per the setting</text>
+<text x="1030.0" y="620.2" text-anchor="middle" font-size="12">make unit · lint · types as the green step&#x27;s gate</text>
+<text x="1030.0" y="636.2" text-anchor="middle" font-size="12">then the rest of the ladder, to the merge:</text>
+<text x="1030.0" y="652.2" text-anchor="middle" font-size="12">Convergence · Demo · Review and reshape ·</text>
+<text x="1030.0" y="668.2" text-anchor="middle" font-size="12">Adversary · Mutation gate · Merge to main</text>
+<path class="arr hl dash" d="M 430,668 L 430,694 L 22,694 L 22,316 L 29,316" marker-end="url(#ah-hl)"/>
+<text class="lbl" x="440" y="690" text-anchor="start" font-size="11">a mark set here clears the next slice — which does not wait for this one to merge</text>
+</svg>

@@ -134,6 +134,37 @@ class FlightTest(unittest.TestCase):
         self.assertEqual([row["what"] for row in inbox([Fairway("main", "ordering", lines)])],
                          ["taken by the iteration that died", "still queued", "and this one"])
 
+    def test_a_project_that_never_split_still_carries_its_words_and_why_it_stopped(self) -> None:
+        (self.feature / "story-split.md").unlink()
+        said = self.root / ".specify"
+        said.mkdir()
+        (said / "cruise-inbox.jsonl").write_text(
+            json.dumps({"at": "2026-01-01T10:00:00Z", "text": "the invoice flow is wrong"}) + "\n",
+            encoding="utf-8")
+        (self.root / "specs/cruise-log.jsonl").write_text(
+            json.dumps({"iteration": 4, "last_line": "cruise: parked: waiting on the gate"}) + "\n",
+            encoding="utf-8")
+        with patch("slipwai.migration_flight.shipped", return_value=None):
+            flight = read(self.root, self.document, YAML())
+        self.assertEqual(flight.features, {})
+        self.assertEqual([(feature, fairway, line.kind) for feature, fairway, line in flight.logs],
+                         [("ordering", "main", "told"), ("ordering", "main", "parked")])
+        self.assertEqual([line.fields["message"] for _, _, line in flight.logs if line.kind == "told"],
+                         ["the invoice flow is wrong"])
+        self.assertEqual([line.fields["why"] for _, _, line in flight.logs if line.kind == "parked"],
+                         ["waiting on the gate"])
+
+    def test_a_project_with_no_feature_directory_at_all_still_lands_its_words_somewhere(self) -> None:
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            (root / ".specify").mkdir()
+            (root / ".specify/cruise-inbox.jsonl").write_text(
+                json.dumps({"at": "2026-01-01T10:00:00Z", "text": "do not lose this"}) + "\n", encoding="utf-8")
+            with patch("slipwai.migration_flight.shipped", return_value=None):
+                flight = read(root, self.document, YAML())
+        self.assertEqual([(feature, fairway, line.fields["message"]) for feature, fairway, line in flight.logs],
+                         [("main", "main", "do not lose this")])
+
     def park(self, *endings: str) -> list[str]:
         """What the crossing records after a version 1 run whose log ends on each of these last lines."""
         found = []

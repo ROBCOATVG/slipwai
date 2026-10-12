@@ -26,6 +26,8 @@ class YAMLReader(Protocol):
 
 STATE = ".slipwai/migration.json"
 SLICE = re.compile(r"\b[A-Z][A-Z0-9]*-\d+\b")
+#: What a fairway or a feature may be called: one path component, on every platform and in a git ref.
+NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._-]*")
 #: What version 1's runner — version 1's own word for what a captain replaced — left behind. All three
 #: stay at the repository root under an adopted project's `layout.delivery`, because `specs/` and
 #: `.specify/` are not delivery material and do not move.
@@ -42,7 +44,7 @@ def json_bytes(value: object) -> bytes:
 
 
 def identifier(value: str) -> str:
-    if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", value) or value in {".", ".."}:
+    if not NAME.fullmatch(value) or value in {".", ".."}:
         raise GenerationError(f"{value!r} cannot name a fairway or feature; "
                               "correct the context before `slipwai migrate`")
     return value
@@ -211,6 +213,21 @@ def model_bytes(source: Path, model: dict) -> bytes:
     return json_bytes(model)
 
 
+def home(root: Path, flight: Flight) -> str:
+    """Which feature's directory version 1's one loop writes its lines under.
+
+    The first feature with a split, where there is one. A project that ran `/specify` and `/plan` but
+    never `/split` has no such feature and still has every word somebody said, so the first feature
+    directory it does have takes them, and a project with none of those puts them under `main`.
+    """
+    if flight.features:
+        return next(iter(flight.features))
+    for path in sorted((root / "specs").glob("*")):
+        if path.is_dir() and NAME.fullmatch(path.name):
+            return path.name
+    return "main"
+
+
 def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str] = ()) -> Flight:
     """Immutable migrated data, prepared before any project file or branch is changed.
 
@@ -287,13 +304,15 @@ def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str]
                     original.setdefault("capability", item["capability"])
     if items:
         flight.files[model_path.relative_to(root).as_posix()] = model_bytes(model_path, model)
+    # Version 1 ran one loop over the whole project, so its messages and its stop belong to the `main`
+    # fairway, beside the records frozen there. Carried whether or not any feature has a split: they are
+    # the project's loop's, not any feature's, and the crossing is the moment that loop stops running —
+    # after it nothing will ever surface those words or that reason again.
+    where = home(root, flight)
+    flight.logs += [(where, "main", line) for line in queued(root)]
+    why = stopped(root)
+    if why:
+        flight.logs.append((where, "main", entry("parked", fairway="main", why=why)))
     if flight.features:
-        # Version 1 ran one loop over the whole project, so its messages and its stop belong to the
-        # `main` fairway of the first feature, beside the records frozen there.
-        active_feature = next(iter(flight.features))
-        flight.logs += [(active_feature, "main", line) for line in queued(root)]
-        why = stopped(root)
-        if why:
-            flight.logs.append((active_feature, "main", entry("parked", fairway="main", why=why)))
         flight.files[STATE] = json_bytes({"v": 1, "features": flight.features})
     return flight

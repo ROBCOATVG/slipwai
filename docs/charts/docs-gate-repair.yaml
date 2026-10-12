@@ -3,7 +3,7 @@ feature: docs-gate-repair
 fairways:
   docs-gate-repair:
     context: executable guide programme drift
-    owns: [scripts/test-docs.py, tests/fixtures/docs/**]
+    owns: [scripts/test-docs.py, tests/test_docs_environment.py, tests/fixtures/docs/**]
 marks: {}
 slices:
   claimed-fairway-command:

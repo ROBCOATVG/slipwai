@@ -1,0 +1,22 @@
+feature: adoption-locale
+fairways:
+  adoption-locale:
+    owns:
+      - src/slipwai/adopt.py # Explicit encoding only.
+      - src/slipwai/resurvey.py # Explicit encoding only.
+      - tests/test_adopt_page.py
+      - docs/charts/adoption-locale.yaml
+slices:
+  adoption-utf8:
+    fairway: adoption-locale
+    sets: [Utf8AdoptionAndRefresh]
+    steers_by: [CanonicalToolkitGuidance]
+marks:
+  Utf8AdoptionAndRefresh:
+    kind: port
+    inputs: {repository: existing-git-checkout, default_encoding: cp1252}
+    outputs: {managed_files: utf8, retained_source: unchanged}
+  CanonicalToolkitGuidance:
+    kind: port
+    inputs: {installed_languages: none}
+    outputs: {toolkit: resolved-guidance}

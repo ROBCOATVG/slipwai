@@ -1,7 +1,8 @@
 """Language markers in the canonical toolkit, and the disclaimer on what is still TypeScript.
 
 A skill in `assets/toolkit/` is written once and carries `{{example: <skill>/<id>}}` where a code sample
-belongs; the snippet comes from `assets/languages/<language>/examples/`. A project whose services are written
+belongs; generated services use `assets/languages/<language>/examples/` from their packages, while adoption
+uses the keel's guidance under `assets/examples/`. A project whose services are written
 in more than one language gets every one of them at each marker, each block labelled with its language and
 the services it is for, so the agent working in a Go service beside a TypeScript one finds the Go version
 where it is looking. A skill whose examples have not been translated yet ships with a note saying so rather
@@ -14,7 +15,7 @@ import re
 from pathlib import Path
 from typing import NamedTuple
 
-from .assets import PROFILE_ROOT, TOOLKIT_ROOT, asset_files, inside
+from .assets import PROFILE_ROOT, ROOT, TOOLKIT_ROOT, asset_files, inside
 from .errors import GenerationError
 from .registry import registry
 
@@ -86,6 +87,31 @@ def snippet(backend: str, family: str, skill: str, example_id: str, root: Path |
         f"missing {backend} example snippet for {skill}/{example_id} (expected "
         f"assets/languages/{backend}/{relative}, or assets/languages/{family}/{relative})"
     )
+
+
+def resolve_canonical_examples(content: str, root: Path = ROOT) -> str:
+    """Resolve guidance markers without a language package.
+
+    These snippets belong to the toolkit's prose, under `assets/examples/`, separate from
+    a language's idiomatic answers. Adoption has no generated service and no package to ask.
+    Keeping this tree outside `assets/toolkit/` also keeps unreferenced snippets out of projects.
+    """
+    def replace(match: re.Match[str]) -> str:
+        relative = f"{match.group(1)}/{match.group(2)}.md"
+        try:
+            path = inside(root / "assets/examples", relative, root)
+        except ValueError as error:
+            raise GenerationError(str(error)) from error
+        if not path.is_file():
+            raise GenerationError(
+                f"missing canonical example snippet for {relative}: "
+                "restore the keel's assets/examples from the installed release with `slipwai upgrade`"
+            )
+        try:
+            return path.read_text(encoding="utf-8").rstrip("\n")
+        except UnicodeDecodeError as error:
+            raise GenerationError(f"canonical example {relative} is not UTF-8 text") from error
+    return EXAMPLE_MARKER.sub(replace, content)
 
 
 def _owned(package: Path, owner: str, relative: str) -> Path:

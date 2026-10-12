@@ -171,6 +171,9 @@ def same_release(documented: list[str], actual: str) -> str | None:
 def keel_env() -> dict[str, str]:
     """This checkout's keel and its pinned packages, with an index that is not there to reach."""
     environment = dict(os.environ)
+    # Fixtures switch to their own slice branches; the outer CI checkout is a different repository.
+    for name in ("GITHUB_HEAD_REF", "CI_COMMIT_REF_NAME"):
+        environment.pop(name, None)
     environment["PYTHONPATH"] = str(ROOT / "src")
     environment["SLIPWAI_LANGUAGES"] = str(ROOT / "packages")
     environment["SLIPWAI_INDEX"] = (ROOT / "tests/fixtures/no-index").as_uri()

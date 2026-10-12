@@ -115,6 +115,10 @@ def would_write(root: Path, delivery: str = "delivery") -> dict[str, list[str]]:
         ecosystem = missing_wrapper(root, app)
         if ecosystem is not None:
             written += [prefixed(app.path, relative) for relative, _, _ in WRAPPERS[ecosystem][2]]
+    # A managed block creates a new file where the repository has none; the preview
+    # calls a file appended only when there is already a person's file to add to.
+    written += [path for path in appended if not (root / path).exists()]
+    appended = [path for path in appended if (root / path).exists()]
     return {"written": sorted(set(written)), "appended": sorted(set(appended))}
 
 

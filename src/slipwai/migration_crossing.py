@@ -5,15 +5,17 @@ repositories; their commits are fetched as immutable offers. Nothing is pushed.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 from .adopt_report import survey_page
 from .assets import NOTES, VERSION
 from .layout import layout_of
-from .logs import deck_path
+from .logs import Entry, deck_path
 from .manifest import apps_from_manifest
 from .migration_claims import ahead, prepare, update
 from .migration_flight import Flight, read, settings
@@ -68,13 +70,62 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             ) if branches else ""))
 
 
+#: What marks a deck line as this crossing's own. A crossing that conflicts leaves a merge in progress and
+#: the report offers `git merge --abort`; the deck logs are gitignored, so they survive that abort while
+#: `.slipwai/migration.json` — tracked, and staged by `install` — does not. Without a key in the line
+#: itself, the re-run appends a second `told` per queued message, a second `merged` per shipped slice and a
+#: second `claimed`, to a log that is append-only by design: the board would show the person their own
+#: words twice for ever and nothing could tell which copy was real.
+CROSSED = "crossed"
+
+
+def crossed(line: Entry) -> str:
+    """One line's identity across runs: its kind and its fields, plus its own instant where it has one.
+
+    A `told` carries the instant version 1 recorded, which is the person's and is the same on every re-run,
+    and two identical messages said at different times are two messages. Every other kind is stamped when
+    it is written, so the clock is left out and the second run recognises what the first wrote.
+    """
+    body = {"kind": line.kind, **line.fields} | ({"t": line.t} if line.t else {})
+    digest = hashlib.sha256(json.dumps(body, sort_keys=True, ensure_ascii=False).encode("utf-8"))
+    return digest.hexdigest()[:16]
+
+
+def already(path: Path) -> set[str]:
+    """The keys of the lines an earlier crossing of this project already wrote to this deck log.
+
+    A line that is not this crossing's — a captain's, or one torn by something else — is left out rather
+    than refused: the only thing being decided here is what has already been said once.
+    """
+    if not path.is_file():
+        return set()
+    found = set()
+    for text in path.read_text(encoding="utf-8", errors="surrogateescape").splitlines():
+        try:
+            body = json.loads(text)
+        except ValueError:
+            continue
+        if isinstance(body, dict) and isinstance(body.get(CROSSED), str):
+            found.add(body[CROSSED])
+    return found
+
+
 def seed(root: Path, flight: Flight) -> None:
+    """Append what version 1 left behind, once per line however many times the crossing is re-run."""
+    seen: dict[Path, set[str]] = {}
     for feature, fairway, line in flight.logs:
         destination = root / deck_path(feature, fairway)
         destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination not in seen:
+            seen[destination] = already(destination)
+        key = crossed(line)
+        if key in seen[destination]:
+            continue
+        seen[destination].add(key)
+        stamped = replace(line, fields={**line.fields, CROSSED: key})
         descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
         try:
-            os.write(descriptor, line.line().encode("utf-8"))
+            os.write(descriptor, stamped.line().encode("utf-8"))
         finally:
             os.close(descriptor)
 

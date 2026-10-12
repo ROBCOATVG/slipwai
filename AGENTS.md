@@ -62,8 +62,9 @@ Every module in version 2 comes from one of two commits, and the slice says whic
 
 ## What the keel may not know
 
-The keel names no language and no extension. A `slipwai_language_*` import anywhere in `src/` fails the
-gate. In the other direction, a package may import only the keel modules
+The keel names no language, no extension and no cloud. A `slipwai_language_*` or `slipwai_target_*` import
+anywhere in `src/` fails the gate — including one deferred inside a function, which is still the keel
+knowing a product. In the other direction, a package may import only the keel modules
 [import-surface.txt](import-surface.txt) lists **for its kind**, and that file is held in both directions: a
 line naming a module the keel has not got fails too. Adding a line to it is a promise that cannot be
 withdrawn without breaking a package built somewhere this repository cannot see. The ceiling is twenty, and

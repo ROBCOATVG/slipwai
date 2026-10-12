@@ -137,6 +137,40 @@ class GateTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("the keel imports a language package: slipwai_language_go", said)
 
+    def test_the_keel_may_not_import_a_target_package_either(self) -> None:
+        """The same rule, and it has to be a rule rather than a habit: the keel naming a cloud is exactly
+        what the clouds were made packages to stop, and a keel that only refused languages would let the
+        first `import slipwai_target_aws` back in without a word."""
+        code, said = self.gate({
+            "__init__.py": '"""The keel."""\n',
+            "errors.py": '"""A refusal."""\nfrom slipwai_target_aws import stacks\n',
+        })
+        self.assertEqual(code, 1)
+        self.assertIn("the keel imports a target package: slipwai_target_aws", said)
+
+    def test_the_keel_importing_a_package_inside_a_function_is_refused_too(self) -> None:
+        """Anywhere in the module, not only at the top: a deferred import is still the keel knowing a cloud,
+        and it is the shape somebody reaches for when the top of the file is being watched."""
+        code, said = self.gate({
+            "__init__.py": '"""The keel."""\n',
+            "errors.py": ('"""A refusal."""\ndef go():\n    import slipwai_target_azure\n'
+                          "    return slipwai_target_azure\n"),
+        })
+        self.assertEqual(code, 1)
+        self.assertIn("the keel imports a target package: slipwai_target_azure", said)
+
+    def test_every_kind_of_package_the_keel_may_not_name_is_refused(self) -> None:
+        """Named from the table the gate walks the packages by, so a fourth kind is refused the day it is
+        declared rather than the day somebody remembers to write a test for it."""
+        for kind, prefix in structure.PACKAGE_PREFIXES.items():
+            with self.subTest(kind=kind):
+                code, said = self.gate({
+                    "__init__.py": '"""The keel."""\n',
+                    "errors.py": f'"""A refusal."""\nimport {prefix}thing\n',
+                })
+                self.assertEqual(code, 1)
+                self.assertIn(f"the keel imports a {kind} package: {prefix}thing", said)
+
     def test_a_surface_naming_a_module_the_keel_has_not_got_is_refused(self) -> None:
         """An empty surface is held the same way: the file is checked whether or not a package exists."""
         code, said = self.gate({"__init__.py": '"""The keel."""\n'}, surface="slipwai.registry\n")

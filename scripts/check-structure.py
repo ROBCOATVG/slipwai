@@ -24,8 +24,11 @@ Four rules, each with a failure it exists to prevent:
    things and the ceiling is on how far into the keel any one kind may reach, not a budget shared between
    them.
 
-The keel knows no package in the other direction either: an absolute import of a `slipwai_language_*`
-module anywhere in `src/` is a violation, whichever package it names.
+The keel knows no package in the other direction either: an absolute import of a `slipwai_language_*` or a
+`slipwai_target_*` module anywhere in `src/` is a violation, whichever package it names. A target is on that
+list for the reason a language is — the keel names no product, and the keel naming a cloud is precisely what
+the clouds were made packages to stop. Written as a rule rather than left as a habit, because the whole of
+phase 10 is undone by one `import slipwai_target_aws` that nothing refuses.
 
 Every module the keel has must be named in TIERS. That is deliberate friction. A module arrives with the
 slice that brings it back, and the slice says out loud which tier it belongs to.
@@ -152,10 +155,15 @@ def imported_modules(path: Path, text: str) -> list[tuple[int, str]]:
     return found
 
 
-def package_imports(text: str) -> list[tuple[int, str]]:
-    """Every absolute import of a language package in a module, as (line, top-level module), anywhere in it."""
-    prefix = PACKAGE_PREFIXES["language"]
-    found: list[tuple[int, str]] = []
+def package_imports(text: str) -> list[tuple[int, str, str]]:
+    """Every absolute import of a package in a module, as (line, kind, top-level module), anywhere in it.
+
+    Every kind the gate walks, from the one table that names them, so a kind the keel may not know is
+    refused the day it is declared rather than the day somebody remembers to add a branch here. `ast.walk`
+    rather than the module's body, because a deferred import inside a function is still the keel knowing a
+    cloud, and it is the shape somebody reaches for when the top of the file is being watched.
+    """
+    found: list[tuple[int, str, str]] = []
     for node in ast.walk(ast.parse(text)):
         if isinstance(node, ast.Import):
             names = [alias.name for alias in node.names]
@@ -163,7 +171,9 @@ def package_imports(text: str) -> list[tuple[int, str]]:
             names = [node.module]
         else:
             continue
-        found += [(node.lineno, name.split(".")[0]) for name in names if name.startswith(prefix)]
+        for top in (name.split(".")[0] for name in names):
+            found += [(node.lineno, kind, top) for kind, prefix in PACKAGE_PREFIXES.items()
+                      if top.startswith(prefix)]
     return found
 
 
@@ -299,8 +309,8 @@ def main() -> int:
             violations.append(f"{relative}: no module docstring saying what part this is")
 
         violations += [
-            f"{relative}:{line}: the keel imports a language package: {package}"
-            for line, package in package_imports(text)
+            f"{relative}:{line}: the keel imports a {kind} package: {package}"
+            for line, kind, package in package_imports(text)
         ]
         index, tier = tier_of(name)
         graph[name] = set()

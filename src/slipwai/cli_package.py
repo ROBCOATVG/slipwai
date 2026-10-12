@@ -24,10 +24,12 @@ import base64
 import secrets
 from pathlib import Path
 
-from . import ed25519, plugin
+from . import ed25519, native, plugin
 from .assets import VERSION, this_command
 from .catalog import CORE
 from .errors import GenerationError, refuse
+from .harness import keys as harness_keys
+from .harness import name_of
 from .index_schema import EXTENSION, TARGET
 from .package_new import KINDS, VERBS, write
 from .package_release import kind_of, register, release
@@ -57,6 +59,23 @@ def render_plugin(parsed: argparse.Namespace) -> None:
     print(f"  skills/ — {len(skills)} skill(s): {', '.join(skills)}")
     print(f"Install it from {into}, or publish it:")
     print(f"  {this_command()} package register {into} --channel <a channel checkout>")
+
+
+def render_harness(parsed: argparse.Namespace) -> None:
+    """Lay the same material where one harness that is not Claude Code reads it, from its registry row."""
+    if not parsed.harness:
+        raise GenerationError(f"`{this_command()} package harness <directory> --harness <key>` needs the "
+                              f"harness to render for. There are {len(harness_keys())}: "
+                              f"{', '.join(harness_keys())}")
+    into = Path(parsed.name).expanduser()
+    written = native.write(parsed.harness, into, parsed.profile)
+    print(f"{name_of(parsed.harness)} ({parsed.profile}): {len(written)} file(s) in {into}")
+    for place in sorted({path.split("/")[0] if "/" in path else path for path in written}):
+        held = [path for path in written if path == place or path.startswith(f"{place}/")]
+        print(f"  {place:<20} {len(held)} file(s)")
+    for line in native.unplaceable(parsed.harness):
+        print(f"  not here: {line}")
+    print(f"Copy these into the project, or into {name_of(parsed.harness)}'s own location for them.")
 
 
 def check_package(root: Path) -> int:
@@ -158,7 +177,11 @@ def package_main(argv: list[str]) -> None:
     parser.add_argument("--channel", metavar="<directory>",
                         help="`register` only: a checkout of the channel to publish into")
     parser.add_argument("--profile", default=plugin.DEFAULT_PROFILE, metavar="<profile>",
-                        help=f"`plugin` only: whose material to render (default: {plugin.DEFAULT_PROFILE})")
+                        help=f"`plugin` and `harness`: whose material to render "
+                             f"(default: {plugin.DEFAULT_PROFILE})")
+    parser.add_argument("--harness", default="", metavar="<key>",
+                        help="`harness` only: which coding agent to lay the material out for, as "
+                             "`registry.json` keys it")
     parser.add_argument("--release", default="", metavar="<version>",
                         help="`version` only: the number, where it is a decision rather than a sum over "
                              "what the fragments claim")
@@ -177,6 +200,8 @@ def package_main(argv: list[str]) -> None:
             new_package(parsed)
         elif parsed.verb == "plugin":
             render_plugin(parsed)
+        elif parsed.verb == "harness":
+            render_harness(parsed)
         elif parsed.verb == "key":
             write_key(parsed)
         elif parsed.verb == "check":

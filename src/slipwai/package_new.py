@@ -50,7 +50,7 @@ FIRST_RELEASE = "1.0.0"
 #: verb of its own on purpose: it renders a package of the keel's *own* material for a harness to install,
 #: which is the publisher's job done by the keel, and a second top-level verb would have been a second
 #: place a person looks for the thing that makes something installable.
-VERBS = ("new", "check", "version", "release", "register", "key", "plugin")
+VERBS = ("new", "check", "version", "release", "register", "key", "plugin", "harness")
 #: What a scaffolded manifest declares it needs: this keel's schema, and everything up to the next major.
 def core_range(schema: str) -> str:
     major = schema.split(".")[0]

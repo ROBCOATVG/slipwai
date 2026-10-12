@@ -41,7 +41,7 @@ test: ## Run the keel's test suite, or a slice: TESTS="test_a test_b", or SKIP="
 # `test_conformance` shells out per check (2.5s), and between them they were nine of this target's twelve
 # seconds while never having been listed. The rest spawn a subprocess per case. `test_captain` runs a real
 # `/drive` process and waits for a wall budget to run out (23s), which is the shape of what it proves.
-SLOW := test_generated test_upgrade test_conformance test_target_conformance test_chart test_chart_render test_slice_scope test_surfaces test_captain test_captain_gate test_merge test_bridge test_loop
+SLOW := test_generated test_upgrade test_conformance test_target_conformance test_chart test_chart_render test_slice_scope test_surfaces test_captain test_captain_gate test_merge test_bridge test_loop test_mcp
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

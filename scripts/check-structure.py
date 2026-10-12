@@ -76,9 +76,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                  "uncommitted", "wrappers", "strategy", "survey", "structure", "manifest")),
     # One module per part of the repository being generated.
     ("parts", ("project",)),
-    # The whole of a project, assembled and written, and the whole of it again from a newer keel.
-    # The whole of a project, assembled and written — and the same material assembled for a harness to
-    # install with no project at all, which is the same tier for the same reason: it reads every part.
+    # The whole of a project, assembled and written, and the whole of it again from a newer keel — and the
+    # same material assembled for a harness to install with no project at all, which is this tier for the
+    # same reason the rest of it is: it reads every part.
     ("assembly", ("plugin", "unlabel", "next_steps", "scaffold", "adopt_report", "add_service", "adopt",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge")),
     # The command line, and the entry point the executable is built from.
@@ -93,6 +93,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "package_version", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",
               "cli_telegraph", "cli_fleet",
+              # The read side served to whatever is doing the work: the tools and the stdio session.
+              "mcp", "cli_mcp",
               # The board, as a page a person answers from: the render, the server and the verb.
               "bridge", "bridge_page", "cli_bridge",
               # The conformance suite a package runs against itself, and its generated-variant

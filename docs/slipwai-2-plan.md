@@ -1505,7 +1505,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 157 of 169 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 5/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 4/4, phase 15 15/15, phase 16 1/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 158 of 169 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 6/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 4/4, phase 15 15/15, phase 16 1/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2023,7 +2023,7 @@ phases 10 to 12 are still changing.
 | Slice | What | Size | Done when | Status |
 |---|---|---|---|---|
 | 9.1 | The five pages of section 7, phase 9, written from a real session transcript | L | A first-time reader reaches a demoed slice in fifteen minutes following them | done |
-| 9.2 | The reference pages under `docs/reference/` | L | Every rule the plan names has a page |  |
+| 9.2 | The reference pages under `docs/reference/` | L | Every rule the plan names has a page | done |
 | 9.3 | The captures: the bridge, the fleet board, a demo-stop board, a `/chart` output | S | From real runs, not drawn | done |
 | 9.6 | **From a spec to a delegate**: one figure per profile following a single feature all the way down — spec, model or chart, split into slices, example-mapped into rules and examples, cleared, claimed, and handed to a delegate at the configured width. Drawn, not captured | new | M | A reader who has never used slipwai can point at where a slice comes from and at what one delegate is handed; both profiles are the same figure with two boxes different |  |
 | 9.4 | `make test-docs`: every command in the first three pages run against a fresh generation — the programme generates two projects, drives the interview question by question, seeds the pages' own model and log lines, and asks each command in the order the page asks it. A command on a page that the programme does not have fails the gate | M | The README cannot drift | done |

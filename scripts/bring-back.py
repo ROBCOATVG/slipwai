@@ -70,6 +70,7 @@ OWN = {"catalog_checks", "catalog_options", "cli_offered", "cli_search",
        "conformance.extension", "index_schema", "trust", "cli_trust", "ed25519", "rungs", "renamed",
        "channel", "channel_new", "channel_page", "cli_channel", "telegraph", "cli_telegraph", "fleet", "cli_fleet",
        "bridge", "bridge_page", "cli_bridge", "cli_start", "whats_new", "deck", "brand",
+       "plugin", "native", "mcp", "cli_mcp",
        # The third kind of package. The experiment had clouds in the keel and so had no target package to
        # bring back: its declaration, the protocol its `TARGET` answers, and what `package new` writes.
        "target_shape", "target_protocol", "target_templates",

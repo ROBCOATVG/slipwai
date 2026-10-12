@@ -11,6 +11,11 @@ the conformance suite for whichever kind it is. `version` cuts a release — the
 what nothing could do before. `release` builds the file and the index entry. `register` puts both into a
 channel and rebuilds its index — which for a private channel is the whole of publishing, and for
 the public one is the commit a pull request carries (6.6).
+
+`plugin` is the seventh and takes no package at all: it renders the *keel's* own material — the commands,
+the agent types and the skills — into a directory a harness installs, so somebody with no slipwai project
+can have `/sail`. It is here rather than in a verb of its own because it is the publisher's job done by the
+keel, and the release it is then handed to is the same `register`.
 """
 from __future__ import annotations
 
@@ -19,10 +24,12 @@ import base64
 import secrets
 from pathlib import Path
 
-from . import ed25519
-from .assets import this_command
+from . import ed25519, native, plugin
+from .assets import VERSION, this_command
 from .catalog import CORE
 from .errors import GenerationError, refuse
+from .harness import keys as harness_keys
+from .harness import name_of
 from .index_schema import EXTENSION, TARGET
 from .package_new import KINDS, VERBS, write
 from .package_release import kind_of, register, release
@@ -37,6 +44,45 @@ def new_package(parsed: argparse.Namespace) -> None:
         print(f"  {path}")
     print("Every TODO in it is a decision the keel cannot make for you. Next:")
     print(f"  {this_command()} package check {place}")
+
+
+#: Where the decision about which install route is supported is written down (slice 12.4). Printed by both
+#: of the conveniences, because a decision on a page nobody opens is a decision nobody has.
+ROUTES = "docs/reference/install-routes.md"
+
+
+def render_plugin(parsed: argparse.Namespace) -> None:
+    """Render the keel's own material as a plugin a harness installs with no project generated."""
+    into = Path(parsed.name).expanduser()
+    written = plugin.write(into, parsed.profile)
+    skills = sorted({path.split("/")[1] for path in written if path.startswith("skills/")})
+    print(f"plugin {plugin.NAME} {VERSION} ({parsed.profile}): {len(written)} file(s) in {into}")
+    # Every file but the skills, which are a catalogue rather than a list somebody reads off a terminal.
+    for path in written:
+        if not path.startswith("skills/"):
+            print(f"  {path}")
+    print(f"  skills/ — {len(skills)} skill(s): {', '.join(skills)}")
+    print(f"A convenience, not the supported route — {ROUTES} says which is, and what this cannot carry.")
+    print(f"Install it from {into}, or publish it:")
+    print(f"  {this_command()} package register {into} --channel <a channel checkout>")
+
+
+def render_harness(parsed: argparse.Namespace) -> None:
+    """Lay the same material where one harness that is not Claude Code reads it, from its registry row."""
+    if not parsed.harness:
+        raise GenerationError(f"`{this_command()} package harness <directory> --harness <key>` needs the "
+                              f"harness to render for. There are {len(harness_keys())}: "
+                              f"{', '.join(harness_keys())}")
+    into = Path(parsed.name).expanduser()
+    written = native.write(parsed.harness, into, parsed.profile)
+    print(f"{name_of(parsed.harness)} ({parsed.profile}): {len(written)} file(s) in {into}")
+    for place in sorted({path.split("/")[0] if "/" in path else path for path in written}):
+        held = [path for path in written if path == place or path.startswith(f"{place}/")]
+        print(f"  {place:<20} {len(held)} file(s)")
+    for line in native.unplaceable(parsed.harness):
+        print(f"  not here: {line}")
+    print(f"A convenience, not the supported route — {ROUTES} says which is, and what this cannot carry.")
+    print(f"Copy these into the project, or into {name_of(parsed.harness)}'s own location for them.")
 
 
 def check_package(root: Path) -> int:
@@ -124,7 +170,9 @@ def register_package(parsed: argparse.Namespace) -> None:
 def package_main(argv: list[str]) -> None:
     prog = f"{this_command()} package"
     parser = argparse.ArgumentParser(
-        prog=prog, description="Write, check, build and publish a language, extension or target package")
+        prog=prog,
+        description="Write, check, build and publish a language, extension or target package, or render "
+                    "the keel's own material as a plugin a harness installs")
     parser.add_argument("verb", choices=VERBS)
     parser.add_argument("name", help="the package's key for `new`; its directory for the others")
     parser.add_argument("--kind", choices=KINDS, default="extension",
@@ -135,6 +183,12 @@ def package_main(argv: list[str]) -> None:
                         help="`release` only: where the file and its entry are written (default: dist)")
     parser.add_argument("--channel", metavar="<directory>",
                         help="`register` only: a checkout of the channel to publish into")
+    parser.add_argument("--profile", default=plugin.DEFAULT_PROFILE, metavar="<profile>",
+                        help=f"`plugin` and `harness`: whose material to render "
+                             f"(default: {plugin.DEFAULT_PROFILE})")
+    parser.add_argument("--harness", default="", metavar="<key>",
+                        help="`harness` only: which coding agent to lay the material out for, as "
+                             "`registry.json` keys it")
     parser.add_argument("--release", default="", metavar="<version>",
                         help="`version` only: the number, where it is a decision rather than a sum over "
                              "what the fragments claim")
@@ -151,6 +205,10 @@ def package_main(argv: list[str]) -> None:
     try:
         if parsed.verb == "new":
             new_package(parsed)
+        elif parsed.verb == "plugin":
+            render_plugin(parsed)
+        elif parsed.verb == "harness":
+            render_harness(parsed)
         elif parsed.verb == "key":
             write_key(parsed)
         elif parsed.verb == "check":

@@ -59,7 +59,9 @@ its model and its write scope, projected into the installed harness so it holds 
 type: a brief adds only its task-specific contract and file manifest, and restates neither the scope nor `docs/delegated-agent-safety.md` — a brief that restates a rule is one that can fall behind it.
 ## Deployable ownership
 
+<!-- section: rules -->
 {{rules}}
+<!-- end section -->
 <!-- section: continuation-standard -->
 
 ## Per-slice continuation contract

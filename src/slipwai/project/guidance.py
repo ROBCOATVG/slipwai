@@ -148,6 +148,8 @@ def agent_guidance(
         rules += rule(f"{store}-{'event' if logged else 'state'}-store")
     for transport in transports_of(apps):
         rules += rule("http-transport", {"transport": transport})
+    # Two passes and not one: who signs in to the service and who signs in to the product are answered on
+    # separate axes, and a project may have either realm without the other.
     for identity in dict.fromkeys(s.selection.feature_of("auth") for s in services):
         if identity is not None:
             rules += rule(f"{identity}-auth")
@@ -169,5 +171,9 @@ def agent_guidance(
         # the kind of rule that teaches a reader to skim the file.
         if web:
             rules += rule("browser-flags", {"web": web[0].path})
+    # The rules are a section of their own rather than a value in the page's text, so that a project with
+    # none of them — every application wrapped rather than generated — gets no blank line where they would
+    # have been. The page's own newline is what ends the last rule, which is why the trailing one goes.
     contract = "continuation-standard" if profile == "standard" else "continuation-cruise"
-    return page("agents.md", {"rules": rules.removesuffix("\n")}, wanted=(contract,))
+    wanted = ("rules", contract) if rules else (contract,)
+    return page("agents.md", {"rules": rules.removesuffix("\n")}, wanted=wanted)

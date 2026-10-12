@@ -259,17 +259,3 @@ whose tests drive only one of its two paths, and a read that goes round the serv
 button a bad flip needs, and why the flip is the one production change made outside the pipeline.
 """
 
-
-PUSH_CHECK = """### Before you push, name the release constraint
-
-A push to `main` is a production deploy here: `verify` passes, `deploy.yml` applies staging, smokes it,
-applies production and smokes that, with nobody in between. So the last thing before pushing is to say, in
-the turn that pushes, what holds this change back from the actor — the flag key, and that it is `off` in
-both environments.
-
-**If nothing does — no flag, or a flag that is already on — stop and ask the user to confirm that this is a
-release they want now.** Do not push and mention it afterwards, and do not decide on their behalf that the
-change is small enough to be safe: there is no later gate at which somebody would catch it, which is the
-whole reason the question is asked here. A refactor with no actor-visible behaviour is not a release and
-needs no flag; say that it is one, rather than saying nothing.
-"""

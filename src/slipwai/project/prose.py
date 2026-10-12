@@ -36,6 +36,7 @@ stray word in somebody's `AGENTS.md`.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from ..errors import GenerationError
 
@@ -111,6 +112,19 @@ def render(name: str, text: str, named: dict[str, str], wanted: tuple[str, ...] 
         position = end.end()
     out.append(text[position:])
     return resolve(name, "".join(out), named)
+
+
+def page(root: Path, name: str, named: dict[str, str], wanted: tuple[str, ...] | None = None) -> str:
+    """The page `name` under `root`, as a project receives it, or a refusal naming the file that is missing.
+
+    The refusal is worth the two lines: a page read from a tree is a page somebody can delete or rename,
+    and `read_text` on a path that is not there says `FileNotFoundError` and the absolute path of a
+    directory inside the keel, which is a line about this machine rather than about the asset.
+    """
+    path = root / name
+    if not path.is_file():
+        raise GenerationError(f"{name} has no page: {path} is missing")
+    return render(name, path.read_text(encoding="utf-8"), named, wanted)
 
 
 def unresolved(text: str) -> list[str]:

@@ -8,13 +8,26 @@ what `project.json` recorded: a fact recorded as detected is refreshed, a fact a
 changed behind their back. Both write to `survey/`, beside the survey `adopt` left: `pinned.md` is the ledger of what
 has been pinned, and `survey.md` is the survey as it stands. On the event profile `/observe` reads one pinned
 capability into the model, with its source evidence, before a requirement changes it.
+
+Both pages are assets — `assets/adoption/commands/` — and what is left here is which value each may name
+and which of its sections this repository gets. The ledger `adopt` writes is not one: it lands at
+`survey/pinned.md` rather than under `commands/`, and the page a project receives there is written once,
+by the command that adopts, rather than regenerated.
 """
 from __future__ import annotations
 
-from ..layout import Layout
+from ..assets import ADOPTION_ROOT
+from ..layout import AT_ROOT, Layout
 from ..services import App, wrapped_of
-from .add_commands import FACTORY
 from .observe_command import observe_command
+from .prose import page
+
+# Where the pages live. An asset of the adoption rather than of the toolkit, for the reason
+# `strangle_command.py` gives: everything under `assets/toolkit/` is copied into every project and
+# only an adopted one is written over here, so a page kept there would reach a generated repository
+# raw, with its `{{make}}` still in it — and a greenfield project has nothing that was here to ask
+# about anyway.
+COMMANDS = ADOPTION_ROOT / "commands"
 
 PINNED_LEDGER = """# Pinned behaviour
 
@@ -42,143 +55,28 @@ def test_commands(apps: list[App]) -> str:
     return "\n".join(lines) or "- no application that existed before the method is recorded here"
 
 
+def values(apps: list[App] | None = None, layout: Layout = AT_ROOT) -> dict[str, str]:
+    """Every value the two pages here may name, and the whole of what one may name: how each application
+    runs its tests, read off `project.json`, and the three paths that move when a project keeps its
+    delivery material in a subdirectory."""
+    apps = [] if apps is None else apps
+    return {
+        "test-commands": test_commands(apps),
+        "ledger": layout.under("survey/pinned.md"),
+        "survey-page": layout.under("survey/survey.md"),
+        "structure-page": layout.under("survey/structure.md"),
+    }
+
+
 def characterise_command(apps: list[App], layout: Layout) -> str:
-    ledger = layout.under("survey/pinned.md")
-    return f"""---
-description: Pin the current behaviour of the code a slice is about to change, at the seam where it can be observed, before changing it
-argument-hint: <the behaviour about to change, and where it is observed>
----
-
-# Characterise
-
-Read `skills/characterisation-tests/SKILL.md` and `skills/finding-seams/SKILL.md`. This command scopes them
-to one behaviour: the one a slice is about to change. It is the Pin step of adopting the method around code
-that existed before it (`docs/adoption.md`) — tests that record what the code does now, including what is
-ugly, so that a change can be told apart from a regression.
-
-## Refuse "full coverage first"
-
-If `$ARGUMENTS` is empty, or names the whole system — "everything", "the service", "all of it" — stop and
-ask: which behaviour is about to change, and for whom? Characterising a whole legacy system before touching
-it is where these programmes die. A behaviour is pinned because a slice needs it pinned, and the slice names
-it; the answer is the argument to run this command again with.
-
-## Find the seam
-
-Observe; do not restructure. The seam is the boundary where the current behaviour can be recorded without
-changing the code: the HTTP boundary (request in, response out), the database (the rows a use case writes),
-the messages it emits, the files it writes, the reports it produces. Prefer the widest seam that stays
-deterministic. Where nothing is deterministic — time, generated ids, ordering — `finding-seams` says how to
-introduce the smallest seam that makes it so, and that seam is itself a change to record in the ledger.
-
-## Doubles are fakes you write, not a framework you add
-
-What stands in for the outside world at the seam is never a mocking framework. A collaborator that has to be
-replaced — a clock, a repository, a gateway to another system — is replaced by a **fake**: a small
-implementation of its real interface, written in the test tree, that holds state and answers from it
-(`skills/hexagonal-architecture/resources/testing-hex-arch.md`, "Fakes, Not Mocks"). A test that asserts
-which methods were called, in what order, with what arguments, records the code's shape and not its
-behaviour, and breaks on exactly the refactoring it exists to make safe. So this command never adds
-Mockito, Moq, gomock, `unittest.mock`, `jest.mock` or `vi.mock` to a repository and never recommends one:
-the skills it reads show their last-resort module seam in Vitest, and that seam's counterpart in another
-language is the same last resort, not the first move. A repository that already has such a framework keeps
-the tests it has; the pinned tests are written without it. A repository with no tests at all gets its
-ecosystem's own runner — JUnit 5, pytest, `go test`, `dotnet test`, `node --test` — and no second
-dependency: that is the `tests-exist` rung, and it is one row in the ledger.
-
-## Pin it
-
-Write the characterisation tests in the application's own test tool, where its tests already are, so that the
-recorded `test` command reaches them:
-
-{test_commands(apps)}
-
-Approval-style where the output is large. Record actual behaviour, never desired: a test that fails because
-the code is wrong is written to pass, with a comment saying the behaviour is wrong and a question for the
-person through `/gaps`. Run them, then `make verify`.
-
-## Record it
-
-Append one row to `{ledger}`: today's date, the behaviour, the seam, the test files, and the command that
-runs them. Never rewrite an earlier row; a behaviour that is no longer pinned gets a new row saying so.
-
-## Then
-
-The pinned behaviour is what the slice may now change. `/sail` continues with the plan, and the
-characterisation tests are the ones that keep passing until the plan says which of them change, and why.
-"""
+    return page(COMMANDS, "characterise.md", values(apps, layout))
 
 
 def survey_command(apps: list[App], layout: Layout, event: bool) -> str:
-    page = layout.under("survey/survey.md")
-    view = layout.under("survey/structure.md")
-    model = """
-## The event model
-
-This project keeps a global event model in `docs/event-model/model.yaml`. Read `skills/event-modeling/SKILL.md`
-first. The code that existed before the method is in that model as one of two things, and which one turns on
-whether its behaviour has been modelled or only read:
-
-- **An external system**, where this project reads what it emits or exposes and nobody has modelled what it
-  does inside. Model it as the translation pattern that skill describes: an event marked `external: true`
-  for what the legacy system emits, the process that reads it, and the command and event that are this
-  project's own. This is the honest reading on the day the method arrives, and it stays the reading for
-  everything nobody has looked at.
-- **A state-stored service of this project**, where somebody has modelled its behaviour against the code —
-  its slices written at `observed`, each with the handler it was read off. It is then a service on the
-  timeline like any other, on the `state` rung unless a person has recorded `writeModel: events` for it,
-  which `slipwai adopt --confirm <name> --write-model events` is how to do.
-
-Neither reading licenses the one thing that is always wrong: nothing in the legacy system's tables, and
-nothing in those tables' history, becomes an event by being renamed. `docs/change-strategy.md`, *Be honest
-about the event model*, says why that honesty matters here, and what the rung has to do with it.
-Run `/observe <capability> <service> <handler>` for the one capability a requirement touches whose behaviour
-the model has not yet recorded. It runs the nine steps from source and the passing `/characterise` examples;
-the big picture's process proposals remain on its survey page until this evidence exists.
-""" if event else ""
-    return f"""---
-description: Re-survey this repository with the factory and reconcile what it finds with what project.json records
----
-
-# Survey
-
-This repository adopted the delivery method: `project.json` records what the factory's survey detected about
-the code that was here and what the person confirmed or overrode, each fact with its provenance. Code
-changes; the survey is re-run, and the record is reconciled with it — refreshed where it was only detected,
-questioned where a person decided. Run this when a build tool, a language, a schema tool or a deployment
-description appears, moves or goes.
-
-{FACTORY.format(verb="adopt --refresh", stop="A wrong guess at its location is a stop, not a reason to edit `project.json` by hand from memory.")}
-
-## Run it
-
-1. `git status --porcelain` prints nothing. The command refuses an unclean tree so that `git checkout . &&
-   git clean -fd` undoes exactly what it wrote and nothing else.
-2. `slipwai adopt --refresh`, from this directory.
-3. Read its report, which has three kinds of line.
-
-## Read the report
-
-- **Refreshed.** A fact recorded as `detected` that the tree now says differently was updated in place —
-  a command the build gained, a toolchain pin that moved — and the files that read it were regenerated.
-  Nothing to decide; `git diff` shows what changed.
-- **Disagrees.** A fact a person `confirmed` or `overrode` that a fresh detection contradicts. It was **not**
-  changed. Put the two side by side for the user — what was recorded, what the tree says, and the evidence —
-  and record the answer: edit `project.json`, keeping the provenance honest (`confirmed` if the recorded
-  value stands, `overridden` if they chose the new one), then run this command again so the files follow.
-- **Not wrapped.** A directory that builds and has no record. Adding it is a decision, not a refresh: ask
-  whether it is part of this system, and if so add its record to `project.json`'s `deployables` as
-  `"generated": false` with the commands the report shows, then run this command again.
-
-`{page}` was rewritten as the survey now stands, with the evidence for every line, and `{view}` — the
-architecture view: where anything starts, what depends on what, where change happens — from the tree, the Git
-history and a code index's graph where this project has adopted one.
-{model}
-## Then
-
-- `make verify` — the gate still holds after the record moved.
-- Commit the result as one change, saying what the survey found and what was decided.
-"""
+    """The reading of what was here is a whole section: on the event profile the code that existed before
+    the method is an external system or a state-stored service of this project, and on the standard one
+    there is no model for it to be either in."""
+    return page(COMMANDS, "survey.md", values(apps, layout), ("event-model",) if event else ())
 
 
 def pin_command_files(apps: list[App], layout: Layout, event: bool) -> dict[str, str]:

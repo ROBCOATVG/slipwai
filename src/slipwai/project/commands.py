@@ -1,6 +1,12 @@
-"""`commands/`: the workflow commands adapted to this project's profile and toolchain."""
+"""`commands/`: the workflow commands adapted to this project's profile and toolchain.
+
+The pages themselves are under `assets/toolkit/commands/`, beside the three that never varied and were
+already there; what is here is the part that is not prose — which value each page may name, and which of
+its sections this project gets. `docs/generated-prose.md` is the rule, and `prose.py` the mechanism.
+"""
 from __future__ import annotations
 
+from ..assets import TOOLKIT_ROOT
 from ..catalog import CATALOG
 from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
@@ -14,195 +20,91 @@ from .catch_up_command import catch_up_files
 from .cruise import cruise_command, cruise_settings_command
 from .cruise_seat import cruise_status_command, cruise_stop_command, cruise_tell_command, cruise_watch_command
 from .demo_stop import demo_stop
-from .flags import PUSH_CHECK
 from .harbour import budget_section
 from .ladder import hook_points, sail_ladder
 from .mutation import mutation_command
 from .parallel_slices import concurrent_slices, done_marker, ready_set_selection
-from .sail_section import model_delegation_settings_command, who_runs_each_stage
+from .prose import page
+from .sail_section import delegable_types, model_delegation_settings_command
 from .sail_settings import implementation_section, sail_settings_command
 from .whats_next import whats_next_command
 from .where_are_we import where_are_we_command
 from .write_model_prose import sourced_services, state_services
 
+# Where the pages live: beside the three a project has always received verbatim.
+COMMANDS = TOOLKIT_ROOT / "commands"
+
+
+def sail_values(
+    event: bool, apps: list[App], target: str = "none", layout: Layout = AT_ROOT,
+    adoption: Adoption | None = None,
+) -> dict[str, str]:
+    """Every value `sail.md` may name, and the whole of what it may name.
+
+    Two kinds, and the page cannot tell them apart. What this module decides — which artifact resolves the
+    slice — and what the modules around it own: the ladder itself, the table of delegable types rendered
+    from `stage_models.STAGES`, and the passages `benchmark.py`, `sail_settings.py`, `harbour.py`,
+    `ladder.py`, `demo_stop.py` and `parallel_slices.py` write. Those stay where they are until their own
+    slice of phase 16 moves them, and `sail.md` names them meanwhile.
+    """
+    return {
+        "resolution": ("the requested slice in `docs/event-model/model.yaml`" if event else
+                       "the requested feature or the active directory recorded in `.specify/feature.json`"),
+        "ladder": sail_ladder(event, apps, target, layout, adoption),
+        "make": layout.make,
+        "delegable-types": delegable_types(),
+        "stage-costs": what_each_stage_costs(layout),
+        "implementation": implementation_section(layout),
+        "budget": budget_section(),
+        "hook-points": hook_points(),
+        "demo-stop": demo_stop(event, ", ".join(f"`{app.path}`" for app in web_apps(apps))),
+        "done-marker": done_marker(event),
+        "ready-set": ready_set_selection(event),
+        "concurrent-slices": concurrent_slices(event, layout),
+    }
+
 
 def sail_command(
     event: bool, apps: list[App], target: str = "none", layout: Layout = AT_ROOT, adoption: Adoption | None = None,
 ) -> str:
-    resolution = "the requested slice in `docs/event-model/model.yaml`" if event else "the requested feature or the active directory recorded in `.specify/feature.json`"
-    web = web_apps(apps)
-    baseline = ", ".join(f"`{app.path}`" for app in web)
-    ladder = sail_ladder(event, apps, target, layout, adoption)
-    return f"""---
-description: Drive one slice through planning, implementation, and an actor-visible demo
-argument-hint: [slice-id-or-feature] [fairway=<name>]
----
+    """The ladder a slice is driven down. The release constraint is a whole section, and a project with no
+    destination the keel deploys to has nothing to say about pushing to one."""
+    return page(COMMANDS, "sail.md", sail_values(event, apps, target, layout, adoption),
+                ("push-check",) if managed(CATALOG, target) else ())
 
-# Drive
 
-Deliver one small vertical slice under `AGENTS.md`. Once the ladder below has produced it, resolve
-{resolution}.
+def gaps_values(event: bool, apps: list[App]) -> dict[str, str]:
+    """What `gaps.md` may name: which artifact this profile tightens, and what a trace compares against.
 
-## What the argument narrows
-
-**Bare is the normal form.** With no argument this takes the ready slices of every fairway nobody holds,
-works them, and goes on to the next without being invoked again — *Ready-set selection* below is the whole
-rule, and it stops only when the split is exhausted or everything left is blocked. Each of the three
-arguments narrows that and nothing else:
-
-| Written | What ready means for this session |
-| --- | --- |
-| `/sail` | every fairway nobody holds, every ready slice of each |
-| `/sail fairway=<name>` | that fairway's ready slices; the rest are named as another fairway's and left |
-| `/sail <feature>` | that feature's ready slices, across whichever fairways they are in |
-| `/sail <slice-id>` | that slice, and nothing else |
-
-A `fairway=` may be written with any of the others. Nothing here chooses a slice for you where several are
-ready: rule 6 says run them concurrently, and that holds in every form but the last.
-
-## Enter at the first incomplete stage
-
-Read artifacts from disk rather than conversation memory and walk this ladder from the top. The entry stage
-is the first one whose artifact is missing, empty, or still a placeholder — **including the stages upstream
-of the slice loop**. State the entry stage and the evidence that selected it before changing anything, then
-run that stage and every stage after it. Never rerun a completed stage merely to check. Where this project has
-adopted a code index, a caller or blast-radius question is one call to it, by a route its block in `AGENTS.md`
-names, and not a text search; grep is for words in documents.
-
-**The checkout goes stale the way conversation memory does, so check the branch before the artifacts.**
-Every signal the ladder reads — a slice's `status`, whether `examples.md` or `tasks.md` exists, the slice
-graph — is a property of this commit, and a branch behind trunk reads exactly like a project where the work
-was never done: a `/sail` fifty-seven commits behind wrote a second example map for a slice that had
-shipped. So fetch and compare first — `git fetch`, then `git log --oneline HEAD..@{{u}}`, or against
-`origin/main` where the branch has no upstream. Behind by anything, stop and say so rather than deriving:
-the artifacts about to be read are not the project's current ones. The evidence line names the branch, its
-head and its distance from trunk in the same breath as the stage. Where the fetch could not run — no remote,
-or a remote this environment cannot reach — the line says *could not verify this checkout is current*, and
-that never reads as *current*.
-
-{ladder}
-
-Being invoked before any of this exists is a valid start, not an error: it means the entry stage is near the
-top of the ladder. Step back to that stage and say so rather than reporting that the request came too early.
-Never invent a principle, specification, event, command, stream, or slice to skip a stage — a missing
-artifact is work to do with the user, not a gap to fill from context. A stage needing a real product
-decision is a stop.
-
-{who_runs_each_stage(layout)}
-{what_each_stage_costs(layout)}
-{implementation_section(layout)}
-{budget_section()}
-{hook_points()}
-## Once inside the slice
-
-Start the slice from a green `make verify`. During implementation, take one RED-GREEN-REFACTOR increment per
-task — one rule of the example map with its examples, where the map numbers its rules — run only the quickest
-relevant tests in the same file or area, commit that increment locally, and keep
-task checkboxes truthful. A local commit is not a push: it does not run the full gate and it does not start
-CI. Do not push increment commits until the hand's verdict on this slice's examples is green. Before an increment that changes a
-shared function, ask this project's code index what calls it and what the change reaches — by the route its
-block in `AGENTS.md` names, loaded by name where the harness defers a tool — and name those callers in the
-delegate's manifest; a project that has adopted none answers with a text search and says so.
-
-When the tasks are done, converge, then have the hand walk this slice's examples from the unpushed slice
-branch and record its verdict. **Nobody is stopped here.** A person's demo is per capability and runs when
-the capability's last slice has merged, which is usually several slices later; this rung proves the path
-works, and the person is shown the whole thing rather than its instalments. After a green verdict — and only
-then — a project that has adopted a code index brings it up to the tree, then the full
-`make verify`, then the first push of those increment commits (and the merge that lands them on trunk).
-That push is the integration boundary. A claim of `slice/<id>` at the start of the slice may still push a
-lock ref from `main`; that is not the implementation.
-
-{demo_stop(event, baseline)}
-
-### After the hand's verdict, and after Phase 4 clears
-
-After a green verdict, run `/adversary`, which decides whether the slice changed attack surface or closed the
-split and records the attack or the skip — `make check-decisions` holds every done slice to that row. Close the
-adversary benchmark entry after its findings are triaged; implement confirmed defects through failing tests,
-each in an `implement` entry. Then run `/mutation`, then `make verify`. `commands/adversary.md` owns the
-trigger table; do not spawn before it is in the log. It records that decision in
-`specs/<feature>/adversary-log.md` either way, so do not make it here. The order is not arbitrary: the pass
-adds tests, and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
-unavailable input.
-
-Once that evidence is clean, **continue on the same run**: mark the finished slice done —
-{done_marker(event)} — and confirm its
-`plan.md`, `research.md`, `data-model.md`, `quickstart.md` and `tasks.md` are under
-`specs/<feature>/slices/<id>/` with their relative links pointing at what they cite (they have been since it
-was planned; a regular file still at the feature root is moved there now, and the canonical links dropped).
-Then select the next slice from the **ready** set and re-enter the ladder at whichever stage that slice's
-own artifacts require, which is usually its example map or its plan rather than the top. Do not wait to be
-invoked again.
-
-{ready_set_selection(event)}
-
-{concurrent_slices(event, layout)}
-
-The stops are a required product decision, an input that is genuinely unavailable, a split with no ready
-slice left in it, and the next slice's own demo. **A slice having finished is not one of them.**
-
-Demo feedback re-enters the ladder at the stage that owns the change, which may sit well above the slice
-loop. Re-derive the entry stage from artifacts instead of assuming the loop resumes where it paused.
-
-{PUSH_CHECK if managed(CATALOG, target) else ""}"""
+    One sentence covering both rungs rather than a branch, because the thing the pass compares is the same
+    on either — the identity a write is made against — and only its name differs. A project with a service
+    on each rung would otherwise carry two sentences telling the reader to do one thing twice.
+    """
+    return {
+        "artifact": "a slice's `examples.md`" if event else "the slice's acceptance criteria in `spec.md`",
+        "identity": (
+            "the identity each write is made against — a stream's version on a service that keeps its events, "
+            "the row's on one that keeps current state"
+            if state_services(apps)
+            else "stream identity"
+        ),
+    }
 
 
 def gaps_command(event: bool, apps: list[App]) -> str:
-    # One sentence covering both rungs rather than a branch, because the thing the pass compares is the
-    # same on either — the identity a write is made against — and only its name differs. A project with a
-    # service on each rung would otherwise carry two sentences telling the reader to do one thing twice.
-    identity = (
-        "the identity each write is made against — a stream's version on a service that keeps its events, "
-        "the row's on one that keeps current state"
-        if state_services(apps)
-        else "stream identity"
-    )
-    extra = (
-        f"""
-
-Compare event names, schemas, {identity}, and model links with the implementation in the same pass."""
-        if event
-        else ""
-    )
-    artifact = "a slice's `examples.md`" if event else "the slice's acceptance criteria in `spec.md`"
-    return f"""---
-description: Find consequential gaps in an artifact before planning, or in what was built afterwards
-argument-hint: [artifact-or-feature-or-diff]
----
-
-# Gaps
-
-Two passes, selected by what is named. Neither invents a requirement, and a clean result is a valid outcome
-when it says what was checked.
-
-## Before planning — tighten the artifact
-
-Named an artifact that is not built yet — {artifact}, a specification, mockups — read
-`skills/find-gaps/SKILL.md` and run the conversational loop it describes: survey, ask one question at a
-time, write the answer back as a new criterion or a recorded state, confirm. Missing states, unhandled
-edges, unverifiable wording, and a slice still hiding an "and" are what this pass is for, and this is the
-last point at which each of them is a paper edit. A gap needing a product decision is a question for the
-user, never a criterion written from context.
-
-## After implementing — trace the promise
-
-Named a feature or diff, or nothing at all — the committed diff — read `skills/acceptance-review/SKILL.md`
-and trace each acceptance promise to an observable test and a reachable production path. Report only
-missing, contradictory, or unreachable behaviour, and separate a confirmed defect from a product question.
-Read-only: no edits.{extra}
-
-Run this pass **after** the installed Spec Kit converge command reports converged, never before it.
-Converge appends tasks for work the artifacts require and the code lacks; ahead of it, this pass reports
-unbuilt tasks as gaps and buries the findings that actually need judgement.
-"""
+    """The pass that tightens an artifact, and the pass that traces what was built. The paragraph asking
+    for events, schemas and model links is a whole section, selected by the profile."""
+    return page(COMMANDS, "gaps.md", gaps_values(event, apps), ("event",) if event else ())
 
 
-def constitution_coverage_command(event: bool, apps: list[App]) -> str:
-    # Three scopes, not two, because the capability stopped travelling with the profile: `event-sourcing`
-    # arrives with `write-model: events` on a service, so a modelled project every service of which keeps
-    # current state claims the modelling obligations and not the sourcing ones. Told otherwise, the reader
-    # drafts a principle mandating a log for services that have none and then cannot pass their own gate.
+def coverage_values(event: bool, apps: list[App]) -> dict[str, str]:
+    """The floor `scripts/check-constitution.py` states, which completes the sentence naming it.
+
+    Three scopes, not two, because the capability stopped travelling with the profile: `event-sourcing`
+    arrives with `write-model: events` on a service, so a modelled project every service of which keeps
+    current state claims the modelling obligations and not the sourcing ones. Told otherwise, the reader
+    drafts a principle mandating a log for services that have none and then cannot pass their own gate.
+    """
     if not event:
         scope = """minimum CD and the practices this repository's skills teach. The event-sourcing obligations
 are not asked of this profile, and `make check-speckit` rejects a constitution that mandates them anyway."""
@@ -214,32 +116,11 @@ the event capabilities — the Event Modeling and event-sourcing obligations."""
 the Event Modeling capability — the Event Modeling obligations. No deployable here records `eventSourced`,
 so the event-sourcing obligations are not asked of this project: every service keeps current state, and a
 principle mandating a log would be one no service could be held to."""
-    return f"""---
-description: Check or print the principles this project's constitution must carry
-argument-hint: [--requirements] [requirement-key ...]
----
+    return {"scope": scope}
 
-# Constitution coverage
 
-`.specify/memory/constitution.md` is what every later phase treats as the authority, so a principle
-dropped from it is a gate that silently stopped existing. `scripts/check-constitution.py` states the floor:
-{scope}
-
-```sh
-make check-constitution                                # what is missing, if anything
-python3 scripts/check-constitution.py --requirements   # the normative text for every requirement
-python3 scripts/check-constitution.py --requirements trunk-based-integration governance
-```
-
-Run the check with no arguments. With `--requirements`, print the normative text instead — that is the
-drafting path, and passing requirement keys narrows it to the ones a finding named.
-
-Amend the constitution rather than the gate, and rephrase freely: the check reads for the terms an
-obligation cannot be written without, not for one wording. Where a finding needs a decision nobody has
-made — the domain invariant, a retention period, a compliance scope, an unfilled `[PLACEHOLDER]` — report
-which requirement is unmet and ask. An invented obligation reads as ratified afterwards, which is worse
-than an open question.
-"""
+def constitution_coverage_command(event: bool, apps: list[App]) -> str:
+    return page(COMMANDS, "constitution-coverage.md", coverage_values(event, apps))
 
 
 # Every command a generated project carries, in the order `docs/skills-and-commands.md` lists them — the last
@@ -252,6 +133,18 @@ BASE_COMMANDS = ("drive", "mockups", "chart", "example-map", "careen", "where-ar
 # Copied whole from `assets/profiles/event-modelling/commands/`; listed because the documentation names them in order.
 # `example-map` left this list in slice 5.17: it is a stage of both profiles now and ships from the toolkit.
 EVENT_COMMANDS = ("validate-code-against-model",)
+
+
+def values(
+    event: bool = False, apps: list[App] | None = None, target: str = "none", layout: Layout = AT_ROOT,
+    adoption: Adoption | None = None,
+) -> dict[str, str]:
+    """Every value the three pages here may name, pooled — what `tests/test_generated_prose.py` holds the
+    assets to in both directions. Built from the per-page sets rather than beside them, so a value added
+    to a page is named here by having been added there."""
+    apps = [] if apps is None else apps
+    return {**sail_values(event, apps, target, layout, adoption), **gaps_values(event, apps),
+            **coverage_values(event, apps)}
 
 
 def command_names(event: bool) -> list[str]:

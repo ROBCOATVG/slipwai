@@ -25,6 +25,8 @@ from pathlib import Path
 
 import command_pages
 
+from slipwai.project import commands, ground_command
+
 RECORD = Path(__file__).resolve().parent / "fixtures/command-pages.sha256"
 
 
@@ -73,6 +75,33 @@ class ByteForByteTest(unittest.TestCase):
             with self.subTest(file=path):
                 digests = {digest for (_case, held), digest in rows.items() if held == path}
                 self.assertGreater(len(digests), 1, f"{path} is recorded at one text only")
+
+
+class WhereTheyLandTest(unittest.TestCase):
+    """Which tree each page belongs in, which is the one thing the digests cannot see."""
+
+    def test_every_templated_toolkit_page_is_also_written_by_the_generator(self) -> None:
+        """The quiet direction. Every file under `assets/toolkit/` is copied into a project at the path it
+        sits at, and only the ones the generator also writes are written over. A templated page here that
+        the generator does not write would ship into somebody's repository raw, with its `{{make}}` still
+        in it — which is what sent the three adoption-only pages to `assets/adoption/` instead."""
+        written = set(command_pages.pages("standard")) | set(command_pages.pages("event"))
+        for path in sorted(commands.COMMANDS.glob("*.md")):
+            if "{{" not in path.read_text(encoding="utf-8"):
+                continue  # one of the three that never varied, copied verbatim and written over by nothing
+            with self.subTest(page=path.name):
+                self.assertIn(f"commands/{path.name}", written)
+
+    def test_no_page_only_an_adopted_repository_receives_sits_in_the_toolkit(self) -> None:
+        """`assets/adoption/` is read by name and copied nowhere, so a page a greenfield project has no
+        generated version of belongs there and only there."""
+        adoption = {path.name for path in ground_command.COMMANDS.glob("*.md")}
+        self.assertEqual(adoption, {"characterise.md", "survey.md", "ground.md"})
+        self.assertEqual(adoption & {path.name for path in commands.COMMANDS.glob("*.md")}, set())
+        written = set(command_pages.pages("adopted"))
+        for name in sorted(adoption):
+            with self.subTest(page=name):
+                self.assertIn(f"commands/{name}", written)
 
 
 class SectionTest(unittest.TestCase):

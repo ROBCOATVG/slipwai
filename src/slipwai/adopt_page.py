@@ -32,15 +32,18 @@ from .adopt import (
 )
 from .adopt_report import MAKEFILE, SETTINGS
 from .assets import relaunch
+from .big_picture import big_picture
 from .ecosystems import prefixed
 from .errors import GenerationError
 from .layout import Layout
 from .page_shell import document, esc
 from .platform import with_platform
+from .project.big_picture_page import big_picture_files
 from .project.run_skill import RUNNING
 from .project.strangle_command import RETIREMENT
-from .scaffold import project_files
+from .scaffold import FACTORY_IDENTITY, project_files
 from .strategy import with_recommendation
+from .structure import structure
 from .survey import survey
 from .wrappers import WRAPPERS, missing_wrapper
 
@@ -102,6 +105,8 @@ def would_write(root: Path, delivery: str = "delivery") -> dict[str, list[str]]:
     answers = Answers(name, applications=apps)
     adoption = with_recommendation(root, layout, with_platform(root, facts(read, answers, layout), apps), apps)
     written = [*project_files(name, answers.profile, answers.target, apps, layout, adoption)]
+    shape = structure(root, apps, layout.delivery, FACTORY_IDENTITY["GIT_AUTHOR_EMAIL"])
+    written += big_picture_files(big_picture(root, apps, shape, layout.delivery), layout)
     written += [layout.under(page) for page in (SURVEY_PAGE, STRUCTURE_PAGE, PINNED, RETIREMENT, RUNNING)]
     # Written only where there is none: adoption never writes over what a repository already has.
     if not (root / SETTINGS).exists():

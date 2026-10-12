@@ -11,6 +11,8 @@ reading of behaviour, which is `/observe`'s work against one capability (15.12).
 """
 from __future__ import annotations
 
+import json
+
 from ..big_picture import Actor, BigPicture, Read
 from ..layout import Layout
 from ..origin import Adoption
@@ -72,13 +74,13 @@ def catalogue(actors: tuple[Actor, ...]) -> str:
         "actors:",
     ]
     for actor in actors:
-        lines.append(f"  - name: {actor.name}")
-        lines.append(f"    kind: {actor.kind}")
-        lines.append("    does: [" + ", ".join(actor.does) + "]")
-        lines.append("    cannot: [" + ", ".join(actor.cannot) + "]")
+        lines.append(f"  - name: {json.dumps(actor.name)}")
+        lines.append(f"    kind: {json.dumps(actor.kind)}")
+        lines.append("    does: [" + ", ".join(json.dumps(value) for value in actor.does) + "]")
+        lines.append("    cannot: [" + ", ".join(json.dumps(value) for value in actor.cannot) + "]")
         if actor.kind == "system" and not actor.cannot:
             lines.append("    # Nothing in a scheduler says what this may not do; `survey/big-picture.md` asks.")
-        lines.append("    read-off: [" + ", ".join(actor.evidence) + "]")
+        lines.append("    read-off: [" + ", ".join(json.dumps(value) for value in actor.evidence) + "]")
     return "\n".join(lines) + "\n"
 
 
@@ -99,9 +101,11 @@ slices**: a capability each, for somebody to run the nine steps against when wor
 
 ## Who acts
 
-Read off the routes and the authorisation this code already holds. `{catalogue_path}` is the same list as
-the role catalogue the modelling method keeps, and is the file to edit: a slice's `actor` field says who
-acts, and there is nowhere in the model to say who may not.
+Read off the routes and the authorisation this code already holds. `{catalogue_path}` starts from these
+proposals as the role catalogue the modelling method keeps: a slice's `actor` field says who acts, and
+there is nowhere in the model to say who may not. Before recording business answers there, remove its
+path from `{layout.under('.written')}` to take ownership; later `/survey` refreshes this evidence page
+and preserves your catalogue. Until then, the catalogue follows the code on each survey.
 
 {actor_rows(found.actors)}
 ## What this system talks to
@@ -132,3 +136,13 @@ def big_picture_files(found: BigPicture, layout: Layout, adoption: Adoption | No
     if found.actors:
         files[layout.under(ACTORS)] = catalogue(found.actors)
     return files
+
+
+def with_picture(files: dict[str, str], picture: dict[str, str], layout: Layout) -> dict[str, str]:
+    """Include surveyed pages in the factory listing, so refresh can honour a person's ownership."""
+    from .adopted import WRITTEN
+
+    combined = {**files, **picture}
+    listing = layout.under(WRITTEN)
+    combined[listing] = "".join(f"{path}\n" for path in sorted(set(files[listing].splitlines()) | set(picture)))
+    return combined

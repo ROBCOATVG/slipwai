@@ -21,6 +21,7 @@ from pathlib import Path
 
 from .adopt_report import MAKEFILE, SETTINGS, Adopted, report, survey_page
 from .assets import VERSION, contained
+from .big_picture import big_picture
 from .errors import GenerationError
 from .layout import Layout
 from .naming import check_name
@@ -29,6 +30,7 @@ from .platform import with_platform
 from .project.adopted import WRITTEN, agents_block, gitignore_block, makefile_block
 from .project.adopted_ci import gate_path
 from .project.agent_settings import claude_settings
+from .project.big_picture_page import big_picture_files, with_picture
 from .project.gitignore import build_artifacts
 from .project.pin_commands import PINNED_LEDGER
 from .project.run_skill import RUNNING, running_ledger
@@ -240,6 +242,8 @@ def adopt(root: Path, answers: Answers, found: Survey | None = None) -> Adopted:
         raise GenerationError("no application to install the method around: adopt wraps at least one")
     adoption = with_recommendation(root, layout, with_platform(root, facts(found, answers, layout), apps), apps)
     files = project_files(answers.name, answers.profile, answers.target, apps, layout, adoption)
+    shape = structure(root, apps, layout.delivery, FACTORY_IDENTITY["GIT_AUTHOR_EMAIL"])
+    files = with_picture(files, big_picture_files(big_picture(root, apps, shape, layout.delivery), layout), layout)
     executables = {layout.place(path) for path in executable_paths(answers.profile, apps)}
     clashing = [path for path in files if contained(root, path).exists()]
     if clashing:
@@ -250,14 +254,13 @@ def adopt(root: Path, answers: Answers, found: Survey | None = None) -> Adopted:
     for relative, content in files.items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8", newline="")
+        path.write_text(content, newline="", encoding="utf-8")
         path.chmod(0o755 if relative in executables else 0o644)
     page = layout.under(SURVEY_PAGE)
     (root / page).parent.mkdir(parents=True, exist_ok=True)
     (root / page).write_text(survey_page(found, apps), encoding="utf-8")
     view = layout.under(STRUCTURE_PAGE)
-    found_shape = structure(root, apps, layout.delivery, FACTORY_IDENTITY["GIT_AUTHOR_EMAIL"])
-    (root / view).write_text(structure_page(found_shape, adoption, layout), encoding="utf-8")
+    (root / view).write_text(structure_page(shape, adoption, layout), encoding="utf-8")
     ledger = layout.under(PINNED)
     (root / ledger).write_text(PINNED_LEDGER, encoding="utf-8")
     retirement = layout.under(RETIREMENT)

@@ -820,14 +820,20 @@ def depart() -> None:
     This is section 14's fourth broken link, closed from the writing end: both processes fetched
     `refs/slipwai/logs/*` and neither ever wrote them, so the fetch was ceremony and getting one machine's
     log onto another was a person with `scp`. A captain holds no credential, so this is the process that
-    pushes — its own harbour log, the deck log of every fairway it holds, and that fairway's in-flight
+    pushes — its own harbour log, the deck log of every fairway it last held, and a held fairway's in-flight
     branch, which is what makes a lapsed claim recoverable rather than merely transferable.
     """
     machine = logs.machine()
     if not travel.forge(ROOT):
         return
+    # A captain writes its final merged or parked line and then releases. The next pass still owes
+    # that last writer's suffix to the forge. A released claim retains its author, so this remains one
+    # publisher until the claim changes hands; caches on other machines cannot publish themselves.
+    claims.fetch(ROOT)
+    departing = [path for path in deck_logs()
+                 if (claim := claims.read(ROOT, path.stem)) is not None and claim.machine == machine]
     for path, ref in [(written_to(), travel.harbour_ref(machine))] + [
-            (path, travel.deck_ref(path.stem)) for path in deck_logs() if path.stem in ours()]:
+            (path, travel.deck_ref(path.stem)) for path in departing]:
         if not path.is_file():
             continue
         went, why = travel.push_log(ROOT, path, ref, machine)

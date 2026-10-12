@@ -10,7 +10,7 @@ The service already holds the answer, and `Source.snapshot()` is it. So the serv
 asks, and the two halves of one flag finally move together.
 
 Under `/api` because that is the service's product surface: `vite.config.ts` forwards `/api` with the prefix
-intact, and CloudFront's `/api/*` behaviour has no `origin_path` and no rewrite function, so the path is the
+intact, and the edge's `/api/*` behaviour has no origin path and no rewrite function, so the path is the
 same in both places. `/health` stays outside it, being a probe rather than something a browser calls.
 
 Nothing here is emitted under `--target none`, for the reason the reader is not: a project with nowhere to
@@ -28,8 +28,10 @@ from dataclasses import dataclass
 
 from ..assets import source_text
 from ..catalog import CATALOG
+from ..loaded_targets import answer
 from ..registry import ENTRY_WIRING, FLAG_RESOURCE, OPT_IN_FLAG_TRANSPORTS, registry
 from ..selection import Selection
+from ..target_protocol import FLAG_TRANSPORTS
 from ..targets import managed
 
 # What a transport's entry point carries where the flag source is wired in. Three rather than one because
@@ -135,8 +137,10 @@ def flag_resource(target: str, backend: str, selection: Selection) -> dict[str, 
 # that does not name the target can still be given the default, which is every project's and the only shape a
 # project with no target has — what it cannot be given is a transport whose values it would never see. Widening
 # it is one reader and the target in that backend's answer, in the same change.
-DEFAULT_TRANSPORT = {"aws": "ssm", "azure": "keyvault"}
-OPT_IN_TRANSPORT: dict[str, str] = {"aws": "appconfig", "azure": "appconfig"}
+def transports_of(target: str) -> tuple[str, str | None]:
+    """This target's default transport and its opt-in one, or `None` where it offers only the one."""
+    said = answer(target, FLAG_TRANSPORTS, default={}) or {}
+    return said["default"], said.get("opt_in")
 
 # The placeholder `assets/targets/<target>/service/variables.tf` carries.
 TRANSPORTS = "__FLAG_TRANSPORTS__"
@@ -144,8 +148,8 @@ TRANSPORTS = "__FLAG_TRANSPORTS__"
 
 def flag_transports(backends: set[str], target: str) -> list[str]:
     """The transports every one of these backends can read, in the order the variable offers them."""
-    offered = [DEFAULT_TRANSPORT[target]]
-    opt_in = OPT_IN_TRANSPORT.get(target)
+    default, opt_in = transports_of(target)
+    offered = [default]
     reads = registry().answer
     if opt_in is not None and backends and all(target in reads(b, OPT_IN_FLAG_TRANSPORTS) for b in backends):
         offered.append(opt_in)

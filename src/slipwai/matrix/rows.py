@@ -7,8 +7,13 @@ other diagonal would run the same backend gate twice. `standard` proves the deli
 SQLite one runs its whole contract inside the Docker-free gate — with the backend's own transport, read from the
 catalog rather than listed, so a backend added last is never silently skipped. Then the production row: every row
 before it leaves `--target` at `none`, and a production target is what wires the flags route into a project, so this
-is where a linter first reads it. The image row is the backend on `aws` with the memory store, the project `make
-build smoke-image` builds and starts.
+is where a linter first reads it. The image row is the backend on a managed target with the memory store, the
+project `make build smoke-image` builds and starts.
+
+**Which** managed target is the catalog's to say and not this module's. The clouds are packages, so a matrix run
+has whichever of them the machine installed, and a row naming one by name would plan nothing on a machine that
+installed the other. The first managed target the catalog offers is the one these two rows take, and a catalog
+with none of them plans the rows that need no target and says so by leaving the other two out.
 
 Pure over the catalog it is given: the plan probe passes the merged catalog of the package directory it was started
 for, and a test can pass a copy.
@@ -26,6 +31,13 @@ PROFILES = {"standard", "event-modelling"}
 FRONTENDS = {"none", "react-vite"}
 DIAGONALS = (("standard", "none"), ("event-modelling", "react-vite"))
 STORES = ("sqlite", "postgres")
+
+
+def production_target(catalog: Mapping[str, Any]) -> str | None:
+    """The target the production and image rows are planned against: the first managed one the catalog
+    offers, or None where it offers none. In catalog order, so two machines with the same packages plan the
+    same matrix."""
+    return next((name for name, target in catalog["targets"].items() if target.get("managed")), None)
 
 
 @dataclass(frozen=True)
@@ -99,16 +111,28 @@ def native_rows(catalog: Mapping[str, Any], backend: str) -> list[Row]:
     every = (("http", transport), ("auth", "keycloak"), ("users", "keycloak"))
     rows += [Row(f"verify-{backend}-{store}", "event-modelling", backend, "none", (("persistence", store), *every))
              for store in STORES]
-    production = (("persistence", "postgres"), ("http", transport), ("auth", "cognito"), ("target", "aws"))
-    rows.append(Row(f"verify-production-event-modelling-{backend}", "event-modelling", backend, "none", production))
+    where = production_target(catalog)
+    if where is not None:
+        # The identity answer is whichever one that target provisions, read off the catalog: it is the
+        # target package's own option, so its name is the package's and never this module's.
+        identity = next((option for option, held in catalog["axes"]["auth"]["options"].items()
+                         if held.get(where, {}).get("provisions")), "none")
+        production = (("persistence", "postgres"), ("http", transport), ("auth", identity), ("target", where))
+        rows.append(Row(f"verify-production-event-modelling-{backend}", "event-modelling", backend, "none",
+                        production))
     # Only the rows this backend can be generated with. The two diagonals name no answers and are always
     # plannable; the rest name stores, identity and a target, and a package that implements none of them —
     # the template's toy — is left with the two that prove what it does have.
     return [row for row in rows if plannable(catalog, row)]
 
 
-def image_row(catalog: Mapping[str, Any], backend: str) -> Row:
-    """The project whose production image `make build smoke-image` builds and starts for `backend`."""
-    transport = catalog_axis_default(dict(catalog), "http", backend, "aws")
+def image_row(catalog: Mapping[str, Any], backend: str) -> Row | None:
+    """The project whose production image `make build smoke-image` builds and starts for `backend`, or None
+    where the catalog offers no managed target to build one for — there is no production image without a
+    production to build it for."""
+    where = production_target(catalog)
+    if where is None:
+        return None
+    transport = catalog_axis_default(dict(catalog), "http", backend, where)
     return Row(f"built-{backend}", "event-modelling", backend, "none",
-               (("target", "aws"), ("persistence", "memory"), ("http", transport)))
+               (("target", where), ("persistence", "memory"), ("http", transport)))

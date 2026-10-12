@@ -41,8 +41,11 @@ def report(directory: Path, package: str) -> dict[str, Any]:
         rows = [asdict(row) for key in own for row in native_rows(CATALOG, key)]
     except ValueError as error:
         return {"refused": [str(error)]}
-    images = [{"row": asdict(image_row(CATALOG, key)), "tool": image_builder(key)["tool"], "ready": ready_path(key)}
-              for key in own]
+    # No managed target installed is no production image to build: `image_row` answers None, and the plan
+    # carries no image rather than one nothing could be deployed from.
+    built = [(key, image_row(CATALOG, key)) for key in own]
+    images = [{"row": asdict(row), "tool": image_builder(key)["tool"], "ready": ready_path(key)}
+              for key, row in built if row is not None]
     return {"backends": own, "rows": rows, "images": images}
 
 

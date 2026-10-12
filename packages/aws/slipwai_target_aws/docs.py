@@ -7,18 +7,20 @@ rows carry the cost. Both are generated from the same answers the stacks read, s
 `add-frontend` regenerate them with everything else and neither can describe a project that no longer
 exists.
 
-One module per target, named for it, because there is nothing general here to share: the nodes are ECS
-services and target groups, the rows are Fargate and RDS and Cognito, and the costs are this account's.
-`target_docs.py` is the table that picks between them, and a second cloud is a row in it beside a module of
-its own — never a branch inside these two functions. What *is* shared is in `provisioning.py`.
+A module of this package's own, because there is nothing general here to share: the nodes are ECS services
+and target groups, the rows are Fargate and RDS and Cognito, and the costs are this account's. Until phase
+10 it sat inside the keel beside its Azure counterpart, with a table in `target_docs.py` picking between
+them; a cloud that is a package answers `docs_pages` instead, and the table is gone. What *is* shared —
+what an answer becomes under a target, and how to name it in a drawing — is still the keel's
+`project/provisioning.py`, which this imports by the surface the keel promises a target package.
 """
 from __future__ import annotations
 
-from ..images import image_builder, migrations_in_production
-from ..probes import ready_path
-from ..services import App, services_of, web_apps
-from .flags import release_notes
-from .provisioning import node, provisioned
+from slipwai.images import image_builder, migrations_in_production
+from slipwai.probes import ready_path
+from slipwai.project.flags import release_notes
+from slipwai.project.provisioning import node, provisioned
+from slipwai.services import App, services_of, web_apps
 
 
 def deployment_diagram(project_name: str, apps: list[App]) -> str:

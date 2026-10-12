@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..catalog import CATALOG, axis_options
-from ..images import POSTGRES_SSLMODE_KINDS
-from ..project.flag_route import OPT_IN_TRANSPORT
+from ..images import postgres_sslmode_kinds
+from ..project.flag_route import transports_of
 from ..registry import (
     EVENT_MODEL_PATHS,
     OPT_IN_FLAG_TRANSPORTS,
@@ -196,9 +196,13 @@ def target_findings(loaded: Registry, backend: str, done: list[Run], named: Coll
     for run in done:
         for axis, option in run.choices:
             kind = CATALOG["axes"][axis]["options"][option].get(run.target, {}).get("provisions")
-            if kind in POSTGRES_SSLMODE_KINDS and (not isinstance(modes, dict) or kind not in modes):
+            if kind in postgres_sslmode_kinds(dict(CATALOG)) and (not isinstance(modes, dict) or kind not in modes):
                 findings.append(f"backend {backend} answers postgres_sslmode with no {kind}, which {run.target} "
                                 f"provisions {option} as")
+    # A backend may name only a target that *has* a second transport to opt into. Asked of each target
+    # rather than read off a table, and only of the ones this keel has installed: a backend built against a
+    # cloud nobody here installed is not a backend this keel can say anything about.
     findings += [f"backend {backend} names {target} in opt_in_flag_transports, which has no opt-in flag transport"
-                 for target in sorted(loaded.answer(backend, OPT_IN_FLAG_TRANSPORTS)) if target not in OPT_IN_TRANSPORT]
+                 for target in sorted(loaded.answer(backend, OPT_IN_FLAG_TRANSPORTS))
+                 if target in CATALOG["targets"] and transports_of(target)[1] is None]
     return list(dict.fromkeys(findings))

@@ -192,52 +192,6 @@ BROWSER_FLAG_GUIDANCE = """- The same flag reaches `{web}` as `VITE_FLAG_<KEY>`,
   `VITE_FLAG_<KEY>` set to the same value unless you are deliberately reproducing that window.
 """
 
-# The cloud a service is told never to call for a flag, per target. The rule is the same everywhere — the
-# platform resolves `FLAG_<KEY>` into the environment so no image gains a cloud SDK — but naming the cloud
-# is what makes it land: "no service calls AWS" is a sentence an author checks themselves against.
-CLOUD = {"aws": "AWS", "azure": "Azure"}
-
-# What a destination puts whoever works here under: the pipeline is the only path to production. Per target,
-# because every noun in it is that cloud's — the workflow's steps, what a rollback re-applies, what `infra/`
-# is written in — and a second cloud is a row here rather than a conditional inside the prose.
-PRODUCTION_GUIDANCE = {
-    "aws": """- This project deploys to AWS from `.github/workflows/deploy.yml`, and a pipeline is the only path to
-  production: never `tofu apply` production by hand, and never build an image on a laptop for it — a deploy
-  is the commit's own image, pushed by digest, promoted unchanged from staging. Whether that pipeline takes
-  every green commit all the way is the `AUTO_PROMOTE` variable on the forge; where it reads `false` it stops
-  at staging and `.github/workflows/production.yml` is what deploys production, started by `make promote` or
-  from the Actions tab. `make promote` asks the forge to run it and applies nothing itself, so it is not an
-  exception to the rule above — check `make -s url ENV=production` before assuming production exists at all,
-  since without auto-promotion it does not until the first promotion. `make build smoke-image
-  PLATFORM=linux/arm64` proves an image locally; a bad release is undone by starting
-  `.github/workflows/rollback.yml` by hand with the environment to roll back; `make deploy` and `make
-  rollback` are for a person with credentials, from a checkout of `main`. `infra/` is OpenTofu; edit it as code, `tofu fmt` and `tofu
-  validate` before committing, and record a changed decision in `docs/adr/0002-production-target.md`. A
-  renamed or moved resource gets a `moved` block and one dropped from the code a `removed` block, so the
-  apply updates or forgets it rather than destroying it (`infra/README.md`). IAM the service stack declares
-  beyond this project's roles is a grant in `infra/bootstrap/main.tf` and a `make bootstrap` by a person
-  before it merges — `make check-deploy-role` says which.
-  Never put a credential in this repository: the pipeline authenticates with OIDC and carries identifiers.
-""",
-    "azure": """- This project deploys to Azure from `.github/workflows/deploy.yml`, and a pipeline is the only path to
-  production: never `tofu apply` production by hand, and never build an image on a laptop for it — a deploy
-  is the commit's own image, pushed by digest, promoted unchanged from staging. Whether that pipeline takes
-  every green commit all the way is the `AUTO_PROMOTE` variable on the forge; where it reads `false` it stops
-  at staging and `.github/workflows/production.yml` is what deploys production, started by `make promote` or
-  from the Actions tab. `make promote` asks the forge to run it and applies nothing itself, so it is not an
-  exception to the rule above — check `make -s url ENV=production` before assuming production exists at all,
-  since without auto-promotion it does not until the first promotion. `make build smoke-image
-  PLATFORM=linux/arm64` proves an image locally; a bad release is undone by starting
-  `.github/workflows/rollback.yml` by hand with the environment to roll back; `make deploy` and `make
-  rollback` are for a person with credentials, from a checkout of `main`. `infra/` is OpenTofu; edit it as code, `tofu fmt` and `tofu
-  validate` before committing, and record a changed decision in `docs/adr/0002-production-target.md`. A
-  renamed or moved resource gets a `moved` block and one dropped from the code a `removed` block, so the
-  apply updates or forgets it rather than destroying it (`infra/README.md`).
-  Never put a credential in this repository: the pipeline authenticates with a federated identity and carries identifiers.
-""",
-}
-
-
 # Where an agent is told how to answer a question about the code rather than about the product. Generated
 # unconditionally and phrased conditionally, because an extension is chosen at `./init` — after this file is
 # written — so the text has to be identical for every project and true whether or not one was adopted.

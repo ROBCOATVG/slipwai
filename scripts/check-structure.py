@@ -63,14 +63,14 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # backend answers its probes. The registry and the loader land here in phase 2.
     ("contract", ("registry", "family_only", "renamed", "language_shape", "language_directory", "extension_directory",
                   "features", "extensions", "extension_shape", "extension_tools", "hooks", "guards",
-                  "telegraph", "targets", "target_shape", "target_protocol",
+                  "telegraph", "targets", "target_shape", "target_protocol", "target_directory",
                   "axes", "catalog", "rungs",
                   "catalog_checks", "catalog_merge",
                   # A named set of answers — which languages, which axes, which extensions — read as a
                   # document and nothing more, which is why it sits with the other shapes the chandlery
                   # asks about rather than with the answers it resolves to.
                   "quickstart",
-                  "catalog_options", "loaded", "backends", "probes", "ecosystems", "npm_workspace",
+                  "catalog_options", "loaded", "loaded_targets", "backends", "probes", "ecosystems", "npm_workspace",
                   "examples", "harness",
                   "images")),
     # One validated answer per axis, which applications a project has, and what they add up to being able
@@ -95,7 +95,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "index_schema", "language_index", "language_release", "language_install", "language_plan",
               "language_upkeep", "browser_app",
               # The other kind of package: its install, its scaffold, and the two verbs over them.
-              "extension_install", "package_new", "package_templates", "target_templates", "package_release",
+              "extension_install", "target_install", "cli_target",
+              "package_new", "package_templates", "target_templates", "package_release",
               "package_version", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",
               "cli_telegraph", "harbour", "cli_fleet",

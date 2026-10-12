@@ -3,8 +3,8 @@
 `Staff` and `Customer` were a guess about who uses the product. Internal and external say the thing that
 actually differs — which side of the organisation an account is on.
 
-The half of this that matters is the terraform. **A resource address is state, not a name.** Renaming
-`aws_cognito_user_pool.staff` to `.internal` is, to terraform, one resource destroyed and another created,
+The half of this that matters is the terraform. **A resource address is state, not a name.** Renaming a
+user pool from `.staff` to `.internal` is, to terraform, one resource destroyed and another created,
 which for a user pool is every account in it gone on the next apply. Every renamed address carries a `moved`
 block, and this is the suite that says so — because the failure it prevents is silent until somebody runs
 `tofu apply` against production.
@@ -16,16 +16,17 @@ import re
 import unittest
 from pathlib import Path
 
-import checkout_packages  # noqa: F401
-
 ROOT = Path(__file__).resolve().parents[1]
-STACKS = (ROOT / "assets/targets/aws/service", ROOT / "assets/targets/azure/service")
+#: This package's own service stack, and the number of addresses it renamed. A number rather than a
+#: diff, because a diff is only true of the commit that made it.
+STACKS = (ROOT / "service",)
 RESOURCE = re.compile(r'^resource\s+"(\w+)"\s+"(\w+)"', re.M)
 MOVED = re.compile(r"moved\s*\{\s*from\s*=\s*([\w.\[\]\"-]+)\s*to\s*=\s*([\w.\[\]\"-]+)\s*\}")
 #: Everything a stack declares a name for. Checked instead of the whole text, because the prose that
 #: explains the rename says the old words on purpose and so do the `moved` blocks.
 DECLARED = re.compile(r'^(?:resource\s+"\w+"|variable|output|module|data\s+"\w+")\s+"(\w+)"', re.M)
 LOCAL = re.compile(r"^\s{2}(\w+)\s*=", re.M)
+MOVES = 16
 
 
 def stack_text(place: Path) -> str:
@@ -85,7 +86,7 @@ class MovedTest(unittest.TestCase):
     def test_every_renamed_address_is_accounted_for(self) -> None:
         """The count that matters: each stack renamed this many addresses, and each has its block. A number
         rather than a diff, because a diff is only true of the commit that made it."""
-        for place, owed in zip(STACKS, (22, 16), strict=True):
+        for place, owed in zip(STACKS, (MOVES,), strict=True):
             with self.subTest(stack=place.name):
                 self.assertEqual(len(self.blocks(place)), owed)
 

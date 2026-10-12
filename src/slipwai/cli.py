@@ -46,6 +46,7 @@ from .cli_quickstart import applied as quickstart_applied
 from .cli_quickstart import files_with_record, quickstart_flag, quickstart_main
 from .cli_search import search_main, show_main
 from .cli_start import board_or_usage
+from .cli_target import target_main
 from .cli_telegraph import telegraph_main
 from .cli_trust import trust_main
 from .errors import GenerationError, failure, refuse
@@ -64,7 +65,8 @@ from .upgrade import main as upgrade_main
 # back, so an unknown argument is argparse's refusal rather than a stub that half-answers.
 VERBS = ("generate", "add-service", "add-frontend", "describe-service", "migrate", "replay",
          "adopt", "converge", "upgrade", "list", "search", "show", "install", "language", "extension",
-         "hooks", "package", "quickstart", "trust", "channel", "telegraph", "fleet", "bridge", "mcp")
+         "hooks", "package", "quickstart", "target", "trust", "channel", "telegraph", "fleet",
+         "bridge", "mcp")
 
 
 def main() -> None:
@@ -130,8 +132,8 @@ def dispatch(argv: list[str]) -> None:
                       ("describe-service", describe_service_main), ("migrate", migrate_main),
                       ("replay", replay_main), ("adopt", adopt_main), ("converge", converge_main),
                       ("extension", extension_main), ("hooks", hooks_main), ("package", package_main),
-                      ("quickstart", quickstart_main), ("trust", trust_main),
-                      ("channel", channel_main), ("telegraph", telegraph_main),
+                      ("quickstart", quickstart_main), ("target", target_main),
+                      ("trust", trust_main), ("channel", channel_main), ("telegraph", telegraph_main),
                       ("fleet", fleet_main), ("bridge", bridge_main), ("mcp", mcp_main)):
         if argv[:1] == [verb]:
             run(argv[1:])
@@ -251,7 +253,7 @@ def generate_main(argv: list[str]) -> None:
     # known rather than at the end of `./init`. Skipped only when another machine will run that.
     parser.add_argument(
         "--skip-checks", action="store_true",
-        help="do not check that this machine has what the target's ./init needs (tofu, the aws CLI, a forge)",
+        help="do not check that this machine has what the target's ./init needs (its own tools and a forge)",
     )
     args = parser.parse_args(argv)
     try:

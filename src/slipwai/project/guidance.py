@@ -6,6 +6,7 @@ project does not have is a rule that teaches the reader to ignore the file.
 from __future__ import annotations
 
 from ..catalog import CATALOG
+from ..loaded_targets import answer, cloud_of
 from ..npm_workspace import npm
 from ..registry import SHARED_CODE, registry
 from ..services import (
@@ -19,6 +20,7 @@ from ..services import (
     transports_of,
     web_apps,
 )
+from ..target_protocol import AGENT_RULES
 from ..targets import managed
 from .backing_service_prose import stores_by_rung
 from .compose import composed
@@ -26,12 +28,10 @@ from .existing import EXISTING_GUIDANCE
 from .flags import reader_calls, reader_paths
 from .rules import (
     BROWSER_FLAG_GUIDANCE,
-    CLOUD,
     CODE_INDEX,
     EVENT_STORE_GUIDANCE,
     FLAG_GUIDANCE,
     IDENTITY_GUIDANCE,
-    PRODUCTION_GUIDANCE,
     STATE_STORE_GUIDANCE,
     USERS_GUIDANCE,
     frontend_contract,
@@ -279,8 +279,8 @@ type: a brief adds only its task-specific contract and file manifest, and restat
     if managed(CATALOG, target):
         # The flag rule names the file each service reads one through, rather than describing the
         # convention: an author who has to derive `FLAG_<KEY>` for themselves eventually derives it wrong.
-        guidance += PRODUCTION_GUIDANCE[target] + FLAG_GUIDANCE.format(
-            readers=reader_paths(apps), calls=reader_calls(apps), cloud=CLOUD[target]
+        guidance += answer(target, AGENT_RULES, default="") + FLAG_GUIDANCE.format(
+            readers=reader_paths(apps), calls=reader_calls(apps), cloud=cloud_of(target)
         )
         # The browser half only where there is a browser: the flag rule for an app that does not exist is
         # the kind of rule that teaches a reader to skim the file.

@@ -11,11 +11,11 @@ refuse a rebuilt tag.
 """
 from __future__ import annotations
 
-from ..images import image_builder, migrations_in_production
-from ..probes import ready_path
-from ..services import App, services_of, web_apps
-from .flags import release_notes
-from .provisioning import node, provisioned
+from slipwai.images import image_builder, migrations_in_production
+from slipwai.probes import ready_path
+from slipwai.project.flags import release_notes
+from slipwai.project.provisioning import node, provisioned
+from slipwai.services import App, services_of, web_apps
 
 
 def deployment_diagram(project_name: str, apps: list[App]) -> str:

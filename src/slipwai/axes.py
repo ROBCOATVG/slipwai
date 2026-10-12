@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import copy
 import itertools
+from collections.abc import Collection
 from typing import Any
 
 from .assets import PRUNER
@@ -72,7 +73,7 @@ def fragment_axes(fragment: dict[str, Any]) -> set[str]:
     }
 
 
-def validate_axes(catalog: dict) -> None:
+def validate_axes(catalog: dict, packaged: Collection[str] = ()) -> None:
     """Each axis is one question with one answer, and the gates are data rather than scattered conditionals.
 
     An axis names the *role* being filled — how a service records a write, how it keeps its data, what
@@ -157,8 +158,9 @@ def validate_axes(catalog: dict) -> None:
             # A feature is named for an option of its axis — `postgres` — or, where another axis already has
             # an option of that name, for the axis and the option together: `users-keycloak`, because a marker
             # named `keycloak` in a project answering both identity questions would say nothing. Any option of
-            # the axis, not only this one: `auth/cognito` owns the `keycloak` feature, because the files a
-            # Cognito project carries *are* Keycloak's — the local stand-in — and one region cannot have two
+            # the axis, not only this one: a target's own identity answer owns the `keycloak` feature,
+            # because the files such a project carries *are* Keycloak's — the local stand-in — and one
+            # region cannot have two
             # names.
             names = {f"{axis}-{other}" for other in options} | set(options)
             if set(option.get("features", [])) - names:
@@ -183,7 +185,7 @@ def validate_axes(catalog: dict) -> None:
                     f"{axis}/{name} must declare what it gives the project, as a list of capabilities"
                 )
             validate_traits(axis, name, option, absent)
-        validate_axis_targets(catalog, axis, spec)
+        validate_axis_targets(catalog, axis, spec, packaged)
         validate_axis_capabilities(axis, spec)
         for required_axis in spec.get("requires", []):
             if required_axis not in axes:

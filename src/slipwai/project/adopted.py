@@ -65,7 +65,7 @@ def unavailable(language: str) -> str:
         )
     return (
         f"`{language}` is not a language this factory generates, so for this application there is no generated "
-        "skeleton, no axis to answer (event store, HTTP transport, identity), no production image, no `aws` "
+        "skeleton, no axis to answer (event store, HTTP transport, identity), no production image, no "
         "target and no hexagonal import rule — only the gate composed from its recorded commands, and the "
         "skills, commands and documentation, which speak of every language."
     )

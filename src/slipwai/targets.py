@@ -6,45 +6,53 @@ declares the targets it is offered under beside the backends it is implemented f
 keeps `fastify` off a Go project's menu keeps a file-bound store off a cloud one. A backend declares its
 targets too, so a target can be limited to the backends that can be built into an image for it.
 
-Three rows ship: `none`, `aws` and `existing`. A target the keel *manages* (`"managed": true`) arrives with its
-infrastructure and never before it — a catalog entry with nothing behind it would generate projects claiming a
-destination they cannot reach, which is the half-ported shape this factory refuses everywhere else — so `aws` arrived
-together with `infra/`, the image builds, the deploy pipeline and the per-target provisioning of the options it carries.
-`existing` is the other kind: the project deploys somewhere the keel does not own — a repository the method was
-installed around (brownfield adoption) has its infrastructure already, described elsewhere or nowhere — so it offers
-what `none` offers, provisions nothing, and turns on the documentation of where it goes and the release-constraint rung
-of `/sail` instead. The second cloud is meant to be a fourth row in these same tables, not a second set of branches.
+Two rows ship, and neither of them is a place: `none`, and `existing` — the project deploys somewhere the
+keel does not own, as a repository the method was installed around already does, so it offers what `none`
+offers, provisions nothing, and turns on the documentation of where it goes and the release-constraint rung
+of `/sail` instead. Every row that *is* a place arrives as a package. A target the keel *manages*
+(`"managed": true`) comes with its infrastructure and never before it — a catalog entry with nothing behind
+it would generate projects claiming a destination they cannot reach, which is the half-ported shape this
+factory refuses everywhere else — and since phase 10 that infrastructure travels inside the package. So the
+check is the one the fact now supports: a managed row with no installed package of that name is refused,
+naming the install, and the loader has already refused a package whose stacks are files it does not ship.
 
-A target may `require` an axis: `aws` deploys an HTTP service, and `/health` is what proves a deploy, so
-`--http none` cannot be taken there. The axis's no-infrastructure answer stays *offered* (an absent answer is
-offered everywhere, so a menu never comes up empty) and is refused when chosen, naming both ways out.
+A target may `require` an axis: one that deploys an HTTP service proves the deploy by asking it for
+`/health`, so `--http none` cannot be taken there. The axis's no-infrastructure answer stays
+*offered* (an absent answer is offered everywhere, so a menu never comes up empty) and is refused when
+chosen, naming both ways out.
 
 A target may also `reserve` words a project's name cannot contain. A cloud names what it creates after the
-project, and some of its services refuse their own brand inside those names — a Cognito hosted-login domain
-is `<project>-<environment>-staff` and rejects any prefix containing `aws`, `amazon` or `cognito`. The name
+project, and some of its services refuse their own brand inside those names — a hosted-login domain built as
+`<project>-<environment>-staff` can be rejected outright for a word the project happens to carry. The name
 is checked the moment the target is known, where it is still a choice, rather than partway through an apply
 that has already created half a stack in somebody's account.
 
 A cloud does not always refuse a word the same way, so `reserved` is a mapping from *how* to the words
-refused that way rather than one flat list. Azure is why: it publishes three classes at once — `microsoft`
-and `windows` are refused anywhere inside a name, about forty more (`azure`, `office`, `xbox`, `app_code`,
-`web.config`, …) only as whole words, and `login` only at the start — and a list that means one of those
-cannot express the other two. The classes are `anywhere` (a substring, which is what `aws`'s three words
-always were), `word` (delimited by `.`, `_`, `-` or an end of the name, since those are the separators a
-project name may contain) and `prefix`. A target declares the classes it needs and omits the rest.
+refused that way rather than one flat list. One of them publishes three classes at once — two words refused
+anywhere inside a name, about forty more only as whole words, and one only at the start — and a list that
+means one of those cannot express the other two. The classes are `anywhere` (a substring), `word`
+(delimited by `.`, `_`, `-` or an end of the name, since those are the separators a project name may
+contain) and `prefix`. A target declares the classes it needs and omits the rest.
+
+**No module in `src/slipwai/` names a cloud, and that is a gate rather than a habit.** There is no `aws`
+here, no `azure`, no Cognito and no Fargate: every place a project can be deployed to is a package, and
+every answer the keel used to hold a row of per place is a member that place answers for itself
+(`target_protocol.py`, read through `loaded_targets.py`). `tests/test_no_cloud_named.py` is what holds it,
+and it carries the eight lines in the keel where a cloud's name still appears — a CI system, the format of
+a leaked access key, a JDK distribution — each with why taking the name out would make it worse.
 
 Where an option is provisioned differently per target, that lives on the option under the target's key —
-`postgres` says `"aws": {"provisions": "rds"}` — so the infrastructure generator reads a declaration rather
-than a product name, exactly as the traits in `features.py` are read.
+`{"provisions": "<what it becomes>"}` under that target's key — so the infrastructure generator
+reads a declaration rather than a product name, exactly as the traits in `features.py` are read. The
+declaration is the target package's own, folded in by `target_directory.merge_targets`.
 """
 from __future__ import annotations
 
 import re
+from collections.abc import Collection
 
-from .assets import PRUNER, ROOT
+from .assets import PRUNER, this_command
 from .errors import GenerationError
-
-TARGET_ROOT = ROOT / "assets/targets"
 
 # How a cloud refuses a word it has reserved. `anywhere` is a substring anywhere in the name, `word` is the
 # whole word between the separators a project name may contain, and `prefix` is the start of the name only.
@@ -55,36 +63,21 @@ RESERVED_CLASSES = ("anywhere", "word", "prefix")
 RESERVED_WORD = re.compile(r"[a-z0-9]+(?:[._-][a-z0-9]+)*")
 SEPARATORS = "._-"
 
-# Per target: the command-line tools `./init` and `make bootstrap` run, each with why and where to get it.
-# Here rather than in `preflight.py` because two things read it — that check before a project is written,
-# and the generated `./init`'s own check on the machine that runs it — and they must name the same list or
-# a project is refused for a tool its own script never looks for. `preflight` is the edge tier, which the
-# generated parts may not import, so the fact lives with the target it is a fact about.
-TOOLS: dict[str, tuple[tuple[str, str, str], ...]] = {
-    "aws": (
-        ("tofu", "OpenTofu 1.12 — what applies the stacks in infra/", "https://opentofu.org/docs/intro/install/"),
-        ("aws", "the AWS CLI — signs in to the account and configures the pipeline", "https://aws.amazon.com/cli/"),
-    ),
-    "azure": (
-        ("tofu", "OpenTofu 1.12 — what applies the stacks in infra/", "https://opentofu.org/docs/intro/install/"),
-        ("az", "the Azure CLI — signs in to the subscription and configures the pipeline", "https://learn.microsoft.com/cli/azure/install-azure-cli"),
-    ),
-}
-
-
-def tools_for(target: str) -> list[str]:
-    """Just the command names this target needs on the PATH, in the order a message lists them."""
-    return [tool for tool, _why, _where in TOOLS.get(target, ())]
-
-
 def managed(catalog: dict, target: str) -> bool:
     """Whether the keel provisions and deploys this target — `infra/`, the images, the pipeline. `none`
     and `existing` are not managed: the first goes nowhere, the second goes somewhere the keel does not own."""
     return bool(catalog["targets"][target].get("managed"))
 
 
-def validate_targets(catalog: dict) -> None:
-    """The targets block, the default, and every backend's declaration of where it is offered."""
+def validate_targets(catalog: dict, packaged: Collection[str] = ()) -> None:
+    """The targets block, the default, and every backend's declaration of where it is offered.
+
+    `packaged` is the targets that arrived as packages. A managed target arrives with its
+    infrastructure and never before it, and since phase 10 that infrastructure travels inside the
+    package: its stacks are its `TARGET`'s `shapes`, which the loader has already refused it for
+    answering with files it does not ship. So a packaged target has been held to that rule somewhere
+    stricter than here, and what is left for this check is the keel's own rows.
+    """
     targets = catalog.get("targets")
     if not isinstance(targets, dict) or not targets:
         raise ValueError("catalog must define at least one production target")
@@ -118,13 +111,18 @@ def validate_targets(catalog: dict) -> None:
             raise ValueError(
                 f"target {name} provisions nothing, so it names nothing after the project and reserves no words"
             )
-        if bool(target.get("managed")) != (TARGET_ROOT / name).is_dir():
+        if target.get("managed") and name not in packaged:
             raise ValueError(
-                f"target {name} {'is managed but has no' if target.get('managed') else 'is not managed yet has'} "
-                f"assets/targets/{name}: a managed target arrives with its infrastructure, and only one"
+                f"target {name} is managed — the keel provisions and deploys it — and no target package of "
+                f"that name is installed, so there is nothing behind the row. A catalog entry with nothing "
+                f"behind it generates projects claiming a destination they cannot reach; "
+                f"`{this_command()} target install {name}` is what puts something there"
             )
-    if {name: tuple(target.get("requires", [])) for name, target in targets.items()} != {
-        name: tuple(PRUNER.TARGET_REQUIRES.get(name, ())) for name in targets
+    # The keel's own rows only. A package's `requires` reaches a project's pruner through the emission that
+    # writes it there (`project.pruner`), so the keel's own copy has no row for it to disagree with.
+    own = [name for name in targets if name not in packaged]
+    if {name: tuple(targets[name].get("requires", [])) for name in own} != {
+        name: tuple(PRUNER.TARGET_REQUIRES.get(name, ())) for name in own
     }:
         raise ValueError(
             "catalog and assets/backing-services/prune.py disagree about which axes a target requires"
@@ -159,7 +157,7 @@ def check_targets(what: str, entry: dict, targets: dict) -> None:
             raise ValueError(f"{what}'s {target} entry must say what it provisions")
 
 
-def validate_axis_targets(catalog: dict, axis: str, spec: dict) -> None:
+def validate_axis_targets(catalog: dict, axis: str, spec: dict, packaged: Collection[str] = ()) -> None:
     """Every option says where it is offered, "nothing" is offered everywhere, and the default still resolves.
 
     The no-infrastructure answer has to be offered under every target so that an axis always has an answer
@@ -180,9 +178,11 @@ def validate_axis_targets(catalog: dict, axis: str, spec: dict) -> None:
         )
     # Only the options the keel itself declares are mirrored: a package's option is written in one
     # place and copied into a project's pruner from there, so it has no second copy to drift from.
+    # The keel's own targets only. A packaged target's offer reaches a project's pruner through the
+    # emission that writes it there (`project.pruner`), so the keel's static copy has nothing to mirror.
     shipped = PRUNER.AXES.get(axis, {}).get("options", {})
     for name, option in spec["options"].items():
-        if name in shipped and set(shipped[name]["targets"]) != set(option["targets"]):
+        if name in shipped and set(shipped[name]["targets"]) != set(option["targets"]) - set(packaged):
             raise ValueError(
                 f"catalog and assets/backing-services/prune.py disagree about where {axis}/{name} is offered"
             )
@@ -270,7 +270,7 @@ def check_project_name(catalog: dict, target: str, name: str) -> None:
 
 
 def provisioned_as(catalog: dict, axis: str, option: str, target: str) -> str | None:
-    """What this option is provisioned as under this target — `rds`, `cognito` — or None where the target
-    does nothing for it beyond carrying it."""
+    """What this option is provisioned as under this target — the product name the target package
+    records against it — or None where the target does nothing for it beyond carrying it."""
     entry = catalog["axes"][axis]["options"][option].get(target)
     return entry["provisions"] if entry else None

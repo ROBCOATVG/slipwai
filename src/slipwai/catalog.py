@@ -15,12 +15,20 @@ from .errors import GenerationError
 from .extension_directory import read as read_extensions
 from .extensions import merge_packages
 from .language_directory import directory, read
+from .target_directory import merge_targets
+from .target_directory import read as read_targets
 from .targets import required_axes
 
 # The keel's own file: the backends it still carries, each with an `order`, and the schema version a language
 # package's `core` range is held to.
 CORE = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
 SCHEMA_VERSION = "9.0"
+# The targets first, and before the languages for one reason: a backend declares the targets it is offered
+# under, and a backend naming a cloud can only be read once that cloud's row is in the tables. The keel's own
+# file carries `none` and `existing`; every other row, and every answer that is a cloud's, arrives here.
+TARGETS, _TARGET_REFUSALS = read_targets(directory(), CORE["schemaVersion"], installed=True)
+_TARGET_MERGE_REFUSALS = merge_targets(CORE, TARGETS)
+TARGETS = [one for one in TARGETS if one.name in CORE["targets"]]
 # Phase 1 of the package directory: the fragments this keel can load, then the merge, which refuses a
 # fragment alone. `PACKAGES` are the ones that merged; `REFUSALS` say, a line each, why the others did not.
 _FOUND, _FRAGMENT_REFUSALS = read(directory(), CORE["schemaVersion"], installed=True)
@@ -32,7 +40,8 @@ PACKAGES = [package for package in _FOUND if package.name not in _MERGE_REFUSALS
 EXTENSIONS, _EXTENSION_REFUSALS = read_extensions(directory(), CORE["schemaVersion"], installed=True)
 _COLLISIONS = merge_packages(CATALOG, EXTENSIONS)
 EXTENSIONS = [one for one in EXTENSIONS if CATALOG["extensions"].get(one.name) == one.entry]
-REFUSALS: list[str] = [*_FRAGMENT_REFUSALS, *_MERGE_REFUSALS.values(), *_EXTENSION_REFUSALS, *_COLLISIONS]
+REFUSALS: list[str] = [*_TARGET_REFUSALS, *_TARGET_MERGE_REFUSALS, *_FRAGMENT_REFUSALS,
+                       *_MERGE_REFUSALS.values(), *_EXTENSION_REFUSALS, *_COLLISIONS]
 
 
 def catalog_families(catalog: dict) -> dict[str, list[str]]:
@@ -149,7 +158,8 @@ def axis_prunable(axis: str) -> bool:
 
 
 def axis_required(axis: str, target: str) -> bool:
-    """Whether this target refuses the axis's no-infrastructure answer — `aws` deploys an HTTP service."""
+    """Whether this target refuses the axis's no-infrastructure answer: a target that deploys an HTTP
+    service and proves the deploy by asking it for `/health` cannot be given `--http none`."""
     return axis in required_axes(CATALOG, target)
 
 

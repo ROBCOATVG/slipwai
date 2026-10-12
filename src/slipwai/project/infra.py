@@ -1,10 +1,12 @@
 """`infra/`, `scripts/deploy.py` and the ADR: what a project going to a production target is given.
 
-Only the `aws` target has any of this; under `none` the module contributes nothing, which is the whole
-difference between the two. The HCL is copied from `assets/targets/aws/` as committed — the bootstrap stack,
-the service stack, the environments' tfvars — and what the *project* decides is written beside it as data:
+Only a managed target has any of this; under `none` the module contributes nothing, which is the whole
+difference between the two. The HCL is copied from the target package as committed — the bootstrap stack,
+the service stack, the environments' tfvars, named by its `shapes` — and what the *project* decides is
+written beside it as data:
 `project.auto.tfvars.json`, one map of the services with each answer translated into what the target provisions
-for it (`store = "rds"`, `auth = "cognito"`), how each service's migrations run once it is an image, and the
+for it (`store` and `auth` as that target provisions them), how each service's migrations run once it is an
+image, and the
 environment its backend needs in production. The stack reads that map with `for_each`, so `add-service` is a
 change to the data and never to the HCL.
 
@@ -17,22 +19,21 @@ from __future__ import annotations
 
 import json
 
-from ..assets import ROOT, asset_tree
 from ..catalog import CATALOG
 from ..images import WORKSPACE_DESCRIPTOR, image_builder, migrations_in_production
+from ..loaded_targets import answer, root_of
 from ..probes import HEALTH_PATH, ready_path
 from ..registry import POSTGRES_SSLMODE, PROCFILE, SERVICE_DESCRIPTORS, registry
 from ..services import App, services_of, web_apps
+from ..target_protocol import SCRIPTS, SHAPES
 from ..targets import managed
 from ..tooling import for_app
 from .flag_route import wire_transports
 from .provisioning import provisioned
 from .target_docs import pages
 
-TARGET_ROOT = ROOT / "assets/targets"  # also `targets.TARGET_ROOT`; spelled here for the asset reads below
-
-# `frontend.tf` is emitted whichever way, with one of two contents: the site behind CloudFront when the project
-# has a browser app, and only the public address otherwise. One file rather than two chosen between, because
+# `frontend.tf` is emitted whichever way, with one of two contents: the site behind whatever the target
+# puts in front of it when the project has a browser app, and only the public address otherwise. One file rather than two chosen between, because
 # `add-frontend` rewrites the files whose content changes and deletes nothing — two files would leave the
 # old one behind, defining the address twice.
 WITH_FRONTEND = "service/frontend.tf"
@@ -42,7 +43,8 @@ WITHOUT_FRONTEND = "service/no-frontend.tf"
 # Auth0 is a third party: the provider is configured the moment anything in the module refers to it — a
 # `count = 0` resource is enough — and it refuses to configure without a tenant credential. A project that
 # did not choose Auth0 has none, so it must not carry the provider at all, and the choice cannot be left to
-# the pruner: `keycloak` is the feature behind Cognito, Entra *and* Auth0, so no marker can tell them apart.
+# the pruner: `keycloak` is the feature behind every target's own identity answer *and* Auth0, so no
+# marker can tell them apart.
 WITH_AUTH0 = "service/auth0.tf"
 WITHOUT_AUTH0 = "service/no-auth0.tf"
 
@@ -68,10 +70,10 @@ def production_environment(service: App, target: str) -> dict[str, str]:
     - The migration strategy, for a framework that applies the schema as the service starts (both Java
       backends). Gated on there being something to migrate at all.
     - The **store**, for the client half of a managed Postgres's TLS policy (the backend's
-      `postgres_sslmode`; `images.py` writes the per-driver divergence down above `POSTGRES_SSLMODE_KINDS`,
-      `None` included — a backend whose driver ignores `PGSSLMODE` is told nothing rather than told
-      something inert). Keyed by what the target provisions
-      the store as, because the policy is the managed Postgres's and not the cloud's. Gated on the store
+      `postgres_sslmode`; `images.py` writes the per-driver divergence down above
+      `postgres_sslmode_kinds`, `None` included — a backend whose driver ignores `PGSSLMODE` is told
+      nothing rather than told something inert). Keyed by what the target provisions the store as,
+      because the policy is the managed Postgres's and not the cloud's. Gated on the store
       and nothing else: a service that reads Postgres and never migrates it still cannot connect without
       this, so gating it on the migration strategy would have given the fix to only some of the services
       that need it.
@@ -141,6 +143,29 @@ def procfiles(project_name: str, apps: list[App]) -> dict[str, str]:
     return files
 
 
+def read_from(target: str, relative: str) -> str:
+    """One file of the target's package, as written. A package's own files are text the keel copies."""
+    return (root_of(target) / relative).read_text(encoding="utf-8")
+
+
+def stack_files(target: str) -> dict[str, str]:
+    """Both stacks, by the path they take under `infra/`, which is the path they have in the package.
+
+    The two shapes are named by the protocol and not by each package, so `make bootstrap` applies the first
+    and `make deploy` the second on every cloud. What is *in* each is the package's to say.
+    """
+    shapes = answer(target, SHAPES, default={})
+    return {relative: read_from(target, relative)
+            for shape in sorted(shapes) for relative in sorted(shapes[shape])}
+
+
+def target_scripts(target: str) -> dict[str, str]:
+    """What the project gets under `scripts/` to bootstrap the account and deploy into it, by the path it
+    lands at — which the package names, because the path in the project and the path in the package are two
+    different facts and a package that moved a file should not move it in every project."""
+    return {where: read_from(target, source) for where, source in sorted(answer(target, SCRIPTS, default={}).items())}
+
+
 def target_files(project_name: str, profile: str, target: str, apps: list[App]) -> dict[str, str]:
     """Everything a managed production target adds to the repository; nothing for `none` or `existing`."""
     if not managed(CATALOG, target):
@@ -152,10 +177,7 @@ def target_files(project_name: str, profile: str, target: str, apps: list[App]) 
         for service in services_of(apps)
         for axis in ("auth", "users")
     )
-    for relative, content in asset_tree(TARGET_ROOT / target).items():
-        if relative.startswith("scripts/"):
-            files[relative] = content
-            continue
+    for relative, content in stack_files(target).items():
         if relative == (WITH_FRONTEND if not web else WITHOUT_FRONTEND):
             continue
         if relative == WITHOUT_FRONTEND:
@@ -165,6 +187,7 @@ def target_files(project_name: str, profile: str, target: str, apps: list[App]) 
         if relative == WITHOUT_AUTH0:
             relative = WITH_AUTH0
         files[f"infra/{relative}"] = content
+    files.update(target_scripts(target))
     # Which flag transports this project's services can actually read. See `flag_route.wire_transports`.
     wire_transports(files, {service.backend for service in services_of(apps)}, target)
     data = tfvars(project_name, apps, target)

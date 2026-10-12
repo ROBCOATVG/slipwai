@@ -25,9 +25,12 @@ still open, and refuses an answer a generated project could not be deployed with
 from __future__ import annotations
 
 from slipwai.target_protocol import (
-    DEPLOY_STEPS,
+    ADD_COMMANDS,
+    AGENT_RULES,
     DOCS_PAGES,
     IMAGE_REGISTRY,
+    PIPELINE,
+    README_WORDS,
     SCRIPTS,
     SHAPES,
     TOOLS,
@@ -35,21 +38,12 @@ from slipwai.target_protocol import (
 )
 
 
-def deployment_page(selection: object) -> str:
+def deployment_page(project: str, apps: object) -> str:
     """`docs/deployment.md`: where this project goes, in the words somebody on call would want."""
     return (
         "# Deployment\\n\\n"
         "TODO: what {name} runs this project on, what `make bootstrap` creates once, and what\\n"
         "`make deploy` applies per environment.\\n"
-    )
-
-
-def deploy_steps(environment: str) -> str:
-    """The workflow steps that take the deploy role for one environment, as YAML under `steps:`."""
-    return (
-        f"      # TODO: sign in to {name} for the {{environment}} environment, with the repository's\\n"
-        f"      # short-lived token where the forge federates and the stored credential where it does not.\\n"
-        f"      - run: make deploy ENVIRONMENT={{environment}}\\n"
     )
 
 
@@ -69,9 +63,46 @@ TARGET = Target(
         TOOLS: (
             ("tofu", "OpenTofu — what applies the stacks in infra/", "https://opentofu.org/docs/intro/install/"),
         ),
-        # TODO: where a built image is pushed, and how the pipeline signs in to push it.
-        IMAGE_REGISTRY: {{"repository": "TODO", "login": "TODO"}},
-        DEPLOY_STEPS: deploy_steps,
+        # The cloud a person signs in to, what its registry is called, one of its addresses as an example,
+        # and what `infra/` runs a service as. `scripts/deploy.py` is written round these four words.
+        IMAGE_REGISTRY: {{"cloud": "{title}", "registry": "TODO", "example": "TODO", "runtime": "TODO"}},
+        # The parts of the deploy workflow that are this cloud's. The job's shape is the keel's — `verify`
+        # on `main`, one apply at a time, apply then smoke, production behind `AUTO_PROMOTE`, a rollback
+        # that re-applies the release before — so what goes here is only what that shape cannot know.
+        PIPELINE: {{
+            # A CLI the runner may not ship, installed before anything needs it. "" where it ships one.
+            "cli": "",
+            # TODO: how a job becomes the deploy identity. Short-lived and federated where the forge can;
+            # a stored credential is a fallback and says so.
+            "credentials": "      # TODO: sign in to {name}\\n",
+            # The build job's own CLI, where signing in to the registry needs one. "" where it does not.
+            "build_cli": "",
+            "registry_login": "      # TODO: sign the Docker daemon in to the registry\\n",
+            # What the stacks and `scripts/deploy.py` read out of the environment, as `KEY: value` lines.
+            "environment": "  IMAGE_REGISTRY: ${{{{ vars.IMAGE_REGISTRY }}}}\\n",
+        }},
+        # The nouns the README's *Production* section is written round. Everything around them — the
+        # pipeline, `AUTO_PROMOTE`, the rollback workflow — is the same promise whatever the cloud is.
+        README_WORDS: {{
+            "runtime": "TODO: what `infra/` runs a service as, in one phrase",
+            "site": " TODO: what a browser app is served from here, as a sentence; blank where none is.",
+            "credentials": "TODO: what `make bootstrap` looks for",
+        }},
+        # What an agent is held to about how this project reaches production. Naming the cloud is what
+        # makes it land: "no service calls {title}" is a sentence an author checks themselves against.
+        AGENT_RULES: (
+            "- This project deploys to {title} from `.github/workflows/deploy.yml`, and a pipeline is the\\n"
+            "  only path to production: never apply production by hand, and never build an image on a\\n"
+            "  laptop for it. TODO: the rest of what somebody working here has to know.\\n"
+        ),
+        # What `add-service` and `add-frontend` say afterwards. Said in the command because the report says
+        # it once and the agent reads the command every time.
+        ADD_COMMANDS: {{
+            "service": ("- This project deploys to {title}, and `infra/` was regenerated. TODO: what\\n"
+                        "  that means before the next deploy.\\n"),
+            "web": ("- This project deploys to {title}: `infra/service/frontend.tf` was regenerated.\\n"
+                    "  TODO: what that means before the next deploy.\\n"),
+        }},
     }},
 )
 '''

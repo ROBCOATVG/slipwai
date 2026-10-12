@@ -31,6 +31,8 @@ SOURCE = BACKING_SERVICE_ROOT / "prune.py"
 # The keel's own line, the one place a script's rows go. Emission replaces it; a source without exactly one is refused.
 ROWS_LINE = "ROWS: dict[str, dict] = {}\n"
 OPTIONS_LINE = "AXIS_OPTIONS: dict[str, dict] = {}\n"
+TARGETS_LINE = "AXIS_TARGETS: dict[str, dict] = {}\n"
+REQUIRES_LINE = "TARGET_REQUIRES: dict[str, tuple[str, ...]] = {}\n"
 
 
 def family_rows(loaded: Registry, family: str) -> dict | None:
@@ -78,17 +80,46 @@ def axis_options(catalog: dict[str, Any] | None = None) -> dict[str, dict]:
     return brought
 
 
+def axis_targets(catalog: dict[str, Any] | None = None) -> dict[str, dict]:
+    """Where every option is offered, by axis, as the merged catalogue says it.
+
+    Written into a project's copy because the keel's own carries no place at all: every place is a package,
+    so the shipped literal says `none` and `existing` and nothing else, and a project that deploys somewhere
+    would otherwise prune by a table that had never heard of where it deploys.
+    """
+    merged = CATALOG if catalog is None else catalog
+    return {axis: {name: list(option.get("targets", ())) for name, option in spec["options"].items()}
+            for axis, spec in merged["axes"].items()}
+
+
+def target_requires(catalog: dict[str, Any] | None = None) -> dict[str, list[str]]:
+    """Which axes each target will not take the no-infrastructure answer to, as the merged catalogue says.
+
+    The other half of the same fact, and the one a prune has to refuse on: a project that deploys an HTTP
+    service and proves the deploy by asking it for `/health` cannot be pruned to `--http none` afterwards
+    any more than it could be generated that way.
+    """
+    merged = CATALOG if catalog is None else catalog
+    return {name: list(target.get("requires", ())) for name, target in merged["targets"].items()
+            if target.get("requires")}
+
+
 def emitted(families: Iterable[str], source: str | None = None) -> str:
-    """The keel's pruning script carrying the rows of these families and the options their packages
-    brought, and nothing of any other, as the project's copy."""
+    """The keel's pruning script carrying the rows of these families, the options their packages brought,
+    and where the installed targets offer each answer — nothing of any other, as the project's copy."""
     text = SOURCE.read_text(encoding="utf-8") if source is None else source
-    for line in (ROWS_LINE, OPTIONS_LINE):
+    for line in (ROWS_LINE, OPTIONS_LINE, TARGETS_LINE, REQUIRES_LINE):
         if text.count(line) != 1:
             raise RuntimeError(f"the pruning script must carry exactly one `{line.strip()}` line to write into")
-    rows = json.dumps(prune_rows(families), indent=2)
-    options = json.dumps(axis_options(), indent=2)
-    text = text.replace(ROWS_LINE, f'ROWS: dict[str, dict] = json.loads(r"""\n{rows}\n""")\n')
-    return text.replace(OPTIONS_LINE, f'AXIS_OPTIONS: dict[str, dict] = json.loads(r"""\n{options}\n""")\n')
+    written = {
+        ROWS_LINE: ("ROWS: dict[str, dict]", prune_rows(families)),
+        OPTIONS_LINE: ("AXIS_OPTIONS: dict[str, dict]", axis_options()),
+        TARGETS_LINE: ("AXIS_TARGETS: dict[str, dict]", axis_targets()),
+        REQUIRES_LINE: ("TARGET_REQUIRES: dict[str, tuple[str, ...]]", target_requires()),
+    }
+    for line, (declared, value) in written.items():
+        text = text.replace(line, f'{declared} = json.loads(r"""\n{json.dumps(value, indent=2)}\n""")\n')
+    return text
 
 
 @functools.cache

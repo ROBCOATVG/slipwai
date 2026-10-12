@@ -1,0 +1,79 @@
+{
+  "name": "aws",
+  "label": "AWS — one ECS service per app deployed blue/green behind its own load balancer, RDS Postgres, Cognito and S3 + CloudFront, provisioned by OpenTofu and deployed by the trunk pipeline",
+  "description": "Amazon Web Services: ECS on Fargate behind a load balancer, RDS Postgres, Cognito, and a site in S3 behind CloudFront, provisioned by OpenTofu and deployed by the trunk pipeline.",
+  "kind": "target",
+  "core": ">=9.0,<10",
+  "managed": true,
+  "requires": [
+    "http"
+  ],
+  "reserved": {
+    "anywhere": [
+      "amazon",
+      "aws",
+      "cognito"
+    ]
+  },
+  "offers": {
+    "auth": [
+      "auth0"
+    ],
+    "persistence": [
+      "postgres"
+    ],
+    "users": [
+      "auth0"
+    ],
+    "write-model": [
+      "events"
+    ]
+  },
+  "provisions": {
+    "auth": {
+      "auth0": "auth0",
+      "cognito": "cognito"
+    },
+    "persistence": {
+      "postgres": "rds"
+    },
+    "users": {
+      "auth0": "auth0",
+      "cognito": "cognito"
+    }
+  },
+  "axes": {
+    "auth": {
+      "cognito": {
+        "capabilities": [
+          "auth-cognito"
+        ],
+        "containers": [
+          "keycloak"
+        ],
+        "migrations": false,
+        "integration-suite": false,
+        "label": "Cognito — a user pool with the internal groups, a hosted login and a confidential client, provisioned in AWS; Keycloak runs locally as the stand-in, with the same groups and OIDC_* keys (the flow itself is NOT implemented)",
+        "features": [
+          "keycloak"
+        ]
+      }
+    },
+    "users": {
+      "cognito": {
+        "capabilities": [
+          "users-cognito"
+        ],
+        "containers": [
+          "keycloak"
+        ],
+        "migrations": false,
+        "integration-suite": false,
+        "label": "Cognito — a second user pool for external users with self-registration and a public PKCE client, provisioned in AWS; Keycloak's external realm runs locally as the stand-in, and the browser login is real",
+        "features": [
+          "users-keycloak"
+        ]
+      }
+    }
+  }
+}

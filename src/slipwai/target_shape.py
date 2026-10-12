@@ -32,8 +32,11 @@ LOCAL_ONLY = "none"
 #: what `--target <name>` is typed as; `label` is the sentence the prompt shows, which is a cloud's own prose
 #: and not a slug. `core` is the keel range, as both the other manifests carry.
 REQUIRED = ("name", "label", "description", "kind", "core")
-#: Declarable and not required. The four that make a catalog row, plus what a listing shows.
-OPTIONAL = ("managed", "requires", "reserved", "publisher", "tags")
+#: Declarable and not required. The four that make a catalog row, what a listing shows, and the three that
+#: say what this target does to the *menus*: the keel answers it offers, what each of them is provisioned as
+#: there, and the answers that are its own. Those three are why a cloud can leave the keel at all — every
+#: option that named a cloud named it because the cloud offered it, and that is the cloud's statement to make.
+OPTIONAL = ("managed", "requires", "reserved", "publisher", "tags", "offers", "provisions", "axes")
 
 
 def validate(manifest: dict) -> None:
@@ -58,10 +61,12 @@ def validate(manifest: dict) -> None:
                          "its pipeline — and false where a project deploys somewhere the keel does not own")
     if not strings(manifest.get("requires", [])):
         raise ValueError("`requires` is a list of the axes this target cannot take the no-infrastructure "
-                         "answer to, as `aws` requires `http`: a deploy nothing can prove is not a deploy")
+                         "answer to: a deploy nothing can prove is not a deploy, so a target that deploys an "
+                         "HTTP service cannot be given `--http none`")
     reserved_fault(manifest)
     if "tags" in manifest and not strings(manifest["tags"]):
         raise ValueError("`tags` is a list of strings, which is what `slipwai search` matches against")
+    menu_fault(manifest)
     if unknown := set(manifest) - set(REQUIRED) - set(OPTIONAL):
         raise ValueError(f"a target declares {', '.join(sorted(unknown))}, which the keel does not read. "
                          f"It may declare: {', '.join(sorted({*REQUIRED, *OPTIONAL}))}")
@@ -105,3 +110,37 @@ def catalogue_entry(manifest: dict) -> dict[str, Any]:
     if manifest.get("managed"):
         entry["managed"] = True
     return entry
+
+
+def menu_fault(manifest: dict) -> None:
+    """The three blocks that say what this target does to the menus, held to their shapes and no further.
+
+    *Which* axis and *which* option is a fact about the keel that reads the manifest, not about the manifest,
+    so it is checked at the merge and not here: a target built against a keel that declared `auth` is not
+    wrong on the publisher's machine because this keel renamed the axis. What is wrong here is a block that
+    could not be read at all, whatever the keel.
+    """
+    offers = manifest.get("offers", {})
+    if not isinstance(offers, dict) or not all(strings(options) for options in offers.values()):
+        raise ValueError("`offers` is a mapping from an axis to the keel options this target offers under "
+                         "it: an option named a cloud because the cloud offered it, and that is the cloud's "
+                         "to say")
+    provisions = manifest.get("provisions", {})
+    if not isinstance(provisions, dict) or not all(
+        isinstance(options, dict) and all(isinstance(as_what, str) and as_what for as_what in options.values())
+        for options in provisions.values()
+    ):
+        raise ValueError("`provisions` is a mapping from an axis to what each option becomes here, as "
+                         "`{\"persistence\": {\"postgres\": \"<what it becomes here>\"}}`: provisioning an "
+                         "option offers it")
+    axes = manifest.get("axes", {})
+    if not isinstance(axes, dict) or not all(
+        isinstance(options, dict) and all(isinstance(option, dict) for option in options.values())
+        for options in axes.values()
+    ):
+        raise ValueError("`axes` is a mapping from an axis to the options this target brings itself, each "
+                         "one the entry the catalogue's `options` block holds: an answer that exists only "
+                         "where this target is installed belongs to it and not to the keel")
+    if axes and not manifest.get("managed"):
+        raise ValueError(f"target {manifest['name']} provisions nothing, so it brings no answer of its own: "
+                         f"an option offered only here would be one nothing here could build")

@@ -1,0 +1,104 @@
+{
+  "name": "azure",
+  "label": "Azure — one Container App per app deployed by revision behind the environment's own ingress and managed certificate, PostgreSQL Flexible Server, Entra ID and Static Web Apps, provisioned by OpenTofu and deployed by the trunk pipeline",
+  "description": "Microsoft Azure: Container Apps behind the environment's own ingress, PostgreSQL Flexible Server, Entra ID, and a static web app, provisioned by OpenTofu and deployed by the trunk pipeline.",
+  "kind": "target",
+  "core": ">=9.0,<10",
+  "managed": true,
+  "requires": [
+    "http"
+  ],
+  "reserved": {
+    "anywhere": [
+      "microsoft",
+      "windows"
+    ],
+    "word": [
+      "access",
+      "app_browsers",
+      "app_code",
+      "app_data",
+      "app_globalresources",
+      "app_localresources",
+      "app_themes",
+      "app_webreferences",
+      "azure",
+      "bing",
+      "bizspark",
+      "biztalk",
+      "cortana",
+      "directx",
+      "dotnet",
+      "dynamics",
+      "excel",
+      "exchange",
+      "forefront",
+      "groove",
+      "hololens",
+      "hyperv",
+      "kinect",
+      "lync",
+      "msdn",
+      "o365",
+      "office",
+      "office365",
+      "onedrive",
+      "onenote",
+      "outlook",
+      "powerpoint",
+      "sharepoint",
+      "skype",
+      "visio",
+      "visualstudio",
+      "web.config",
+      "xbox"
+    ],
+    "prefix": [
+      "login"
+    ]
+  },
+  "offers": {
+    "auth": [
+      "auth0"
+    ],
+    "persistence": [
+      "postgres"
+    ],
+    "users": [
+      "auth0"
+    ],
+    "write-model": [
+      "events"
+    ]
+  },
+  "provisions": {
+    "auth": {
+      "auth0": "auth0",
+      "entra": "entra"
+    },
+    "persistence": {
+      "postgres": "flexible-server"
+    },
+    "users": {
+      "auth0": "auth0"
+    }
+  },
+  "axes": {
+    "auth": {
+      "entra": {
+        "capabilities": [
+          "auth-entra"
+        ],
+        "containers": [
+          "keycloak"
+        ],
+        "migrations": false,
+        "integration-suite": false,
+        "label": "Entra ID — an app registration with the internal groups and a confidential client, provisioned in the subscription's own workforce tenant; Keycloak runs locally as the stand-in, with the same groups and OIDC_* keys (the flow itself is NOT implemented)",
+        "features": [
+          "keycloak"
+        ]
+      }
+    }
+  }
+}

@@ -52,3 +52,21 @@ slipwai.project.shared_packages
 # writable at all, and nothing else has been shown to be. A line here is as unwithdrawable as a line above
 # it, so the rest of what a cloud needs arrives when a cloud is a package and has been seen to need it.
 slipwai.target_protocol
+
+# Added in 10.3, when a cloud left the keel and it became clear what a cloud's own pages need. All five are
+# read by the deployment drawing and the production decision record, which are *this project's* — drawn from
+# the same answers the stacks read, so `add-service` regenerates them and neither can describe a project that
+# no longer exists. That is why a page cannot be a static file and why these cannot be handed in as data.
+#
+# `services` is the project's applications. `images` and `probes` are facts about the backends those
+# applications are written on — which builder, how migrations run in production, which path answers
+# send-me-traffic — and a drawing that did not know them could not draw a migration task or a health check.
+# `project.provisioning` is what an answer becomes under a target, which is the cloud's own declaration read
+# back; `project.flags` is the one paragraph about flags that every target's decision record carries.
+#
+# Five, against a ceiling of twenty, and each is a module the keel already promises a language package.
+slipwai.images
+slipwai.probes
+slipwai.services
+slipwai.project.flags
+slipwai.project.provisioning

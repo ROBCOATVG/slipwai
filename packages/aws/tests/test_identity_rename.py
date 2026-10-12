@@ -17,6 +17,19 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def keel_catalogue() -> dict:
+    """The keel's own `catalog.json`, read through the installed keel rather than from a path beside this
+    package. These two cases are about what the interview asks, which is the keel's file and never this
+    package's — and where this package is checked out is not fixed: in the fork it sits under `packages/`,
+    and in its own repository it is the repository. A relative path was right in neither, so both cases
+    errored wherever they ran, which nothing noticed until this suite was first given a gate of its own.
+    """
+    from slipwai.catalog import CORE
+
+    return CORE
+
 #: This package's own service stack, and the number of addresses it renamed. A number rather than a
 #: diff, because a diff is only true of the commit that made it.
 STACKS = (ROOT / "service",)
@@ -45,14 +58,14 @@ class WordTest(unittest.TestCase):
                     self.assertNotIn("customer", name.lower())
 
     def test_the_interview_asks_internal_and_external(self) -> None:
-        catalog = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
+        catalog = keel_catalogue()
         self.assertEqual(catalog["axes"]["auth"]["prompt"], "Internal authentication")
         self.assertEqual(catalog["axes"]["users"]["prompt"], "External authentication")
 
     def test_the_axis_keys_did_not_move(self) -> None:
         """A key is read by a generated project and by every `project.json` already written. Renaming the
         words is a rename; renaming these would be a migration, and nothing here needed one."""
-        catalog = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
+        catalog = keel_catalogue()
         self.assertIn("auth", catalog["axes"])
         self.assertIn("users", catalog["axes"])
 

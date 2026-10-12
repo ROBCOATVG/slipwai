@@ -29,8 +29,9 @@ class YAMLReader(Protocol):
 
 STATE = ".slipwai/migration.json"
 SLICE = re.compile(r"\b[A-Z][A-Z0-9]*-\d+\b")
-#: What version 1's runner left behind, and all three stay at the repository root under an adopted
-#: project's `layout.delivery`: `specs/` and `.specify/` are not delivery material and do not move.
+#: What version 1's runner — version 1's own word for what a captain replaced — left behind. All three
+#: stay at the repository root under an adopted project's `layout.delivery`, because `specs/` and
+#: `.specify/` are not delivery material and do not move.
 #: `cruise-told.jsonl` is what an iteration was handed; `cruise-inbox.jsonl` is what nobody has taken
 #: yet. Version 1 put the first back ahead of the second at the start of every run, because a person's
 #: word is not spent by an iteration that died, and this reads them in that same order.
@@ -56,6 +57,7 @@ def legacy_lines(path: Path) -> list[dict]:
     Never skipped past: a record missing the entries it could not parse reads exactly like a record of a
     run that did not have them, and this is the only account there is of what a person said.
     """
+    unreadable = "is not one readable JSON object; repair or delete the file, then run `slipwai migrate` again"
     found = []
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
@@ -63,10 +65,9 @@ def legacy_lines(path: Path) -> list[dict]:
         try:
             body = json.loads(line)
         except ValueError as error:
-            body = error
+            raise GenerationError(f"{path} line {number} {unreadable} ({error})") from None
         if not isinstance(body, dict):
-            raise GenerationError(f"{path} line {number} is not one readable JSON object; repair or delete "
-                                  "the file, then run `slipwai migrate` again") from None
+            raise GenerationError(f"{path} line {number} {unreadable}")
         found.append(body)
     return found
 
@@ -100,7 +101,7 @@ def stopped(root: Path) -> str:
     on it is one a person is not asked about. `cruise: parked: <why>` keeps the person's own words.
     `cruise: stopped: human` recorded no reason beyond the person, so that is the reason, said rather than
     left to be guessed at. Everything else is a run that stopped without saying why — killed, ended for a
-    message, or ended on a line the runner did not recognise — and naming the iteration and the line it
+    message, or ended on a line version 1's runner did not recognise — and naming the iteration and the line it
     ended on is the most anybody can be told. None of them is silently dropped: a crossing that reads a
     stopped run as a finished one is one that loses the only record of why somebody stopped.
     """

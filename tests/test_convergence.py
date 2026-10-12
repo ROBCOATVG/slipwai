@@ -46,7 +46,7 @@ class ConvergenceTest(unittest.TestCase):
             "unrecorded"))
         self.assertTrue(all(row["planned"] is None for row in nothing), "nothing is planned until a slice is")
         self.assertEqual((by_axis["platform"]["rung"], by_axis["platform"]["provenance"]), ("unknown", "unrecorded"))
-        self.assertEqual(summary(nothing), (0, 3, 6))
+        self.assertEqual(summary(nothing), (0, 3, 7))
 
         adoption = Adoption(
             why="the runtime is end of life",

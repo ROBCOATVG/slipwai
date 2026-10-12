@@ -1,0 +1,24 @@
+v: 1
+feature: migration-prep
+fairways:
+  migration-prep:
+    context: version 1 crossing and preserved work in flight
+    owns: [src/slipwai/migrate.py, src/slipwai/replay.py, src/slipwai/cli_add.py, src/slipwai/catch_up.py, src/slipwai/migration_*.py, src/slipwai/project/catch_up_command.py, assets/toolkit/scripts/check-migration.py, assets/toolkit/scripts/render-fairways.py, assets/toolkit/scripts/agents/clearance.py, assets/toolkit/scripts/agents/claims.py, src/slipwai/convergence.py, src/slipwai/project/convergence_page.py, assets/adoption/scripts/check-convergence.py, tests/test_migration*.py, tests/test_convergence.py, tests/fixtures/migration/**, scripts/test-migration.py, scripts/check-structure.py, scripts/bring-back.py, Makefile, docs/slipwai-2-plan.md]
+marks:
+  LegacyFactoryBase:
+    kind: port
+    inputs: docs/charts/contracts/legacy-factory-base.in.json
+    outputs: docs/charts/contracts/legacy-factory-base.out.json
+  MigratedFlightState:
+    kind: schema
+    schema: docs/charts/contracts/migrated-flight-state.json
+  RenamedMerge:
+    kind: port
+    inputs: docs/charts/contracts/renamed-merge.in.json
+    outputs: docs/charts/contracts/renamed-merge.out.json
+slices:
+  '8.3':
+    fairway: migration-prep
+    capability: preserve a version 1 project's edits and work in flight during the crossing
+    sets: [LegacyFactoryBase, MigratedFlightState, RenamedMerge]
+    steers_by: []

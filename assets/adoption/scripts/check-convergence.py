@@ -51,6 +51,7 @@ RUNGS = {
     "constitution": ("template", "ratified", "in-full"),
     "data": ("open", "recorded", "settled"),
     "infrastructure": ("open", "recorded", "settled"),
+    "release-mode": ("unrecorded", "recorded", "confirmed"),
     "strategy": ("open", "why-recorded", "recommended", "decided", "done"),
 }
 
@@ -58,6 +59,12 @@ RUNGS = {
 def caps(document: dict) -> dict[str, tuple[str, str]]:
     """The highest rung the tree allows each axis, with the fact that caps it — only where the tree can say."""
     found: dict[str, tuple[str, str]] = {}
+    mode = document.get("releaseMode")
+    if mode not in ("open", "keystone", "flagged", "promoted"):
+        found["release-mode"] = ("unrecorded", "no valid releaseMode is recorded; confirm the mode in project.json")
+    elif not any(row.get("axis") == "release-mode" and row.get("provenance") == "confirmed"
+                 for row in (document.get("convergence") or [])):
+        found["release-mode"] = ("recorded", "a person has not confirmed the release mode")
     release = (document.get("release") or {}).get("path", "unknown")
     if release in ("unknown", "manual", "scripted"):
         found["path-to-production"] = (release, f"release.path is `{release}`")

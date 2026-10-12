@@ -25,8 +25,8 @@ from .converge import report as converge_report
 from .errors import GenerationError, refuse
 from .language_directory import directory
 from .language_index import snapshots
-from .language_plan import install_for
-from .manifest import read_manifest
+from .language_plan import Resolver, held_to_record, install_for, plan_install, project_names
+from .manifest import read_manifest, recorded_languages
 from .migrate import checked, migrate
 from .migrate import report as migrate_report
 from .npm_workspace import NoBrowserLanguage
@@ -209,18 +209,46 @@ def migrate_main(argv: list[str]) -> None:
         help="refuse, naming the install line, where a language the project needs is not installed, rather than "
         "installing it first",
     )
+    parser.add_argument("--check", action="store_true",
+                        help="prepare a crossing and report it without changing the project")
+    parser.add_argument("--with-claims", action="store_true",
+                        help="apply renames to inactive claims and leave them to rebase")
     args = parser.parse_args(argv)
     if not os.environ.get(RELAUNCHED):
         warn_if_behind()
     try:
-        if not args.no_install and (installed := install_for(checked(Path.cwd()), directory(), snapshots())):
+        document = checked(Path.cwd())
+        from .migration_claims import ahead
+        from .migration_crossing import crossing, version
+        if version(document):
+            ahead(Path.cwd(), with_claims=args.with_claims)
+        if args.check:
+            needed = project_names(document, Resolver(directory(), None, snapshots()))
+            steps, notices = plan_install(needed, directory(), None, snapshots()) if needed else ([], [])
+            held_to_record(steps, recorded_languages(document) or {})
+            print("\n".join([f"Would install {step.name}" for step in steps] + notices))
+            if steps:
+                print("Install with `slipwai language install`, then rerun `slipwai migrate --check`.")
+            elif version(document):
+                print(crossing(Path.cwd(), document, with_claims=args.with_claims, check=True))
+            else:
+                print("Packages are installed; `slipwai replay` offers the current version beside this project.")
+            return
+        if args.no_install:
+            needed = project_names(document, Resolver(directory(), None, snapshots()))
+            if needed:
+                raise GenerationError(f"packages are not installed: {', '.join(needed)}; "
+                                      f"run `slipwai language install {' '.join(needed)}` then `slipwai migrate`")
+        if not args.no_install and (installed := install_for(document, directory(), snapshots())):
             print("\n".join(installed), flush=True)
-            finished = subprocess.run([*relaunch(), "migrate", "--no-install"], env=os.environ | {RELAUNCHED: "1"})
+            forwarded = ["--with-claims"] if args.with_claims else []
+            finished = subprocess.run([*relaunch(), "migrate", "--no-install", *forwarded],
+                                      env=os.environ | {RELAUNCHED: "1"})
             if finished.returncode != 0:
                 print(f"The language(s) above stay installed in {directory()}: once what stopped this is dealt with, "
                       "`slipwai migrate` again finishes the job.", file=sys.stderr)
             raise SystemExit(finished.returncode)
-        done = migrate(Path.cwd())
+        done = migrate(Path.cwd(), with_claims=args.with_claims)
     except GenerationError as error:
         refuse(parser.prog, error)
     print(migrate_report(done))

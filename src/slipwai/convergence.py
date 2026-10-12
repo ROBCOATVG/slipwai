@@ -93,6 +93,11 @@ AXES: tuple[Axis, ...] = (
         "recorded": "the infrastructure's home is recorded: `here`, `elsewhere`, `unmanaged` or `none`",
         "settled": "the infrastructure is described in one place — here, in a named repository, or there is none",
     }),
+    Axis("release-mode", "Release mode", ("unrecorded", "recorded", "confirmed"), "confirmed", {
+        "unrecorded": "the product has not recorded how actor-visible changes are held back",
+        "recorded": "a release mode is recorded as evidence; a person has not confirmed it",
+        "confirmed": "a person confirmed the release mode and what holds behaviour changes back",
+    }),
     Axis("strategy", "Strategy", ("open", "why-recorded", "recommended", "decided", "done"), "done", {
         "open": "why this work is happening is not recorded",
         "why-recorded": "the business trigger is recorded; no strategy is recommended yet",
@@ -175,6 +180,7 @@ def detected(apps: list[App], adoption: Adoption) -> list[Row]:
         rows.append(row(
             BY_KEY[key], rung, f"{field}: {record.get(field, 'unrecorded')}", record.get("provenance", "unrecorded")
         ))
+    rows.append(row(BY_KEY["release-mode"], "unrecorded", "confirm project.json's releaseMode", "unrecorded"))
     rows.append(strategy_row(adoption))
     return rows
 
@@ -232,6 +238,12 @@ def reconciled(recorded: list[Row], fresh: list[Row], refreshed: list[str]) -> l
         old = kept.get(new["axis"])
         if old is None:
             result.append(new)
+            continue
+        # A resurvey cannot infer an actor-visible release choice from build files. Preserve the
+        # crossing's recorded evidence until the person confirms it; check-convergence still refuses
+        # it if project.json loses the mode that evidence names.
+        if new["axis"] == "release-mode" and old.get("rung") == "recorded" and new["rung"] == "unrecorded":
+            result.append(old)
             continue
         if old.get("provenance") in ("confirmed", "overridden"):
             # The person's words are the evidence for a row they placed — `/ground` writes them there — and the

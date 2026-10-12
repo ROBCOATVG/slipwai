@@ -59,7 +59,9 @@ def trees_here() -> set[str]:
 
 ASSETS_HERE = trees_here()
 # Written for version 2 rather than brought back, so the ledger will never hold them.
-OWN = {"catalog_checks", "catalog_options", "cli_offered", "cli_search",
+OWN = {"migration_legacy", "migration_flight", "migration_claims", "migration_crossing",
+       "migration_result", "migration_merge", "migration_renames", "catalog_checks", "catalog_options",
+       "cli_offered", "cli_search",
        "project.briefs", "project.sail_section", "project.write_model_prose",
        "project.ladder", "project.careen", "project.harbour",
        "project.release", "project.domain", "logs", "berths", "hooks", "project.events_index",

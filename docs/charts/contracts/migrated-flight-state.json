@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "v",
+    "features"
+  ],
+  "properties": {
+    "v": {
+      "const": 1
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "proposed",
+          "unplaced"
+        ],
+        "properties": {
+          "proposed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unplaced": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "confirmed": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

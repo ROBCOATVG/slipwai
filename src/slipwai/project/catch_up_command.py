@@ -79,6 +79,12 @@ writing it, or no migration has run in this tree. Say which of those it is to th
 else, and read the factory's `CHANGELOG.md` for the versions crossed if you can reach one. Never conclude
 from an absent file that the versions crossed asked nothing.
 
+## Confirm the migrated fairways first
+
+Run `python3 scripts/check-migration.py` before declaring catch-up complete. A proposed fairway or an
+unplaced slice keeps this command open: place the slices with `/chart`, ask the person to confirm, then
+run `python3 scripts/check-migration.py --confirm`. Never confirm on the person's behalf.
+
 ## Then work it
 
 1. Read every **Owes** line. Some ask for something no gate can check — an answer this project has to give,

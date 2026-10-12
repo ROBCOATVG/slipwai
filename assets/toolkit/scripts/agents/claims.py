@@ -34,6 +34,7 @@ no slipwai to import.
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -253,6 +254,25 @@ def take(root: Path, fairway: str, machine: str, lease: float = 0.0, heard: str 
     may be shut. The push is still the same compare-and-swap — a child of the tip that was read — so two
     machines deciding at once that a third has gone cannot both win.
     """
+    migration = root / ".slipwai/migration.json"
+    if migration.is_file():
+        try:
+            state = json.loads(migration.read_text(encoding="utf-8"))
+            if state.get("v") != 1 or not isinstance(state.get("features"), dict):
+                raise ValueError("unknown migration state")
+            if any(not isinstance(item, dict) or not all(isinstance(item.get(key), list) and
+                   all(isinstance(name, str) and name for name in item[key]) for key in ("proposed", "unplaced"))
+                   for item in state["features"].values()):
+                raise ValueError("malformed migration feature")
+            pending = any(fairway in (item.get("proposed") or []) or
+                          (fairway == "unplaced" and item.get("unplaced"))
+                          for item in state["features"].values())
+            if pending:
+                return Taken(False, None, f"{fairway} needs confirmation; "
+                             "run `python3 scripts/check-migration.py --confirm` after placing every slice")
+        except (OSError, ValueError, TypeError, AttributeError):
+            return Taken(False, None, "migration state is unreadable; restore .slipwai/migration.json "
+                         "and run `python3 scripts/check-migration.py` before taking a claim")
     if not repository(root):
         return Taken(True, None, "there is no git repository here, so nothing can hold a fairway and a "
                                  "second captain on this one cannot be refused; `git init` is what fixes it")

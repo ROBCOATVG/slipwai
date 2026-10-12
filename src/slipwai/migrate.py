@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 
 from .assets import NOTES, VERSION
@@ -30,13 +30,12 @@ from .catch_up import moved_languages, notes
 from .errors import GenerationError
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
+from .migration_result import Migration
 from .replay import Replay, git, replay
 from .scaffold import NO_MAINTENANCE
 from .unlabel import Refresh, read_page, unlabel
 
-# The project's own projectors: extension guidance first, then the agent files and contexts that may copy
-# that guidance. Named here rather than shelling out to `make`, so refresh cannot pick up an unrelated
-# target the project has since defined.
+# Project extension guidance first, then agent files: explicit paths avoid a project-defined make target.
 EXTENSION_PROJECTOR = "scripts/extensions/project.py"
 PROJECTOR = "scripts/agents/project.py"
 # What `./init` writes once it has installed a harness. Absent, nothing has been projected yet, so there is
@@ -45,24 +44,6 @@ PROJECTOR = "scripts/agents/project.py"
 PROJECTED = ".specify/integration.json"
 EXTENSION_STATE = ".slipwai/extensions.json"
 
-
-@dataclass(frozen=True)
-class Migration:
-    """What `migrate` did: the replay it merged, the version the project was on, and how the merge ended."""
-
-    offered: Replay
-    was: str | None
-    # Files with conflict markers, in path order; empty when the merge committed.
-    conflicts: tuple[str, ...]
-    # `git diff --stat`'s last line for what the keel changed since the base, or None when it changed nothing.
-    changed: str | None
-    # Whether the merge was a fast-forward: the project had nothing of its own since the last factory commit.
-    fast_forward: bool = False
-    # The projections re-derived after a clean merge; nothing at all where the merge stopped at a conflict.
-    refresh: Refresh = Refresh()
-    # Why the catch-up notes could not be written, or None when they were — which is every migration that
-    # changed anything, whatever the versions crossed asked.
-    unwritten: str | None = None
 
 
 def checked(root: Path) -> dict:
@@ -82,9 +63,15 @@ def checked(root: Path) -> dict:
     return document
 
 
-def migrate(root: Path) -> Migration:
+def migrate(root: Path, *, with_claims: bool = False) -> Migration:
     """Replay the project at `root` with this keel and merge the result into it."""
     document = checked(root)
+    from .migration_crossing import crossing, version
+    if version(document):
+        done = crossing(root, document, with_claims=with_claims)
+        if not done.conflicts:
+            done = replace(done, refresh=refresh(root, document["name"], layout_of(document)))
+        return done
     name, generator = document["name"], document.get("generator")
     was = generator.get("updatedWith") if isinstance(generator, dict) else None
     with tempfile.TemporaryDirectory(prefix=f".{name}-migrate-", dir=root.parent) as staging:

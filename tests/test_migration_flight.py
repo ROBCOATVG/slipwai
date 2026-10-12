@@ -12,7 +12,8 @@ import checkout_packages  # noqa: F401
 
 from slipwai.assets import ROOT
 from slipwai.fleet import Fairway, inbox, state_of
-from slipwai.migration_flight import json_bytes, plan_context, read, settings
+from slipwai.migration_flight import json_bytes, plan_context, read
+from slipwai.migration_settings import settings
 
 
 def script(relative: str):
@@ -146,7 +147,7 @@ class FlightTest(unittest.TestCase):
             json.dumps({"roles": {"claude": {"fast": "chosen", "skipper": "old"}}}))
         files = {"project.json": json_bytes(self.document),
                  ".specify/models.json": json_bytes({"roles": {"claude": {"fast": "default", "review": "host"}}})}
-        with patch("slipwai.migration_flight.git", return_value=b""):
+        with patch("slipwai.migration_settings.git", return_value=b""):
             settings(self.root, self.document, files)
         self.assertEqual(json.loads(files[".specify/models.json"])["roles"]["claude"],
                          {"fast": "chosen", "review": None, "decide": "old"})

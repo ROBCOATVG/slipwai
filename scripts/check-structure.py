@@ -85,9 +85,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # same material assembled for a harness to install with no project at all, which is this tier for the
     # same reason the rest of it is: it reads every part.
     ("assembly", ("plugin", "native", "unlabel", "next_steps", "scaffold", "adopt_report", "add_service", "adopt",
-                  "migration_legacy", "migration_flight", "migration_claims", "migration_crossing",
-                  "migration_result", "migration_merge", "migration_renames", "replay", "catch_up", "migrate",
-                  "resurvey", "confirm", "converge", "shape_converge")),
+                  "migration_legacy", "migration_flight", "migration_settings", "migration_claims",
+                  "migration_crossing", "migration_result", "migration_merge", "migration_renames",
+                  "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",
               "cli_prompts", "cli_interview", "cli_offered", "cli_language", "cli_search", "cli_add", "cli_adopt",

@@ -18,11 +18,12 @@ from .layout import layout_of
 from .logs import Entry, deck_path
 from .manifest import apps_from_manifest
 from .migration_claims import ahead, prepare, update
-from .migration_flight import Flight, read, settings
+from .migration_flight import Flight, read
 from .migration_legacy import runtime
 from .migration_merge import Tree, git, install, merge, modes, tracked, validate
 from .migration_renames import moved, renamed, table
 from .migration_result import Migration
+from .migration_settings import settings
 from .replay import Replay, replay
 from .survey import survey
 from .versions import parse

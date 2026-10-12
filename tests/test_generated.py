@@ -21,6 +21,8 @@ from pathlib import Path
 
 import checkout_packages
 
+from slipwai import native
+
 REPOSITORY = Path(__file__).resolve().parents[1]
 TOY = "toy-plain"
 
@@ -53,6 +55,17 @@ class GeneratedProjectTest(unittest.TestCase):
     def test_a_project_is_written(self) -> None:
         self.assertTrue((self.project / "project.json").is_file())
         self.assertGreater(len(list(self.project.rglob("*"))), 100)
+
+    def test_codex_project_and_standalone_install_project_the_same_command_skills(self) -> None:
+        done = subprocess.run([sys.executable, "scripts/agents/project.py", "codex"],
+                              cwd=self.project, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertTrue((self.project / ".agents/skills/sail/SKILL.md").is_file())
+        self.assertFalse((self.project / ".codex/prompts").exists())
+        standalone = native.files("codex")
+        for name in ("chart", "example-map", "mockups"):
+            path = f".agents/skills/{name}/SKILL.md"
+            self.assertEqual((self.project / path).read_text(encoding="utf-8"), standalone[path], path)
 
     def test_every_file_written_is_utf_8(self) -> None:
         """Generation wrote in the platform's locale codec until slice 4.1 — cp1252 on Windows, which

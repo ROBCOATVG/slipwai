@@ -1,0 +1,1 @@
+{"type":"object","required":["path","text"],"properties":{"path":{"type":"string","pattern":"^\\.agents/skills/[^/]+/SKILL\\.md$"},"text":{"type":"string"}}}

@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import shlex
 
-from .assets import contained, this_command
+from .assets import command_text, contained, this_command
 from .errors import GenerationError
 from .harness import keys, name_of, row_of
 from .plugin import DEFAULT_PROFILE
@@ -90,11 +90,21 @@ def mcp_file(spec: dict) -> str:
 def commands_of(found: dict[str, str], harness: dict) -> dict[str, str]:
     """Each canonical command at the path this harness reads commands from, in its own placeholder.
 
-    Only where the row says the harness reads *markdown* commands. A harness whose commands are TOML or
-    YAML has them rendered by `scripts/agents/project.py` inside a project, and a second rendering here
-    would be a second answer to what the command says.
+    A row with no commands directory uses the project's command-to-skill renderer where skills can go.
+    Otherwise this renders only markdown commands. TOML and YAML commands are rendered inside a project
+    by `scripts/agents/project.py`, where their toolchain and model answers are available.
     """
     where = placeable(harness.get("commandsDir"))
+    if harness.get("commandsDir") is None and (skills := placeable(harness.get("skillsDir"))):
+        renderer = command_text()
+        rendered = {}
+        for path, text in found.items():
+            if path.startswith("commands/"):
+                name = path.removeprefix("commands/").removesuffix(".md")
+                description, hint, body = renderer.parse_text(text, name)
+                rendered[f"{skills}/{name}/SKILL.md"] = renderer.command_as_skill(
+                    name, description, hint, body, path)
+        return rendered
     if where is None or (harness.get("commandFormat") or "markdown") != "markdown":
         return {}
     extension = str(harness.get("commandExtension") or ".md")

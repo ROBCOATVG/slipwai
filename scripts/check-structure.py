@@ -77,7 +77,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # to do.
     ("answers", ("selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet", "deck",
                  "toolkit", "platform", "convergence", "delivery_facts", "programme", "quick_wins",
-                 "uncommitted", "wrappers", "strategy", "survey", "structure", "manifest")),
+                 "uncommitted", "wrappers", "strategy", "survey", "structure", "big_picture", "manifest")),
     # One module per part of the repository being generated.
     ("parts", ("project",)),
     # The whole of a project, assembled and written, and the whole of it again from a newer keel — and the

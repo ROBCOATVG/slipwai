@@ -1,6 +1,8 @@
 """Two clone stand-ins share a bare forge: interrupted work reaches trunk and the first board.
 
-The stopped state and elapsed lease are seeded as in test_take_over; /sail and the project's gate are
+The takeover exercises seed stopped state and elapsed leases as in test_take_over. The greenfield
+exercise seeds no completed work and finishes ORD then BIL sequentially across the clones. /sail and
+the project's gate are
 stand-ins as in test_loop; CI reports no runs through a local stand-in. Git, the captain, the
 harbourmaster and the board are real. The owner accepted this automated exercise as the final
 multiplayer criterion on 2026-10-12; it does not claim two people on separate physical hardware.
@@ -12,6 +14,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -141,6 +144,65 @@ class TwoMachinesTest(TravelFixture):
         self.assertEqual(self.checked_git("show", "-s", "--format=%s", "refs/slipwai/claims/ORD",
                                           where=self.forge), "released")
         self.assertIn("waiting for a person", self.carried("refs/slipwai/logs/ORD"))
+
+    def test_greenfield_two_captains_finish_both_fairways_through_the_forge(self) -> None:
+        stage = """import pathlib, subprocess, sys
+subprocess.run(["git", "fetch", "--quiet", "origin", "main"], check=True)
+subprocess.run(["git", "checkout", "--quiet", "-b", "slice/" + sys.argv[1], "origin/main"], check=True)
+path = pathlib.Path("work-" + sys.argv[1] + ".txt")
+path.write_text("implemented " + sys.argv[1] + "\\n", encoding="utf-8")
+subprocess.run(["git", "add", str(path)], check=True)
+subprocess.run(["git", "commit", "--quiet", "-m", "implement " + sys.argv[1]], check=True)
+""" + WORKS
+        (self.root / "greenfield.py").write_text(stage, encoding="utf-8")
+        self.checked_git("add", "greenfield.py")
+        self.checked_git("commit", "--quiet", "-m", "the explicit greenfield ladder stand-in")
+        self.checked_git("push", "--quiet", "origin", "main")
+        self.checked_git("pull", "--quiet", "--ff-only", where=self.two)
+
+        # No stopped state, claim, completed rung or merged log is seeded in this exercise.
+        for machine, clone, fairway in ((ONE, self.root, "ORD"), (TWO, self.two, "BIL")):
+            environment = {**os.environ, "SLIPWAI_MACHINE": machine,
+                           "SLIPWAI_SAIL": f"{sys.executable} {clone / 'greenfield.py'}"}
+            with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as output, subprocess.Popen(
+                    [sys.executable, "scripts/agents/harbourmaster.py", "--interval", "1"],
+                    cwd=clone, env=environment, stdout=output, stderr=output) as keeper:
+                try:
+                    for _ in range(2):
+                        done = subprocess.run(
+                            [sys.executable, "scripts/agents/captain.py", fairway, "--once"],
+                            cwd=clone, capture_output=True, text=True, timeout=90, env=environment)
+                        output.seek(0)
+                        diagnostic = done.stdout + done.stderr + output.read()
+                        self.assertEqual(done.returncode, 0, diagnostic)
+                        self.assertIn("is through its gate and merged", done.stdout, diagnostic)
+                finally:
+                    keeper.terminate()
+                    keeper.wait(timeout=30)
+            entries = logs.fold((clone / logs.deck_path("ordering", fairway)).read_text(
+                encoding="utf-8").splitlines())
+            expected = [f"{fairway}-01", f"{fairway}-02"]
+            self.assertEqual([e.fields["slice"] for e in entries if e.kind == "claimed"], expected)
+            self.assertEqual([e.fields["slice"] for e in entries if e.kind == "merged"], expected)
+            self.assertFalse(any(e.kind == "taken-over" for e in entries))
+            self.assertIn('"kind": "merged"', self.carried(f"refs/slipwai/logs/{fairway}"))
+            self.assertEqual(self.checked_git("show", "-s", "--format=%s",
+                                             f"refs/slipwai/claims/{fairway}", where=self.forge), "released")
+
+        arrived = self.run_as(ONE)
+        self.assertEqual(arrived.returncode, 0, arrived.stdout + arrived.stderr)
+        board = fleet.board(self.root)
+        self.assertEqual(board["unreadable"], {})
+        rows = board["berths"]
+        assert isinstance(rows, list)
+        self.assertEqual({(r["fairway"], r["merged"], r["state"], r["waiting"]) for r in rows},
+                         {("ORD", 2, "finished", 0), ("BIL", 2, "finished", 0)})
+        fairways, faults = fleet.fairways(self.root)
+        self.assertEqual(faults, {})
+        self.assertFalse(any(e.kind == "told" for f in fairways for e in f.entries))
+        for slice_id in ("ORD-01", "ORD-02", "BIL-01", "BIL-02"):
+            self.assertEqual(self.checked_git("show", f"main:work-{slice_id}.txt", where=self.forge),
+                             f"implemented {slice_id}")
 
     def test_takeover_merges_the_resumed_work_and_the_first_board_discovers_it(self) -> None:
         made = self.stopped_mid_slice()

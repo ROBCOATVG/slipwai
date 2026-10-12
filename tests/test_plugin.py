@@ -13,6 +13,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import checkout_packages
 
@@ -74,6 +75,17 @@ class RenderedNotKeptTest(unittest.TestCase):
         """`/chart`, `/example-map` and `/mockups` are prose, not a rendering of anything."""
         for path in ("commands/chart.md", "commands/example-map.md", "commands/mockups.md"):
             self.assertIn(path, self.rendered)
+
+    def test_copied_text_has_the_projects_line_endings_even_from_a_windows_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "skills/proof/agents/openai.yaml"
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b'interface:\r\n  display_name: "Proof"\r\n')
+            with patch.object(plugin, "TOOLKIT_ROOT", root), patch.object(plugin, "PROFILE_ROOT", root / "profiles"):
+                found = plugin.sources("standard")
+            self.assertEqual(found["skills/proof/agents/openai.yaml"], source.read_text(encoding="utf-8"))
+            self.assertNotIn("\r", found["skills/proof/agents/openai.yaml"])
 
     def test_sail_is_there_because_it_is_what_a_person_types_first(self) -> None:
         self.assertIn("commands/sail.md", self.rendered)

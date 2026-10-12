@@ -25,7 +25,8 @@ def smoke(command: list[str], expected: str) -> dict[str, str]:
             return done.stdout
 
         if run("--version").strip() != f"slipwai {expected}":
-            raise RuntimeError("the installed command's version differs from VERSION")
+            raise RuntimeError("the installed command's version differs from VERSION. "
+                               "Run: make test-wheel test-executable")
         plugin = root / "plugin"
         run("package", "plugin", str(plugin))
         if not (plugin / "commands/sail.md").is_file():
@@ -40,6 +41,11 @@ def smoke(command: list[str], expected: str) -> dict[str, str]:
         (existing / "pyproject.toml").write_text('[project]\nname="existing"\nversion="0.1.0"\n', encoding="utf-8")
         (existing / "app.py").write_text(source, encoding="utf-8")
         subprocess.run(["git", "init", "--quiet", str(existing)], check=True, capture_output=True)
+        for key, value in (("user.name", "Distribution proof"), ("user.email", "proof@example.invalid")):
+            subprocess.run(["git", "config", key, value], cwd=existing, check=True, capture_output=True)
+        subprocess.run(["git", "add", "app.py", "pyproject.toml"], cwd=existing, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "--quiet", "-m", "Existing application"],
+                       cwd=existing, check=True, capture_output=True)
         run("adopt", "--yes", cwd=existing)
         manifest = json.loads((existing / "project.json").read_text(encoding="utf-8"))
         delivery = existing / manifest.get("layout", {}).get("delivery", ".")

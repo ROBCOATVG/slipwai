@@ -13,15 +13,18 @@ from slipwai.errors import GenerationError
 
 
 class ChoiceTest(unittest.TestCase):
-    def test_an_old_slipway_manifest_never_silently_changes_its_deployed_shape(self) -> None:
-        self.assertEqual(recorded({"target": "a-managed-target", "state": "slipway"}), "liner")
+    def test_a_manifest_written_before_the_shape_existed_never_silently_changes_its_deployment(self) -> None:
+        self.assertEqual(recorded({"target": "a-managed-target"}), "liner")
         self.assertEqual(recorded({"target": "a-managed-target", "shape": "skiff"}), "skiff")
+        # A field the manifest does not have decides nothing: the shape is recorded, or it is the liner
+        # every pre-shape project was generated as.
+        self.assertEqual(recorded({"target": "a-managed-target", "state": "in-service"}), "liner")
 
-    def test_new_staff_tools_start_small_and_real_products_keep_the_full_stack(self) -> None:
-        self.assertEqual(selected(None, "slipway"), "skiff")
-        self.assertEqual(selected(None, "in-service"), "liner")
-        self.assertEqual(selected("liner", "slipway"), "liner")
-        self.assertEqual(selected("skiff", "in-service"), "skiff")
+    def test_a_new_project_starts_small_and_an_explicit_answer_is_kept(self) -> None:
+        self.assertEqual(selected(None), "skiff")
+        self.assertEqual(selected(None, existing=True), "liner")
+        self.assertEqual(selected("liner"), "liner")
+        self.assertEqual(selected("skiff", existing=True), "skiff")
 
     def test_an_unknown_recorded_shape_is_refused_with_a_repair(self) -> None:
         with self.assertRaisesRegex(GenerationError, "use --shape skiff or --shape liner"):

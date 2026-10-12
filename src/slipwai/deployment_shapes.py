@@ -15,18 +15,26 @@ from .target_protocol import DEPLOYMENT_SHAPES
 CHOICES = ("skiff", "liner")
 
 
-def selected(requested: str | None, state: str = "slipway", *, existing: bool = False) -> str:
-    """An old manifest means its existing liner; a new slipway starts small unless explicitly overridden."""
+def selected(requested: str | None, *, existing: bool = False) -> str:
+    """An old manifest means its existing liner; a new project starts small unless explicitly overridden.
+
+    This used to take the product's state as well and answer `liner` for one already in service. Nothing
+    ever gave it one: no manifest records a state — `project/metadata.py` writes no such field — and the
+    only caller that could have, `recorded`, passes `existing=True`, which decides the answer before the
+    state is looked at. A parameter steering by a mark nothing sets is worse than no parameter, because it
+    reads as a rule somebody could rely on. The decision a person makes is `--shape`, and an existing
+    manifest keeps what it has.
+    """
     if requested is not None:
         if requested not in CHOICES:
             raise GenerationError(f"unknown deployment shape {requested!r}; use --shape skiff or --shape liner")
         return requested
-    return "liner" if existing or state == "in-service" else "skiff"
+    return "liner" if existing else "skiff"
 
 
 def recorded(document: dict[str, Any]) -> str:
     """Missing is the pre-shape contract, which must never silently shrink a data-holding project."""
-    return selected(document.get("shape"), str(document.get("state", "slipway")), existing=True)
+    return selected(document.get("shape"), existing=True)
 
 
 def row(target: str, shape: str) -> dict[str, Any] | None:

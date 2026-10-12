@@ -36,7 +36,7 @@ slices:
   '3.4b':
     fairway: phase-3-skiff
     sets: [DeploymentShapeChoice, DeploymentShapeRow, ShapeConvergence]
-    steers_by: [TargetStackPhases, ProjectManifest, ProductState, VerifiedDeployment]
+    steers_by: [TargetStackPhases, ProjectManifest, VerifiedDeployment]
 marks:
   DeploymentShapeChoice:
     kind: schema
@@ -68,9 +68,6 @@ marks:
   ProjectManifest:
     kind: schema
     schema: {type: object, required: [schema, name, target, deployables]}
-  ProductState:
-    kind: schema
-    schema: {type: string, enum: [slipway, sea-trials, in-service]}
   VerifiedDeployment:
     kind: port
     inputs: {commit: verified-git-commit, images: immutable-image-digests}

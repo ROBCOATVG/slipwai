@@ -71,10 +71,10 @@ anything:
 ```console
 $ slipwai fleet
 berths: 2
-  fairway       feature  slice   state    last line  tokens  merged  marks
-  ------------  -------  ------  -------  ---------  ------  ------  -----
-  availability  booking  AVA-01  working  31s ago    42      0       0
-  booking       booking  BOK-02  working  12s ago    84      1       1
+  fairway       feature  slice   state    waiting  last line  tokens  merged  marks
+  ------------  -------  ------  -------  -------  ---------  ------  ------  -----
+  availability  booking  AVA-01  working  0        31s ago    42      0       0
+  booking       booking  BOK-02  working  0        12s ago    84      1       1
 ```
 
 Each berth is a separate working directory on the same repository, so two gates can run at once without

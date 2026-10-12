@@ -92,7 +92,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",
               "cli_prompts", "cli_interview", "cli_offered", "cli_language", "cli_search", "cli_add", "cli_adopt",
               # The interview `generate` runs when it is given nothing, and the quickstart it offers first.
-              "cli_generate", "cli_quickstart", "quickstart_install",
+              "cli_generate", "cli_quickstart", "quickstart_install", "cli_migrate",
               # The chandlery client: the index, a release file, an install as one
               # transaction, the plan a verb shows first, and upkeep after a keel moves.
               "index_schema", "language_index", "language_release", "language_install", "language_plan",

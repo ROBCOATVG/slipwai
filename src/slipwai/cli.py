@@ -20,7 +20,6 @@ from .cli_add import (
     add_service_main,
     converge_main,
     describe_service_main,
-    migrate_main,
     replay_main,
 )
 from .cli_adopt import adopt_main
@@ -37,6 +36,7 @@ from .cli_language import (
     undeclared_target,
 )
 from .cli_mcp import mcp_main
+from .cli_migrate import migrate_main
 from .cli_offered import resolve_requested_backend
 from .cli_package import package_main
 from .cli_prompts import (

@@ -73,7 +73,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "bridge", "bridge_page", "cli_bridge", "cli_start", "whats_new", "deck", "brand",
        # Phase 13: a named set of answers, the verb over it, and the interview that offers one first —
        # which the experiment had no equivalent of, because it asked every question every time.
-       "quickstart", "cli_quickstart", "cli_generate", "quickstart_install",
+       "quickstart", "cli_quickstart", "cli_generate", "quickstart_install", "cli_migrate",
        "plugin", "native", "mcp", "cli_mcp",
        # The third kind of package. The experiment had clouds in the keel and so had no target package to
        # bring back: its declaration, the protocol its `TARGET` answers, and what `package new` writes.

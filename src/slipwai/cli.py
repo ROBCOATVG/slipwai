@@ -130,7 +130,8 @@ def dispatch(argv: list[str]) -> None:
                       ("describe-service", describe_service_main), ("migrate", migrate_main),
                       ("replay", replay_main), ("adopt", adopt_main), ("converge", converge_main),
                       ("extension", extension_main), ("hooks", hooks_main), ("package", package_main),
-                      ("quickstart", quickstart_main), ("trust", trust_main), ("channel", channel_main), ("telegraph", telegraph_main),
+                      ("quickstart", quickstart_main), ("trust", trust_main),
+                      ("channel", channel_main), ("telegraph", telegraph_main),
                       ("fleet", fleet_main), ("bridge", bridge_main), ("mcp", mcp_main)):
         if argv[:1] == [verb]:
             run(argv[1:])

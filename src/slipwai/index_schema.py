@@ -97,6 +97,7 @@ class Release:
     def is_target(self) -> bool:
         return self.kind == TARGET
 
+    @property
     def is_quickstart(self) -> bool:
         return self.kind == QUICKSTART
 

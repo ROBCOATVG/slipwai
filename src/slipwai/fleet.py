@@ -19,12 +19,16 @@ and where the log is silent the board is silent too.
 """
 from __future__ import annotations
 
+import ast
+import json
+import subprocess
+import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
 from .deck import recent
-from .logs import Entry, Unreadable, deck_logs, fold, harbour_logs
+from .logs import Entry, Unreadable, deck_logs, fold, harbour_logs, open_parks
 
 #: Minutes since the last line after which a berth that has not finished is drawn as stalled. The default
 #: where `harbour.json` says nothing: a wait with no bound is indistinguishable from a run that has stopped.
@@ -42,6 +46,7 @@ class Fairway:
     name: str
     feature: str
     entries: list[Entry] = field(default_factory=list)
+    receipts: list[Entry] = field(default_factory=list)
 
     @property
     def claimed(self) -> list[str]:
@@ -57,7 +62,12 @@ class Fairway:
 
     @property
     def parked(self) -> str:
-        return next((str(e.fields["why"]) for e in reversed(self.entries) if e.kind == "parked"), "")
+        parks = self.parks
+        return str(parks[-1].fields["why"]) if parks else ""
+
+    @property
+    def parks(self) -> list[Entry]:
+        return open_parks(self.entries, self.receipts, self.name)
 
     @property
     def slice_now(self) -> str:
@@ -91,7 +101,8 @@ def minutes_since(stamp: str, now: datetime | None = None) -> float | None:
     return ((now or datetime.now(UTC)) - when).total_seconds() / 60.0
 
 
-def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | None = None) -> str:
+def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | None = None,
+             waiting: int | None = 0) -> str:
     """One word for what this fairway is doing, and `stalled` is the one that has to be earned.
 
     `finished` and `stalled` look identical in a status field — neither is writing anything — and they are
@@ -103,7 +114,9 @@ def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | Non
         return "parked"
     last = fairway.entries[-1]
     if last.kind == "merged" and not fairway.slice_now:
-        return "finished"
+        if waiting is None:
+            return "unknown"
+        return "idle" if waiting else "finished"
     since = minutes_since(fairway.last, now)
     if since is not None and since > bound:
         return "stalled"
@@ -124,15 +137,16 @@ def read_log(path: Path, harbour: bool = False) -> tuple[list[Entry], str]:
         return [], str(fault)
 
 
-def fairways(root: Path) -> tuple[list[Fairway], dict[str, str]]:
+def fairways(root: Path, receipts: list[Entry] | None = None) -> tuple[list[Fairway], dict[str, str]]:
     """Every fairway with a deck log, in name order, and a line for each log that could not be read."""
+    receipts = harbour_log(root) if receipts is None else receipts
     found: list[Fairway] = []
     faults: dict[str, str] = {}
     for path in deck_logs(root):
         entries, fault = read_log(path)
         if fault:
             faults[path.stem] = fault
-        found.append(Fairway(path.stem, path.parent.name, entries))
+        found.append(Fairway(path.stem, path.parent.name, entries, receipts))
     return found, faults
 
 
@@ -177,16 +191,21 @@ def pressure(config: dict, harbour: list[Entry]) -> dict[str, object]:
 
 
 def berths(found: list[Fairway], bound: float = STALL_MINUTES,
-           now: datetime | None = None) -> list[dict[str, object]]:
+           now: datetime | None = None, ready: dict[tuple[str, str], list[str]] | None = None,
+           clearance_faults: set[str] | None = None) -> list[dict[str, object]]:
     """The berth table: one row per fairway, each saying what it is on and when it last said anything."""
     rows: list[dict[str, object]] = []
     for one in found:
         since = minutes_since(one.last, now)
+        pending = [slice_id for slice_id in (ready or {}).get((one.feature, one.name), [])
+                   if slice_id not in set(one.claimed) | set(one.merged)]
+        count = None if one.feature in (clearance_faults or set()) else len(pending)
         rows.append({
             "fairway": one.name,
             "feature": one.feature,
             "slice": one.slice_now or NOTHING,
-            "state": state_of(one, bound, now),
+            "state": state_of(one, bound, now, count),
+            "waiting": count if count is not None else NOTHING,
             "last": f"{since:.0f}m ago" if since is not None else NOTHING,
             "tokens": one.tokens if one.tokens is not None else NOTHING,
             "merged": len(one.merged),
@@ -195,31 +214,96 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
     return rows
 
 
-def inbox(found: list[Fairway]) -> list[dict[str, str]]:
+def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | None = None) -> list[dict[str, str]]:
     """Every open message and every park: the things waiting on a person, which is what a board is read for."""
     waiting: list[dict[str, str]] = []
     for one in found:
         waiting += [{"fairway": one.name, "kind": "told", "what": str(e.fields.get("message", "")), "t": e.t}
                     for e in one.unanswered]
-        if one.parked:
-            waiting.append({"fairway": one.name, "kind": "parked", "what": one.parked, "t": one.last})
+        for park in one.parks:
+            waited = minutes_since(park.t, now)
+            waiting.append({"fairway": one.name, "kind": "parked", "what": str(park.fields["why"]),
+                            "t": park.t, "waited": f"{max(0.0, waited):.0f}m" if waited is not None else NOTHING,
+                            "waiting_on": "harbourmaster",
+                            "overdue": "yes" if waited is not None and waited > bound else "no"})
     return sorted(waiting, key=lambda row: row["t"])
+
+
+def inbox_detail(row: dict) -> str:
+    """The same wait clock in the terminal, page and agent inbox, with the age visible first."""
+    if not row.get("waited"):
+        return str(row["what"])
+    overdue = " (past wait bound)" if row.get("overdue") == "yes" else ""
+    return f"waiting on {row['waiting_on']} for {row['waited']}{overdue}: {row['what']}"
+
+
+def clearance_ready(root: Path, feature: str = "") -> tuple[str, dict[str, list[str]], str]:
+    """Read the project's existing clearance rule through its offline JSON port, never duplicate it."""
+    charts = [path for path in sorted((root / "specs").glob("*/chart.yaml"))
+              if not feature or path.parent.name == feature]
+    if not charts:
+        return feature, {}, ""
+    feature = charts[0].parent.name
+    try:
+        manifest = json.loads((root / "project.json").read_text(encoding="utf-8"))
+        delivery = str((manifest.get("layout") or {}).get("delivery") or ".")
+    except (OSError, ValueError, UnicodeDecodeError, AttributeError):
+        delivery = "."
+    script = root / delivery / "scripts/agents/clearance.py"
+    if not script.resolve().is_relative_to(root.resolve()) or not script.is_file():
+        return feature, {}, ("the project's clearance script is missing or outside the checkout. "
+                             "Run `slipwai migrate` to restore it")
+    try:
+        parsed = ast.parse(script.read_text(encoding="utf-8"))
+        supported = any(isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "QUERY_VERSION" for target in node.targets)
+            and isinstance(node.value, ast.Constant) and node.value.value == 1 for node in parsed.body)
+        if not supported:
+            return feature, {}, ("the project's clearance script has no offline JSON query port. "
+                                 "Run `slipwai migrate` to update it")
+        done = subprocess.run([sys.executable, "-B", str(script.resolve()), "--json", "--feature", feature],
+                              capture_output=True, text=True, timeout=15)
+        try:
+            result = json.loads(done.stdout)
+        except ValueError as fault:
+            raise ValueError((done.stderr or done.stdout).strip() or str(fault)) from None
+        if not isinstance(result, dict) or result.get("v") != 1:
+            raise ValueError("clearance returned no v1 object")
+        if done.returncode != 0 or result.get("error"):
+            return feature, {}, str(result.get("error") or done.stderr or "clearance query failed")
+        ready = result.get("ready")
+        if not isinstance(ready, dict) or any(not isinstance(ids, list) for ids in ready.values()):
+            raise ValueError("clearance returned no ready set")
+        if result.get("feature") != feature:
+            raise ValueError(f"clearance returned {result.get('feature')!r} instead of {feature!r}")
+        return feature, {str(f): [str(s) for s in ids] for f, ids in ready.items()}, ""
+    except (OSError, ValueError, SyntaxError, subprocess.TimeoutExpired) as fault:
+        return feature, {}, (f"clearance could not be read ({fault}). Run "
+                             f"`python3 {script} --json --feature {feature}` and repair the reported fault")
 
 
 def board(root: Path, config: dict | None = None, now: datetime | None = None) -> dict[str, object]:
     """Everything the board shows, folded from the logs. Nothing here is stored anywhere."""
-    found, faults = fairways(root)
     harbour = harbour_log(root)
+    found, faults = fairways(root, harbour)
     held = config or {}
     bound = float(held.get("wait_bound", STALL_MINUTES) or STALL_MINUTES)
+    ready: dict[tuple[str, str], list[str]] = {}
+    clearance_faults: set[str] = set()
+    for chart in sorted((root / "specs").glob("*/chart.yaml")):
+        feature, cleared, fault = clearance_ready(root, chart.parent.name)
+        ready.update({(feature, fairway): slices for fairway, slices in cleared.items()})
+        if fault:
+            clearance_faults.add(feature)
+            faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
     return {
-        "berths": berths(found, bound, now),
+        "berths": berths(found, bound, now, ready, clearance_faults),
         # Each stream's own lines, said rather than printed. The board answers "is anything stuck"; the
         # next question is always "what has this one been doing", and that is forty lines of one file.
         "streams": {one.name: recent(root, one.name)[0] for one in found},
         "pressure": pressure(held, harbour),
         "bunker": {"spent": spent(found), "allowed": held.get("bunker_per_day", NOTHING)},
-        "inbox": inbox(found),
+        "inbox": inbox(found, bound, now),
         "feed": feed(found, harbour),
         "unreadable": faults,
     }

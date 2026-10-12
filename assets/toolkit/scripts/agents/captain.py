@@ -225,11 +225,13 @@ def write(feature: str, fairway: str, entry: logs.Entry) -> None:
         handle.write(entry.line())
 
 
-def state(found: list[logs.Entry]) -> tuple[set[str], set[str], str]:
+def state(found: list[logs.Entry], fairway: str = "") -> tuple[set[str], set[str], str]:
     """(claimed, merged, why it is parked) — the fairway, as its own lines say it is."""
     claimed = {str(e.fields["slice"]) for e in found if e.kind == "claimed"}
     merged = {str(e.fields["slice"]) for e in found if e.kind == "merged"}
-    parked = next((str(e.fields["why"]) for e in reversed(found) if e.kind == "parked"), "")
+    name = fairway or next((str(e.fields.get("fairway", "")) for e in found), "")
+    parks = logs.open_parks(found, harbour_entries(), name)
+    parked = str(parks[-1].fields["why"]) if parks else ""
     return claimed, merged, parked
 
 
@@ -603,9 +605,12 @@ def turn(fairway: str) -> str:
         resume, stranded = take_over(feature, fairway,
                                      taken.holder.machine if taken.holder else "another machine")
     found = entries(feature, fairway)
-    claimed, merged, parked = state(found)
+    claimed, merged, parked = state(found, fairway)
     if parked:
         return f"captain: {fairway} is parked — {parked}"
+    if not resume and any(e.kind == "parked" for e in found):
+        # A cleared decision hands the in-flight slice back, rather than skipping its claimed work.
+        resume = resuming(found)
     if stranded:
         write(feature, fairway, logs.entry("parked", fairway=fairway, why=stranded))
         return f"captain: {fairway} parked — {stranded}"

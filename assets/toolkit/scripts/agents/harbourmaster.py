@@ -850,6 +850,25 @@ def depart() -> None:
             print(f"harbourmaster: {why}", file=sys.stderr)
 
 
+def clear_park(fairway: str, parked: str, what: str) -> tuple[bool, str]:
+    """Record the harbourmaster's answer to one original park, with the answer itself retained."""
+    if not parked or not what.strip():
+        return False, ("a clearance needs the original park timestamp and the answer. Run "
+                       "`python3 scripts/agents/harbourmaster.py --clear <fairway> "
+                       "--parked <timestamp> --what '<answer>' --once`")
+    history = [entry for path in deck_logs() if path.stem == fairway
+               for entry in logs.fold(path.read_text(encoding="utf-8").splitlines())]
+    matching = [entry for entry in history if entry.kind == "parked" and entry.t == parked
+                and str(entry.fields["fairway"]) == fairway]
+    if not matching:
+        return False, (f"{fairway} has no park at {parked}. Run `slipwai fleet {fairway}` and use "
+                       "the original park's timestamp")
+    if not any(entry.t == parked for entry in logs.open_parks(history, harbour_entries(), fairway)):
+        return True, f"{fairway}'s park at {parked} is already cleared"
+    append([logs.entry("cleared", harbour=True, fairway=fairway, parked=parked, what=what.strip())])
+    return True, f"cleared {fairway}'s park at {parked}: {what.strip()}"
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="harbourmaster",
@@ -859,7 +878,22 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--no-fetch", action="store_true",
                         help="carry between this machine's own fairways only: reach the forge neither for "
                              "what other machines have written nor to push what this one has")
+    parser.add_argument("--clear", metavar="FAIRWAY", help="answer one park, retaining its timestamp and answer")
+    parser.add_argument("--parked", default="", help="the original parked line's timestamp")
+    parser.add_argument("--what", default="", help="the decision or repair that lets work resume")
     parsed = parser.parse_args(argv)
+    if parsed.clear:
+        if not parsed.no_fetch:
+            arrive()
+        try:
+            ok, said = clear_park(parsed.clear, parsed.parked, parsed.what)
+        except (logs.Unreadable, OSError, UnicodeDecodeError) as fault:
+            print(f"harbourmaster: cannot read the parked history ({fault}). Run `slipwai fleet {parsed.clear}`")
+            return 1
+        print(f"harbourmaster: {said}")
+        if ok and not parsed.no_fetch:
+            depart()
+        return 0 if ok else 1
     while True:
         if not parsed.no_fetch:
             arrive()

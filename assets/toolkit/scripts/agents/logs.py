@@ -117,6 +117,8 @@ HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
     # The harbourmaster's answer to a `request`. Both outcomes are written: a request that was refused and
     # left no line is one the captain waits on for ever and nobody can explain afterwards.
     "granted": ("fairway", "request", "what"),
+    # A receipt for the original park, never for a later heartbeat or another fairway.
+    "cleared": ("fairway", "parked", "what"),
     "refused": ("fairway", "request", "why"),
     # Trunk's own CI, which is harbour-wide rather than one fairway's: the gate before a merge is `make
     # verify` and CI runs `make ci`, so trunk can go red from a check `verify` never ran. Written once per
@@ -299,3 +301,11 @@ def fold(lines: list[str], harbour: bool = False) -> list[Entry]:
     that is confidently wrong, and the first attempt's whole problem was a status nobody could check.
     """
     return [read(line, harbour) for line in lines if line.strip()]
+
+
+def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[Entry]:
+    """The parks that still owe an answer: receipt identity is fairway plus original timestamp."""
+    receipts = {(str(e.fields["fairway"]), str(e.fields["parked"]))
+                for e in harbour if e.kind == "cleared"}
+    return [e for e in deck if e.kind == "parked" and str(e.fields["fairway"]) == fairway
+            and (fairway, e.t) not in receipts]

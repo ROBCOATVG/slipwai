@@ -16,6 +16,24 @@ from harbourmaster_fixture import Fixture, MergeFixture, TravelFixture  # noqa: 
 from slipwai import logs
 
 
+class ClearParkTest(Fixture):
+    def test_the_harbourmaster_records_a_specific_answer_once_and_refuses_a_wrong_timestamp(self) -> None:
+        at = "2026-10-12T09:00:00Z"
+        self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", why="decide", t=at))
+        command = [sys.executable, str(self.script), "--clear", "ORD", "--parked", at,
+                   "--what", "keep the existing store", "--once", "--no-fetch"]
+        for _ in range(2):
+            done = subprocess.run(command, cwd=self.root, capture_output=True, text=True, timeout=30)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        receipts = [entry for entry in self.harbour() if entry.kind == "cleared"]
+        self.assertEqual(len(receipts), 1)
+        self.assertEqual(receipts[0].fields, {"fairway": "ORD", "parked": at, "what": "keep the existing store"})
+        command[command.index(at)] = "2026-10-12T08:00:00Z"
+        wrong = subprocess.run(command, cwd=self.root, capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(wrong.returncode, 0)
+        self.assertIn("Run `slipwai fleet ORD`", wrong.stdout)
+
+
 class PerMachineTest(Fixture):
     """One harbourmaster per machine: it writes its own file and reads everybody's.
 

@@ -54,6 +54,18 @@ class InboxTest(unittest.TestCase):
     def decision(self, minutes_ago: int) -> dict:
         return {"kind": "decision", "fairway": "ORD", "t": at(minutes_ago), "id": "D-ORD-01", "what": "x"}
 
+    def test_park_waits_are_timed_until_the_original_fairway_receipt_arrives(self) -> None:
+        park = {"kind": "parked", "fairway": "ORD", "t": at(120), "why": "decide"}
+        other = {"kind": "cleared", "fairway": "BIL", "parked": at(120), "t": at(1), "what": "x"}
+        self.write([park, {"kind": "heartbeat", "fairway": "ORD", "t": at(1)}, other])
+        state = self.inbox.owed("ORD", NOW)
+        self.assertEqual(state["parks"][0]["waited"], 120)
+        self.assertEqual(len(state["overdue_parks"]), 1)
+        self.assertTrue(state["forced"])
+        self.write([park, {**other, "fairway": "ORD"}])
+        self.assertEqual(self.inbox.owed("ORD", NOW)["parks"], [])
+        self.assertFalse(self.inbox.owed("ORD", NOW)["forced"])
+
     def test_a_message_with_no_receipt_is_unread(self) -> None:
         self.write([self.told(5)])
         self.assertEqual(len(self.inbox.owed("ORD", NOW)["unread"]), 1)

@@ -68,7 +68,7 @@ class DeclarationTest(unittest.TestCase):
         self.assertEqual(set(logs.HARBOUR_KINDS),
                          {"mark-set", "flag-hoisted", "flag-struck", "berth-allocated",
                           "fires-banked", "park", "telegraph", "granted", "refused",
-                          "trunk-red", "trunk-green", "fix-trunk"})
+                          "trunk-red", "trunk-green", "fix-trunk", "cleared"})
 
     def test_a_request_is_a_deck_line_and_both_its_answers_are_harbour_lines(self) -> None:
         """A captain holds no credential, so it asks; and a request that was refused and left no line is

@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 
 from .assets import this_command
-from .fleet import NOTHING
+from .fleet import NOTHING, inbox_detail
 from .page_shell import STYLE, THEME, document, esc  # noqa: F401 — STYLE and THEME are read by name here
 from .telegraph import MEANS, POSITIONS
 
@@ -45,7 +45,7 @@ DIAL = {name: name.replace("-", " ").capitalize() for name in POSITIONS}
 #: What each state means in a word a reader does not have to be told. `stalled` stays `stalled`: it is the
 #: one that has to be noticed, and a gentler word for it would be the dashboard hiding something.
 STATES = {"working": "running", "stalled": "stalled", "parked": "waiting on you",
-          "finished": "done", "not started": "not started"}
+          "finished": "done", "idle": "idle", "unknown": "clearance unavailable", "not started": "not started"}
 
 SCRIPT = """
 // The toggle works without this. What this adds is remembering it: the page reloads after every control,
@@ -98,7 +98,7 @@ def berth_rows(rows: list[dict], streams: dict) -> str:
     if not rows:
         return '<p class="empty">No stream has written a line yet.</p>'
     head = ("<tr><th>Stream</th><th>Feature</th><th>Piece of work</th><th>State</th>"
-            "<th>Last line</th><th>Tokens</th><th>Merged</th></tr>")
+            "<th>Waiting</th><th>Last line</th><th>Tokens</th><th>Merged</th></tr>")
     body = ""
     for row in rows:
         name = str(row["fairway"])
@@ -108,8 +108,9 @@ def berth_rows(rows: list[dict], streams: dict) -> str:
             f"<td class=\"mono\">{esc(row['slice'])}</td>"
             f"<td><span class=\"chip {esc(STATES.get(str(row['state']), ''))}\" "
             f"data-state=\"{esc(state)}\">{esc(state)}</span></td>"
-            f"<td>{esc(row['last'])}</td><td>{esc(row['tokens'])}</td><td>{esc(row['merged'])}</td></tr>"
-            f"<tr class=\"drawer\"><td colspan=\"7\">"
+            f"<td>{esc(row.get('waiting', 0))}</td><td>{esc(row['last'])}</td>"
+            f"<td>{esc(row['tokens'])}</td><td>{esc(row['merged'])}</td></tr>"
+            f"<tr class=\"drawer\"><td colspan=\"8\">"
             f"{stream_log(name, streams.get(name) or [])}</td></tr>")
     return f"<table>{head}{body}</table>"
 
@@ -119,8 +120,9 @@ def inbox_rows(rows: list[dict], controls: bool) -> str:
         return '<p class="empty">Nothing is waiting on you.</p>'
     said = []
     for row in rows:
+        detail = inbox_detail(row)
         said.append(f"<tr><td><b>{esc(row['fairway'])}</b></td><td>{esc(row['kind'])}</td>"
-                    f"<td>{esc(row['what'])}</td><td class=\"mono\">{esc(row['t'])}</td></tr>")
+                    f"<td>{esc(detail)}</td><td class=\"mono\">{esc(row['t'])}</td></tr>")
     return f"<table>{''.join(said)}</table>"
 
 
@@ -203,7 +205,10 @@ def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge"
     # card saying twice what the tabs already say is a page repeating itself. The published copy has it
     # nowhere — it is a file on somebody's Pages site, and nothing can be started from there.
     start = starting_points() if controls and not berths else ""
-    body = f"""{start}
+    clearance_fault = (found.get("unreadable") or {}).get("clearance", "")
+    unavailable = (f'<div class="card"><h2>Waiting counts unavailable</h2>'
+                   f'<p class="empty">{esc(clearance_fault)}</p></div>') if clearance_fault else ""
+    body = f"""{start}{unavailable}
 <div class="card"><h2>Waiting on you</h2>{inbox_rows(waiting, controls)}</div>
 {answer_boxes(berths) if controls else ""}
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {})}</div>

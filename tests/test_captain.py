@@ -62,6 +62,16 @@ class ChoosingTest(Fixture):
         self.assertIn("a person has to look", done.stdout)
         self.assertEqual([e for e in self.read("ORD") if e.kind == "claimed"], [])
 
+    def test_an_answered_park_resumes_its_claimed_slice_rather_than_skipping_it(self) -> None:
+        at = "2026-10-12T09:00:00Z"
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),
+                  logs.entry("parked", fairway="ORD", why="choose the storage", t=at))
+        self.harbour(logs.entry("cleared", harbour=True, fairway="ORD", parked=at, what="use the store"))
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(WORKS))
+        self.assertIn("ORD-01 is through its gate and merged", done.stdout)
+        self.assertEqual([e.fields["slice"] for e in self.read("ORD") if e.kind == "merged"], ["ORD-01"])
+
     def test_a_fairway_the_chart_does_not_name_is_said_rather_than_guessed_at(self) -> None:
         done = self.captain("NOPE", self.sail(WORKS))
         self.assertIn("no slices", done.stdout)

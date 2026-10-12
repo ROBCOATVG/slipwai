@@ -34,7 +34,7 @@ from .assets import VERSION
 from .bridge import tell
 from .cli_fleet import config, lines, stream_lines
 from .deck import RECENT
-from .fleet import board
+from .fleet import board, inbox_detail
 from .project.harbour import CONFIG
 
 #: What the server calls itself where a harness lists it.
@@ -104,7 +104,10 @@ def the_inbox(root: Path, arguments: dict) -> str:
     if not waiting:
         return "waiting on you: nothing"
     said = [f"waiting on you: {len(waiting)}"]
-    return "\n".join(said + [f"  {row['fairway']:<10} {row['kind']:<7} {row['what']}" for row in waiting])
+    for row in waiting:
+        detail = inbox_detail(row)
+        said.append(f"  {row['fairway']:<10} {row['kind']:<7} {detail}")
+    return "\n".join(said)
 
 
 def delivery(root: Path) -> str:

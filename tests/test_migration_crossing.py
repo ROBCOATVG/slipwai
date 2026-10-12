@@ -9,8 +9,9 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
+from slipwai.layout import layout_of
 from slipwai.logs import deck_path, entry
-from slipwai.migration_crossing import seed
+from slipwai.migration_crossing import catch_up, seed
 from slipwai.migration_flight import Flight
 
 
@@ -72,6 +73,24 @@ class SeedTest(unittest.TestCase):
         seed(self.root, flight())
         kinds = [line["kind"] for line in self.written()["ordering"]]
         self.assertEqual(kinds, ["claimed", "merged", "claimed"])
+
+
+class CatchUpTest(unittest.TestCase):
+    """What the crossing could not do is on the page, beside what it asks the person to confirm."""
+
+    def page(self, notes: list[str]) -> str:
+        document = {"name": "orders", "layout": {"delivery": "."}}
+        return catch_up("orders", "1.5.1", "1.5.1", Flight(), layout_of(document), {}, notes)
+
+    def test_a_clean_crossing_asks_the_person_to_confirm_what_it_wrote(self) -> None:
+        page = self.page([])
+        self.assertIn("releaseMode", page)
+        self.assertNotIn("## What this crossing could not do", page)
+
+    def test_what_the_crossing_could_not_write_is_said_on_the_page(self) -> None:
+        page = self.page(["`project.json` conflicted, so releaseMode and state were not written."])
+        self.assertIn("## What this crossing could not do", page)
+        self.assertIn("`project.json` conflicted", page)
 
 
 if __name__ == "__main__":  # pragma: no cover

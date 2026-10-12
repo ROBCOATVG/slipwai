@@ -253,6 +253,22 @@ class FlightTest(unittest.TestCase):
             flight = read(self.root, self.document, YAML(), claims={"ORD-01"})
         self.assertEqual([line.kind for _, _, line in flight.logs if line.kind == "claimed"], [])
 
+    def test_a_conflicted_project_json_still_leaves_the_rest_of_the_settings_applied(self) -> None:
+        (self.root / ".specify").mkdir()
+        (self.root / ".specify/models.json").write_text(json.dumps({"roles": {"claude": {"skipper": "old"}}}))
+        contested = b"<<<<<<< ours\n{}\n=======\n{}\n>>>>>>> theirs\n"
+        files = {"project.json": contested, ".gitignore": b"node_modules/\n",
+                 ".specify/models.json": json_bytes({"roles": {"claude": {"fast": "default"}}})}
+        with patch("slipwai.migration_settings.git", return_value=b""):
+            notes = settings(self.root, self.document, files, contested=True)
+        self.assertEqual(files["project.json"], contested)
+        self.assertIn(b".slipwai/logs/", files[".gitignore"].splitlines())
+        self.assertEqual(json.loads(files[".specify/models.json"])["roles"]["claude"],
+                         {"fast": "default", "decide": "old", "review": None})
+        self.assertTrue(notes)
+        self.assertIn("releaseMode", " ".join(notes))
+        self.assertIn("project.json", " ".join(notes))
+
     def test_model_choices_are_preserved_and_review_is_null_per_harness(self) -> None:
         (self.root / ".specify").mkdir()
         (self.root / ".specify/models.json").write_text(
@@ -260,7 +276,7 @@ class FlightTest(unittest.TestCase):
         files = {"project.json": json_bytes(self.document),
                  ".specify/models.json": json_bytes({"roles": {"claude": {"fast": "default", "review": "host"}}})}
         with patch("slipwai.migration_settings.git", return_value=b""):
-            settings(self.root, self.document, files)
+            self.assertEqual(settings(self.root, self.document, files), [])
         self.assertEqual(json.loads(files[".specify/models.json"])["roles"]["claude"],
                          {"fast": "chosen", "review": None, "decide": "old"})
         self.assertEqual(json.loads(files["project.json"])["releaseMode"], "open")

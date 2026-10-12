@@ -48,7 +48,8 @@ def answers(files: Tree) -> Tree:
     return result
 
 
-def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branches: dict[str, str]) -> str:
+def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branches: dict[str, str],
+             notes: list[str]) -> str:
     proposed, unplaced = flight.counts
     command = f"python3 {layout.place('scripts/check-migration.py')}"
     return (f"# {name}: crossing from slipwai {recorded} to {VERSION}\n\n"
@@ -65,7 +66,12 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             "\n## Release and preserved records\n\n"
             "Confirm `project.json`'s releaseMode and state. Existing decision/adversary ids were frozen "
             "under `fairways/main/<feature>/`; ADRs retain their paths and numbers. Implementation "
-            "was reconciled from trunk's slice merges, not the model's status field.\n\n" +
+            "was reconciled upward from trunk's slice merges: a slice trunk could not prove keeps the "
+            "status the model recorded for it.\n\n" +
+            # What a conflict stopped the crossing writing. On the page rather than in the run's output
+            # alone, because this is the page the person reads after the merge is finished.
+            ("## What this crossing could not do\n\n" + "".join(f"- {note}\n" for note in notes) + "\n"
+             if notes else "") +
             ("## Claims to rebase\n\n" + "".join(
                 f"- `git switch {ref.removeprefix('refs/heads/')} && git rebase main`\n" for ref in branches
             ) if branches else ""))
@@ -166,10 +172,13 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         for name, content in flight.files.items():
             if name not in result.conflicts:
                 result.files[name] = content
-        if "project.json" not in result.conflicts:
-            settings(root, document, result.files)
+        # A conflicted `project.json` is unreadable, so the keys that live in it wait for the person. Every
+        # other setting still applies: the `hoisted` dates the strike rule counts from, the model table's
+        # review role, and the `.slipwai/logs/` ignore rule `seed` needs twelve lines below this.
+        left = settings(root, document, result.files, contested="project.json" in result.conflicts)
         validate(root, result.files)
-        message = catch_up(document["name"], recorded, legacy.used, flight, layout_of(document), branches)
+        message = catch_up(document["name"], recorded, legacy.used, flight, layout_of(document),
+                           branches, left)
         if check:
             conflict_names = ", ".join(sorted(result.conflicts)) or "none"
             return f"{message}\nMerge conflicts to resolve: {conflict_names}. No project file or claim branch changed."

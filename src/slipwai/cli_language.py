@@ -11,7 +11,7 @@ import argparse
 from collections.abc import Callable
 
 from .browser_app import frontend_rows
-from .catalog import CATALOG, families
+from .catalog import CATALOG, UNREACHABLE_NOTES, families
 from .errors import GenerationError, refuse
 from .language_directory import directory
 from .language_index import Index, Release, Unreachable, offered, read_index, snapshots
@@ -63,7 +63,7 @@ def languages_section(prerelease: bool) -> tuple[list[str], dict[str, Release], 
         newer = offer.get(name)
         if newer is not None and key(newer.version) > key(package.version):
             text += f"  ({newer.version} available: {this_command()} language upgrade {name})"
-        rows[name] = (package.family or name, text)
+        rows[name] = (package.family or name, text + UNREACHABLE_NOTES.get(name, ""))
     lines = [f"  installed (in {directory()}):", *grouped(rows)]
     if found is None:
         return [*lines, *unreachable], offer, None

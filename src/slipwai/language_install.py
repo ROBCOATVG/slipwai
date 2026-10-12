@@ -119,7 +119,7 @@ def modules_kept() -> Iterator[None]:
 
 def outcome(packages: list[Package]) -> tuple[dict[str, str], list[str]]:
     """What the next start would refuse of `packages`: the merge's line by name, and the build's lines."""
-    catalog, refused = merge(CORE, packages)
+    catalog, refused, _ = merge(CORE, packages)
     with modules_kept():
         # No built-in languages to put first: version 2's keel has none, and a `slipwai_language_*`
         # import anywhere in `src/` fails the structure gate. `build` still takes the argument, for the

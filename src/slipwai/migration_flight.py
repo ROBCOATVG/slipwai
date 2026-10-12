@@ -194,8 +194,18 @@ def model_bytes(source: Path, model: dict) -> bytes:
                 raise GenerationError(f"{source}: slice {item['id']} has an inline or unreadable YAML id; "
                                       "put each slice's `- id:` on its own line before `slipwai migrate`") from None
             indent = match["indent"] + "  "
-            following = re.search(r"(?m)^" + re.escape(match["indent"]) + r"- ", original[match.end():])
-            end = match.end() + following.start() if following else len(original)
+            # Where this slice ends: the first line after it that is not blank and is not one of its own
+            # keys. The sibling `- id:` that used to be looked for is only one of the ways a list entry
+            # ends; when the slice is the last entry and `slices:` is not the last key, there is no
+            # sibling, and the block ran to the end of the file. Everything after the list then belonged
+            # to this slice: a key appended for it landed under whatever followed `slices:`, and the
+            # substitution below rewrote a `status:` sitting at the same indent in another mapping.
+            end, at = len(original), match.end()
+            for line in original[match.end():].splitlines(keepends=True):
+                if line.strip() and not line.startswith(indent):
+                    end = at
+                    break
+                at += len(line)
             block = original[match.start():end]
             for key in ("status", "context", "capability"):
                 if key not in item:
@@ -207,7 +217,10 @@ def model_bytes(source: Path, model: dict) -> bytes:
                         return replacement + (" " + found["note"] if found["note"] else "")
                     block = field.sub(substitute, block)
                 else:
-                    block += "\n" + replacement + "\n"
+                    # Beneath the slice's own last line, keeping whatever blank lines separated it from
+                    # what comes next exactly where the person put them.
+                    body = block.rstrip("\n")
+                    block = body + "\n" + replacement + block[len(body):]
             original = original[:match.start()] + block + original[end:]
         return original.encode("utf-8")
     return json_bytes(model)

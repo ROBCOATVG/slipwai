@@ -9,10 +9,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 import checkout_packages  # noqa: F401
+import yaml  # type: ignore[import-untyped]
 
 from slipwai.assets import ROOT
 from slipwai.fleet import Fairway, inbox, state_of
-from slipwai.migration_flight import json_bytes, plan_context, read, shipped
+from slipwai.migration_flight import json_bytes, model_bytes, plan_context, read, shipped
 from slipwai.migration_settings import settings
 
 
@@ -27,6 +28,48 @@ def script(relative: str):
 class YAML:
     def yaml(self, path: Path):
         return json.loads(path.read_text(encoding="utf-8"))
+
+
+class ModelTest(unittest.TestCase):
+    """The reconciliation edits the person's own YAML in place; it may not reach past the slice it edits."""
+
+    SOURCE = """# the model this project drew
+version: 1
+slices:
+  - id: ORD-01
+    status: proposed
+    context: ordering
+  - id: ORD-02
+    status: proposed  # drawn at the workshop
+
+screens:
+  checkout:
+    status: drafted
+"""
+
+    def reconciled(self) -> tuple[dict, str]:
+        scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(scratch.cleanup)
+        source = Path(scratch.name) / "model.yaml"
+        source.write_text(self.SOURCE, encoding="utf-8")
+        written = model_bytes(source, {"slices": [
+            {"id": "ORD-01", "status": "implemented", "context": "ordering", "capability": "placing an order"},
+            {"id": "ORD-02", "status": "implemented", "context": "billing", "capability": "paying for it"}]})
+        text = written.decode("utf-8")
+        return yaml.safe_load(text), text
+
+    def test_the_last_slice_is_reconciled_without_swallowing_the_keys_after_the_list(self) -> None:
+        parsed, _ = self.reconciled()
+        self.assertEqual(parsed["version"], 1)
+        self.assertEqual(parsed["screens"], {"checkout": {"status": "drafted"}})
+        self.assertEqual(parsed["slices"], [
+            {"id": "ORD-01", "status": "implemented", "context": "ordering", "capability": "placing an order"},
+            {"id": "ORD-02", "status": "implemented", "context": "billing", "capability": "paying for it"}])
+
+    def test_the_persons_comments_and_their_rendering_settings_are_kept(self) -> None:
+        _, text = self.reconciled()
+        self.assertIn("# the model this project drew", text)
+        self.assertIn("# drawn at the workshop", text)
 
 
 class FlightTest(unittest.TestCase):

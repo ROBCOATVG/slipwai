@@ -21,10 +21,10 @@ without being asked again**. It stops when the split is exhausted or everything 
 Being invoked before any of this exists is a valid start, not an error: with an empty repository the first
 stage is the first one whose artefact is missing, which is the principles, and it begins there.
 
-Three narrower forms exist for when you want one lane or one slice:
+Three narrower forms exist for when you want one fairway or one slice:
 
 ```
-/sail fairway=booking     one lane, and the other lanes' ready slices are named and left
+/sail fairway=booking     one fairway, and the others' ready slices are named and left
 /sail booking             one feature, across whichever fairways its slices are in
 /sail BOK-01              this slice, and nothing else
 ```
@@ -103,7 +103,7 @@ every command, event and read model in its place:
 
 ### 5. The fairways, charted from the model
 
-A **fairway** is a lane of work that one worker owns at a time; a **mark** is a typed contract — an event,
+A **fairway** is one bounded context's slices, held by one worker at a time; a **mark** is a typed contract — an event,
 a read model, a route — that one fairway sets and others steer by. The **chart** names them, and it is
 written before the work is cut up, because how you cut the work up depends on it.
 

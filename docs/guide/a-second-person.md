@@ -6,9 +6,9 @@ anybody's branch.**
 
 ---
 
-## The lane, not the branch
+## The fairway, not the branch
 
-A **fairway** is a lane of work. It owns a set of paths, one worker at a time, and it is the unit everything
+A **fairway** is one bounded context's slices. It owns a set of paths, one worker at a time, and it is the unit everything
 on this page is about — the board has a row per fairway, the logs have a file per fairway, and the scope
 gate is enforced per fairway.
 
@@ -80,13 +80,13 @@ berths: 2
 Each berth is a separate working directory on the same repository, so two gates can run at once without
 one `node_modules` or one database file being fought over.
 
-## Taking a lane
+## Taking a fairway
 
 Neither of you picks a slice. `/sail` bare already takes every ready slice of every fairway nobody holds,
 so two people running it take different work without agreeing anything — the claim is the `slice/<id>`
 branch, and a slice somebody has claimed is one the other leaves.
 
-Where you do want to divide the lanes, name one:
+Where you do want to divide the fairways, name one:
 
 ```
 /sail fairway=booking

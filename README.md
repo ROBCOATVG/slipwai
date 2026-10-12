@@ -37,7 +37,7 @@ treading on each other, and being honest about what they did. Slipwai is the rep
 fixes those three.
 
 **One claim holds the rest up.** Two workers, each delivering a slice, and neither waiting on the other's
-branch. That works because a **chart** types the contracts between lanes of work and insists each one has
+branch. That works because a **chart** types the contracts between fairways and insists each one has
 exactly one owner — so a slice is cleared to start the moment the contract it needs is *set*, which happens
 at the setting slice's first stage, in its own worktree, before anything merges anywhere.
 
@@ -74,7 +74,7 @@ berths: 2, 2 working
 telegraph: half-ahead  boilers 3  fanout 2  bunker 126/10000k today
 ```
 
-`slipwai fleet` for that, `slipwai fleet <stream>` for one lane's own log said a line at a time, and
+`slipwai fleet` for that, `slipwai fleet <fairway>` for one fairway's own log said a line at a time, and
 `slipwai bridge` for the same thing as a page you can answer from. More in
 [docs/captures](docs/captures/), which are from real runs rather than drawn.
 
@@ -96,7 +96,7 @@ confirmed once; the checksum is checked every time, whoever published it. Publis
 ## Reference
 
 [The vocabulary](GLOSSARY.md) · [extensions](docs/extensions.md) ·
-[the backend protocol](docs/backend-protocol.md) · [worked examples](docs/reference/) ·
+[the backend protocol](docs/backend-protocol.md) · [the rules, in detail](docs/reference/) ·
 [the plan this was built to](docs/slipwai-2-plan.md)
 
 ---

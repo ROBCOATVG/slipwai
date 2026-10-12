@@ -32,7 +32,8 @@ SKILLS = ROOT / "assets/toolkit/skills"
 RENAMES = ROOT / "docs/rename.json"
 
 # Whole words, so "swimlanes" is not read as "lanes" and "forerunner" is not read as "runner".
-RETIRED = {"workstation": r"workstations?", "lane": r"lanes?", "runner": r"runners?"}
+RETIRED = {"workstation": r"workstations?", "workstream": r"workstreams?", "lane": r"lanes?",
+           "runner": r"runners?"}
 
 # Which skills may use a retired word, because there it means something version 1 never meant. The key is
 # the directory under `assets/toolkit/skills`, or the file name for the two files at its root.
@@ -106,7 +107,7 @@ class VocabularyTest(unittest.TestCase):
         for word, pattern in RETIRED.items():
             using = {owner(path) for path in skill_files()
                      if re.search(rf"\b{pattern}\b", path.read_text(encoding="utf-8", errors="ignore"), re.I)}
-            for skill in sorted(ANOTHER_SENSE[word] - using):
+            for skill in sorted(ANOTHER_SENSE.get(word, set()) - using):
                 with self.subTest(word=word, skill=skill):
                     self.fail(f"{skill} is allowed {word!r} and no longer uses it; drop the allowance")
 
@@ -142,6 +143,73 @@ class RenameTableTest(unittest.TestCase):
             with self.subTest(row=row):
                 self.assertFalse((ROOT / row["from"]).exists(), f"{row['from']} is still here, not renamed")
                 self.assertTrue((ROOT / row["to"]).exists(), f"{row['to']} is not here; the row is ahead of the code")
+
+
+
+class OwnProseTest(unittest.TestCase):
+    """The ban holds this repository's own pages too, not only the catalogue it ships.
+
+    It did not, and the gap cost exactly what the rule exists to stop: two guide pages and the README
+    explained a fairway by calling it a lane — "A **fairway** is a lane of work" — which is the retired word
+    teaching the new one, on the pages a first-time reader meets first. The skills were held to this from
+    their first commit and the prose beside them never was.
+
+    Allowed the same way a skill is allowed one: by name, with a reason, and refused when the allowance has
+    nothing behind it. `AGENTS.md` states the ban and must say the words to state it; the plan records every
+    rename and therefore says both names; `GLOSSARY.md` is written from the plan and its third column is
+    version 1's own names. The rest of `runner`'s allowances are the senses version 2 never claimed — the
+    thing a CI job runs on, a cloud product called App Runner, and version 1's own loop named as version 1's,
+    which `AGENTS.md` expressly permits.
+    """
+
+    #: Page → the retired words it may use, and why. A path prefix, matched from the repository root.
+    ALLOWED: dict[str, set[str]] = {
+        # States the ban, so it says the words.
+        "AGENTS.md": {"workstation", "workstream", "lane", "runner"},
+        # Records every rename, and therefore says both names.
+        "docs/slipwai-2-plan.md": {"workstation", "workstream", "lane", "runner"},
+        # Written from the plan's vocabulary table; its third column is version 1's own names.
+        "GLOSSARY.md": {"workstation", "workstream", "lane", "runner"},
+        # Version 1's loop, named as version 1's — which `AGENTS.md` permits in as many words.
+        "README.md": {"runner"},
+        "docs/guide/let-it-cruise.md": {"runner"},
+        "docs/guide/a-second-person.md": {"runner"},
+        # The machine a CI job runs on.
+        "docs/extensions.md": {"runner"},
+        # AWS's App Runner, the product of that name, which the page says it is.
+        "docs/reference/the-skiff-and-the-liner.md": {"runner"},
+    }
+
+    def pages(self) -> list[Path]:
+        return sorted([*ROOT.glob("*.md"), *(ROOT / "docs").rglob("*.md")])
+
+    def allowance(self, path: Path) -> set[str]:
+        name = str(path.relative_to(ROOT))
+        for prefix, words in self.ALLOWED.items():
+            if name == prefix or name.startswith(f"{prefix}/"):
+                return words
+        return set()
+
+    def test_no_page_of_our_own_uses_a_retired_word(self) -> None:
+        for path in self.pages():
+            text, allowed = path.read_text(encoding="utf-8"), self.allowance(path)
+            for word, pattern in RETIRED.items():
+                if word in allowed:
+                    continue
+                with self.subTest(page=str(path.relative_to(ROOT)), word=word):
+                    found = re.findall(rf"\b{pattern}\b", text, re.I)
+                    self.assertEqual(found, [], f"{path.relative_to(ROOT)} says {found}; use the slipway's word")
+
+    def test_an_allowance_with_nothing_behind_it_is_refused(self) -> None:
+        """An allowance outlives the text it was written for, and is then a hole nobody can see."""
+        for name, words in self.ALLOWED.items():
+            place = ROOT / name
+            pages = sorted(place.rglob("*.md")) if place.is_dir() else [place]
+            for word in sorted(words):
+                with self.subTest(page=name, word=word):
+                    text = "".join(path.read_text(encoding="utf-8") for path in pages if path.is_file())
+                    self.assertTrue(re.search(rf"\b{RETIRED[word]}\b", text, re.I),
+                                    f"{name} is allowed {word} and does not use it")
 
 
 if __name__ == "__main__":  # pragma: no cover

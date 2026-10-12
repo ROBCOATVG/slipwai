@@ -117,6 +117,26 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 # A module over this is the file this package was split out of. Tests get the same budget: a suite nobody
 # reads is a suite whose duplicate coverage nobody notices.
+#
+# **What it measures, re-examined at 16.8 now that it is not being spent on paragraphs.** Phase 16 took
+# `src/slipwai/project/` from 48% of its lines inside non-docstring string literals to 32%, and the modules
+# at the limit from ten to four. The number stays at 350 and it still counts *every* line, which are two
+# decisions and not one.
+#
+# The number stays because it is now binding on code without being moved: the largest modules in the tree
+# are 95 to 100% code — `ecosystems.py` at 349 of 349, `test_services.py` at 350 of 350 — and several sit
+# exactly here, which is the budget doing the job it was written for rather than catching English.
+#
+# It counts every line because counting code only would stop it binding at all: measured that way the
+# largest module in the repository is exactly 350, so nothing would be over and the rule would be a no-op
+# the day it changed. And it would make prose free to keep in Python, which is the incentive phase 16 spent
+# eight slices removing. A reader's working set is the file in front of them, whatever its lines hold.
+#
+# **An asset's own size is deliberately not budgeted.** The largest is `assets/toolkit/commands/sail.md` at
+# 355 lines. A page is read top to bottom, has headings to navigate by, and is as long as its subject —
+# none of which is true of a module, which is why a module has a budget. What holds an asset instead is
+# `tests/test_generated_prose.py`: every token it names must be provided, every value provided must be
+# named, and nothing it renders may still carry a marker. That is the drift a page can actually suffer.
 MODULE_BUDGET = 350
 # A package facade dispatches; anything longer is behaviour hiding somewhere no one looks for it.
 FACADE_BUDGET = 40

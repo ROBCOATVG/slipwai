@@ -5,7 +5,7 @@ environment template, the prune script, the Keycloak realms — and `backing_ser
 `apps/service`, the ports and adapters themselves with the contract suites that keep them honest.
 
 The prose that explains all of it — the README sections and what each gate proves — is
-`backing_service_prose.py`, split out when this module outgrew its budget.
+`backing_service_prose.py`, which answers what a selection *says* where this module writes what it *is* — a different question from different callers.
 """
 from __future__ import annotations
 

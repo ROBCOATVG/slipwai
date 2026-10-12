@@ -1,6 +1,6 @@
 """The stop table: every stop `/sail` makes, what `/cruise` does there instead, and where the answer is recorded.
 
-Split from `cruise.py` because that module is at its budget, and because the table is the one part of the
+Split from `cruise.py` because the table is the one part of the
 command that varies with what the project is — the release rows only under a production target, the gaps
 row reading the profile's own artifact, three more rows in an adopted repository — so it is the part most
 often read on its own. `REPORT`, the path the completion audit writes, lives here because the table is the

@@ -1,7 +1,7 @@
 """The hand protocol of `commands/cruise.md`: what `/cruise` does at the demo stop instead of handing the slice
 to a person.
 
-Split from `cruise.py` because that module is at its budget, and because this is the one section that reads a
+Split from `cruise.py` because this is the one section that reads a
 setting a delegate cannot see for itself — `hand`, where the hand's ladder starts — and the one that undoes
 what the ladder does for a person: `commands/sail.md` leaves the demo's app running for the actor to open,
 and under `/cruise` no actor is coming, so the app is stopped once the verdict is in or the next slice's demo

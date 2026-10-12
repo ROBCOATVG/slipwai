@@ -4,8 +4,9 @@ An Actions workflow for GitHub and Gitea — the same file, since Gitea and Forg
 the wrapped applications recorded rather than the ones the catalog knows; a job under the delivery directory for GitLab,
 to be included from the repository's own `.gitlab-ci.yml`, which is theirs and is never written over; and nothing at all
 for a forge the keel cannot write a job for, or where there is no CI — `gate_path` says None, and the report says
-what to run instead. Split from `adopted.py` (brownfield adoption) when the pages and the CI together passed the module
-budget.
+what to run instead. Split from `adopted.py` (brownfield adoption) because this answers the forge and that answers the reader:
+what is here is decided by which forge was found and what the wrapped applications recorded, and changes
+when a forge does, while the pages there change when the method's words do.
 """
 from __future__ import annotations
 

@@ -1352,6 +1352,21 @@ The first attempt paid for these rules. They apply from phase 1, inside the fork
   check reads what the keel *renders*, named tree by tree, rather than every file a project receives — the
   alternative was a list of exemptions by name, stale the first time somebody adds a skill.
 
+- **The templates that are not prose stay; the page hiding among them moves.** Phase 16.7's decision, taken
+  on a measurement rather than on the look of the row. `init_script.py` writes shell and
+  `deploy_workflow.py` writes GitHub Actions YAML, and neither is prose a person edits a paragraph at a
+  time — they are programs assembled from the answers, and `docs/generated-prose.md`'s rule does not reach
+  them. `init_script.py` is the one that looks most movable by line count (167 literal lines, only 23
+  interpolating) and is the least: those lines are `sh` fragments of ten to twenty-four lines each,
+  selected by whether the project has extensions, and putting a shell program in Markdown to be
+  reassembled by the same conditionals buys a reader nothing. `deploy_workflow.py` is 155 literal lines of
+  which 95 interpolate — most of it is already case 2, and the frame is three strings of YAML keys.
+  **`flags.py` is the exception and it is not a template at all**: `release_notes` is the release half of
+  `docs/deployment.md`, eighty-four lines of English with one substitution in them, which is case 1. It
+  moved to `assets/pages/docs/deployment-release.md`, proved byte-identical across three application sets.
+  The lesson for the slices after it is that the row's question was the wrong grain: these three modules
+  had three different answers, and only a per-module measurement found them.
+
 ### Still open
 
 None. Every decision this plan needed on 2026-10-06 is taken, including the one slice 3.6 raised and

@@ -79,6 +79,32 @@ or a JSON example an escaping question a person writing prose should never have 
 a misspelt name with a `KeyError` from the middle of a generation instead of a line naming the file and the
 token.
 
+## What is not prose at all
+
+A fourth kind turned up when 16.7 looked at the templates: text that is not English. `init_script.py`
+writes shell and `deploy_workflow.py` writes GitHub Actions YAML, and neither is prose a person edits a
+paragraph at a time — they are programs, assembled from the answers. **They stay, and the rule above is
+not the reason; the rule does not reach them.** This page is about English.
+
+The measure that settled it, taken rather than argued:
+
+| Module | Multi-line literal lines | Of those, interpolating | Largest block |
+|---|---:|---:|---|
+| `init_script.py` | 167 | 23 | 39 lines, and the rest are shell fragments of 10 to 24 lines chosen per answer |
+| `deploy_workflow.py` | 155 | 95 | 25 lines, the workflow's own frame around five strings the target answers |
+| `flags.py` | 125 | 109 | **84 lines of English with one substitution in it** |
+
+`init_script.py` looks the most movable on the first number and is the least: its literals are `sh`
+fragments — `extension_case`, `extension_expect` — each a few lines selected by whether the project has
+extensions. Moving them would put a shell program in a Markdown file to be reassembled by the same
+conditionals, which buys a reader nothing and costs them the one file that currently reads top to bottom.
+`deploy_workflow.py` is the same answer for the opposite reason: most of it already *is* case 2, and the
+frame around it is three strings of YAML keys.
+
+`flags.py` is the one that moved, and it is not a template at all — `release_notes` is the release half of
+`docs/deployment.md`, eighty-four lines of English with a single `{{reader-paths}}` in it. Case 1, and the
+numbers say so plainly once they are taken per module rather than for the row as a whole.
+
 ## What the check refuses
 
 `tests/test_generated_prose.py`, run by `make verify`:

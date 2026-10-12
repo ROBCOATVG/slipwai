@@ -40,6 +40,7 @@ from slipwai.project import (
     briefs,
     commands,
     docs,
+    flags,
     ground_command,
     pin_commands,
     prose,
@@ -76,7 +77,12 @@ TEMPLATED = (
     # because each tree is written by its own module and so names its own values — pooling them would let
     # a page name a token only another module provides and still pass.
     (PAGE_ROOT, ("README.md",), lambda: readme.values("project", "standard", [], "none", "liner")),
-    (PAGE_ROOT / "docs", ("docs",), lambda: docs.values("project", "standard", [], "none")),
+    # `docs/` is written by two modules: the four pages `docs.py` renders, and the release half of
+    # `docs/deployment.md`, which is `flags.py`'s because every sentence of it is about the reader,
+    # `flags.tf` and `flags.auto.tfvars`. Pooled as `commands/` is, and for the same reason: no keel
+    # module holds the other's values, and one that did would import the module that imports it.
+    (PAGE_ROOT / "docs", ("docs",),
+     lambda: pooled(lambda: docs.values("project", "standard", [], "none"), lambda: flags.values([]))),
     (PAGE_ROOT / "skills/run-the-app", ("skills/run-the-app",),
      lambda: run_skill.values("project", [], AT_ROOT)),
     (GUIDANCE_ROOT, ("AGENTS.md", "docs/architecture.md"), lambda: rules.TOKENS),

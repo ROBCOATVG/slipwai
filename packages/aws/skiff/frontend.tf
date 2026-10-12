@@ -25,8 +25,23 @@ resource "aws_cloudfront_origin_access_control" "web" {
   signing_protocol                  = "sigv4"
 }
 
+# The three managed policies this distribution's two behaviours take. The skiff owns its own frontend: the
+# liner declares the same `disabled`/`all_viewer_except_host` pair in `service/ingress.tf`, which is the
+# liner's load balancer and CloudFront-per-service file and is deliberately not in the skiff's set — so a
+# skiff that referred to them without declaring them here failed `tofu validate` on every generated project
+# that has a browser app. Declared beside the behaviours that read them, and not by dragging `ingress.tf` in.
 data "aws_cloudfront_cache_policy" "optimized" {
   name = "Managed-CachingOptimized"
+}
+
+# The API behaviour caches nothing and forwards the viewer's request whole except the Host header, which
+# must stay the origin's: the service answers on its own managed HTTPS name.
+data "aws_cloudfront_cache_policy" "disabled" {
+  name = "Managed-CachingDisabled"
+}
+
+data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
+  name = "Managed-AllViewerExceptHostHeader"
 }
 
 locals {

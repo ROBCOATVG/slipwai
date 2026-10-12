@@ -80,12 +80,12 @@ checkout is a cost every contributor pays for something few of them run. Install
 
 ```sh
 npx --yes playwright install --with-deps chromium   # downloads a browser; --with-deps needs root
-npx --yes playwright open {web_url}     # or drive it from a script
+npx --yes playwright open {{web-url}}     # or drive it from a script
 ```
 
 `skills/front-end-testing/resources/playwright-e2e.md` covers what a browser-level test may and may not
 claim before you write one. If browser-level tests become part of the suite rather than a one-off, add
-Playwright to `{web_path}` as a devDependency deliberately, in the same commit as the lockfile change, rather
+Playwright to `{{web-path}}` as a devDependency deliberately, in the same commit as the lockfile change, rather
 than leaving every future run to `npx`.
 <!-- end section -->
 <!-- section: driving-api -->

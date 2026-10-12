@@ -16,7 +16,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai.assets import ROOT
 from slipwai.catalog_checks import validate_backends
-from slipwai.catalog_merge import merge, retract
+from slipwai.catalog_merge import merge, reachable, retract
 from slipwai.language_directory import Package, read
 from slipwai.registry import RegistryError, check_catalog, registry
 
@@ -72,7 +72,7 @@ def at(name: str) -> Path:
 
 class MergeOrderTest(unittest.TestCase):
     def test_a_merge_of_nothing_is_core_with_the_order_key_stripped(self) -> None:
-        merged, refused = merge(copy.deepcopy(CORE), [])
+        merged, refused, _ = merge(copy.deepcopy(CORE), [])
         self.assertEqual(refused, {})
         self.assertEqual(merged["schemaVersion"], CORE["schemaVersion"])
         self.assertTrue(all("order" not in row for row in merged["backends"].values()))
@@ -88,7 +88,7 @@ class MergeOrderTest(unittest.TestCase):
         )
 
     def test_a_fragment_takes_the_place_its_order_declares_and_every_list_follows(self) -> None:
-        merged, refused = merge(copy.deepcopy(BUILT), [package("zed", 15, defaults={"http": "none"})])
+        merged, refused, _ = merge(copy.deepcopy(BUILT), [package("zed", 15, defaults={"http": "none"})])
         self.assertEqual(refused, {})
         expected = ["core-a", "zed", "core-b"]
         self.assertEqual(list(merged["backends"]), expected)
@@ -105,11 +105,11 @@ class MergeOrderTest(unittest.TestCase):
         one.fragment["backends"]["two"] = dict(one.fragment["backends"]["one"], label="two")
         one.fragment["backends"]["one"]["defaults"] = {"http": "none"}
         one.fragment["backends"]["two"]["defaults"] = {"http": "none"}
-        merged, _ = merge(copy.deepcopy(BUILT), [one])
+        merged, _, _ = merge(copy.deepcopy(BUILT), [one])
         self.assertEqual(list(merged["backends"])[-3:], ["core-b", "one", "two"])
 
     def test_a_merged_row_reads_as_a_catalog_row_does(self) -> None:
-        merged, _ = merge(copy.deepcopy(CORE), [package("zed", 25, framework="zfw")])
+        merged, _, _ = merge(copy.deepcopy(CORE), [package("zed", 25, framework="zfw")])
         self.assertEqual(
             merged["backends"]["zed"],
             {"family": "zed", "framework": "zfw", "label": "zed label", "targets": ["none", "existing"]},
@@ -133,7 +133,7 @@ class MovesTest(unittest.TestCase):
         self.assertEqual([package.name for package in packages], [root.name for root in PINNED])
         self.assertEqual([package.name for package in packages],
                          ["go", "java", "java-quarkus", "java-spring", "python", "typescript"])
-        merged, refused = merge(copy.deepcopy(CORE), packages)
+        merged, refused, _ = merge(copy.deepcopy(CORE), packages)
         self.assertEqual(refused, {})
         before = json.loads((ROOT / "tests/catalog-before-s08.json").read_text(encoding="utf-8"))
         # Less the default backend, which is the merge's first backend now and no key of the keel's.
@@ -162,7 +162,7 @@ class ClaimTest(unittest.TestCase):
         one, two = package("a"), package("b")
         one.fragment["backends"] = {"dup": one.fragment["backends"]["a"]}
         two.fragment["backends"] = {"dup": two.fragment["backends"]["b"]}
-        merged, refused = merge(copy.deepcopy(CORE), [one, two])
+        merged, refused, _ = merge(copy.deepcopy(CORE), [one, two])
         self.assertEqual(
             refused,
             {
@@ -176,7 +176,7 @@ class ClaimTest(unittest.TestCase):
         built_in = next(iter(BUILT["backends"]))
         clash = package("py2")
         clash.fragment["backends"] = {built_in: clash.fragment["backends"]["py2"]}
-        merged, refused = merge(copy.deepcopy(BUILT), [clash, package("fine")])
+        merged, refused, _ = merge(copy.deepcopy(BUILT), [clash, package("fine")])
         self.assertEqual(
             refused, {"py2": f"language py2 ({at('py2')}): declares backend {built_in}, which core already has"}
         )
@@ -186,16 +186,9 @@ class ClaimTest(unittest.TestCase):
 
 class UndeclaredTest(unittest.TestCase):
     def refusal(self, **row: Any) -> str:
-        merged, refused = merge(copy.deepcopy(CORE), [package("bad", **row)])
+        merged, refused, _ = merge(copy.deepcopy(CORE), [package("bad", **row)])
         self.assertNotIn("bad", merged["backends"])
         return refused["bad"]
-
-    def test_an_option_core_does_not_declare(self) -> None:
-        self.assertEqual(
-            self.refusal(options={"http": ["none", "gin"]}),
-            f"language bad ({at('bad')}): backend bad answers http option gin, which neither the keel "
-            "nor this package declares",
-        )
 
     def test_an_axis_core_does_not_have(self) -> None:
         self.assertEqual(
@@ -203,16 +196,70 @@ class UndeclaredTest(unittest.TestCase):
             f"language bad ({at('bad')}): backend bad answers axis cache, which core does not declare",
         )
 
-    def test_a_target_core_does_not_have(self) -> None:
-        self.assertEqual(
-            self.refusal(targets=["none", "gcp"]),
-            f"language bad ({at('bad')}): backend bad answers target gcp, which core does not declare",
+
+
+class UnreachableAnswersTest(unittest.TestCase):
+    """A cloud nobody installed is a fact about this machine, not a fault in the package.
+
+    Every published language names every cloud it has deployment answers for, and a person installs the
+    clouds they deploy to — usually none of them. Refusing the package for the gap left that person with
+    no language at all: `--language {}` with a language installed, and `generate --target none` refused
+    outright. So an answer the catalogue cannot reach is pruned from the row and the rest of the package
+    merges, which is what the keel already does to an option no installed target offers.
+    """
+
+    def merged_row(self, **row: Any) -> dict[str, Any]:
+        merged, refused, _ = merge(copy.deepcopy(CORE), [package("good", **row)])
+        self.assertEqual(refused, {})
+        return merged["backends"]["good"]
+
+    def test_a_target_nothing_installed_declares_is_pruned_and_the_backend_stays(self) -> None:
+        self.assertEqual(self.merged_row(targets=["none", "existing", "gcp"])["targets"],
+                         ["none", "existing"])
+
+    def test_a_backend_whose_every_cloud_is_absent_still_generates_locally(self) -> None:
+        """The case that was wholly broken: two clouds named, neither installed, `--target none` wanted."""
+        self.assertEqual(self.merged_row(targets=["none", "existing", "aws", "azure"])["targets"],
+                         ["none", "existing"])
+
+    def test_an_option_no_installed_target_offers_is_pruned_from_the_backend(self) -> None:
+        merged, refused, _ = merge(copy.deepcopy(CORE), [package("good", options={"auth": ["none", "cognito"]})])
+        self.assertEqual(refused, {})
+        self.assertNotIn("good", merged["axes"]["auth"]["options"].get("cognito", {}).get("backends", []))
+        self.assertIn("good", merged["axes"]["auth"]["options"]["none"]["backends"])
+
+    def test_a_default_whose_option_was_pruned_is_dropped_rather_than_left_dangling(self) -> None:
+        """Asked of `reachable` directly: core takes a per-backend default on `framework` and `http` only,
+        and neither axis is gated on a target, so no merge of today's catalogue can reach this. The rule
+        still holds — a default is a pointer into the options beside it, and the pruner must not leave one
+        aimed at an answer it has just taken away."""
+        row, gone = reachable(
+            copy.deepcopy(CORE),
+            {"label": "x", "targets": ["none"], "options": {"auth": ["none", "cognito"]},
+             "defaults": {"auth": "cognito"}},
         )
+        self.assertEqual(row["options"]["auth"], ["none"])
+        self.assertEqual(row["defaults"], {})
+        self.assertEqual(gone, ["auth option cognito"])
+
+    def test_an_option_nothing_declares_is_pruned_and_named_rather_than_refused(self) -> None:
+        """`gin` could be a Go package's own framework option or a misspelling, and nothing on this machine
+        can tell the two apart — the package's own CI can, because it installs the siblings it names. So the
+        backend keeps the answers that work and `slipwai list` says which one went."""
+        merged, refused, unreachable = merge(copy.deepcopy(CORE), [package("good", options={"http": ["none", "gin"]})])
+        self.assertEqual(refused, {})
+        self.assertIn("good", merged["backends"])
+        self.assertEqual(unreachable["good"], ["http option gin"])
+
+    def test_an_axis_core_does_not_declare_is_still_a_fault(self) -> None:
+        """Pruning is for an answer that could exist. An axis that does not is a mistake in the package."""
+        _, refused, _ = merge(copy.deepcopy(CORE), [package("bad", options={"cache": ["memory"]})])
+        self.assertIn("answers axis cache, which core does not declare", refused["bad"])
 
 
 class DefaultsTest(unittest.TestCase):
     def refusal(self, **row: Any) -> str:
-        _, refused = merge(copy.deepcopy(CORE), [package("bad", **row)])
+        _, refused, _ = merge(copy.deepcopy(CORE), [package("bad", **row)])
         return refused["bad"]
 
     def test_a_default_the_backends_own_options_cannot_take_names_both(self) -> None:
@@ -231,14 +278,14 @@ class DefaultsTest(unittest.TestCase):
 class OverTheMergeTest(unittest.TestCase):
     def test_the_naming_rule_holds_the_merged_catalog(self) -> None:
         packages = [package("zed", 25, defaults={"http": "none"}), package("zed-two", 26, defaults={"http": "none"})]
-        merged, refused = merge(copy.deepcopy(CORE), packages)
+        merged, refused, _ = merge(copy.deepcopy(CORE), packages)
         self.assertEqual(refused, {})
         merged["backends"]["zed-two"]["family"] = "zed"
         with self.assertRaisesRegex(ValueError, "zed has more than one backend"):
             validate_backends(merged)
 
     def test_the_registry_check_sees_a_merged_row_no_registry_object_answers(self) -> None:
-        merged, _ = merge(copy.deepcopy(CORE), [package("zed", 25, defaults={"http": "none"})])
+        merged, _, _ = merge(copy.deepcopy(CORE), [package("zed", 25, defaults={"http": "none"})])
         with self.assertRaisesRegex(RegistryError, "backend zed is in catalog.json with no registry object"):
             check_catalog(merged, registry())
 
@@ -249,7 +296,7 @@ class RetractTest(unittest.TestCase):
         for row in core["backends"].values():
             del row["order"]
         zed = package("zed", 25, defaults={"http": "none"})
-        merged, _ = merge(copy.deepcopy(CORE), [zed])
+        merged, _, _ = merge(copy.deepcopy(CORE), [zed])
         retract(merged, zed)
         self.assertEqual(json.dumps(merged, indent=2), json.dumps(core, indent=2))
 

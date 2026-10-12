@@ -1294,6 +1294,29 @@ The first attempt paid for these rules. They apply from phase 1, inside the fork
   and a pre-rename `benchmark.json` are read under either name and say which answered, because the rename is
   ours and those two files are theirs.
 
+### Settled on 2026-10-12
+
+- **An answer a package makes that this installation cannot reach is pruned from it, not a refusal of the
+  whole package.** A backend declares the targets it has deployment answers for, and an option is offered
+  under the targets that provide it. Which of those are *installed* is a fact about one machine. Until now
+  the merge refused any package naming a target the catalogue did not carry, and the consequence was not
+  a narrower menu but no menu at all: with the published `python` language installed and no cloud package,
+  `slipwai list` offered `--language {}` and `generate --target none` — the local-only path, which needs no
+  cloud whatsoever — was refused outright. Every published language names every cloud it supports, so this
+  made all six languages unusable until both cloud packages were installed, and would have broken every
+  existing install the day a third cloud was added to any one of them. The keel already pruned at the level
+  above — `merge_targets` drops an option no installed target offers, which is why `auth0` is in
+  `catalog.json` and not in `CORE` until a cloud that offers it arrives — so the two levels now agree:
+  `catalog_merge.reachable` takes the unreachable answers out of the backend's row, a default pointing at a
+  pruned option goes with it, and the backend keeps the rest.
+  **An axis the keel does not declare is still a fault**, because the keel declares every axis there is and
+  one it has not got is a mistake in the package rather than a gap in what is installed.
+  **The pruning is reported, never silent**: `slipwai list` names what a package answers that is out of
+  reach here and the command that shows the targets, because an answer that vanished with nothing saying so
+  is the failure this rule could otherwise have introduced. The keel cannot tell a misspelt target from an
+  absent one and does not try; the gate that can is the package's own CI, where `package_sources` checks
+  out exactly the siblings the package names and fails when one of them exists nowhere.
+
 ### Still open
 
 None. Every decision this plan needed on 2026-10-06 is taken, including the one slice 3.6 raised and

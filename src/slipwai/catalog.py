@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from .assets import ROOT
+from .assets import ROOT, this_command
 from .axes import catalog_axis_default
 from .catalog_merge import merge
 from .errors import GenerationError
@@ -32,7 +32,17 @@ TARGETS = [one for one in TARGETS if one.name in CORE["targets"]]
 # Phase 1 of the package directory: the fragments this keel can load, then the merge, which refuses a
 # fragment alone. `PACKAGES` are the ones that merged; `REFUSALS` say, a line each, why the others did not.
 _FOUND, _FRAGMENT_REFUSALS = read(directory(), CORE["schemaVersion"], installed=True)
-CATALOG, _MERGE_REFUSALS = merge(CORE, _FOUND, installed=True)
+CATALOG, _MERGE_REFUSALS, UNREACHABLE = merge(CORE, _FOUND, installed=True)
+# What a loaded package answers that this installation cannot reach, as the line `slipwai list` prints under
+# it. Not a refusal and never printed as one: the package works and the rest of its answers are offered. It
+# is said at all because the alternative is silence — a person who installed a language to deploy to a cloud,
+# and has not installed that cloud, would otherwise find the target missing from the menu with nothing
+# anywhere saying why. `catalog_merge.reachable` is what took them out, and says why there.
+UNREACHABLE_NOTES = {
+    name: f"\n      not reachable here: {', '.join(gone)}"
+          f"\n      no installed target offers them: {this_command()} target list"
+    for name, gone in UNREACHABLE.items()
+}
 PACKAGES = [package for package in _FOUND if package.name not in _MERGE_REFUSALS]
 # The same directory's other kind of package. An extension adds a catalogue entry and a directory of files
 # `./init` runs; it merges nothing into the backends, so it is folded in after the language merge rather

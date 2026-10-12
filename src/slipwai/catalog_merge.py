@@ -205,16 +205,14 @@ def row_faults(
     one that exists, and checking it against the keel alone would refuse every package that brings a
     framework — which is every language package there is.
     """
-    faults = [f"backend {key} answers target {target}, which core does not declare"
-              for target in row.get("targets", []) if target not in core["targets"]]
+    faults: list[str] = []
     options: Mapping[str, list[str]] = row.get("options", {})
-    for axis, names in options.items():
+    # A target this installation has no row for, and an option no installed target offers, are not faults:
+    # they are answers this machine cannot reach, and `reachable` prunes them. An *axis* is different — the
+    # keel declares every axis there is, so one it does not have is a mistake in the package, not a gap.
+    for axis in options:
         if axis not in core["axes"]:
             faults.append(f"backend {key} answers axis {axis}, which core does not declare")
-            continue
-        declared = {*core["axes"][axis]["options"], *(brought or {}).get(axis, {})}
-        faults += [f"backend {key} answers {axis} option {name}, which neither the keel nor this package declares"
-                   for name in names if name not in declared]
     for axis, name in row.get("defaults", {}).items():
         if axis not in core["default"]:
             faults.append(f"backend {key} defaults axis {axis}, which core does not declare")
@@ -230,10 +228,45 @@ def row_faults(
     return faults
 
 
+def reachable(merged: Mapping[str, Any], row: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """`row` with every answer this catalogue cannot reach taken out of it, and a line per answer taken.
+
+    Which clouds are installed is a fact about a machine, not about a package. Every published language
+    names every cloud it has deployment answers for, and a person installs the clouds they deploy to —
+    most often none. Refusing the whole backend for the gap is what left a person with a language
+    installed and `--language {}` offered, and `generate --target none` — the local-only path, which needs
+    no cloud at all — refused outright.
+
+    So the answer is pruned and the backend keeps the rest, which is only what the keel already does one
+    level up: `merge_targets` drops an option no installed target offers, which is why `auth0` sits in
+    `catalog.json` and not in `CORE` until a cloud that offers it arrives. This makes the two agree.
+
+    A default whose option has just been pruned goes with it rather than being left dangling: a default is
+    a pointer into the options beside it, and one pointing at an answer that is no longer there would be
+    read as a choice nobody can take. Pruning cannot hide a typo for long — a package's own CI installs
+    the siblings it names (`package_sources`), so a target that exists nowhere fails there, which is the
+    gate that can tell a misspelling from an absence. This one cannot.
+    """
+    targets = [one for one in row.get("targets", []) if one in merged["targets"]]
+    options = {
+        axis: [name for name in names if name in merged["axes"][axis]["options"]]
+        for axis, names in row.get("options", {}).items()
+    }
+    defaults = {axis: name for axis, name in row.get("defaults", {}).items() if name in options.get(axis, [])}
+    gone = [f"target {one}" for one in row.get("targets", []) if one not in targets]
+    gone += [f"{axis} option {name}" for axis, names in row.get("options", {}).items()
+             for name in names if name not in options[axis]]
+    return {**row, "targets": targets, "options": options, "defaults": defaults}, gone
+
+
 def merge(
     core: dict[str, Any], packages: list[Package], installed: bool = False
-) -> tuple[dict[str, Any], dict[str, str]]:
-    """The keel with every package folded in, and a line for each package refused. `core` is left as it
+) -> tuple[dict[str, Any], dict[str, str], dict[str, list[str]]]:
+    """The keel with every package folded in, a line for each package refused, and the answers pruned.
+
+    The third is not a refusal and must never be printed as one: an answer this installation cannot reach
+    is a gap in what is installed, not a fault in the package. It is what `slipwai list` says under the
+    language, because that is where a person asks what they can have. `core` is left as it
     was; `installed` as `requires_fault`'s."""
     held, families, frameworks = claims(packages), family_claims(packages), framework_claims(packages)
     refused: dict[str, str] = {}
@@ -254,22 +287,34 @@ def merge(
     rows: list[tuple[str, dict[str, Any], int]] = [
         (key, row, row.get("order", 0)) for key, row in merged["backends"].items()
     ]
+    # Pruned here, after `declare_options`, because that is the first moment the catalogue is whole: the
+    # keel's rows, every installed target's, and every kept package's own. What a row may answer is what
+    # is in it now.
+    pruned: dict[tuple[str, str], dict[str, Any]] = {}
+    unreachable: dict[str, list[str]] = {}
+    for package in kept:
+        for key, row in package.fragment["backends"].items():
+            pruned[(package.name, key)], gone = reachable(merged, row)
+            if gone:
+                unreachable.setdefault(package.name, []).extend(gone)
     for package in kept:
         fragment = package.fragment
         for key, row in fragment["backends"].items():
             built: dict[str, Any] = {"family": fragment["family"]}
             if "framework" in row:
                 built["framework"] = row["framework"]
-            rows.append((key, {**built, "label": row["label"], "targets": row["targets"]}, fragment["order"]))
+            rows.append((key, {**built, "label": row["label"],
+                               "targets": pruned[(package.name, key)]["targets"]}, fragment["order"]))
     rows.sort(key=lambda entry: entry[2])
     merged["backends"] = {key: {k: v for k, v in row.items() if k != "order"} for key, row, _ in rows}
     rank = {key: index for index, (key, _, _) in enumerate(rows)}
     for package in kept:
-        for key, row in package.fragment["backends"].items():
-            for axis, names in row.get("options", {}).items():
+        for key in package.fragment["backends"]:
+            row = pruned[(package.name, key)]
+            for axis, names in row["options"].items():
                 for name in names:
                     merged["axes"][axis]["options"][name]["backends"].append(key)
-            for axis, name in row.get("defaults", {}).items():
+            for axis, name in row["defaults"].items():
                 merged["default"][axis][key] = name
     for axis in merged["axes"].values():
         for option in axis["options"].values():
@@ -278,7 +323,7 @@ def merge(
         if isinstance(answer, dict) and set(answer) <= set(rank):
             merged["default"][axis] = {key: answer[key] for key in sorted(answer, key=lambda key: rank[key])}
     framework_defaults(merged, kept)
-    return merged, refused
+    return merged, refused, unreachable
 
 
 def retract(catalog: dict[str, Any], package: Package) -> None:

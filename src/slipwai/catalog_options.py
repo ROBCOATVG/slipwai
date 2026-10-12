@@ -63,5 +63,11 @@ def declare_options(merged: dict[str, Any], packages: list[Package]) -> dict[str
         package = claimants[0]
         option = copy.deepcopy(package.fragment["axes"][axis][name])
         option["backends"] = []
+        # Where the option says it is offered, narrowed to the targets this installation has. A package
+        # writes the clouds it has answers for; a person installs the clouds they deploy to, usually none
+        # of them. `catalog_merge.reachable` prunes the same way one level up, and the two have to agree
+        # or the catalogue refuses itself: an option offered under a target the tables do not carry is
+        # exactly what `targets.check_targets` refuses.
+        option["targets"] = [one for one in option.get("targets", []) if one in merged["targets"]]
         merged["axes"][axis]["options"][name] = option
     return refused

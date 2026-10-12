@@ -66,7 +66,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "telegraph", "targets", "target_shape", "target_protocol", "target_directory",
                   "axes", "catalog", "rungs",
                   "catalog_checks", "catalog_merge",
-                  "catalog_options", "loaded", "backends", "probes", "ecosystems", "npm_workspace",
+                  "catalog_options", "loaded", "loaded_targets", "backends", "probes", "ecosystems", "npm_workspace",
                   "examples", "harness",
                   "images")),
     # One validated answer per axis, which applications a project has, and what they add up to being able

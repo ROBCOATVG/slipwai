@@ -1,9 +1,9 @@
 """The target protocol: every answer a place a project is deployed to gives, and which are required.
 
 A language package exports `LANGUAGE` and answers the backend protocol (`registry.py`). A target package
-exports `TARGET` and answers this one. The members are the six things the keel asks a cloud today, each
-read from exactly one place in the keel before this existed, so a package answering them replaces a branch
-rather than adding one:
+exports `TARGET` and answers this one. Every member is a thing the keel asks a cloud, and each was read
+from exactly one place in the keel before this existed — a table keyed by a cloud's name — so a package
+answering them replaces a branch rather than adding one:
 
 - `shapes` — the stacks, as committed HCL, under the two names a managed target always has. `project/infra`
   copies them.
@@ -12,8 +12,14 @@ rather than adding one:
 - `tools` — the command-line tools `./init` and `make bootstrap` need, each with why and where to get it;
   the list `preflight` checks before a project is written *and* the generated `./init` checks on the
   machine that runs it, so there is one list and not two.
-- `image_registry` — where a built image is pushed and how the pipeline signs in to push it.
-- `deploy_steps` — the workflow steps that take the deploy role, per environment.
+- `image_registry` — where a built image is pushed, what the registry is called, one of its addresses as an
+  example, and what `infra/` runs a service as; the four words `scripts/deploy.py` is written round.
+- `pipeline` — the parts of the deploy workflow that are this cloud's: the CLI a runner may not ship, how a
+  job becomes the deploy identity, how it signs in to the registry, and what the stacks read out of the
+  environment. The job's *shape* stays the keel's, so a target supplies parts and never rewrites the promise.
+- `readme_words` — the nouns the README's *Production* section is written round.
+- `agent_rules` — the paragraph an agent is held to about how this project reaches production.
+- `add_commands` — what `add-service` and `add-frontend` say afterwards about the destination.
 
 **Required means required of a managed target.** `managed` is the catalog's own word for "the keel
 provisions and deploys this": its stacks, its images, its pipeline. A target that is not managed — a
@@ -30,7 +36,7 @@ shape without the catalog, the selection or any part of a project being read.
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar
 
@@ -56,19 +62,46 @@ class TargetMember(Generic[T]):
 M = TargetMember
 SHAPES: TargetMember[Any] = M("shapes", True, dict, "shape -> the package's files that stack is made of")
 SCRIPTS: TargetMember[Any] = M("scripts", True, dict, "path in the project -> the package file it comes from")
-DOCS_PAGES: TargetMember[Any] = M("docs_pages", True, dict, "path in the project -> (selection) -> its text")
+DOCS_PAGES: TargetMember[Any] = M("docs_pages", True, dict, "path in the project -> (project, apps) -> its text")
 TOOLS: TargetMember[Any] = M("tools", True, tuple, "(command, why, where to get it) per tool")
-IMAGE_REGISTRY: TargetMember[Any] = M("image_registry", True, dict, "where an image is pushed and how to sign in")
-DEPLOY_STEPS: TargetMember[Any] = M("deploy_steps", True, Callable, "(environment) -> the workflow steps")
+IMAGE_REGISTRY: TargetMember[Any] = M("image_registry", True, dict, "where an image is pushed and what runs it")
+PIPELINE: TargetMember[Any] = M("pipeline", True, dict, "the deploy workflow's parts that are this cloud's")
+README_WORDS: TargetMember[Any] = M("readme_words", True, dict, "the nouns the Production section is written round")
+AGENT_RULES: TargetMember[Any] = M("agent_rules", True, str, "the production paragraph an agent is held to")
+ADD_COMMANDS: TargetMember[Any] = M("add_commands", True, dict, "what adding a service or a frontend means here")
 #: Never required: absence is the answer "this cloud has no ambient region", which is Azure's, where every
 #: resource carries its own `location` and there is nothing for `preflight` to read.
 REGION: TargetMember[Any] = M("region", False, tuple, "(variable, how to read it, what to say when it is unset)")
 #: What a person needs before `make bootstrap` — an account, a signed-in CLI — as the docs page lists them.
 PREREQUISITES: TargetMember[Any] = M("prerequisites", False, tuple, "a line per prerequisite")
+#: Never required either: absence is the answer "this cloud has no flag store", and a project on it reads
+#: its flags the one way every project can — out of the environment the platform resolved them into.
+FLAG_TRANSPORTS: TargetMember[Any] = M("flag_transports", False, dict, "the default transport, and the opt-in one")
 
 PROTOCOL: tuple[TargetMember[Any], ...] = (
-    SHAPES, SCRIPTS, DOCS_PAGES, TOOLS, IMAGE_REGISTRY, DEPLOY_STEPS, REGION, PREREQUISITES,
+    SHAPES, SCRIPTS, DOCS_PAGES, TOOLS, IMAGE_REGISTRY, PIPELINE, README_WORDS, AGENT_RULES, ADD_COMMANDS,
+    REGION, PREREQUISITES, FLAG_TRANSPORTS,
 )
+
+#: What each dict-shaped member has to have in it, because the keel reads each of these by name. A member
+#: whose keys were a package's to choose would be one the keel could only read by guessing.
+KEYS: dict[str, tuple[str, ...]] = {
+    # The deploy workflow's own parts. The shape around them — `verify` on `main`, one apply at a time,
+    # apply then smoke, production behind `AUTO_PROMOTE`, a rollback that re-applies the release before —
+    # is the promise and not the cloud, so a target supplies the parts and never the job.
+    PIPELINE.name: ("cli", "credentials", "build_cli", "registry_login", "environment"),
+    # The cloud a person signs in to, what the registry is called, one of its addresses as an example, and
+    # what `infra/` runs a service as. Four words `scripts/deploy.py`'s comment block is written round.
+    IMAGE_REGISTRY.name: ("cloud", "registry", "example", "runtime"),
+    # `runtime` is what `infra/` runs a service as in one phrase; `site` is what a browser app is served
+    # from; `credentials` is what `make bootstrap` looks for. Everything around them — the pipeline,
+    # `AUTO_PROMOTE`, the rollback workflow — is the same promise whatever the cloud is.
+    README_WORDS.name: ("runtime", "site", "credentials"),
+    # What `add-service` and `add-frontend` say afterwards about the destination.
+    ADD_COMMANDS.name: ("service", "web"),
+    # The transport every project on this target has, and — where the target offers a second one — its name.
+    FLAG_TRANSPORTS.name: ("default",),
+}
 
 
 def required() -> tuple[TargetMember[Any], ...]:
@@ -117,11 +150,28 @@ def faults(target: Target, managed: bool) -> list[str]:
 
 
 def content_faults(said: str, member: TargetMember[Any], value: object) -> list[str]:
-    """What is wrong inside an answer of the right kind: the two shapes, and a tool that says nothing."""
+    """What is wrong inside an answer of the right kind: the two shapes, a tool that says nothing, and a
+    dict-shaped member short a key the keel reads by name."""
     if member is SHAPES:
         return shape_faults(said, value)
     if member is TOOLS:
         return tool_faults(said, value)
+    return key_faults(said, member, value)
+
+
+def key_faults(said: str, member: TargetMember[Any], value: object) -> list[str]:
+    """A dict member short what the keel reads out of it, all the missing keys at once.
+
+    By name rather than by shape, because every one of these is read somewhere specific — the workflow asks
+    for `credentials`, the README asks for `runtime` — and a member whose keys were a package's to choose
+    would be one the keel could only read by guessing.
+    """
+    wanted = KEYS.get(member.name)
+    if wanted is None or not isinstance(value, dict):
+        return []
+    if missing := [key for key in wanted if key not in value]:
+        return [f"{said} answers {member.name} without {', '.join(missing)}, which the keel reads by name: "
+                f"it holds {', '.join(wanted)}"]
     return []
 
 

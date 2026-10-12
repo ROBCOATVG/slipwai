@@ -18,13 +18,20 @@ import checkout_packages  # noqa: F401
 from slipwai import target_protocol
 from slipwai.target_protocol import SHAPES, Target, faults
 
-ANSWERS = {
+ANSWERS: dict = {
     target_protocol.SHAPES: {"bootstrap": ("bootstrap/main.tf",), "service": ("service/main.tf",)},
     target_protocol.SCRIPTS: {"scripts/deploy.py": "scripts/deploy.py"},
     target_protocol.TOOLS: (("tofu", "what applies the stacks", "https://opentofu.org"),),
-    target_protocol.IMAGE_REGISTRY: {"push": "cumulus image push"},
-    target_protocol.DEPLOY_STEPS: lambda environment: f"  - run: make deploy ENV={environment}\n",
-    target_protocol.DOCS_PAGES: {"docs/deployment.md": lambda selection: "# Where this goes\n"},
+    target_protocol.IMAGE_REGISTRY: {"cloud": "Cumulus", "registry": "CR",
+                                     "example": "cumulus.invalid/", "runtime": "Boxes"},
+    target_protocol.PIPELINE: {"cli": "", "credentials": "      - uses: cumulus/login@v1\n",
+                               "build_cli": "", "registry_login": "      - run: cumulus registry login\n",
+                               "environment": "  CUMULUS_REGION: ${{ vars.CUMULUS_REGION }}\n"},
+    target_protocol.README_WORDS: {"runtime": "one box per app", "site": " The browser app is a bucket.",
+                                   "credentials": "a sign-in the `cumulus` CLI can find"},
+    target_protocol.AGENT_RULES: "- This project deploys to Cumulus from the pipeline, and nothing else does.\n",
+    target_protocol.ADD_COMMANDS: {"service": "- one more box\n", "web": "- the site is behind the edge\n"},
+    target_protocol.DOCS_PAGES: {"docs/deployment.md": lambda project, apps: "# Where this goes\n"},
 }
 
 
@@ -108,3 +115,61 @@ class FaultsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def whole(changes: dict | None = None) -> Target:
+    """A managed target answering every member a managed target owes, with those changed."""
+    return target(changes)
+
+
+class ExtendedProtocolTest(unittest.TestCase):
+    """The members 10.1 did not name, found by reading what the keel actually reads per target.
+
+    10.1 named six from the five modules it read. 10.3 read the rest of the surface — the README's
+    *Production* section, the agent rules, what `add-service` says afterwards, and the deploy workflow's own
+    parts — and each of those is a table keyed by a cloud's name, which is exactly what a protocol member is
+    for. A member each rather than one `prose` bag: a refusal has to be able to say which one is missing.
+    """
+
+    def test_a_whole_managed_target_answering_all_of_them_has_no_faults(self) -> None:
+        self.assertEqual(faults(whole(), managed=True), [])
+
+    def test_the_pipeline_is_a_member_a_managed_target_owes(self) -> None:
+        self.assertIn("pipeline", [member.name for member in target_protocol.required()])
+
+    def test_a_pipeline_short_a_part_the_workflow_reads_is_refused_naming_it(self) -> None:
+        """The shape around the parts is the promise and not the cloud, so the keel reads each by name."""
+        short = {key: "" for key in target_protocol.KEYS["pipeline"] if key != "credentials"}
+        found = faults(whole({target_protocol.PIPELINE: short}), managed=True)
+        self.assertEqual(len(found), 1)
+        self.assertIn("credentials", found[0])
+
+    def test_readme_words_short_a_noun_the_section_is_written_round_is_refused(self) -> None:
+        short = {"runtime": "one box per app"}
+        found = faults(whole({target_protocol.README_WORDS: short}), managed=True)
+        self.assertEqual(len(found), 1)
+        for noun in ("site", "credentials"):
+            self.assertIn(noun, found[0])
+
+    def test_add_commands_short_what_adding_a_frontend_means_is_refused(self) -> None:
+        found = faults(whole({target_protocol.ADD_COMMANDS: {"service": "x"}}), managed=True)
+        self.assertEqual(len(found), 1)
+        self.assertIn("web", found[0])
+
+    def test_an_image_registry_that_does_not_say_where_or_how_is_refused(self) -> None:
+        found = faults(whole({target_protocol.IMAGE_REGISTRY: {"cloud": "Cumulus"}}), managed=True)
+        self.assertEqual(len(found), 1)
+        for key in ("registry", "example", "runtime"):
+            self.assertIn(key, found[0])
+
+    def test_flag_transports_are_never_required(self) -> None:
+        """Absence is the answer "this cloud has no flag store", which is an honest thing for one to say."""
+        self.assertNotIn("flag_transports", [member.name for member in target_protocol.required()])
+
+    def test_a_flag_transports_answer_that_names_no_default_is_refused(self) -> None:
+        found = faults(whole({target_protocol.FLAG_TRANSPORTS: {"opt_in": "appconfig"}}), managed=True)
+        self.assertEqual(len(found), 1)
+        self.assertIn("default", found[0])
+
+    def test_an_unmanaged_target_owes_none_of_the_new_members_either(self) -> None:
+        self.assertEqual(faults(Target(name="cumulus"), managed=False), [])

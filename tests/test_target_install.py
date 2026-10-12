@@ -28,9 +28,9 @@ MANIFEST = {
     "kind": "target", "core": ">=9.0,<10", "managed": True, "requires": ["http"],
 }
 
-MODULE = '''
-from slipwai.target_protocol import (
-    DEPLOY_STEPS, DOCS_PAGES, IMAGE_REGISTRY, SCRIPTS, SHAPES, TOOLS, Target,
+MODULE = '''from slipwai.target_protocol import (
+    ADD_COMMANDS, AGENT_RULES, DOCS_PAGES, IMAGE_REGISTRY, PIPELINE, README_WORDS, SCRIPTS, SHAPES, TOOLS,
+    Target,
 )
 
 TARGET = Target(
@@ -38,10 +38,17 @@ TARGET = Target(
     answers={
         SHAPES: {"bootstrap": ("bootstrap/main.tf",), "service": ("service/main.tf",)},
         SCRIPTS: {"scripts/deploy.py": "scripts/deploy.py"},
-        DOCS_PAGES: {"docs/deployment.md": lambda selection: "# Deployment\\n"},
+        DOCS_PAGES: {"docs/deployment.md": lambda project, apps: "# Deployment\\n"},
         TOOLS: (("tofu", "what applies the stacks", "https://opentofu.org/"),),
-        IMAGE_REGISTRY: {"repository": "cumulus.invalid", "login": "cumulus auth"},
-        DEPLOY_STEPS: lambda environment: "      - run: make deploy\\n",
+        IMAGE_REGISTRY: {"cloud": "Cumulus", "registry": "CR", "example": "cumulus.invalid/",
+                         "runtime": "Boxes"},
+        PIPELINE: {"cli": "", "credentials": "      - uses: cumulus/login@v1\\n", "build_cli": "",
+                   "registry_login": "      - run: cumulus registry login\\n",
+                   "environment": "  CUMULUS_REGION: ${{ vars.CUMULUS_REGION }}\\n"},
+        README_WORDS: {"runtime": "one box per app", "site": " The site is a bucket.",
+                       "credentials": "a sign-in the `cumulus` CLI can find"},
+        AGENT_RULES: "- This project deploys to Cumulus from the pipeline.\\n",
+        ADD_COMMANDS: {"service": "- one more box\\n", "web": "- the site is behind the edge\\n"},
     },
 )
 '''

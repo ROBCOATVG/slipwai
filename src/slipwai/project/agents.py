@@ -28,7 +28,7 @@ from dataclasses import dataclass
 
 from ..layout import AT_ROOT, Layout
 from .briefs import brief
-from .stage_models import AGENT, ANY, MANIFEST, NO_STAGE, STAGES
+from .stage_models import AGENT, ANY, MANIFEST, NO_STAGE, REPORT, STAGES
 
 # Where the canonical types live, beside `skills/` and `commands/`.
 DIRECTORY = "agents"
@@ -47,8 +47,23 @@ class Type:
     commands: str
 
 
+#: The two roles that *run* the loop rather than being delegated inside one, as `GLOSSARY.md` defines them:
+#: the captain, one per fairway, and the harbourmaster, one per harbour. They carry no stage's model for the
+#: same reason the slice delegate does not — a captain resolves each stage's model inside itself, and a
+#: harbourmaster runs no stage at all.
+#:
+#: They are types rather than loose prose because every other way of shipping a persona is worse. A file
+#: under `assets/toolkit/agents/` that is nobody's type is copied into a project raw and written over by
+#: nothing; a persona in a command is a persona only that command has; and a persona in a Python programme
+#: is the thing phase 12 exists to stop needing. As types they get the frontmatter a harness enforces,
+#: they are projected into every harness's own location by the one projection, and they travel with the
+#: plugin — so a session that has the material has the two roles that know what to do with it.
+RUNS_THE_LOOP = (("drive-captain", MANIFEST, ANY), ("harbour-harbourmaster", REPORT, ANY))
+
+
 def types() -> list[Type]:
-    """Every type a project carries: one per delegated stage, and the one that carries a whole slice.
+    """Every type a project carries: one per delegated stage, the one that carries a whole slice, and the
+    two that run the loop the rest of them are delegated inside.
 
     The six stage types are named for their stage, so the model is that stage's row and there is no second
     lookup. The seventh is `/sail`'s slice delegate, which runs one slice's whole ladder in a worktree of
@@ -60,7 +75,8 @@ def types() -> list[Type]:
         for writes, commands in [(stage.writes, stage.commands)]
         if writes is not None and commands is not None
     ]
-    return [*named, Type(f"{AGENT}slice-watch", NO_STAGE, MANIFEST, ANY)]
+    running = [Type(name, NO_STAGE, writes, commands) for name, writes, commands in RUNS_THE_LOOP]
+    return [*named, Type(f"{AGENT}slice-watch", NO_STAGE, MANIFEST, ANY), *running]
 
 
 def agent_file(agent: Type, layout: Layout) -> str:

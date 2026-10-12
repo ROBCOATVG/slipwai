@@ -127,18 +127,28 @@ class FrontmatterTest(unittest.TestCase):
 class ByteForByteTest(unittest.TestCase):
     """What the generator rendered before the briefs moved, and what it renders now."""
 
-    def test_the_record_covers_every_type_under_both_layouts(self) -> None:
-        """A record that lost a row would pass by not asking about the file that changed."""
+    def test_the_record_covers_every_type_it_was_taken_of_under_both_layouts(self) -> None:
+        """A record that lost a row would pass by not asking about the file that changed.
+
+        It is the types that *moved* that are recorded, not every type the keel will ever have: a type
+        added afterwards has no "before" at that commit and nothing to be compared against. The count is
+        therefore two per recorded path, and a path that lost one of its two layouts fails here.
+        """
         rows = recorded()
-        self.assertEqual(len(rows), 2 * len(types()))
+        paths = {path for _delivery, path in rows}
+        self.assertEqual(len(rows), 2 * len(paths))
+        self.assertLessEqual(paths, {f"agents/{agent.name}.md" for agent in types()},
+                             "the record names a type the keel no longer has")
 
     def test_every_file_is_what_it_was_before_the_briefs_left_the_module(self) -> None:
         rows = recorded()
         for delivery in sorted({key[0] for key in rows}):
-            for path, text in agent_files(Layout(delivery)).items():
+            rendered = agent_files(Layout(delivery))
+            for path, digest in sorted((path, digest) for (held, path), digest in rows.items()
+                                       if held == delivery):
                 with self.subTest(layout=delivery, file=path):
-                    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-                    self.assertEqual(digest, rows[(delivery, path)],
+                    self.assertIn(path, rendered, f"{path} is recorded in {RECORD.name} and no longer rendered")
+                    self.assertEqual(hashlib.sha256(rendered[path].encode("utf-8")).hexdigest(), digest,
                                      f"{path} is no longer the text recorded in {RECORD.name}")
 
     def test_a_moved_layout_reaches_every_brief_that_names_make(self) -> None:
@@ -149,9 +159,11 @@ class ByteForByteTest(unittest.TestCase):
         self.assertIn("make", names)
         moved = {path for (delivery, path), digest in rows.items()
                  if delivery != "." and rows[(".", path)] != digest}
+        recorded_names = {path for _delivery, path in rows}
         self.assertEqual(
             sorted(moved),
-            sorted(f"agents/{name}.md" for name, text in assets().items() if "{{make}}" in text),
+            sorted(path for name, text in assets().items() if "{{make}}" in text
+                   for path in [f"agents/{name}.md"] if path in recorded_names),
         )
 
 

@@ -17,13 +17,28 @@ from .errors import GenerationError
 Tree = dict[str, bytes]
 Stages = tuple[bytes | None, bytes | None, bytes | None]
 
+#: The repositories whose `ORIG_HEAD` *this* run wrote. Most of a crossing's git calls read — the branch,
+#: the claim refs, trunk's log, a blob, the clone — and they all run before `install` writes the undo point.
+#: Until it does, nothing has been changed and `ORIG_HEAD` is wherever an unrelated earlier rebase, pull or
+#: merge happened to leave it, so sending somebody to `git reset --hard ORIG_HEAD` then is the only step in
+#: the whole sequence that loses their commits.
+UNDOABLE: set[Path] = set()
+
+
+def remedy(root: Path) -> str:
+    """What to do about a failed git call: the undo once there is one, and otherwise the way back in."""
+    if root.resolve() in UNDOABLE:
+        return "Inspect `git status`; `git reset --hard ORIG_HEAD` undoes the crossing"
+    return ("Nothing in this project was changed. Repair what the command above reports, then run "
+            "`slipwai migrate` again")
+
 
 def git(root: Path, *arguments: str, data: bytes | None = None) -> bytes:
     done = subprocess.run(["git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", *arguments],
                           cwd=root, input=data, capture_output=True)
     if done.returncode:
         raise GenerationError(f"git {arguments[0]} failed: {done.stderr.decode(errors='replace').strip()}. "
-                              "Inspect `git status`; `git reset --hard ORIG_HEAD` undoes the crossing")
+                              f"{remedy(root)}")
     return done.stdout
 
 
@@ -139,6 +154,8 @@ def install(root: Path, result: Merged, theirs: str, message: str, executable: d
     validate(root, result.files)
     original = git(root, "rev-parse", "HEAD").decode().strip()
     git(root, "update-ref", "ORIG_HEAD", original)
+    # From here the undo point is this run's own, and every later refusal may name it.
+    UNDOABLE.add(root.resolve())
     materialise(root, result.files, executable)
     git(root, "add", "-A")
     git(root, "add", "-f", "--", *result.files)

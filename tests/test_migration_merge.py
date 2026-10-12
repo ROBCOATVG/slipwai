@@ -8,7 +8,8 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.migration_merge import install, merge, modes, tracked
+from slipwai.errors import GenerationError
+from slipwai.migration_merge import git, install, merge, modes, tracked
 
 
 class MergeTest(unittest.TestCase):
@@ -45,6 +46,18 @@ class MergeTest(unittest.TestCase):
                        {"deleted": b"new", "binary": b"\0new"})
         self.assertEqual(set(result.conflicts), {"deleted", "binary"})
         self.assertEqual(result.files["binary"], b"\0own")
+
+
+class RemedyTest(unittest.TestCase):
+    """Every refusal ends with the command that fixes it, and never with one that destroys commits."""
+
+    def test_a_failure_before_the_undo_point_does_not_send_a_person_to_a_stale_orig_head(self) -> None:
+        with tempfile.TemporaryDirectory() as scratch, self.assertRaises(GenerationError) as caught:
+            git(Path(scratch), "rev-parse", "HEAD")
+        message = str(caught.exception)
+        self.assertNotIn("ORIG_HEAD", message)
+        self.assertIn("Nothing in this project was changed", message)
+        self.assertIn("slipwai migrate", message)
 
 
 class GitMergeTest(unittest.TestCase):
@@ -101,6 +114,17 @@ class GitMergeTest(unittest.TestCase):
         refused = subprocess.run(["git", "rev-parse", "--verify", "ORIG_HEAD"], cwd=self.root,
                                  capture_output=True, check=False)
         self.assertNotEqual(refused.returncode, 0)
+
+    def test_only_a_crossing_that_wrote_orig_head_offers_the_undo_that_rewinds_to_it(self) -> None:
+        before, theirs, commit = self.fixture(b"person\nkeep\nkeep\nkeep\nlast\n",
+                                              b"first\nkeep\nkeep\nkeep\nfactory\n")
+        with self.assertRaises(GenerationError) as early:
+            git(self.root, "rev-parse", "--verify", "refs/heads/absent")
+        self.assertNotIn("ORIG_HEAD", str(early.exception))
+        install(self.root, merge(before, tracked(self.root), theirs), commit, "Crossing", modes(self.root))
+        with self.assertRaises(GenerationError) as late:
+            git(self.root, "rev-parse", "--verify", "refs/heads/absent")
+        self.assertIn("git reset --hard ORIG_HEAD", str(late.exception))
 
     def test_conflict_is_normal_git_state_and_abort_restores_the_persons_work(self) -> None:
         before, theirs, commit = self.fixture(b"person\nkeep\nkeep\nkeep\nlast\n",

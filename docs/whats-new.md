@@ -1,6 +1,6 @@
 # What is new since version 1
 
-**Version 2 is a different factory, not a bigger one.** Eleven things are not where you left them, and one
+**Version 2 is a different factory, not a bigger one.** Twelve things are not where you left them, and one
 command moves a project across. This page is for somebody who has a version 1 project; it is everything
 that affects you and nothing else.
 
@@ -12,7 +12,7 @@ it, the way [the vocabulary](../GLOSSARY.md) names it.
 
 ---
 
-## The eleven changes
+## The twelve changes
 
 | What changed | What it is for | Where it is shown working |
 | --- | --- | --- |
@@ -25,6 +25,7 @@ it, the way [the vocabulary](../GLOSSARY.md) names it.
 | A sibling is cleared by a mark being *set* | Two people deliver at once without either waiting on the other's branch | [Why neither of you is waiting](guide/a-second-person.md#why-neither-of-you-is-waiting) |
 | Captains and the harbourmaster | Nothing holds the state of a run, so nothing can die holding it | [The captain](guide/let-it-cruise.md#the-captain) |
 | Status is folded from the logs, and stored nowhere | A stage that wrote no line made no progress | [The board](guide/a-second-person.md#the-board) |
+| The fleet board and the bridge | One board, folded from the logs, that a person can answer from | [Answering from one seat](guide/a-second-person.md#answering-from-one-seat) |
 | One lever: the telegraph | Every number a run is held to moves together | [The telegraph](guide/let-it-cruise.md#the-telegraph-one-lever-for-the-whole-run) |
 | Two gates, not one | An increment stops paying for the whole suite | [Start here](guide/start-here.md#4-start-the-repository) |
 

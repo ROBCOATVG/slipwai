@@ -29,10 +29,12 @@ from __future__ import annotations
 
 import unittest
 
+import checkout_packages  # noqa: F401
+
 from slipwai.assets import PAGE_ROOT, TOOLKIT_ROOT
 from slipwai.errors import GenerationError
 from slipwai.layout import AT_ROOT
-from slipwai.project import briefs, prose, readme
+from slipwai.project import briefs, docs, prose, readme
 
 #: Every directory of assets that is rendered rather than copied, and the values each may name. One row per
 #: templated asset tree: a slice of phase 16 that templates another adds its row here, and the two rules
@@ -41,6 +43,7 @@ from slipwai.project import briefs, prose, readme
 TEMPLATED = (
     (TOOLKIT_ROOT / "agents", "agents", lambda: briefs.values(AT_ROOT)),
     (PAGE_ROOT, "README.md", lambda: readme.values("project", "standard", [], "none", "liner")),
+    (PAGE_ROOT / "docs", "docs", lambda: docs.values("project", "standard", [], "none")),
 )
 
 

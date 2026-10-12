@@ -44,6 +44,11 @@ export interface Workspace {
    * event-sourced one the log is the publication.
    */
   publishesBy(service: string): string | undefined;
+  /**
+   * Did the keel make this service? `project.json` writes `"generated": false` and never `true`, because a
+   * service the keel made is the ordinary case. `observed` is allowed only where this is false.
+   */
+  isGenerated(service: string): boolean;
 }
 
 export interface Violation {
@@ -273,6 +278,20 @@ export function validate(model: Model, workspace: Workspace): Violation[] {
       ? slice.service
       : workspace.services().length === 1 ? workspace.services()[0] : undefined;
     const sourced = onService === undefined ? false : workspace.isEventSourced(onService);
+
+    // Code the keel wrote is code the keel can be held to (15.10).
+    if (slice.status === 'observed' && onService !== undefined && workspace.isGenerated(onService)) {
+      violations.push({
+        slice: slice.id,
+        rule: 'observed-is-for-a-wrapped-service',
+        message:
+          `is \`observed\`, which records behaviour the model did not design, and \`${onService}\` is a ` +
+          'service this project generated. `observed` is for an application the method was installed ' +
+          'around — one `project.json` records `"generated": false` — because the keel can be held to ' +
+          'code it wrote. If this slice is built, it is `implemented`; if it is not built yet, it is ' +
+          '`planned`',
+      });
+    }
 
     // ── Read-model-to-command is the one edge event modelling forbids outright ──────────────────────
     // The reason is consistency, not shape. A command may decide only from what its own append can hold
@@ -900,7 +919,16 @@ export function validate(model: Model, workspace: Workspace): Violation[] {
 
       // The check that actually catches drift: the model says this event exists, so the code should
       // contain it. A rename that stops here is a rename the diagram would otherwise survive silently.
+      //
+      // `observed` is exempt, and only `observed`. It records behaviour in a codebase the keel did not
+      // write, and nothing in such a tree contains `OrderPlaced` until a slice raises it — the names in
+      // the model are the business facts somebody read *off* the code, not identifiers in it. The
+      // exemption is why the status is confined to a wrapped service: on one the keel generated it would
+      // be a way of not being asked whether the model and the tree still agree.
       for (const frame of slice.frames) {
+        if (slice.status === 'observed') {
+          continue;
+        }
         if ((frame.type === 'evt' || frame.type === 'cmd') && !workspace.sourceMentions(frame.name)) {
           violations.push({
             slice: slice.id,

@@ -145,6 +145,11 @@ def render(model: object, deployables: dict[str, dict]) -> dict:
             "capability": str(item.get("capability") or ""),
             "sets": sorted(events_of(item)),
             "steers_by": sorted(str(event) for event in reads) if isinstance(reads, list) else [],
+            # An `observed` slice records behaviour that is already in the tree (15.10). It stays on the
+            # chart because a later slice steers by what it sets — that is the join, and the reason the
+            # model is global — but it is not work: its marks are set by the code existing, and `/sail`
+            # must never offer it. `clearance.py` reads this.
+            **({"observed": True} if item.get("status") == "observed" else {}),
         }
     return {"v": 1, "feature": feature_name(), "fairways": fairways, "marks": marks, "slices": charted}
 

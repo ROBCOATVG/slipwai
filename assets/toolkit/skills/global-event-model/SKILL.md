@@ -46,6 +46,8 @@ complete.
 | The modelling session settles it | `status: modelled`, and name the `actor` — and, with more than one service in `project.json`, the `service` that owns it |
 | the installed Spec Kit plan command covers it | `status: planned`, and name what the append is guarded by — the `stream`, or a tag `guard` |
 | The slice ships | `status: implemented`, and fill in `gwt` and `code` |
+| You find behaviour the code already has and the model never designed | `status: observed`, with `gwt` and `code` pointing at what is there. Only on a service `project.json` records `"generated": false` |
+| An `observed` slice is rebuilt on the method's own terms | `status: implemented` — that is a slice of work, not an edit to this field |
 | An event, command, or read model is renamed | rename it here in the same commit |
 | Stream identity, or the guard, changes | update `stream` or `guard` and say why in the commit message — this is not a cosmetic change |
 
@@ -271,6 +273,33 @@ fold cannot be spawned standalone to recover what a dead request abandoned.
 | `mockup-publishes-with-the-page` | `render.page` is set and the mock is outside `docs/event-model/`, which is all the workflow publishes |
 | `screen-is-built` | an implemented slice's white box appears nowhere in the source. The screen was never built, or it is called something else in code |
 | `screen-states-recorded` | an implemented white box has no `mockups`, so nothing records which of its states exist |
+
+### `observed`, and when it is the honest status
+
+A repository the method was installed around was designed — just not here. Its order handler, its status
+columns and its jobs are somebody's design, and pretending the model authored them is a lie the first
+rename will expose. `observed` is how you write down what is there: a slice that records behaviour the
+model did not design, carrying `code` and `gwt` that point at the handler and the pinned tests that
+already exist.
+
+Three rules hold it honest.
+
+**It owes evidence.** The same `code` and `gwt` an `implemented` slice owes, and they must exist. A slice
+claiming to record real behaviour with nothing to point at is a guess wearing a status field.
+
+**It is exempt from `model-matches-code`, and that is why it is confined.** Nothing the keel did not write
+contains `OrderPlaced` until a slice raises it — the names in an `observed` slice are the business facts
+somebody read *off* the code, not identifiers in it. On a service the keel generated that exemption would
+be a way of never being asked whether the model and the tree still agree, so `check-model` refuses
+`observed` there by name. If it is built, it is `implemented`; if it is not built yet, it is `planned`.
+
+**It is on the timeline, and it is not work.** A later slice may `reads` what an `observed` slice sets —
+that is the join, and it is the whole reason the model is global rather than one per feature. But `/sail`
+never offers one: its marks are set by the code existing, so anything steering by them is cleared the
+moment the chart is drawn, and nobody is ever sent to build what is already built.
+
+The move from `observed` to `implemented` is a slice of work. It is not a status edit, and a session that
+makes it one has quietly claimed the keel wrote code it did not.
 
 `model-matches-code` is the one that earns the whole mechanism. Do not "fix" it by dropping the slice to
 `planned` — find out whether the model or the code moved, and correct the one that is wrong. The same goes

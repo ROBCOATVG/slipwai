@@ -94,6 +94,23 @@ def marks_set(feature: str) -> set[str]:
     return found
 
 
+def observed(charted: dict) -> set[str]:
+    """Every slice the chart records as `observed`, which is every slice that is not work.
+
+    An `observed` slice says *this is what the code already does*. Nobody builds it, so nobody is offered
+    it — and a later slice that steers by what it sets is cleared the moment the chart is drawn, because
+    the behaviour it waits on shipped before this model existed.
+    """
+    return {str(slice_id) for slice_id, entry in (charted.get("slices") or {}).items()
+            if isinstance(entry, dict) and entry.get("observed") is True}
+
+
+def already_set(charted: dict) -> set[str]:
+    """The marks an `observed` slice sets, which no deck log will ever carry a `mark-set` line for."""
+    return {str(mark) for slice_id in observed(charted)
+            for mark in (charted.get("slices") or {}).get(slice_id, {}).get("sets") or []}
+
+
 def steered_by(charted: dict, slice_id: str) -> list[str]:
     entry = (charted.get("slices") or {}).get(slice_id)
     steers = entry.get("steers_by") if isinstance(entry, dict) else None
@@ -125,9 +142,16 @@ def cleared(charted: dict, settled: set[str], slice_id: str) -> bool | str:
 
 
 def cleared_slices(charted: dict, settled: set[str]) -> list[str]:
-    """Every slice that may start now, in the chart's own order, which is split order."""
+    """Every slice that may start now, in the chart's own order, which is split order.
+
+    An `observed` slice is never among them: it is a record of what the code does, not work somebody takes,
+    and a ready set that offered one would send a captain to build what is already built.
+    """
+    never = observed(charted)
+    settled = settled | already_set(charted)
     return [str(slice_id) for slice_id in (charted.get("slices") or {})
-            if all(mark in settled for mark in steered_by(charted, str(slice_id)))]
+            if str(slice_id) not in never
+            and all(mark in settled for mark in steered_by(charted, str(slice_id)))]
 
 
 def main(argv: list[str]) -> int:
@@ -135,7 +159,7 @@ def main(argv: list[str]) -> int:
     if not charted:
         print("clearance: no chart yet, so nothing is waiting on anything")
         return 0
-    settled = marks_set(feature)
+    settled = marks_set(feature) | already_set(charted)
     if argv:
         answer = cleared(charted, settled, argv[0])
         print(f"clearance: {argv[0]} is cleared" if answer is True else f"clearance: {answer}")

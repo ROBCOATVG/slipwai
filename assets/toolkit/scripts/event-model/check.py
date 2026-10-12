@@ -119,6 +119,27 @@ def project_publishes() -> dict[str, str]:
     }
 
 
+def project_generated() -> dict[str, bool]:
+    """Which services the keel made, as `project.json` records it per deployable.
+
+    The manifest writes `"generated": false` and never `true`, because a service the keel made is the
+    ordinary case and an absent field is the honest default for one. This inverts it into an answer per
+    service, so the `observed` rule below can ask the question in the direction it means.
+    """
+    try:
+        document = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    deployables = document.get("deployables") if isinstance(document, dict) else None
+    if not isinstance(deployables, dict):
+        return {}
+    return {
+        name: record.get("generated") is not False
+        for name, record in deployables.items()
+        if isinstance(record, dict) and record.get("kind") == "service"
+    }
+
+
 def load_yaml() -> object:
     sys.path.insert(0, str(TOOLS))
     try:
@@ -149,13 +170,19 @@ def validate(
     services: dict[str, list[str]] | None = None,
     rungs: dict[str, bool] | None = None,
     publishes: dict[str, str] | None = None,
+    generated: dict[str, bool] | None = None,
 ) -> list[str]:
     if not isinstance(model, dict):
         return ["model root must be a mapping"]
     services = project_services() if services is None else services
     rungs = project_rungs() if rungs is None else rungs
     publishes = project_publishes() if publishes is None else publishes
-    placed = {"modelled", "planned", "implemented"}
+    generated = project_generated() if generated is None else generated
+    placed = {"modelled", "planned", "implemented", "observed"}
+    #: The statuses that owe files that exist. `observed` records behaviour already in the tree, so it
+    #: owes them for the same reason `implemented` does — a slice claiming to record real code with
+    #: nothing to point at is a guess with a status field on it.
+    evidenced = {"implemented", "observed"}
     findings: list[str] = []
     if model.get("version") != 1:
         findings.append("version must be 1")
@@ -167,7 +194,10 @@ def validate(
     #: Event name → the service whose slice raises it, for the cross-service rule below. Filled beside
     #: `produced`, so it holds only earlier slices when a `reads` is read — the same pass, the same order.
     raised_by: dict[str, str | None] = {}
-    allowed_status = {"proposed", "modelled", "planned", "implemented"}
+    # `observed` is the fifth and is not on the path the other four walk: it says *this is what the code
+    # does, and the model did not design it*, which is the only honest thing to write about a repository
+    # the method was installed around. The move from `observed` to `implemented` is a slice of work.
+    allowed_status = {"proposed", "modelled", "planned", "implemented", "observed"}
     shapes = {
         "state-change": ({"ui", "pcr"}, "cmd", "evt"),
         "state-view": ("rmo",),
@@ -447,12 +477,25 @@ def validate(
                 f"{slice_id}: service {owner} holds {len(held)} bounded contexts ({', '.join(held)}); a "
                 "modelled slice names the one it belongs to in `context`"
             )
-        if status == "implemented":
+        if status in evidenced:
             for key in ("gwt", "code"):
                 value = item.get(key)
                 paths = value if isinstance(value, list) else [value]
                 if not value or any(not isinstance(path, str) or not (ROOT / path).exists() for path in paths):
-                    findings.append(f"{slice_id}: implemented slice has missing {key} evidence")
+                    findings.append(f"{slice_id}: {status} slice has missing {key} evidence")
+        # Code the keel wrote is code the keel can be held to, so `observed` is not available there: it
+        # exempts a slice from `model-matches-code`, and on a generated service that is a way of not
+        # being asked whether the event in the model is the event in the tree. On a wrapped one the
+        # exemption is the point — nothing the keel did not write contains `OrderPlaced` until a slice
+        # raises it.
+        if status == "observed" and owner is not None and generated.get(owner, True):
+            findings.append(
+                f"{slice_id}: is `observed`, which records behaviour the model did not design, and "
+                f"`{owner}` is a service this project generated. `observed` is for an application the "
+                f"method was installed around — one `project.json` records `\"generated\": false` — "
+                f"because the keel can be held to code it wrote. If this slice is built, it is "
+                f"`implemented`; if it is not built yet, it is `planned`"
+            )
         for frame in frames:
             if isinstance(frame, dict) and frame.get("type") == "evt" and frame.get("external") is not True:
                 name = frame.get("name")

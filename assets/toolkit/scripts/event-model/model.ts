@@ -42,8 +42,16 @@ export type Pattern = (typeof PATTERNS)[number];
  *
  * `proposed` exists so a slice discovered mid-conversation can be recorded before anyone has decided it
  * is real. Without it the honest options are "leave it out of the model" or "lie about its status".
+ *
+ * `observed` is the fifth and is **not a step on that path**. It records what code already does and that
+ * the model did not design — the only honest thing to write about a repository the method was installed
+ * around, because a well-kept codebase was designed, just not here. It owes the evidence `implemented`
+ * owes and is exempt from `model-matches-code`, since nothing the keel did not write contains
+ * `OrderPlaced` until a slice raises it. Allowed only on a service `project.json` records
+ * `generated: false`, and the move from `observed` to `implemented` is a slice of work rather than an
+ * edit to a status field.
  */
-export const STATUSES = ['proposed', 'modelled', 'planned', 'implemented'] as const;
+export const STATUSES = ['proposed', 'modelled', 'planned', 'implemented', 'observed'] as const;
 export type Status = (typeof STATUSES)[number];
 
 /**
@@ -70,11 +78,17 @@ export const DATA_LANE_SOURCES = ['context', 'none'] as const;
 export const EVENT_LANE_SOURCES = ['stream', 'context', 'none'] as const;
 export type LaneSource = 'actor' | 'context' | 'stream' | 'none';
 
+/**
+ * Rank, for the rules that read "from `planned` onwards". `observed` shares `implemented`'s rank because
+ * it owes the same evidence — files that exist — and not because it is the same step: nothing walks from
+ * `planned` to `observed`, and the walk out of it is a slice.
+ */
 export const STATUS_ORDER: Readonly<Record<Status, number>> = {
   proposed: 0,
   modelled: 1,
   planned: 2,
   implemented: 3,
+  observed: 3,
 };
 
 const identifier = z

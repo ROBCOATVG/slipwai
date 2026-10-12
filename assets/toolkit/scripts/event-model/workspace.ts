@@ -59,6 +59,11 @@ export interface ServiceRecord {
    * publication, and read by nothing there.
    */
   publishes?: string | undefined;
+  /**
+   * Did the keel make this service? The manifest writes `"generated": false` and never `true`, so an
+   * absent field means yes — which is the ordinary case and the honest default for one.
+   */
+  generated: boolean;
 }
 
 /**
@@ -106,6 +111,7 @@ export function loadServices(): ServiceRecord[] {
         eventSourced: entry['eventSourced'] === true,
         publishes:
           typeof entry['publishes'] === 'string' && entry['publishes'] !== '' ? entry['publishes'] : undefined,
+        generated: entry['generated'] !== false,
       },
     ];
   });
@@ -219,6 +225,9 @@ export function createWorkspace(model: Model): Workspace {
     },
     publishesBy(service: string): string | undefined {
       return loadServices().find((record) => record.name === service)?.publishes;
+    },
+    isGenerated(service: string): boolean {
+      return loadServices().find((record) => record.name === service)?.generated ?? true;
     },
   };
 }

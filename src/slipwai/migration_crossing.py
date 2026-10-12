@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import tempfile
+from collections import Counter
 from dataclasses import replace
 from pathlib import Path
 
@@ -98,37 +99,39 @@ def crossed(line: Entry) -> str:
     return digest.hexdigest()[:16]
 
 
-def already(path: Path) -> set[str]:
-    """The keys of the lines an earlier crossing of this project already wrote to this deck log.
+def already(path: Path) -> Counter[str]:
+    """How many lines carrying each key an earlier crossing of this project wrote to this deck log.
 
-    A line that is not this crossing's — a captain's, or one torn by something else — is left out rather
-    than refused: the only thing being decided here is what has already been said once.
+    Counted rather than collected, so that two lines version 1 really does hold twice — the same words at
+    the same instant, which `cruise-told.jsonl` and `cruise-inbox.jsonl` between them can give — cross as
+    two lines and are recognised as two on the re-run. A line that is not this crossing's is left out
+    rather than refused: the only thing being decided here is what has already been said once.
     """
+    found: Counter[str] = Counter()
     if not path.is_file():
-        return set()
-    found = set()
+        return found
     for text in path.read_text(encoding="utf-8", errors="surrogateescape").splitlines():
         try:
             body = json.loads(text)
         except ValueError:
             continue
         if isinstance(body, dict) and isinstance(body.get(CROSSED), str):
-            found.add(body[CROSSED])
+            found[body[CROSSED]] += 1
     return found
 
 
 def seed(root: Path, flight: Flight) -> None:
     """Append what version 1 left behind, once per line however many times the crossing is re-run."""
-    seen: dict[Path, set[str]] = {}
+    seen: dict[Path, Counter[str]] = {}
     for feature, fairway, line in flight.logs:
         destination = root / deck_path(feature, fairway)
         destination.parent.mkdir(parents=True, exist_ok=True)
         if destination not in seen:
             seen[destination] = already(destination)
         key = crossed(line)
-        if key in seen[destination]:
+        if seen[destination][key]:
+            seen[destination][key] -= 1
             continue
-        seen[destination].add(key)
         stamped = replace(line, fields={**line.fields, CROSSED: key})
         descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
         try:

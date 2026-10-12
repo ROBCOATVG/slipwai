@@ -25,6 +25,12 @@ def flight(*, extra: bool = False) -> Flight:
                                      t="2026-01-01T10:00:00Z")),
         ("ordering", "main", replace(entry("told", fairway="main", message="say it twice"),
                                      t="2026-01-02T10:00:00Z")),
+        # The same words at the same instant: version 1 put `cruise-told.jsonl` back ahead of
+        # `cruise-inbox.jsonl` and a person can say a thing twice. Nothing here may swallow one of them.
+        ("ordering", "main", replace(entry("told", fairway="main", message="do it now"),
+                                     t="2026-01-03T10:00:00Z")),
+        ("ordering", "main", replace(entry("told", fairway="main", message="do it now"),
+                                     t="2026-01-03T10:00:00Z")),
         ("ordering", "ordering", entry("merged", fairway="ordering", slice="ORD-01", commit="abc123")),
         ("ordering", "ordering", entry("claimed", fairway="ordering", slice="ORD-02")),
         ("ordering", "main", entry("parked", fairway="main", why="the gate is red")),
@@ -51,7 +57,8 @@ class SeedTest(unittest.TestCase):
     def test_the_same_message_said_twice_in_version_1_crosses_as_two_lines(self) -> None:
         seed(self.root, flight())
         said = [line["message"] for line in self.written()["main"] if line["kind"] == "told"]
-        self.assertEqual(said, ["ship the gate first", "say it twice", "say it twice"])
+        self.assertEqual(said, ["ship the gate first", "say it twice", "say it twice",
+                                "do it now", "do it now"])
 
     def test_an_aborted_crossing_re_run_does_not_say_the_persons_words_a_second_time(self) -> None:
         seed(self.root, flight())

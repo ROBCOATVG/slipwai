@@ -23,7 +23,7 @@ from .demo_stop import demo_stop
 from .harbour import budget_section
 from .ladder import hook_points, sail_ladder
 from .mutation import mutation_command
-from .parallel_slices import concurrent_slices, done_marker, ready_set_selection
+from .parallel_slices import done_marker, independence, slice_graph
 from .prose import page
 from .sail_section import delegable_types, model_delegation_settings_command
 from .sail_settings import implementation_section, sail_settings_command
@@ -44,8 +44,9 @@ def sail_values(
     Two kinds, and the page cannot tell them apart. What this module decides — which artifact resolves the
     slice — and what the modules around it own: the ladder itself, the table of delegable types rendered
     from `stage_models.STAGES`, and the passages `benchmark.py`, `sail_settings.py`, `harbour.py`,
-    `ladder.py`, `demo_stop.py` and `parallel_slices.py` write. Those stay where they are until their own
-    slice of phase 16 moves them, and `sail.md` names them meanwhile.
+    `ladder.py` and `demo_stop.py` write. Those stay where they are until their own slice of phase 16
+    moves them, and `sail.md` names them meanwhile; `parallel_slices.py` has had its, and what it still
+    answers is the three sentences of the concurrency rules that a declaration decides.
     """
     return {
         "resolution": ("the requested slice in `docs/event-model/model.yaml`" if event else
@@ -59,8 +60,8 @@ def sail_values(
         "hook-points": hook_points(),
         "demo-stop": demo_stop(event, ", ".join(f"`{app.path}`" for app in web_apps(apps))),
         "done-marker": done_marker(event),
-        "ready-set": ready_set_selection(event),
-        "concurrent-slices": concurrent_slices(event, layout),
+        "slice-graph": slice_graph(event),
+        "independence": independence(event),
     }
 
 

@@ -13,7 +13,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.project import commands, parallel_slices
+from slipwai.project import commands
 
 ROOT = Path(__file__).resolve().parents[1]
 SPLIT = ROOT / "assets/toolkit/skills/story-splitting/SKILL.md"
@@ -23,9 +23,15 @@ def flat(text: str) -> str:
     return " ".join(text.split())
 
 
+def page(event: bool) -> str:
+    """`commands/sail.md` as a session reads it: the rules moved into the asset in slice 16.5, so what
+    they say is asked of the page rather than of the function that used to hold the words."""
+    return flat(commands.sail_command(event=event, apps=[], target="none"))
+
+
 class FairwaySectionTest(unittest.TestCase):
     def section(self) -> str:
-        return flat(parallel_slices.fairways())
+        return page(event=True)
 
     def test_a_fairway_is_one_context_held_by_one_at_a_time(self) -> None:
         self.assertIn("one bounded context's slices, in split order, held by one at a time", self.section())
@@ -67,12 +73,12 @@ class ReadySetTest(unittest.TestCase):
     def test_a_fairway_narrows_the_ready_set_and_names_what_it_left(self) -> None:
         for event in (True, False):
             with self.subTest(event=event):
-                rules = flat(parallel_slices.ready_set_selection(event))
+                rules = page(event)
                 self.assertIn("A fairway narrows all of the above", rules)
                 self.assertIn("named as *another fairway's* and left", rules)
 
     def test_with_no_fairway_given_a_session_takes_every_free_one(self) -> None:
-        rules = flat(parallel_slices.ready_set_selection(True))
+        rules = page(event=True)
         self.assertIn("the ready slices of every fairway nobody holds", rules)
         self.assertIn("naming its slices as *held*", rules)
 

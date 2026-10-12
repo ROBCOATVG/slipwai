@@ -51,9 +51,16 @@ branch is inside a sentence, it is rendering and it stays.
 16.3 met the case the question above does not answer: two alternatives, each four lines of whole
 sentences, but the branch opening and closing *inside* a bullet rather than around one. The paragraph
 boundary gives no clean yes there, and the answer does not need one — `OPEN` and `CLOSE` are anchored to
-the start of a line, so a span that begins mid-paragraph cannot be marked as a section at all. The text
-stays in Python and the asset carries the frame around it with a token. Said here because two slices met
-this shape and the second should not have to re-derive it from the regular expressions.
+the start of a line, so a span that begins mid-line cannot be marked as a section at all. The text stays in
+Python and the asset carries the frame around it with a token.
+
+**And the rule is the paragraph, not the line.** 16.5 met the case that separates the two: a branch that
+begins and ends on whole lines but covers only part of a paragraph — the second half of *Running ready
+slices concurrently*, with the paragraph carrying on either side of it. The mechanism would mark that
+quite happily; the rule still says no. A section is a unit a reader can see the edges of, and half a
+paragraph is not one: mark it and the asset grows a seam in the middle of an argument, which is the
+readability this phase exists to buy, spent. So the test stands as written — *is it a whole paragraph or
+more?* — and a branch smaller than a paragraph stays in Python whether or not the markers could hold it.
 
 ```markdown
 Standing text every project gets.
@@ -100,6 +107,12 @@ extensions. Moving them would put a shell program in a Markdown file to be reass
 conditionals, which buys a reader nothing and costs them the one file that currently reads top to bottom.
 `deploy_workflow.py` is the same answer for the opposite reason: most of it already *is* case 2, and the
 frame around it is three strings of YAML keys.
+
+`event_model.py`'s workflow joins the two that stay. 16.5 found it unowned — 16.7's row names three
+modules and not this one — and it is the same kind of text for the same reason: GitHub Actions YAML
+assembled from the profile and the services, not English. It is also why `event_model.py` is still near
+its budget with its prose gone, which is 16.8's to look at rather than a reason to move YAML into
+Markdown.
 
 `flags.py` is the one that moved, and it is not a template at all — `release_notes` is the release half of
 `docs/deployment.md`, eighty-four lines of English with a single `{{reader-paths}}` in it. Case 1, and the

@@ -2,17 +2,25 @@
 
 Only the event profile gets any of it: the model itself, the two documents that connect it to code, the
 workflow that renders it into a browsable page, and the address that page will be served at.
+
+`docs/first-slice.md` is `assets/event-model/first-slice.md` now, and the mapping document is
+`model_to_code.py`'s two assets beside it. What is still written here is the block of paths inside that
+page's fenced listing, which is rendered from the backend's answer to `EVENT_MODEL_PATHS` and is the
+reason the page cannot drift from the files a slice is actually handed (`docs/generated-prose.md`, case
+two). The workflow below is not prose and is left for 16.7, which decides what becomes of the templates
+that are YAML and shell.
 """
 from __future__ import annotations
 
 import os
 
-from ..assets import TOOLKIT_ROOT
+from ..assets import MODEL_PAGE_ROOT, TOOLKIT_ROOT
 from ..backends import NODE_MAJOR, PYTHON_VERSION
 from ..registry import EVENT_MODEL_PATHS, registry
 from ..services import App
 from .metadata import sourced
 from .model_to_code import ServiceCode, model_to_code
+from .prose import page
 
 
 def event_model_page_url(project_name: str) -> str:
@@ -50,6 +58,37 @@ def code_paths(project_name: str, service: App) -> dict[str, str]:
     return {**paths, "repository": paths.get("repository", paths["domain"])}
 
 
+FIRST_SLICE = "first-slice.md"
+#: What `assets/event-model/first-slice.md` may name, and the whole of what it may name. Pooled with
+#: `model_to_code.TOKENS` by `tests/test_generated_prose.py`, which holds the tree in both directions.
+TOKENS = ("write-identity", "slice-files")
+
+
+def first_slice_values(project_name: str, first: App) -> dict[str, str]:
+    """The fenced listing in `docs/first-slice.md`: the files one slice opens, where this backend puts them.
+
+    A table of paths rendered from the declaration that decides them, which is why it is a value and not
+    an asset — a hand-written listing is a second answer to a question `EVENT_MODEL_PATHS` already
+    answers, and the first slice would be told to open a file nobody generated.
+
+    The port is in the tree only on the rung that has one: on `events` the store a slice appends to is
+    named in the write-model table, not here, and a line for it would be a file the first slice is told to
+    open and will not find.
+    """
+    paths = code_paths(project_name, first)
+    port = "" if sourced(first) else f"\n{paths['repository']}   the port current state is loaded and saved through"
+    return {
+        "write-identity": "stream identity" if sourced(first) else "the identity a write locks",
+        "slice-files": (
+            f"{paths['events']}   immutable event definitions\n"
+            f"{paths['domain']}   "
+            f"{'pure evolve/decide logic' if sourced(first) else 'pure decide logic over current state'}\n"
+            f"{paths['usecase']}   orchestration and ports{port}\n"
+            f"{paths['test']}   observable behavior"
+        ),
+    }
+
+
 def event_documentation(project_name: str, services: list[App]) -> dict[str, str]:
     """The two documents that connect the model to code, with this project's own paths in them.
 
@@ -59,51 +98,7 @@ def event_documentation(project_name: str, services: list[App]) -> dict[str, str
     would describe the first service's rung and silently hand it to the rest (phase 15.3).
     """
     first, *_ = services
-    paths = code_paths(project_name, first)
-    # The port is in the tree only on the rung that has one: on `events` the store a slice appends to is
-    # named in the write-model table, not here, and a line for it would be a file the first slice is told
-    # to open and will not find.
-    port = "" if sourced(first) else f"\n{paths['repository']}   the port current state is loaded and saved through"
-
-    first_slice = f"""# Writing the first slice
-
-Use `/sail` at any point. It derives the first incomplete stage from artifacts rather than conversation
-memory, stepping back above the slice loop when scope has not been specified, modelled, or split yet, and
-drives one actor-visible path to its demo.
-
-## Files a slice normally touches
-
-```text
-specs/<feature>/slices/<id>/examples.md   rules, examples, Given/When/Then
-docs/event-model/model.yaml               timeline, {"stream identity" if sourced(first) else "the identity a write locks"}, event contract
-{paths['events']}   immutable event definitions
-{paths['domain']}   {"pure evolve/decide logic" if sourced(first) else "pure decide logic over current state"}
-{paths['usecase']}   orchestration and ports{port}
-{paths['test']}   observable behavior
-```
-
-Add delivery or driven adapters only when the slice crosses those boundaries. A modelled screen is part of
-the same vertical slice; do not ship only the backend beneath the white box.
-
-## Artifact lifetime
-
-Feature scope and cumulative contracts stay in the feature directory. A slice's plan, research, data model,
-quickstart and tasks live under `specs/<feature>/slices/<id>/` from the day they are written: the canonical
-paths the Spec Kit commands resolve to (`specs/<feature>/plan.md` and the other four) are links into that
-directory, made by `/sail` before the plan command runs, ignored by git and never committed — so two slices
-planned at once never overwrite each other's record. Given/When/Then examples live there from the day they
-are mapped. Finishing a slice marks it done rather than moving it: `status: implemented` in the model, which
-the ready set and the progress board both read. A `slices/README.md` register — one row per slice, accepted
-when it is — is worth its ten lines, so the next slice does not re-derive the convention.
-
-The demo is a feedback boundary, not completion. Route feedback to the stage that owns it, demonstrate the
-revision, then—after acceptance—run an adversarial pass where this slice changed attack surface or closed
-the split, mutation analysis where configured, and `make verify` before the ready slices (not done, every
-`depends_on` done). Every unclaimed ready slice whose contract is settled — `planned` in the model — runs
-concurrently, one delegate per slice on a `slice/<id>` branch in its own worktree, merged in split order and
-held to the shared-surface rule by `make check-slice-scope` (`commands/sail.md`, *Running ready slices
-concurrently*); a harness that cannot delegate takes the earliest in split order and names the rest.
-"""
+    first_slice = page(MODEL_PAGE_ROOT, FIRST_SLICE, first_slice_values(project_name, first))
     mapping = model_to_code([
         ServiceCode(service.path, sourced(service), code_paths(project_name, service))
         for service in services

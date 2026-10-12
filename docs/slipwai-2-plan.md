@@ -1366,6 +1366,11 @@ The first attempt paid for these rules. They apply from phase 1, inside the fork
   moved to `assets/pages/docs/deployment-release.md`, proved byte-identical across three application sets.
   The lesson for the slices after it is that the row's question was the wrong grain: these three modules
   had three different answers, and only a per-module measurement found them.
+  Extended on the same day: **`event_model.py`'s GitHub Actions workflow stays too.** 16.5 found it had no
+  slice that owned the decision — 16.7's row names three modules and not this one — and it is the same kind
+  of text for the same reason, assembled from the profile and the services rather than written as English.
+  It is also the reason that module is still near its budget with its prose gone, which is a fact for 16.8
+  rather than an argument for putting YAML in Markdown.
 
 - **The telegraph sets numbers, not model roles.** Section 1's vocabulary said a position sets "which model
   role each stage uses", and `GLOSSARY.md` is written from that table, so the contract said it too. The code

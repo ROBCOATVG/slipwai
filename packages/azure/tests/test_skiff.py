@@ -18,6 +18,17 @@ def load(name: str, relative: str):
 
 
 class AzureSkiffTest(unittest.TestCase):
+    @staticmethod
+    def tfvars(path: Path) -> dict[str, str]:
+        """An environment file as the keys it sets, so a test says which value it means."""
+        settings = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip().startswith("#") or "=" not in line:
+                continue
+            name, value = line.split("=", 1)
+            settings[name.strip()] = value.strip()
+        return settings
+
     def test_production_keeps_resource_sources_while_staging_is_absent(self) -> None:
         from slipwai_target_azure import TARGET
 
@@ -35,19 +46,65 @@ class AzureSkiffTest(unittest.TestCase):
             self.assertTrue((PACKAGE / source).is_file(), source)
         self.assertEqual(skiff["stacks"]["service"]["service/postgres.tf"], "service/postgres.tf")
 
-    def test_zero_replica_configuration_has_http_wake_and_truthful_database_policy(self) -> None:
+    def test_the_skiffs_own_environment_file_is_what_scales_it_to_zero_and_wakes_it(self) -> None:
+        """Read through the skiff's row, not past it.
+
+        Azure's skiff is the liner's HCL given a different environment, so a test that reads
+        `service/main.tf` and `service/postgres.tf` and stops there proves the liner and would pass with
+        the skiff deleted. What is the skiff's is `skiff/production.tfvars` — reached here the way the
+        keel reaches it, through the row — and the claims the row makes about it. So: the floor the skiff
+        sets, that it is lower than the liner's, that each name it sets is a variable the app template
+        actually reads, and that a floor of zero has something to wake it.
+        """
         from slipwai_target_azure import TARGET
 
         from slipwai.target_protocol import DEPLOYMENT_SHAPES
-        variables = (PACKAGE / "skiff/production.tfvars").read_text()
-        self.assertRegex(variables, r"min_replicas\s*=\s*0")
+        rows = TARGET.answers[DEPLOYMENT_SHAPES]
+        skiff, liner = rows["skiff"], rows["liner"]
+        settings = self.tfvars(PACKAGE / skiff["stacks"]["service"]["service/production.tfvars"])
+        self.assertEqual(settings["min_replicas"], "0")
+        self.assertEqual(settings["max_replicas"], "1")
+        # Nothing kept warm beside the release: a rollback here is a restart, which is the trade a staff
+        # tool makes and a product does not.
+        self.assertEqual(settings["kept_revisions"], "0")
+        liner_settings = self.tfvars(PACKAGE / liner["stacks"]["service"]["service/production.tfvars"])
+        self.assertNotEqual(liner_settings["min_replicas"], settings["min_replicas"])
+        self.assertNotEqual(liner_settings["kept_revisions"], settings["kept_revisions"])
+        # Every name the skiff sets is a variable the stack declares — a tfvars key nothing reads is a
+        # setting that silently does nothing — and the two that scale it reach the app's template.
+        declared = (PACKAGE / "service/variables.tf").read_text()
+        for name in settings:
+            self.assertIn(f'variable "{name}"', declared, name)
         stack = (PACKAGE / "service/main.tf").read_text()
+        self.assertIn("min_replicas = var.min_replicas", stack)
+        self.assertIn("max_replicas = var.max_replicas", stack)
+        self.assertIn("max_inactive_revisions       = var.kept_revisions", stack)
+        # A floor of zero is only usable because a request can wake it: external HTTP ingress and the one
+        # scaler Container Apps has of its own. The row says so in the words an operator reads.
         self.assertIn("http_scale_rule", stack)
-        self.assertIn("external_enabled", stack)
-        self.assertIn("HTTP", TARGET.answers[DEPLOYMENT_SHAPES]["skiff"]["guidance"])
-        database = (PACKAGE / "service/postgres.tf").read_text()
+        self.assertIn("external_enabled = true", stack)
+        self.assertIn("HTTP", skiff["guidance"])
+        self.assertIn("cold-start", skiff["guidance"])
+
+    def test_the_rows_database_claim_is_true_of_the_file_the_skiff_actually_ships(self) -> None:
+        """The row tells an operator the database keeps its firewall and TLS policy and does not sleep.
+
+        The skiff takes the liner's `service/postgres.tf` unchanged, which is exactly why the claim has to
+        be checked against it: the compute scales to zero and the database does not, and an operator who
+        read "scale to zero" as the whole project's would plan the bill and the recovery wrong.
+        """
+        from slipwai_target_azure import TARGET
+
+        from slipwai.target_protocol import DEPLOYMENT_SHAPES
+        skiff = TARGET.answers[DEPLOYMENT_SHAPES]["skiff"]
+        source = skiff["stacks"]["service"]["service/postgres.tf"]
+        self.assertEqual(source, "service/postgres.tf")
+        database = (PACKAGE / source).read_text()
         self.assertIn("require_secure_transport", database)
-        self.assertIn("firewall", TARGET.answers[DEPLOYMENT_SHAPES]["skiff"]["database"])
+        self.assertIn("azurerm_postgresql_flexible_server_firewall_rule", database)
+        self.assertIn("firewall", skiff["database"])
+        self.assertIn("TLS", skiff["database"])
+        self.assertIn("does not scale to zero", skiff["guidance"])
 
     def test_staging_and_promotion_are_refused_without_invoking_tools(self) -> None:
         deploy = load("azure_skiff_deploy", "scripts/deploy.py")

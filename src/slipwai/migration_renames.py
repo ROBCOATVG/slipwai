@@ -1,7 +1,11 @@
 """Apply the committed rename table to both old sides before a crossing's three-way merge.
 
-No version 1 generator lives here. Paths and JSON keys move by the table; text substitutions are limited
-to declared commands, skills and make targets. A collision is a refusal, never an overwritten edit.
+No version 1 generator lives here. Paths and JSON keys move by the table; a text substitution is made only
+in the files that declare the thing being renamed — a make target in a Makefile, a command under
+`commands/`, a skill under `skills/` — because a row carries a bare word or a path and the same characters
+are ordinary prose and ordinary code everywhere else in somebody's repository. A reference anywhere else is
+left as written and read off the catch-up page, which lists every rename once (plan section 6, change 3).
+A collision is a refusal, never an overwritten edit.
 """
 from __future__ import annotations
 
@@ -13,6 +17,8 @@ from .assets import ROOT, inside
 from .errors import GenerationError
 
 KINDS = {"file", "command", "skill", "make-target", "setting", "field"}
+#: What a make target is declared in. `make` reads these names and no others.
+MAKEFILES = {"Makefile", "makefile", "GNUmakefile"}
 
 
 def table(root: Path = ROOT) -> list[dict[str, str]]:
@@ -34,13 +40,31 @@ def table(root: Path = ROOT) -> list[dict[str, str]]:
     return rows
 
 
-def relative(value: str) -> str:
-    name = value.removeprefix("assets/toolkit/")
-    path = PurePosixPath(name)
-    if (not name or path.is_absolute() or ".." in path.parts or "\\" in name
+def contained(value: str, remedy: str) -> str:
+    """One path with nothing in it that could leave the project, or a refusal ending in `remedy`."""
+    path = PurePosixPath(value)
+    if (not value or path.is_absolute() or ".." in path.parts or "\\" in value
             or any(part.lower() == ".git" for part in path.parts)):
-        raise GenerationError(f"rename {value!r} reaches outside the project; restore the table with `slipwai upgrade`")
+        raise GenerationError(f"{value!r} reaches outside the project; {remedy}")
     return path.as_posix()
+
+
+def relative(value: str) -> str:
+    """A rename *table row*'s path as a project holds it.
+
+    The table is written against the toolkit tree and its files land at their path relative to
+    `assets/toolkit/`, so that prefix comes off here. Never applied to a project's own paths: a project
+    with a real `assets/toolkit/house-rules.md` of its own had it relocated to `house-rules.md`.
+    """
+    return contained(value.removeprefix("assets/toolkit/"), "restore the table with `slipwai upgrade`")
+
+
+def declares(kind: str, path: str) -> bool:
+    """Whether this project file is one that declares things of this kind, and may be rewritten for it."""
+    parts = PurePosixPath(path).parts
+    if kind == "make-target":
+        return parts[-1] in MAKEFILES or path.endswith(".mk")
+    return ("commands" if kind == "command" else "skills") in parts
 
 
 def keys(value: object, old: str, new: str) -> object:
@@ -69,7 +93,7 @@ def renamed(files: dict[str, bytes], rows: list[dict[str, str]]) -> dict[str, by
     """A new tree, with every project edit retained or its collision named before anything writes."""
     answer: dict[str, bytes] = {}
     for path, body in files.items():
-        destination = moved(relative(path), rows)
+        destination = moved(contained(path, "remove or rename it before `slipwai migrate`"), rows)
         if destination in answer:
             raise GenerationError(f"renames collide at {destination}; resolve the duplicate before `slipwai migrate`")
         answer[destination] = body
@@ -90,6 +114,8 @@ def renamed(files: dict[str, bytes], rows: list[dict[str, str]]) -> dict[str, by
         elif kind in {"make-target", "command", "skill"}:
             pattern = re.compile(rf"(?<![\w-]){re.escape(old)}(?![\w-])")
             for path, body in list(answer.items()):
+                if not declares(kind, path):
+                    continue
                 try:
                     text = body.decode("utf-8")
                 except UnicodeDecodeError:

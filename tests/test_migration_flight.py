@@ -11,6 +11,7 @@ from unittest.mock import patch
 import checkout_packages  # noqa: F401
 
 from slipwai.assets import ROOT
+from slipwai.fleet import Fairway, inbox
 from slipwai.migration_flight import json_bytes, plan_context, read, settings
 
 
@@ -74,6 +75,25 @@ class FlightTest(unittest.TestCase):
             (self.feature / "chart.yaml").write_bytes(json_bytes(chart))
             self.assertEqual(confirmation.main(["--confirm"]), 0)
         self.assertIs(guard.cleared(chart, set(), "ORD-01"), True)
+
+    def test_the_queued_inbox_crosses_as_unanswered_told_lines_in_version_1_s_own_order(self) -> None:
+        said = self.root / ".specify"
+        said.mkdir()
+        (said / "cruise-told.jsonl").write_text(json.dumps(
+            {"at": "2026-01-01T09:00:00Z", "text": "taken by the iteration that died", "now": False}) + "\n",
+            encoding="utf-8")
+        (said / "cruise-inbox.jsonl").write_text("".join(json.dumps(line) + "\n" for line in (
+            {"at": "2026-01-01T10:00:00Z", "text": "still queued", "now": True},
+            {"at": "2026-01-01T11:00:00Z", "text": "  and this one  ", "now": False})), encoding="utf-8")
+        with patch("slipwai.migration_flight.shipped", return_value=None):
+            flight = read(self.root, self.document, YAML())
+        lines = [line for _, _, line in flight.logs]
+        self.assertEqual([(line.t, line.fields["message"]) for line in lines if line.kind == "told"],
+                         [("2026-01-01T09:00:00Z", "taken by the iteration that died"),
+                          ("2026-01-01T10:00:00Z", "still queued"),
+                          ("2026-01-01T11:00:00Z", "and this one")])
+        self.assertEqual([row["what"] for row in inbox([Fairway("main", "ordering", lines)])],
+                         ["taken by the iteration that died", "still queued", "and this one"])
 
     def test_model_choices_are_preserved_and_review_is_null_per_harness(self) -> None:
         (self.root / ".specify").mkdir()

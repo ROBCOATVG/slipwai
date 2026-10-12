@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import re
 import runpy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
@@ -28,6 +28,14 @@ class YAMLReader(Protocol):
 
 STATE = ".slipwai/migration.json"
 SLICE = re.compile(r"\b[A-Z][A-Z0-9]*-\d+\b")
+#: What version 1's runner left behind, and all three stay at the repository root under an adopted
+#: project's `layout.delivery`: `specs/` and `.specify/` are not delivery material and do not move.
+#: `cruise-told.jsonl` is what an iteration was handed; `cruise-inbox.jsonl` is what nobody has taken
+#: yet. Version 1 put the first back ahead of the second at the start of every run, because a person's
+#: word is not spent by an iteration that died, and this reads them in that same order.
+LEGACY_LOG = "specs/cruise-log.jsonl"
+LEGACY_GIVEN = ".specify/cruise-told.jsonl"
+LEGACY_QUEUED = ".specify/cruise-inbox.jsonl"
 
 
 def json_bytes(value: object) -> bytes:
@@ -39,6 +47,47 @@ def identifier(value: str) -> str:
         raise GenerationError(f"{value!r} cannot name a fairway or feature; "
                               "correct the context before `slipwai migrate`")
     return value
+
+
+def legacy_lines(path: Path) -> list[dict]:
+    """One of version 1's JSONL files, or a refusal naming the line that stopped it.
+
+    Never skipped past: a record missing the entries it could not parse reads exactly like a record of a
+    run that did not have them, and this is the only account there is of what a person said.
+    """
+    found = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            body = json.loads(line)
+        except ValueError as error:
+            body = error
+        if not isinstance(body, dict):
+            raise GenerationError(f"{path} line {number} is not one readable JSON object; repair or delete "
+                                  "the file, then run `slipwai migrate` again") from None
+        found.append(body)
+    return found
+
+
+def queued(root: Path) -> list[Entry]:
+    """A person's words that no version 1 iteration finished acting on, as version 2's unanswered `told`s.
+
+    Each keeps the instant it was said rather than the instant it was migrated, so the board puts them in
+    the order the person said them. Nothing answers them here: a `read` receipt is a captain saying it has
+    taken the message, and no captain has.
+    """
+    lines = []
+    for name in (LEGACY_GIVEN, LEGACY_QUEUED):
+        path = root / name
+        if not path.is_file():
+            continue
+        for body in legacy_lines(path):
+            message = " ".join(str(body.get("text") or "").split())
+            if message:
+                lines.append(replace(entry("told", fairway="main", message=message),
+                                     t=str(body.get("at") or "")))
+    return lines
 
 
 def shipped(root: Path, slice_id: str) -> str | None:
@@ -180,16 +229,19 @@ def read(root: Path, document: dict, legacy: YAMLReader) -> Flight:
                     original.setdefault("capability", item["capability"])
     if items:
         flight.files[model_path.relative_to(root).as_posix()] = model_bytes(model_path, model)
-    old_log = root / "specs/cruise-log.jsonl"
-    if old_log.is_file() and flight.features:
-        lines = [json.loads(line) for line in old_log.read_text(encoding="utf-8").splitlines() if line.strip()]
-        last = lines[-1] if lines else {}
-        reason = str(last.get("last_line") or "")
-        if "parked:" in reason:
-            active_feature = next(iter(flight.features))
-            flight.logs.append((active_feature, "main", entry("parked", fairway="main",
-                                                 why=reason.split("parked:", 1)[1].strip())))
     if flight.features:
+        # Version 1 ran one loop over the whole project, so its messages and its stop belong to the
+        # `main` fairway of the first feature, beside the records frozen there.
+        active_feature = next(iter(flight.features))
+        flight.logs += [(active_feature, "main", line) for line in queued(root)]
+        old_log = root / LEGACY_LOG
+        if old_log.is_file():
+            lines = legacy_lines(old_log)
+            last = lines[-1] if lines else {}
+            reason = str(last.get("last_line") or "")
+            if "parked:" in reason:
+                flight.logs.append((active_feature, "main", entry("parked", fairway="main",
+                                                     why=reason.split("parked:", 1)[1].strip())))
         flight.files[STATE] = json_bytes({"v": 1, "features": flight.features})
     return flight
 

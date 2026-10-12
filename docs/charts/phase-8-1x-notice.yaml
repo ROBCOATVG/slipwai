@@ -1,0 +1,24 @@
+feature: final-1x-upgrade-notice
+source: ROBCOATVG/slipwai@e1a9e4372b384f8eb086be381b737f0e84aa4883
+fairways:
+  release:
+    owns:
+      - src/slipwai/upgrade.py
+      - tests/test_upgrade.py
+      - docs/migrating-to-2.md
+      - changelog.d/1x-crossing-notice.md
+      - docs/charts/phase-8-1x-notice.yaml
+slices:
+  '8.6':
+    fairway: release
+    sets: [ConditionalVersion2Notice]
+    steers_by: [PublishedRegistryVersion]
+marks:
+  ConditionalVersion2Notice:
+    kind: port
+    inputs: {installed: version-1, newest: published-stable-version-2, mode: check-only}
+    outputs: {notice: crossing-costs-and-migration-page, writes: none}
+  PublishedRegistryVersion:
+    kind: port
+    inputs: {registry: configured-pep503-index}
+    outputs: {newest: available-version-or-refusal}

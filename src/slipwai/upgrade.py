@@ -255,6 +255,23 @@ def guidance(kind: str) -> str:
     )
 
 
+MIGRATION_PAGE = "https://github.com/ROBCOATVG/slipwai/blob/main/docs/migrating-to-2.md"
+
+
+def crossing_notice(installed: str, newest: str) -> str:
+    """Only a registry-confirmed stable 2.x offer activates the final 1.x crossing notice."""
+    if key(installed)[0] != 1 or key(newest)[0] != 2 or is_prerelease(newest):
+        return ""
+    return (
+        f"Version {newest} is available in your configured registry. Moving a 1.x project is a major crossing: "
+        "keep a clean committed backup, install its language and target packages, and review renamed files "
+        "and any three-way merge conflicts. Upgrading the tool does not migrate the project.\n"
+        "After installing version 2, run `slipwai migrate --check` in the project; when ready, "
+        "run `slipwai migrate`. Confirm proposed fairways and unplaced slices before claiming work.\n"
+        f"Migration steps and costs: {MIGRATION_PAGE}"
+    )
+
+
 def main(argv: list[str]) -> None:
     """`slipwai upgrade`, from anywhere: this copy replaced by the newest the forge has."""
     parser = argparse.ArgumentParser(
@@ -287,6 +304,8 @@ def main(argv: list[str]) -> None:
         if key(newest) <= key(VERSION):
             print("this is already the newest published version.")
             return
+        if args.check and (notice := crossing_notice(VERSION, newest)):
+            print(notice)
         if kind in ("executable", "checkout"):
             print(guidance(kind))
             return

@@ -1,0 +1,23 @@
+{
+  "quickstart": 1,
+  "name": "internal-tool",
+  "suits": "A screen over a table for people who work here: a handful of forms, a list, and nobody will ever ask what it looked like last March.",
+  "core": ">=9.0,<10",
+  "answers": {
+    "profile": "standard",
+    "target": "existing",
+    "language": "typescript",
+    "frontend": "react-vite",
+    "axes": {
+      "auth": "keycloak",
+      "users": "none"
+    }
+  },
+  "languages": [
+    {
+      "name": "typescript",
+      "version": ">=1.0,<2"
+    }
+  ],
+  "extensions": []
+}

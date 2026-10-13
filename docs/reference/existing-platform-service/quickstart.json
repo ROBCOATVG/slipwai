@@ -1,0 +1,25 @@
+{
+  "quickstart": 1,
+  "name": "existing-platform-service",
+  "suits": "Another service joining a platform that already exists — somebody else owns the runtime, the database and the login, and this repository only has to fit in.",
+  "core": ">=9.0,<10",
+  "answers": {
+    "profile": "event-modelling",
+    "target": "existing",
+    "language": "go",
+    "frontend": "none",
+    "axes": {
+      "write-model": "events",
+      "persistence": "postgres",
+      "auth": "keycloak",
+      "users": "none"
+    }
+  },
+  "languages": [
+    {
+      "name": "go",
+      "version": ">=1.0,<2"
+    }
+  ],
+  "extensions": []
+}

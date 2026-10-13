@@ -1,0 +1,25 @@
+{
+  "quickstart": 1,
+  "name": "laptop-trial",
+  "suits": "A first project you intend to read, run and throw away: one service on your own machine, a real store in a single file, with nothing to install, start or log into.",
+  "core": ">=9.0,<10",
+  "answers": {
+    "profile": "event-modelling",
+    "target": "none",
+    "language": "python",
+    "frontend": "none",
+    "axes": {
+      "write-model": "events",
+      "persistence": "sqlite",
+      "auth": "none",
+      "users": "none"
+    }
+  },
+  "languages": [
+    {
+      "name": "python",
+      "version": ">=1.0,<2"
+    }
+  ],
+  "extensions": []
+}

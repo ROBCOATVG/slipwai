@@ -1,0 +1,29 @@
+{
+  "quickstart": 1,
+  "name": "aws-customer-product",
+  "suits": "A product the public signs up for themselves, with a browser app of its own and staff who administer it behind a separate login, running in the company's own AWS account.",
+  "core": ">=9.0,<10",
+  "answers": {
+    "profile": "event-modelling",
+    "target": "aws",
+    "language": "python",
+    "frontend": "react-vite",
+    "axes": {
+      "write-model": "events",
+      "persistence": "postgres",
+      "auth": "cognito",
+      "users": "cognito"
+    }
+  },
+  "languages": [
+    {
+      "name": "python",
+      "version": ">=1.0,<2"
+    },
+    {
+      "name": "typescript",
+      "version": ">=1.0,<2"
+    }
+  ],
+  "extensions": []
+}

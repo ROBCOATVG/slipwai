@@ -34,12 +34,28 @@ Things the keel can hold but deliberately does not ship: a file somebody would o
 with the reasoning next to it. Nothing here is loaded, installed or offered by any command. It is read,
 copied and changed.
 
+Six quickstarts, each a directory of `quickstart.json`, `README.md` and `VERSION`, installable from this
+checkout and publishable to a channel like any other package. They are picked to be *different projects*
+rather than variations on one, because what a reader needs from an example is the one nearest their own.
+
 | Example | What it is |
 |---|---|
 | [typescript-ui](typescript-ui/) | A quickstart: TypeScript, `codegraph`, `uipro` and `ux-gates`, Event Modeling, a React browser app, Postgres |
+| [laptop-trial](laptop-trial/) | Python, SQLite in a file, nothing to install, start or log into — the first project somebody reads, runs and throws away |
+| [aws-customer-product](aws-customer-product/) | Python and React on AWS, Postgres, and two Cognito pools — the public in one, the staff who administer them in the other |
+| [azure-staff-service](azure-staff-service/) | Java on Spring in an Azure subscription, Postgres, Entra ID, no screens and no public sign-up |
+| [existing-platform-service](existing-platform-service/) | Go joining a platform somebody else owns: Postgres and Keycloak that are already there, and a factory that provisions nothing |
+| [internal-tool](internal-tool/) | TypeScript on both sides under the standard profile — the one that names no rung and no store, because it is asked for neither |
 
 **Why an example and not a default.** A quickstart elects extensions, and an extension is a third-party
 package. A default quickstart would be this keel choosing somebody's dev tooling for them in every project
 they ever generate, on no evidence beyond one person's preference. So the interview's first row is *ask me
-every question*, there is no default quickstart, and the one the owner asked for lives here — where it can
-be read before it is agreed to.
+every question*, there is no default quickstart, and the ones the owner asked for live here — where they can
+be read before they are agreed to.
+
+**The target a quickstart answers is a package it needs.** `aws-customer-product` and
+`azure-staff-service` answer `target: aws` and `target: azure`, and neither is carried by the keel. The
+check that greys an unusable quickstart out of the interview reads that answer along with `languages` and
+`extensions`, so on a machine without the cloud installed either is offered as unavailable, naming
+`slipwai target install <name>` — rather than being chosen and refused by the generator several questions
+later. Both READMEs say it at the top as well, for somebody reading before they install anything.

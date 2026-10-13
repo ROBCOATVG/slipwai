@@ -1,0 +1,30 @@
+{
+  "quickstart": 1,
+  "name": "azure-staff-service",
+  "suits": "An internal service for staff only — no public sign-up and no screens of its own — deployed to the company's Azure subscription and opened with the work account people already sign in with.",
+  "core": ">=9.0,<10",
+  "answers": {
+    "profile": "event-modelling",
+    "target": "azure",
+    "language": "java",
+    "framework": "spring",
+    "frontend": "none",
+    "axes": {
+      "write-model": "events",
+      "persistence": "postgres",
+      "auth": "entra",
+      "users": "none"
+    }
+  },
+  "languages": [
+    {
+      "name": "java",
+      "version": ">=1.0,<2"
+    },
+    {
+      "name": "java-spring",
+      "version": ">=1.0,<2"
+    }
+  ],
+  "extensions": []
+}

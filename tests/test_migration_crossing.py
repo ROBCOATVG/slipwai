@@ -11,7 +11,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai.layout import layout_of
 from slipwai.logs import deck_path, entry
-from slipwai.migration_crossing import catch_up, seed
+from slipwai.migration_crossing import catch_up, infrastructure, off_infrastructure, seed
 from slipwai.migration_flight import Flight
 
 
@@ -38,6 +38,70 @@ def flight(*, extra: bool = False) -> Flight:
     if extra:
         logs.append(("ordering", "ordering", entry("merged", fairway="ordering", slice="ORD-02", commit="def456")))
     return Flight(logs=logs)
+
+
+class InfraTest(unittest.TestCase):
+    """A crossing does not write `infra/`.
+
+    Those files describe resources that already exist — a Terraform resource address is state — and which
+    of them are real is not something the keel can know. It is not hypothetical: a crossing restored one of
+    the factory's own identity stacks under its 2.x name, into a project that had deleted it months before
+    and written its own beside it, and the deploy stopped on a duplicate declaration. The rename is why no
+    merge caught it: the base and the offering share a path the project has never had, so "ours deleted it"
+    reads as "theirs added it".
+    """
+
+    def test_infrastructure_is_the_whole_directory_and_nothing_that_merely_starts_like_it(self) -> None:
+        self.assertTrue(infrastructure("infra"))
+        self.assertTrue(infrastructure("infra/service/cognito_external.tf"))
+        self.assertFalse(infrastructure("infrastructure.md"))
+        self.assertFalse(infrastructure("docs/infra/notes.md"))
+
+    def sides(self) -> tuple[dict, dict]:
+        """The warbook crossing in miniature: a renamed file, a new one, one taken away, and code."""
+        return ({"infra/service/sign_in_customers.tf": b"old", "infra/service/store.tf": b"same",
+                 "infra/service/gone.tf": b"dropped", "apps/web/main.ts": b"code"},
+                {"infra/service/sign_in_external.tf": b"renamed", "infra/service/store.tf": b"same",
+                 "infra/service/added.tf": b"offered", "apps/web/main.ts": b"other"})
+
+    def test_neither_factory_side_brings_any_infrastructure_into_the_merge(self) -> None:
+        """Out of the offering so nothing is written, and out of the base so a path the project deleted
+        cannot come back as `theirs added a file` — which is precisely how a renamed one did."""
+        before, theirs, _ = off_infrastructure(*self.sides())
+        self.assertEqual(list(before), ["apps/web/main.ts"])
+        self.assertEqual(list(theirs), ["apps/web/main.ts"])
+
+    def test_what_it_would_have_changed_is_named_rather_than_done(self) -> None:
+        """Written, added and taken away — all three are changes to somebody's deployed stack."""
+        _, _, declined = off_infrastructure(*self.sides())
+        self.assertEqual(declined, ["infra/service/added.tf", "infra/service/gone.tf",
+                                    "infra/service/sign_in_customers.tf",
+                                    "infra/service/sign_in_external.tf"])
+
+    def test_an_unchanged_stack_is_not_reported_as_something_it_declined(self) -> None:
+        same = {"infra/service/store.tf": b"same"}
+        self.assertEqual(off_infrastructure(same, dict(same))[2], [])
+
+    def test_the_merge_then_keeps_the_project_s_own_copy_of_every_infra_file(self) -> None:
+        """With neither factory side holding the path, the project's is the only version there is."""
+        from slipwai.migration_merge import merge
+        before, theirs, _ = off_infrastructure(*self.sides())
+        own = {"infra/service/sign_in_ours.tf": b"ours", "apps/web/main.ts": b"code"}
+        result = merge(before, own, theirs)
+        self.assertEqual(result.files["infra/service/sign_in_ours.tf"], b"ours")
+        self.assertNotIn("infra/service/sign_in_external.tf", result.files)
+        self.assertEqual(result.conflicts, {})
+
+    def test_the_notes_name_every_path_it_declined_to_write(self) -> None:
+        said = catch_up("demo", "1.3.0", "1.3.0", flight(), layout_of({}), {}, [],
+                        ["infra/service/sign_in_external.tf"])
+        self.assertIn("Infrastructure, left alone", said)
+        self.assertIn("infra/service/sign_in_external.tf", said)
+        self.assertIn("tofu plan", said)
+
+    def test_a_crossing_that_would_not_have_touched_infra_has_no_such_section(self) -> None:
+        self.assertNotIn("Infrastructure, left alone",
+                         catch_up("demo", "1.3.0", "1.3.0", flight(), layout_of({}), {}, []))
 
 
 class SeedTest(unittest.TestCase):

@@ -10,6 +10,7 @@ import json
 import os
 import tempfile
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 
@@ -37,6 +38,47 @@ def version(document: dict) -> str | None:
     return value if match is not None and match.group(1) == "1" else None
 
 
+#: What a crossing never writes and never takes away. `infra/` is the one directory whose files are a map of
+#: things that already exist: a Terraform resource address is state, and a factory that rewrites one is a
+#: factory proposing to replace an account's user pool, its database or its network. Nothing the keel knows
+#: about a project tells it which of those are real.
+#:
+#: It is not a hypothetical. A crossing restored one of the factory's own identity stacks under its 2.x
+#: name — a file the project had deleted months before, having written its own beside it — because a rename
+#: turns "ours deleted it" into a path the base and the offering share and the project does not. That deploy
+#: stopped on a duplicate declaration, which is the harmless end of what this class of change can do: the
+#: same merge could as easily have offered a plan that destroyed every account in a sign-in directory.
+#:
+#: So the project's own `infra/` crosses untouched, and what this version would have written there is named
+#: in the catch-up notes for a person to take deliberately, or not.
+INFRA = "infra"
+
+
+def infrastructure(name: str) -> bool:
+    """Whether this path is the project's infrastructure, which a crossing is not allowed to decide about.
+
+    A prefix and not a layout question: `infra/` is not one of the delivery roots, so it sits at the root in
+    every layout the keel writes (`layout.place`).
+    """
+    return name == INFRA or name.startswith(f"{INFRA}/")
+
+
+def off_infrastructure(before: Tree, theirs: Tree) -> tuple[Tree, Tree, list[str]]:
+    """The two factory sides of the merge with `infra/` taken out of both, and what that declined to do.
+
+    Out of the offering, so nothing is written there; and out of the base, so a path the project deleted
+    cannot come back as "theirs added a file" — which is precisely how a renamed one did.
+
+    The project's own side is untouched and never passed here: with neither factory side holding an `infra/`
+    path, `merge` sees the project's as the only version of it and keeps it, which is the whole rule.
+    """
+    declined = sorted(name for name in set(before) | set(theirs)
+                      if infrastructure(name) and before.get(name) != theirs.get(name))
+    return ({name: body for name, body in before.items() if not infrastructure(name)},
+            {name: body for name, body in theirs.items() if not infrastructure(name)},
+            declined)
+
+
 def answers(files: Tree) -> Tree:
     """Version 1's eventSourced answer remains explicit after the write-model axis arrived."""
     result = dict(files)
@@ -50,7 +92,7 @@ def answers(files: Tree) -> Tree:
 
 
 def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branches: dict[str, str],
-             notes: list[str]) -> str:
+             notes: list[str], infra: Sequence[str] = ()) -> str:
     proposed, unplaced = flight.counts
     command = f"python3 {layout.place('scripts/check-migration.py')}"
     return (f"# {name}: crossing from slipwai {recorded} to {VERSION}\n\n"
@@ -69,6 +111,15 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             "under `fairways/main/<feature>/`; ADRs retain their paths and numbers. Implementation "
             "was reconciled upward from trunk's slice merges: a slice trunk could not prove keeps the "
             "status the model recorded for it.\n\n" +
+            # What the crossing would have done to `infra/` and did not. Named rather than silently skipped:
+            # a person who upgrades and later finds the factory's stack has moved on should find out here,
+            # with the list in front of them, rather than from a plan that proposes to replace a database.
+            ("## Infrastructure, left alone\n\n"
+             "A crossing does not write `infra/`: those files describe resources that already exist, and "
+             "which of them are real is not something this keel can know. This version would have changed "
+             "the following, and yours are untouched — take any of it deliberately, reading `tofu plan` "
+             "before you apply.\n\n" + "".join(f"- `{path}`\n" for path in infra) + "\n"
+             if infra else "") +
             # What a conflict stopped the crossing writing. On the page rather than in the run's output
             # alone, because this is the page the person reads after the merge is finished.
             ("## What this crossing could not do\n\n" + "".join(f"- {note}\n" for note in notes) + "\n"
@@ -167,6 +218,8 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         installed_base = git(clone, "rev-parse", "FETCH_HEAD").decode().strip()
         offered = replay(clone, staging / "offered", base=installed_base)
         theirs = answers(tracked(offered.destination))
+        # Before anything is merged, and on both factory sides of it.
+        before, theirs, untouched = off_infrastructure(before, theirs)
         model_name = layout_of(document).place("docs/event-model/model.yaml")
         if model_name in flight.files:
             # The populated model is project data, not the factory's empty starter. Its reconciliation
@@ -185,7 +238,7 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         left = settings(root, document, result.files, conflicts=result.conflicts)
         validate(root, result.files)
         message = catch_up(document["name"], recorded, legacy.used, flight, layout_of(document),
-                           branches, left)
+                           branches, left, untouched)
         if check:
             conflict_names = ", ".join(sorted(result.conflicts)) or "none"
             stopping = "".join(f"\n`slipwai migrate` would refuse: {note}" for note in blocking)

@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Collection
-from datetime import UTC, datetime
 from pathlib import Path
 
 from .convergence import BY_KEY, row
@@ -18,6 +17,29 @@ from .layout import layout_of
 from .migration_flight import json_bytes
 from .migration_merge import Tree, git
 from .project.convergence_page import convergence_page
+
+#: One flag in a `flags.auto.tfvars`: the key, its value, and the comment that may carry `hoisted:` and
+#: `kind:`. The same shape the generated `scripts/check-flags.py` reads, because it is that file's reader.
+FLAG = re.compile(r'^\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"(?P<value>[^"]*)"\s*(?P<note>#.*)?$',
+                  re.MULTILINE)
+DATED = re.compile(r"hoisted[:=]?\s*\d{4}-\d{2}-\d{2}")
+
+
+def on_without_a_date(text: str) -> list[str]:
+    """The flags this file has on with no `hoisted:` date — the ones a person has to date themselves.
+
+    The crossing used to stamp the crossing's own day onto *every* line of these files, flags that were off
+    included. Two things wrong with that, and the second is the one that bites. To hoist a flag is to turn
+    it on for real actors, so a date on a flag that is off is a claim about this product that never
+    happened, written into a file a person owns. And `check-flags` puts a release flag on a thirty-day
+    clock from that date without looking at its value, so a stamped off flag is reported, a month later, as
+    having "been on everywhere since" a day it was not on at all.
+
+    A date nobody can derive is a date nobody should write. The crossing names them instead, and the person
+    who knows when each one went on writes it.
+    """
+    return [found["key"] for found in (match.groupdict() for match in FLAG.finditer(text))
+            if found["value"] not in ("off", "") and not DATED.search(found["note"] or "")]
 
 
 def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[str] = ()) -> list[str]:
@@ -37,8 +59,8 @@ def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[s
     which file it was about.
     """
     notes: list[str] = []
+    undated: list[str] = []
     contested = "project.json" in conflicts
-    today = datetime.now(UTC).date().isoformat()
     # Every read of git here is surrogateescaped, as the rest of the crossing is: one commit message or
     # one blob that is not UTF-8 is not a reason a person's migration stops with a traceback.
     historical = git(root, "log", "main", "--diff-filter=AM", "--format=", "--name-only", "--",
@@ -56,11 +78,7 @@ def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[s
             ever_on |= bool(re.search(r'(?m)^\s*[A-Za-z_][A-Za-z0-9_]*\s*=\s*(?:true\b|"on"(?:\s*(?:#.*)?$))', old))
         if name not in current:
             continue  # a struck/removed flag still establishes product history, but is not recreated
-        text = path.read_text(encoding="utf-8")
-        # check-flags reads inline notes. Start every existing flag's clock on the crossing day.
-        text = re.sub(r"hoisted[:=]?\s*\d{4}-\d{2}-\d{2}", "", text)
-        text = re.sub(r"(?m)^(\s*[\w-]+\s*=.*)$", rf"\1 # hoisted: {today}", text)
-        files[name] = text.encode("utf-8")
+        undated.extend(f"{name}: `{key}`" for key in on_without_a_date(path.read_text(encoding="utf-8")))
     if contested:
         mode = "open" if document.get("target") == "none" else "flagged"
         state = "in-service" if ever_on else "slipway"
@@ -83,6 +101,13 @@ def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[s
             files[layout.place("docs/convergence.md")] = convergence_page(
                 document["name"], rows, layout).encode("utf-8")
         files["project.json"] = json_bytes(metadata)
+    # Said rather than written: see `on_without_a_date`. A flag with no date keeps `check-flags` red until
+    # somebody writes the day it actually went on, which is the right kind of red — a question with a name
+    # on it, rather than a green gate standing on a date the factory made up.
+    if undated:
+        notes.append("These flags are on and carry no `hoisted:` date, so the strike rule has nothing to "
+                     "count from: " + ", ".join(undated) + ". Add `# hoisted: <the day it went on>` to "
+                     "each, which only you know. `check-flags` stays red until they have one.")
     ignored = files.get(".gitignore", b"")
     if b".slipwai/logs/" not in ignored.splitlines():
         files[".gitignore"] = (ignored.rstrip(b"\n") +

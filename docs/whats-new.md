@@ -209,10 +209,24 @@ crossing re-added a factory Terraform file under its version 2 name, into a proj
 months before and written its own beside it, and the next deploy stopped on a duplicate definition. The
 same merge could as easily have offered a plan that destroyed every account in a user pool.
 
+**What it will not take.** A block is read by its marker — `# backing-service:<feature>:begin` — and never
+by the file it sits in, so a file the factory offers whose every block this project already implements
+somewhere else is left where it is and named on the catch-up page. That is the general form of the
+`infra/` rule above: a factory *rename* arrives as an addition, with no deletion to conflict with, so
+without this the project's own answer and the factory's end up side by side.
+
+**What it checks when it has finished.** It reads the stacks under `infra/` and says what it found — a
+name two files of one stack both declare refuses the whole stack, and `tofu validate` runs as well
+wherever a tool is installed and initialised. It never refuses over any of it: the merge is already
+committed, and this is the only moment between a tree being rewritten and a runner finding out, because
+`make verify` has no provider plugins and no credential by design.
+
 **What it preserves.** Existing decision and adversary ids are frozen where they are, under
 `fairways/main/<feature>/`, and go on resolving; ADRs keep their paths and numbers; nothing is renumbered,
-including by the migration. Flags keep their values and gain the `hoisted` date the strike rule counts
-from. Words a person said that version 1's run never finished acting on cross as unanswered messages, each
+including by the migration. Flags keep their values. A flag that is on and carries no
+`hoisted:` date is named on the catch-up page for you to date: to hoist a flag is to turn it on for real
+actors, and the day a crossing happened to run is not that day — the strike rule would otherwise count
+thirty days from a date nobody chose. Words a person said that version 1's run never finished acting on cross as unanswered messages, each
 keeping the instant it was said; a run that stopped crosses as a park with its reason. Slice status is
 reconciled upward from trunk's own merges only.
 

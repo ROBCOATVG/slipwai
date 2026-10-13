@@ -14,7 +14,7 @@ import yaml  # type: ignore[import-untyped]
 from slipwai.assets import ROOT
 from slipwai.fleet import Fairway, inbox, state_of
 from slipwai.migration_flight import json_bytes, model_bytes, plan_context, read, shipped
-from slipwai.migration_settings import settings
+from slipwai.migration_settings import on_without_a_date, settings
 
 
 def script(relative: str):
@@ -180,8 +180,20 @@ class FlightTest(unittest.TestCase):
 
         files = {"project.json": json_bytes(self.document)}
         with patch("slipwai.migration_settings.git", side_effect=fake):
-            settings(self.root, self.document, files)
-        self.assertIn(b"hoisted:", files["infra/service/flags.auto.tfvars"])
+            notes = settings(self.root, self.document, files)
+        # Read, never rewritten: the file is the person's, in the one directory a crossing does not write.
+        self.assertNotIn("infra/service/flags.auto.tfvars", files)
+        self.assertIn("checkout", " ".join(notes))
+
+    def test_a_flag_that_is_on_and_undated_is_named_rather_than_given_todays_date(self) -> None:
+        """To hoist a flag is to turn it on for real actors, so the crossing's own day is a claim about
+        this product that never happened — and `check-flags` counts its thirty days from it."""
+        flags = self.root / "infra/service/flags.auto.tfvars"
+        flags.parent.mkdir(parents=True, exist_ok=True)
+        flags.write_text('checkout = "on"\nbasket = "off"\nreturns = "on"  # hoisted: 2026-01-09\n',
+                         encoding="utf-8")
+        said = on_without_a_date(flags.read_text(encoding="utf-8"))
+        self.assertEqual(said, ["checkout"])
 
     def test_the_queued_inbox_crosses_as_unanswered_told_lines_in_version_1_s_own_order(self) -> None:
         said = self.root / ".specify"

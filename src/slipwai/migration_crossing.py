@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import tempfile
 from collections import Counter
 from collections.abc import Sequence
@@ -16,6 +17,7 @@ from pathlib import Path
 
 from .adopt_report import survey_page
 from .assets import NOTES, VERSION
+from .infra_check import check as infra_check
 from .layout import layout_of
 from .logs import Entry, deck_path
 from .manifest import apps_from_manifest
@@ -79,6 +81,51 @@ def off_infrastructure(before: Tree, theirs: Tree) -> tuple[Tree, Tree, list[str
             declined)
 
 
+#: What delimits a backing-service region, in the one spelling every copy of it uses: the generated
+#: `scripts/backing-services.py` that prunes these, the files it prunes, and this. A region two features
+#: both need names both, `keycloak|users-keycloak`, so the names are split on the bar.
+MARKER = re.compile(rb"backing-service:([a-z0-9|-]+):begin")
+
+
+def blocks(body: bytes) -> set[str]:
+    """Which backing-service blocks this file implements, by the markers it carries."""
+    return {name for found in MARKER.findall(body) for name in found.decode("ascii").split("|")}
+
+
+def implemented_elsewhere(own: Tree, theirs: Tree) -> tuple[Tree, list[str]]:
+    """The offering, with every file dropped whose blocks the project already implements under another name.
+
+    A block is identified by its marker and never by the file it sits in. The factory's file and the
+    project's replacement for it both say `backing-service:users-keycloak`, and that is the fact worth
+    reading: one block, implemented twice, is not a merge — it is two of something there may only be one of.
+
+    It matters because of *renames*. A file the project deleted, offered back under a 2.x name, is a path
+    the project has never had: there is no delete to conflict with, so it merges clean as an addition and
+    lands beside the project's own implementation. That happened, to a stack describing a sign-in
+    directory, and the deploy stopped on a duplicate declaration. The rename table is what saves the
+    ordinary case — it moves the project's own file to the new name first, so the offering meets it rather
+    than joining it — and this is what saves the case where the project's answer is not the factory's file
+    at all, under any name.
+
+    Only additions, and only where *every* block the file carries is already implemented: a file that
+    brings something new as well as something present is a question for a person, not a thing to drop.
+    """
+    mine = {name: blocks(body) for name, body in own.items()}
+    kept, dropped = {}, []
+    for name, body in theirs.items():
+        carried = blocks(body)
+        if name in own or not carried:
+            kept[name] = body
+            continue
+        holders = sorted(where for where, found in mine.items() if where != name and carried <= found)
+        if holders:
+            dropped.append(f"`{name}` — `{'`, `'.join(sorted(carried))}` is already implemented by "
+                           f"`{'`, `'.join(holders)}`")
+            continue
+        kept[name] = body
+    return kept, dropped
+
+
 def answers(files: Tree) -> Tree:
     """Version 1's eventSourced answer remains explicit after the write-model axis arrived."""
     result = dict(files)
@@ -92,7 +139,7 @@ def answers(files: Tree) -> Tree:
 
 
 def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branches: dict[str, str],
-             notes: list[str], infra: Sequence[str] = ()) -> str:
+             notes: list[str], infra: Sequence[str] = (), twice: Sequence[str] = ()) -> str:
     proposed, unplaced = flight.counts
     command = f"python3 {layout.place('scripts/check-migration.py')}"
     return (f"# {name}: crossing from slipwai {recorded} to {VERSION}\n\n"
@@ -120,6 +167,13 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
              "the following, and yours are untouched — take any of it deliberately, reading `tofu plan` "
              "before you apply.\n\n" + "".join(f"- `{path}`\n" for path in infra) + "\n"
              if infra else "") +
+            # A block this version writes that the project already answers its own way. Named for the same
+            # reason: the factory's file is not gone from this version, and somebody may still want it.
+            ("## Blocks you already implement\n\n"
+             "These files were not taken: each carries a `backing-service:` block that this project already "
+             "implements elsewhere, and two implementations of one block is not something a merge can "
+             "resolve.\n\n" + "".join(f"- {line}\n" for line in twice) + "\n"
+             if twice else "") +
             # What a conflict stopped the crossing writing. On the page rather than in the run's output
             # alone, because this is the page the person reads after the merge is finished.
             ("## What this crossing could not do\n\n" + "".join(f"- {note}\n" for note in notes) + "\n"
@@ -220,6 +274,7 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         theirs = answers(tracked(offered.destination))
         # Before anything is merged, and on both factory sides of it.
         before, theirs, untouched = off_infrastructure(before, theirs)
+        theirs, twice = implemented_elsewhere(own, theirs)
         model_name = layout_of(document).place("docs/event-model/model.yaml")
         if model_name in flight.files:
             # The populated model is project data, not the factory's empty starter. Its reconciliation
@@ -238,7 +293,7 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         left = settings(root, document, result.files, conflicts=result.conflicts)
         validate(root, result.files)
         message = catch_up(document["name"], recorded, legacy.used, flight, layout_of(document),
-                           branches, left, untouched)
+                           branches, left, untouched, twice)
         if check:
             conflict_names = ", ".join(sorted(result.conflicts)) or "none"
             stopping = "".join(f"\n`slipwai migrate` would refuse: {note}" for note in blocking)
@@ -251,6 +306,11 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         install(root, result, tip, f"Migrate {document['name']} from {recorded} to slipwai {VERSION}", executable)
         update(root, prepared)
         seed(root, flight)
+        # Last, and never a refusal: the merge is committed by the time this reads anything. The project's
+        # own gate cannot run this — `make verify` has no provider plugins and no credential by design — so
+        # a crossing is the one moment between a tree being rewritten and a runner finding out.
+        for finding in infra_check(root):
+            print(f"infra: {finding}")
         notes = root / NOTES
         notes.parent.mkdir(parents=True, exist_ok=True)
         notes.write_text(message, encoding="utf-8")

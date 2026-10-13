@@ -11,7 +11,14 @@ import checkout_packages  # noqa: F401
 
 from slipwai.layout import layout_of
 from slipwai.logs import deck_path, entry
-from slipwai.migration_crossing import catch_up, infrastructure, off_infrastructure, seed
+from slipwai.migration_crossing import (
+    blocks,
+    catch_up,
+    implemented_elsewhere,
+    infrastructure,
+    off_infrastructure,
+    seed,
+)
 from slipwai.migration_flight import Flight
 
 
@@ -102,6 +109,61 @@ class InfraTest(unittest.TestCase):
     def test_a_crossing_that_would_not_have_touched_infra_has_no_such_section(self) -> None:
         self.assertNotIn("Infrastructure, left alone",
                          catch_up("demo", "1.3.0", "1.3.0", flight(), layout_of({}), {}, []))
+
+
+class BlockTest(unittest.TestCase):
+    """A backing-service block is identified by its marker, never by the file it happens to sit in.
+
+    The factory's identity stack and the project's replacement for it both said
+    `backing-service:users-keycloak`. The migration had everything it needed to see one block implemented
+    twice and looked at the filenames instead — and because a rename makes the factory's file an addition
+    rather than a change, nothing conflicted and both landed.
+    """
+
+    def test_a_marker_naming_two_features_is_both_of_them(self) -> None:
+        """A region two features need names both, and stays while either remains."""
+        self.assertEqual(blocks(b"# backing-service:keycloak|users-keycloak:begin\nx\n"),
+                         {"keycloak", "users-keycloak"})
+        self.assertEqual(blocks(b"nothing marked here"), set())
+
+    def test_a_block_the_project_implements_under_another_name_is_not_taken(self) -> None:
+        own = {"infra/sign_in_ours.tf": b"# backing-service:users-keycloak:begin\nours\n"}
+        theirs = {"infra/sign_in_theirs.tf": b"# backing-service:users-keycloak:begin\ntheirs\n"}
+        kept, said = implemented_elsewhere(own, theirs)
+        self.assertEqual(kept, {})
+        self.assertIn("users-keycloak", said[0])
+        self.assertIn("infra/sign_in_ours.tf", said[0])
+
+    def test_a_file_the_project_has_at_that_path_is_left_to_the_merge(self) -> None:
+        """It is a change, not an addition, and three-way merging is exactly what that wants."""
+        same = {"a.tf": b"# backing-service:users-keycloak:begin\nmine\n"}
+        kept, said = implemented_elsewhere(same, {"a.tf": b"# backing-service:users-keycloak:begin\nnew\n"})
+        self.assertEqual(list(kept), ["a.tf"])
+        self.assertEqual(said, [])
+
+    def test_a_block_nobody_else_implements_is_taken(self) -> None:
+        kept, said = implemented_elsewhere({}, {"new.tf": b"# backing-service:http-fastify:begin\n"})
+        self.assertEqual(list(kept), ["new.tf"])
+        self.assertEqual(said, [])
+
+    def test_a_file_that_also_brings_something_new_is_a_question_for_a_person(self) -> None:
+        """Dropping it would take the new block away with the duplicated one."""
+        own = {"ours.tf": b"# backing-service:users-keycloak:begin\n"}
+        theirs = {"both.tf": b"# backing-service:users-keycloak:begin\n# backing-service:store-rds:begin\n"}
+        kept, said = implemented_elsewhere(own, theirs)
+        self.assertEqual(list(kept), ["both.tf"])
+        self.assertEqual(said, [])
+
+    def test_a_file_with_no_markers_is_none_of_this_rule_s_business(self) -> None:
+        kept, _ = implemented_elsewhere({"ours.md": b"# backing-service:users-keycloak:begin\n"},
+                                        {"README.md": b"prose"})
+        self.assertEqual(list(kept), ["README.md"])
+
+    def test_the_notes_name_what_was_not_taken_and_what_already_holds_it(self) -> None:
+        said = catch_up("demo", "1.3.0", "1.3.0", flight(), layout_of({}), {}, [], [],
+                        ["`theirs.tf` — `users-keycloak` is already implemented by `ours.tf`"])
+        self.assertIn("Blocks you already implement", said)
+        self.assertIn("theirs.tf", said)
 
 
 class SeedTest(unittest.TestCase):

@@ -944,7 +944,16 @@ def prune(root: Path, keep: set[str], *, settled: set[str] | None = None, log=pr
         text = path.read_text(encoding="utf-8")
         if not MARKER.search(text):
             continue
-        path.write_text(strip_markers(text, keep, settled), encoding="utf-8")
+        left = strip_markers(text, keep, settled)
+        # A marked file whose every region was dropped is a file whose whole reason has gone, and writing it
+        # back empty leaves a zero-byte file in the tree for ever. Nobody deletes those: they are invisible
+        # in a diff, they come back through every replay, and one of them crossed two factory versions and a
+        # rename before anybody noticed it had been empty the whole time. Removed, like any other owned path.
+        if left.strip():
+            path.write_text(left, encoding="utf-8")
+            continue
+        _remove(path, log, root)
+        _prune_empty_parents(path, root, log)
 
     web = project_web_apps(root)
     for feature in sorted(dropped):

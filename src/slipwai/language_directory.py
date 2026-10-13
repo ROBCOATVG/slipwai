@@ -37,6 +37,7 @@ from .registry import Family, Language
 from .versions import below, satisfies
 
 VARIABLE = "SLIPWAI_LANGUAGES"
+MANIFEST = "language.json"  # this walk's own, named so a caller can ask which of the four a directory is
 EXTENSION_MANIFEST = "extension.json"  # the other kind of package, read by `extension_directory`
 TARGET_MANIFEST = "target.json"  # and the third, read by `target_directory`
 #: The manifests that say a directory belongs to another walk. Here rather than in each of those modules

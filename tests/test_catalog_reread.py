@@ -53,6 +53,31 @@ class Fixture(unittest.TestCase):
         return place
 
 
+class ListedTest(Fixture):
+    """`slipwai list` under **Languages** lists languages, installed as well as offered.
+
+    The four kinds share one directory and are told apart by the manifest each carries, and the installed
+    half read every directory as a language — so a target installed beside a language was listed as one,
+    with its version, under Languages. The offered half had the same fault from the index end.
+    """
+
+    def listed(self) -> str:
+        from slipwai.cli_language import languages_section
+        return "\n".join(languages_section(False)[0])
+
+    def test_an_installed_target_is_not_listed_as_a_language(self) -> None:
+        self.install("python")
+        self.install("aws", manifest="target.json")
+        said = self.listed()
+        self.assertIn("python", said)
+        self.assertNotIn("aws", said)
+
+    def test_an_installed_extension_is_not_listed_as_a_language_either(self) -> None:
+        self.install("python")
+        self.install("codegraph", manifest="extension.json")
+        self.assertNotIn("codegraph", self.listed())
+
+
 class RereadTest(Fixture):
     def test_a_package_that_arrived_after_the_catalogue_was_built_is_in_it_after_a_reread(self) -> None:
         self.assertEqual(families(), {})

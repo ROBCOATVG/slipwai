@@ -14,6 +14,7 @@ from .browser_app import frontend_rows
 from .catalog import CATALOG, UNREACHABLE_NOTES, families
 from .errors import GenerationError, refuse
 from .index_schema import LANGUAGE
+from .language_directory import MANIFEST as LANGUAGE_MANIFEST
 from .language_directory import directory
 from .language_index import Index, Release, Unreachable, offered, read_index, snapshots
 from .language_install import builtin, installed, this_command
@@ -59,7 +60,13 @@ def grouped(rows: dict[str, tuple[str, str]]) -> list[str]:
 def languages_section(prerelease: bool) -> tuple[list[str], dict[str, Release], Index | None]:
     """The languages: installed (built in, loaded or refused), then what the index offers that is not installed."""
     found, offer, unreachable = reach(prerelease)
-    have, built = installed(directory()), builtin()
+    # Every directory of the package directory, narrowed to the ones that are languages. `installed` reads
+    # all four kinds — they share a directory and are told apart by the manifest each carries — so without
+    # this a target installed beside a language was listed as one, under **Languages**, with its version.
+    # The offered half had the same fault from the index end; this is the half on disk.
+    have = {name: package for name, package in installed(directory()).items()
+            if (package.root / LANGUAGE_MANIFEST).is_file()}
+    built = builtin()
     refused = {line.split(" ", 2)[1]: line for line in refusals() if line.startswith("language ")}
     rows: dict[str, tuple[str, str]] = {name: (family, f"{name}  built in") for name, family in built.items()}
     for name, package in have.items():

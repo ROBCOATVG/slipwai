@@ -20,8 +20,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..assets import FRONTEND_ROOT
-from ..npm_workspace import NpmWorkspace, browser_language, workspace
+from ..npm_workspace import NpmWorkspace, browser_language, frontends, workspace
 from ..services import App
 from .shared_packages import node_workspace
 
@@ -32,11 +31,16 @@ PLUGIN = "scripts/domain-purity.grit"
 
 
 def pinned_in(answer: NpmWorkspace | None = None) -> tuple[Path, ...]:
-    """Where the pin lives: the manifests that declare the dependency, the workspace language's and the browser
-    app's. They must agree, because npm hoists one copy to the workspace root and a project with two would lint
-    itself with whichever won."""
+    """Where the pin lives: the manifests that declare the dependency, the workspace language's and every
+    browser app's this keel can write. They must agree, because npm hoists one copy to the workspace root and
+    a project with two would lint itself with whichever won.
+
+    Every frontend offered, rather than the one this project asked for, and the check is the reason: a
+    frontend whose Biome has drifted from the family's is a project that cannot be generated, and finding
+    that out at the generation that asked for it makes it the fault of somebody who only wanted a project.
+    """
     answer = workspace(browser_language()) if answer is None else answer
-    return (*answer.biome_pins, FRONTEND_ROOT / "react-vite/app/package.json")
+    return (*answer.biome_pins, *(app.at("app/package.json") for app in frontends().values()))
 
 
 def biome_version(answer: NpmWorkspace | None = None) -> str:

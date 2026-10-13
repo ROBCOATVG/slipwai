@@ -449,8 +449,9 @@ back upstream, so there is no release left for phase 10 to hold up. A keel that 
 version 2 can release; a keel that ships them *and* claims to name no product is one that cannot — and a
 2.0.0 with two clouds inside it makes that second claim false on the day it is made.
 
-**What stays in the keel.** Profiles, targets, frontends, axes, adoption, and the toolkit. This is the line that
-issue #26 drew.
+**What stays in the keel.** Profiles, axes, adoption, and the toolkit. This is the line that issue #26 drew,
+and it has moved twice since: targets went out in phase 10, and the frontend goes out in phase 17 — into the
+language family that already commits the lock resolving it, rather than as a fifth kind of package.
 
 **Done when.** The keel's `make verify` runs in under ten minutes with no language present. A new language or
 extension is one repository made by `slipwai package new`, with no change to the keel.
@@ -2352,6 +2353,57 @@ mechanism and the gate this phase repeats eight times; phase 15, for 16.5. **Not
 Every slice here is byte-neutral by construction, so this phase can be stopped after any slice and what has
 moved has moved. That is deliberate: a phase whose value is readability must not be able to hold up a
 release.
+
+### Phase 17. The frontend as a package, after 2.0.0
+
+The last answer of any kind that ships inside the keel. Languages, extensions, targets and quickstarts are
+all packages; `react-vite` is not, and `assets/frontends/react-vite/` — 26 files, 336K, of which 210K is two
+npm lockfiles — is still carried by the wheel, the sdist and the executable.
+
+**It is not a fifth kind, and the code says why.** Phase 10 made a cloud a package because a cloud is a thing
+the keel knew nothing else about: its own manifest, its own protocol object, its own install verb, its own
+conformance profile. A browser app is not that. It is a TypeScript package in the project's one npm
+workspace, and the family that owns that workspace already owns half of it:
+
+- `npm_workspace` is answered by a **family**, and a browser app cannot be written at all without one —
+  `browser_app.refusal` exists solely to say which language to install before `--frontend react-vite` works.
+  The keel has carried the files since the clouds left and has never been able to use them on its own.
+- The family already **commits the lock that resolves the keel's browser app**. `workspace_lock(selection,
+  suffix)` is a family answer, and what it resolves is the dependency set in
+  `assets/frontends/react-vite/app/package.json` — a file in this repository. Two repositories, one
+  dependency set, and the suffix in that lock's name is the keel's own feature list.
+- `biome_pins` exists only to check that the two agree. The browser app's manifest pins `typescript` and
+  `@biomejs/biome`, and `project/biome.py` refuses a project where the family's pin and the keel's differ.
+  A check that two repositories still agree about a version is the cost of the split, paid every release.
+- The protocol already calls the npm-workspace family "the browser app's family": `formatter` is read per
+  family *only* for the family that answers `npm_workspace` (`registry.unread`).
+
+So the frontend is a member of the npm-workspace language family, declared on the family the way `axes` is
+and answered in Python the way `npm_workspace` is. A `frontend.json`, a `FRONTEND` protocol object, a
+`slipwai frontend install` and a fourth conformance profile would be phase 10's six slices spent on 26 files
+whose versions another package already pins.
+
+**What this costs a person, and it is a real cost.** Today a keel with no language installed carries the
+frontend's files and cannot use them. After 17.2 it does not carry them either, so `slipwai list` offers
+`none` alone until an npm-workspace language is installed — which is the state `--frontend react-vite`
+already refuses in. Nothing that works today stops working; what goes is a tree nobody could reach.
+
+| Slice | What | From | Size | Done when | Status |
+|---|---|---|---|---|---|
+| 17.1 | The browser-app contract: a `browser_apps` family member, a `BrowserApp` record naming its own root, and every one of the seven places `project/frontend.py` and `project/biome.py` reached under `assets/` reading the material through it instead. The keel's own `react-vite` becomes one entry in `npm_workspace.KEEL_APPS` and is served through the same contract, so 17.2 is a change of who answers | new | M | A family can supply a browser app and is refused at load — naming the package — for one that reaches outside its directory, is listed under a name it does not answer to, or arrives without the npm workspace that holds it; `react-vite` generates the project it generated before |  |
+| 17.2 | `react-vite` out of the keel: the 26 files and both `frontend-only` locks into the npm-workspace family that already commits the locks resolving them, `catalog.json`'s `frontends` block merged from a family fragment the way `axes` is (`catalog_options.declare_options`'s two rules, unchanged), and `assets.BUNDLED`, the wheel, the sdist and `slipwai.spec` losing the tree | upstream + new | L | `assets/frontends/` is gone and `tests/test_bundled.py` agrees; a project with a browser app generates with the family installed, and `--frontend` offers `none` alone without one |  |
+| 17.3 | The passing mentions and the gate: `services.WEB_FRAMEWORK`, `catalog_checks`'s two `react-vite` rows, `matrix/rows.FRONTENDS`, and `tests/test_no_frontend_named.py` in the shape `test_no_cloud_named.py` already has | new | M | `grep -ri 'react\|vite' src/slipwai` finds nothing but the comment saying where the rule is kept |  |
+| 17.4 | Conformance: a family answering `browser_apps` is held to it by `slipwai package check` — every tree the pipeline reads by name is there, the app's Biome agrees with the family's own pin, and the generated browser app builds and runs its tests. The obligation goes in `maintainer/skills/add-language` beside the npm-workspace one, and `docs/backend-protocol.md` stops saying `react-vite` is the keel's | new | M | A publisher who ships a browser app finds out on their own machine whether it is one, with no project generated by hand |  |
+| 17.5 | The second frontend, as the proof the shape was right rather than as a feature: one more entry in a family's `browser_apps`, offered by `--frontend`, chosen in the interview, and recorded in `project.json` — with the keel naming neither | new | S | Two frontends are offered by one installed family and nothing in `src/slipwai/` knows either name |  |
+
+Order: 17.1 first and alone, because the four after it are written against the record it introduces. Then
+17.2, which is the only one that moves bytes and the only one a person notices. 17.3 and 17.4 in either
+order after it. 17.5 last, and optional — a phase that stops after 17.4 has done the thing it exists for.
+
+Depends on: phase 10, for the pattern and for the gate `test_no_frontend_named.py` copies; and a published
+npm-workspace language package to receive the material, which is a second repository and the reason 17.2 is
+sized L rather than M. **Not a dependency of anything.** 17.1 is behaviour-neutral and 17.2 removes a tree
+nothing reachable was reading, so the phase can be stopped after any slice.
 
 ### Risks the plan carries, and where each is caught
 

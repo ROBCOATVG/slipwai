@@ -4,24 +4,27 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..assets import FRONTEND_ROOT, PRUNER, asset_tree
+from ..assets import PRUNER, asset_tree
 from ..backends import WEB_PORT
 from ..catalog import CATALOG
 from ..errors import GenerationError
-from ..npm_workspace import held_lock, npm, workspace
+from ..npm_workspace import BrowserApp, frontend, held_lock, npm, workspace
 from ..probes import HEALTH_PATH
-from ..services import App, features_of, prunable_features_of, services_of, web_apps
+from ..services import App, features_of, frontend_of, prunable_features_of, services_of, web_apps
 from ..targets import managed
 from ..tooling import package_name
 from .openapi import API_CLIENT, API_CLIENT_NAME, api_client_package, document_of
 from .shared_packages import WORKSPACE, workspace_manifest, workspace_scripts
 
-# What a feature adds to every browser app, keyed by feature: a directory under
-# `assets/frontends/react-vite/` laid out like the app, copied in whole. The browser-app counterpart of
-# a backend's `write_side_files`, and the reason the external login needs no branch — a second provider is a row here. Kept
-# in step with `OWNED_FILES_PER_WEB_APP` in assets/backing-services/prune.py, which removes them again.
+# What a feature adds to every browser app, keyed by feature: a directory inside the frontend's own material,
+# laid out like the app and copied in whole. The browser-app counterpart of a backend's `write_side_files`, and
+# the reason the external login needs no branch — a second provider is a row here. Kept in step with
+# `OWNED_FILES_PER_WEB_APP` in assets/backing-services/prune.py, which removes them again. The paths are
+# relative to the frontend, never to the keel: which directory that is is the frontend's to say
+# (`npm_workspace.BrowserApp`), so that the same feature row reads whether the material ships in a language
+# package or, as `react-vite` still does, in the keel.
 WEB_FEATURE_FILES: dict[str, str] = {
-    "users-keycloak": "react-vite/features/users-keycloak",
+    "users-keycloak": "features/users-keycloak",
 }
 
 # What a feature adds to a *browser app's* manifest — the external login's OIDC client. Keyed by feature, and kept in
@@ -52,8 +55,12 @@ def web_lock_suffix(features: set[str]) -> str:
     return "".join(f"-{feature}" for feature in WEB_LOCK_FEATURES if feature in features)
 
 
-def web_files(project_name: str, web: App, apps: list[App], target: str) -> dict[str, str]:
+def web_files(project_name: str, web: App, apps: list[App], target: str, found: BrowserApp) -> dict[str, str]:
     """One browser app's files from the committed skeleton, named and addressed for itself.
+
+    `found` is where that skeleton is: the frontend `--frontend <name>` named, as the family that writes it —
+    or, for the one the keel still carries, the keel — hands it over. Nothing here spells a directory under
+    `assets/`, so the material can move without this function changing.
 
     The skeleton is written for the first browser app on 5173 talking to a service on 3000; a later one is
     given its own dev-server port and the address of the service it proxies to, and the proxy sits in that
@@ -74,7 +81,7 @@ def web_files(project_name: str, web: App, apps: list[App], target: str) -> dict
     # nowhere to deploy publishes at all.
     status_path = "/api/flags" if managed(CATALOG, target) else HEALTH_PATH
     files: dict[str, str] = {}
-    for relative, content in asset_tree(FRONTEND_ROOT / "react-vite/app").items():
+    for relative, content in asset_tree(found.at("app")).items():
         if relative == "package.json":
             package = json.loads(web_package_json(content, features))
             package["name"] = package_name(project_name, web)
@@ -99,7 +106,7 @@ def web_files(project_name: str, web: App, apps: list[App], target: str) -> dict
     # Both export the same things, so `main.tsx` and every slice are identical either way.
     variant = "app-flags-target" if managed(CATALOG, target) else "app-flags-local"
     for relative, destination in (("flags.ts", "src/flags.ts"), ("flags.test.ts", "tests/flags.test.ts")):
-        content = (FRONTEND_ROOT / "react-vite" / variant / relative).read_text(encoding="utf-8")
+        content = found.at(f"{variant}/{relative}").read_text(encoding="utf-8")
         files[f"{web.path}/{destination}"] = content
     # The one route, in the shape this project can actually write it. A service that publishes an API
     # document gets a client generated from it and calls through that; one whose framework publishes
@@ -113,12 +120,12 @@ def web_files(project_name: str, web: App, apps: list[App], target: str) -> dict
             ("Home.tsx", "src/routes/Home.tsx"),
             ("Home.test.tsx", "tests/routes/Home.test.tsx"),
         ):
-            content = (FRONTEND_ROOT / "react-vite" / variant / relative).read_text(encoding="utf-8")
+            content = found.at(f"{variant}/{relative}").read_text(encoding="utf-8")
             files[f"{web.path}/{destination}"] = spoken_for_app(content, project_name, api, status_path)
     for feature, source in WEB_FEATURE_FILES.items():
         if feature not in features:
             continue
-        for relative, content in asset_tree(FRONTEND_ROOT / source).items():
+        for relative, content in asset_tree(found.at(source)).items():
             files[f"{web.path}/{relative}"] = content
     return files
 
@@ -140,8 +147,11 @@ def spoken_for_app(content: str, project_name: str, api: App | None, status_path
     )
 
 
-def api_client_files(project_name: str, apps: list[App]) -> dict[str, str]:
+def api_client_files(project_name: str, apps: list[App], found: BrowserApp) -> dict[str, str]:
     """`packages/api-client`: the typed client, generated from the document its service publishes.
+
+    `found` is the browser app that calls through it, because the client is written in that browser app's
+    language and shipped beside it: the package that moves the one moves the other.
 
     Only where there is a document to generate from. A project answering `--http none` has no contract, so
     it gets no client rather than a package whose build points at a file that was never written — and the
@@ -154,7 +164,7 @@ def api_client_files(project_name: str, apps: list[App]) -> dict[str, str]:
     if not documents:
         return {}
     files: dict[str, str] = {}
-    for relative, content in asset_tree(FRONTEND_ROOT / "react-vite/api-client").items():
+    for relative, content in asset_tree(found.at("api-client")).items():
         if relative == "package.json":
             package = json.loads(content)
             package["name"] = api_client_package(project_name)
@@ -175,27 +185,34 @@ def frontend_files(project_name: str, apps: list[App], target: str) -> dict[str,
     web = web_apps(apps)
     if not web:
         return {}
-    if any(app.framework != "react-vite" for app in web):
-        raise GenerationError(f"unsupported frontend capability: {web[0].framework}")
+    # One frontend per project, and it is named rather than assumed. The browser apps share a workspace, a
+    # lock and one Biome, so two frontends in a project would be two dependency trees npm hoists into one.
+    # Which frontend it is, and where its material lives, is `npm_workspace.frontend`'s to answer: the keel
+    # carries `react-vite` and a language family may carry others, and this module knows neither name.
+    asked = {app.framework or frontend_of(apps) for app in web}
+    if len(asked) > 1:
+        raise GenerationError("a project's browser apps are all one frontend, and this one asks for "
+                              f"{', '.join(sorted(asked))}")
+    found = frontend(asked.pop())
 
     files: dict[str, str] = {}
     for app in web:
-        files.update(web_files(project_name, app, apps, target))
-    files.update(api_client_files(project_name, apps))
+        files.update(web_files(project_name, app, apps, target, found))
+    files.update(api_client_files(project_name, apps, found))
 
     # The workspace is shared with every service whose language is in it (`npm_workspace`), which is a property of
     # the family rather than of the backend: a service of such a family behind any framework still has npm. A
     # service of another language beside them is not a workspace member — npm would look for a package.json it does
     # not have — so the list names the member services and the browser apps and nothing else. The lock is the first
     # member service's language's, for its dependency set and then the browser apps', which every browser app in a
-    # project shares; with no member service it is the keel's own, the browser apps' alone.
+    # project shares; with no member service it is the frontend's own, the browser apps' alone.
     node = [service for service in services_of(apps) if npm(service.language)]
     web_suffix = web_lock_suffix(set(features_of(apps)))
     lock_path = (
         held_lock(node[0].language, "workspace_lock",
                   workspace(node[0].language).workspace_lock(node[0].selection, web_suffix))
         if node
-        else FRONTEND_ROOT / f"react-vite/locks/frontend-only{web_suffix}.json"
+        else found.at(f"locks/frontend-only{web_suffix}.json")
     )
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
     lock["name"] = project_name

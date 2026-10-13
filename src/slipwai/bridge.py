@@ -6,7 +6,7 @@ into is the friction that has questions go unanswered for an hour. Typing the an
 line into the right log, and the stream's next boundary reads it.
 
 **`http.server` and nothing else.** A dashboard that needed a web framework would be a dashboard most people
-never ran. The whole server is three routes and a render.
+never ran. The whole server is a handful of routes and a render.
 
 **Local by default, and it says so.** It binds the loopback address: the page has controls that change what
 a run does, and a default that put those on a network somebody shares is a default that would be wrong once
@@ -19,6 +19,7 @@ to keep in step, and the first one to drift.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -27,16 +28,28 @@ from .adopt_page import looked
 from .adopt_page import page as adoption
 from .adopt_page import run as adopt
 from .bridge_page import page, payload
+from .chandlery_page import put
+from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
+from .errors import GenerationError
 from .fleet import board
 from .harbour import config
 from .interview_page import form
 from .interview_page import page as interview
 from .interview_page import run as generate
 from .logs import deck_path, entry
+from .page_shell import ICON, MANIFEST, NOT_RUNNING, WORKER, WORKER_SOURCE, icon, manifest, not_running
 from .telegraph import Refused
 
 LIMIT = 64 * 1024  # bytes a request body may be; nothing here takes more than a sentence
+#: The four an installable page is made of, each with what it is served as. A browser decides whether to
+#: offer the install on the content type as much as the content, so none of these is served as HTML.
+APP_FILES: dict[str, tuple[Callable[[], str], str]] = {
+    MANIFEST: (manifest, "application/manifest+json; charset=utf-8"),
+    WORKER: (lambda: WORKER_SOURCE, "text/javascript; charset=utf-8"),
+    ICON: (icon, "image/svg+xml; charset=utf-8"),
+    NOT_RUNNING: (not_running, "text/html; charset=utf-8"),
+}
 
 
 def feature_of(root: Path, fairway: str) -> str:
@@ -66,7 +79,8 @@ def tell(root: Path, fairway: str, message: str) -> str:
 
 
 class Bridge(BaseHTTPRequestHandler):
-    """Three routes: the page, the board as JSON, and the three things a person can do to a run."""
+    """The board's pages, the board as JSON, and the things a person can do from them to a run or to this
+    machine's packages."""
 
     root: Path = Path(".")
     controls: bool = True
@@ -98,8 +112,22 @@ class Bridge(BaseHTTPRequestHandler):
         if where == "/adopt" and self.controls:
             self.send(200, adoption({"root": str(self.root.resolve())}))
             return
+        # What a browser asks for before it will offer to install the board, and the page the installed
+        # window is given when nothing is serving. Routes rather than files, because the board is a server
+        # and has no directory beside the page to put a manifest in.
+        if where in APP_FILES and self.controls:
+            body, kind = APP_FILES[where]
+            self.send(200, body(), kind)
+            return
+        # The chandlery, for the same reason generation is here: a person who typed one word and got a board
+        # has no terminal open to type `slipwai search` into, and a board that could only show them what is
+        # already installed would be the page telling them to go back to it.
+        if where == "/packages" and self.controls:
+            self.send(200, chandlery())
+            return
         if where not in ("", "/index.html"):
-            self.send(404, "<p>Nothing here. The board serves /, /generate, /adopt and /board.json.</p>")
+            self.send(404, "<p>Nothing here. The board serves /, /generate, /adopt, /packages "
+                           "and /board.json.</p>")  # and the four an installable page is made of
             return
         held = config(self.root)
         self.send(200, page(board(self.root, held), held, controls=self.controls))
@@ -137,7 +165,13 @@ class Bridge(BaseHTTPRequestHandler):
                 worked, out = adopt({str(a): str(b) for a, b in held.items()}, self.root)
                 self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
                 return
-            if self.path.rstrip("/") == "/tell":
+            # Installing is the one control here that reaches a network, and it is still a call rather than
+            # a child: `put` is the function each install verb calls, so the page and the verb stage, verify
+            # and admit a package the one way. What it said is what the terminal would have printed.
+            if self.path.rstrip("/") == "/packages/install":
+                said = "\n".join(put(str(held.get("kind", "")), str(held.get("name", "")),
+                                      bool(held.get("accept"))))
+            elif self.path.rstrip("/") == "/tell":
                 said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")))
             elif self.path.rstrip("/") == "/ring":
                 ring(self.root, str(held.get("position", "")))
@@ -151,7 +185,7 @@ class Bridge(BaseHTTPRequestHandler):
             else:
                 self.send(404, "No such control.", "text/plain; charset=utf-8")
                 return
-        except (ValueError, Refused, OSError) as fault:
+        except (ValueError, Refused, GenerationError, OSError) as fault:
             self.send(400, str(fault) or type(fault).__name__, "text/plain; charset=utf-8")
             return
         self.send(200, said, "text/plain; charset=utf-8")

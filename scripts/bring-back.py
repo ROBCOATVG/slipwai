@@ -80,6 +80,9 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "target_shape", "target_protocol", "target_templates", "target_directory",
        "target_install", "cli_target", "loaded_targets", "deployment_shapes", "shape_converge",
        "conformance.target", "conformance.target_probe", "page_shell", "interview_page", "adopt_page", "harbour",
+       # The chandlery as a tab of the board. The experiment had no chandlery and no board, so there is
+       # nothing of it to bring back: it is `search` and the install verbs with a page around them.
+       "chandlery_page",
        # Phase 15: Phase 1 of the modelling method read off a repository the keel did not make. The
        # experiment bundled Event Modeling with event sourcing and so never built one for brownfield.
        "big_picture", "big_picture_guards", "project.big_picture_page", "project.observe_command"}

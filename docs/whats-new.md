@@ -58,6 +58,11 @@ channel lists is that channel's, versions and all, which is how an organisation 
 still listed; every channel being unreachable is a refusal, because "nothing available" and "could not
 ask" are different answers. Version 1 had [no way to ask](guide/start-here.md#2-get-a-language) at all.
 
+The board asks it too: its **Packages** tab lists what is installed here and what the channels offer —
+languages, extensions, targets and quickstarts, a table each — and installs one where you press it, by
+the same function the verb calls. A publisher this machine has not accepted is a tick-box on the row,
+which is `--accept-publisher` asked where you already are.
+
 ### A publisher is asked about once
 
 A language's Python is imported into the keel and an extension's entry point edits your project, so the
@@ -124,7 +129,12 @@ The board is the harbour's view of the agents at work; the **bridge** is the sam
 answer from, and a question from a fairway is a line in that fairway's log, so typing the answer on the
 page writes it there. One server, one port, one page: `slipwai bridge` opens it at the board, `slipwai
 fleet --page` does the same without giving up the printed board, and `slipwai` on its own opens it too —
-and none of them starts a second one.
+and none of them starts a second one. Its tabs are the board, starting a project, adopting a repository
+and the packages this copy can be given.
+
+Your browser will also install it: press **Install this board**, and it opens in its own window from the
+dock with no address bar. Installing a window cannot start a server, so when nothing is listening that
+window says so and names the command that starts it, rather than showing a connection error.
 [Answering from one seat](guide/a-second-person.md#answering-from-one-seat) is the picture.
 
 ### One lever: the telegraph

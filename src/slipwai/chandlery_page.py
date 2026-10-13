@@ -26,6 +26,7 @@ from dataclasses import dataclass
 
 from . import quickstart
 from .assets import this_command
+from .catalog import reread
 from .cli_language import reach, snapshots
 from .cli_search import summary
 from .errors import GenerationError
@@ -149,7 +150,14 @@ def offered_row(kind: str, name: str, release: Release) -> Row:
 
 
 def put(kind: str, name: str, accept: bool) -> list[str]:
-    """Install one package, by the verb's own function. What it said, a line each, or its refusal.
+    """Install one package, by the verb's own function, and read the directory again. What it said, a line
+    each, or its refusal.
+
+    **The re-read is the half a verb does not need.** A command installs and exits, and the process that
+    generates next is a new one that reads the directory as it now is. The board is one process: without
+    this, a language installed from the page is on disk and in the packages tab, which re-reads, and absent
+    from the interview's menus, which read the catalogue built when the server started — and the person this
+    page is for is exactly the person who cannot restart a server to fix that.
 
     `language_plan.install` takes no publisher: nothing on that path calls `trust.admitted`, so there is
     nothing for the page to accept on its behalf and a parameter here would imply there was.
@@ -158,14 +166,18 @@ def put(kind: str, name: str, accept: bool) -> list[str]:
         raise GenerationError("an install needs a package to install")
     place = directory()
     if kind == LANGUAGE:
-        return put_language([name], place, prerelease=snapshots())
-    if kind == EXTENSION:
-        return put_extension([name], place, accept)
-    if kind == TARGET:
-        return put_target([name], place, accept)
-    if kind == QUICKSTART:
+        said = put_language([name], place, prerelease=snapshots())
+    elif kind == EXTENSION:
+        said = put_extension([name], place, accept)
+    elif kind == TARGET:
+        said = put_target([name], place, accept)
+    elif kind == QUICKSTART:
+        # A quickstart is answers and installs no code, so it changes nothing the catalogue holds.
         return put_quickstart([name], quickstart.directory(), accept)
-    raise GenerationError(f"{kind or 'nothing'} is not a kind of package this board installs")
+    else:
+        raise GenerationError(f"{kind or 'nothing'} is not a kind of package this board installs")
+    reread()
+    return said
 
 
 def action(row: Row) -> str:

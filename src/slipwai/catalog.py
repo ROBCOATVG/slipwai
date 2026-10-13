@@ -6,7 +6,9 @@ cannot produce a working project is refused at the top of `main` rather than hal
 """
 from __future__ import annotations
 
+import importlib
 import json
+from typing import Any
 
 from .assets import ROOT, this_command
 from .axes import catalog_axis_default
@@ -14,8 +16,11 @@ from .catalog_merge import merge
 from .errors import GenerationError
 from .extension_directory import read as read_extensions
 from .extensions import merge_packages
-from .language_directory import directory, read
+from .language_directory import directory, forget, module_name, read
+from .registry import registry
+from .target_directory import forget as forget_target
 from .target_directory import merge_targets
+from .target_directory import module_name as target_module
 from .target_directory import read as read_targets
 from .targets import required_axes
 
@@ -23,35 +28,109 @@ from .targets import required_axes
 # package's `core` range is held to.
 CORE = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
 SCHEMA_VERSION = "9.0"
-# The targets first, and before the languages for one reason: a backend declares the targets it is offered
-# under, and a backend naming a cloud can only be read once that cloud's row is in the tables. The keel's own
-# file carries `none` and `existing`; every other row, and every answer that is a cloud's, arrives here.
-TARGETS, _TARGET_REFUSALS = read_targets(directory(), CORE["schemaVersion"], installed=True)
-_TARGET_MERGE_REFUSALS = merge_targets(CORE, TARGETS)
-TARGETS = [one for one in TARGETS if one.name in CORE["targets"]]
-# Phase 1 of the package directory: the fragments this keel can load, then the merge, which refuses a
-# fragment alone. `PACKAGES` are the ones that merged; `REFUSALS` say, a line each, why the others did not.
-_FOUND, _FRAGMENT_REFUSALS = read(directory(), CORE["schemaVersion"], installed=True)
-CATALOG, _MERGE_REFUSALS, UNREACHABLE = merge(CORE, _FOUND, installed=True)
-# What a loaded package answers that this installation cannot reach, as the line `slipwai list` prints under
-# it. Not a refusal and never printed as one: the package works and the rest of its answers are offered. It
-# is said at all because the alternative is silence — a person who installed a language to deploy to a cloud,
-# and has not installed that cloud, would otherwise find the target missing from the menu with nothing
-# anywhere saying why. `catalog_merge.reachable` is what took them out, and says why there.
-UNREACHABLE_NOTES = {
-    name: f"\n      not reachable here: {', '.join(gone)}"
-          f"\n      no installed target offers them: {this_command()} target list"
-    for name, gone in UNREACHABLE.items()
-}
-PACKAGES = [package for package in _FOUND if package.name not in _MERGE_REFUSALS]
-# The same directory's other kind of package. An extension adds a catalogue entry and a directory of files
-# `./init` runs; it merges nothing into the backends, so it is folded in after the language merge rather
-# than through it.
-EXTENSIONS, _EXTENSION_REFUSALS = read_extensions(directory(), CORE["schemaVersion"], installed=True)
-_COLLISIONS = merge_packages(CATALOG, EXTENSIONS)
-EXTENSIONS = [one for one in EXTENSIONS if CATALOG["extensions"].get(one.name) == one.entry]
-REFUSALS: list[str] = [*_TARGET_REFUSALS, *_TARGET_MERGE_REFUSALS, *_FRAGMENT_REFUSALS,
-                       *_MERGE_REFUSALS.values(), *_EXTENSION_REFUSALS, *_COLLISIONS]
+
+
+def notes(unreachable: dict[str, list[str]]) -> dict[str, str]:
+    """What a loaded package answers that this installation cannot reach, as the line `slipwai list` prints
+    under it. Not a refusal and never printed as one: the package works and the rest of its answers are
+    offered. It is said at all because the alternative is silence — a person who installed a language to
+    deploy to a cloud, and has not installed that cloud, would otherwise find the target missing from the
+    menu with nothing anywhere saying why. `catalog_merge.reachable` is what took them out, and says why."""
+    return {
+        name: f"\n      not reachable here: {', '.join(gone)}"
+              f"\n      no installed target offers them: {this_command()} target list"
+        for name, gone in unreachable.items()
+    }
+
+
+def built(core: dict[str, Any]) -> dict[str, Any]:
+    """Everything the package directory makes of the keel's own file, in the order the parts need.
+
+    The targets first, and before the languages for one reason: a backend declares the targets it is offered
+    under, and a backend naming a cloud can only be read once that cloud's row is in the tables. The keel's
+    own file carries `none` and `existing`; every other row, and every answer that is a cloud's, arrives
+    here. Then phase 1 of the package directory: the fragments this keel can load, and the merge, which
+    refuses a fragment alone. Last the other kind of package — an extension adds a catalogue entry and a
+    directory of files `./init` runs, and merges nothing into the backends, so it is folded in after the
+    language merge rather than through it.
+
+    A function rather than the run of statements this was, because the board reads it twice: once at import
+    like every other process, and again when a package has been installed into the directory underneath it
+    (`reread`). Two copies of this order would be two things to keep in step.
+
+    `core` is mutated: `merge_targets` writes an installed target's rows into it, which is why `reread`
+    passes a copy read fresh off disk rather than the one this module is holding.
+    """
+    targets, target_refusals = read_targets(directory(), core["schemaVersion"], installed=True)
+    target_merge_refusals = merge_targets(core, targets)
+    targets = [one for one in targets if one.name in core["targets"]]
+    found, fragment_refusals = read(directory(), core["schemaVersion"], installed=True)
+    catalog, merge_refusals, unreachable = merge(core, found, installed=True)
+    extensions, extension_refusals = read_extensions(directory(), core["schemaVersion"], installed=True)
+    collisions = merge_packages(catalog, extensions)
+    return {
+        "targets": targets,
+        "catalog": catalog,
+        "unreachable": unreachable,
+        "packages": [package for package in found if package.name not in merge_refusals],
+        "extensions": [one for one in extensions if catalog["extensions"].get(one.name) == one.entry],
+        "refusals": [*target_refusals, *target_merge_refusals, *fragment_refusals,
+                     *merge_refusals.values(), *extension_refusals, *collisions],
+    }
+
+
+_FIRST = built(CORE)
+TARGETS = _FIRST["targets"]
+CATALOG = _FIRST["catalog"]
+UNREACHABLE = _FIRST["unreachable"]
+UNREACHABLE_NOTES = notes(UNREACHABLE)
+PACKAGES = _FIRST["packages"]
+EXTENSIONS = _FIRST["extensions"]
+REFUSALS: list[str] = _FIRST["refusals"]
+
+
+def reread() -> None:
+    """Read the package directory again, into the objects this module has already handed out.
+
+    Built once at import is right for a verb — a command runs in a process of its own and the directory
+    cannot change underneath it — and wrong for the board, which is one process that installs packages into
+    that directory while it is serving. A language installed from the page landed on disk, was listed by the
+    packages tab, which re-reads the directory, and was not in the interview's menus, which read this — until
+    somebody restarted the server, which is the one thing the person the board is for cannot do.
+
+    **In place, because every reader holds these objects.** Thirty-odd modules did `from .catalog import
+    CATALOG`: rebinding the name here would leave every one of them on the table this replaced.
+
+    **Everything is built before anything is replaced**, so a page rendering while this runs reads the old
+    catalogue or the new one, and a package that cannot be read leaves the one that was working in place.
+
+    The imported Python goes too. Phase 2 imports a package's module by name, and a name already in
+    `sys.modules` is the module that was there before the install — which for a package that was replaced
+    rather than added is the old code, loaded from a directory that has since been written over.
+    """
+    core = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
+    found = built(core)
+    for package in PACKAGES:
+        forget(module_name(package.name))
+    for one in TARGETS:
+        forget_target(target_module(one.name))
+    CORE.clear()
+    CORE.update(core)
+    CATALOG.clear()
+    CATALOG.update(found["catalog"])
+    UNREACHABLE.clear()
+    UNREACHABLE.update(found["unreachable"])
+    UNREACHABLE_NOTES.clear()
+    UNREACHABLE_NOTES.update(notes(UNREACHABLE))
+    TARGETS[:] = found["targets"]
+    PACKAGES[:] = found["packages"]
+    EXTENSIONS[:] = found["extensions"]
+    REFUSALS[:] = found["refusals"]
+    # Both caches are "once per process", and this is the moment that stops being true. `loaded_targets`
+    # is reached by name at call time, not imported: it reads this module, and a static import either way
+    # round is a cycle — the same reason `registry.registry` reaches `loaded` that way.
+    registry.cache_clear()
+    importlib.import_module("slipwai.loaded_targets").loaded.cache_clear()
 
 
 def catalog_families(catalog: dict) -> dict[str, list[str]]:

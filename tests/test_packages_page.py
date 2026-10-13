@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 import threading
 import unittest
@@ -25,6 +26,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai import chandlery_page
 from slipwai.bridge import serve
+from slipwai.catalog import reread
 from slipwai.chandlery_page import page, put, sections
 from slipwai.errors import GenerationError
 from slipwai.index_schema import EXTENSION, LANGUAGE, QUICKSTART, TARGET
@@ -64,15 +66,24 @@ class Fixture(unittest.TestCase):
             "SLIPWAI_HOME": str(self.home), "SLIPWAI_LANGUAGES": str(self.packages),
             "SLIPWAI_QUICKSTARTS": str(self.quickstarts)})
         self.patch.start()
+        # Registered before the environment is put back, so it runs after it: cleanups are undone in the
+        # order they were made. A test that re-read the catalogue while this directory was still the one
+        # named would leave every suite after it holding a catalogue of a temporary directory that is gone.
+        self.addCleanup(reread)
         self.addCleanup(self.patch.stop)
 
     def install(self, name: str, manifest: str = "language.json", version: str = "1.0.0",
                 **held: object) -> Path:
+        """A package in the directory, as an install leaves one. A language carries a backend because a
+        fragment without one is a fragment the merge refuses, and a refused package is not installed."""
         place = self.packages / name
         place.mkdir()
         (place / "VERSION").write_text(version + "\n", encoding="utf-8")
+        backends = {name: {"label": name.title(), "targets": ["none"],
+                           "options": {"event-store": ["memory"], "http": ["none"]}}}
         (place / manifest).write_text(json.dumps({"name": name, "key": name, "core": ">=9.0,<10",
-                                                  "family": name, "order": 10, **held}), encoding="utf-8")
+                                                  "family": name, "order": 50, "backends": backends,
+                                                  **held}), encoding="utf-8")
         return place
 
     def rows(self, kind: str) -> list:
@@ -193,6 +204,10 @@ class ServerTest(Fixture):
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
 
+    def page(self, path: str) -> str:
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=5) as answer:
+            return answer.read().decode("utf-8")
+
     def post(self, path: str, body: dict) -> tuple[int, str]:
         request = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}",
                                          data=json.dumps(body).encode("utf-8"),
@@ -227,6 +242,30 @@ class ServerTest(Fixture):
         self.assertEqual(code, 400)
         self.assertIn("not a kind of package", said)
         self.assertNotIn("Traceback", said)
+
+    def test_a_language_installed_from_the_page_is_offered_by_the_interview(self) -> None:
+        """The bug this tab arrived with. The board is one process: the catalogue was read when the server
+        started, the packages tab re-reads the directory and showed the new language, and the interview's
+        menus read the catalogue — so a person installed a language from one tab and could not choose it on
+        the next, with nothing to do about it but restart a server they did not know they were running."""
+        def lands(names: list, place: Path, **held: object) -> list[str]:
+            # The checkout's own package, copied in as an install leaves one: a fragment alone would be
+            # merged and then taken straight back out again, because phase 2 imports a package's Python
+            # and retracts the backends of one that will not load.
+            shutil.copytree(checkout_packages.PACKAGES / "toy", place / "toy")
+            return ["installed toy"]
+
+        if not (checkout_packages.PACKAGES / "toy").is_dir():
+            self.skipTest("packages/toy is not checked out: git submodule update --init packages/toy")
+        # The catalogue this process holds is the pinned checkout's. Read the empty directory this test
+        # installs into, so that what the interview offers afterwards is what the install put there and
+        # not what the suite happened to start with — and put the pinned one back on the way out.
+        reread()
+        self.assertNotIn('<option value="toy"', self.page("/generate"))
+        with mock.patch.object(chandlery_page, "put_language", side_effect=lands):
+            code, _ = self.post("/packages/install", {"kind": LANGUAGE, "name": "toy"})
+        self.assertEqual(code, 200)
+        self.assertIn('<option value="toy"', self.page("/generate"))
 
     def test_the_read_only_copy_has_no_such_tab_and_no_such_control(self) -> None:
         """The published copy is one file on somebody's Pages site. A page that offered to install

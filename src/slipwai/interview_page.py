@@ -43,6 +43,7 @@ from .catalog import (
 )
 from .cli_language import not_installed_frameworks, not_installed_languages
 from .cli_prompts import PROFILE_GUIDANCE
+from .errors import GenerationError
 from .page_shell import document, esc
 from .services import FIRST_SERVICE, FIRST_WEB
 from .targets import offered_backends
@@ -258,7 +259,27 @@ document.addEventListener('click', async event => {
 """
 
 
+def nothing(refused: GenerationError) -> str:
+    """The card a board with no language to generate on shows: what is missing, and the tab that fixes it.
+
+    The terminal answers this with `nothing_to_generate`, which prints an install line per language the
+    chandlery offers — the right answer for somebody who can type one. Here the install is a tab away, so
+    the page says that instead; the refusal itself is still shown, because it is the sentence that says why.
+
+    Before this, the questions were asked of a catalogue with no backend in it and the refusal came out of
+    the server as a closed connection — which is what a person met on the first machine they ever installed
+    this on, where no language is installed yet by definition.
+    """
+    return ('<div class="card"><h2>There is no language to generate with yet</h2>'
+            f'<p class="empty">{esc(refused)}</p>'
+            '<dl><dt><a href="/packages">Install a language</a></dt>'
+            "<dd>this page asks its questions the moment there is one</dd></dl></div>")
+
+
 def page(answers: Mapping[str, str], title: str = "Start a new project") -> str:
     """The interview as a page of its own. 14.4 makes it a tab of the board; the questions do not change."""
-    return document(title, f"{len(asked(answers))} questions, read from the catalogue",
-                    form(answers), SCRIPT, now="/generate")
+    try:
+        body, sub = form(answers), f"{len(asked(answers))} questions, read from the catalogue"
+    except GenerationError as refused:
+        return document(title, "nothing to generate yet", nothing(refused), now="/generate")
+    return document(title, sub, body, SCRIPT, now="/generate")

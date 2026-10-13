@@ -38,7 +38,17 @@ from .interview_page import form
 from .interview_page import page as interview
 from .interview_page import run as generate
 from .logs import deck_path, entry
-from .page_shell import ICON, MANIFEST, NOT_RUNNING, WORKER, WORKER_SOURCE, icon, manifest, not_running
+from .page_shell import (
+    ICON,
+    MANIFEST,
+    NOT_RUNNING,
+    WORKER,
+    WORKER_SOURCE,
+    esc,
+    icon,
+    manifest,
+    not_running,
+)
 from .telegraph import Refused
 
 LIMIT = 64 * 1024  # bytes a request body may be; nothing here takes more than a sentence
@@ -98,6 +108,19 @@ class Bridge(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self) -> None:  # noqa: N802 — http.server's own spelling
+        """A page, or the one line saying why there is none.
+
+        The net is here rather than per route: a refusal that reached `http.server` closed the connection
+        without a word, and a browser shows that as the board being broken. Every page this serves is a
+        render of something read off disk, and anything on disk can be unreadable.
+        """
+        try:
+            self.answer()
+        except GenerationError as refused:
+            self.send(500, f'<div class="card"><h2>This page could not be put together</h2>'
+                           f"<p>{esc(refused)}</p></div>")
+
+    def answer(self) -> None:
         where = self.path.rstrip("/")
         if where == "/board.json":
             held = config(self.root)

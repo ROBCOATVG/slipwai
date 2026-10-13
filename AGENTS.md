@@ -6,9 +6,15 @@ called a workstation, a workstream, a lane or a runner. The whole design is
 [docs/slipwai-2-plan.md](docs/slipwai-2-plan.md); section 11 is the slice list, and section 8 is the rules
 these are.
 
-**Until 2.0.0 is cut, this repository keeps no version 1 working contract.** No `migrate`, no catch-up
-notes, no changelog fragments, no bump arithmetic, and `VERSION` does not move. All of that comes back in
-phase 8. If you are about to write a changelog entry, you are in the wrong phase.
+**Every change writes a `changelog.d/` fragment.** Phase 8 brought the release machinery back, so the
+rule this paragraph used to carry — no fragments, no catch-up notes, no `migrate` — is over: there are
+ninety-odd fragments, `make check-release` assembles them into the 2.0.0 entry, and that gate runs in
+`make verify`. Read [changelog.d/README.md](changelog.d/README.md) for the shape and write for the person
+who has just upgraded. `VERSION` still does not move by hand: `make release` derives it.
+
+The paragraph that said the opposite stood for eight phases after it stopped being true, and an agent that
+read it literally refused to write the fragment it had just been asked for. A rule about a phase says which
+phase it belongs to, or it outlives the phase.
 
 ## Two gates, not one
 

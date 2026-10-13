@@ -1,6 +1,6 @@
 [submodule "packages/aws"]
 	path = packages/aws
-	url = git@github.com:ROBCOATVG/slipwai-target-aws.git
+	url = https://github.com/ROBCOATVG/slipwai-target-aws.git
 [submodule "packages/azure"]
 	path = packages/azure
-	url = git@github.com:ROBCOATVG/slipwai-target-azure.git
+	url = https://github.com/ROBCOATVG/slipwai-target-azure.git

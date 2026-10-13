@@ -402,14 +402,36 @@ class ChartUnreadable(Exception):
     """A chart is there and no parser is. The boundary is not held, and the gate says so rather than passing."""
 
 
+def spanning(pattern: str) -> re.Pattern[str]:
+    """A pattern holding `**` in the middle of it, as the expression that matches a path.
+
+    `**` spans zero or more whole segments and `*` stays inside one, which is what every tool that reads a
+    glob means by them. Zero is the case this exists for: `apps/orders/**/billing/**` has to match
+    `apps/orders/billing/x.go` as well as `apps/orders/src/billing/x.ts`, because where a context's
+    directory sits is the language's business and a chart is not written per language.
+    """
+    tail = ""
+    if pattern.endswith("/**"):
+        pattern, tail = pattern[:-3], "(?:/.*)?"
+    parts = ["(?:[^/]+/)*" if part == "**" else re.escape(part).replace(r"\*", "[^/]*") + "/"
+             for part in pattern.split("/")]
+    body = "".join(parts).rstrip("/")
+    return re.compile(f"^{body}{tail}$")
+
+
 def owned_by(path: str, patterns: list[str]) -> bool:
     """Whether a path falls inside one of a fairway's `owns` entries.
 
-    `apps/orders/**` is a prefix, which is what every chart writes and what a reader expects it to mean.
-    Anything else falls through to `fnmatch`, so a chart may name one file if it has reason to.
+    `apps/orders/**` is a prefix, which is what every chart writes for a service that holds one context and
+    what a reader expects it to mean. A `**` anywhere else is read as segments: the renderer writes one for
+    a service holding several, because the directory a context lives in sits at a different depth in every
+    language. Anything else falls through to `fnmatch`, so a chart may name one file if it has reason to.
     """
     for pattern in patterns:
-        if pattern.endswith("/**"):
+        if "**" in pattern.removesuffix("/**"):
+            if spanning(pattern).match(path):
+                return True
+        elif pattern.endswith("/**"):
             root = pattern[:-3]
             if path == root or path.startswith(root + "/"):
                 return True

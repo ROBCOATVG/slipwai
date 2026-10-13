@@ -62,7 +62,12 @@ class OwnedPathsTest(unittest.TestCase):
             subprocess.run(["git", *argument.split()], cwd=self.tree, capture_output=True, check=True)
         self.module = gate_module(self.tree)
 
-    def scope(self, slice_id: str):
+    def scope(self, slice_id: str, chart: str | None = None):
+        """The gate reading this tree's chart — or a chart written for the test, for the layouts a
+        temporary tree has no code in."""
+        if chart is not None:
+            (self.tree / "specs/ordering/chart.yaml").write_text(textwrap.dedent(chart).lstrip(),
+                                                                 encoding="utf-8")
         return self.module.Scope(slice_id, "main")
 
     def test_a_slice_may_touch_what_its_own_fairway_owns(self) -> None:
@@ -73,6 +78,39 @@ class OwnedPathsTest(unittest.TestCase):
         assert found is not None
         self.assertIn("owned by fairway `billing`", found)
         self.assertIn("this slice is in `ordering`", found)
+
+    def test_a_service_holding_several_contexts_is_divided_in_every_language(self) -> None:
+        """The chart writes `<service>/**/<context>/**` for a service holding several contexts, because the
+        directory a context lives in sits at a different depth in every language.
+
+        It used to write `<service>/src/<context>/**`, which is where TypeScript puts one and nowhere Go,
+        Java, Python or Rust does — so on those the pattern matched nothing, nothing was owned, and this
+        rule refused nothing while reporting the branch in scope. A gate that fails gets fixed; that one
+        passed. Both layouts are held here, because the fix must not trade one language for another.
+        """
+        chart = CHART.replace(
+            "ordering: {context: ordering, service: apps/orders, owns: [apps/orders/**]}",
+            "ordering: {context: ordering, service: apps/warbook, owns: [apps/warbook/**/ordering/**]}",
+        ).replace(
+            "billing: {context: billing, service: apps/billing, owns: [apps/billing/**]}",
+            "billing: {context: billing, service: apps/warbook, owns: [apps/warbook/**/billing/**]}",
+        )
+        for path in ("apps/warbook/billing/domain/invoice.go",      # Go, Java, Python, Rust
+                     "apps/warbook/src/billing/domain/invoice.ts",  # TypeScript
+                     "apps/warbook/internal/billing/invoice.go"):   # and wherever else a language keeps it
+            with self.subTest(path=path):
+                found = self.scope("ORD-01", chart=chart).fairway_violation(path)
+                assert found is not None, f"{path} is owned by billing and nothing refused it"
+                self.assertIn("owned by fairway `billing`", found)
+
+    def test_a_context_is_a_whole_segment_and_never_part_of_a_word(self) -> None:
+        """`billings/` is not `billing/`. A rule that matched inside a word would refuse a slice for a
+        directory that is somebody else's name, which is the opposite failure and just as quiet."""
+        chart = CHART.replace(
+            "billing: {context: billing, service: apps/billing, owns: [apps/billing/**]}",
+            "billing: {context: billing, service: apps/warbook, owns: [apps/warbook/**/billing/**]}",
+        )
+        self.assertIsNone(self.scope("ORD-01", chart=chart).fairway_violation("apps/warbook/billings/x.go"))
 
     def test_the_refusal_says_a_mark_is_how_two_fairways_meet(self) -> None:
         """Because the next question a reader has is what to do instead, and there is exactly one answer."""

@@ -95,12 +95,19 @@ class RenderedChartTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
 
     def test_a_fairway_per_context_owning_what_that_context_holds(self) -> None:
-        """A service with one context owns all of it; one holding several owns the context's own directory."""
+        """A service with one context owns all of it; one holding several owns the context's own directory,
+        at whatever depth its language keeps it.
+
+        This asserted `apps/billing/src/billing/**` and so pinned the bug it was written to describe: `src/`
+        is where a TypeScript service puts a context and nowhere a Go, Java, Python or Rust one does, and a
+        pattern matching no file claims no file. The fairway rule refuses a path another fairway owns, so
+        with nothing owned it refused nothing and reported every branch in scope.
+        """
         self.render()
         fairways = self.chart()["fairways"]
         self.assertEqual(sorted(fairways), ["billing", "ordering"])
         self.assertEqual(fairways["ordering"]["owns"], ["apps/orders/**"])
-        self.assertEqual(fairways["billing"]["owns"], ["apps/billing/src/billing/**"])
+        self.assertEqual(fairways["billing"]["owns"], ["apps/billing/**/billing/**"])
 
     def test_an_event_mark_points_at_the_model_rather_than_a_generated_schema(self) -> None:
         """Generating JSON Schema would mean inventing a type mapping, and that mapping would be the

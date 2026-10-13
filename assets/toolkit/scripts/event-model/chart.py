@@ -71,9 +71,22 @@ def contexts_of(record: dict) -> list[str]:
 
 def owns(name: str, record: dict, context: str) -> list[str]:
     """The paths this fairway owns. A service holding one context owns all of it; one holding several owns
-    the context's own directory, which is where `/sail` puts a context's code and `check-imports` keeps it."""
+    the context's own directory, which is where `/sail` puts a context's code and `check-imports` keeps it.
+
+    **At whatever depth the language keeps it.** This composed `<service>/src/<context>/**`, which is where
+    a TypeScript service keeps a context and nowhere a Go, Java, Python or Rust one does. On every other
+    language the pattern matched no file, and a pattern that matches nothing claims nothing: the fairway
+    rule in `check-slice-scope` reads these, and a path no fairway claims is nobody's to refuse. So the gate
+    reported every branch in scope, which is the same thing it says when the branch really is — a gate that
+    fails gets fixed, and this one passed.
+
+    `check-imports` has had the language-neutral rule all along: it finds a context by looking for its name
+    among a path's directory parts. Two files deciding where a context lives, by different rules, was the
+    defect; the `src/` was the symptom. `**` between the service and the context says the same thing this
+    pattern language can say: the directory named for this context, wherever the language keeps it.
+    """
     path = str(record.get("path") or name).rstrip("/")
-    return [f"{path}/**"] if len(contexts_of(record)) <= 1 else [f"{path}/src/{context}/**"]
+    return [f"{path}/**"] if len(contexts_of(record)) <= 1 else [f"{path}/**/{context}/**"]
 
 
 def events_of(item: dict) -> list[str]:

@@ -44,6 +44,7 @@ from .catalog import (
 from .cli_offered import not_installed_frameworks, not_installed_languages
 from .cli_prompts import PROFILE_GUIDANCE
 from .errors import GenerationError
+from .harness import detect, keys, name_of
 from .page_shell import document, esc
 from .services import FIRST_SERVICE, FIRST_WEB
 from .targets import offered_backends
@@ -190,6 +191,41 @@ def flags(answers: Mapping[str, str]) -> list[str]:
     return argv
 
 
+#: The row that hands the new project to nobody, which is the only answer a board can offer that leaves
+#: `./init` where it has always been — the next step, for a person with a terminal.
+NO_INIT = "none"
+
+
+def destination(answers: Mapping[str, str]) -> Path:
+    """Where this set of answers puts the project. `flags` carries the two halves to the verb separately and
+    the verb prints the join; the board needs it before it reads a word of what the verb said."""
+    held = settled(answers)
+    return (Path(held["output"]).expanduser() / held["name"]).resolve()
+
+
+def init_asked(answers: Mapping[str, str], root: Path) -> Question:
+    """Which coding agent the new project is handed to as soon as it exists — the one question here the
+    terminal does not ask.
+
+    It does not ask it because it cannot ask it well: `./init` has thirty-six answers and a terminal has no
+    good way to offer thirty-six of anything, so there it is Spec Kit's own question, asked of the person
+    who is sitting in front of it. Nobody is sitting in front of this, and a child with no terminal that
+    stops on a menu is a board that hangs — so the board asks first, with a list, which is the one shape of
+    question a browser is better at. Declining is the first row and leaves `./init` as the next step.
+
+    It is not in `asked`: that list is the questions `generate` takes as flags, held in step with the
+    terminal's own interview, and this is neither.
+    """
+    found = detect(root)
+    rows = (NO_INIT, *keys())
+    return Question("init", "Then", answers.get("init") or found.harness or NO_INIT, rows,
+                    {NO_INIT: "leave ./init as the next step, to be run in a terminal",
+                     **{key: f"run ./init here and project into {name_of(key)}" for key in keys()}},
+                    why="`./init` installs Spec Kit and projects the skills and commands into one agent. It "
+                        "is the step nothing in the new tree works without, and the only one that needs the "
+                        "network" + (f" — {found.evidence}" if found.harness else ""))
+
+
 def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
     """Generate, by running the verb. Whether it worked, and what it said either way.
 
@@ -220,9 +256,10 @@ def field_html(question: Question) -> str:
             f"{asking}{why}{no}</div>")
 
 
-def form(answers: Mapping[str, str]) -> str:
+def form(answers: Mapping[str, str], root: Path | None = None) -> str:
     """The whole interview, as one card. Re-rendered when an answer changes what comes after it."""
     rows = "".join(field_html(question) for question in asked(answers))
+    rows += field_html(init_asked(answers, root or Path(".")))
     return (f'<div class="card" id="interview"><h2>Start a new project</h2>'
             f'<form class="ask-page">{rows}</form>'
             f'<div class="ask"><button class="go" id="generate">Generate</button></div>'
@@ -254,7 +291,10 @@ document.addEventListener('click', async event => {
   said.textContent = 'generating…';
   const answer = await post('/generate/run');
   said.textContent = await answer.text();
-  if (!answer.ok) said.className = 'said bad';
+  if (!answer.ok) { said.className = 'said bad'; return; }
+  // Made. The board is this project's board from here, and it carries the same text plus whatever `./init`
+  // says next — so the page a person is left looking at is the one about the thing they just made.
+  location.href = '/';
 });
 """
 
@@ -276,10 +316,10 @@ def nothing(refused: GenerationError) -> str:
             "<dd>this page asks its questions the moment there is one</dd></dl></div>")
 
 
-def page(answers: Mapping[str, str], title: str = "Start a new project") -> str:
+def page(answers: Mapping[str, str], title: str = "Start a new project", root: Path | None = None) -> str:
     """The interview as a page of its own. 14.4 makes it a tab of the board; the questions do not change."""
     try:
-        body, sub = form(answers), f"{len(asked(answers))} questions, read from the catalogue"
+        body, sub = form(answers, root), f"{len(asked(answers))} questions, read from the catalogue"
     except GenerationError as refused:
         return document(title, "nothing to generate yet", nothing(refused), now="/generate")
     return document(title, sub, body, SCRIPT, now="/generate")

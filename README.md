@@ -18,7 +18,7 @@ Frontend (none/react-vite) [react-vite]:
 
   bookings/ written — 927 files
 
-$ cd bookings && ./init && make verify
+$ cd bookings && make verify   # ./init ran where the project was made
 
 verify: all gates passed
 ```

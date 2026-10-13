@@ -70,7 +70,10 @@ def terminal_interview(answer: Callable[[str], str]) -> str:
     with (contextlib.redirect_stdout(said),
           mock.patch("builtins.input", typed),
           mock.patch("slipwai.cli_prompts.terminal_can_select", lambda: False)):
-        generate_main([])
+        # `--no-init` rather than nothing: the interview's own default is to run `./init` in what it made,
+        # which reaches the network and is the one thing a test of the questions must not do. It is still the
+        # interactive form — the flags that have nothing to prompt about do not make it a scripted one.
+        generate_main(["--no-init"])
     return said.getvalue()
 
 
@@ -199,6 +202,66 @@ class ServedTest(unittest.TestCase):
         code, said = self.post("/generate/run", {"name": "Not A Name"})
         self.assertEqual(code, 400)
         self.assertIn("project name", said.lower())
+
+
+@unittest.skipUnless(checkout_packages.installed("toy"), "needs the toy package: slice 3.8")
+class HandoverTest(unittest.TestCase):
+    """What the terminal does after `created:`.
+
+    `./init` is the step that installs Spec Kit and projects the skills and commands, and nothing in a new
+    tree works until it has run. It used to be a sentence in the guide, which is the state this closes: the
+    interview ends by running it, and a scripted run is given the flag or left with the next step — the same
+    rule `adopt` has, and for the same reason. The run itself is stubbed here: the real one needs the
+    network, and what is under test is who it is run for.
+    """
+
+    def ran(self, argv: list[str], answer: Callable[[str], str] | None = None) -> list[Path]:
+        """Where `generate` handed the new project over, for this way of asking it."""
+        from slipwai import cli
+
+        handed: list[Path] = []
+
+        def instead_of_init(where: Path, harness: str | None = None) -> int:
+            handed.append(where)
+            return 0
+
+        def typed(prompt: str = "") -> str:
+            return answer(prompt) if answer else ""
+
+        with (contextlib.redirect_stdout(io.StringIO()),
+              mock.patch.object(cli, "run_init", instead_of_init),
+              mock.patch("builtins.input", typed),
+              mock.patch("slipwai.cli_prompts.terminal_can_select", lambda: False)):
+            cli.generate_main(argv)
+        return handed
+
+    def scripted(self, scratch: Path, *extra: str) -> list[str]:
+        held = settled({"name": "demo"})
+        return ["demo", "--backend", held["backend"], "--frontend", "none",
+                "--output", str(scratch), "--skip-checks", *extra]
+
+    def test_the_interview_hands_the_project_over_when_it_is_done(self) -> None:
+        """Somebody is sitting there, and `./init` has a question of its own to ask them."""
+        with tempfile.TemporaryDirectory() as scratch:
+            # Resolved, because `generate` resolves the output parent before it writes: on macOS the
+            # scratch directory is reached through a symlink and the two spellings are the same directory.
+            self.assertEqual(self.ran([], every_default("demo", Path(scratch))),
+                             [(Path(scratch) / "demo").resolve()])
+
+    def test_a_scripted_run_is_left_with_the_next_step(self) -> None:
+        """It reaches the network, and a build that did that without being asked would be the surprise."""
+        with tempfile.TemporaryDirectory() as scratch:
+            self.assertEqual(self.ran(self.scripted(Path(scratch))), [])
+
+    def test_a_scripted_run_that_asks_for_it_gets_it(self) -> None:
+        with tempfile.TemporaryDirectory() as scratch:
+            self.assertEqual(self.ran(self.scripted(Path(scratch), "--init")),
+                             [(Path(scratch) / "demo").resolve()])
+
+    def test_the_interview_can_decline_it_and_still_be_the_interview(self) -> None:
+        """`--no-init` says what happens after the last question; it does not make the run a scripted one."""
+        with tempfile.TemporaryDirectory() as scratch:
+            self.assertEqual(self.ran(["--no-init"], every_default("demo", Path(scratch))), [])
 
 
 def differences(one: Path, two: Path) -> list[str]:

@@ -18,6 +18,7 @@ a fold of the logs, so a reload is a re-fold. That is the same rule the board ha
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from .assets import this_command
 from .fleet import NOTHING, inbox_detail
@@ -63,6 +64,26 @@ async function send(path, body){
   if (answer.ok) location.reload();
   else alert(await answer.text());
 }
+// The one thing on this board that changes without a reload: `./init`, running in the project the board
+// has just landed in. It is a child of the server and nobody is watching its terminal, so the page asks for
+// what it has said since the line it already has, a second at a time, until it says it has stopped.
+const fitting = document.getElementById('fitting');
+if (fitting) {
+  const tail = document.getElementById('fitting-said');
+  let at = Number(tail.dataset.at || 0);
+  const poll = async () => {
+    let said;
+    try { said = await (await fetch('/init.json?since=' + at)).json(); }
+    catch (fault) { return; }   // the board was closed, or the server went away: stop asking
+    at = said.at;
+    if (said.lines.length) tail.textContent += said.lines.join('\n') + '\n';
+    tail.scrollTop = tail.scrollHeight;
+    if (said.done) { fitting.querySelector('[data-state]').textContent = said.code ? 'stopped' : 'done'; return; }
+    setTimeout(poll, 1000);
+  };
+  poll();
+}
+
 document.addEventListener('click', event => {
   const dial = event.target.closest('[data-ring]');
   if (dial) send('/ring', {position: dial.dataset.ring});
@@ -70,6 +91,10 @@ document.addEventListener('click', event => {
   if (say) {
     const box = document.getElementById('tell-' + say.dataset.tell);
     if (box && box.value.trim()) send('/tell', {fairway: say.dataset.tell, message: box.value.trim()});
+  }
+  if (event.target.id === 'attach-go') {
+    const box = document.getElementById('attach');
+    if (box && box.value.trim()) send('/attach', {root: box.value.trim()});
   }
   if (event.target.id === 'apply') {
     const pairs = [...document.querySelectorAll('[data-number]')]
@@ -164,6 +189,38 @@ def starting_points(command: str | None = None) -> str:
     return f'<div class="card"><h2>Start something</h2><dl>{rows}</dl></div>'
 
 
+def fitting_card(made: dict) -> str:
+    """What the board made and what `./init` is saying in it — the receipt the board lands with.
+
+    It is on the board rather than left on the interview page because the board is where landing *is*: the
+    page a person is looking at is now this project's, and the sentence saying which project that is belongs
+    on it. `data-at` is how many lines are already here, so the poll asks for what came after them and the
+    page never shows a line twice.
+    """
+    said = "\n".join(made["lines"])
+    state = "running" if not made["done"] else ("stopped" if made.get("code") else "done")
+    return (f'<div class="card" id="fitting"><h2>Made {esc(Path(str(made["where"])).name)}</h2>'
+            f'<p class="empty">{esc(made["where"])} — <span class="chip" data-state="{esc(state)}">'
+            f'{esc(state)}</span></p>'
+            f'<pre class="said" id="fitting-said" data-at="{esc(made["at"])}">{esc(said)}\n</pre></div>')
+
+
+def looking(root: str) -> str:
+    """Which directory this board is a view of, and the box that points it at another one.
+
+    The board has always been a view of one directory, decided by where it was started and changed only by
+    stopping it and starting it again with `--root`. That was the terminal deciding something for a page
+    that has a person sitting in front of it: nothing here is cached, every request re-folds the logs at
+    `root`, so moving the board is a sentence rather than a restart. A generate moves it by itself, to the
+    project it just made; this is the same move, made on purpose.
+    """
+    return ('<div class="card" id="looking"><h2>Looking at</h2>'
+            f'<div class="ask"><input id="attach" value="{esc(root)}">'
+            '<button class="go" id="attach-go">Attach</button></div>'
+            '<div class="why">any project with a <code>.slipwai/</code> in it — its streams, its inbox and '
+            'its telegraph are what this page then shows</div></div>')
+
+
 def dial(position: str, controls: bool) -> str:
     buttons = []
     for name in POSITIONS:
@@ -187,7 +244,8 @@ def tune(config: dict, controls: bool) -> str:
     return f'<div class="card"><h2>Fine tune</h2><dl>{"".join(rows)}</dl>{apply}</div>'
 
 
-def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge") -> str:
+def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge",
+         made: dict | None = None, root: str = "") -> str:
     """The whole page. `controls` off is the read-only copy, which is the same page with nothing to press."""
     berths = found["berths"]
     waiting = found["inbox"]
@@ -208,7 +266,10 @@ def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge"
     clearance_fault = (found.get("unreadable") or {}).get("clearance", "")
     unavailable = (f'<div class="card"><h2>Waiting counts unavailable</h2>'
                    f'<p class="empty">{esc(clearance_fault)}</p></div>') if clearance_fault else ""
-    body = f"""{start}{unavailable}
+    landed = fitting_card(made) if made and controls else ""
+    # The published copy is a file on somebody's Pages site and is a view of nothing it could move to.
+    at = looking(root) if controls and root else ""
+    body = f"""{landed}{at}{start}{unavailable}
 <div class="card"><h2>Waiting on you</h2>{inbox_rows(waiting, controls)}</div>
 {answer_boxes(berths) if controls else ""}
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {})}</div>

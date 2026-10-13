@@ -50,6 +50,8 @@ from .cli_target import target_main
 from .cli_telegraph import telegraph_main
 from .cli_trust import trust_main
 from .errors import GenerationError, failure, refuse
+from .init_run import here as run_init
+from .init_run import init_flag
 from .language_directory import Package, refusal
 from .language_upkeep import after_core
 from .loaded import refusals
@@ -250,6 +252,7 @@ def generate_main(argv: list[str]) -> None:
         )
     # A named set of answers given at once. Every one of them is a flag above, and a flag typed here wins.
     quickstart_flag(parser)
+    init_flag(parser)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     # A production target needs tools scaffolding does not, and they are checked the moment the target is
     # known rather than at the end of `./init`. Skipped only when another machine will run that.
@@ -262,8 +265,10 @@ def generate_main(argv: list[str]) -> None:
         named = {axis: getattr(args, axis.replace("-", "_")) for axis in CATALOG["axes"]}
         # Whatever the caller did not answer, the quickstart does — before anything is resolved or checked.
         quickstart_applied(args, named, argv)
-        # Bare, or bare but for the one flag that has nothing to prompt about, is the interactive form.
-        interactive = all(argument == "--skip-checks" for argument in argv)
+        # Bare, or bare but for the flags that have nothing to prompt about, is the interactive form. Saying
+        # whether `./init` runs is one of those: it is a decision about what happens after the last question,
+        # and a run that declines it is still the interview.
+        interactive = all(argument in ("--skip-checks", "--init", "--no-init") for argument in argv)
         if interactive:
             interview(args, named)
         elif args.name is None:
@@ -307,5 +312,12 @@ def generate_main(argv: list[str]) -> None:
                           files=files_with_record(args, apps), shape=args.shape)
             staging_path.rename(destination)
         print(f"created: {destination}")
+        # Last, and after the tree is written and committed: `./init` is the step that reaches the network,
+        # and a project is no worse off for it having failed than for it never having been offered. Asked for
+        # by default only where somebody is sitting at the terminal — a scripted run is given the flag or
+        # left with the next step, exactly as `adopt` has it.
+        asked_for = args.run_init if args.run_init is not None else interactive
+        if asked_for:
+            run_init(destination)
     except GenerationError as error:
         refuse(parser.prog, error)

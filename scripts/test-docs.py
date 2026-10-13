@@ -341,7 +341,9 @@ PROGRAMME: list[Step] = [
     Interview("start-here.md"),
     Interview("start-here.md"),
     Named("start-here.md", "cd bookings", "a shell builtin; the directory it names is the generation below"),
-    Named("start-here.md", "./init", "installs Spec Kit over the network, once, into the project"),
+    # `./init` is no longer a command on this page: `generate` runs it in the project it has just made, so
+    # it is part of the interview's transcript rather than a step a reader types. The gate still never runs
+    # it — see `interview`, which declines it — and `make verify` below is green without it, as it always was.
     Run("start-here.md", "make verify", FRESH),
     Run("start-here.md", "make verify", FRESH),
 
@@ -402,7 +404,10 @@ def interview(parent: Path) -> str:
     # `-u` so a prompt reaches us when it is written: `input()` to a pipe is buffered otherwise, and a
     # reader waiting for a prompt that will never be flushed waits for ever.
     process = subprocess.Popen(
-        [sys.executable, "-u", "-m", "slipwai", "generate", "--skip-checks"],
+        # `--no-init` for the same reason as `--skip-checks`, and neither is on the page: the interview ends
+        # by running `./init` in what it made, which installs Spec Kit over the network — the one thing this
+        # gate cannot do and the one step it has never run. The questions are what is being driven here.
+        [sys.executable, "-u", "-m", "slipwai", "generate", "--skip-checks", "--no-init"],
         cwd=parent, env=keel_env(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, text=False,
     )

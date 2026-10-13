@@ -181,6 +181,85 @@ class ReadOnlyServerTest(Fixture):
                 self.assertEqual(answer.code, 403)
 
 
+class AttachTest(ServerTest):
+    """Where the board is looking, moved from the page instead of by restarting it with `--root`."""
+
+    def test_the_page_says_which_directory_it_is_a_view_of(self) -> None:
+        self.assertIn(str(self.root.resolve()), self.get("/")[1])
+
+    def test_attaching_points_every_later_request_at_the_other_project(self) -> None:
+        elsewhere = Path(tempfile.mkdtemp())
+        code, said = self.post("/attach", {"root": str(elsewhere)})
+        self.assertEqual(code, 200)
+        self.assertIn(str(elsewhere.resolve()), said)
+        self.assertIn(str(elsewhere.resolve()), self.get("/")[1])
+
+    def test_a_directory_that_is_not_there_is_refused_and_the_board_stays_put(self) -> None:
+        """An empty harbour at a path that does not exist would say nothing is running, which is the one
+        wrong answer this page could give."""
+        code, said = self.post("/attach", {"root": str(self.root / "nowhere")})
+        self.assertEqual(code, 400)
+        self.assertIn("not a directory", said)
+        self.assertIn(str(self.root.resolve()), self.get("/")[1])
+
+    def test_the_published_copy_has_nothing_to_attach_to(self) -> None:
+        """It is one file on somebody's Pages site, and a view of nothing it could move to."""
+        self.assertNotIn('id="attach"', read_only(board(self.root, config(self.root)), config(self.root)))
+
+
+class LandingTest(ServerTest):
+    """What a generate from the board leaves behind: a board looking at the project it just made.
+
+    Generation itself is stubbed here. Driving the real verb needs a language package and takes a minute,
+    `test_interview_page` already does it, and what this is about is the three lines after it worked —
+    where the board is now pointed, what it carries, and what it will tell a poll.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.made = Path(tempfile.mkdtemp()) / "demo"
+        self.made.mkdir()
+        self.patch("generate", lambda answers, root: (True, f"created: {self.made}"))
+        self.patch("destination", lambda answers: self.made)
+
+    def patch(self, name: str, with_this: object) -> None:
+        import slipwai.bridge as module
+        held = getattr(module, name)
+        setattr(module, name, with_this)
+        self.addCleanup(setattr, module, name, held)
+
+    def land(self) -> tuple[int, str]:
+        return self.post("/generate/run", {"name": "demo", "init": "none"})
+
+    def test_the_board_is_the_new_project_s_board_from_here(self) -> None:
+        """The whole of attaching: root is read fresh on every request, so landing is one assignment."""
+        self.assertEqual(self.land()[0], 200)
+        bound = self.server.RequestHandlerClass
+        self.assertEqual(bound.root, self.made)  # type: ignore[attr-defined]  # the subclass `serve` makes
+
+    def test_it_lands_with_the_receipt_for_what_it_made(self) -> None:
+        self.land()
+        code, said = self.get("/")
+        self.assertEqual(code, 200)
+        self.assertIn("Made demo", said)
+        self.assertIn(str(self.made), said)
+
+    def test_a_poll_before_anything_was_made_is_a_finished_nothing(self) -> None:
+        """The board carries the card's script whether or not there is a card; the route answers either way."""
+        said = json.loads(self.get("/init.json")[1])
+        self.assertEqual(said["lines"], [])
+        self.assertTrue(said["done"])
+
+    def test_the_tail_is_polled_for_what_came_after_the_lines_the_page_has(self) -> None:
+        self.land()
+        said = json.loads(self.get("/init.json")[1])
+        self.assertIn(f"created: {self.made}", said["lines"])
+        self.assertEqual(json.loads(self.get(f"/init.json?since={said['at']}")[1])["lines"], [])
+
+    def test_declining_init_still_says_what_the_next_step_is(self) -> None:
+        self.assertIn("./init was not run", self.land()[1])
+
+
 if __name__ == "__main__":
     unittest.main()
 

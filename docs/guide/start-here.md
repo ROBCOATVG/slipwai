@@ -120,6 +120,10 @@ Choose (none/keycloak) [none]:
 
 Output parent [~/code]:
 created: /Users/you/code/bookings
+
+Running ./init in /Users/you/code/bookings — it installs Spec Kit for the coding agent, so it
+reaches the network once, here.
+`./init` is done. `make verify` is the gate, and it is green on a new tree.
 ```
 
 A question with nothing to explain is the one-line form — `Language (typescript) [typescript]:`. One where
@@ -161,12 +165,16 @@ the Makefile, `docker-compose.yml`, the CI workflow and the gate scripts all rea
 
 ```sh
 cd bookings
-./init
 make verify
 ```
 
-`./init` installs Spec Kit for whichever coding agent you use, and wires in the skills, commands and agent
-types the profile needs. It reaches the network once, here, and never again.
+`./init` has already run: the interview ends by running it in the project it has just made, because nothing
+in the tree works until it has. It installs Spec Kit for whichever coding agent you use, and wires in the
+skills, commands and agent types the profile needs. It reaches the network once, there, and never again.
+
+`slipwai generate --no-init` declines it and leaves `./init` as your next step — which is also what a
+scripted `generate` does, where `--init` asks for it. Running `./init` again later is safe, and is how the
+agent is changed: `./init --integration <agent>`.
 
 `make verify` is the whole gate — lint, types, tests, the architecture checks, the model and the chart.
 It is what CI runs, and it is green on a repository nobody has written a line in yet:

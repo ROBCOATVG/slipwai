@@ -94,28 +94,30 @@ MUTATION_NOTE: Member[Any] = M("mutation_note", "backend", False, str, "the note
 IDENTITY_OUTSTANDING: Member[Any] = M("identity_outstanding", "family", False, dict, "feature -> what is owed")
 MUTATION_SCOPING: Member[Any] = M("mutation_scoping", "backend", False, str, "the scoped-run paragraph")
 NPM_WORKSPACE: Member[Any] = M("npm_workspace", "family", False, tuple, "npm_workspace.NpmWorkspace")
+# A family and not a backend: a browser app is one more package in the workspace the family already owns, and
+# two frameworks answering would be two dependency trees npm hoists into one (`docs/backend-protocol.md`).
+BROWSER_APPS: Member[Any] = M("browser_apps", "family", False, dict, "frontend name -> npm_workspace.BrowserApp")
 PRUNE_ROWS: Member[Any] = M("prune_rows", "family", True, dict, "marked, owned, package edits, manifest")
 
 PROTOCOL: tuple[Member[Any], ...] = (
     SERVICE_FILES, NAME_SERVICE, REPOSITORY_FILES, READY_PATH, HEALTH_BODY, TOOLING, FEATURE_TOOLING, EXECUTABLES,
     DEV_COMMAND, COMPOSE_CACHES, PERSISTENCE_DIRECTORY, EVENT_STORE_DIRECTORY, NATIVE_COMMANDS, FORMATTER,
     IMAGE_BUILDER, MIGRATIONS_IN_PRODUCTION, POSTGRES_SSLMODE, SERVICE_DESCRIPTORS, CI_TOOLCHAIN_SETUP,
-    WRITE_SIDE_FILES,
-    READ_SIDE_FILES, FLAG_READER, ENTRY_WIRING, FLAG_RESOURCE, ENTRY_STORE, SHARED_CODE, GITIGNORE, AGENT_PERMISSIONS,
-    GATE_DESCRIPTION, EVENT_MODEL_PATHS, FAST_TARGETS, MUTATION_TOOL, MUTATION_NOTE, PRUNE_ROWS, PROCFILE, PIN_FILES,
-    MAKEFILE_VARIABLES, RENOVATE_RULES, OPT_IN_FLAG_TRANSPORTS, IDENTITY_OUTSTANDING, MUTATION_SCOPING, NPM_WORKSPACE,
+    WRITE_SIDE_FILES, READ_SIDE_FILES, FLAG_READER, ENTRY_WIRING, FLAG_RESOURCE, ENTRY_STORE, SHARED_CODE, GITIGNORE,
+    AGENT_PERMISSIONS, GATE_DESCRIPTION, EVENT_MODEL_PATHS, FAST_TARGETS, MUTATION_TOOL, MUTATION_NOTE, PRUNE_ROWS,
+    PROCFILE, PIN_FILES, MAKEFILE_VARIABLES, RENOVATE_RULES, OPT_IN_FLAG_TRANSPORTS, IDENTITY_OUTSTANDING,
+    MUTATION_SCOPING, NPM_WORKSPACE, BROWSER_APPS,
 )
 # What core reads from a family itself and never through a backend (`family_answer`, a family's `answers`): a
 # backend's answer to one is never read, so a backend that gives one its family does not is refused at load (A73).
-# `formatter` is read so only for the family the browser app is written in: the one that answers `npm_workspace`.
-READ_PER_FAMILY: tuple[Member[Any], ...] = (PIN_FILES, RENOVATE_RULES, SHARED_CODE, NPM_WORKSPACE)
+# `formatter` is read so only for the family the browser app is written in: the one answering `npm_workspace`.
+READ_PER_FAMILY: tuple[Member[Any], ...] = (PIN_FILES, RENOVATE_RULES, SHARED_CODE, NPM_WORKSPACE, BROWSER_APPS)
 # What core reads through `Registry.answer` but once per family, from the family's first service (`ci_workflows.py`,
 # `project/languages`, `native_commands.py`): a framework answering one differently from its family would be heard or
 # ignored by service order, so it is refused at load (D113, D118 (6)). Of `tooling`, and of each `feature_tooling`
 # entry, only these fields; a later MINOR that makes CI per service lifts the refusal for what it serves.
-FAMILY_ONLY: tuple[Member[Any], ...] = (
-    TOOLING, CI_TOOLCHAIN_SETUP, REPOSITORY_FILES, MAKEFILE_VARIABLES, FEATURE_TOOLING,
-)
+FAMILY_ONLY: tuple[Member[Any], ...] = (TOOLING, CI_TOOLCHAIN_SETUP, REPOSITORY_FILES, MAKEFILE_VARIABLES,
+                                        FEATURE_TOOLING)
 
 
 @dataclass(frozen=True)
@@ -293,10 +295,8 @@ def load(languages: Sequence[Language], protocol: tuple[Member[Any], ...] = PROT
                 faults.append(f"backend {_n(key)} is missing {_n(member.name)}")
                 continue
             if not isinstance(value, member.kind):
-                faults.append(
-                    f"backend {_n(key)} answers {_n(member.name)} with {type(value).__name__}, "
-                    f"where the protocol wants {_kind_name(member.kind)}"
-                )
+                faults.append(f"backend {_n(key)} answers {_n(member.name)} with {type(value).__name__}, "
+                              f"where the protocol wants {_kind_name(member.kind)}")
     for key, backend in backends.items():
         faults += unread(key, backend, families.get(backend.family))
     faults += family_only(families, backends, claimed, origin, [member.name for member in FAMILY_ONLY])

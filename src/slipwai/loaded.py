@@ -24,7 +24,9 @@ from .catalog_checks import outside, validate_catalog
 from .catalog_merge import family_missing, is_framework, retract
 from .errors import blame, said
 from .language_directory import Package, Refused, forget, import_package, module_name, refusal, reinstall
+from .npm_workspace import BrowserApp
 from .registry import (
+    BROWSER_APPS,
     FLAG_READER,
     FLAG_RESOURCE,
     NPM_WORKSPACE,
@@ -61,6 +63,9 @@ def reaches(language: Language, registry: Registry) -> list[str]:
     for family in language.families:
         if NPM_WORKSPACE in family.answers:
             faults += held(family.name, registry.root(family.name), family.answers[NPM_WORKSPACE])
+        if BROWSER_APPS in family.answers:
+            faults += writes(family.name, registry.root(family.name), family.answers[BROWSER_APPS],
+                             NPM_WORKSPACE in family.answers)
     return list(dict.fromkeys(faults))
 
 
@@ -93,6 +98,43 @@ def held(family: str, root: Path, answer: Any) -> list[str]:
         elif not (value.is_dir() if tree else value.is_file()):
             kind = "directory" if tree else "file"
             faults.append(f"family {family} reaches for {field}, which is not a {kind} in its directory")
+    return faults
+
+
+def writes(family: str, root: Path, answer: Any, workspace: bool) -> list[str]:
+    """A fault for each way a family's `browser_apps` answer could not be read, all of them at once.
+
+    Four things are held, and each is a project somebody would otherwise only find out about at generation.
+    The answer is a mapping of name to `BrowserApp`, because that is what `npm_workspace.frontends` iterates.
+    Each record's `name` is the key it is listed under, because the name is what `--frontend` is typed as and
+    a record disagreeing with its key would be reachable under one name and refuse under the other. Each
+    `root` is a directory inside the package, for the reason every other source is: a browser app is copied
+    into somebody's repository verbatim, and one assembled from outside the package is one nobody reviewed.
+
+    And the family answers `npm_workspace` too. A browser app is an npm package in the project's one
+    workspace; a family offering one without saying it has a workspace has no lock to resolve it with, and
+    the refusal belongs at load, where it names the package, rather than at `npm ci` in a generated project.
+    """
+    if not isinstance(answer, BROWSER_APPS.kind):
+        return [f"family {family} answers browser_apps with {type(answer).__name__}, where a mapping of "
+                f"frontend name to BrowserApp is wanted"]
+    faults: list[str] = []
+    if answer and not workspace:
+        faults.append(f"family {family} answers browser_apps without answering npm_workspace, and a browser "
+                      f"app is an npm package in the workspace that answer declares")
+    for name, app in answer.items():
+        if not isinstance(app, BrowserApp):
+            faults.append(f"family {family} answers browser_apps[{name}] with {type(app).__name__}, where a "
+                          f"BrowserApp is wanted")
+            continue
+        if app.name != name:
+            faults.append(f"family {family} lists a browser app called {app.name} under {name}, and the name "
+                          f"is what `--frontend` is typed as")
+        if not app.root.resolve().is_relative_to(root.resolve()):
+            faults.append(f"family {family} reaches outside its directory for browser app {name}")
+        elif not app.root.is_dir():
+            faults.append(f"family {family} reaches for browser app {name}, which is not a directory in its "
+                          f"directory")
     return faults
 
 

@@ -9,15 +9,22 @@ configuration every package in the workspace shares. The keel never names the la
 
 A browser app is written in the first family, in registry order, that answers the member. With none loaded there
 is no language to write one in, and asking for one is refused in a line (S09's Q1).
+
+**And so the browser app's own material is the same family's.** A family that answers `npm_workspace` already
+commits the lock that resolves a browser app's dependencies and already pins the Biome it must agree with, so
+`browser_apps` is where it says which browser apps it writes and hands over each one's directory (`BrowserApp`).
+The keel still carries one, under `KEEL_APPS`, and that is the last answer of any kind shipped inside it.
 """
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NamedTuple, cast
 
+from .assets import FRONTEND_ROOT, inside
 from .errors import GenerationError
-from .registry import NPM_WORKSPACE, Registry, registry
+from .registry import BROWSER_APPS, NPM_WORKSPACE, Registry, registry
 
 # What a refusal for a browser app with no language to write it in says first. Each verb says what it was asked, and
 # `browser_app` how it ends: the language the index says answers, and its install line (D122, over D63).
@@ -52,6 +59,73 @@ def workspaces(held: Registry | None = None) -> dict[str, NpmWorkspace]:
         for name, family in families.items()
         if NPM_WORKSPACE in family.answers
     }
+
+
+@dataclass(frozen=True)
+class BrowserApp:
+    """One browser app a project may be given, and the directory its material is copied from.
+
+    `name` is what `--frontend <name>` is typed as, what `catalog.json`'s `frontends` block lists it under,
+    and what `project.json` records as the web deployable's framework. `root` is the directory the material
+    sits in, laid out the way `project/frontend.py` reads it — `app/` and the variants beside it — so that
+    moving the material out of the keel is a change of root and of nothing else.
+
+    A record rather than the files themselves, for the reason `loaded_targets.root_of` gives about a
+    target's stacks: a browser app is a tree copied as written, and a package that had to hand it over as
+    strings would be a package that had to keep it as strings.
+    """
+
+    name: str
+    root: Path
+
+    def at(self, relative: str) -> Path:
+        """One of its trees or files, refused where that path leaves the root.
+
+        Held here rather than at each of the six places `project/frontend.py` reaches in, because the root
+        becomes a package's own directory and a frontend that could read `../..` out of it would be a
+        frontend that could carry any file on the machine into somebody's repository.
+        """
+        try:
+            return inside(self.root, relative)
+        except ValueError as error:
+            raise GenerationError(f"frontend {self.name} {error}") from error
+
+
+#: The one browser app the keel still carries, and the last answer of any kind that ships inside it: every
+#: language, extension, target and quickstart is a package already. Named here — in one place, rather than at
+#: each of the paths that read it — so that the slice which moves it into the family that writes it is a
+#: change of this dictionary and of nothing else.
+KEEL_APPS: dict[str, BrowserApp] = {"react-vite": BrowserApp("react-vite", FRONTEND_ROOT / "react-vite")}
+
+
+def frontends(held: Registry | None = None) -> dict[str, BrowserApp]:
+    """Every browser app this keel can write, by name: each family's own in registry order, the keel's last.
+
+    A family wins a name the keel also carries, because a family that ships a browser app ships the lock
+    that resolves it — and a project given the keel's files under a family's lock is a project whose
+    `npm ci` refuses the tree it was handed.
+    """
+    found: dict[str, BrowserApp] = {}
+    for family in (registry() if held is None else held).families.values():
+        for name, app in cast(dict, family.answers.get(BROWSER_APPS, {})).items():
+            found.setdefault(name, app)
+    for name, app in KEEL_APPS.items():
+        found.setdefault(name, app)
+    return found
+
+
+def frontend(name: str) -> BrowserApp:
+    """The browser app `--frontend <name>` means, or a refusal naming what is offered instead.
+
+    A refusal rather than a `KeyError` from the middle of a copy: the names come from the merged catalogue
+    and the material from whichever family answers, so a row with nothing behind it is a state a person can
+    actually meet, and one they have to be told about in a sentence naming both halves.
+    """
+    offered = frontends()
+    if name not in offered:
+        raise GenerationError(f"no loaded language writes a {name} browser app; this keel offers "
+                              f"{', '.join(sorted(offered)) or 'none'}")
+    return offered[name]
 
 
 def npm(language: str) -> bool:

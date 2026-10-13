@@ -60,7 +60,8 @@ Language(families: tuple[Family, ...] = , backends: tuple[Backend, ...] = )
  its family answers: the read for a member whose absence is an answer (*never required*: `mutation_note`,
  `identity_outstanding`, `mutation_scoping`, scenario 11). Presence is still the test, so `""` is returned, not
  the default. **`Registry.family_answer(name, MEMBER)`** is a family's own answer, for what is read per
- family: `pin_files`, `renovate_rules`, `npm_workspace`, `shared_code` and, for a browser app, `formatter`. A
+ family: `pin_files`, `renovate_rules`, `npm_workspace`, `browser_apps`, `shared_code` and, for a browser app,
+ `formatter`. A
  framework's answer to those is never read. Core reads a further set through `Registry.answer` but once per
  family, from the family's **first service's** backend: `ci_toolchain_setup`, `repository_files`,
  `makefile_variables` and `tooling`'s `ci_image` and `container_setup`. Only the framework of that first
@@ -81,7 +82,7 @@ one line. The faults are these:
 4. A backend naming a family no loaded language declares: `backend java-spring names family java, which no
  loaded language declares`.
  A member the keel reads from the family alone (`registry.READ_PER_FAMILY`: `pin_files`, `renovate_rules`,
- `shared_code`, `npm_workspace`; and `formatter` where the family answers `npm_workspace`, the browser app's
+ `shared_code`, `npm_workspace`, `browser_apps`; and `formatter` where the family answers `npm_workspace`, the browser app's
  family) answered by a backend and not by its family: `backend mylang-plain answers renovate_rules, which the keel
  reads from family mylang, and the family does not answer it` (A73, D109). The backend's answer would never be
  read and generation would fail on the family's; a package is refused for it at load, naming itself.
@@ -170,6 +171,7 @@ here in its own commit and says why.
 | `identity_outstanding` | family | declared, **never required** | `IDENTITY_OUTSTANDING` and `USERS_OUTSTANDING`' family rows (`project/backing_service_prose.py`) | `dict[str, str]`: identity feature (`keycloak`, `users-keycloak`, unique across the `auth` and `users` axes) → the README paragraph on what the project still owes. A feature absent, or the member absent, gets the keel's `IDENTITY_DEFAULT` for that feature (scenario 11). `java` answers both, byte for byte |
 | `mutation_scoping` | backend | declared, **never required** | `mutation_command`'s `"go" in backends` (`project/mutation.py`) | `str`: the paragraph `commands/mutation.md` carries after the tools, once per distinct answer; absence is the answer "nothing to say". `go` answers |
 | `npm_workspace` | family | declared, **never required** | the eleven npm-workspace checks spelling `typescript` (`services.py`, `project/shared_packages.py`, `ci_workflows.py`, `compose.py`, `agent_settings.py`, `gitignore.py`, `native_commands.py`, `guidance.py`, `frontend.py`, `biome.py`), `frontend.py`'s import of `typescript.py`, and the `typescript-backend*` workspace locks under the keel's `react-vite` (FR-034, D50) | `npm_workspace.NpmWorkspace(member_lock, workspace_lock, image, biome, biome_pins)`: a family that answers it has services that are npm packages in the project's one workspace; absence is the answer "not an npm package". A browser app is written in the first family in registry order that answers it. the npm-workspace contract states both sides |
+| `browser_apps` | family | declared, **never required** | nothing yet: `react-vite` is still the keel's, under `npm_workspace.KEEL_APPS` (17.1) | `dict[str, npm_workspace.BrowserApp]`: the browser apps this family writes, by the name `--frontend` is typed as, each one the directory its material is copied from. A family answering it answers `npm_workspace` too, because a browser app is an npm package in the workspace that answer declares, and it is refused at load otherwise. A family's name wins over the keel's: the family ships the lock that resolves the app it ships |
 
 `backing_service_service_files` (`project/backing_services.py`, FR-002) is not a member. It is the keel's
 function over `write_side_files` and `read_side_files`, and

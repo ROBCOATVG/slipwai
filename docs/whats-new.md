@@ -131,6 +131,10 @@ page writes it there. One server, one port, one page: `slipwai bridge` opens it 
 fleet --page` does the same without giving up the printed board, and `slipwai` on its own opens it too —
 and none of them starts a second one. Its tabs are the board, starting a project, adopting a repository
 and the packages this copy can be given.
+
+Your browser will also install it: press **Install this board**, and it opens in its own window from the
+dock with no address bar. Installing a window cannot start a server, so when nothing is listening that
+window says so and names the command that starts it, rather than showing a connection error.
 [Answering from one seat](guide/a-second-person.md#answering-from-one-seat) is the picture.
 
 ### One lever: the telegraph

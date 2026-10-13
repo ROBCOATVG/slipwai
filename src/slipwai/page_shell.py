@@ -1,4 +1,5 @@
-"""The chrome every page of the board shares: its tokens, its type, its three-state theme and its skeleton.
+"""The chrome every page of the board shares: its tokens, its type, its three-state theme, its skeleton —
+and what makes it something a browser will install.
 
 The look is the mockup's (`docs/mockups/ledger-bridge.html`) and the rule that put it here is 14.4's: the
 fleet, the bridge, generation and adoption are one page, so the stylesheet, the theme toggle and the
@@ -8,12 +9,20 @@ which was fine while the bridge was the only page there was.
 **Rendered, not templated over the mockup.** The mockup is 44KB of hand-written markup with its example data
 in the rows; replacing a "data section" in it would mean parsing somebody's HTML and hoping. What is carried
 across is the design.
+
+**And the board is installable, which is the other half of not being a terminal.** A manifest, an icon and a
+worker with a fetch handler are what a browser asks for before it offers to install a page, and an installed
+board opens in its own window from the dock — no address bar, no tab, and nothing typed to get there. They
+are here rather than in a module of their own because they are the same thing the rest of this file is: what
+the document says about itself, as against what any one tab puts inside it.
 """
 from __future__ import annotations
 
 import html
+import json
 
-from .brand import favicon, inline
+from .assets import this_command
+from .brand import MARK, favicon, inline, svg
 
 
 def esc(value: object) -> str:
@@ -46,6 +55,11 @@ user-select:none}
 .theme input:checked+label{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
 .theme input:focus-visible+label{outline:2px solid var(--teal);outline-offset:1px}
 .corner{display:flex;align-items:center;gap:12px}
+/* Quiet: the install is worth offering and is not what the page is for. The dial's own button, in the
+   colours a control that has not been pressed yet wears. */
+button.install{font:inherit;font-size:.8rem;padding:6px 12px;border-radius:7px;border:1px solid var(--rule);
+background:var(--paper);color:var(--ink-2);cursor:pointer}
+button.install:hover{color:var(--ink);border-color:var(--teal)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:14px;
 line-height:1.45;padding-inline:20px;padding-block:0 60px}
@@ -87,6 +101,9 @@ dd{margin:0;text-align:right}
 dd input{font:inherit;width:110px;padding:4px 8px;border:1px solid var(--rule);border-radius:6px;
 background:var(--paper);color:var(--ink);text-align:right}
 .empty{color:var(--ink-3);font-size:.9rem}
+/* The one link rule. Said once here rather than per page, because a browser's own blue on a page whose
+   every other colour is a token is the one thing that gives away that nobody chose it. */
+a{color:var(--teal)}
 .feed{font-family:var(--mono);font-size:.78rem;color:var(--ink-2);margin:0;padding:0;list-style:none}
 .feed li{padding:2px 0}
 tr.drawer td{padding:0 0 8px;border-bottom:1px solid var(--rule-2)}
@@ -155,6 +172,110 @@ def tabs(now: str) -> str:
     return f'<nav class="tabs" aria-label="Board">{rows}</nav>'
 
 
+#: The routes a browser asks for before it will install a page, and the one it is given when the board is
+#: not running. Routes rather than files beside the page: the board is a server, and a manifest in the
+#: page's own directory is a file the bridge has no directory to put it in.
+MANIFEST, WORKER, ICON, NOT_RUNNING = "/manifest.webmanifest", "/sw.js", "/mark.svg", "/not-running.html"
+#: What the installed window is. `standalone` because the board is a tool and not a document: an address
+#: bar on it would be a thing to type into, which is the whole of what this is for getting rid of. The two
+#: colours are the palette's light ground and its teal, which is what the window is painted with before the
+#: page's own CSS has said anything.
+APP: dict[str, object] = {
+    "id": "/",
+    "name": "slipwai — the board",
+    "short_name": "slipwai",
+    "description": "The fleet, the bridge, and what can be started from here.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#f1f3f4",
+    "theme_color": "#0f6b6b",
+    # One drawing, twice: `any` is the icon as drawn, and `maskable` is the same one for a platform that
+    # crops it to its own shape. An SVG rather than the two PNGs a manifest usually carries, because the
+    # mark is an SVG and a rasteriser is a build dependency this keel does not have and would not keep.
+    "icons": [{"src": ICON, "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
+              {"src": ICON, "sizes": "any", "type": "image/svg+xml", "purpose": "maskable"}],
+}
+#: What the page says about itself, on the served board only. The published copy is one file on somebody's
+#: Pages site: a manifest link there would be a route that 404s, and an install offer would install a copy
+#: of a board that is not theirs.
+HEAD = (f'<link rel="manifest" href="{MANIFEST}">'
+        f'<meta name="theme-color" content="{APP["theme_color"]}">')
+#: The button, beside the theme toggle and hidden until there is something to offer. A browser that will
+#: install this page says so in its address bar, which is a place somebody who was handed a URL has never
+#: had a reason to look — and this page's whole argument is that a person should not have to be told where
+#: things are. Shown only when the browser has offered, never as a button that explains why it cannot.
+#: "this board" and not "Install": the packages tab has an Install on every row, and two buttons a thumb
+#: apart meaning different things is the kind of ambiguity a person only resolves by pressing one.
+INSTALL = '<button class="install" id="install" hidden>Install this board</button>'
+#: Registering the worker, and keeping the browser's own offer rather than letting it go by. The worker is
+#: below; what it does is answer the one request a browser makes that nothing else can — the one made when
+#: the board is not running.
+REGISTER = f"""
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('{WORKER}');
+let offered = null;
+window.addEventListener('beforeinstallprompt', event => {{
+  event.preventDefault();
+  offered = event;
+  const button = document.getElementById('install');
+  if (!button) return;
+  button.hidden = false;
+  button.addEventListener('click', () => {{ button.hidden = true; offered.prompt(); offered = null; }});
+}});
+window.addEventListener('appinstalled', () => {{
+  const button = document.getElementById('install');
+  if (button) button.hidden = true;
+}});
+"""
+
+
+def manifest() -> str:
+    """The web app manifest, as the route serves it."""
+    return json.dumps(APP, indent=2, ensure_ascii=False) + "\n"
+
+
+def icon() -> str:
+    """The mark in its own colours, for the dock, the Start menu and the installed window's title bar."""
+    return svg(MARK)
+
+
+#: Everything goes to the network. The one page kept is the one that says the board is not running, and it
+#: is served only where the fetch failed outright — a 404 from the board is the board's own answer and this
+#: has nothing to add to it. A dashboard is a fold of files that change under it, so a worker that served
+#: yesterday's board out of a cache would be the one view that is a memory rather than a reading.
+WORKER_SOURCE = f"""
+const PAGE = '{NOT_RUNNING}';
+const KEPT = 'slipwai-shell-1';
+self.addEventListener('install', event => {{
+  event.waitUntil(caches.open(KEPT).then(cache => cache.add(PAGE)).then(() => self.skipWaiting()));
+}});
+self.addEventListener('activate', event => {{
+  event.waitUntil(caches.keys()
+    .then(names => Promise.all(names.filter(name => name !== KEPT).map(name => caches.delete(name))))
+    .then(() => self.clients.claim()));
+}});
+self.addEventListener('fetch', event => {{
+  if (event.request.mode !== 'navigate') return;
+  event.respondWith(fetch(event.request).catch(() => caches.match(PAGE)));
+}});
+"""
+
+
+def not_running() -> str:
+    """The page the installed window gets when nothing is listening.
+
+    The browser's own answer is a connection error, which tells somebody who does not open terminals
+    nothing they can act on. This says what has happened and the one word that puts it right — which is
+    the only honest thing an installed local page can do, because installing a page cannot start a server.
+    """
+    body = f"""<div class="card"><h2>Nothing is serving the board on this machine</h2>
+<p class="empty">The board is a server on your own machine, and installing this window did not install
+that. It is running whenever <code>{esc(this_command())}</code> is.</p>
+<dl><dt>Start it</dt><dd><code>{esc(this_command())}</code></dd>
+<dt>Then come back</dt><dd><a href="/">reload the board</a></dd></dl></div>"""
+    return document("slipwai", "the board is not running", body)
+
+
 def document(title: str, sub: str, body: str, script: str = "", now: str = "") -> str:
     """One page, whatever started it: the mark in the corner, the theme toggle, and the cards it was given.
 
@@ -162,17 +283,24 @@ def document(title: str, sub: str, body: str, script: str = "", now: str = "") -
     a decision about the controls, and this only knows how to put a document around them. `now` is which tab
     this is; unsaid, there is no bar at all, which is what the published copy has — one file, and a link to
     a route it does not carry would be the two copies disagreeing.
+
+    A tab is also what says this page is being served by a board rather than published as a file, so it is
+    what the manifest link and the worker hang on: the same rule as the bar, for the same reason.
     """
+    served = bool(now)
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{esc(title)}</title>
 <link rel="icon" href="{favicon()}">
+{HEAD if served else ""}
 <style>{STYLE}{FORM}</style></head>
 <body><div class="wrap">
 <div class="top"><div><h1>{esc(title)}</h1><div class="sub">{esc(sub)}</div></div>
-<div class="corner">{THEME}{inline(title="slipwai — the little tug that moves the big one")}</div></div>
+<div class="corner">{INSTALL if served else ""}{THEME}{inline(
+    title="slipwai — the little tug that moves the big one")}</div></div>
 {tabs(now) if now else ""}
 {body}
-</div>{"<script>" + script + "</script>" if script else ""}</body></html>
+</div>{"<script>" + script + REGISTER + "</script>" if served else
+       "<script>" + script + "</script>" if script else ""}</body></html>
 """

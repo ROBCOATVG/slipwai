@@ -30,9 +30,9 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from .assets import VERSION
+from .assets import VERSION, this_command
 from .errors import GenerationError
-from .index_schema import CHANDLERY, FORMATS, Index, Release, format_of, releases_of
+from .index_schema import CHANDLERY, FORMATS, LANGUAGE, Index, Release, format_of, releases_of
 from .upgrade import INDEX, RECEIPT, credentials, following_snapshots, index_of, refusal
 from .versions import is_prerelease, key, satisfies
 
@@ -297,6 +297,29 @@ def offered(index: Index, schema: str, prerelease: bool, kind: str | None = None
     where = None if kind is None else (lambda release: release.kind == kind)
     found = {name: newest(index, name, schema, prerelease, where) for name in index.releases}
     return {name: release for name, release in found.items() if release is not None}
+
+
+def must_be_language(index: Index, name: str, local: str) -> None:
+    """Refuse a name this index cannot give a language for: one it lists nowhere, or one it lists as another
+    kind, which is the wrong verb for a package that exists rather than a package that is broken.
+
+    Both before anything is fetched. The kind was found out by the staging directory instead, which said so
+    as `<a temporary path>/<name> has no language.json` — true, and no help at all to somebody who had
+    pasted the line a listing gave them. An index has listed four kinds since version 2 and each is
+    installed by its own verb, so the refusal names that verb.
+
+    `local` is the local-source form, passed in rather than imported: it is the installer's sentence and
+    this module is read by the installer.
+    """
+    if name not in index.releases:
+        raise GenerationError(f"{name} is not in the language index at {index.url}: install from a local "
+                              f"source: {local}")
+    kinds = {release.kind for release in index.releases[name]}
+    if LANGUAGE in kinds or not kinds:
+        return
+    kind = sorted(kinds)[0]
+    article = "an" if kind[0] in "aeiou" else "a"
+    raise GenerationError(f"{name} is {article} {kind}, not a language: {this_command()} {kind} install {name}")
 
 
 def download(index: Index, release: Release) -> bytes:

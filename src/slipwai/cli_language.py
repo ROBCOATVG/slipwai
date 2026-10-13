@@ -32,14 +32,11 @@ ADOPTION = (
 
 
 def reach(prerelease: bool, kind: str | None = LANGUAGE) -> tuple[Index | None, dict[str, Release], list[str]]:
-    """The index, what it offers this keel of one kind, and the lines that say it could not be read.
+    """The index, what it offers this keel of one `kind`, and the lines saying it could not be read.
 
-    `kind` is the languages' by default, because every caller here is a listing of languages and the index
-    lists four kinds. Without it a target came back as a language: a target's manifest names no `family`, so
-    the filter that keeps a family's own row — `family == name` — let it through, and `slipwai list` and the
-    interview's Language menu both offered `slipwai language install <a cloud>`. That command then staged
-    the package and refused it for having no `language.json`, naming a temporary directory. The packages tab
-    asks for every kind, which is what `None` is for.
+    The languages' kind by default, because every caller here lists those and the index lists four: without
+    it a target arrived as a language — a target's manifest names no `family`, so `family == name` let it
+    through — and `slipwai list` offered `language install` for a cloud. The packages tab passes `None`.
     """
     try:
         found = read_index()
@@ -86,9 +83,9 @@ def languages_section(prerelease: bool) -> tuple[list[str], dict[str, Release], 
 
 def answering(offer: dict[str, Release], axis: str, option: str) -> list[str]:
     """The offered languages one of whose backends answers this axis option."""
-    return [name for name, release in offer.items() if any(
-        option in (row.get("options", {}).get(axis, []) if isinstance(row, dict) else [])
-        for row in (release.fragment.get("backends") or {}).values())]
+    return [name for name, release in offer.items()
+            if any(option in (row.get("options", {}).get(axis, []) if isinstance(row, dict) else [])
+                   for row in (release.fragment.get("backends") or {}).values())]
 
 
 def axes_section(offer: dict[str, Release]) -> list[str]:
@@ -209,8 +206,8 @@ def missing_framework(language: str, framework: str) -> str | None:
     offers no such framework (the caller's own refusal then says what the family can be given)."""
     if (refused := refused_providing(lambda _, row: row.get("family") == language and answers(row, framework))):
         return f"--framework {framework} of {language} {refused}"
-    found, release, unreachable = provider(
-        lambda release: release.fragment.get("family") == language and answers(release.fragment, framework))
+    found, release, unreachable = provider(lambda r: r.fragment.get("family") == language
+                                           and answers(r.fragment, framework))
     if release is not None:
         line = f"{this_command()} language install {release.name}"
         return f"--framework {framework} is not installed for {language}: {line}"
@@ -264,32 +261,6 @@ def language_main(argv: list[str]) -> None:
     else:
         run(remove, args.names, prog)
 
-
-def not_installed_languages() -> tuple[dict[str, str], str | None]:
-    """For the interview's language menu: each language the index offers that is not installed, with the line that
-    installs it, and the line saying the index could not be read (None where it could)."""
-    found, offer, unreachable = reach(snapshots())
-    if found is None:
-        return {}, f"{unreachable[0].strip()}; {this_command()} list shows what is installed"
-    have = {*families(), *installed(directory())}
-    return {name: f"{this_command()} language install {name}" for name, release in offer.items()
-            if release.fragment.get("family", name) == name and name not in have}, None
-
-
-def not_installed_frameworks(family: str) -> dict[str, str]:
-    """For the interview's framework question: each framework of `family` the index offers that is not installed, by
-    its `framework`, with the line that installs it. Nothing where the index cannot be read: the language question
-    already said so."""
-    found, offer, _ = reach(snapshots())
-    have = {*installed(directory()), *builtin()}
-    rows: dict[str, str] = {}
-    for name, release in offer.items():
-        if release.fragment.get("family") != family or name == family or name in have:
-            continue
-        for row in backends_of(release).values():
-            if isinstance(row, dict) and isinstance(row.get("framework"), str):
-                rows[row["framework"]] = f"{this_command()} language install {name}"
-    return rows if found is not None else {}
 
 
 def nothing_to_generate(loaded: list[str]) -> str | None:

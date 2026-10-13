@@ -14,8 +14,7 @@ from typing import Any
 
 from .catalog import CORE
 from .errors import GenerationError
-from .index_schema import LANGUAGE
-from .language_index import Index, Release, Unreachable, bare, counted, download, newest, read_index
+from .language_index import Index, Release, Unreachable, bare, counted, download, must_be_language, newest, read_index
 from .language_install import (
     LOCK_WAIT,
     Admission,
@@ -129,18 +128,7 @@ class Resolver:
             index = self.index()
         except Unreachable as error:
             raise GenerationError(f"{error}: install from a local source: {local_form()}") from error
-        if name not in index.releases:
-            raise GenerationError(f"{name} is not in the language index at {index.url}: install from a local "
-                                  f"source: {local_form()}")
-        # A name the index has of another kind is somebody asking the wrong verb for a package that exists.
-        # Refused here, before anything is fetched: the staging directory used to find out instead, and said
-        # so as `<a temporary path>/azure has no language.json` — true, and no help to the person reading it.
-        other = {release.kind for release in index.releases[name]} - {LANGUAGE}
-        if other and not any(release.kind == LANGUAGE for release in index.releases[name]):
-            kind = sorted(other)[0]
-            article = "an" if kind[0] in "aeiou" else "a"
-            raise GenerationError(f"{name} is {article} {kind}, not a language: "
-                                  f"{this_command()} {kind} install {name}")
+        must_be_language(index, name, local_form())
         if newest(index, name, SCHEMA, self.prerelease) is None:
             raise GenerationError(no_release(index, name, self.prerelease))
         return newest(index, name, SCHEMA, self.prerelease, where)

@@ -41,7 +41,7 @@ from .catalog import (
     framework_of,
     resolve_backend,
 )
-from .cli_language import not_installed_frameworks, not_installed_languages
+from .cli_offered import not_installed_frameworks, not_installed_languages
 from .cli_prompts import PROFILE_GUIDANCE
 from .errors import GenerationError
 from .page_shell import document, esc

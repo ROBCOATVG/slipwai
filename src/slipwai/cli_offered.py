@@ -1,4 +1,5 @@
-"""Resolving `--language`, `--framework` and `--backend` to the one backend key everything is keyed by.
+"""Resolving `--language`, `--framework` and `--backend` to the one backend key everything is keyed by, and
+the two menus that say what a person could have asked for instead.
 
 It lives here rather than in `cli_add`, which owns it upstream, because `cli_add` needs `add_service`
 and `converge` and those are slices 4.3 and 4.2. Its refusals are the chandlery's now: a language that
@@ -10,8 +11,18 @@ from __future__ import annotations
 import argparse
 
 from .catalog import CATALOG, default_language, families, framework_of, resolve_backend
-from .cli_language import missing_backend, missing_framework, missing_language, no_framework
+from .cli_language import (
+    backends_of,
+    missing_backend,
+    missing_framework,
+    missing_language,
+    no_framework,
+    reach,
+    snapshots,
+)
 from .errors import GenerationError
+from .language_directory import directory
+from .language_install import builtin, installed, this_command
 from .registry import registry
 
 
@@ -49,3 +60,30 @@ def resolve_requested_backend(args: argparse.Namespace) -> str:
             f"{', '.join(name for name in offered if name) or 'none'}"
         )
     return resolve_backend(language, args.framework)
+
+
+def not_installed_languages() -> tuple[dict[str, str], str | None]:
+    """For the interview's language menu: each language the index offers that is not installed, with the line that
+    installs it, and the line saying the index could not be read (None where it could)."""
+    found, offer, unreachable = reach(snapshots())
+    if found is None:
+        return {}, f"{unreachable[0].strip()}; {this_command()} list shows what is installed"
+    have = {*families(), *installed(directory())}
+    return {name: f"{this_command()} language install {name}" for name, release in offer.items()
+            if release.fragment.get("family", name) == name and name not in have}, None
+
+
+def not_installed_frameworks(family: str) -> dict[str, str]:
+    """For the interview's framework question: each framework of `family` the index offers that is not installed, by
+    its `framework`, with the line that installs it. Nothing where the index cannot be read: the language question
+    already said so."""
+    found, offer, _ = reach(snapshots())
+    have = {*installed(directory()), *builtin()}
+    rows: dict[str, str] = {}
+    for name, release in offer.items():
+        if release.fragment.get("family") != family or name == family or name in have:
+            continue
+        for row in backends_of(release).values():
+            if isinstance(row, dict) and isinstance(row.get("framework"), str):
+                rows[row["framework"]] = f"{this_command()} language install {name}"
+    return rows if found is not None else {}

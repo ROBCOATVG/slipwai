@@ -20,7 +20,8 @@ from . import quickstart
 from .assets import DEFAULT_OUTPUT
 from .browser_app import frontend_menu
 from .catalog import CATALOG, axis_applies, default_language, families, resolve_backend
-from .cli_language import not_installed_frameworks, not_installed_languages, nothing_loaded
+from .cli_language import nothing_loaded
+from .cli_offered import not_installed_frameworks, not_installed_languages
 from .cli_prompts import (
     prompt_application_name,
     prompt_axis,

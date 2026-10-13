@@ -155,6 +155,34 @@ class PublisherTest(Fixture):
         self.assertFalse(row.asked)
 
 
+class EmptyTest(Fixture):
+    """Why a table is empty is three different answers, and the page used to give one of them for all three.
+
+    It said "no channel offers one this keel can load" where the channel simply lists none — inventing a
+    compatibility problem out of an empty shelf, for somebody who would then go looking for a keel to
+    upgrade.
+    """
+
+    def test_a_channel_that_lists_none_of_this_kind_says_that(self) -> None:
+        from slipwai.language_index import Index
+        said = page({}, "a channel", [], Index(url="u", name="a channel", releases={}))
+        self.assertIn("a channel lists none yet", said)
+        self.assertNotIn("can load none of them", said)
+
+    def test_a_channel_listing_some_this_keel_cannot_load_says_that_instead(self) -> None:
+        """The honest version of the old sentence, said only when it is true: the shelf is not empty, and
+        nothing on it fits this keel."""
+        from slipwai.language_index import Index
+        held = Index(url="u", name="a channel",
+                     releases={"codegraph": [release("codegraph", kind=EXTENSION)]})
+        said = page({}, "a channel", [], held)
+        self.assertIn("a channel lists 1", said)
+        self.assertIn("can load none of them", said)
+
+    def test_no_channel_at_all_is_not_blamed_on_the_keel(self) -> None:
+        self.assertIn("no channel could be read", page({}, "", ["the index could not be reached"]))
+
+
 class PageTest(Fixture):
     def test_it_is_a_tab_of_the_board_and_the_bar_says_which(self) -> None:
         self.assertIn(("/packages", "Packages"), TABS)

@@ -64,6 +64,50 @@ INDEX = Index(
 )
 
 
+class KindTest(unittest.TestCase):
+    """A listing of languages lists languages. The index has carried four kinds since version 2, and a
+    target's manifest names no `family` — so the filter that keeps a family's own row, `family == name`,
+    let a cloud through as a language. `slipwai list` offered `language install <a cloud>` under Languages,
+    the board's Language menu offered it too, and the command staged the package and refused it for having
+    no `language.json`, naming a temporary directory."""
+
+    def offered(self, kind=None):
+        from slipwai.language_index import offered
+        return sorted(offered(INDEX, "9.0", False, kind))
+
+    def test_a_listing_of_languages_holds_no_package_of_another_kind(self) -> None:
+        self.assertEqual(self.offered("language"), ["go", "java-spring", "python"])
+
+    def test_every_kind_is_what_the_packages_tab_asks_for(self) -> None:
+        self.assertEqual(self.offered(), ["codegraph", "go", "java-spring", "python", "python-ui"])
+
+    def test_the_reader_defaults_to_languages_because_every_caller_of_it_lists_those(self) -> None:
+        import inspect
+
+        from slipwai.cli_language import reach
+        self.assertEqual(inspect.signature(reach).parameters["kind"].default, "language")
+
+
+class WrongVerbTest(unittest.TestCase):
+    def test_a_package_of_another_kind_is_refused_with_the_verb_that_installs_it(self) -> None:
+        """The listing used to offer `language install <a target>`, and running it staged the package and
+        refused it for having no `language.json` — naming a temporary directory, at somebody who had
+        pasted the command the tool itself printed. The kind is known before anything is fetched."""
+        from slipwai.errors import GenerationError
+        from slipwai.language_plan import Resolver
+        resolver = Resolver(Path(tempfile.mkdtemp()), lambda: INDEX, False)
+        with self.assertRaises(GenerationError) as refused:
+            resolver.release("codegraph")
+        self.assertIn("codegraph is an extension, not a language", str(refused.exception))
+        self.assertIn("extension install codegraph", str(refused.exception))
+
+    def test_a_language_is_still_resolved(self) -> None:
+        from slipwai.language_plan import Resolver
+        found = Resolver(Path(tempfile.mkdtemp()), lambda: INDEX, False).release("python")
+        assert found is not None
+        self.assertEqual(found.name, "python")
+
+
 class LatestTest(unittest.TestCase):
     def test_the_newest_release_is_by_version_and_not_by_listing_order(self) -> None:
         found = latest(INDEX.releases["python"])

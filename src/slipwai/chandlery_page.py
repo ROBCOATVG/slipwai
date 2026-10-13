@@ -34,7 +34,7 @@ from .extension_install import catalogue as extensions_here
 from .extension_install import install as put_extension
 from .index_schema import EXTENSION, LANGUAGE, QUICKSTART, TARGET
 from .language_directory import directory
-from .language_index import Release
+from .language_index import Index, Release
 from .language_install import builtin, installed
 from .language_plan import install as put_language
 from .page_shell import document, esc
@@ -80,14 +80,27 @@ class Row:
         return not self.here and bool(self.publisher) and not self.accepted and self.kind in ASKS_PUBLISHER
 
 
-def chandlery(prerelease: bool | None = None) -> tuple[dict[str, Release], str, list[str]]:
+def listed(found: Index | None, kind: str) -> int:
+    """How many packages of this kind the channels list at all, whatever keel they were built for.
+
+    Told apart from what this keel can load, because the two are different answers and an empty table that
+    gave the wrong one would be the page inventing a compatibility problem. A channel that lists no
+    extension at all is not a channel whose extensions are too new.
+    """
+    if found is None:
+        return 0
+    return len({name for name, releases in found.releases.items()
+                if any(release.kind == kind for release in releases)})
+
+
+def chandlery(prerelease: bool | None = None) -> tuple[dict[str, Release], str, list[str], Index | None]:
     """What the channels offer this keel, which channel said so, and the lines saying one could not be read.
 
     The reaching is here and the rendering is below it, the way `search` has it: a page that fetched inside
     its own render could not be tested without a server, and the half worth testing is the render.
     """
-    found, offer, unreachable = reach(snapshots() if prerelease is None else prerelease)
-    return offer, found.name if found is not None else "", [line.strip() for line in unreachable]
+    found, offer, unreachable = reach(snapshots() if prerelease is None else prerelease, kind=None)
+    return offer, found.name if found is not None else "", [line.strip() for line in unreachable], found
 
 
 def here() -> dict[str, dict[str, tuple[str, str]]]:
@@ -191,9 +204,20 @@ def action(row: Row) -> str:
             f'data-kind="{esc(row.kind)}">Install</button>')
 
 
-def table(rows: list[Row]) -> str:
+def nothing_here(kind: str, where: str, found: Index | None) -> str:
+    """The sentence an empty table gets: which of the three reasons it is empty for."""
+    if not where:
+        return "Nothing installed here, and no channel could be read."
+    total = listed(found, kind)
+    if not total:
+        return f"Nothing installed, and {esc(where)} lists none yet."
+    return (f"Nothing installed. {esc(where)} lists {total}, and this keel can load none of them: "
+            f"<code>{esc(this_command())} upgrade</code> moves the keel.")
+
+
+def table(rows: list[Row], empty: str) -> str:
     if not rows:
-        return '<p class="empty">Nothing installed, and no channel offers one this keel can load.</p>'
+        return f'<p class="empty">{empty}</p>'
     head = "<tr><th>Package</th><th>Version</th><th>What it is</th><th>Publisher</th><th></th></tr>"
     body = "".join(
         f"<tr><td><b>{esc(row.name)}</b></td><td class=\"mono\">{esc(row.version or '—')}</td>"
@@ -202,10 +226,10 @@ def table(rows: list[Row]) -> str:
     return f"<table>{head}{body}</table>"
 
 
-def card(kind: str, title: str, why: str, rows: list[Row]) -> str:
+def card(kind: str, title: str, why: str, rows: list[Row], empty: str) -> str:
     command = f"{this_command()} {kind} install <name>"
     return (f'<div class="card"><h2>{esc(title)}</h2><p class="empty">{esc(why)} · <code>'
-            f"{esc(command)}</code></p>{table(rows)}</div>")
+            f"{esc(command)}</code></p>{table(rows, empty)}</div>")
 
 
 #: The one thing the page does that a link could not: install without leaving it. A press, the report, and
@@ -254,13 +278,14 @@ def sub(rows: dict[str, list[Row]], where: str, notes: list[str]) -> str:
 
 
 def page(offer: Mapping[str, Release], where: str = "", notes: list[str] | None = None,
-         title: str = "Packages") -> str:
+         found: Index | None = None, title: str = "Packages") -> str:
     """The tab: a card per kind, the installed packages first, and one press to have one that is not."""
     rows = sections(offer)
     said = "".join(f'<p class="empty">{esc(line)}</p>' for line in notes or [])
     unreachable = (f'<div class="card"><h2>A channel could not be read</h2>{said}</div>'
                    if notes and not where else "")
-    cards = "".join(card(kind, title_of, why, rows[kind]) for kind, title_of, why in SECTIONS)
+    cards = "".join(card(kind, title_of, why, rows[kind], nothing_here(kind, where, found))
+                    for kind, title_of, why in SECTIONS)
     body = (f"<style>{STYLE}</style>{unreachable}{cards}"
             f'<pre class="said" id="said" hidden></pre>')
     return document(title, sub(rows, where, notes or []), body, SCRIPT, now=WHERE)

@@ -13,6 +13,7 @@ from collections.abc import Callable
 from .browser_app import frontend_rows
 from .catalog import CATALOG, UNREACHABLE_NOTES, families
 from .errors import GenerationError, refuse
+from .index_schema import LANGUAGE
 from .language_directory import directory
 from .language_index import Index, Release, Unreachable, offered, read_index, snapshots
 from .language_install import builtin, installed, this_command
@@ -30,13 +31,21 @@ ADOPTION = (
 )
 
 
-def reach(prerelease: bool) -> tuple[Index | None, dict[str, Release], list[str]]:
-    """The index, what it offers this keel, and the lines that say it could not be read (none where it could)."""
+def reach(prerelease: bool, kind: str | None = LANGUAGE) -> tuple[Index | None, dict[str, Release], list[str]]:
+    """The index, what it offers this keel of one kind, and the lines that say it could not be read.
+
+    `kind` is the languages' by default, because every caller here is a listing of languages and the index
+    lists four kinds. Without it a target came back as a language: a target's manifest names no `family`, so
+    the filter that keeps a family's own row — `family == name` — let it through, and `slipwai list` and the
+    interview's Language menu both offered `slipwai language install <a cloud>`. That command then staged
+    the package and refused it for having no `language.json`, naming a temporary directory. The packages tab
+    asks for every kind, which is what `None` is for.
+    """
     try:
         found = read_index()
     except Unreachable as error:
         return None, {}, [f"  {error}", f"  install from a local source: {local_form()}"]
-    return found, offered(found, SCHEMA, prerelease), []
+    return found, offered(found, SCHEMA, prerelease, kind), []
 
 
 def grouped(rows: dict[str, tuple[str, str]]) -> list[str]:

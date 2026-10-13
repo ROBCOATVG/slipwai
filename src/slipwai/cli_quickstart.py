@@ -23,7 +23,7 @@ from typing import Any
 
 from . import quickstart, quickstart_install
 from .assets import this_command
-from .catalog import CORE, families
+from .catalog import CATALOG, CORE, families
 from .errors import GenerationError, refuse
 from .guards import REGISTRY as GUARD_REGISTRY
 from .language_directory import directory as package_directory
@@ -166,26 +166,57 @@ def check_quickstart(root: Path) -> int:
     return 0
 
 
-def missing(one: Quickstart) -> list[str]:
-    """Every package the quickstart names that this machine has not got, languages then extensions."""
+#: The verb that fetches each kind, because they are three different ones and a line naming the wrong verb
+#: is worse than no line. `install` is `language install`, which is what a reader types after a search.
+FETCHES = {"language": "install", "extension": "extension install", "target": "target install"}
+
+
+def absent(one: Quickstart) -> dict[str, list[str]]:
+    """What this quickstart names that this machine has not got, by the kind of package each is.
+
+    **The target is in here, and that is the point of the shape.** A quickstart answers `target: aws`, and
+    a target is a package — so on a machine without it the interview offered the quickstart as usable, the
+    person chose it, and the generator refused them several questions later. What the menu greys out and
+    what the generator will accept are now read off the same list.
+
+    The target is the one that is named by an *answer* rather than listed under `languages` or
+    `extensions`, because that is what it is: nobody installs a target in order to have it, they install
+    it because the project goes there. The keel's own two — `none` and `existing` — are in the catalogue
+    on every machine, so they are never missing.
+    """
     here = set(families())
     installed = {entry.name for entry in package_directory().iterdir()} if package_directory().is_dir() else set()
-    return [each.name for each in one.languages if each.name not in here and each.name not in installed] + [
-        each.name for each in one.extensions if each.name not in installed]
+    return {
+        "language": [each.name for each in one.languages
+                     if each.name not in here and each.name not in installed],
+        "extension": [each.name for each in one.extensions if each.name not in installed],
+        "target": [one.target] if one.target and one.target not in CATALOG["targets"] else [],
+    }
+
+
+def missing(one: Quickstart) -> list[str]:
+    """Every package the quickstart names that this machine has not got, in the order a person meets them."""
+    return [name for kind in FETCHES for name in absent(one)[kind]]
+
+
+def fetches(one: Quickstart) -> list[str]:
+    """One command per kind that is missing — never one command carrying names three verbs apart."""
+    return [f"{this_command()} {FETCHES[kind]} {' '.join(names)}"
+            for kind, names in absent(one).items() if names]
 
 
 def refuse_missing(one: Quickstart) -> None:
-    """Refuse a quickstart whose packages are not here, with the one command that fetches them.
+    """Refuse a quickstart whose packages are not here, with the commands that fetch them.
 
     Named rather than installed: see this module's own heading. The refusal carries every name at once, so
     nobody installs one package, runs the command again and is told about the next.
     """
-    absent = missing(one)
-    if absent:
+    names = missing(one)
+    if names:
         raise GenerationError(
-            f"the {one.name} quickstart names {', '.join(absent)}, which "
-            f"{'is' if len(absent) == 1 else 'are'} not installed here. Run: "
-            f"{this_command()} install {' '.join(absent)}")
+            f"the {one.name} quickstart names {', '.join(names)}, which "
+            f"{'is' if len(names) == 1 else 'are'} not installed here. Run: "
+            f"{'; '.join(fetches(one))}")
 
 
 def typed(argv: list[str]) -> set[str]:

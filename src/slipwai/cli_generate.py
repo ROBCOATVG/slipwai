@@ -17,7 +17,7 @@ from collections.abc import Callable
 from typing import Any
 
 from . import quickstart
-from .assets import DEFAULT_OUTPUT, this_command
+from .assets import DEFAULT_OUTPUT
 from .browser_app import frontend_menu
 from .catalog import CATALOG, axis_applies, default_language, families, resolve_backend
 from .cli_language import not_installed_frameworks, not_installed_languages, nothing_loaded
@@ -33,7 +33,7 @@ from .cli_prompts import (
     prompt_purpose,
     prompt_target,
 )
-from .cli_quickstart import missing
+from .cli_quickstart import fetches, missing
 from .errors import GenerationError
 from .loaded_targets import answer
 from .preflight import check as check_requirements
@@ -77,7 +77,7 @@ def unavailable_quickstarts() -> dict[str, str]:
             absent[name] = str(fault)
             continue
         if missing(one):
-            absent[name] = f"`{this_command()} install {' '.join(missing(one))}` installs what it names"
+            absent[name] = "; ".join(f"`{line}`" for line in fetches(one)) + " installs what it names"
     return absent
 
 

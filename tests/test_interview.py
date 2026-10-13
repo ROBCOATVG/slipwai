@@ -19,6 +19,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 from unittest import mock
 
 import checkout_packages  # noqa: F401
@@ -26,12 +27,16 @@ import checkout_packages  # noqa: F401
 from slipwai import cli_generate, quickstart
 from slipwai.catalog import CATALOG
 
-DOCUMENT = {
+#: The answers the fixture gives, apart so that a test can vary one of them without the type of the whole
+#: document collapsing to `object` around it.
+ANSWERS: dict[str, Any] = {"profile": "standard", "target": "none", "language": "toy",
+                           "framework": "plain", "frontend": "react-vite",
+                           "axes": {"persistence": "memory"}}
+DOCUMENT: dict[str, Any] = {
     "quickstart": 1,
     "name": "toy-ui",
     "suits": "A product whose browser app is the product, with the review gates already on.",
-    "answers": {"profile": "standard", "target": "none", "language": "toy", "framework": "plain",
-                "frontend": "react-vite", "axes": {"persistence": "memory"}},
+    "answers": ANSWERS,
     "languages": [{"name": "toy", "version": ">=1.0,<2"}],
 }
 #: Every question the interview asks, by the name `cli_generate` calls it: what a test counts.
@@ -90,6 +95,39 @@ class MenuTest(unittest.TestCase):
         self.assertIn("absent-ui", absent)
         self.assertIn("install absent", absent["absent-ui"])
         self.assertNotIn("absent-ui", cli_generate.quickstart_menu()[0])
+
+    def test_one_whose_target_is_not_installed_is_unavailable_too(self) -> None:
+        """A target is a package, and a quickstart names one by answering it rather than by listing it.
+
+        Reading `languages` and `extensions` alone, the menu offered a cloud quickstart as usable on a
+        machine with no cloud installed; the person chose it, answered several more questions, and was
+        refused by the generator. What the menu greys out and what the generator accepts are one list.
+        """
+        written(self.where, {**DOCUMENT, "name": "cloudy", "answers": {**ANSWERS,
+                                                                       "target": "nowhere"}})
+        absent = cli_generate.unavailable_quickstarts()
+        self.assertIn("cloudy", absent)
+        self.assertIn("target install nowhere", absent["cloudy"])
+        self.assertNotIn("cloudy", cli_generate.quickstart_menu()[0])
+
+    def test_a_target_the_keel_carries_itself_is_never_missing(self) -> None:
+        """`none` and `existing` are in the catalogue on every machine. A quickstart answering one of them
+        that was greyed out would be unusable everywhere, which is the same bug the other way round."""
+        for target in ("none", "existing"):
+            written(self.where, {**DOCUMENT, "name": f"local-{target}",
+                                 "answers": {**ANSWERS, "target": target}})
+            self.assertNotIn(f"local-{target}", cli_generate.unavailable_quickstarts())
+
+    def test_each_kind_is_fetched_by_its_own_verb(self) -> None:
+        """`slipwai install` is `language install`. One line carrying an extension's name and a target's
+        would be a command that fails on the first word a reader pastes."""
+        written(self.where, {**DOCUMENT, "name": "three-ways", "languages": [{"name": "absent"}],
+                             "extensions": [{"name": "nothere"}],
+                             "answers": {**ANSWERS, "target": "nowhere"}})
+        said = cli_generate.unavailable_quickstarts()["three-ways"]
+        self.assertIn("install absent", said)
+        self.assertIn("extension install nothere", said)
+        self.assertIn("target install nowhere", said)
 
     def test_with_none_saved_nothing_is_asked_at_all(self) -> None:
         """The interview is exactly what it is today for somebody who has never saved one."""

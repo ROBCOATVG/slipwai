@@ -23,6 +23,13 @@ and eligible work waiting owes the reason in the line that names the ready set. 
 `id`; under `/sail` it is put to the person while the independent siblings keep running, and the sentence
 says which slices the answer unblocks. A demo wait is the slice's own and never a sibling's.
 
+**The captain parks on a question and writes the decision on resume.** Under `/cruise` a session that
+ends on an open `question` used to read as *wrote no `mark-set`*, which sent a person to look for a slice
+that was never built. The park now carries the question and names `/cruise-tell`; when the answer clears
+the park, the captain writes the `decision` line carrying the question's `id` (and `decided_by: human`)
+before re-dispatching, so the resumed `/sail` finds it in the log and clearance stops saying *awaiting
+decision*.
+
 **Nested agents and browser runs are counted.** A whole-slice delegate carrying `[P]` tasks is `1 + fanout`
 agents, so the fan-out asks for up to `boilers × (1 + fanout)`, held to what the harness can actually run.
 `browsers` is a new telegraph number — browser-driven test runs at once on this machine, 2 at `full-ahead`

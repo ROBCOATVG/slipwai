@@ -103,6 +103,9 @@ died, and somebody will spend an hour working out which.
 A park owes an answer. Keep its original timestamp: only a harbour `cleared` line carrying this
 `fairway`, that timestamp as `parked`, and the answer as `what` closes it. A later heartbeat does not
 reset the wait clock; report its age and whether it is past `wait_bound`. When the matching answer
-arrives, resume the last unmerged claimed slice rather than skip it. After your final deck line,
+arrives, resume the last unmerged claimed slice rather than skip it. A stage that ended on an open
+`question` is parked with the question in the `why`, never with *no mark-set*; and before you resume that
+slice, write the `decision` line carrying each open question's `id` and the park's answer as `what`, so
+the resumed session finds the answer in the log and clearance stops reporting *awaiting decision*. After your final deck line,
 keep the claim until the harbourmaster has published the whole suffix to `refs/slipwai/logs/<fairway>`;
 if publication exceeds the wait bound, retain the claim and name the publisher that must return.

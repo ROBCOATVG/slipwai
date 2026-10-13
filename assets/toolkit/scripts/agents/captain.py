@@ -33,6 +33,13 @@ before anything acts on them. `/sail` re-enters at the first incomplete stage, s
 demo rung with the notes in the slice. `attempts` in `harbour.json` bounds it; when it is spent the fairway
 parks naming the verdict and the count.
 
+**An open question is a park with the question in it, and the answer becomes the decision.** A stage that
+meets a product question it may not guess past writes a `question` line and ends; the gate used to read
+that as *wrote no `mark-set`*, which sent a person to look for a slice that was never built. Now the park
+names the question, `/cruise-tell` with the answer clears it, and the captain writes the `decision` line
+carrying the question's `id` before it re-dispatches — so the resumed `/sail` finds the question answered
+in the log rather than in somebody's memory, and clearance stops saying *awaiting decision*.
+
 **A hook never costs the rung.** The extension hook points fire around each rung, at each boundary and before
 a merge; `hooks.py` always exits 0 for them, and the captain does not read their output. A hook is a second
 belt, and a second belt that can stop the run is the thing it was meant to be instead of.
@@ -402,6 +409,44 @@ def owed(fresh: list[logs.Entry], slice_id: str, promised: list[str]) -> tuple[l
     return [mark for mark in promised if mark not in done], (verdicts[-1] if verdicts else "")
 
 
+def open_questions(found: list[logs.Entry], slice_id: str) -> list[logs.Entry]:
+    """The `question` lines against this slice no `decision` has answered: open until one carries the `id`."""
+    answered = {str(e.fields.get("id", "")) for e in found if e.kind == "decision"}
+    return [e for e in found if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id
+            and str(e.fields.get("id", "")) not in answered]
+
+
+def park_answer(found: list[logs.Entry], fairway: str) -> str:
+    """What a person answered the fairway's latest park with: the `what` of the harbour `cleared` receipt
+    that names that park's timestamp. `""` where the park is still open or there never was one."""
+    parks = [e for e in found if e.kind == "parked" and str(e.fields.get("fairway", "")) == fairway]
+    if not parks:
+        return ""
+    for receipt in reversed(harbour_entries()):
+        if (receipt.kind == "cleared" and str(receipt.fields.get("fairway", "")) == fairway
+                and str(receipt.fields.get("parked", "")) == parks[-1].t):
+            return str(receipt.fields.get("what", ""))
+    return ""
+
+
+def answer_questions(feature: str, fairway: str, slice_id: str, found: list[logs.Entry]) -> list[str]:
+    """Turn the answer to a park into the `decision` lines the open questions owe, and say which.
+
+    One answer may close several questions: the park listed every one of them, and the person answered the
+    park. A question answered this way carries `decided by: human`, which is what it was.
+    """
+    what = park_answer(found, fairway)
+    if not what:
+        return []
+    closed = []
+    for asked in open_questions(found, slice_id):
+        ident = str(asked.fields.get("id", ""))
+        write(feature, fairway, logs.entry("decision", fairway=fairway, id=ident, what=what,
+                                           slice=slice_id, decided_by="human"))
+        closed.append(ident)
+    return closed
+
+
 def dispatch(slice_id: str, feature: str, fairway: str) -> tuple[bool, str, list[logs.Entry]]:
     """One run of `/sail`, and the lines it wrote. (finished, why not, the lines written during it)."""
     try:
@@ -434,6 +479,14 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
         missing, verdict = owed(fresh, slice_id, promised)
         if not missing and verdict == ACCEPTED:
             return True, ""
+        asked = open_questions(fresh, slice_id)
+        if asked:
+            # Before the mark check: a stage that stopped to ask is not a stage that wrote nothing, and the
+            # park has to carry the question, because the person reading it is the one who answers it.
+            said = "; ".join(f"{e.fields.get('id')}: {e.fields.get('what')}" for e in asked)
+            return False, (f"{slice_id} is awaiting a decision — {said}. A person answers with "
+                           f"`/cruise-tell {fairway} <answer>`; the captain records the decision and "
+                           f"resumes {slice_id}")
         if verdict and verdict != ACCEPTED:
             sent_back += 1
             if sent_back <= bound:
@@ -623,6 +676,8 @@ def turn(fairway: str) -> str:
         # The stream was mid-slice when its machine stopped, and `next_slice` would step past a slice that
         # is claimed — which is exactly the four rungs of work this slice exists to carry over.
         slice_id, why = resume, ""
+        for ident in answer_questions(feature, fairway, slice_id, found):
+            print(f"captain: {ident} on {slice_id} is decided by the answer to the park", flush=True)
     else:
         slice_id, why = next_slice(fairway, claimed, merged)
     if slice_id is None:

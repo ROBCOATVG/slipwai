@@ -182,7 +182,10 @@ left in the tree before continuing.
   itself.
 - **Stuck is detected, and it is the captain that detects it.** A stage that writes no line for longer than
   the telegraph's `wait_bound` is ended and the slice re-dispatched, up to `attempts` times, and then parked
-  by name. The same open question raised twice in one session goes to the bosun once and parks after that. A
+  by name. A session that ends on an open `question` is parked with the question in the line, and the
+  answer a person gives through `/cruise-tell` is written by the captain as the `decision` carrying that
+  question's `id` before the slice is re-dispatched. The same open question raised twice in one session goes
+  to the bosun once and parks after that. A
   run that loops is not a run, and the thing that notices is outside the session, which is the point: the
   first attempt had the loop judging itself and it judged itself to be working for a fortnight.
 - **The record says who drove.** `driver=cruise` on every benchmark entry, `skipper`, `hand` and `bosun` as stages

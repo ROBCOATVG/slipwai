@@ -66,6 +66,42 @@ class GateTest(Fixture):
         self.assertEqual([e for e in self.read("ORD") if e.kind == "request"], [], done.stdout)
         self.assertEqual(len([e for e in self.read("ORD") if e.kind == "parked"]), 1)
 
+    def test_an_open_question_parks_with_the_question_and_not_with_a_missing_mark(self) -> None:
+        """A stage that stopped to ask is not a stage that wrote nothing."""
+        asks = """import sys, json, pathlib, datetime
+slice_id, fairway = sys.argv[1], sys.argv[2]
+path = pathlib.Path(".slipwai/logs/ordering") / (fairway + ".jsonl")
+path.parent.mkdir(parents=True, exist_ok=True)
+now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+with path.open("a", encoding="utf-8") as handle:
+    handle.write(json.dumps({"v": 1, "t": now, "kind": "question", "fairway": fairway, "slice": slice_id,
+                             "id": "Q1", "what": "sync or async pricing?"}) + "\\n")
+"""
+        done = self.captain("ORD", self.sail(asks))
+        parked = [str(e.fields["why"]) for e in self.read("ORD") if e.kind == "parked"]
+        self.assertEqual(len(parked), 1, done.stdout)
+        self.assertIn("Q1: sync or async pricing?", parked[0], done.stderr)
+        self.assertIn("cruise-tell ORD", parked[0])
+        self.assertNotIn("no `mark-set`", parked[0])
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "request"], [])
+
+    def test_the_answer_to_the_park_becomes_the_decision_and_the_slice_resumes(self) -> None:
+        """`/cruise-tell` clears the park; the captain writes the `decision` carrying the question's id, so
+        the resumed `/sail` reads it in the log and clearance stops saying *awaiting decision*."""
+        at = "2026-10-13T09:00:00Z"
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),
+                  logs.entry("question", fairway="ORD", slice="ORD-01", id="Q1", what="sync or async?"),
+                  logs.entry("parked", fairway="ORD", why="ORD-01 is awaiting a decision — Q1", t=at))
+        self.harbour(logs.entry("cleared", harbour=True, fairway="ORD", parked=at, what="async, via the port"))
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(WORKS))
+        decisions = [e for e in self.read("ORD") if e.kind == "decision"]
+        self.assertEqual([(e.fields["id"], e.fields["what"]) for e in decisions], [("Q1", "async, via the port")],
+                         done.stdout)
+        self.assertEqual(decisions[0].fields.get("decided_by"), "human")
+        self.assertIn("Q1 on ORD-01 is decided", done.stdout)
+        self.assertIn("ORD-01 is through its gate and merged", done.stdout)
+
     def test_a_demo_sent_back_is_driven_again_rather_than_parked(self) -> None:
         """The person who sent it back is present and has just written notes. Parking would ask them to come
         back and restart a fairway before anything acted on them."""

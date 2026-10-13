@@ -40,10 +40,11 @@ https://github.com/ROBCOATVG/slipwai_v2_Fork/actions/runs/38253116107
 This proves that revision, not an arbitrary later release. Initial short-SHA checkout failure was corrected
 by dispatching the full SHA. The publisher workflow itself still needs preparation before spending a tag.
 
-AWS/Azure under packages/ are target plug-in sources, holding cloud templates, deployment scripts and
-answers behind the target protocol. The keel must not import named cloud packages. They are in this
-checkout alongside the toy fixture; they are outside the wheel's src/slipwai package and are not yet
-published chandlery target packages. Source-adjacent CI is explicit temporary topology, not a loader bypass.
+AWS/Azure are target plug-in packages, holding cloud templates, deployment scripts and answers behind the
+target protocol. The keel must not import named cloud packages. They are written and released from their own
+repositories — `ROBCOATVG/slipwai-target-aws` and `slipwai-target-azure` — and the byte-for-byte mirrors
+this checkout carried under `packages/` were removed on 2026-10-13; `packages/` now holds only the toy
+fixture. Suites that need a cloud skip on this checkout, as they always did without one.
 
 ## Phase position on main
 

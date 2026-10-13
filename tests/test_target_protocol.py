@@ -134,6 +134,17 @@ class ExtendedProtocolTest(unittest.TestCase):
     def test_a_whole_managed_target_answering_all_of_them_has_no_faults(self) -> None:
         self.assertEqual(faults(whole(), managed=True), [])
 
+    def test_a_setup_hook_has_to_be_a_script_the_project_is_given(self) -> None:
+        """A hook `./init` is never given is one it never runs, and nothing would say so until a machine
+        turned out short a tool the target promised to install."""
+        found = faults(Target("x", {target_protocol.SETUP: "scripts/setup.py", SHAPES: {}}), managed=False)
+        self.assertTrue(any("setup hook" in line for line in found), found)
+        carried = faults(Target("x", {target_protocol.SETUP: "scripts/setup.py",
+                                      target_protocol.SCRIPTS: {"scripts/setup.py": "scripts/setup.py"}}),
+                         managed=False)
+        self.assertFalse(any("setup hook" in line for line in carried), carried)
+        self.assertFalse(target_protocol.SETUP.required)
+
     def test_the_pipeline_is_a_member_a_managed_target_owes(self) -> None:
         self.assertIn("pipeline", [member.name for member in target_protocol.required()])
 

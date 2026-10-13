@@ -23,7 +23,7 @@ import subprocess
 
 from .catalog import CATALOG
 from .errors import GenerationError
-from .loaded_targets import answer
+from .loaded_targets import answer, setup_for
 from .target_protocol import REGION, TOOLS
 from .targets import managed
 
@@ -65,17 +65,45 @@ def missing_for(target: str) -> list[tuple[str, str, str]]:
     return found
 
 
-def check(target: str, skip: bool = False) -> None:
-    """Refuse a target this machine cannot take a project to, naming each gap and the way past it."""
+def check(target: str, skip: bool = False) -> str:
+    """Refuse a target this machine cannot take a project to, naming each gap and the way past it — or, for a
+    target whose own setup hook will put the gaps right, the notice that says so and what it will do.
+
+    The notice rather than silence: a person who sees nothing assumes the machine is ready, and the hook runs
+    later, on whichever machine runs `./init`. Nothing here is a status; `./init` looks again.
+    """
     if skip:
-        return
+        return ""
     missing = missing_for(target)
     if not missing:
-        return
+        return ""
+    hook = setup_for(target)
+    if hook:
+        return (f"--target {target}: this machine is short {', '.join(what for what, _, _ in missing)}. `./init` runs "
+                f"{hook}, the target's own setup, which puts them here — or run `./init --no-install` to be told "
+                f"instead; `gh` is signed in there too.")
     width = max(len(what) for what, _, _ in missing)
     rows = "\n".join(f"  {what.ljust(width)}  {why} — {where}" for what, why, where in missing)
     raise GenerationError(
         f"--target {target} needs more than this machine has:\n{rows}\n"
         f"Install what is missing and run again, or generate with --skip-checks if another machine will run "
         f"./init — which is where these are used (docs/requirements.md has the full table)."
+        f"{searched(target, missing)}"
     )
+
+
+def searched(target: str, missing: list[tuple[str, str, str]]) -> str:
+    """The sentence that says where the tools were looked for, when any tool was not found.
+
+    A machine with every tool installed and signed in was refused with every row at once,
+    because `generate` had been run from an agent's shell — a sandbox with `PATH=/usr/bin:/bin` and no
+    exported token. Every check here is `which` and the environment, so that is exactly what such a shell
+    reports, and the refusal read as "install OpenTofu" to somebody who had. Naming the `PATH` that was
+    searched is what tells those two cases apart.
+    """
+    tools = {tool for tool, _, _ in answer(target, TOOLS, default=()) or ()}
+    if not any(what in tools for what, _, _ in missing):
+        return ""
+    return (f"\nSearched PATH={os.environ.get('PATH', '')!r}. A sandbox or an agent's shell often has a "
+            f"shorter PATH and no exported tokens than your terminal; if `which {sorted(tools)[0]}` answers "
+            f"there, run generate from there, or pass --skip-checks.")

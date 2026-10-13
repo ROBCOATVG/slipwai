@@ -47,6 +47,7 @@ from .errors import GenerationError
 from .harness import detect, keys, name_of
 from .page_shell import document, esc
 from .services import FIRST_SERVICE, FIRST_WEB
+from .shell_environment import login_environment
 from .targets import managed, offered_backends
 
 
@@ -253,10 +254,10 @@ def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
     A child rather than a call: `generate` owns a parser, a refusal shape and an exit status, and a server
     thread that imported its way into the middle of it would be a second entry point to the same work. The
     child is this copy and no other (`assets.relaunch`), so the board cannot generate with a different keel
-    from the one serving it.
+    from the one serving it; it is given the login shell's environment (`shell_environment`).
     """
     done = subprocess.run([*relaunch(), "generate", *flags(answers)], cwd=str(root),
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, env=login_environment())
     return done.returncode == 0, (done.stdout + done.stderr).strip()
 
 

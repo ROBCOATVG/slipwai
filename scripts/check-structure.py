@@ -56,7 +56,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # `ed25519` is here and imports nothing: it is arithmetic over one curve, the standard library's own
     # SHA-512 and no opinion about packages — which is what makes it testable against the RFC's vectors
     # alone (slice 6.5b).
-    ("foundation", ("assets", "errors", "versions", "changelog", "whats_new", "naming", "logs",
+    ("foundation", ("assets", "errors", "versions", "changelog", "whats_new", "naming", "logs", "shell_environment",
                     "brand", "ed25519")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what differs per package and where each

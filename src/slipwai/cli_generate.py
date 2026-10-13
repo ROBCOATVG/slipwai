@@ -13,6 +13,7 @@ and nothing downstream can tell which of the two put them there.
 """
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from typing import Any
 
@@ -139,7 +140,9 @@ def interview(args: Any, named: dict[str, str | None]) -> None:
     # Asked before the target and checked against it: a name the target's cloud will not take is
     # said here, not after another nine questions.
     check_project_name(CATALOG, args.target, args.name)
-    check_requirements(args.target, args.skip_checks)
+    noticed = check_requirements(args.target, args.skip_checks)
+    if noticed:
+        print(noticed, file=sys.stderr)
     args.backend = resolve_backend(args.language, args.framework or None) if "language" in given \
         else ask_language(args)
     args.service_name = prompt_application_name("Service name", FIRST_SERVICE, set())

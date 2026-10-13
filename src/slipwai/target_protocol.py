@@ -74,6 +74,14 @@ ADD_COMMANDS: TargetMember[Any] = M("add_commands", True, dict, "what adding a s
 REGION: TargetMember[Any] = M("region", False, tuple, "(variable, how to read it, what to say when it is unset)")
 #: What a person needs before `make bootstrap` — an account, a signed-in CLI — as the docs page lists them.
 PREREQUISITES: TargetMember[Any] = M("prerequisites", False, tuple, "a line per prerequisite")
+#: A hook: the project path of a script `./init` runs before anything else production needs, so that what
+#: this target wants on the machine — its tools, and whatever it must be told once — is put there by the
+#: target itself. The keel runs it and reads nothing from it; what a region is, which package manager a
+#: tool comes from, and what a sensible default looks like are the target's to know. A path in `scripts`,
+#: so the file is carried into the project the way every other script of the target's is. Never required:
+#: a target with no hook is one whose tools a person installs, which is what every target was, and `./init`
+#: still names what is missing.
+SETUP: TargetMember[Any] = M("setup", False, str, "the project path, from `scripts`, of the script ./init runs first")
 #: Never required either: absence is the answer "this cloud has no flag store", and a project on it reads
 #: its flags the one way every project can — out of the environment the platform resolved them into.
 FLAG_TRANSPORTS: TargetMember[Any] = M("flag_transports", False, dict, "the default transport, and the opt-in one")
@@ -87,7 +95,7 @@ DEPLOYMENT_SHAPES: TargetMember[Any] = M(
 
 PROTOCOL: tuple[TargetMember[Any], ...] = (
     SHAPES, SCRIPTS, DOCS_PAGES, TOOLS, IMAGE_REGISTRY, PIPELINE, README_WORDS, AGENT_RULES, ADD_COMMANDS,
-    REGION, PREREQUISITES, FLAG_TRANSPORTS, DEPLOYMENT_SHAPES,
+    REGION, PREREQUISITES, FLAG_TRANSPORTS, DEPLOYMENT_SHAPES, SETUP,
 )
 
 #: What each dict-shaped member has to have in it, because the keel reads each of these by name. A member
@@ -153,6 +161,12 @@ def faults(target: Target, managed: bool) -> list[str]:
                          f"wants {kind_name(member.kind)}")
             continue
         found += content_faults(said, member, value)
+    hook, scripts = answers.get(SETUP), answers.get(SCRIPTS)
+    if isinstance(hook, str) and not (isinstance(scripts, dict) and hook in scripts):
+        # The one check across two members: a hook the project is never given is a hook `./init` never runs,
+        # and nothing would say so until a machine turned out to be short a tool the target promised to install.
+        found.append(f"{said} names {hook!r} as its setup hook and does not carry it in scripts; a hook has to "
+                     f"be a file the project is given")
     return found
 
 

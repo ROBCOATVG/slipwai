@@ -35,7 +35,7 @@ from .package_templates import (
     README,
     WORKFLOW,
 )
-from .target_templates import BOOTSTRAP_STACK, SCRIPT, SERVICE_STACK, TARGET_MODULE, TARGET_README
+from .target_templates import BOOTSTRAP_STACK, SCRIPT, SERVICE_STACK, SETUP_SCRIPT, TARGET_MODULE, TARGET_README
 
 #: Where the reusable workflow a package's CI calls actually lives. Version 1's repository has a
 #: `package.yml` too, with different inputs — a package pointed at it would fail on the first push with
@@ -171,6 +171,7 @@ def target_files(name: str, schema: str) -> dict[str, str]:
                                               what_lower="create the account's standing resources"),
         "scripts/deploy.py": SCRIPT.format(name=name, what="Deploy",
                                            what_lower="apply the service stack for one environment"),
+        "scripts/setup.py": SETUP_SCRIPT.format(name=name),
         "README.md": TARGET_README.format(name=name, title=title_of(name), module=module,
                                           command=this_command()),
         "Makefile": MAKEFILE.format(name=name, kind="target"),

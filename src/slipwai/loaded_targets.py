@@ -25,7 +25,7 @@ from .catalog import TARGETS
 from .errors import GenerationError
 from .language_directory import Refused
 from .target_directory import import_package
-from .target_protocol import IMAGE_REGISTRY, TOOLS, Target, TargetMember
+from .target_protocol import IMAGE_REGISTRY, SETUP, TOOLS, Target, TargetMember
 
 #: What `answer` returns for a member a target does not answer and is not obliged to. A sentinel rather than
 #: `None`, because `None` is a thing a target could in principle answer with.
@@ -133,6 +133,13 @@ def root_of(target: str) -> Path:
         if package.name == target:
             return package.root
     raise GenerationError(missing(target))
+
+
+def setup_for(target: str) -> str | None:
+    """The script `./init` runs first for this target — the target's own, which installs and settles what it
+    needs — or None for a target that has none, whose tools a person puts on the machine."""
+    hook = answer(target, SETUP)
+    return str(hook) if hook else None
 
 
 def tools_for(target: str) -> list[str]:

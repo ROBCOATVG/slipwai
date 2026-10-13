@@ -46,7 +46,7 @@ SLOW += test_big_picture_adoption
 SLOW += test_observe_model
 SLOW += test_two_machines
 SLOW += test_harbourmaster
-SLOW += test_deployment_shapes test_skiff_migrations
+SLOW += test_deployment_shapes
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

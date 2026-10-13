@@ -21,7 +21,7 @@ from slipwai.errors import GenerationError
 from slipwai.project import add_commands, deploy_workflow, flag_route, infra, production, target_docs
 from slipwai.selection import Selection
 from slipwai.services import App
-from slipwai.target_protocol import PROTOCOL, required
+from slipwai.target_protocol import PROTOCOL, SCRIPTS, required
 
 #: Both clouds, where this checkout has them. A package that is not checked out skips rather than passing on
 #: nothing, which is the failure mode `checkout_packages` exists to prevent.
@@ -177,6 +177,25 @@ class ReaderTest(unittest.TestCase):
             with self.subTest(target=cloud):
                 self.assertIn("deploys to", add_commands.afterwards(cloud, "service"))
                 self.assertIn("deploys to", add_commands.afterwards(cloud, "web"))
+
+    def test_each_cloud_ships_the_setup_hook_init_runs_and_it_says_what_it_would_do(self) -> None:
+        """The hook is the cloud's: carried in `scripts`, and asked `--check` it names each tool it would
+        install with no manager found, which is what a machine with nothing on it is told."""
+        import os
+        import subprocess
+        import sys
+        for cloud in CLOUDS:
+            with self.subTest(cloud=cloud):
+                hook = loaded_targets.setup_for(cloud)
+                self.assertEqual(hook, "scripts/setup.py")
+                scripts = loaded_targets.answer(cloud, SCRIPTS)
+                script = loaded_targets.root_of(cloud) / str(scripts[hook])
+                self.assertTrue(script.is_file(), script)
+                done = subprocess.run([sys.executable, str(script), "--check"], capture_output=True, text=True,
+                                      env={**os.environ, "PATH": "/nonexistent"}, cwd=str(script.parents[1]))
+                for tool in loaded_targets.tools_for(cloud):
+                    self.assertIn(tool, done.stdout, done.stdout + done.stderr)
+                self.assertNotIn("Installing", done.stdout)
 
     def test_the_tools_preflight_refuses_on_are_the_clouds(self) -> None:
         """`targets.TOOLS` and `preflight.REGION`."""

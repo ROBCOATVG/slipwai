@@ -48,7 +48,10 @@ day.
    `registry_at_deploy` on its row, so the job that deploys is signed in; a shape that does not must not
    ask for a sign-in it never uses.
 3. **The preflight**: what has to be true before the first deploy, checked and said rather than discovered
-   by a failing apply.
+   by a failing apply. And **the setup hook** — `setup`, a script under `scripts/` that `./init` runs first:
+   it installs the target's tools on the machine it finds itself on and settles whatever the target has to
+   be told once, a region say, with a default on offer. The keel runs it and reads nothing from it; what a
+   region is, or which package manager a tool comes from, is the target's to know and never the keel's.
 4. **The axis provisioning**: for each option a backend may answer — a Postgres, an OIDC issuer, a bucket —
    what this target provisions for it, and the prune row that removes it when a project chose otherwise.
 5. **The docs page**: what a person has to do in their own account, in order, once.

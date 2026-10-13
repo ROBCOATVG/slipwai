@@ -152,6 +152,21 @@ class ByteIdenticalTest(unittest.TestCase):
             self.assertGreater(len(list((terminal / "demo").rglob("*"))), 100)
             self.assertEqual(differences(terminal / "demo", board / "demo"), [])
 
+    def test_the_child_is_given_the_login_shells_path_and_keeps_its_own_variables(self) -> None:
+        """A board started from a launcher has `PATH=/usr/bin:/bin` and no tokens, and `generate` then refuses
+        a target on a machine that has every tool. The login shell is what the person's terminal has."""
+        from slipwai.shell_environment import login_environment
+        with tempfile.TemporaryDirectory() as scratch:
+            shell = Path(scratch) / "shell"
+            shell.write_text("#!/bin/sh\nprintf 'PATH=/opt/tools/bin:/usr/bin\\0TOKEN=from-login\\0KEPT=login\\0'\n",
+                             encoding="utf-8")
+            shell.chmod(0o755)
+            found = login_environment({"PATH": "/usr/bin:/bin", "KEPT": "mine"}, shell=str(shell))
+        self.assertEqual(found["PATH"], "/opt/tools/bin:/usr/bin:/bin")
+        self.assertEqual(found["TOKEN"], "from-login")
+        self.assertEqual(found["KEPT"], "mine", "this process's own variable wins where both have one")
+        self.assertEqual(login_environment({"PATH": "/bin"}, shell="/nonexistent/shell"), {"PATH": "/bin"})
+
     def test_the_board_says_where_it_put_the_project(self) -> None:
         with tempfile.TemporaryDirectory() as scratch:
             ok, said = run({"name": "demo", "output": scratch}, Path(scratch))

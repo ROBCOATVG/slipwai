@@ -73,6 +73,16 @@ class InitScriptTest(unittest.TestCase):
     def test_an_ordinary_value_is_still_quoted(self) -> None:
         self.assertEqual(init_extensions._sh_single_quote("demo"), "'demo'")
 
+    def test_a_production_init_takes_no_install_and_runs_the_targets_hook_first(self) -> None:
+        """The hook is the target's; `./init` runs it before it looks, and `--no-install` only looks."""
+        from slipwai.project import init_production
+        self.assertIn("--no-install) no_install=true", init_script.argument_scan([], [], production=True))
+        check = init_production.PRODUCTION_CHECK.format(tools="tofu aws", cloud="AWS",
+                                                        setup=init_production.setup_fragment("scripts/setup.py"))
+        self.assertLess(check.index("python3 scripts/setup.py"), check.index('for tool in tofu aws'))
+        self.assertIn('[ "$no_install" != true ] && [ -f scripts/setup.py ]', check)
+        self.assertEqual(init_production.setup_fragment(None), "")
+
     def test_the_argument_scan_names_every_axis_it_is_given(self) -> None:
         written = init_script.argument_scan(["persistence", "http"], ["codegraph"])
         for axis in ("persistence", "http"):

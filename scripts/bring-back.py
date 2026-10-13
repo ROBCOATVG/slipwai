@@ -80,6 +80,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "target_shape", "target_protocol", "target_templates", "target_directory",
        "target_install", "cli_target", "loaded_targets", "deployment_shapes", "shape_converge",
        "conformance.target", "conformance.target_probe", "page_shell", "interview_page", "adopt_page", "harbour",
+       # The board's child gets a terminal's environment; the experiment's board was a terminal.
+       "shell_environment",
        # `./init` run where the project was just made, in the terminal and in the background for the board.
        # The experiment generated a tree and left the step that finishes it to a sentence in the guide.
        "init_run", "at_login", "infra_check",

@@ -12,12 +12,12 @@ from __future__ import annotations
 from ..catalog import CATALOG, axis_prunable
 from ..extensions import known_extensions
 from ..layout import AT_ROOT, Layout
-from ..loaded_targets import cloud_of, tools_for
+from ..loaded_targets import cloud_of, setup_for, tools_for
 from ..services import App, axes_of, services_of
 from ..targets import managed
 from .init_extensions import ELECTED_FROM_QUICKSTART, RUN_EXTENSIONS, prompt_extensions
 from .init_languages import LANGUAGES_CHECK
-from .init_production import ALREADY_BOOTSTRAPPED, PRODUCTION_BOOTSTRAP, PRODUCTION_CHECK
+from .init_production import ALREADY_BOOTSTRAPPED, PRODUCTION_BOOTSTRAP, PRODUCTION_CHECK, setup_fragment
 from .pins import SPECKIT_SOURCE
 
 
@@ -82,7 +82,8 @@ fi
     # The production target's own flags: where to push, and whether to bootstrap at all. Lifted out like
     # the axis and extension flags, because Spec Kit would refuse them.
     production_variables = (
-        "repository=\nexpect_repository=false\nskip_bootstrap=false\nauto_promote=\nexpect_auto_promote=false\n"
+        "repository=\nexpect_repository=false\nskip_bootstrap=false\nno_install=false\nauto_promote=\n"
+        "expect_auto_promote=false\n"
         if production
         else ""
     )
@@ -107,6 +108,7 @@ fi
     --auto-promote) expect_auto_promote=true ;;
     --auto-promote=*) auto_promote=${argument#--auto-promote=} ;;
     --skip-bootstrap) skip_bootstrap=true ;;
+    --no-install) no_install=true ;;
 """
         if production
         else ""
@@ -193,7 +195,8 @@ def init_script(apps: list[App], target: str = "none", layout: Layout = AT_ROOT)
     # which is why both read the target's `tools` rather than a list of their own.
     cloud = cloud_of(target)
     check = (
-        ALREADY_BOOTSTRAPPED + PRODUCTION_CHECK.format(tools=" ".join(tools_for(target)), cloud=cloud)
+        ALREADY_BOOTSTRAPPED + PRODUCTION_CHECK.format(tools=" ".join(tools_for(target)), cloud=cloud,
+                                                       setup=setup_fragment(setup_for(target)))
         if production
         else ""
     )

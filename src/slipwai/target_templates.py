@@ -32,6 +32,7 @@ from slipwai.target_protocol import (
     PIPELINE,
     README_WORDS,
     SCRIPTS,
+    SETUP,
     SHAPES,
     TOOLS,
     Target,
@@ -56,7 +57,11 @@ TARGET = Target(
         # the service's, applied per environment by `make deploy`. The files are this package's own.
         SHAPES: {{"bootstrap": ("bootstrap/main.tf",), "service": ("service/main.tf",)}},
         # What a generated project gets under `scripts/`, by the path it lands at.
-        SCRIPTS: {{"scripts/bootstrap.py": "scripts/bootstrap.py", "scripts/deploy.py": "scripts/deploy.py"}},
+        SCRIPTS: {{"scripts/bootstrap.py": "scripts/bootstrap.py", "scripts/deploy.py": "scripts/deploy.py",
+                  "scripts/setup.py": "scripts/setup.py"}},
+        # The hook `./init` runs first: this package's own script puts its tools on the machine and settles
+        # what it has to be told once. The keel runs it and reads nothing from it.
+        SETUP: "scripts/setup.py",
         DOCS_PAGES: {{"docs/deployment.md": deployment_page}},
         # Each tool says what it is for and where to get it. A person told a tool is missing and not told
         # where it comes from is a person left searching.
@@ -156,6 +161,56 @@ SERVICE_STACK = '''# The service stack: applied per environment, by `make deploy
 terraform {{
   required_version = ">= 1.12"
 }}
+'''
+
+SETUP_SCRIPT = '''#!/usr/bin/env python3
+"""What {name} needs on this machine, put there by this package: `./init` runs this first.
+
+Each tool `TARGET` names in `tools` is installed here with whatever the machine installs things with, and
+whatever {name} has to be told once — a region, a subscription — is asked for with a default on offer and
+written where `scripts/bootstrap.py` reads it. `--check` says what would be done and does nothing. The keel
+runs this and reads nothing from it: what a region is, or which package manager a tool comes from, is this
+package's to know.
+"""
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+
+#: Each tool, and the line that installs it per package manager, tried in this order; `sh` is the tool's
+#: own installer and needs no manager.
+INSTALLS = {{
+    "tofu": {{"brew": "brew install opentofu", "winget": "winget install --id OpenTofu.Tofu -e",
+             "sh": "curl -fsSL https://get.opentofu.org/install-opentofu.sh -o /tmp/install-opentofu.sh && "
+                   "sh /tmp/install-opentofu.sh --install-method standalone && rm -f /tmp/install-opentofu.sh"}},
+    # TODO: the {name} CLI, the same way
+}}
+PROBES = {{"brew": "brew", "apt": "apt-get", "dnf": "dnf", "winget": "winget", "sh": "sh"}}
+
+
+def install(tool: str, check: bool) -> bool:
+    for manager, line in INSTALLS[tool].items():
+        if shutil.which(PROBES[manager]) is None:
+            continue
+        print(f"{{'would install' if check else 'Installing'}} {{tool}}: {{line}}", flush=True)
+        if check:
+            return False
+        subprocess.run(line, shell=True)
+        return shutil.which(tool) is not None
+    print(f"{{tool}}: nothing on this machine installs it", flush=True)
+    return False
+
+
+def main(argv: list[str]) -> int:
+    check = "--check" in argv
+    left = [tool for tool in INSTALLS if shutil.which(tool) is None and not install(tool, check)]
+    # TODO: settle what {name} has to be told once, with a default on offer, where bootstrap.py reads it
+    return 1 if left else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
 '''
 
 SCRIPT = '''#!/usr/bin/env python3

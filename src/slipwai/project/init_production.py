@@ -25,11 +25,30 @@ if [ "$skip_bootstrap" != true ] && [ -f infra/bootstrap/terraform.tfstate ]; th
 fi
 """
 
-# What the bootstrap will need, checked first — before Spec Kit is installed or anything else is done — so
-# the first thing `./init` says is what is missing, in the order the README's "Before `./init`" lists it.
-# Not fatal: the rest of `./init` is local and still worth doing; only the push and bootstrap wait.
+# What the bootstrap will need, put there first — before Spec Kit is installed or anything else is done.
+# The target's own setup hook runs where it has one (`SETUP`, a script the package ships): it knows its
+# tools, where each comes from on this machine, and what it has to be told once, and `./init` knows none of
+# that — it runs the hook and then looks, as it always did. `gh` is the keel's own need, every managed target
+# pushing to a forge, so the keel installs it the same way and signs it in where there is a terminal.
+# `--no-install` only looks. Not fatal either way: the rest of `./init` is local and still worth doing; only
+# the push and bootstrap wait.
 PRODUCTION_CHECK = """
 if [ "$skip_bootstrap" != true ]; then
+{setup}  if ! command -v gh >/dev/null 2>&1 && [ -z "${{GITEA_TOKEN:-}}" ] && [ "$no_install" != true ]; then
+    if command -v brew >/dev/null 2>&1; then printf '%s\\n' 'Installing gh: brew install gh'; brew install gh || true
+    elif command -v apt-get >/dev/null 2>&1; then printf '%s\\n' 'Installing gh: sudo apt-get install -y gh'; sudo apt-get install -y gh || true
+    elif command -v dnf >/dev/null 2>&1; then printf '%s\\n' 'Installing gh: sudo dnf install -y gh'; sudo dnf install -y gh || true
+    elif command -v winget >/dev/null 2>&1; then printf '%s\\n' 'Installing gh: winget install --id GitHub.cli -e'; winget install --id GitHub.cli -e || true
+    fi
+  fi
+  if command -v gh >/dev/null 2>&1 && [ -z "${{GITEA_TOKEN:-}}" ] && ! gh auth status >/dev/null 2>&1; then
+    if [ -r /dev/tty ] && [ "$no_install" != true ]; then
+      printf '%s\\n' 'gh is not signed in; signing in now (Ctrl-C to do it later with `gh auth login`).'
+      gh auth login </dev/tty || true
+    else
+      printf '%s\\n' 'gh is not signed in: run `gh auth login`, or set GITEA_TOKEN for Gitea.'
+    fi
+  fi
   missing=
   for tool in {tools}; do command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"; done
   if ! command -v gh >/dev/null 2>&1 && [ -z "${{GITEA_TOKEN:-}}" ]; then missing="$missing gh-or-GITEA_TOKEN"; fi
@@ -47,6 +66,18 @@ fi
 # and not asked again once the committed state says it was done (`ALREADY_BOOTSTRAPPED`, above).
 # Read from the terminal rather than stdin, so a scripted `./init` with no terminal skips rather than hangs;
 # and never fatal to the rest of `./init`: Spec Kit and the agent projections are already in place by here.
+#: The hook's line, for a target that ships one. Never fatal: what it could not do, the check below names.
+SETUP_HOOK = """  if [ "$no_install" != true ] && [ -f {hook} ]; then
+    python3 {hook} || printf '%s\\n' '{hook} did not finish; whatever it could not put here is named below.' >&2
+  fi
+"""
+
+
+def setup_fragment(hook: str | None) -> str:
+    """The hook's line, or nothing for a target without one."""
+    return SETUP_HOOK.format(hook=hook) if hook else ""
+
+
 PRODUCTION_BOOTSTRAP = """
 if [ "$skip_bootstrap" != true ]; then
   if ! git remote get-url origin >/dev/null 2>&1; then

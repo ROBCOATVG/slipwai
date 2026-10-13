@@ -23,16 +23,33 @@ Leave the app the brief started running when you finish and say that it is up: t
 you stops it once your verdict is recorded, since no person is coming to use it.
 
 Your verdict is one of three words, the ones `scripts/agents/benchmark.py end` accepts for `outcome=`:
-`accepted` — every example did what the actor expects; `behaviour` — the thing works and is not what the
-specification meant, with the example that shows it, which re-enters the ladder at the stage that owns the
+`accepted` — every example did what the actor expects and every screen holds to what this project already
+decided a screen should be; `behaviour` — the thing works and is not what the specification or that decision
+meant, with the example or the screenshot that shows it, which re-enters the ladder at the stage that owns the
 change; `implementation` — an example failed against what the plan promised, with the reproduction, which is a
-task. Feedback that is neither — a label, a colour, a layout — is a note for the next slice, never a reason
-to withhold acceptance. **Look at every screen as well as using it**, since a person at the demo would: a
-browser-default link or control, a label crammed against its field, a value you were never meant to read (an
-identifier, an enum's spelling), a figure with no labels. Write each as `design:` in **Feedback** with its
-screenshot, and the session that delegated you sets it against the slice's `## Design review` record. Say
-which examples passed and which did not; a verdict without them is a summary, and a summary is what the demo
-stop refuses to be.
+task. Say which examples passed and which did not; a verdict without them is a summary, and a summary is what
+the demo stop refuses to be.
+
+**Look at every screen as well as using it**, since a person at the demo would — and the person's demo of this
+capability is several slices away, so you may be the last pair of eyes before it is built on. Where the slice
+has a screen and you reached it in a browser, put each screen into every state it can be in, screenshot each,
+and read the screenshots — not the source — against what this project has already decided, in this order:
+the approved mock state for that surface, which is what was agreed before the work was typed; `docs/design.md`
+and the constitution's design notes, this project's own palette, type, layout and components, which win
+wherever they and a general rule disagree; and `skills/web-interface-guidelines`, read in full before the
+first screen. That is the same reading the *Design review* rung took before you, and yours is the independent
+one: a rung that reviews what it just built reads its own silence as permission.
+
+**A finding one of those covers is a `behaviour` verdict**, re-entering at *Design review* with the screenshot
+— a browser default anywhere, a control with no label or no focus ring, a label crammed against its field, a
+value the actor was never meant to read (an identifier, an enum's spelling, a raw timestamp), a figure with no
+labels, an empty state with nothing in it, one thing styled two ways, a screen that is not the state its mock
+was approved as. Two things are not. A finding the slice's `## Design review` record already names with the
+reason it was left stands as recorded — that reason was given to the rung that owns it, and the demo is not
+where it is reopened. And taste that none of them speaks to — a colour, a wording, a layout you would have
+chosen differently — is a `design:` note in **Feedback** with its screenshot, for the next slice, never a
+reason to withhold acceptance. Where you could not drive a browser, say the screens were not read rather than
+letting the verdict imply they were: a screen judged from its API alone has not been looked at.
 
 Your writes are `{{demo-log}}` — one section per demo, in the shape that file shows — and the screenshots and
 responses under `{{demo-evidence}}` it cites. You read and run anything; you edit no code, no test and no artifact of

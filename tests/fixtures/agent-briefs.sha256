@@ -32,7 +32,7 @@
 f8044f22e29f509742026aa15d65d0838c8ce8244d484dbbbf6b774ccffdaee3  .  agents/sail-adversary-privateer.md
 957afc3978fcc12d13ea93aeedd300a39a7c283ce85bc7ee1b5e7a23f8f66aba  .  agents/sail-converge-navigator.md
 31084abcb45191d51720516d9ddf8b2d4f5186d88185b9b9dbee855661a87b36  .  agents/sail-decide-skipper.md
-fb1742b86d081152e9fb7fdac5ed8c0ba8e0ab98147d22dc74e25de9dc166003  .  agents/sail-demo-hand.md
+76f932bc1bcc3bd46267a51be9b18e2c630b3acec687b42f22b85218cc7b90cc  .  agents/sail-demo-hand.md
 fabac80fdc2c115675ddc7a9fe8feaf80f33783872bdf55b28c95ac37abe1b3a  .  agents/sail-gaps-lookout.md
 965a1dc50aedd94fe65ffcbf11f180a3e3fde4a1ef040e2be63a40b3a4a93bee  .  agents/sail-implement-shipwright.md
 79afefb77378e381ecd6b1ff76b9a3710030a8c6e3fac9fd0bcb591483dc8c2b  .  agents/sail-mutation-shipworm.md
@@ -43,7 +43,7 @@ d413675ddb32b31fc054a6ac1ecd5adf2fb55bcf98f6b2256e9224dac32021fa  .  agents/sail
 f8044f22e29f509742026aa15d65d0838c8ce8244d484dbbbf6b774ccffdaee3  delivery  agents/sail-adversary-privateer.md
 f931126f2cb4e7e4a2441f7f919a6bffc7a699cd7cfd3869bc375a6fbccb087b  delivery  agents/sail-converge-navigator.md
 31084abcb45191d51720516d9ddf8b2d4f5186d88185b9b9dbee855661a87b36  delivery  agents/sail-decide-skipper.md
-44a43e1e6c13912adfbc00545180443cd31ebb6d15a26df704f992b5579b8bda  delivery  agents/sail-demo-hand.md
+97e7f27446c6757b3167ce384debf5bac2750464d1bca518f2aba86703128d40  delivery  agents/sail-demo-hand.md
 fabac80fdc2c115675ddc7a9fe8feaf80f33783872bdf55b28c95ac37abe1b3a  delivery  agents/sail-gaps-lookout.md
 d5c437759e0b2adcd33fac93a28bcd88c11bc85fe2e56e17895157617dffdaf1  delivery  agents/sail-implement-shipwright.md
 8f09a4d8d217f04cd7517df059cc8f79ddcd6e5d64a925c398d4f93c37463b26  delivery  agents/sail-mutation-shipworm.md

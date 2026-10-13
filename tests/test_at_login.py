@@ -16,7 +16,18 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.at_login import LABEL, MAY_FAIL, argv, install, launchd, ran, remove, startup, systemd
+from slipwai.at_login import (
+    LABEL,
+    MAY_FAIL,
+    argv,
+    board_install,
+    install,
+    launchd,
+    ran,
+    remove,
+    startup,
+    systemd,
+)
 
 
 class Recorder:
@@ -98,10 +109,36 @@ class InstallTest(unittest.TestCase):
         self.assertTrue(run.seen, "nothing was run to load it")
         self.assertIn("http://127.0.0.1:8099/", " ".join(said))
 
-    def test_it_says_where_it_starts_and_that_the_page_can_move_it(self) -> None:
+    def test_it_says_where_it_starts_and_how_to_undo_it(self) -> None:
         said = " ".join(install(self.root, "127.0.0.1", 8099, self.home, Recorder()))
         self.assertIn(str(self.root.resolve()), said)
-        self.assertIn("--no-at-login", said)
+        self.assertIn("bridge uninstall", said)
+
+
+class BoardInstallTest(unittest.TestCase):
+    """`bridge install`: the service, and then the window — which only a person can actually install."""
+
+    def setUp(self) -> None:
+        self.home = Path(tempfile.mkdtemp())
+        self.root = Path(tempfile.mkdtemp())
+        self.opened: list[str] = []
+
+    def install(self, up: bool) -> str:
+        return " ".join(board_install(self.root, "127.0.0.1", 8099, self.home, Recorder(),
+                                      self.opened.append, lambda: up))
+
+    def test_it_opens_the_board_so_the_browser_can_be_asked(self) -> None:
+        """No command can install a page: that is a gesture a person makes, by browser rule."""
+        said = self.install(up=True)
+        self.assertEqual(self.opened, ["http://127.0.0.1:8099/"])
+        self.assertIn("Install this board", said)
+
+    def test_a_board_that_never_came_up_opens_nothing_and_says_so(self) -> None:
+        """A browser sent to a port nothing is listening on is a blank tab and a person who concludes the
+        command is broken."""
+        said = self.install(up=False)
+        self.assertEqual(self.opened, [])
+        self.assertIn("did not come up", said)
 
     def test_a_step_that_failed_is_said_rather_than_swallowed(self) -> None:
         """The file is written either way: a person who was told it worked and finds no board has nothing

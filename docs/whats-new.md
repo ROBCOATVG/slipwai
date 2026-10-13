@@ -135,9 +135,10 @@ and the packages this copy can be given.
 Your browser will also install it: press **Install this board**, and it opens in its own window from the
 dock with no address bar. Installing a window cannot start a server, so when nothing is listening that
 window says so and names the command that starts it, rather than showing a connection error — and names
-the better answer beside it. `slipwai bridge --at-login` writes this machine's own login service (a launchd
-agent, a systemd user unit, or a file in the Startup folder) so the board is simply up, and the installed
-window stops needing anybody to type anything. `--no-at-login` removes it.
+the better answer beside it. `slipwai bridge install` writes this machine's own login service (a launchd
+agent, a systemd user unit, or a file in the Startup folder) so the board is simply up, then opens it for
+the browser to put in your dock — the two halves of having the board on a machine, in one word. `slipwai
+bridge uninstall` removes the service.
 [Answering from one seat](guide/a-second-person.md#answering-from-one-seat) is the picture.
 
 ### One lever: the telegraph
@@ -196,8 +197,17 @@ $ slipwai migrate              # the crossing: one merge commit
 release of slipwai into a throwaway environment and regenerates the base there — version 2 carries none of
 version 1's generator. A recorded snapshot falls to the nearest stable release below it, and the
 difference is reported. It installs the languages the project's services need, or refuses before writing
-anything if one has no compatible package. It applies the rename table to the base, merges three ways
-against your working tree, and leaves one merge commit.
+anything if one has no compatible package. It applies the rename table to the base, takes `infra/` out of
+both factory sides, merges three ways against your working tree, and leaves one merge commit.
+
+**What it does not touch: `infra/`.** Those files describe resources that already exist — a Terraform
+resource address is state, not a name — and which of them are real is not something a factory can know. So
+the crossing neither writes nor removes anything under `infra/`, and your stack crosses exactly as it is.
+What this version would have changed there is listed in the catch-up page instead, for you to take
+deliberately, reading `tofu plan` before you apply. This is the rule that was learned the hard way: a
+crossing re-added a factory Terraform file under its version 2 name, into a project that had deleted it
+months before and written its own beside it, and the next deploy stopped on a duplicate definition. The
+same merge could as easily have offered a plan that destroyed every account in a user pool.
 
 **What it preserves.** Existing decision and adversary ids are frozen where they are, under
 `fairways/main/<feature>/`, and go on resolving; ADRs keep their paths and numbers; nothing is renumbered,
@@ -219,7 +229,8 @@ reconciled upward from trunk's own merges only.
 - **Conflicts leave the merge in progress**, exactly as `git` leaves it, with each conflicting file named
   and both ways out spelled out — resolve and commit, or `git merge --abort`.
 - **The catch-up page is the part no merge can do.** `.slipwai/catch-up.md` lists every rename once, the
-  base that was installed, the release mode and state to confirm, and what the crossing could not do.
+  base that was installed, the release mode and state to confirm, every `infra/` path it left alone, and
+  what the crossing could not do.
   `/catch-up` finishes it, and stays red while any fairway is still proposed.
 
 **What it cannot undo.**

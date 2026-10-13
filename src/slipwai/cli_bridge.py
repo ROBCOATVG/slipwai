@@ -2,18 +2,33 @@
 from __future__ import annotations
 
 import argparse
+import time
 import webbrowser
+from collections.abc import Callable
 from pathlib import Path
 
 from .assets import this_command
-from .at_login import install as install_at_login
+from .at_login import board_install as install_board
 from .at_login import remove as remove_at_login
 from .bridge_page import read_only
-from .cli_start import open_board
+from .cli_start import open_board, running
 from .errors import GenerationError, refuse
 from .fleet import board
 from .harbour import config
 from .project.harbour import CONFIG
+
+
+def up(host: str, port: int, seconds: float = 10.0) -> Callable[[], bool]:
+    """Whether the board answers within a few seconds — the service was just told to start, and a browser
+    sent to a port nothing is listening on yet is a blank tab and a person who concludes it is broken."""
+    def waited() -> bool:
+        until = time.monotonic() + seconds
+        while time.monotonic() < until:
+            if running(host, port):
+                return True
+            time.sleep(0.25)
+        return running(host, port)
+    return waited
 
 
 def bridge_main(argv: list[str]) -> None:
@@ -24,6 +39,12 @@ def bridge_main(argv: list[str]) -> None:
                "person answers from one seat. It binds the loopback address, because the page changes what "
                "a run does and a default that put that on a shared network would be wrong once and then "
                "permanently.")
+    # One word rather than a flag, because it is a different thing to do with this machine rather than a
+    # different way to serve: `install` is the only way most people will ever want the board — running, and
+    # in the dock — and it is the one thing a person who does not open terminals has to be told to type once.
+    parser.add_argument("what", nargs="?", choices=("install", "uninstall"), default=None,
+                        help="install: keep the board running on this machine and open it so the browser can "
+                             "put it in your dock. uninstall: stop it starting with you")
     parser.add_argument("--root", default=".", metavar="<directory>", help="the harbour (default: here)")
     parser.add_argument("--host", default="127.0.0.1", help="what to bind (default: this machine only)")
     parser.add_argument("--port", type=int, default=8099)
@@ -34,17 +55,11 @@ def bridge_main(argv: list[str]) -> None:
     # opened in one that is not, and the page attaches anywhere else.
     parser.add_argument("--serve", action="store_true",
                         help="serve and open nothing, in whatever directory — what the login service runs")
-    at = parser.add_mutually_exclusive_group()
-    at.add_argument("--at-login", action="store_true",
-                    help="keep the board running: write this machine's login service and start it. The "
-                         "installed window cannot start a server, so this is what makes it worth installing")
-    at.add_argument("--no-at-login", action="store_true",
-                    help="remove that service; whatever is serving now keeps serving until it is stopped")
     parsed = parser.parse_args(argv)
     root = Path(parsed.root).expanduser()
-    if parsed.at_login or parsed.no_at_login:
-        said = (install_at_login(root, parsed.host, parsed.port) if parsed.at_login else remove_at_login())
-        print("\n".join(said))
+    if parsed.what is not None:
+        print("\n".join(install_board(root, parsed.host, parsed.port, wait=up(parsed.host, parsed.port))
+                        if parsed.what == "install" else remove_at_login()))
         return
     try:
         if not parsed.serve and not (root / ".slipwai").is_dir() and not (root / CONFIG).is_file():

@@ -18,13 +18,17 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import webbrowser
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
-from .assets import relaunch
+from .assets import relaunch, this_command
 from .cli_start import running
+
+#: This command as a person types it here, for the lines that name it.
+SELF = this_command()
 
 #: One name for the service on all three platforms, in the reverse-domain form launchd wants and the other
 #: two do not mind. A second board under a second label is the failure this prevents.
@@ -159,7 +163,7 @@ def install(root: Path, host: str = "127.0.0.1", port: int = 8099, home: Path | 
     wrong = ran(one.load, run)
     said = [f"The board starts with you now: {one.kind} at {one.path}.",
             f"It serves http://{host}:{port}/ from {root.resolve()}, and the page itself attaches "
-            f"anywhere else. `slipwai bridge --no-at-login` undoes this."]
+            f"anywhere else. `{SELF} bridge uninstall` undoes this."]
     if one.at_next:
         said.append(one.at_next)
     # One board, one port — which the service obeys like every other way in: finding one already there, it
@@ -171,6 +175,26 @@ def install(root: Path, host: str = "127.0.0.1", port: int = 8099, home: Path | 
                     f"The service will not start a rival: stop that one and run this again, or it takes the "
                     f"port at your next login.")
     return said + wrong
+
+
+def board_install(root: Path, host: str = "127.0.0.1", port: int = 8099, home: Path | None = None,
+                  run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+                  open_page: Callable[[str], object] = webbrowser.open,
+                  wait: Callable[[], bool] = lambda: False) -> list[str]:
+    """`slipwai bridge install`: both halves of having the board on a machine.
+
+    The service is the half a person cannot do from a browser, and the window is the half a browser will
+    not let anything but a person do — an installed page is a user's decision, made with a gesture, and no
+    command can make it for them. So this does the first and then opens the second where it can be pressed,
+    which is the whole of what one command can honestly be.
+    """
+    said = install(root, host, port, home, run)
+    if not wait():
+        return said + ["The board did not come up, so there is nothing to install into the dock yet. "
+                       f"`{SELF} bridge --serve` in a terminal says why."]
+    open_page(f"http://{host}:{port}/")
+    return said + ["The board is open in your browser. Press **Install this board**, top right, to put it "
+                   "in your dock as its own window — after that it is there whenever this machine is on."]
 
 
 def remove(home: Path | None = None,

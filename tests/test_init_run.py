@@ -138,10 +138,17 @@ class BackgroundTest(unittest.TestCase):
         self.assertNotIn("\x1b", "".join(finished(start(root, "claude"))["lines"]))
 
     def test_how_long_it_has_been_going_is_part_of_the_answer(self) -> None:
-        """The card's clock is the server's, so a page that was opened late still shows the right one."""
-        fitting = start(project(["quick"]), "claude")
+        """The card's clock is the server's, so a page opened late still shows the right one.
+
+        Timed against a child that takes long enough to be timed: one that ends inside the tenth of a
+        second the answer is rounded to measures the rounding, and fails on a fast machine.
+        """
+        root = Path(tempfile.mkdtemp())
+        (root / "init").write_text("#!/bin/sh\nsleep 0.4\necho done\n", encoding="utf-8")
+        (root / "init").chmod(0o755)
+        fitting = start(root, "claude")
         self.assertGreaterEqual(fitting.said()["seconds"], 0)
-        self.assertGreater(finished(fitting)["seconds"], 0)
+        self.assertGreater(finished(fitting)["seconds"], 0.2)
 
     def test_what_generate_said_is_the_head_of_the_same_receipt(self) -> None:
         """One card, not two: where the project went and what is happening in it are one person's question."""

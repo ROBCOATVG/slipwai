@@ -44,7 +44,7 @@ class ShapeTest(unittest.TestCase):
 
 class DeclarationTest(unittest.TestCase):
     def test_the_deck_log_has_the_kinds_the_glossary_names(self) -> None:
-        for kind in ("claimed", "mark-set", "demo", "accepted", "merged", "decision",
+        for kind in ("claimed", "mark-set", "demo", "accepted", "merged", "decision", "question",
                      "told", "read", "heartbeat", "stowed", "parked"):
             with self.subTest(kind=kind):
                 self.assertIn(kind, logs.DECK_KINDS)
@@ -57,6 +57,12 @@ class DeclarationTest(unittest.TestCase):
         """A person's demo is of a whole chunk of work, which is theme B item 10."""
         self.assertIn("capability", logs.DECK_KINDS["accepted"])
         self.assertNotIn("slice", logs.DECK_KINDS["accepted"])
+
+    def test_a_question_names_its_slice_and_the_id_a_decision_answers_it_by(self) -> None:
+        """Per slice, so clearance can say which slice waits on a person; by id, so a reader tells an open
+        question from an answered one with no status field — open until a `decision` carries the same id."""
+        self.assertEqual(logs.DECK_KINDS["question"], ("fairway", "slice", "id", "what"))
+        self.assertIn("id", logs.DECK_KINDS["decision"])
 
     def test_a_read_carries_the_timestamp_of_what_it_answers(self) -> None:
         """Which is what makes it a receipt rather than an assertion that somebody looked."""

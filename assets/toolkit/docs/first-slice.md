@@ -75,10 +75,11 @@ row — plus an adversarial pass first, when this slice changed attack surface o
 `commands/adversary.md` decides that against `adversary-log.md` and writes the row either way, so the
 decision is never a judgement made twice. The agent then reads the **ready** set from `story-split.md`
 (every slice not done whose `depends_on` are all done) and continues automatically: every unclaimed ready
-slice whose contract is settled runs concurrently, one delegate per slice on a `slice/<id>` branch in its
-own worktree, merged back in split order — `commands/sail.md`, *Running ready slices concurrently*; a
-harness that cannot delegate takes the earliest in split order and names the rest. Choosing among an
-already-computed ready set is not a new product decision.
+slice runs concurrently in the band its state admits — preparation on clearance alone, implementation once
+its own marks are set and no question stands open — one delegate per slice on a `slice/<id>` branch in its
+own worktree, refilled at every boundary, merged back in split order — `commands/sail.md`, *Running ready
+slices concurrently*; a harness that cannot delegate takes the earliest in split order and names the rest.
+Choosing among an already-computed ready set is not a new product decision.
 
 Nothing is deleted. A shipped slice's research is the only explanation of why the code looks the way it does,
 and *"it's in the git history"* is not a place anybody looks.

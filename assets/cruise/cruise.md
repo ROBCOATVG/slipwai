@@ -165,9 +165,11 @@ left in the tree before continuing.
 ## What holds throughout
 
 - **Parallelism is inherited and widened.** Everything *Running ready slices concurrently* allows runs the
-  same way here. What no longer serialises the fan-out are the two stops that were a person's: a delegate's
-  product question is answered while its siblings keep running, and a slice's demo runs in the hand while
-  the next slice's delegate is still converging. Phase 4 stays one slice at a time on `main`. The worktrees
+  same way here — the two bands, the states `clearance.py` prints, the refill at every boundary and the
+  reason owed for any eligible slice left waiting. What no longer serialises the fan-out are the two stops
+  that were a person's: a delegate's `question` line is answered by the skipper's `decision` while its
+  siblings keep running, and a slice's demo runs in the hand while the next slice's delegate is still
+  converging. Phase 4 stays one slice at a time on `main`. The worktrees
   beside the checkout are writable on Claude Code because the captain starts every `/sail` with `--add-dir`
   for the directory the checkout sits in (`scripts/agents/registry.json`, `headless.worktreeFlags`); on a
   harness whose row has no such flag, make the worktree inside the tree where the harness offers one, or run

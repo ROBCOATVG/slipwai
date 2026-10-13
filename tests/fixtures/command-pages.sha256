@@ -22,6 +22,10 @@
 # A deliberate edit to a page changes these, which is the point: the line a reviewer has to see change is
 # in this file, beside the diff that changed it.
 #
+#
+# Re-taken for the scheduling rules — two bands, a state per slice, refill at every boundary, a `question`
+# deck-log kind (`changelog.d/sail-scheduling-is-a-state.md`). Only the rows named there moved:
+# `commands/cruise.md`, `commands/sail.md`, `commands/where-are-we.md`. Every other row is still its earlier reading.
 0cef2fd0ce2492fd8e97ce83fb424d12995945ff7b319bf9084aa23960552a85  standard  commands/add-frontend.md
 62b5c15263c6eebbd9960b9eb17ffc0b2641c8658905af8d3c271742bf84704a  standard  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  standard  commands/adversary.md
@@ -35,15 +39,15 @@ b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  standard  comm
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  standard  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  standard  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  standard  commands/cruise-watch.md
-0cd579bbf5232f4cec99b5530a7e5f74ad97cb0450f4a347ef625f37d773149d  standard  commands/cruise.md
+6010f4557878cad51b0fff6412376fadff93e479318663a2a5211d2c6c7ea804  standard  commands/cruise.md
 8a085abd8ca7a991e467dd1afad2c2c516a27d934c015b23838c6b904e965619  standard  commands/gaps.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  standard  commands/model-delegation-settings.md
 59861ffebdb6fa929d2b94d1cba3b5bd80d21caa600111c138ce47f684846dde  standard  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  standard  commands/sail-settings.md
-f7858cdf56f49b0f8780f2b5e1d98d4b86359abf3bd59699d166b678b47fafe8  standard  commands/sail.md
+84a00ae8cb1123671bbfb9b598e2f4d349d7f0f42b4bb1b48b9ab48e50df27e3  standard  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard  commands/survey.md
 4653314c98bb090b6ed6ebfac93d8a128ea0f0be7b368227d3168c0e13b0b7f1  standard  commands/whats-next.md
-666f809ab620179aa1023af6564c3b58e276e051b48c9aba2f55b688b7b7ac7a  standard  commands/where-are-we.md
+c5e9245e13a20c2c785c8a939d65084bfa315c56f05d0afd964c5d241eb05999  standard  commands/where-are-we.md
 0cef2fd0ce2492fd8e97ce83fb424d12995945ff7b319bf9084aa23960552a85  event  commands/add-frontend.md
 62b5c15263c6eebbd9960b9eb17ffc0b2641c8658905af8d3c271742bf84704a  event  commands/add-service.md
 2dff5ffa8119e326997a32d7c5109e6c1952c02447e1757157759c4e7b9e5067  event  commands/adversary.md
@@ -57,16 +61,16 @@ b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  event  command
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  event  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  event  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  event  commands/cruise-watch.md
-e8dddc06b614887489c48e6c499ed11ddad1292cf2efd0da7500f58268cf502f  event  commands/cruise.md
+b903161485ac514ad131aff1af6cd46e9afa65fb0b560bffdfeed90b69fa8d9a  event  commands/cruise.md
 ecd170f914db7067350302315af9f3a23b5c7e5eb12b90f6c1ed8d2740e06766  event  commands/gaps.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  event  commands/model-delegation-settings.md
 59861ffebdb6fa929d2b94d1cba3b5bd80d21caa600111c138ce47f684846dde  event  commands/mutation.md
 ccddefe7035c02b19ddf5724bfd52e8cff311e95b094b90282a36ba72cd88c03  event  commands/observe.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  event  commands/sail-settings.md
-a1bdabe74835debfb2cdc5ffd17b8b1846540d5744cec787014dc7f6344501e8  event  commands/sail.md
+9c186f28fc71f5e7849d3bd1c5e7383197182a9549dcce617aebdf8cb4c68408  event  commands/sail.md
 b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event  commands/survey.md
 4a0d47ee886ee086a976c2eee050e25741786c2f9f4e15a75cabbf049ecdc3a5  event  commands/whats-next.md
-2f503eee513e72acf6456613d2f3006bc7288f8b69f47efd15c5b0da189faf90  event  commands/where-are-we.md
+fd7477f3a46db98f5fc06bd50d7b9cff28bd47992bf97b300d40e1dcdb1640da  event  commands/where-are-we.md
 33adc6001f8734fa856c7452345fdbddb90ac5481ac56cbe1714ba7971277801  event-state  commands/add-frontend.md
 169f7b703f6bdf835c39ddd91c7b9d55e7e873d69bebe31fb20d5b7b5bb40b1b  event-state  commands/add-service.md
 c8927247a29da2376f634ae77f49f4bee8659414e33026971bf3afacea014ea3  event-state  commands/adversary.md
@@ -80,16 +84,16 @@ f28b890748c27e6c0a3b566661d1a584f5a94c00d8bcdbd078ab39e0771be247  event-state  c
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  event-state  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  event-state  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  event-state  commands/cruise-watch.md
-e8dddc06b614887489c48e6c499ed11ddad1292cf2efd0da7500f58268cf502f  event-state  commands/cruise.md
+b903161485ac514ad131aff1af6cd46e9afa65fb0b560bffdfeed90b69fa8d9a  event-state  commands/cruise.md
 a41fb0877967e6315463215417b69f08fe4f6d99e3257cee920d342b6dd0fd49  event-state  commands/gaps.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  event-state  commands/model-delegation-settings.md
 59861ffebdb6fa929d2b94d1cba3b5bd80d21caa600111c138ce47f684846dde  event-state  commands/mutation.md
 ccddefe7035c02b19ddf5724bfd52e8cff311e95b094b90282a36ba72cd88c03  event-state  commands/observe.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  event-state  commands/sail-settings.md
-0a6fe768d69bd0c629bd6dc9abc1def9b55d8804808f8ae6798a65172b0f36b5  event-state  commands/sail.md
+39060a20d9e770d6d583fe6a473b8cff5db1f30fee4f080c1d7e7f41d2df6d1c  event-state  commands/sail.md
 b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event-state  commands/survey.md
 4a0d47ee886ee086a976c2eee050e25741786c2f9f4e15a75cabbf049ecdc3a5  event-state  commands/whats-next.md
-2f503eee513e72acf6456613d2f3006bc7288f8b69f47efd15c5b0da189faf90  event-state  commands/where-are-we.md
+fd7477f3a46db98f5fc06bd50d7b9cff28bd47992bf97b300d40e1dcdb1640da  event-state  commands/where-are-we.md
 1d2f129c23f96626bab0692f2d3cada93b5b9253b5b8271e19c234750cc36de2  event-two-services  commands/add-frontend.md
 0dd0cebe59e3986c41bde0cb550718a54ce13ecc922ae06625039a868ade8509  event-two-services  commands/add-service.md
 2d4477d6e429314e6be8c5950a2bf39cf92a5f88bd9651a380cb40d99290a133  event-two-services  commands/adversary.md
@@ -103,16 +107,16 @@ d1fd78e204edc764aaf81ac5934106a6f915fd02da30c07f8507de5fb8e99087  event-two-serv
 2e05a38c77a5ba88758fa2aa0309fc2f5014a68b0fb53189aeb7b5935a54259a  event-two-services  commands/cruise-stop.md
 ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  event-two-services  commands/cruise-tell.md
 463309ea6eef6c4443ae1e037763393c491dc25af0c0515a626d1ec968042f23  event-two-services  commands/cruise-watch.md
-254b96b32ac115a26d8893390243be6459a88aa7d75f6bd915c6f91839d8cb4e  event-two-services  commands/cruise.md
+1672095ebe25a63e671cb75062493948e25a4eae7b667bbd6bcdfd7bdfefabd1  event-two-services  commands/cruise.md
 a41fb0877967e6315463215417b69f08fe4f6d99e3257cee920d342b6dd0fd49  event-two-services  commands/gaps.md
 71836736ee6a5d1623c09281ccc93d778c4c0e456a91c7cad6aa0f816647afc8  event-two-services  commands/model-delegation-settings.md
 59861ffebdb6fa929d2b94d1cba3b5bd80d21caa600111c138ce47f684846dde  event-two-services  commands/mutation.md
 a0317f0ffc046b6b69d5373cf2466bc3f9936c7154da47ac25f2df8934edc7cd  event-two-services  commands/observe.md
 34f4725d92c75f8bcefe4a93166e6456a2f642e00937b58a94219c04dfe63096  event-two-services  commands/sail-settings.md
-c72717ee232bd4836809112517aa6039d71b6383fe0e2445124ecd3de9b6a86a  event-two-services  commands/sail.md
+580ce2fb33bd25d9e2f20c865f4f6db7cd983a44388360b84cd6d52b645302b9  event-two-services  commands/sail.md
 67c2effb5e863122c5022fd14f37a8eaeb68c79f8ab998d421ec2e9d767978cb  event-two-services  commands/survey.md
 4a0d47ee886ee086a976c2eee050e25741786c2f9f4e15a75cabbf049ecdc3a5  event-two-services  commands/whats-next.md
-6840eaa220f2e2e000ca5f5235cc7d3b6debf7c8860a6c34d1994cf395af46cf  event-two-services  commands/where-are-we.md
+b6ccd963fc8578d4f3580d9929f2bf923b4d934c4cfcbcbb8ef34166ddc41c3f  event-two-services  commands/where-are-we.md
 d197a22ca61016540773cdd92acb63323db80d37ef8438abeab2a0a790eee311  standard-managed  commands/add-frontend.md
 578ace6176147945a3f297f8b9725f27a3a49aa1eae3650619a045111b2af234  standard-managed  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  standard-managed  commands/adversary.md
@@ -126,15 +130,15 @@ a0f5bc75341fa55285090b4c139ad5dcfa5e31a8f75fef7dc23a4a5931a16177  standard-manag
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  standard-managed  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  standard-managed  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  standard-managed  commands/cruise-watch.md
-f5be9b19e24ab7f2c66a5356025a88c6157064ccf8964b035da00a54bd75ca3e  standard-managed  commands/cruise.md
+93cef03ad88c221666093378be00ae3efd9d4006d5dde1e0bfb2ba2eed0a8bab  standard-managed  commands/cruise.md
 8a085abd8ca7a991e467dd1afad2c2c516a27d934c015b23838c6b904e965619  standard-managed  commands/gaps.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  standard-managed  commands/model-delegation-settings.md
 59861ffebdb6fa929d2b94d1cba3b5bd80d21caa600111c138ce47f684846dde  standard-managed  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  standard-managed  commands/sail-settings.md
-0badae1664c3cc1eeb8f25271563ba893ce23223380dba861e2819901cf86582  standard-managed  commands/sail.md
+c2dbaa9429c27fc22e09349dce05698276b04920c1ec1b94fb40e40222d11afc  standard-managed  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard-managed  commands/survey.md
 4653314c98bb090b6ed6ebfac93d8a128ea0f0be7b368227d3168c0e13b0b7f1  standard-managed  commands/whats-next.md
-74e565f18f1b56c14e70c6952438e3b21c653827262853b893d4e88f02bf6683  standard-managed  commands/where-are-we.md
+e6adf4cbc54c8a4b41925052c18ef3953e9b7a8a0181781e25e04bdecb8dd414  standard-managed  commands/where-are-we.md
 57ff532151fb63427fe10ed60988980741686ccac8f5ce454a47949d69b540e0  no-applications  commands/add-frontend.md
 cf9431cb8cd6a9f7d6fc1fcd3ca27fb81870882b59295ed055cdc9fb2745304b  no-applications  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  no-applications  commands/adversary.md
@@ -148,15 +152,15 @@ b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  no-application
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  no-applications  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  no-applications  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  no-applications  commands/cruise-watch.md
-0cd579bbf5232f4cec99b5530a7e5f74ad97cb0450f4a347ef625f37d773149d  no-applications  commands/cruise.md
+6010f4557878cad51b0fff6412376fadff93e479318663a2a5211d2c6c7ea804  no-applications  commands/cruise.md
 8a085abd8ca7a991e467dd1afad2c2c516a27d934c015b23838c6b904e965619  no-applications  commands/gaps.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  no-applications  commands/model-delegation-settings.md
 29d73dc2ab57a46200032c053c5cfe743932b1e51227324c6afff5b138e1d12e  no-applications  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  no-applications  commands/sail-settings.md
-c47d63e8eb7089a85f3f53c61f77ee2a88d866eea50cb83f8f4313cedf9a588f  no-applications  commands/sail.md
+45b9dcf48b45caed0e9404b246fc12f9fd1d839a1c7e80d642ad21f5ff2c9adc  no-applications  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  no-applications  commands/survey.md
 4653314c98bb090b6ed6ebfac93d8a128ea0f0be7b368227d3168c0e13b0b7f1  no-applications  commands/whats-next.md
-666f809ab620179aa1023af6564c3b58e276e051b48c9aba2f55b688b7b7ac7a  no-applications  commands/where-are-we.md
+c5e9245e13a20c2c785c8a939d65084bfa315c56f05d0afd964c5d241eb05999  no-applications  commands/where-are-we.md
 672edaecd35f98820cf343f57c2a83c1ea204ef2269998fb2580c147d950d58a  adopted  commands/add-frontend.md
 648f734fe5124c7b4680fdf23b90ae93c5f59fd5ae03bb76d698cf1ed1a0a73d  adopted  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  adopted  commands/adversary.md
@@ -170,17 +174,17 @@ d1fd78e204edc764aaf81ac5934106a6f915fd02da30c07f8507de5fb8e99087  adopted  comma
 2e05a38c77a5ba88758fa2aa0309fc2f5014a68b0fb53189aeb7b5935a54259a  adopted  commands/cruise-stop.md
 ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  adopted  commands/cruise-tell.md
 463309ea6eef6c4443ae1e037763393c491dc25af0c0515a626d1ec968042f23  adopted  commands/cruise-watch.md
-efacccff58e88727fceee59de944a0aa8302e14ca6ef94a5b354f86bd5a512c0  adopted  commands/cruise.md
+50b0a94090614f77b016a3c866942d87a80c89b1ced1692166c9f44146584e5a  adopted  commands/cruise.md
 ecd170f914db7067350302315af9f3a23b5c7e5eb12b90f6c1ed8d2740e06766  adopted  commands/gaps.md
 ff4169d9a197bc65fa43b661a1003b62fa66c9bf5a3c00f3b14e57de97dbe5cf  adopted  commands/ground.md
 71836736ee6a5d1623c09281ccc93d778c4c0e456a91c7cad6aa0f816647afc8  adopted  commands/model-delegation-settings.md
 29d73dc2ab57a46200032c053c5cfe743932b1e51227324c6afff5b138e1d12e  adopted  commands/mutation.md
 0a395b265f2700037d8f15e16199d3d187694ba9af1afe40a7f15e95eb79eacb  adopted  commands/observe.md
 34f4725d92c75f8bcefe4a93166e6456a2f642e00937b58a94219c04dfe63096  adopted  commands/sail-settings.md
-48d87eb3f630daa889b4eddf5a892e23c57973c65e7cc8ed3228c6c0728e5392  adopted  commands/sail.md
+12ecdd6b3535d01a59efcc44af06d05e6b3d71edf85ad250802cd1e5b9177909  adopted  commands/sail.md
 67c2effb5e863122c5022fd14f37a8eaeb68c79f8ab998d421ec2e9d767978cb  adopted  commands/survey.md
 4a0d47ee886ee086a976c2eee050e25741786c2f9f4e15a75cabbf049ecdc3a5  adopted  commands/whats-next.md
-2f503eee513e72acf6456613d2f3006bc7288f8b69f47efd15c5b0da189faf90  adopted  commands/where-are-we.md
+fd7477f3a46db98f5fc06bd50d7b9cff28bd47992bf97b300d40e1dcdb1640da  adopted  commands/where-are-we.md
 672edaecd35f98820cf343f57c2a83c1ea204ef2269998fb2580c147d950d58a  adopted-settled  commands/add-frontend.md
 80ce114e1a95ccf2443de7cba454eba997e2c3003c0098110f057267987f8ba9  adopted-settled  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  adopted-settled  commands/adversary.md
@@ -194,13 +198,13 @@ b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  adopted-settle
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  adopted-settled  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  adopted-settled  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  adopted-settled  commands/cruise-watch.md
-94695baa8871ed23908a5238841d278f6807d070b46992344afe21b3c5d6add4  adopted-settled  commands/cruise.md
+7d7056a82c492a4e3e1d514f06a59d95c4d471b3f0e576af288626aaecf84f2b  adopted-settled  commands/cruise.md
 8a085abd8ca7a991e467dd1afad2c2c516a27d934c015b23838c6b904e965619  adopted-settled  commands/gaps.md
 1a2626ba8dbc80207c09e03676ce8e384a63e89177ff3c15acecd26ef03d9ca9  adopted-settled  commands/ground.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  adopted-settled  commands/model-delegation-settings.md
 29d73dc2ab57a46200032c053c5cfe743932b1e51227324c6afff5b138e1d12e  adopted-settled  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  adopted-settled  commands/sail-settings.md
-5d4f1ba565d8674d0b366a2a9985fc8427bb8f9abf89d92b3d557aafedfc3177  adopted-settled  commands/sail.md
+ca1d8c81e7f6ff15bd7ba100cb679f887c7cfe2c31793dfbb8d492303adc078f  adopted-settled  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  adopted-settled  commands/survey.md
 4653314c98bb090b6ed6ebfac93d8a128ea0f0be7b368227d3168c0e13b0b7f1  adopted-settled  commands/whats-next.md
-666f809ab620179aa1023af6564c3b58e276e051b48c9aba2f55b688b7b7ac7a  adopted-settled  commands/where-are-we.md
+c5e9245e13a20c2c785c8a939d65084bfa315c56f05d0afd964c5d241eb05999  adopted-settled  commands/where-are-we.md

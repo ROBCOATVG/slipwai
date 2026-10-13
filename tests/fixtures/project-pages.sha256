@@ -33,6 +33,10 @@
 # {web_url}`. Single braces are not the keel's marker either, so the check for a surviving placeholder
 # could not see them. They are `{{web-url}}` and `{{web-path}}` now, and `web-path` is a value the page
 # may name. Recorded here because a wording change goes in its own commit, never inside a move.
+#
+# Re-taken for the scheduling rules — two bands, a state per slice, refill at every boundary, a `question`
+# deck-log kind (`changelog.d/sail-scheduling-is-a-state.md`). Only the rows named there moved:
+# `docs/first-slice.md`. Every other row is still its earlier reading.
 4fcf85c52e6edb4226f3b6c47d20654d46410f28cd9fcc31a93d84b8b85027ec  adopted/event-modelling/aws-liner/.  README.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  adopted/event-modelling/aws-liner/.  docs/evolving-the-project.md
 640ab293f3878f35a7e45c84807910a0c1c8f5d832b79b6e1d34d6c01aaf456a  adopted/event-modelling/aws-liner/.  docs/gates.md
@@ -198,7 +202,7 @@ eabcf00dfc83e59690f19758479b81e93889418bd7269fe0a8af9caac332cc7b  browser/event-
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  browser/event-modelling/aws-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  browser/event-modelling/aws-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  browser/event-modelling/aws-liner/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  browser/event-modelling/aws-liner/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  browser/event-modelling/aws-liner/.  docs/first-slice.md
 15415535671f4a485af06521f7bdbabdf2b397abf5bc99e68772083a105207d9  browser/event-modelling/aws-liner/.  docs/gates.md
 29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  browser/event-modelling/aws-liner/.  docs/getting-started.md
 315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  browser/event-modelling/aws-liner/.  docs/skills-and-commands.md
@@ -211,7 +215,7 @@ eabcf00dfc83e59690f19758479b81e93889418bd7269fe0a8af9caac332cc7b  browser/event-
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  browser/event-modelling/azure-skiff/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  browser/event-modelling/azure-skiff/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  browser/event-modelling/azure-skiff/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  browser/event-modelling/azure-skiff/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  browser/event-modelling/azure-skiff/.  docs/first-slice.md
 15415535671f4a485af06521f7bdbabdf2b397abf5bc99e68772083a105207d9  browser/event-modelling/azure-skiff/.  docs/gates.md
 29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  browser/event-modelling/azure-skiff/.  docs/getting-started.md
 315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  browser/event-modelling/azure-skiff/.  docs/skills-and-commands.md
@@ -224,7 +228,7 @@ eabcf00dfc83e59690f19758479b81e93889418bd7269fe0a8af9caac332cc7b  browser/event-
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  browser/event-modelling/existing-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  browser/event-modelling/existing-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  browser/event-modelling/existing-liner/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  browser/event-modelling/existing-liner/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  browser/event-modelling/existing-liner/.  docs/first-slice.md
 61a63c680ed4c34df677091ff7aff3ec7e9c14f5496e2d5e737c01864fdde214  browser/event-modelling/existing-liner/.  docs/gates.md
 29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  browser/event-modelling/existing-liner/.  docs/getting-started.md
 315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  browser/event-modelling/existing-liner/.  docs/skills-and-commands.md
@@ -237,7 +241,7 @@ eabcf00dfc83e59690f19758479b81e93889418bd7269fe0a8af9caac332cc7b  browser/event-
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  browser/event-modelling/none-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  browser/event-modelling/none-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  browser/event-modelling/none-liner/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  browser/event-modelling/none-liner/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  browser/event-modelling/none-liner/.  docs/first-slice.md
 61a63c680ed4c34df677091ff7aff3ec7e9c14f5496e2d5e737c01864fdde214  browser/event-modelling/none-liner/.  docs/gates.md
 29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  browser/event-modelling/none-liner/.  docs/getting-started.md
 315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  browser/event-modelling/none-liner/.  docs/skills-and-commands.md
@@ -290,7 +294,7 @@ dd45e13bb4d693c68c20b87befd4487ad54c63fd2a8747a7c7a03568d8e5197b  pair/event-mod
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  pair/event-modelling/aws-liner/.  docs/event-model/model.yaml
 ac905fb74e8fd266b84807a5ee71584325f1e01f8fbe1246eee04bd15d06116c  pair/event-modelling/aws-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  pair/event-modelling/aws-liner/.  docs/evolving-the-project.md
-1fd07cb559d82affccff2cd3360a7926a8fd137d5edf9a18285c448a0a926c94  pair/event-modelling/aws-liner/.  docs/first-slice.md
+e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  pair/event-modelling/aws-liner/.  docs/first-slice.md
 7ff8eb6f03037d6e20026a9406b2eb862ac5adf2b04322e75c5fce8970ded2fb  pair/event-modelling/aws-liner/.  docs/gates.md
 7d3662c48b0dc4ce81e9092dd4a2c29876be28a14b43d89362053173d4357397  pair/event-modelling/aws-liner/.  docs/getting-started.md
 5995b34c0639478f5242e4070bdc952127fbe206732b9872af08ad667f102b46  pair/event-modelling/aws-liner/.  docs/skills-and-commands.md
@@ -303,7 +307,7 @@ dd45e13bb4d693c68c20b87befd4487ad54c63fd2a8747a7c7a03568d8e5197b  pair/event-mod
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  pair/event-modelling/azure-skiff/.  docs/event-model/model.yaml
 ac905fb74e8fd266b84807a5ee71584325f1e01f8fbe1246eee04bd15d06116c  pair/event-modelling/azure-skiff/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  pair/event-modelling/azure-skiff/.  docs/evolving-the-project.md
-1fd07cb559d82affccff2cd3360a7926a8fd137d5edf9a18285c448a0a926c94  pair/event-modelling/azure-skiff/.  docs/first-slice.md
+e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  pair/event-modelling/azure-skiff/.  docs/first-slice.md
 7ff8eb6f03037d6e20026a9406b2eb862ac5adf2b04322e75c5fce8970ded2fb  pair/event-modelling/azure-skiff/.  docs/gates.md
 7d3662c48b0dc4ce81e9092dd4a2c29876be28a14b43d89362053173d4357397  pair/event-modelling/azure-skiff/.  docs/getting-started.md
 5995b34c0639478f5242e4070bdc952127fbe206732b9872af08ad667f102b46  pair/event-modelling/azure-skiff/.  docs/skills-and-commands.md
@@ -316,7 +320,7 @@ dd45e13bb4d693c68c20b87befd4487ad54c63fd2a8747a7c7a03568d8e5197b  pair/event-mod
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  pair/event-modelling/existing-liner/.  docs/event-model/model.yaml
 ac905fb74e8fd266b84807a5ee71584325f1e01f8fbe1246eee04bd15d06116c  pair/event-modelling/existing-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  pair/event-modelling/existing-liner/.  docs/evolving-the-project.md
-1fd07cb559d82affccff2cd3360a7926a8fd137d5edf9a18285c448a0a926c94  pair/event-modelling/existing-liner/.  docs/first-slice.md
+e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  pair/event-modelling/existing-liner/.  docs/first-slice.md
 3c21ee890f939a0d0fa371cb791734b97ed527c59679f0a66818c6ab0b65d593  pair/event-modelling/existing-liner/.  docs/gates.md
 7d3662c48b0dc4ce81e9092dd4a2c29876be28a14b43d89362053173d4357397  pair/event-modelling/existing-liner/.  docs/getting-started.md
 5995b34c0639478f5242e4070bdc952127fbe206732b9872af08ad667f102b46  pair/event-modelling/existing-liner/.  docs/skills-and-commands.md
@@ -329,7 +333,7 @@ dd45e13bb4d693c68c20b87befd4487ad54c63fd2a8747a7c7a03568d8e5197b  pair/event-mod
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  pair/event-modelling/none-liner/.  docs/event-model/model.yaml
 ac905fb74e8fd266b84807a5ee71584325f1e01f8fbe1246eee04bd15d06116c  pair/event-modelling/none-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  pair/event-modelling/none-liner/.  docs/evolving-the-project.md
-1fd07cb559d82affccff2cd3360a7926a8fd137d5edf9a18285c448a0a926c94  pair/event-modelling/none-liner/.  docs/first-slice.md
+e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  pair/event-modelling/none-liner/.  docs/first-slice.md
 3c21ee890f939a0d0fa371cb791734b97ed527c59679f0a66818c6ab0b65d593  pair/event-modelling/none-liner/.  docs/gates.md
 7d3662c48b0dc4ce81e9092dd4a2c29876be28a14b43d89362053173d4357397  pair/event-modelling/none-liner/.  docs/getting-started.md
 5995b34c0639478f5242e4070bdc952127fbe206732b9872af08ad667f102b46  pair/event-modelling/none-liner/.  docs/skills-and-commands.md
@@ -382,7 +386,7 @@ d5f10ca05b440cd9f73d03de7f316aa6df837e6d409b65f2694468d09b226f49  quiet-browser/
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet-browser/event-modelling/aws-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet-browser/event-modelling/aws-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/event-modelling/aws-liner/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet-browser/event-modelling/aws-liner/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  quiet-browser/event-modelling/aws-liner/.  docs/first-slice.md
 6776868b3b63272e6f391f73d08e86140a54ddfab57732f8bafd2be58acbcd37  quiet-browser/event-modelling/aws-liner/.  docs/gates.md
 29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  quiet-browser/event-modelling/aws-liner/.  docs/getting-started.md
 315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  quiet-browser/event-modelling/aws-liner/.  docs/skills-and-commands.md
@@ -395,7 +399,7 @@ a41b562cbd3dd81e454090bfbf89a526b870c0b65586d83fdd9960d8980f619f  quiet-browser/
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet-browser/event-modelling/azure-skiff/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet-browser/event-modelling/azure-skiff/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/event-modelling/azure-skiff/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet-browser/event-modelling/azure-skiff/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  quiet-browser/event-modelling/azure-skiff/.  docs/first-slice.md
 6776868b3b63272e6f391f73d08e86140a54ddfab57732f8bafd2be58acbcd37  quiet-browser/event-modelling/azure-skiff/.  docs/gates.md
 29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  quiet-browser/event-modelling/azure-skiff/.  docs/getting-started.md
 315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  quiet-browser/event-modelling/azure-skiff/.  docs/skills-and-commands.md
@@ -408,7 +412,7 @@ f296f34d33a933eec16a21432443d350da2965ebdc2007a5655d7425df415db8  quiet-browser/
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet-browser/event-modelling/existing-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet-browser/event-modelling/existing-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/event-modelling/existing-liner/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet-browser/event-modelling/existing-liner/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  quiet-browser/event-modelling/existing-liner/.  docs/first-slice.md
 113e81f064adde2d655d3dab88f64a77fe8560efcd4260304643ec03ae7d203f  quiet-browser/event-modelling/existing-liner/.  docs/gates.md
 29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  quiet-browser/event-modelling/existing-liner/.  docs/getting-started.md
 315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  quiet-browser/event-modelling/existing-liner/.  docs/skills-and-commands.md
@@ -421,7 +425,7 @@ d19a92e5688960d5520b47cedfbe11c02f1ce7a5e4fb95ecddc4e78165360346  quiet-browser/
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet-browser/event-modelling/none-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet-browser/event-modelling/none-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet-browser/event-modelling/none-liner/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet-browser/event-modelling/none-liner/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  quiet-browser/event-modelling/none-liner/.  docs/first-slice.md
 113e81f064adde2d655d3dab88f64a77fe8560efcd4260304643ec03ae7d203f  quiet-browser/event-modelling/none-liner/.  docs/gates.md
 29e30fa0e77e7e840f96576332e99e3b75545bbb9ac88200da30658571a6e17b  quiet-browser/event-modelling/none-liner/.  docs/getting-started.md
 315eba87c7af2a83c3ddb229737b45f78bd6d99f9a6b0c4fef79a0da69930156  quiet-browser/event-modelling/none-liner/.  docs/skills-and-commands.md
@@ -473,7 +477,7 @@ f296f34d33a933eec16a21432443d350da2965ebdc2007a5655d7425df415db8  quiet-browser/
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet/event-modelling/aws-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet/event-modelling/aws-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet/event-modelling/aws-liner/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet/event-modelling/aws-liner/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  quiet/event-modelling/aws-liner/.  docs/first-slice.md
 adb4cc4e2c38dc44febc6792129be0d0d726483736646a0f79b4ac8054d30a89  quiet/event-modelling/aws-liner/.  docs/gates.md
 9939e47c745a47d6beb7406bf4fb5d3085f7128ff2a47348d85d7668b7fe650c  quiet/event-modelling/aws-liner/.  docs/getting-started.md
 e95af9df750f22765c590d628794020b5d858c9fdfd6fd7f1517172ae056acec  quiet/event-modelling/aws-liner/.  docs/skills-and-commands.md
@@ -485,7 +489,7 @@ b8ed772494161fe84c7895ce27d8f545f9709cf2660a6ce24d065494ca44a611  quiet/event-mo
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet/event-modelling/azure-skiff/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet/event-modelling/azure-skiff/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet/event-modelling/azure-skiff/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet/event-modelling/azure-skiff/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  quiet/event-modelling/azure-skiff/.  docs/first-slice.md
 adb4cc4e2c38dc44febc6792129be0d0d726483736646a0f79b4ac8054d30a89  quiet/event-modelling/azure-skiff/.  docs/gates.md
 9939e47c745a47d6beb7406bf4fb5d3085f7128ff2a47348d85d7668b7fe650c  quiet/event-modelling/azure-skiff/.  docs/getting-started.md
 e95af9df750f22765c590d628794020b5d858c9fdfd6fd7f1517172ae056acec  quiet/event-modelling/azure-skiff/.  docs/skills-and-commands.md
@@ -497,7 +501,7 @@ e95af9df750f22765c590d628794020b5d858c9fdfd6fd7f1517172ae056acec  quiet/event-mo
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet/event-modelling/existing-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet/event-modelling/existing-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet/event-modelling/existing-liner/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet/event-modelling/existing-liner/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  quiet/event-modelling/existing-liner/.  docs/first-slice.md
 9a862db03ba46b8e06c38694c6ff651e584d1c55f57f8acea08e18b49c413a50  quiet/event-modelling/existing-liner/.  docs/gates.md
 9939e47c745a47d6beb7406bf4fb5d3085f7128ff2a47348d85d7668b7fe650c  quiet/event-modelling/existing-liner/.  docs/getting-started.md
 e95af9df750f22765c590d628794020b5d858c9fdfd6fd7f1517172ae056acec  quiet/event-modelling/existing-liner/.  docs/skills-and-commands.md
@@ -509,7 +513,7 @@ e95af9df750f22765c590d628794020b5d858c9fdfd6fd7f1517172ae056acec  quiet/event-mo
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  quiet/event-modelling/none-liner/.  docs/event-model/model.yaml
 09d3ed9c6817825538db77ae4998001c34530538f8223799165c0a9587f38bd4  quiet/event-modelling/none-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  quiet/event-modelling/none-liner/.  docs/evolving-the-project.md
-c78a307341f655e406fec2b5f4aefd43f63c6325fd747cb2f91aa1b870f20c68  quiet/event-modelling/none-liner/.  docs/first-slice.md
+ab9084cdfd2490a2c9dcd269dc6f454c6f24b8395f30a06717f17f65eecf3fc5  quiet/event-modelling/none-liner/.  docs/first-slice.md
 9a862db03ba46b8e06c38694c6ff651e584d1c55f57f8acea08e18b49c413a50  quiet/event-modelling/none-liner/.  docs/gates.md
 9939e47c745a47d6beb7406bf4fb5d3085f7128ff2a47348d85d7668b7fe650c  quiet/event-modelling/none-liner/.  docs/getting-started.md
 e95af9df750f22765c590d628794020b5d858c9fdfd6fd7f1517172ae056acec  quiet/event-modelling/none-liner/.  docs/skills-and-commands.md
@@ -557,7 +561,7 @@ a288dd3beb7188318a64ef024cf1420fbefb0a2be163ff29849b705f3c484e7e  solo/event-mod
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  solo/event-modelling/aws-liner/.  docs/event-model/model.yaml
 1587b8d36289d669df7d53f2294db15d9eb14754397efe97495ea46949c2778a  solo/event-modelling/aws-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  solo/event-modelling/aws-liner/.  docs/evolving-the-project.md
-63dc6438106c4487a2e94253d57f6b71079ea6721e480b8ffc159781be76d55b  solo/event-modelling/aws-liner/.  docs/first-slice.md
+b67a8d3008c1a6101c3be1fab005e012ee191c8f34412720e608fcf94f70f1c6  solo/event-modelling/aws-liner/.  docs/first-slice.md
 0c3605b5c2e69e0e2c2b05c132a8cfe8d6e854a1c8f128a9ddaf874f875adc32  solo/event-modelling/aws-liner/.  docs/gates.md
 9939e47c745a47d6beb7406bf4fb5d3085f7128ff2a47348d85d7668b7fe650c  solo/event-modelling/aws-liner/.  docs/getting-started.md
 91e8ec752f90bbd8b502108ddd30e7b49b6ad55ab043006bf3592d24afe33428  solo/event-modelling/aws-liner/.  docs/skills-and-commands.md
@@ -569,7 +573,7 @@ d134ac570624c27738bc214eb84f83ce6990131486ca08ae5b3a814a2ac4395d  solo/event-mod
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  solo/event-modelling/azure-skiff/.  docs/event-model/model.yaml
 1587b8d36289d669df7d53f2294db15d9eb14754397efe97495ea46949c2778a  solo/event-modelling/azure-skiff/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  solo/event-modelling/azure-skiff/.  docs/evolving-the-project.md
-63dc6438106c4487a2e94253d57f6b71079ea6721e480b8ffc159781be76d55b  solo/event-modelling/azure-skiff/.  docs/first-slice.md
+b67a8d3008c1a6101c3be1fab005e012ee191c8f34412720e608fcf94f70f1c6  solo/event-modelling/azure-skiff/.  docs/first-slice.md
 0c3605b5c2e69e0e2c2b05c132a8cfe8d6e854a1c8f128a9ddaf874f875adc32  solo/event-modelling/azure-skiff/.  docs/gates.md
 9939e47c745a47d6beb7406bf4fb5d3085f7128ff2a47348d85d7668b7fe650c  solo/event-modelling/azure-skiff/.  docs/getting-started.md
 91e8ec752f90bbd8b502108ddd30e7b49b6ad55ab043006bf3592d24afe33428  solo/event-modelling/azure-skiff/.  docs/skills-and-commands.md
@@ -581,7 +585,7 @@ ef5cf58f300cbc181a47b0c76d64c53038530a6341a53e1b592dfebb76b1e633  solo/event-mod
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  solo/event-modelling/existing-liner/.  docs/event-model/model.yaml
 1587b8d36289d669df7d53f2294db15d9eb14754397efe97495ea46949c2778a  solo/event-modelling/existing-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  solo/event-modelling/existing-liner/.  docs/evolving-the-project.md
-63dc6438106c4487a2e94253d57f6b71079ea6721e480b8ffc159781be76d55b  solo/event-modelling/existing-liner/.  docs/first-slice.md
+b67a8d3008c1a6101c3be1fab005e012ee191c8f34412720e608fcf94f70f1c6  solo/event-modelling/existing-liner/.  docs/first-slice.md
 0b95c17de10e718f727a36113408c73495fa44dce073d66abf55c02a1c684b58  solo/event-modelling/existing-liner/.  docs/gates.md
 9939e47c745a47d6beb7406bf4fb5d3085f7128ff2a47348d85d7668b7fe650c  solo/event-modelling/existing-liner/.  docs/getting-started.md
 91e8ec752f90bbd8b502108ddd30e7b49b6ad55ab043006bf3592d24afe33428  solo/event-modelling/existing-liner/.  docs/skills-and-commands.md
@@ -593,7 +597,7 @@ e344999cbcde8afb28d52a1830a1217b2be20e0d184134e8c5529889bb8fa40a  solo/event-mod
 62bf2423b30dabb8f993bd7e6be83199770ce4d620f8bf782fc1678ebfa0ffd9  solo/event-modelling/none-liner/.  docs/event-model/model.yaml
 1587b8d36289d669df7d53f2294db15d9eb14754397efe97495ea46949c2778a  solo/event-modelling/none-liner/.  docs/event-modeling-to-code.md
 88ab9b0875b4fa1215d414f4695c092f82d857080c8e8a4d409c428742610459  solo/event-modelling/none-liner/.  docs/evolving-the-project.md
-63dc6438106c4487a2e94253d57f6b71079ea6721e480b8ffc159781be76d55b  solo/event-modelling/none-liner/.  docs/first-slice.md
+b67a8d3008c1a6101c3be1fab005e012ee191c8f34412720e608fcf94f70f1c6  solo/event-modelling/none-liner/.  docs/first-slice.md
 0b95c17de10e718f727a36113408c73495fa44dce073d66abf55c02a1c684b58  solo/event-modelling/none-liner/.  docs/gates.md
 9939e47c745a47d6beb7406bf4fb5d3085f7128ff2a47348d85d7668b7fe650c  solo/event-modelling/none-liner/.  docs/getting-started.md
 91e8ec752f90bbd8b502108ddd30e7b49b6ad55ab043006bf3592d24afe33428  solo/event-modelling/none-liner/.  docs/skills-and-commands.md

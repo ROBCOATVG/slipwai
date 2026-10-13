@@ -76,6 +76,13 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     "demo-due": ("fairway", "capability"),
     "merged": ("fairway", "slice", "commit"),
     "decision": ("fairway", "id", "what"),
+    # A product question the slice cannot be guessed past, written by the stage that met it. `id` is what
+    # the answering `decision` line names back, which is how a reader tells an open question from an
+    # answered one without a status field: open until a `decision` carries the same `id`. Per slice, so
+    # clearance can say which slice is waiting on a person and which siblings that wait reaches — the
+    # slices steering by a mark this one has not set yet. A question used to live only in the slice's
+    # `plan.md`, which no scheduler reads, so a session holding one for a person stopped the fan-out with it.
+    "question": ("fairway", "slice", "id", "what"),
     "told": ("fairway", "message"),
     # Carries the `t` of the `told` it answers, which is what makes it a receipt rather than an assertion.
     "read": ("fairway", "told"),

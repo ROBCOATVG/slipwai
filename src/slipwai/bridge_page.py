@@ -36,6 +36,7 @@ PLAIN = {
     "decision_ceiling": "Unread decisions allowed",
     "wait_bound": "Longest wait (minutes)",
     "attempts": "Retries per piece of work",
+    "browsers": "Browser test runs at once",
     "fairway": "Stream",
     "berth": "Workspace",
     "slice": "Piece of work",

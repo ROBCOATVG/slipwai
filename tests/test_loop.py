@@ -186,8 +186,9 @@ class LoopTest(unittest.TestCase):
     def test_only_the_slice_that_waits_on_nothing_may_start(self) -> None:
         self.run_in("scripts/event-model/chart.py")
         done = self.run_in("scripts/agents/clearance.py")
-        self.assertIn("ORD-01", done.stdout)
-        self.assertNotIn("BIL-01", done.stdout)
+        self.assertIn("start  ORD-01", done.stdout)
+        self.assertNotIn("start  BIL-01", done.stdout)
+        self.assertIn("blocked   BIL-01", done.stdout, "the one that may not start says why")
 
     def test_a_sibling_is_cleared_by_a_mark_being_set_and_not_by_a_merge(self) -> None:
         """The claim the whole method rests on. Nothing merges in this test, and billing still clears."""

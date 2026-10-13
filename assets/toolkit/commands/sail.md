@@ -189,9 +189,9 @@ Once that evidence is clean, **continue on the same run**: mark the finished sli
 `plan.md`, `research.md`, `data-model.md`, `quickstart.md` and `tasks.md` are under
 `specs/<feature>/slices/<id>/` with their relative links pointing at what they cite (they have been since it
 was planned; a regular file still at the feature root is moved there now, and the canonical links dropped).
-Then select the next slice from the **ready** set and re-enter the ladder at whichever stage that slice's
-own artifacts require, which is usually its example map or its plan rather than the top. Do not wait to be
-invoked again.
+Then refill from the **ready** set as *Refill at every boundary* says — this is one of its boundaries and
+not the only one — and re-enter the ladder at whichever stage each slice's own artifacts require, which is
+usually its example map or its plan rather than the top. Do not wait to be invoked again.
 
 **Ready-set selection** (which slices may start now, and whether this session takes one or all of them):
 
@@ -203,9 +203,12 @@ invoked again.
 3. Otherwise **ready** = not done, every `depends_on` done.
 4. If ready is empty, stop — the split is exhausted or every remaining slice is blocked.
 5. If ready has one slice, claim it and take it.
-6. If ready has several, **name the full ready set**, split into *claimed* and *unclaimed* by the
-   forge's `slice/<id>` branches, and run every unclaimed one whose contract is settled concurrently, as
-   *Running ready slices concurrently* says. Where the harness cannot delegate, claim the earliest in the
+6. If ready has several, **name the full ready set with each slice's state** —
+   `python3 scripts/agents/clearance.py` prints it, and *Running ready slices concurrently* says what each
+   state admits — split into *claimed* and *unclaimed* by the forge's `slice/<id>` branches, and start every
+   unclaimed one in the band its state allows, in the same turn: a *preparation-ready* slice prepares, an
+   *implementation-ready* slice implements. Nothing waits for its contract to be settled before preparing,
+   because preparing is what settles it. Where the harness cannot delegate, claim the earliest in the
    ordered split for this session and leave the rest named, so another session can claim a sibling. Do not
    stop merely to choose among them unless the user asks.
 7. **A fairway narrows all of the above.** Given one — `fairway=<name>` in this command's argument — ready is
@@ -219,7 +222,9 @@ invoked again.
 {{independence}}
 So one session need not take one slice at a time. Fan out over the ready set when, and only when, the
 four things below hold; the reference implementations of this method parallelise exactly this way, and
-these are the primitives they add.
+these are the primitives they add. The rules after them say how the fan-out is kept full, how a wait stays
+local to the slice that is waiting, and what bounds it — each written down because a run followed the four
+and still ran one slice at a time.
 
 **It has clearance.** A ready slice runs alongside its siblings when every mark it steers by has
 been set, and a mark is set when some slice wrote a `mark-set` line for it at its own first stage, in its
@@ -238,9 +243,26 @@ It reads `specs/<feature>/chart.yaml` for what each slice sets and steers by, an
 slices that were built and merged, because the field was written at plan time and never reconciled. A log
 line is written by the thing that did the work at the moment it did it.
 
-A slice with no clearance is not a stop — it is a slice whose turn has not come. Name what it waits on and
-take a cleared one. A mark the chart declares that *no slice sets* is a different thing and is a stop for
-the host: `make check-chart` refuses that chart, and the sentence clearance prints says so.
+**Clearance is a state, not a yes.** For every slice `clearance.py` answers with one of eight words and the
+sentence that says why, and the state is what decides what happens next, so read the word and not the
+colour: *blocked* (which marks, and who owes each); *migration-evidence-required* (the setter shipped before
+marks were logged, or a crossing's hold still stands — *Migrated prerequisites* below); *awaiting-decision*
+(a `question` line stands open against it, or its fairway is parked, and which siblings the answer would
+unblock); *preparation-ready*; *implementation-ready*; *running* (claimed, and in which band); *awaiting-demo*
+(its capability is due a person's demo); *done* (merged). A slice with no clearance is not a stop — it is a
+slice whose turn has not come. Name what it waits on and take a cleared one. A mark the chart declares that
+*no slice sets* is a different thing and is a stop for the host: `make check-chart` refuses that chart, and
+the sentence clearance prints says so.
+
+**Two bands, and clearance admits a slice to one of them.** *Preparation* is the example map, the contract
+files its marks name, and the gaps pass before planning — the stages that end with the slice's own
+`mark-set` lines. It needs clearance and nothing else. *Implementation* is the plan onward: tasks,
+increments, converge, the hand's verdict. It needs the slice's own marks set and no open question, which
+is what *implementation-ready* means. This page used to say *run every ready slice whose contract is
+settled*, and a slice settles its contract by preparing, so a host reading that waited on the one thing the
+wait was stopping: two cleared slices with HTTP contracts still to decide sat idle for an afternoon while
+their example maps, their route drafts and their gap reviews could all have been running. Preparation is
+the band that *finds* the question; it is never the band that waits for the answer.
 
 **Each slice is claimed.** A claim is a `slice/<id>` branch on the forge — nothing in the model changes,
 so `check-model` learns nothing new. Claim by pushing the branch and expecting it not to exist:
@@ -258,16 +280,56 @@ and say so. A remote that is configured and cannot be reached is the other case,
 one slice. A failed read is reported as *claims could not be read*, never as *unclaimed*, and no slice is
 claimed on the strength of it.
 
-**Each slice has its own worktree and one delegate.** For every unclaimed ready slice whose contract is
-settled, in the same turn: claim it, give it a worktree (`git worktree add ../<project>-<id> slice/<id>`;
-on Claude Code the Agent tool's `isolation: worktree` makes one), and delegate the slice's ladder — its
-example map through its converged verdict — to one fresh `sail-slice-watch` delegate (`agents/sail-slice-watch.md`,
-the standing brief) with a manifest naming the worktree, the slice's block of the model, its `examples.md`,
-and the shared-surface rule below. That type takes no stage's model, because *Who runs each stage* still
-chooses one stage by stage inside the delegate, where `[P]` tasks still fan out to `sail-implement-shipwright`: the
-two levels nest. Inside one slice the stages stay strictly sequential. A delegate that meets a
-product question stops its slice with the question recorded in its `plan.md` and hands it here — a blocked
-slice is marked blocked, never guessed past.
+**Each slice has its own worktree and one delegate.** For every unclaimed slice the schedule starts, in
+the same turn: claim it, give it a worktree (`git worktree add ../<project>-<id> slice/<id>`; on Claude Code
+the Agent tool's `isolation: worktree` makes one), and delegate the band its state admits to one fresh
+`sail-slice-watch` delegate (`agents/sail-slice-watch.md`, the standing brief) with a manifest naming the
+**band** — `prepare`, `implement`, or `whole` — the worktree, the slice's block of the model, its
+`examples.md`, and the shared-surface rule below. A *preparation-ready* slice is handed `prepare`, and its
+delegate returns at the slice's `mark-set` lines; the same slice, now *implementation-ready*, is handed
+`implement` by a fresh delegate that enters at the plan. An *implementation-ready* slice nobody has prepared
+— one that sets nothing, or whose marks a baseline recorded — is handed `whole`. That type takes no stage's
+model, because *Who runs each stage* still chooses one stage by stage inside the delegate, where `[P]` tasks
+still fan out to `sail-implement-shipwright`: the two levels nest. Inside one slice the stages stay strictly
+sequential. A delegate that meets a product question writes a `question` line to the deck log — `fairway`,
+`slice`, `id`, `what` — records it in the slice's `plan.md`, and returns; the slice reads *awaiting-decision*
+from that line until a `decision` carries the same `id`, and it is never guessed past.
+
+**Refill at every boundary.** The ready set is not read once at the top and remembered. It is recomputed —
+`python3 scripts/agents/clearance.py` again — at every one of these, and the free slots filled from what it
+says: a delegate returning, prepared or converged; a `mark-set` landing in any log; a `decision` answering a
+question; a demo verdict; a merge and its Phase 4 clearing; a claim refused because another session got
+there. Each of those changes what may start, and a host that revisits its siblings only when its current
+slice is finished is a host whose siblings waited for nothing. **Where eligible work waits with a slot free,
+say why**, in the line that names the ready set: the schedule's own reasons are the only ones there are —
+no slot, claimed elsewhere, claims unreadable, harness cannot delegate, fairway held — and *I had not
+looked* is not among them.
+
+**A wait is local to the slice that is waiting.** A question stands against one slice. Under `/sail` the
+person is the owner: put the question to them — the `question` line, the slice's `plan.md`, and the line
+that names the ready set, which says exactly which slices the answer unblocks — and **keep going**: the
+independent siblings' delegates are still running, the slots the blocked slice is not using are filled
+from the ready set, and the answer is taken at the boundary it arrives at. A demo wait is the same shape:
+*awaiting-demo* is the slice's own state and never a sibling's, and a sibling's implementation never stalls
+behind a demo it is not part of. Merges stay ordered within a fairway, as *Fairways* says; order is a rule
+about merging and not about starting.
+
+**Count the whole tree.** A whole-slice delegate carrying `[P]` tasks is not one agent: it is one plus
+`fanout` (`harbour.json`), and the slices running at once are bounded by `boilers`, so the harness is asked
+for up to `boilers × (1 + fanout)` agents at the fan-out's widest. Hold that product to what the harness
+can actually run at once — its own limit, where it states one — and lower `boilers` before `fanout`, since
+a slice that cannot start costs nothing and a slice that starts and starves costs the retry. Browser-driven
+checks are bounded separately, by `browsers`: several worktrees are still one machine, and five Playwright
+runs on it are not five times faster, they are slow one run and flaky the next. A delegate about to run one
+waits for a `browsers` slot, in split order, and says so in its own lines.
+
+**Migrated prerequisites.** A slice that shipped before this project logged marks has no `mark-set` line
+and no line at all, and a sibling steering by what it sets is not *blocked* — it is told
+*migration-evidence-required*, and nothing is cleared on the done marker's word. Record the evidence once:
+`python3 scripts/agents/clearance.py --baseline-marks` writes a `mark-set` line to the harbour log for every
+such mark, carrying `provenance: baseline` and what it was read from, so a reader can always tell it from a
+mark a stage earned; a second baseline is refused, and a slice finished since writes its own line at its
+own first stage.
 
 **The shared-surface rule**, which the delegates cannot infer and `{{make}} check-slice-scope` holds on
 every `slice/<id>` branch: a slice's commits touch its own `specs/<feature>/slices/<id>/`, the feature's
@@ -288,7 +350,8 @@ its unpushed worktree in split order — never from `main`, never by pushing inc
 claim may already have pushed a lock ref from `main`; leave the increment commits local until the actor
 accepts. After acceptance: bring the code index up to the tree if the project has adopted one, `{{make}} verify`
 green, then push the slice's commits and merge into `main` in split order — never in finishing order.
-That is the first implementation push, and it is what starts CI. The composition root and the cumulative
+That is the first implementation push, and it is what starts CI. A slice converged and not yet accepted is
+*awaiting-demo*; its siblings are not. The composition root and the cumulative
 artifacts are where two merges meet, and split order is what makes those resolutions predictable;
 regenerate the Mermaid diagrams (`{{make}} model`) after a merge, never in a branch, and the canvas
 (`{{make}} model-drawio`) after each merge as well, taking both sides' blocks. No slice's Phase 4 runs until its demo is

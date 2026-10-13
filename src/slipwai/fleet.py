@@ -185,6 +185,7 @@ def pressure(config: dict, harbour: list[Entry]) -> dict[str, object]:
         "position": at,
         "boilers": config.get("boilers", NOTHING),
         "fanout": config.get("fanout", NOTHING),
+        "browsers": config.get("browsers", NOTHING),
         "bunker_per_day": config.get("bunker_per_day", NOTHING),
         "banked": str(banked.fields.get("why", "")) if banked else "",
     }

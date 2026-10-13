@@ -29,7 +29,8 @@ when it is — is worth its ten lines, so the next slice does not re-derive the 
 The demo is a feedback boundary, not completion. Route feedback to the stage that owns it, demonstrate the
 revision, then—after acceptance—run an adversarial pass where this slice changed attack surface or closed
 the split, mutation analysis where configured, and `make verify` before the ready slices (not done, every
-`depends_on` done). Every unclaimed ready slice whose contract is settled — `planned` in the model — runs
-concurrently, one delegate per slice on a `slice/<id>` branch in its own worktree, merged in split order and
+`depends_on` done). Every unclaimed ready slice runs concurrently in the band its state admits — preparation
+on clearance alone, implementation once its own marks are set and no question stands open — one delegate
+per slice on a `slice/<id>` branch in its own worktree, refilled at every boundary, merged in split order and
 held to the shared-surface rule by `make check-slice-scope` (`commands/sail.md`, *Running ready slices
 concurrently*); a harness that cannot delegate takes the earliest in split order and names the rest.

@@ -38,12 +38,22 @@ class TableTest(unittest.TestCase):
     def test_each_notch_spends_no_more_than_the_one_above_it(self) -> None:
         for faster, slower in zip(telegraph.POSITIONS, telegraph.POSITIONS[1:], strict=False):
             with self.subTest(step=f"{faster}->{slower}"):
-                for number in ("boilers", "fanout", "bunker_per_slice", "bunker_per_day", "stage_scale"):
+                for number in ("boilers", "fanout", "bunker_per_slice", "bunker_per_day", "stage_scale",
+                               "browsers"):
                     self.assertLessEqual(float(telegraph.settings(slower)[number]),  # type: ignore[arg-type]
                                          float(telegraph.settings(faster)[number]))  # type: ignore[arg-type]
 
     def test_stop_spends_nothing(self) -> None:
         self.assertEqual(telegraph.settings("stop")["boilers"], 0)
+        self.assertEqual(telegraph.settings("stop")["browsers"], 0)
+
+    def test_browser_runs_are_bounded_separately_from_delegates(self) -> None:
+        """Several worktrees are still one machine's CPU, and a delegate that is not in a browser costs nothing
+        here — so the bound is its own number, and never wider than the berths that could be lit."""
+        for name in telegraph.POSITIONS:
+            with self.subTest(name=name):
+                held = telegraph.settings(name)
+                self.assertLessEqual(int(held["browsers"]), max(1, int(held["boilers"])))  # type: ignore[call-overload]
         self.assertEqual(telegraph.settings("stop")["bunker_per_day"], 0)
 
     def test_slower_steps_one_notch_and_stops_at_stop(self) -> None:

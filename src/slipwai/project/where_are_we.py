@@ -60,9 +60,10 @@ The board `commands/sail.md` opens every demo stop with, in the same order, so t
 - 🔀 **Ready (parallel)** — every slice that can start now: not done, every `depends_on` done, and not
   pre-empted by an open `CRITICAL` — in two groups, *claimed* (a `slice/<id>` branch on the forge, by whom
   and how long ago) and *unclaimed*, so another session knows which sibling is free
-- ➡️ **Next (this session)** — the slices this `/sail` will take: every unclaimed ready slice whose
-  contract is settled, concurrently; or the earliest ready slice in split order where the harness cannot
-  delegate, unless the user picks another ready one
+- ➡️ **Next (this session)** — the slices this `/sail` will take: every unclaimed ready slice,
+  concurrently, each in the band its state admits — *preparation-ready* or *implementation-ready*, as
+  `clearance.py` says — with the reason for any left queued; or the earliest ready slice in split order
+  where the harness cannot delegate, unless the user picks another ready one
 - ⛔ **Blocked** — remaining slices waiting on unmet `depends_on`, or an open `CRITICAL` ahead of them
 
 The second line is the only one that differs from the demo stop's 🆕 *New in this demo*: a demo has something

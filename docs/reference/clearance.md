@@ -5,12 +5,51 @@ start, and it replaces version 1's "its own contract is settled" — a question 
 about itself, which serialised a fresh fairway because nothing said what a slice was waiting *for*.
 
 ```
-python3 scripts/agents/clearance.py            # every slice that may start now
-python3 scripts/agents/clearance.py BIL-01     # whether that one may, and what it waits on
+python3 scripts/agents/clearance.py                    # every slice, its state and why, and the schedule
+python3 scripts/agents/clearance.py BIL-01             # one slice: its state and what it waits on
+python3 scripts/agents/clearance.py --json             # the same, for a board; reaches no network
+python3 scripts/agents/clearance.py --baseline-marks   # once, after a crossing: record shipped marks
 ```
 
 With no chart yet, it says so and exits 0: a project with no feature in flight has nothing waiting on
 anything.
+
+---
+
+## Clearance is a state, not a yes
+
+One word hid a distinction. *Ready* said nothing about whether a slice could be prepared, could be
+implemented, or was waiting on a person — and the page said *run every ready slice whose contract is
+settled*, which a slice can only do by preparing. A host reading that waited on the one thing the wait was
+stopping. So every slice is answered with one of eight states and the sentence that says why:
+
+| State | Means | The sentence says |
+|---|---|---|
+| `blocked` | a mark it steers by is not set | every missing mark and the slice that owes it; whether that slice is itself awaiting a decision |
+| `migration-evidence-required` | the setter shipped before marks were logged, or a crossing's hold still stands | which setter, and the command that records the evidence |
+| `awaiting-decision` | a `question` line stands open against it, or its fairway is parked | the question, and which siblings its answer would unblock |
+| `preparation-ready` | cleared; its own marks not yet set | which marks its preparation will set |
+| `implementation-ready` | cleared; its own marks set, or it sets nothing; no open question | whether a mark was recorded by baseline rather than earned |
+| `running` | claimed and not merged | since when, and in which band — preparing or implementing |
+| `awaiting-demo` | its capability has a `demo-due` with no later `accepted` | which capability |
+| `done` | a `merged` line | the commit |
+
+**Two bands.** *Preparation* — the example map, the contract files the slice's marks name, the gaps pass —
+needs clearance and nothing else, because it is the stage that writes the slice's own `mark-set` lines.
+*Implementation* — the plan onward — needs those lines written and no open question. A delegate is handed
+one band (`prepare`, `implement` or `whole`), and the slice's state says which.
+
+**The schedule says why, for every slice that does not start.** `clearance.py` with no argument prints
+which slices start now and in which band, which are *queued* and for what reason — no slot (`boilers` in
+`harbour.json`, less what is running), claimed on the forge by another session (`--claims a,b`), or
+*claims could not be read* (`--claims-unreadable`), which starts nothing: every slice reading as unclaimed
+is exactly the answer that lets two sessions take one — and which are running, waiting and done. A host
+with a slot free and eligible work queued has its reason written down before it has to give one.
+
+**A question is a line.** A delegate that meets a product question writes `question` (`fairway`, `slice`,
+`id`, `what`) to the deck log and returns; the slice is *awaiting-decision* until a `decision` carries the
+same `id`. The wait is that slice's and reaches only the siblings steering by a mark it has not set — the
+sentence names them — so nothing else stops.
 
 ---
 
@@ -56,6 +95,19 @@ clearance: BIL-01 steers by booking.confirmed (set by BOK-02), and none of those
 A mark no slice sets is named as such, because the chart is then wrong rather than the fairway blocked. A
 slice the chart does not name is refused rather than cleared: answering yes for an uncharted slice would
 clear anything anybody asked about.
+
+---
+
+## Migrated prerequisites
+
+A slice that shipped before this project logged marks has no `mark-set` line and no line at all. A sibling
+steering by what it sets is told *migration-evidence-required*, not *blocked*, and nothing is cleared on the
+done marker's word: the marker is read once, to name the wait, and that is the only time clearance reads
+it. `--baseline-marks` records the evidence — a `mark-set` line in this machine's harbour log for every
+such mark, carrying `provenance: baseline`, which machine wrote it and what it was read from — so a reader
+can always tell a baselined mark from one a stage earned, and the sentence that clears on it says so. A
+second baseline is refused; a slice finished since writes its own line at its own first stage. This is the
+same shape as `check-decisions.py --adversary-baseline`, for the same reason.
 
 ---
 

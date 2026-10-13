@@ -50,6 +50,7 @@ Beyond `v`, `t` and `kind`, each carries the fields named here.
 | `demo-due` | `fairway`, `capability` | A capability's last slice has merged, so a person's demo is owed |
 | `merged` | `fairway`, `slice`, `commit` | The slice is on trunk |
 | `decision` | `fairway`, `id`, `what` | A decision, with the fairway-carrying id that makes renumbering impossible |
+| `question` | `fairway`, `slice`, `id`, `what` | A product question this slice cannot be guessed past, waiting on a person. Open until a `decision` line carries the same `id`; while it is open [clearance](clearance.md) reports the slice as *awaiting decision* and names the siblings the wait reaches |
 | `told` | `fairway`, `message` | A person said something to this captain |
 | `read` | `fairway`, `told` | The captain read it. Carries the `t` of the `told` it answers, which is what makes it a receipt rather than an assertion |
 | `heartbeat` | `fairway` | Still working |

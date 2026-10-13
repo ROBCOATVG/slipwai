@@ -56,6 +56,11 @@ MEANS = {
     # the person who sent it back is present and has just given notes, so trying again beats parking, and
     # a bound stops "trying again" from being the whole afternoon.
     "attempts": "times one slice may be re-dispatched before the fairway parks",
+    # Browser-driven checks are the one load that several worktrees cannot isolate from each other: five
+    # berths are five Playwright runs on one machine's CPU, and the symptom is not a failure but a suite
+    # that is slow one run and flaky the next. So the bound is per machine and separate from `fanout` —
+    # a delegate that is not in a browser costs nothing here, and a session that is waits its turn.
+    "browsers": "browser-driven test runs at once on this machine",
 }
 #: Each position's numbers. Not a formula: `bar` and `decision_ceiling` tighten as the run slows because a
 #: slower run is one somebody is already unhappy about, and that is a judgement rather than an arithmetic.
@@ -66,19 +71,19 @@ MEANS = {
 SETTINGS: dict[str, dict[str, object]] = {
     "full-ahead": {"boilers": 5, "fanout": 3, "bunker_per_slice": 1500, "bunker_per_day": 20000,
                    "stage_scale": 1.0, "bar": "HIGH", "decision_ceiling": 12, "wait_bound": 90,
-                   "attempts": 3},
+                   "attempts": 3, "browsers": 2},
     "half-ahead": {"boilers": 3, "fanout": 2, "bunker_per_slice": 1000, "bunker_per_day": 10000,
                    "stage_scale": 1.0, "bar": "MEDIUM", "decision_ceiling": 10, "wait_bound": 60,
-                   "attempts": 2},
+                   "attempts": 2, "browsers": 1},
     "slow-ahead": {"boilers": 2, "fanout": 1, "bunker_per_slice": 700, "bunker_per_day": 5000,
                    "stage_scale": 0.75, "bar": "MEDIUM", "decision_ceiling": 5, "wait_bound": 30,
-                   "attempts": 2},
+                   "attempts": 2, "browsers": 1},
     "dead-slow": {"boilers": 1, "fanout": 1, "bunker_per_slice": 400, "bunker_per_day": 2000,
                   "stage_scale": 0.5, "bar": "LOW", "decision_ceiling": 3, "wait_bound": 20,
-                  "attempts": 1},
+                  "attempts": 1, "browsers": 1},
     "stop": {"boilers": 0, "fanout": 0, "bunker_per_slice": 0, "bunker_per_day": 0,
              "stage_scale": 0.0, "bar": "LOW", "decision_ceiling": 0, "wait_bound": 0,
-             "attempts": 0},
+             "attempts": 0, "browsers": 0},
 }
 #: Mirrored from `.specify/sail.json` so a person sets every width in one place. The telegraph does not own
 #: them — `/sail` does — so a position never sets them and `--set` writes them back where they came from.

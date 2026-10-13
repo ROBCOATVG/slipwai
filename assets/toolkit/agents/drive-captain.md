@@ -50,6 +50,7 @@ believed. Every line carries `fairway`.
 | `demo-due` | a capability is ready for a person to see | `capability` |
 | `merged` | the slice is on trunk | `slice`, `commit` |
 | `decision` | something another captain could contradict | `id`, `what` |
+| `question` | a product question this slice cannot be guessed past, for a person; open until a `decision` carries its `id` | `slice`, `id`, `what` |
 | `told` | something somebody needs to know now | `message` |
 | `read` | a receipt for a `told` you have acted on | `told`, which is that line's `t` |
 | `heartbeat` | you are alive and still working | — |

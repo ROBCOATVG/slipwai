@@ -138,6 +138,7 @@ TABS: tuple[tuple[str, str], ...] = (
     ("/", "Board"),
     ("/generate", "Start a project"),
     ("/adopt", "Adopt a repository"),
+    ("/packages", "Packages"),
 )
 
 

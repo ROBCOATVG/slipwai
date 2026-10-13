@@ -27,7 +27,10 @@ from .adopt_page import looked
 from .adopt_page import page as adoption
 from .adopt_page import run as adopt
 from .bridge_page import page, payload
+from .chandlery_page import put
+from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
+from .errors import GenerationError
 from .fleet import board
 from .harbour import config
 from .interview_page import form
@@ -66,7 +69,8 @@ def tell(root: Path, fairway: str, message: str) -> str:
 
 
 class Bridge(BaseHTTPRequestHandler):
-    """Three routes: the page, the board as JSON, and the three things a person can do to a run."""
+    """The board's pages, the board as JSON, and the things a person can do from them to a run or to this
+    machine's packages."""
 
     root: Path = Path(".")
     controls: bool = True
@@ -98,8 +102,15 @@ class Bridge(BaseHTTPRequestHandler):
         if where == "/adopt" and self.controls:
             self.send(200, adoption({"root": str(self.root.resolve())}))
             return
+        # The chandlery, for the same reason generation is here: a person who typed one word and got a board
+        # has no terminal open to type `slipwai search` into, and a board that could only show them what is
+        # already installed would be the page telling them to go back to it.
+        if where == "/packages" and self.controls:
+            self.send(200, chandlery())
+            return
         if where not in ("", "/index.html"):
-            self.send(404, "<p>Nothing here. The board serves /, /generate, /adopt and /board.json.</p>")
+            self.send(404, "<p>Nothing here. The board serves /, /generate, /adopt, /packages "
+                           "and /board.json.</p>")
             return
         held = config(self.root)
         self.send(200, page(board(self.root, held), held, controls=self.controls))
@@ -137,7 +148,13 @@ class Bridge(BaseHTTPRequestHandler):
                 worked, out = adopt({str(a): str(b) for a, b in held.items()}, self.root)
                 self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
                 return
-            if self.path.rstrip("/") == "/tell":
+            # Installing is the one control here that reaches a network, and it is still a call rather than
+            # a child: `put` is the function each install verb calls, so the page and the verb stage, verify
+            # and admit a package the one way. What it said is what the terminal would have printed.
+            if self.path.rstrip("/") == "/packages/install":
+                said = "\n".join(put(str(held.get("kind", "")), str(held.get("name", "")),
+                                      bool(held.get("accept"))))
+            elif self.path.rstrip("/") == "/tell":
                 said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")))
             elif self.path.rstrip("/") == "/ring":
                 ring(self.root, str(held.get("position", "")))
@@ -151,7 +168,7 @@ class Bridge(BaseHTTPRequestHandler):
             else:
                 self.send(404, "No such control.", "text/plain; charset=utf-8")
                 return
-        except (ValueError, Refused, OSError) as fault:
+        except (ValueError, Refused, GenerationError, OSError) as fault:
             self.send(400, str(fault) or type(fault).__name__, "text/plain; charset=utf-8")
             return
         self.send(200, said, "text/plain; charset=utf-8")

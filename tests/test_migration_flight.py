@@ -290,7 +290,7 @@ class FlightTest(unittest.TestCase):
         files = {"project.json": contested, ".gitignore": b"node_modules/\n",
                  ".specify/models.json": json_bytes({"roles": {"claude": {"fast": "default"}}})}
         with patch("slipwai.migration_settings.git", return_value=b""):
-            notes = settings(self.root, self.document, files, contested=True)
+            notes = settings(self.root, self.document, files, conflicts={"project.json"})
         self.assertEqual(files["project.json"], contested)
         self.assertIn(b".slipwai/logs/", files[".gitignore"].splitlines())
         self.assertEqual(json.loads(files[".specify/models.json"])["roles"]["claude"],
@@ -298,6 +298,26 @@ class FlightTest(unittest.TestCase):
         self.assertTrue(notes)
         self.assertIn("releaseMode", " ".join(notes))
         self.assertIn("project.json", " ".join(notes))
+
+    def test_a_conflicted_model_table_is_said_rather_than_parsed(self) -> None:
+        """What a real crossing met. The merge left conflict markers in `.specify/models.json`, this read
+        it to rewrite the roles, and the migration ended in a `JSONDecodeError` out of the standard library
+        — after the merge had been done, and naming no file. A conflicted table is now a note, and the
+        settings that do not live in it are still written.
+        """
+        (self.root / ".specify").mkdir()
+        (self.root / ".specify/models.json").write_text(json.dumps({"roles": {"claude": {"skipper": "old"}}}))
+        contested = b'{\n<<<<<<< ours/.specify/models.json\n  "roles": {}\n=======\n>>>>>>> theirs\n}\n'
+        files = {"project.json": json_bytes({"name": "p"}), ".gitignore": b"node_modules/\n",
+                 ".specify/models.json": contested}
+        with patch("slipwai.migration_settings.git", return_value=b""):
+            notes = settings(self.root, self.document, files, conflicts={".specify/models.json"})
+        self.assertEqual(files[".specify/models.json"], contested, "a conflicted table was rewritten")
+        self.assertIn(".specify/models.json", " ".join(notes))
+        self.assertIn("review", " ".join(notes))
+        # The settings that are not in that file still landed, which is the whole rule here.
+        self.assertIn(b".slipwai/logs/", files[".gitignore"].splitlines())
+        self.assertIn("releaseMode", json.loads(files["project.json"]))
 
     def test_model_choices_are_preserved_and_review_is_null_per_harness(self) -> None:
         (self.root / ".specify").mkdir()

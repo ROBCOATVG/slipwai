@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Collection
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -19,18 +20,24 @@ from .migration_merge import Tree, git
 from .project.convergence_page import convergence_page
 
 
-def settings(root: Path, document: dict, files: Tree, *, contested: bool = False) -> list[str]:
+def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[str] = ()) -> list[str]:
     """Keep flag values and model choices; add only the newly required migration metadata.
 
-    `contested` is a `project.json` the three-way merge left with conflict markers in it, which no reader
-    can parse. Only the keys that live in that one file are then left to the person — said out loud, on the
+    `conflicts` are the files the three-way merge left with conflict markers in them, which no reader can
+    parse. Only the keys that live in those files are then left to the person — said out loud, on the
     catch-up page, rather than passed over in silence. Everything else here still applies, and two of them
     matter immediately: the `hoisted` date is what the strike rule counts from, so a flag that never gets
     one never starts counting; and `.slipwai/logs/` in `.gitignore` is what keeps the deck logs `seed`
     writes a few lines later out of the person's `git status`, where AGENTS.md says they are never
     committed from.
+
+    It is the whole set and not `project.json` alone because the model table conflicts too, and parsing one
+    that had is how a person's crossing ended in a `JSONDecodeError` out of the standard library — a
+    traceback, on a real repository, at the point where the merge had already been done and nothing said
+    which file it was about.
     """
     notes: list[str] = []
+    contested = "project.json" in conflicts
     today = datetime.now(UTC).date().isoformat()
     # Every read of git here is surrogateescaped, as the rest of the crossing is: one commit message or
     # one blob that is not UTF-8 is not a reason a person's migration stops with a traceback.
@@ -83,6 +90,15 @@ def settings(root: Path, document: dict, files: Tree, *, contested: bool = False
     for name in (".specify/models.json", "models.json"):
         source = root / name
         if source.is_file():
+            if name in conflicts:
+                # The roles are carried by rewriting the merged file, and a conflicted one cannot be read
+                # to rewrite. Said rather than skipped: a review role that silently never arrived is a
+                # stage that runs on the wrong model for as long as nobody looks.
+                notes.append(f"`{name}` conflicted, so this crossing could not carry version 1's model "
+                             f"roles into it. Resolve the conflict, then for each harness set `decide` to "
+                             f"what `skipper` was and add `\"review\": null` beside it, and run `make "
+                             f"check-agents` — every other setting here was written.")
+                continue
             models = json.loads(source.read_text(encoding="utf-8"))
             current = json.loads(files.get(name, json_bytes(models)))
             for harness, choices in (models.get("roles") or {}).items():

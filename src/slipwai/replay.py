@@ -157,6 +157,12 @@ def preserve_project_styles(
     """
     if parent is None:
         return
+    # The style checker resolves every path it returns (`resolve_import`), and `root` is whatever the caller
+    # was given. Under `migrate` that is a staging directory inside the system temporary directory, which on
+    # macOS is reached through a symlink — `/var` is `/private/var` — so a resolved token file was not inside
+    # the unresolved root at all, and the crossing ended in a `ValueError` out of `relative_to` rather than
+    # in a refusal or a migrated project. Resolved once here, and both sides of every comparison are real.
+    here = root.resolve()
     token_paths: list[str] = []
     styled_apps: list[str] = []
     for web in web_apps(apps):
@@ -175,7 +181,7 @@ def preserve_project_styles(
         ]
         if changed:
             listed = ", ".join(changed)
-            tokens = ", ".join(path.relative_to(root).as_posix() for path in project_tokens)
+            tokens = ", ".join(path.relative_to(here).as_posix() for path in project_tokens)
             raise GenerationError(
                 f"{web.path} imports its own root tokens from {tokens}, but also changed the generated "
                 f"baseline at {listed}. Refusing to choose which design system owns the bundle: remove the "
@@ -186,7 +192,7 @@ def preserve_project_styles(
         entry = f"{web.path}/src/main.tsx"
         for imported in STARTER_IMPORTS:
             files[entry] = files[entry].replace(imported, "")
-        token_paths.extend(path.relative_to(root).as_posix() for path in project_tokens)
+        token_paths.extend(path.relative_to(here).as_posix() for path in project_tokens)
         styled_apps.append(web.path)
     if token_paths:
         design = existing_design_page(apps, token_paths, styled_apps)

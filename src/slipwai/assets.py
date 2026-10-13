@@ -37,6 +37,11 @@ VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 # three of them need it — the module that writes the page, the `.gitignore` that keeps it out of the history,
 # and the command file that tells an agent where to look.
 NOTES = ".slipwai/catch-up.md"
+#: What a distribution carries beside the package, because the keel reads it at run time and an installed
+#: copy has no checkout to read it from. Said once here, and `tests/test_bundled.py` holds the wheel, the
+#: source distribution and the executable's spec to it — `docs/rename.json` was read by `migrate` and
+#: carried by none of the three, so the verb worked in a checkout and ended in a traceback everywhere else.
+BUNDLED = ("VERSION", "catalog.json", "assets", "CHANGELOG.md", "changelog.d", "docs/rename.json")
 # What slipwai last left at each path it writes and has not seen committed, by digest, so that the next answer
 # `/ground` records can write over its own regeneration and still refuse a person's edit (`uncommitted.py`).
 # It is this checkout's state, never a record, so it lives under `.delivery-tools/`, which every `.gitignore`

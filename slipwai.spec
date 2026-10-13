@@ -19,6 +19,8 @@ analysis = Analysis(
         # it, so what it does not carry it cannot read.
         (str(root / "CHANGELOG.md"), "."),
         (str(root / "changelog.d"), "changelog.d"),
+        # The rename table `migrate` applies to a version 1 project, for the same reason.
+        (str(root / "docs/rename.json"), "docs"),
     ],
     # A language package is loaded from the package directory at run time and imports the keel by name,
     # so every keel module stays in the executable whether or not a static import from `__main__`

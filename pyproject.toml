@@ -55,13 +55,15 @@ packages = ["src/slipwai"]
 "assets" = "slipwai/_bundle/assets"
 "CHANGELOG.md" = "slipwai/_bundle/CHANGELOG.md"
 "changelog.d" = "slipwai/_bundle/changelog.d"
+# `migrate` applies the committed rename table to a version 1 project, and reads it from beside the keel.
+"docs/rename.json" = "slipwai/_bundle/docs/rename.json"
 
 # The source distribution is what the wheel is built from, so it needs the same files and nothing of the
 # keel's own tests, docs or CI.
 [tool.hatch.build.targets.sdist]
 # Anchored to the root: unanchored, `VERSION` would also match a worktree's copy under .claude/.
 include = ["/src/slipwai", "/assets", "/catalog.json", "/VERSION", "/CHANGELOG.md", "/changelog.d",
-           "/README.md", "/LICENSE", "/NOTICE", "/pyproject.toml"]
+           "/docs/rename.json", "/README.md", "/LICENSE", "/NOTICE", "/pyproject.toml"]
 exclude = ["**/__pycache__"]
 
 [tool.ruff]

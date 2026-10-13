@@ -22,7 +22,16 @@ MAKEFILES = {"Makefile", "makefile", "GNUmakefile"}
 
 
 def table(root: Path = ROOT) -> list[dict[str, str]]:
-    document = json.loads((root / "docs/rename.json").read_text(encoding="utf-8"))
+    place = root / "docs/rename.json"
+    try:
+        document = json.loads(place.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError) as error:
+        # A refusal and not a traceback, even for the fault that is this keel's own: the table is carried
+        # beside the package (`assets.BUNDLED`), so a copy without it is a copy built wrong, and the person
+        # who meets it is somebody halfway through migrating their repository.
+        raise GenerationError(f"the rename table cannot be read at {place} ({error}), and `migrate` applies "
+                              f"it to every path, key and make target this crossing moves. Nothing has been "
+                              f"changed. Restore it with `slipwai upgrade`") from None
     if document.get("v") != 1 or not isinstance(document.get("renames"), list):
         raise GenerationError("the rename table cannot be read; restore docs/rename.json with `slipwai upgrade`")
     seen: set[tuple[str, str]] = set()

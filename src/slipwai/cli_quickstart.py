@@ -174,10 +174,10 @@ FETCHES = {"language": "install", "extension": "extension install", "target": "t
 def absent(one: Quickstart) -> dict[str, list[str]]:
     """What this quickstart names that this machine has not got, by the kind of package each is.
 
-    **The target is in here, and that is the point of the shape.** A quickstart answers `target: aws`, and
-    a target is a package — so on a machine without it the interview offered the quickstart as usable, the
-    person chose it, and the generator refused them several questions later. What the menu greys out and
-    what the generator will accept are now read off the same list.
+    **The target is in here, and that is the point of the shape.** A quickstart answers a target, and every
+    target but the keel's own two is a package — so on a machine without it the interview offered the
+    quickstart as usable, the person chose it, and the generator refused them several questions later. What
+    the menu greys out and what the generator will accept are now read off the same list.
 
     The target is the one that is named by an *answer* rather than listed under `languages` or
     `extensions`, because that is what it is: nobody installs a target in order to have it, they install

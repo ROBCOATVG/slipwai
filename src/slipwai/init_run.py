@@ -18,9 +18,26 @@ is the rule `adopt` already has for the same step (`cli_init.run_init`), and it 
 from __future__ import annotations
 
 import argparse
+import os
+import re
 import subprocess
+import sys
 import threading
+import time
 from pathlib import Path
+
+#: What a child writes when it believes it is on a terminal — which, through a pseudo-terminal, it does.
+#: Stripped rather than rendered: the card is a log of what was said, not a terminal emulator.
+ANSI = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[=>()][0-9A-B]?")
+
+#: What the child is told about where it is writing. A pseudo-terminal buys line-buffering and costs
+#: animation — pip and Spec Kit redraw progress bars at a terminal — so it is given one and then told, in
+#: the four spellings between them, not to paint.
+PLAIN = {"TERM": "dumb", "NO_COLOR": "1", "FORCE_COLOR": "0", "PYTHONUNBUFFERED": "1", "COLUMNS": "100"}
+
+#: How many lines of one run are kept. Spec Kit's install is a few hundred; a child that found a way to
+#: loop is not going to fill this machine with the board's own card.
+KEPT = 4000
 
 #: What the board says where nobody chose an agent to hand the project to. `./init` is still the next step,
 #: and the project is still where the board is now looking: declining the run is not declining the landing.
@@ -77,9 +94,53 @@ class Fitting:
         self.harness = harness
         self.lines: list[str] = [*(said or []),
                                  announced(where, harness) if harness else DECLINED]
+        self.dropped = 0  # lines said and since let go of, so `since` keeps meaning the same thing
         self.code: int | None = None
+        self.began = time.monotonic()
+        self.stopped: float | None = None
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
+
+    def child(self) -> tuple[subprocess.Popen[bytes], int, bool]:
+        """The child, the descriptor its output is read from, and whether that descriptor is ours to close.
+
+        Through a pseudo-terminal wherever this machine has one, which is not a nicety. `./init` is a shell
+        script that shells out to pip, to uv and to Spec Kit, and every one of those line-buffers to a
+        terminal and block-buffers to a pipe: down a pipe the card showed two lines for two minutes and then
+        everything at once, which is the opposite of watching something run. Windows has no pty and gets the
+        pipe it always had.
+        """
+        env = {**os.environ, **PLAIN}
+        shape: dict = {"cwd": self.where, "stdin": subprocess.DEVNULL, "stderr": subprocess.STDOUT, "env": env}
+        if sys.platform == "win32":  # pragma: no cover — the pty path is what every other platform takes
+            child = subprocess.Popen(command(self.harness), stdout=subprocess.PIPE, **shape)
+            return child, child.stdout.fileno() if child.stdout else -1, False
+        import pty  # noqa: PLC0415 — POSIX only, and only this method opens one
+        reader, writer = pty.openpty()
+        child = subprocess.Popen(command(self.harness), stdout=writer, close_fds=True, **shape)
+        os.close(writer)  # ours no longer: the child holds the only other end, so reading sees its exit
+        return child, reader, True
+
+    def read(self, reading: int) -> None:
+        """Everything the child says, a line at a time, as it says it.
+
+        Split on a carriage return as well as a newline: a child that thinks it is on a terminal redraws its
+        last line rather than ending it, and a progress bar that arrived as one line a megabyte long would
+        be the tail showing nothing until it finished.
+        """
+        held = ""
+        while True:
+            try:
+                chunk = os.read(reading, 4096)
+            except OSError:  # how a pseudo-terminal says end of file, rather than an empty read
+                break
+            if not chunk:
+                break
+            *lines, held = re.split(r"\r\n|\r|\n", held + chunk.decode("utf-8", "replace"))
+            for line in lines:
+                self.say(ANSI.sub("", line).rstrip())
+        if held.strip():
+            self.say(ANSI.sub("", held).rstrip())
 
     def run(self) -> None:
         """The child, read a line at a time until it ends. Its own failure to start is a line like any other:
@@ -90,31 +151,48 @@ class Fitting:
         missing on the path somebody chose deliberately.
         """
         if not self.harness:
-            with self.lock:
-                self.code = 0
+            self.stop(0)
             return
         try:
-            child = subprocess.Popen(command(self.harness), cwd=self.where, stdout=subprocess.PIPE,
-                                     stderr=subprocess.STDOUT, text=True, bufsize=1, errors="replace")
+            child, reading, ours = self.child()
         except OSError as fault:
             self.say(f"{' '.join(command(self.harness))} could not be run here: {fault}", code=1)
             return
         with child:  # closed and waited on by the context manager, so a long run leaks no pipe
-            for line in child.stdout or []:
-                self.say(line.rstrip("\n"))
+            self.read(reading)
             code = child.wait()
+        if ours:
+            os.close(reading)
         self.say(ended(code, self.harness), code=code)
 
     def say(self, line: str, code: int | None = None) -> None:
         with self.lock:
             self.lines.append(line)
+            if len(self.lines) > KEPT:
+                self.dropped += len(self.lines) - KEPT
+                del self.lines[:-KEPT]
             if code is not None:
                 self.code = code
+                self.stopped = time.monotonic()
+
+    def stop(self, code: int) -> None:
+        """Finished with nothing more to say, which is what declining looks like."""
+        with self.lock:
+            self.code = code
+            self.stopped = time.monotonic()
 
     def said(self, since: int = 0) -> dict:
-        """What has been said after the `since`th line, how many there are now, and whether it has stopped."""
+        """What has been said after the `since`th line, how many there are now, how long it has been going,
+        and whether it has stopped.
+
+        `at` counts every line this run has ever said, the let-go-of ones included, so a page that polls with
+        the number it last had is answered with what came after it however long it has been away.
+        """
         with self.lock:
-            return {"where": str(self.where), "lines": self.lines[max(since, 0):], "at": len(self.lines),
+            kept = max(since - self.dropped, 0)
+            return {"where": str(self.where), "lines": self.lines[kept:],
+                    "at": self.dropped + len(self.lines),
+                    "seconds": round((self.stopped or time.monotonic()) - self.began, 1),
                     "done": self.code is not None, "code": self.code}
 
 

@@ -263,7 +263,7 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
     return (f'<div class="card" id="interview"><h2>Start a new project</h2>'
             f'<form class="ask-page">{rows}</form>'
             f'<div class="ask"><button class="go" id="generate">Generate</button></div>'
-            f'<pre class="said" id="said" hidden></pre></div>')
+            f'<pre class="said" id="said" data-tail hidden></pre></div>')
 
 
 #: The two things the page does that a static form cannot. An answer to a question that decides a later one
@@ -291,6 +291,7 @@ document.addEventListener('click', async event => {
   said.textContent = 'generating…';
   const answer = await post('/generate/run');
   said.textContent = await answer.text();
+  said.scrollTop = said.scrollHeight;
   if (!answer.ok) { said.className = 'said bad'; return; }
   // Made. The board is this project's board from here, and it carries the same text plus whatever `./init`
   // says next — so the page a person is left looking at is the one about the thing they just made.

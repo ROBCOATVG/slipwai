@@ -14,6 +14,15 @@ the thirty-six the registry knows — and when the project is made the board **a
 project's board from that moment, with a card naming what was made and tailing `./init` as it runs. The
 run is a child that outlives the request, so the page never hangs waiting for Spec Kit to install.
 
+`./init` runs through a pseudo-terminal, so the card fills line by line as it happens: the script shells
+out to pip, to uv and to Spec Kit, every one of which line-buffers to a terminal and block-buffers to a
+pipe, and down a pipe the card showed two lines for two minutes and then everything at once. The chip
+beside the project's path carries a running clock.
+
+**Every log on the board is a scrolling tail now** — a stream's own log, the event feed, and the two logs
+a generate leaves. Each is bounded, opens on its newest line, and scrolls for the rest; the event feed
+shows every line the fold carries rather than the last fifteen.
+
 The board also gained a **Looking at** card: the directory it is a view of, and a box that points it at
 another one. Moving the board no longer means stopping it and starting it again with `--root`, which is
 also how you watch a `/sail` or `make cruise` that is already running somewhere else — the board is a fold

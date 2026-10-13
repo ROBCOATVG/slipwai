@@ -181,6 +181,39 @@ class ReadOnlyServerTest(Fixture):
                 self.assertEqual(answer.code, 403)
 
 
+class TailTest(Fixture):
+    """Every log on the board is a tail: bounded, scrolled, and open on its newest line.
+
+    A log that grows the page a screen at a time pushes everything under it off the bottom, and one that
+    opens at its oldest line makes a reader scroll to reach the part they came for. The height is CSS and
+    the pinning is two lines of script; what is held here is that every log is marked for both.
+    """
+
+    def test_a_streams_own_log_is_one(self) -> None:
+        self.deck("ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"))
+        self.assertIn('<ol class="lines" data-tail>', self.rendered())
+
+    def test_the_event_feed_is_one(self) -> None:
+        self.assertIn('<ul class="feed" data-tail>', self.rendered())
+
+    def test_the_feed_shows_every_line_the_fold_carries_rather_than_the_last_fifteen(self) -> None:
+        """What used to be cut to keep the page short is scrolled now."""
+        for number in range(25):
+            self.deck("ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark=f"Mark{number}"))
+        held = config(self.root)
+        found = board(self.root, held)
+        shown = page(found, held).partition('<ul class="feed" data-tail>')[2].partition("</ul>")[0]
+        folded = found["feed"]
+        assert isinstance(folded, list)  # `board` answers with `object`, and this is the feed
+        self.assertGreater(len(folded), 15)
+        self.assertEqual(shown.count("<li>"), len(folded))
+
+    def test_the_script_pins_each_of_them_to_the_bottom(self) -> None:
+        said = self.rendered()
+        self.assertIn("[data-tail]", said)
+        self.assertIn("scrollHeight", said)
+
+
 class AttachTest(ServerTest):
     """Where the board is looking, moved from the page instead of by restarting it with `--root`."""
 

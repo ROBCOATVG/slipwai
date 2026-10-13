@@ -89,6 +89,43 @@ class BackgroundTest(unittest.TestCase):
         self.assertEqual(said["code"], 0)
         self.assertEqual(said["lines"][-1], DECLINED)
 
+    def test_a_child_that_writes_slowly_is_read_as_it_writes(self) -> None:
+        """The whole point of the pseudo-terminal: `./init` shells out to pip and to Spec Kit, both of which
+        block-buffer to a pipe, and the card showed nothing for two minutes and then everything at once."""
+        root = Path(tempfile.mkdtemp())
+        (root / "init").write_text("#!/bin/sh\necho early\nsleep 2\necho late\n", encoding="utf-8")
+        (root / "init").chmod(0o755)
+        fitting = start(root, "claude")
+        until = time.monotonic() + 1.5
+        while time.monotonic() < until and "early" not in fitting.said()["lines"]:
+            time.sleep(0.05)
+        said = fitting.said()
+        self.assertIn("early", said["lines"])  # before the child has finished, which is the point
+        self.assertFalse(said["done"])
+        self.assertIn("late", finished(fitting)["lines"])
+
+    def test_a_progress_bar_is_lines_and_not_one_line_a_megabyte_long(self) -> None:
+        """A child on a terminal redraws its last line with a carriage return rather than ending it."""
+        root = Path(tempfile.mkdtemp())
+        (root / "init").write_text("#!/bin/sh\nprintf '10%%\\r50%%\\r100%%\\n'\n", encoding="utf-8")
+        (root / "init").chmod(0o755)
+        lines = finished(start(root, "claude"))["lines"]
+        self.assertEqual([line for line in lines if line.endswith("%")], ["10%", "50%", "100%"])
+
+    def test_what_a_terminal_would_have_painted_is_not_in_the_log(self) -> None:
+        """It is given a terminal to make the children line-buffer, not to become one."""
+        root = Path(tempfile.mkdtemp())
+        (root / "init").write_text("#!/bin/sh\nprintf '\\033[31mred\\033[0m\\n'\n", encoding="utf-8")
+        (root / "init").chmod(0o755)
+        self.assertIn("red", finished(start(root, "claude"))["lines"])
+        self.assertNotIn("\x1b", "".join(finished(start(root, "claude"))["lines"]))
+
+    def test_how_long_it_has_been_going_is_part_of_the_answer(self) -> None:
+        """The card's clock is the server's, so a page that was opened late still shows the right one."""
+        fitting = start(project(["quick"]), "claude")
+        self.assertGreaterEqual(fitting.said()["seconds"], 0)
+        self.assertGreater(finished(fitting)["seconds"], 0)
+
     def test_what_generate_said_is_the_head_of_the_same_receipt(self) -> None:
         """One card, not two: where the project went and what is happening in it are one person's question."""
         said = finished(start(project(["ready"]), "claude", ["created: /somewhere/demo"]))

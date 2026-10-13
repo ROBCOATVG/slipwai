@@ -104,6 +104,11 @@ background:var(--paper);color:var(--ink);text-align:right}
 /* The one link rule. Said once here rather than per page, because a browser's own blue on a page whose
    every other colour is a token is the one thing that gives away that nobody chose it. */
 a{color:var(--teal)}
+/* Every log on the board is a tail: bounded, scrolled, and showing its newest line without being asked.
+   A log that grew the page a screen at a time pushed everything under it off the bottom, and one that
+   opened at its oldest line made a reader scroll to reach the part they came for. `[data-tail]` is the
+   script's half of the same rule — it pins each of these to the bottom. */
+[data-tail]{max-height:280px;overflow-y:auto;overscroll-behavior:contain}
 .feed{font-family:var(--mono);font-size:.78rem;color:var(--ink-2);margin:0;padding:0;list-style:none}
 .feed li{padding:2px 0}
 tr.drawer td{padding:0 0 8px;border-bottom:1px solid var(--rule-2)}
@@ -112,7 +117,7 @@ details.log summary::-webkit-details-marker{display:none}
 details.log summary::before{content:"\\25B8  ";color:var(--ink-3)}
 details.log[open] summary::before{content:"\\25BE  "}
 ol.lines{margin:4px 0 8px;padding:8px 12px;list-style:none;background:var(--ground);border-radius:7px;
-font-family:var(--mono);font-size:.78rem;max-height:280px;overflow-y:auto}
+font-family:var(--mono);font-size:.78rem}
 ol.lines li{padding:1px 0;color:var(--ink-2)}
 ol.lines .when{color:var(--ink-3);margin-right:8px}
 @media (max-width:600px){dl{grid-template-columns:1fr}dd{text-align:left}}
@@ -139,6 +144,8 @@ form.ask-page .no{color:var(--brass);font-size:.8rem}
 pre.said{background:var(--ground);border-radius:7px;padding:10px 12px;font-family:var(--mono);
 font-size:.8rem;white-space:pre-wrap;overflow-x:auto;margin:10px 0 0}
 pre.said.bad{color:var(--critical)}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.5}}
+#fitting .chip.running{animation:breathe 1.7s ease-in-out infinite}
 nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-top:14px;border-bottom:1px solid var(--rule)}
 nav.tabs a{font-size:.88rem;color:var(--ink-2);text-decoration:none;padding:8px 14px;border-radius:7px 7px 0 0;
 border:1px solid transparent;border-bottom:none;margin-bottom:-1px}

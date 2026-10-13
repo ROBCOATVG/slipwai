@@ -66,20 +66,43 @@ async function send(path, body){
 }
 // The one thing on this board that changes without a reload: `./init`, running in the project the board
 // has just landed in. It is a child of the server and nobody is watching its terminal, so the page asks for
-// what it has said since the line it already has, a second at a time, until it says it has stopped.
+// what it has said since the line it already has, and the clock on the chip ticks between asks — a card
+// that said "running" and nothing else for the two minutes Spec Kit takes is a card a person reloads.
+// Every log on this page opens on its newest line, including the ones inside a drawer that was not open
+// when the page loaded. `toggle` does not bubble, so it is listened for on the way down.
+const bottom = one => { one.scrollTop = one.scrollHeight; };
+document.querySelectorAll('[data-tail]').forEach(bottom);
+document.addEventListener('toggle', event => {
+  if (event.target.matches('details.log')) event.target.querySelectorAll('[data-tail]').forEach(bottom);
+}, true);
+
 const fitting = document.getElementById('fitting');
 if (fitting) {
   const tail = document.getElementById('fitting-said');
+  const chip = fitting.querySelector('[data-state]');
+  const clock = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
   let at = Number(tail.dataset.at || 0);
+  let seconds = Number(chip.dataset.seconds || 0);
+  let running = chip.dataset.state === 'running';
+  const paint = () => { chip.textContent = chip.dataset.state + ' · ' + clock(seconds); };
+  setInterval(() => { if (running) { seconds += 1; paint(); } }, 1000);
   const poll = async () => {
     let said;
     try { said = await (await fetch('/init.json?since=' + at)).json(); }
     catch (fault) { return; }   // the board was closed, or the server went away: stop asking
     at = said.at;
-    if (said.lines.length) tail.textContent += said.lines.join('\n') + '\n';
-    tail.scrollTop = tail.scrollHeight;
-    if (said.done) { fitting.querySelector('[data-state]').textContent = said.code ? 'stopped' : 'done'; return; }
-    setTimeout(poll, 1000);
+    seconds = said.seconds;
+    if (said.lines.length) {
+      tail.textContent += said.lines.join('\n') + '\n';
+      tail.scrollTop = tail.scrollHeight;   // the last line, which is the one being waited on
+    }
+    if (said.done) {
+      running = false;
+      chip.dataset.state = said.code ? 'stopped' : 'done';
+      chip.className = said.code ? 'chip stalled' : 'chip';
+    }
+    paint();
+    if (running) setTimeout(poll, 700);
   };
   poll();
 }
@@ -116,7 +139,7 @@ def stream_log(fairway: str, lines: list) -> str:
         return '<p class="empty">Nothing in this stream\'s log yet.</p>'
     rows = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines)
     return (f'<details class="log"><summary>{esc(len(lines))} lines from {esc(fairway)}\'s captain'
-            f'</summary><ol class="lines">{rows}</ol></details>')
+            f'</summary><ol class="lines" data-tail>{rows}</ol></details>')
 
 
 def berth_rows(rows: list[dict], streams: dict) -> str:
@@ -189,6 +212,12 @@ def starting_points(command: str | None = None) -> str:
     return f'<div class="card"><h2>Start something</h2><dl>{rows}</dl></div>'
 
 
+def clock(seconds: float) -> str:
+    """How long it has been going, as a person reads a clock: `0:07`, `2:41`."""
+    whole = int(seconds)
+    return f"{whole // 60}:{whole % 60:02d}"
+
+
 def fitting_card(made: dict) -> str:
     """What the board made and what `./init` is saying in it — the receipt the board lands with.
 
@@ -199,10 +228,15 @@ def fitting_card(made: dict) -> str:
     """
     said = "\n".join(made["lines"])
     state = "running" if not made["done"] else ("stopped" if made.get("code") else "done")
+    seconds = float(made.get("seconds") or 0)
+    # The chip carries the state and the clock, and the script keeps both moving between polls: a card that
+    # said "running" and nothing else, for the two minutes Spec Kit takes, is a card a person reloads.
+    chip = (f'<span class="chip {esc(state)}" data-state="{esc(state)}" data-seconds="{esc(seconds)}">'
+            f'{esc(state)} · {esc(clock(seconds))}</span>')
     return (f'<div class="card" id="fitting"><h2>Made {esc(Path(str(made["where"])).name)}</h2>'
-            f'<p class="empty">{esc(made["where"])} — <span class="chip" data-state="{esc(state)}">'
-            f'{esc(state)}</span></p>'
-            f'<pre class="said" id="fitting-said" data-at="{esc(made["at"])}">{esc(said)}\n</pre></div>')
+            f'<p class="empty">{esc(made["where"])} — {chip}</p>'
+            f'<pre class="said" id="fitting-said" data-tail data-at="{esc(made["at"])}">'
+            f'{esc(said)}\n</pre></div>')
 
 
 def looking(root: str) -> str:
@@ -257,7 +291,9 @@ def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge"
            + (f" · {len(stalled)} stalled" if stalled else "")
            + f" · {spent if spent is not None else NOTHING}/{bunker['allowed']}k today")
     banked = f'<p class="empty">{esc(pressure["banked"])}</p>' if pressure["banked"] else ""
-    feed = "".join(f"<li>{esc(w)}  {esc(who)}  {esc(kind)}</li>" for w, who, kind in found["feed"][-15:])
+    # Every line the fold carries, not the last fifteen: the list is a tail now, so what used to be cut to
+    # keep the page short is scrolled instead, and the newest is the one it opens on.
+    feed = "".join(f"<li>{esc(w)}  {esc(who)}  {esc(kind)}</li>" for w, who, kind in found["feed"])
     # What can be started leads where there is no fleet to lead with, and is the tab bar's business where
     # there is: a harbour with ten streams running is not a page about making an eleventh project, and a
     # card saying twice what the tabs already say is a page repeating itself. The published copy has it
@@ -275,7 +311,7 @@ def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge"
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {})}</div>
 <div class="card"><h2>Speed</h2>{dial(str(pressure["position"]), controls)}{banked}</div>
 {tune(config, controls)}
-<div class="card"><h2>Last lines</h2><ul class="feed">{feed or "<li>nothing yet</li>"}</ul></div>"""
+<div class="card"><h2>Last lines</h2><ul class="feed" data-tail>{feed or "<li>nothing yet</li>"}</ul></div>"""
     # The published copy is one file and has no other tab to reach, so it gets no bar.
     return document(title, sub, body, SCRIPT if controls else "", now="/" if controls else "")
 

@@ -134,7 +134,10 @@ and the packages this copy can be given.
 
 Your browser will also install it: press **Install this board**, and it opens in its own window from the
 dock with no address bar. Installing a window cannot start a server, so when nothing is listening that
-window says so and names the command that starts it, rather than showing a connection error.
+window says so and names the command that starts it, rather than showing a connection error — and names
+the better answer beside it. `slipwai bridge --at-login` writes this machine's own login service (a launchd
+agent, a systemd user unit, or a file in the Startup folder) so the board is simply up, and the installed
+window stops needing anybody to type anything. `--no-at-login` removes it.
 [Answering from one seat](guide/a-second-person.md#answering-from-one-seat) is the picture.
 
 ### One lever: the telegraph

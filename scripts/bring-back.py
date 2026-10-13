@@ -82,7 +82,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "conformance.target", "conformance.target_probe", "page_shell", "interview_page", "adopt_page", "harbour",
        # `./init` run where the project was just made, in the terminal and in the background for the board.
        # The experiment generated a tree and left the step that finishes it to a sentence in the guide.
-       "init_run",
+       "init_run", "at_login",
        # The chandlery as a tab of the board. The experiment had no chandlery and no board, so there is
        # nothing of it to bring back: it is `search` and the install verbs with a page around them.
        "chandlery_page",

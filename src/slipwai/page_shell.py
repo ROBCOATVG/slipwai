@@ -272,13 +272,15 @@ def not_running() -> str:
     """The page the installed window gets when nothing is listening.
 
     The browser's own answer is a connection error, which tells somebody who does not open terminals
-    nothing they can act on. This says what has happened and the one word that puts it right — which is
-    the only honest thing an installed local page can do, because installing a page cannot start a server.
+    nothing they can act on. This says what has happened and the one word that puts it right — and then the
+    better answer, because installing a page cannot start a server and `--at-login` means nothing has to.
     """
     body = f"""<div class="card"><h2>Nothing is serving the board on this machine</h2>
 <p class="empty">The board is a server on your own machine, and installing this window did not install
 that. It is running whenever <code>{esc(this_command())}</code> is.</p>
 <dl><dt>Start it</dt><dd><code>{esc(this_command())}</code></dd>
+<dt>Or keep it running</dt><dd><code>{esc(this_command())} bridge --at-login</code>
+ — this machine starts the board with you, and this window stops needing anybody to type anything</dd>
 <dt>Then come back</dt><dd><a href="/">reload the board</a></dd></dl></div>"""
     return document("slipwai", "the board is not running", body)
 

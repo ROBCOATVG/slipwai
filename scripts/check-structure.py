@@ -90,8 +90,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",
-              # The `./init` a new project is handed over to, in a terminal and in the background.
-              "init_run",
+              # The `./init` a new project is handed over to, in a terminal and in the background, and
+              # the login service that keeps the board up for the window that cannot start one.
+              "init_run", "at_login",
               "cli_prompts", "cli_interview", "cli_offered", "cli_language", "cli_search", "cli_add", "cli_adopt",
               # The interview `generate` runs when it is given nothing, and the quickstart it offers first.
               "cli_generate", "cli_quickstart", "quickstart_install", "cli_migrate",

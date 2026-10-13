@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import webbrowser
 from pathlib import Path
 
 from .assets import this_command
+from .at_login import install as install_at_login
+from .at_login import remove as remove_at_login
 from .bridge_page import read_only
 from .cli_start import open_board
 from .errors import GenerationError, refuse
@@ -26,10 +29,25 @@ def bridge_main(argv: list[str]) -> None:
     parser.add_argument("--port", type=int, default=8099)
     parser.add_argument("--publish", metavar="<file>", default=None,
                         help="write the read-only copy to a file and exit, which is what Pages serves")
+    # What a service runs, and what makes one. Serving is not opening: nobody is at the machine when a
+    # login service starts, and the directory it starts in is not a project yet — the board has always
+    # opened in one that is not, and the page attaches anywhere else.
+    parser.add_argument("--serve", action="store_true",
+                        help="serve and open nothing, in whatever directory — what the login service runs")
+    at = parser.add_mutually_exclusive_group()
+    at.add_argument("--at-login", action="store_true",
+                    help="keep the board running: write this machine's login service and start it. The "
+                         "installed window cannot start a server, so this is what makes it worth installing")
+    at.add_argument("--no-at-login", action="store_true",
+                    help="remove that service; whatever is serving now keeps serving until it is stopped")
     parsed = parser.parse_args(argv)
     root = Path(parsed.root).expanduser()
+    if parsed.at_login or parsed.no_at_login:
+        said = (install_at_login(root, parsed.host, parsed.port) if parsed.at_login else remove_at_login())
+        print("\n".join(said))
+        return
     try:
-        if not (root / ".slipwai").is_dir() and not (root / CONFIG).is_file():
+        if not parsed.serve and not (root / ".slipwai").is_dir() and not (root / CONFIG).is_file():
             raise GenerationError(f"{root} is not a harbour: it has no .slipwai/ and no {CONFIG}")
         if parsed.publish:
             held = config(root)
@@ -37,8 +55,10 @@ def bridge_main(argv: list[str]) -> None:
             print(f"{parsed.publish} written — the same page with nothing to press")
             return
         # There is one board, and this verb is a deep link into it: run while one is already serving, this
-        # opens a tab on that one rather than starting a rival on another port.
-        server = open_board(root, parsed.host, parsed.port, at="/")
+        # opens a tab on that one rather than starting a rival on another port. `--serve` opens nothing and
+        # is still that rule: a service that bound a second port would be a second board.
+        server = open_board(root, parsed.host, parsed.port, at="/",
+                            open_page=(lambda where: None) if parsed.serve else webbrowser.open)
     except GenerationError as error:
         refuse(prog, error)
     except OSError as error:

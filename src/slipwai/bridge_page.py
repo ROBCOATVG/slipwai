@@ -93,7 +93,7 @@ if (fitting) {
     at = said.at;
     seconds = said.seconds;
     if (said.lines.length) {
-      tail.textContent += said.lines.join('\n') + '\n';
+      tail.textContent += said.lines.join('\\n') + '\\n';
       tail.scrollTop = tail.scrollHeight;   // the last line, which is the one being waited on
     }
     if (said.done) {

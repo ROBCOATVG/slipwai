@@ -36,7 +36,7 @@ from .fleet import board
 from .harbour import config
 from .init_run import Fitting
 from .init_run import start as fit_out
-from .interview_page import NO_INIT, destination, form
+from .interview_page import NO_INIT, destination, form, repository_for
 from .interview_page import page as interview
 from .interview_page import run as generate
 from .logs import deck_path, entry
@@ -183,7 +183,8 @@ class Bridge(BaseHTTPRequestHandler):
         where = destination(answers)
         named = answers.get("init") or NO_INIT
         type(self).root = where
-        type(self).fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines())
+        type(self).fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
+                                     repository_for(answers))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
 
     def attach(self, named: str) -> str:

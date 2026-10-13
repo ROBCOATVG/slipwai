@@ -23,6 +23,13 @@ beside the project's path carries a running clock.
 a generate leaves. Each is bounded, opens on its newest line, and scrolls for the rest; the event feed
 shows every line the fold carries rather than the last fifteen.
 
+The board's interview asks for the **repository to push to** as well, whatever the target is. `./init` asks
+for that one over `/dev/tty` — the terminal, not standard input — and so does the extension menu, so a
+child of the board inherited whoever started it: the question printed into the card while the read blocked
+on a terminal nobody was looking at. The child now runs in a session of its own, which has no terminal to
+reach, so both questions do what they already do for a scripted run: nothing. The answer given here is
+handed to `./init` where the target has a pipeline to configure.
+
 The board also gained a **Looking at** card: the directory it is a view of, and a box that points it at
 another one. Moving the board no longer means stopping it and starting it again with `--root`, which is
 also how you watch a `/sail` or `make cruise` that is already running somewhere else — the board is a fold

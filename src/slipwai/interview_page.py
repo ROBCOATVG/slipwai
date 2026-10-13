@@ -47,7 +47,7 @@ from .errors import GenerationError
 from .harness import detect, keys, name_of
 from .page_shell import document, esc
 from .services import FIRST_SERVICE, FIRST_WEB
-from .targets import offered_backends
+from .targets import managed, offered_backends
 
 
 @dataclass(frozen=True)
@@ -204,17 +204,14 @@ def destination(answers: Mapping[str, str]) -> Path:
 
 
 def init_asked(answers: Mapping[str, str], root: Path) -> Question:
-    """Which coding agent the new project is handed to as soon as it exists — the one question here the
-    terminal does not ask.
+    """Which coding agent the new project is handed to as soon as it exists.
 
-    It does not ask it because it cannot ask it well: `./init` has thirty-six answers and a terminal has no
-    good way to offer thirty-six of anything, so there it is Spec Kit's own question, asked of the person
-    who is sitting in front of it. Nobody is sitting in front of this, and a child with no terminal that
-    stops on a menu is a board that hangs — so the board asks first, with a list, which is the one shape of
-    question a browser is better at. Declining is the first row and leaves `./init` as the next step.
-
-    It is not in `asked`: that list is the questions `generate` takes as flags, held in step with the
-    terminal's own interview, and this is neither.
+    The terminal does not ask this because it cannot ask it well — `./init` has thirty-six answers, so
+    there it stays Spec Kit's own question, put to the person sitting in front of it. Nobody is sitting in
+    front of this, and a child with no terminal that stops on a menu is a board that hangs, so the board
+    asks first, with a list, which is the one shape of question a browser is better at. Declining is the
+    first row. Neither this nor the repository below is in `asked`: that list is the flags `generate` takes,
+    held in step with the terminal question for question, and these are the board's own.
     """
     found = detect(root)
     rows = (NO_INIT, *keys())
@@ -224,6 +221,30 @@ def init_asked(answers: Mapping[str, str], root: Path) -> Question:
                     why="`./init` installs Spec Kit and projects the skills and commands into one agent. It "
                         "is the step nothing in the new tree works without, and the only one that needs the "
                         "network" + (f" — {found.evidence}" if found.harness else ""))
+
+
+def repository_asked(answers: Mapping[str, str]) -> Question:
+    """Where the project is pushed — `./init`'s other `/dev/tty` question, asked where somebody can answer.
+
+    Asked whatever the target is, rather than appearing and disappearing with the one above it: a person
+    with a repository in mind has it in mind now. What the target changes is the line under it, and whether
+    `./init` is handed the answer at all.
+    """
+    return Question(
+        "repository", "Repository to push to", answers.get("repository", ""), optional=True,
+        why="a URL on GitHub or Gitea, created if it is missing. This target configures its pipeline on the "
+            "repository the project is pushed to, so `./init` pushes there as its last step; left empty, "
+            "`./init --repository <url>` picks it up whenever you like."
+            if managed(CATALOG, chosen(answers)["target"]) else
+            "this target bootstraps no pipeline, so `./init` is not given this and nothing is pushed. The "
+            "repository is yours to make when you want one; a target that deploys uses it the moment it has it.")
+
+
+def repository_for(answers: Mapping[str, str]) -> str | None:
+    """The repository to hand `./init`, and nothing where this project's `./init` has no flag to take it:
+    a target that bootstraps nothing never had one, and the flag would reach Spec Kit and be refused."""
+    named = (answers.get("repository") or "").strip()
+    return named if named and managed(CATALOG, chosen(answers)["target"]) else None
 
 
 def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
@@ -240,14 +261,15 @@ def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
 
 
 def field_html(question: Question) -> str:
-    """One question, as a row of the form."""
+    """One question, as a row of the form. The `id` is the name: the label has always said `for` and had
+    nothing to point at, so clicking one focused nothing and the browser reported fifteen of them."""
     if question.choices:
         options = "".join(
             f'<option value="{esc(name)}"{" selected" if name == question.default else ""}>'
             f"{esc(question.labels.get(name, name))}</option>" for name in question.choices)
-        asking = f'<select name="{esc(question.name)}" data-asks>{options}</select>'
+        asking = f'<select id="{esc(question.name)}" name="{esc(question.name)}" data-asks>{options}</select>'
     else:
-        asking = (f'<input name="{esc(question.name)}" value="{esc(question.default)}"'
+        asking = (f'<input id="{esc(question.name)}" name="{esc(question.name)}" value="{esc(question.default)}"'
                   f'{"" if question.optional else " required"}>')
     why = f'<div class="why">{esc(question.why)}</div>' if question.why else ""
     no = "".join(f'<div class="no">{esc(name)} — {esc(line)}</div>'
@@ -260,6 +282,7 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
     """The whole interview, as one card. Re-rendered when an answer changes what comes after it."""
     rows = "".join(field_html(question) for question in asked(answers))
     rows += field_html(init_asked(answers, root or Path(".")))
+    rows += field_html(repository_asked(answers))
     return (f'<div class="card" id="interview"><h2>Start a new project</h2>'
             f'<form class="ask-page">{rows}</form>'
             f'<div class="ask"><button class="go" id="generate">Generate</button></div>'

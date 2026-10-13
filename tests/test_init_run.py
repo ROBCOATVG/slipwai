@@ -47,6 +47,10 @@ class CommandTest(unittest.TestCase):
         """Which is right in a terminal, where there is somebody to answer it."""
         self.assertEqual(command(), ["./init"])
 
+    def test_the_forge_is_named_where_somebody_named_one(self) -> None:
+        self.assertEqual(command("claude", "git@github.com:you/demo.git"),
+                         ["./init", "--integration", "claude", "--repository", "git@github.com:you/demo.git"])
+
     def test_a_failure_says_the_project_is_written_either_way(self) -> None:
         said = ended(2, "claude")
         self.assertIn("exited 2", said)
@@ -82,6 +86,19 @@ class BackgroundTest(unittest.TestCase):
         self.assertTrue(said["done"])
         self.assertNotEqual(said["code"], 0)
         self.assertIn("could not be run here", said["lines"][-1])
+
+    def test_it_cannot_reach_the_terminal_the_board_was_started_from(self) -> None:
+        """`./init` asks two of its questions over `/dev/tty` — the repository a production target pushes
+        to, and the extension menu. `/dev/tty` is the *controlling* terminal, which a child of the board
+        would inherit from whoever started it: the prompt printed into the card and the read blocked on a
+        terminal nobody was looking at, which is a board that hangs for ever. Its own session has none."""
+        root = Path(tempfile.mkdtemp())
+        (root / "init").write_text(
+            "#!/bin/sh\nif [ -r /dev/tty ]; then read -r answer </dev/tty || answer=none; fi\n"
+            "echo 'went on without being answered'\n", encoding="utf-8")
+        (root / "init").chmod(0o755)
+        said = finished(start(root, "claude"), seconds=10.0)
+        self.assertIn("went on without being answered", said["lines"])
 
     def test_declining_is_a_finished_run_that_says_what_the_next_step_is(self) -> None:
         """The board still lands in the project; what it does not do is start anything in it."""

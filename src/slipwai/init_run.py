@@ -49,27 +49,31 @@ DECLINED = ("./init was not run. It is the next step, in a terminal: `./init` as
 SCRIPT = "init"
 
 
-def command(harness: str | None = None) -> list[str]:
-    """`./init`, with the agent named where somebody has named one.
+def command(harness: str | None = None, repository: str | None = None) -> list[str]:
+    """`./init`, with the agent named where somebody has named one, and the forge where somebody has.
 
     Unnamed, Spec Kit keeps its own question — which is right where there is a terminal to ask it in and
-    wrong everywhere else, so the caller that has no terminal is the one that passes a harness.
+    wrong everywhere else, so the caller that has no terminal is the one that passes a harness. The
+    repository is the same shape of answer for the same reason: a project with a production target
+    configures its pipeline on the repository it is pushed to, and `./init` asks for that over `/dev/tty`.
     """
-    return [f"./{SCRIPT}", *(["--integration", harness] if harness else [])]
+    return [f"./{SCRIPT}", *(["--integration", harness] if harness else []),
+            *(["--repository", repository] if repository else [])]
 
 
-def announced(root: Path, harness: str | None) -> str:
+def announced(root: Path, harness: str | None, repository: str | None = None) -> str:
     """The line said before it starts, wherever it is about to start."""
-    return (f"Running {' '.join(command(harness))} in {root} — it installs Spec Kit for the coding agent, "
-            f"so it reaches the network once, here.")
+    return (f"Running {' '.join(command(harness, repository))} in {root} — it installs Spec Kit for the "
+            f"coding agent, so it reaches the network once, here.")
 
 
-def ended(code: int, harness: str | None) -> str:
+def ended(code: int, harness: str | None, repository: str | None = None) -> str:
     """The line said after it stops, which is a different line when it did not work."""
+    said = " ".join(command(harness, repository))
     if code == 0:
-        return f"`{' '.join(command(harness))}` is done. `make verify` is the gate, and it is green on a new tree."
-    return (f"`{' '.join(command(harness))}` exited {code}, and the project is written and committed either way: "
-            f"it is a step of its own, which is why it runs after. Run it again when whatever stopped it is fixed.")
+        return f"`{said}` is done. `make verify` is the gate, and it is green on a new tree."
+    return (f"`{said}` exited {code}, and the project is written and committed either way: it is a step of "
+            f"its own, which is why it runs after. Run it again when whatever stopped it is fixed.")
 
 
 def here(root: Path, harness: str | None = None) -> int:
@@ -89,11 +93,13 @@ class Fitting:
     nobody can reproduce.
     """
 
-    def __init__(self, where: Path, harness: str | None = None, said: list[str] | None = None) -> None:
+    def __init__(self, where: Path, harness: str | None = None, said: list[str] | None = None,
+                 repository: str | None = None) -> None:
         self.where = where
         self.harness = harness
+        self.repository = repository
         self.lines: list[str] = [*(said or []),
-                                 announced(where, harness) if harness else DECLINED]
+                                 announced(where, harness, repository) if harness else DECLINED]
         self.dropped = 0  # lines said and since let go of, so `since` keeps meaning the same thing
         self.code: int | None = None
         self.began = time.monotonic()
@@ -112,12 +118,19 @@ class Fitting:
         """
         env = {**os.environ, **PLAIN}
         shape: dict = {"cwd": self.where, "stdin": subprocess.DEVNULL, "stderr": subprocess.STDOUT, "env": env}
+        argv = command(self.harness, self.repository)
         if sys.platform == "win32":  # pragma: no cover — the pty path is what every other platform takes
-            child = subprocess.Popen(command(self.harness), stdout=subprocess.PIPE, **shape)
+            child = subprocess.Popen(argv, stdout=subprocess.PIPE, **shape)
             return child, child.stdout.fileno() if child.stdout else -1, False
         import pty  # noqa: PLC0415 — POSIX only, and only this method opens one
         reader, writer = pty.openpty()
-        child = subprocess.Popen(command(self.harness), stdout=writer, close_fds=True, **shape)
+        # Its own session, which is the difference between a question and a hang. `./init` asks two of its
+        # questions over `/dev/tty` rather than over standard input — the repository a production target
+        # pushes to, and the extension menu — and `/dev/tty` is the *controlling* terminal, which a child of
+        # this server would otherwise inherit from whoever started the board. The prompt then printed into
+        # this log while the read blocked on a terminal nobody was looking at. With no controlling terminal
+        # the open fails, and both of those questions do what they already do for a scripted run: nothing.
+        child = subprocess.Popen(argv, stdout=writer, close_fds=True, start_new_session=True, **shape)
         os.close(writer)  # ours no longer: the child holds the only other end, so reading sees its exit
         return child, reader, True
 
@@ -156,14 +169,15 @@ class Fitting:
         try:
             child, reading, ours = self.child()
         except OSError as fault:
-            self.say(f"{' '.join(command(self.harness))} could not be run here: {fault}", code=1)
+            self.say(f"{' '.join(command(self.harness, self.repository))} could not be run here: {fault}",
+                     code=1)
             return
         with child:  # closed and waited on by the context manager, so a long run leaks no pipe
             self.read(reading)
             code = child.wait()
         if ours:
             os.close(reading)
-        self.say(ended(code, self.harness), code=code)
+        self.say(ended(code, self.harness, self.repository), code=code)
 
     def say(self, line: str, code: int | None = None) -> None:
         with self.lock:
@@ -196,9 +210,10 @@ class Fitting:
                     "done": self.code is not None, "code": self.code}
 
 
-def start(where: Path, harness: str | None = None, said: list[str] | None = None) -> Fitting:
+def start(where: Path, harness: str | None = None, said: list[str] | None = None,
+          repository: str | None = None) -> Fitting:
     """`./init` begun in the background. Returned rather than awaited: what it says is read by polling."""
-    fitting = Fitting(where, harness, said)
+    fitting = Fitting(where, harness, said, repository)
     fitting.thread.start()
     return fitting
 

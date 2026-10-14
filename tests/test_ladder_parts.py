@@ -301,6 +301,15 @@ class ReviewRungTest(unittest.TestCase):
         """So one triage reads both rather than two formats reaching one person."""
         self.assertIn("in the shape the gaps stage uses", self.rung())
 
+    def test_it_runs_once_per_slice_and_a_return_is_never_sent_to_it(self) -> None:
+        """A run that reviewed every delegate return paid eight reviews and eight fix rounds for nine pieces
+        of coding; the rung says the cadence outright and names the gate that notices a third bracket."""
+        rung = self.rung()
+        self.assertIn("Once per slice, over the whole diff", rung)
+        self.assertIn("never sent to a reviewer of its own", rung)
+        self.assertIn("at most two `review` brackets", rung)
+        self.assertIn("make check-benchmark", rung)
+
     def test_the_model_table_gains_a_review_role_seeded_to_the_host(self) -> None:
         table = json.loads(stage_models.stage_models())
         self.assertEqual(table["stages"]["review-mate"], stage_models.REVIEW)

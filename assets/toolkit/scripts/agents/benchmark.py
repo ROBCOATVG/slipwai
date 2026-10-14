@@ -661,10 +661,26 @@ def unowned() -> list[str]:
                   if named is None and not any((feature / "slices" / ident).is_dir() for feature in features))
 
 
+#: How many `review` brackets one slice may record: the whole-diff reading the rung asks for, and the one
+#: earlier reading it allows — one story's pinned commit, where the story touches identity, authority or
+#: money. A third is a return that was sent to a reviewer instead of being spot-checked, which is the cost
+#: the rung's cadence exists to avoid (commands/sail.md, *Review and reshape*).
+REVIEWS = 2
+
+
+def over_reviewed(record: dict[str, Any]) -> int:
+    """How many `review` brackets this record holds beyond the rung's two, or 0."""
+    held = sum(1 for entry in record.get("stages", [])
+               if canonical(str(entry.get("stage", ""))) == canonical("review"))
+    return max(0, held - REVIEWS)
+
+
 def check() -> list[str]:
     """What `check-benchmark` warns of: an entry left open, a slice the ladder calls done with no record or an
-    unclosed one, a feature with done slices and no record above the slice loop, and an implemented slice in the
-    model that no feature holds — because a delivered slice with no benchmark cannot say what it cost."""
+    unclosed one, a feature with done slices and no record above the slice loop, an implemented slice in the
+    model that no feature holds — because a delivered slice with no benchmark cannot say what it cost — and a
+    slice reviewed more often than the rung asks, because that is a return sent to a reviewer instead of being
+    spot-checked."""
     findings = [f"docs/event-model/model.yaml: {ident} is implemented but names no feature (`spec`/`gwt` under "
                 "specs/<feature>/) and has no specs/*/slices/ folder, so no feature's record is asked for it"
                 for ident in unowned()]
@@ -673,6 +689,11 @@ def check() -> list[str]:
             if "ended" not in entry:
                 findings.append(f"{path.relative_to(ROOT)}: `{entry['stage']}` has been open since {entry['started']} — "
                                 "`benchmark.py end` closes it, and the runner cuts an entry off when its iteration ends")
+        extra = over_reviewed(record)
+        if extra:
+            findings.append(f"{path.relative_to(ROOT)}: `review` was bracketed {REVIEWS + extra} times — the rung reads "
+                            f"the whole diff once, and allows one earlier reading of a pinned story; a return is "
+                            "spot-checked by the session that sent it, not reviewed (commands/sail.md, *Review and reshape*)")
     specs = ROOT / "specs"
     for feature in sorted(specs.iterdir()) if specs.is_dir() else []:
         if not (feature / "slices").is_dir():

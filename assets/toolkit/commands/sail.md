@@ -132,7 +132,10 @@ otherwise contend for, so each reports which task it finished and this session t
 
 When several delegates form one batch, report once when the batch completes rather than once per delegate.
 Verify their claims by spot-checking the recorded reproduction or RED evidence; do not repeat each complete
-investigation in the host context. Do not re-investigate. A delegate that was stopped has filed nothing:
+investigation in the host context. Do not re-investigate. **The spot-check is this session's, never a
+reviewer's**: `sail-review-mate` reads the slice's whole diff once, after it converged (the *Review and
+reshape* rung), and a return sent to it instead is a review the rung did not ask for and a fix round the
+slice pays for — one run paid eight of each for nine pieces of coding. A delegate that was stopped has filed nothing:
 everything in its stop notification is a lead, never a result, and a lead is re-run before it is written
 anywhere outside this session. An adversary pass is the same kind of batch:
 disjoint-manifest seams of one pass are concurrent `sail-adversary-privateer` siblings in one turn, and the host

@@ -201,7 +201,13 @@ def sail_ladder(
    the diff with fresh eyes. This slice's own delegate closes the findings and then reshapes — the diff as
    a whole, not one cycle's code, with the fast checks green after each step. This is the big refactor the
    small one inside each cycle is there to make unnecessary; they are not the same pass, and collapsing
-   them loses the small one. A slice does not reach the adversary rung with a review finding open.""",
+   them loses the small one. A slice does not reach the adversary rung with a review finding open.
+   **Once per slice, over the whole diff** — a delegate's return is verified by the session that sent it,
+   by spot-checking its RED evidence against the tree, and is never sent to a reviewer of its own: a run
+   that reviewed every return paid eight reviews and eight fix rounds for nine pieces of coding and delivered
+   no more for it. The one earlier reading this rung allows is a single read-only review of one story's
+   pinned commit, for a story that touches identity, authority or money, said in that slice's brief; so a
+   slice records at most two `review` brackets, and `make check-benchmark` says so about a third.""",
         """**Adversary** — `specs/<feature>/adversary-log.md` carries this slice's row: the attack that was
    run, or the recorded decision not to. Otherwise run `/adversary`. One round, and findings below the
    severity bar are stowed rather than argued: *After the hand's verdict, and after Phase 4 clears* says how.""",

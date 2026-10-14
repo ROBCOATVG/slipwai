@@ -98,7 +98,7 @@ ACCEPTED = "accepted"
 ANSWER_POLL = 2.0
 #: What a turn can say that ends the run rather than inviting another: a park is a person's to clear, there
 #: is nothing to start, or another machine holds this fairway and nothing here changes that by waiting.
-STOPS = (" is parked — ", "nothing to start", " is held by ")
+STOPS = (" is parked — ", "nothing to start", " is held by ", " yields its berth to ")
 #: Minutes a harbour may be *silent* for before a wait on it is a park, where `harbour.json` does not say.
 #: `half-ahead`'s number. Silence and not elapsed time: see `await_answer`.
 DEFAULT_WAIT_MINUTES = 60
@@ -240,6 +240,28 @@ def state(found: list[logs.Entry], fairway: str = "") -> tuple[set[str], set[str
     parks = logs.open_parks(found, harbour_entries(), name)
     parked = str(parks[-1].fields["why"]) if parks else ""
     return claimed, merged, parked
+
+
+def displaced_by(fairway: str) -> str:
+    """The fairway holding the berth this one would have had, or `""` while it still has one — slice 18.2.
+
+    `boilers` is how many berths are lit at once and the harbour's fairway priority is which streams get
+    them, so a person who moves a stream up while a run is going pushes another one below the line. This is
+    what that captain reads to find out, and it reads it at a slice boundary rather than at once: a stage
+    ended half-way to free a berth has freed nothing and lost the work.
+
+    **Only where another fairway is actually holding a berth.** An unbounded harbour lights everything and
+    displaces nobody; `boilers: 0` lights nothing, which is the telegraph at `stop` and is a different
+    question from priority — a captain stopping because the whole harbour stopped is not a captain yielding
+    to a stream, and writing a `yielded` line naming nobody would say it was.
+    """
+    held = harbour().get("boilers")
+    if not isinstance(held, int) or isinstance(held, bool) or held <= 0:
+        return ""
+    charted, _ = clearance.chart()
+    order = clearance.fairway_order(charted, clearance.preferred_fairways(HARBOUR))
+    lit = order[:held]
+    return "" if not lit or fairway in lit or fairway not in order else lit[-1]
 
 
 def next_slice(fairway: str, claimed: set[str], merged: set[str]) -> tuple[str | None, str]:
@@ -679,6 +701,14 @@ def turn(fairway: str) -> str:
         for ident in answer_questions(feature, fairway, slice_id, found):
             print(f"captain: {ident} on {slice_id} is decided by the answer to the park", flush=True)
     else:
+        # The boundary a yield is taken at — slice 18.2. Here and nowhere else: a fix owed to trunk is
+        # still owed, and a slice carried over from a park is claimed work this stream is holding, so
+        # both are above it. What is below it is starting something *new* in a berth the run wants for
+        # another stream, which is the one thing giving the berth up actually saves.
+        giving_up = displaced_by(fairway)
+        if giving_up:
+            write(feature, fairway, logs.entry("yielded", fairway=fairway, to=giving_up))
+            return f"captain: {fairway} yields its berth to {giving_up}"
         slice_id, why = next_slice(fairway, claimed, merged)
     if slice_id is None:
         return f"captain: nothing to start in {fairway} — {why}"

@@ -16,7 +16,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai import logs, telegraph
+from slipwai import cli_telegraph, logs, telegraph
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.cli_telegraph import ring, set_one, shown
 from slipwai.project.harbour import START, harbour_config
@@ -92,6 +92,49 @@ class SettingTest(unittest.TestCase):
         self.assertEqual(telegraph.parse_setting("bar=high"), ("bar", "HIGH"))
 
 
+class FairwayOrderSettingTest(unittest.TestCase):
+    """Slice 18.2. Which stream goes first is a priority a person has while a run is going, so it is set
+    the way every other number under the lever is — and it is a list of names, which no other is."""
+
+    def test_the_names_are_taken_as_a_list_in_the_order_they_were_typed(self) -> None:
+        self.assertEqual(telegraph.parse_setting("fairways=billing,ordering"),
+                         ("fairways", ["billing", "ordering"]))
+
+    def test_spaces_around_the_commas_are_a_persons_typing_and_not_a_refusal(self) -> None:
+        self.assertEqual(telegraph.parse_setting("fairways=billing, ordering")[1], ["billing", "ordering"])
+
+    def test_none_clears_it_so_a_priority_can_be_put_back(self) -> None:
+        """A setting that can be set and not unset is a trap: the chart's own order has to be reachable."""
+        self.assertEqual(telegraph.parse_setting("fairways=none"), ("fairways", []))
+
+    def test_it_is_not_a_number_and_says_so_rather_than_failing_as_one(self) -> None:
+        with self.assertRaises(telegraph.Refused) as refusal:
+            telegraph.parse_setting("fairways=2")
+        self.assertIn("name", str(refusal.exception).lower())
+
+    def test_a_name_the_chart_has_not_got_is_refused_while_the_person_is_still_here(self) -> None:
+        """Two moments, two answers. Here a person has just typed it, so a typo that quietly did nothing
+        would be the worst outcome and it is refused. At read time the fleet ignores an unknown name
+        instead, because the chart moves under a setting that outlives it and a stale name must never park
+        a run."""
+        self.assertEqual(cli_telegraph.not_on_the_chart(["ordering", "billing"], ["billing"]), [])
+        self.assertEqual(cli_telegraph.not_on_the_chart(["ordering", "billing"], ["billign"]), ["billign"])
+
+    def test_a_project_with_no_readable_chart_refuses_nothing(self) -> None:
+        """Before the chart stage there is nothing to check against, and a priority set then is a person
+        saying what they want first — not a mistake."""
+        self.assertEqual(cli_telegraph.not_on_the_chart([], ["billing"]), [])
+
+    def test_no_position_rings_it_because_pace_and_priority_are_different_questions(self) -> None:
+        """Ringing resets every number, which is what makes a hurried `--set` safe. It must not also throw
+        away which stream somebody put first — slowing a run down is not saying the order was wrong."""
+        for position in telegraph.POSITIONS:
+            with self.subTest(position=position):
+                self.assertNotIn("fairways", telegraph.settings(position))
+        kept = telegraph.applied("stop", {"fairways": ["billing"]})
+        self.assertEqual(kept["fairways"], ["billing"])
+
+
 class FileTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp())
@@ -126,6 +169,13 @@ class FileTest(unittest.TestCase):
         self.assertEqual(held["fanout"], telegraph.settings("slow-ahead")["fanout"])
         self.assertIn("slow-ahead, adjusted", said[0])
         self.assertIn("telegraph slow-ahead", said[-1])
+
+    def test_a_fairway_order_is_written_where_the_fleet_reads_it(self) -> None:
+        said = set_one(self.root, ["fairways=billing,ordering"])
+        self.assertEqual(self.held()["fairways"], ["billing", "ordering"])
+        self.assertIn("billing", said[1])
+        set_one(self.root, ["fairways=none"])
+        self.assertEqual(self.held()["fairways"], [])
 
     def test_ringing_again_resets_an_adjusted_number(self) -> None:
         """Which is what makes a hurried `--set` safe: there is one action that puts everything back."""

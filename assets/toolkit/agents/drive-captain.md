@@ -58,6 +58,7 @@ believed. Every line carries `fairway`.
 | `berth-request` | you need a berth allocated | — |
 | `stowed` | work set aside for another slice to pick up | `slice`, `from`, `what` |
 | `taken-over` | this stream was another machine's and you have carried it on | `slice`, `from` (that machine) |
+| `yielded` | the harbour's fairway priority moved and this stream is below the lit line, so you have given the berth up | `to`, the fairway that displaced you |
 | `parked` | you have stopped, and this is why | `why` |
 
 Write `heartbeat` often enough that a stall is told from a finish. A last line of `merged` means
@@ -98,6 +99,13 @@ the branch that broke it, never an edit to the gate.
 files. Needing one changed is a `told` or a `request`, not a small exception.
 
 ## Stopping
+
+**Giving a berth up is not parking.** `boilers` is how many berths this harbour lights and the fairway
+priority is which streams get them, so a person moving a stream up while the run is going puts another
+below the line. When that is yours, finish the slice you are on, write `yielded` naming the fairway that
+displaced you, and exit. Never mid-slice and never on claimed work: a slice carried over from an answered
+park, and a fix owed to a red trunk, are both finished first. Nothing is wrong, so there is no `why` and
+nobody owes you an answer — the harbourmaster lights the stream above you on its next pass.
 
 Every stop records a reason. If you cannot proceed — a blocked fairway, a gate you cannot pass, a question
 with nobody to answer it — write `parked` with a `why` somebody who was not here can act on, and stop.

@@ -77,6 +77,55 @@ class ChoosingTest(Fixture):
         self.assertIn("no slices", done.stdout)
 
 
+class YieldTest(Fixture):
+    """Slice 18.2. The harbour's fairway priority moved while the run was going, and this stream is now
+    below the lit line. It gives the berth up at its next slice boundary — never mid-slice, and never by
+    being killed, because a captain that simply vanished is indistinguishable from one that died."""
+
+    def test_a_fairway_below_the_lit_line_gives_its_berth_up_and_says_to_whom(self) -> None:
+        self.budget(minutes=5, boilers=1, fairways=["BIL"])
+        done = self.captain("ORD", self.sail(WORKS))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("yields", done.stdout)
+        yielded = [e for e in self.read("ORD") if e.kind == "yielded"]
+        self.assertEqual([e.fields["to"] for e in yielded], ["BIL"])
+
+    def test_it_starts_nothing_on_the_turn_it_yields(self) -> None:
+        """The whole point of giving a berth up is not to be working in it."""
+        self.budget(minutes=5, boilers=1, fairways=["BIL"])
+        self.captain("ORD", self.sail(WORKS))
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "claimed"], [])
+
+    def test_a_fairway_still_above_the_line_carries_on(self) -> None:
+        self.budget(minutes=5, boilers=1, fairways=["ORD"])
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(WORKS))
+        self.assertIn("ORD-01 is through its gate and merged", done.stdout)
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "yielded"], [])
+
+    def test_an_unbounded_harbour_yields_nothing_because_no_fairway_is_below_a_line(self) -> None:
+        """`boilers` is what makes a berth scarce. Without one there is nothing to give up."""
+        self.budget(minutes=5, fairways=["BIL"])
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(WORKS))
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "yielded"], [])
+        self.assertIn("ORD-01", done.stdout)
+
+    def test_a_slice_already_in_flight_is_carried_rather_than_abandoned(self) -> None:
+        """Never mid-slice. A stream that had claimed work and was parked finishes it when the park is
+        answered, whatever the priority says — abandoning claimed work to a priority change would leave a
+        branch nobody owns and a claim nobody holds."""
+        at = "2026-10-12T09:00:00Z"
+        self.budget(minutes=5, boilers=1, fairways=["BIL"])
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),
+                  logs.entry("parked", fairway="ORD", why="choose the storage", t=at))
+        self.harbour(logs.entry("cleared", harbour=True, fairway="ORD", parked=at, what="use the store"))
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(WORKS))
+        self.assertIn("ORD-01 is through its gate and merged", done.stdout)
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "yielded"], [])
+
+
 class ClaimTest(Fixture):
     """One machine holds a fairway at a time, and the ref is what says so.
 

@@ -772,7 +772,38 @@ def once() -> int:
     if written:
         append(written)
     write_cursors(cursors)
+    fill_free_berths()
     return len(written)
+
+
+def fill_free_berths() -> None:
+    """Light a captain for a fairway that has come above the lit line — slice 18.2.
+
+    A berth is a machine-local resource and allocating them is already this process's job; this is the same
+    job from the other end. `boilers` bounds how many are lit and the harbour's fairway priority is which
+    streams get them, so a person moving a stream up pushes another below the line, and that captain writes
+    `yielded` at its next slice boundary and exits. Something then has to fill the berth it gave up, or
+    reordering the streams would *stop* a run rather than reorder it — and `fleet.py` cannot, by design: it
+    starts processes and gets out of the way.
+
+    `relight` and never `cast_off`: it lights captains only. A harbourmaster started by hand has no pid
+    file, so `cast_off` would read it as not running and start a second one, which is the one-writer rule
+    broken in the file this whole design promises cannot conflict.
+
+    Nothing here costs the pass. A fleet that cannot be read or a captain that will not start is a fact
+    about this machine, said by `fleet list` and by the captain's own absence from the logs; a
+    harbourmaster that stopped carrying lines between fairways because it could not spawn a process would
+    take the run down with it.
+    """
+    try:
+        import fleet
+        held = json.loads(HARBOUR_CONFIG.read_text(encoding="utf-8")) if HARBOUR_CONFIG.is_file() else {}
+        limit = held.get("boilers") if isinstance(held, dict) else None
+        if isinstance(limit, int) and not isinstance(limit, bool) and limit <= 0:
+            return  # The telegraph is at `stop`, which lights nothing by its own rule.
+        fleet.relight(limit if isinstance(limit, int) and not isinstance(limit, bool) else None)
+    except Exception as fault:  # pragma: no cover - never at the cost of the pass
+        print(f"harbourmaster: the fleet could not be relit ({fault})", flush=True)
 
 
 def ours() -> list[str]:

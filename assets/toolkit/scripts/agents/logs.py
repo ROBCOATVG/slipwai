@@ -99,6 +99,13 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     # one thing in a fairway's history that a later reader cannot work out from any other line: two
     # machines' work in one chain, with nothing saying where the join is.
     "taken-over": ("fairway", "slice", "from"),
+    # A stream that gave its berth up — slice 18.2. The harbour's fairway priority moved this one below
+    # the lit line, so its captain finished what it had and stopped rather than holding a berth the run
+    # wants elsewhere. `to` is the fairway that displaced it, which is the whole of why a later reader
+    # needs this line: a captain that simply exited is indistinguishable from one that died, and a run
+    # whose streams swap under it with nothing written down is the state this method exists to not have.
+    # Not a `parked`: nothing is wrong and nobody is being asked anything, and a park waits for an answer.
+    "yielded": ("fairway", "to"),
     "parked": ("fairway", "why"),
 }
 

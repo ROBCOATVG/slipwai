@@ -18,7 +18,7 @@ from pathlib import Path
 from .assets import this_command
 from .errors import GenerationError, refuse
 from .project.harbour import CONFIG
-from .telegraph import MEANS, MIRRORED, POSITIONS, Refused, applied, described, parse_setting, scaled
+from .telegraph import LISTS, MEANS, MIRRORED, POSITIONS, Refused, applied, described, parse_setting, scaled
 
 SAIL = ".specify/sail.json"
 
@@ -72,6 +72,38 @@ def ring(root: Path, name: str) -> list[str]:
     return [f"telegraph: rung to {name}", *shown(whole)[1:]]
 
 
+def not_on_the_chart(known: list[str], wanted: list[str]) -> list[str]:
+    """The names in `wanted` the chart has not got — slice 18.2, and only while a person is here.
+
+    Two moments and two answers, deliberately. **Here** somebody has just typed the name, so a typo that
+    quietly did nothing is the worst outcome there is and it is refused. **At read time** `fleet.py` and
+    `clearance.py` ignore a name they do not know, because the chart moves under a setting that outlives
+    it — a fairway renamed by a later split would otherwise park the whole run from a file nobody looked at.
+
+    An empty `known` refuses nothing: before the chart stage there is nothing to check against, and a
+    priority set then is a person saying which stream they want first rather than a mistake.
+    """
+    return [name for name in wanted if name not in known] if known else []
+
+
+def charted_fairways(root: Path) -> list[str]:
+    """The fairways this project has, asked of its own clearance script through the offline JSON port.
+
+    The one reader of `chart.yaml` the keel allows itself, so the names checked here are the same ones the
+    fleet will light rather than a second parse of the file that could disagree with it. Anything that goes
+    wrong reads as "cannot say", which refuses nothing.
+    """
+    from .fleet import clearance_query
+    try:
+        _, found, fault = clearance_query(root)
+    except Exception:  # pragma: no cover - a project whose clearance will not run refuses nothing
+        return []
+    if fault or not isinstance(found, dict):
+        return []
+    named = found.get("fairways")
+    return [str(name) for name in named] if isinstance(named, list) else []
+
+
 def set_one(root: Path, pairs: list[str]) -> list[str]:
     """Set named numbers one at a time, each where it belongs: the harbour's here, `/sail`'s in its own file."""
     harbour_path, sail_path = root / CONFIG, root / SAIL
@@ -80,6 +112,16 @@ def set_one(root: Path, pairs: list[str]) -> list[str]:
     said: list[str] = []
     for pair in pairs:
         name, value = parse_setting(pair)
+        if name in LISTS:
+            wanted = [str(one) for one in value] if isinstance(value, list) else []
+            missing = not_on_the_chart(charted_fairways(root), wanted) if wanted else []
+            if missing:
+                raise Refused(f"the chart has no fairway called {missing[0]!r}. `{name}` names the "
+                              f"fairways the chart has, in the order you want them lit")
+            held[name] = wanted
+            names = ", ".join(wanted) if wanted else "the chart's own order"
+            said.append(f"  {name} = {names}")
+            continue
         if name in MIRRORED:
             settings[name] = value
             said.append(f"  {name} = {value}  (in {SAIL}, which is where `/sail` reads it)")

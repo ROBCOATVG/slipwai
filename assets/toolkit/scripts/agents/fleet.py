@@ -61,14 +61,15 @@ def config() -> dict:
 
 
 def fairways() -> list[str]:
-    """Every fairway the chart names, in its own order, which is split order."""
+    """Every fairway the chart names, in the order their captains are lit — slice 18.2.
+
+    `clearance.py` owns the rule and this asks it, because the same order decides two things that must not
+    disagree: which captain is lit when there are fewer berths than fairways, and which stream a scarce
+    slot goes to once they are running. Two copies of it would be two answers to one question, found on the
+    day a person moved a stream up and only half the run noticed.
+    """
     charted, _ = clearance.chart()
-    found: list[str] = []
-    for body in (charted.get("slices") or {}).values():
-        name = str((body or {}).get("fairway", "")) if isinstance(body, dict) else ""
-        if name and name not in found:
-            found.append(name)
-    return found
+    return clearance.fairway_order(charted, clearance.preferred_fairways(HARBOUR_CONFIG))
 
 
 def alive(pid: int) -> bool:
@@ -135,17 +136,41 @@ def cast_off(limit: int | None) -> int:
         started += 1
     else:
         print(f"harbourmaster already running, pid {standing['harbourmaster']}")
+    return started + relight(limit, say=True)
+
+
+def relight(limit: int | None, say: bool = False) -> int:
+    """Light the captains that should be lit and are not, up to `limit`. Returns how many were started.
+
+    **Captains only, never the harbourmaster** — which is what separates this from `cast_off`, and the
+    reason it exists rather than the harbourmaster calling that: this is called from inside the
+    harbourmaster once a pass, and a harbourmaster that started a second harbourmaster would be the
+    one-writer rule broken in the file the whole design promises cannot conflict. It has no pid file of its
+    own when a person started it by hand, so "already running" is not a question this can answer.
+
+    Once a pass is what makes a fairway priority take effect on a run that is going — slice 18.2. A captain
+    that has dropped below the lit line writes `yielded` at its next slice boundary and exits; the berth is
+    then free and nothing else would ever fill it, so moving a stream up would stop a run rather than
+    reorder it. Idempotent by construction: a captain already running is left alone, and `fairways()` is
+    re-read every time, so the order it lights in is the order as it stands now and not as it was at
+    cast-off.
+    """
+    standing = {name: pid for name, pid in recorded().items() if alive(pid)}
+    started = 0
     lit = len([name for name in standing if name != "harbourmaster"])
     for fairway in fairways():
         name = f"captain-{fairway}"
         if name in standing:
-            print(f"{fairway}: captain already running, pid {standing[name]}")
+            if say:
+                print(f"{fairway}: captain already running, pid {standing[name]}")
             continue
         if limit is not None and lit >= limit:
-            print(f"{fairway}: waiting for a berth — the telegraph lights {limit} at once")
+            if say:
+                print(f"{fairway}: waiting for a berth — the telegraph lights {limit} at once")
             continue
         pid = start(name, [sys.executable, str(HERE / "captain.py"), fairway])
-        print(f"{fairway}: captain started, pid {pid}")
+        if say:
+            print(f"{fairway}: captain started, pid {pid}")
         started, lit = started + 1, lit + 1
     return started
 
@@ -296,7 +321,11 @@ def main(argv: list[str]) -> int:
         prog="fleet", description="Start the harbourmaster and a captain per fairway, and exit",
         epilog="This is not a runner. The state of the run is in the logs, the captains read them, and this "
                "starts processes and gets out of the way — so nothing here can be the thing that died.")
-    parser.add_argument("verb", nargs="?", choices=("start", "stop", "list", "watch", "tell"), default="start")
+    parser.add_argument("verb", nargs="?", choices=("start", "relight", "stop", "list", "watch", "tell"),
+                        default="start",
+                        help="`relight` lights whatever should be lit now and starts no harbourmaster — "
+                             "what the harbourmaster itself calls once a pass, so a fairway moved up while "
+                             "a run is going gets the berth the captain below it gave up")
     parser.add_argument("words", nargs="*", help="for `tell`: the stream, then the message")
     parser.add_argument("--boilers", type=int, default=None,
                         help="how many captains may run at once (default: the telegraph's)")
@@ -323,7 +352,12 @@ def main(argv: list[str]) -> int:
         print(f"the telegraph is at {held.get('position', 'stop')}, which lights no captains. "
               f"`slipwai telegraph half-ahead` casts off again")
         return 0
-    cast_off(limit if isinstance(limit, int) else None)
+    bound = limit if isinstance(limit, int) else None
+    if parsed.verb == "relight":
+        started = relight(bound, say=True)
+        print(f"relight: {started} captain(s) started" if started else "relight: nothing to light")
+        return 0
+    cast_off(bound)
     print("`slipwai fleet` shows what they are doing; `slipwai bridge` is the page you answer from")
     return 0
 

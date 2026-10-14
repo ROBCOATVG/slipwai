@@ -11,6 +11,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from typing import Any
@@ -23,7 +24,13 @@ from slipwai.project.harbour import harbour_config
 AGENTS = TOOLKIT_ROOT / "scripts/agents"
 CARRIED = ("fleet.py", "clearance.py", "harbourmaster.py", "captain.py", "logs.py", "berths.py",
            "telegraph.py", "inbox.py", "ids.py")
-CHART = """slices:
+#: The `fairways` block is in neither the slices' order nor the alphabet's, which is how a test can tell
+#: which one the fleet read (slice 18.2).
+CHART = """fairways:
+  FUL: {context: fulfilment, owns: ["apps/fulfilment/**"]}
+  ORD: {context: ordering, owns: ["apps/orders/**"]}
+  BIL: {context: billing, owns: ["apps/billing/**"]}
+slices:
   ORD-01: {fairway: ORD, sets: [Placed], steers_by: []}
   BIL-01: {fairway: BIL, sets: [Charged], steers_by: []}
   FUL-01: {fairway: FUL, sets: [Picked], steers_by: []}
@@ -62,6 +69,19 @@ class Fixture(unittest.TestCase):
         place = self.root / ".slipwai/running"
         return sorted(path.stem for path in place.glob("*.pid")) if place.is_dir() else []
 
+    def running(self) -> list[str]:
+        """What is actually alive, which is not the same as what has a pid file: a process that exited
+        leaves its file behind deliberately, so that `list` can say it is gone rather than tidy it away."""
+        import os
+        found = []
+        for path in sorted((self.root / ".slipwai/running").glob("*.pid")):
+            try:
+                os.kill(int(path.read_text(encoding="utf-8").strip()), 0)
+            except (OSError, ValueError):
+                continue
+            found.append(path.stem)
+        return found
+
 
 class CastOffTest(Fixture):
     def test_it_starts_the_harbourmaster_and_a_captain_per_fairway(self) -> None:
@@ -86,6 +106,57 @@ class CastOffTest(Fixture):
         done = self.run_it("start")
         self.assertEqual(self.pids(), [])
         self.assertIn("telegraph half-ahead", done.stdout)
+
+    def test_the_lit_order_is_the_charts_fairways_block(self) -> None:
+        """Slice 18.2. Which captain is lit first when there are fewer berths than fairways is a priority,
+        so it is read from the block the split wrote and not from where a fairway's first slice happens to
+        fall. `FUL` is last in the slices and second in the alphabet; the block puts it first."""
+        self.telegraph(boilers=1)
+        self.run_it("start")
+        self.assertEqual([one for one in self.pids() if one.startswith("captain-")], ["captain-FUL"])
+
+    def test_a_fairway_order_in_the_harbour_moves_one_up_without_hiding_the_rest(self) -> None:
+        """What `slipwai telegraph --set fairways=BIL` writes. A setting that silently stopped the fairways
+        it did not name would be a way to park a stream nobody meant to park, so the named ones go first
+        and the others keep the chart's order behind them."""
+        self.telegraph(boilers=1, fairways=["BIL"])
+        done = self.run_it("start")
+        self.assertEqual([one for one in self.pids() if one.startswith("captain-")], ["captain-BIL"])
+        self.assertIn("waiting for a berth", done.stdout)
+
+    def test_a_berth_a_captain_gave_up_is_taken_by_the_stream_that_displaced_it(self) -> None:
+        """Slice 18.2, the other half of a captain's yield. The yielding captain exits; something has to
+        light the one it yielded to, or moving a stream up would stop the run instead of reordering it."""
+        import os
+        import signal
+        self.telegraph(boilers=1)
+        self.run_it("start")
+        self.assertEqual([one for one in self.pids() if one.startswith("captain-")], ["captain-FUL"])
+        held = (self.root / ".slipwai/running/captain-FUL.pid").read_text(encoding="utf-8").strip()
+        os.kill(int(held), signal.SIGTERM)  # what a captain that has yielded has just done to itself
+        for _ in range(100):
+            if "captain-FUL" not in self.running():
+                break
+            time.sleep(0.05)
+        self.telegraph(boilers=1, fairways=["BIL"])
+        self.run_it("relight")
+        self.assertEqual([one for one in self.running() if one.startswith("captain-")], ["captain-BIL"])
+        self.assertIn("captain-FUL", self.pids(), "the berth it gave up is still on the record")
+
+    def test_relighting_never_starts_a_second_harbourmaster(self) -> None:
+        """It is called from inside the one that is already running, which has no pid file of its own when
+        a person started it by hand. Two harbourmasters is the one-writer rule broken in the file the whole
+        design promises will never conflict."""
+        self.run_it("relight")
+        self.assertEqual([one for one in self.running() if one == "harbourmaster"], [])
+        self.assertTrue([one for one in self.running() if one.startswith("captain-")],
+                        "and it does light the captains, which is what it is for")
+
+    def test_a_harbour_naming_a_fairway_the_chart_has_not_got_lights_the_chart_s_own(self) -> None:
+        """A stale name is not a reason to light nothing: the chart is what says which fairways exist."""
+        self.telegraph(boilers=1, fairways=["GONE"])
+        self.run_it("start")
+        self.assertEqual([one for one in self.pids() if one.startswith("captain-")], ["captain-FUL"])
 
     def test_starting_twice_does_not_start_a_second_of_anything(self) -> None:
         self.run_it("start")

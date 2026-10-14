@@ -405,6 +405,17 @@ beside it: a second place to say which fairway a slice is in is a second place f
 one that is wrong is always the one somebody typed. A slice whose work straddles two contexts is two slices,
 or a boundary question for the chart, and never one slice in two fairways.
 
+**The block's order is which fairway goes first**, and it is a decision like the split's own. Where there
+are fewer berths than fairways — `boilers` in `harbour.json` — the fairways at the top of the block are the
+ones whose captains are lit, and a scarce slot goes to the earlier fairway's ready slice. Across fairways
+only: inside one, the split's order is the whole rule, which is what keeps the merge order predictable.
+`fairways` in `harbour.json` moves a stream up while a run is going — `slipwai telegraph --set
+fairways=billing` — and it moves the names it holds to the front and nothing else, so a stream is never
+stopped by a setting that forgot to mention it. A captain whose fairway drops below the lit line finishes
+the slice it is on, writes `yielded` naming the fairway that displaced it, and exits; the harbourmaster
+lights the one that came above the line on its next pass. Ringing the telegraph never changes this: a run
+slowed down at four o'clock has not changed its mind about which stream matters.
+
 **A session takes one fairway, or every free one.** `/sail fairway=<name>` confines the ready set to that
 fairway. Given none, a session takes the ready slices of every fairway nobody holds. `held_by` in the split's
 table is routing, not a lock: whoever is named there gets that fairway's slices left alone, and the board

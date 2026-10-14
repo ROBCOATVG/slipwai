@@ -94,6 +94,15 @@ MIRRORED = {
     "delegate": ("how much of a slice one delegate is handed", ("story", "rule", "task")),
     "cycle": ("how many failing tests one RED-GREEN-REFACTOR cycle opens with", ("rule", "example")),
 }
+#: Settings whose value is a list of names rather than a number or a word — slice 18.2, and so far one.
+#: **No position rings these.** A position is a pace, and `applied` resets every number a position names,
+#: which is what makes a hurried `--set` safe; a priority is not a pace, and a run slowed down at four
+#: o'clock is not a run that has changed its mind about which stream matters. So this stays out of
+#: `SETTINGS` deliberately, and survives a ring.
+LISTS = {
+    "fairways": "which fairway's captain is lit first when there are fewer berths than fairways, as names "
+                "separated by commas — `none` to go back to the chart's own order",
+}
 NUMBERS = tuple(MEANS)
 
 
@@ -124,10 +133,19 @@ def parse_setting(text: str) -> tuple[str, object]:
     name, value = name.strip(), value.strip()
     if not value:
         raise Refused(f"`--set` takes `<name>=<value>`; {text!r} has no value")
-    if name not in MEANS and name not in MIRRORED:
-        known = {**MEANS, **{one: said for one, (said, _) in MIRRORED.items()}}
+    if name not in MEANS and name not in MIRRORED and name not in LISTS:
+        known = {**MEANS, **LISTS, **{one: said for one, (said, _) in MIRRORED.items()}}
         raise Refused(f"`{name}` is not a setting the telegraph has. It sets: "
                               + "; ".join(f"{one} ({said})" for one, said in known.items()))
+    if name in LISTS:
+        if value == "none":
+            return name, []
+        wanted = [one.strip() for one in value.split(",") if one.strip()]
+        numbers = [one for one in wanted if one.lstrip("-").isdigit()]
+        if numbers:
+            raise Refused(f"`{name}` is {LISTS[name]}. {numbers[0]!r} is a number, not a name — this is "
+                          f"the one setting that is not a count")
+        return name, wanted
     if name in MIRRORED:
         said, allowed = MIRRORED[name]
         if value not in allowed:

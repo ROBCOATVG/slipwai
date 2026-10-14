@@ -41,8 +41,8 @@ POSITIONS = ("full-ahead", "half-ahead", "slow-ahead", "dead-slow", "stop")
 MEANS = {
     "boilers": "berths lit at once",
     "fanout": "delegates one captain may have running",
-    "bunker_per_slice": "thousands of input tokens one slice may spend",
-    "bunker_per_day": "thousands of input tokens the harbour may spend in a day",
+    "bunker_per_slice": "thousands of work tokens (uncached input + output) one slice may spend",
+    "bunker_per_day": "thousands of work tokens (uncached input + output) the harbour may spend in a day",
     "stage_scale": "what every stage budget in `stages` is multiplied by",
     "bar": "the severity at or above which an adversary finding must close before a merge",
     "decision_ceiling": "decisions that may stand unread before a fairway parks",

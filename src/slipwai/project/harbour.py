@@ -30,7 +30,7 @@ CONFIG = "harbour.json"
 #: Where a fresh harbour's telegraph starts. Not `full-ahead`: a first run is the one nobody has watched yet,
 #: and the position that spends most is a strange place to begin.
 START = "half-ahead"
-#: Wall-clock minutes and thousands of input tokens one stage may take. Per stage, because a converge and
+#: Wall-clock minutes and thousands of work tokens one stage may take. Per stage, because a converge and
 #: an implement are not the same kind of work and one number for both would be wrong for each.
 STAGE_BUDGETS: dict[str, dict[str, int]] = {
     "default": {"minutes": 30, "tokens": 400},
@@ -56,8 +56,10 @@ DECISION_CEILING = 10
 WAIT_BOUND = 60
 
 COMMENT = (
-    "What this run is held to. `stages` is minutes and thousands of input tokens per stage, `default` for "
-    "any not named. `bar` is the severity at or above which an adversary finding must close before the "
+    "What this run is held to. `stages` is minutes and thousands of work tokens per stage — uncached input "
+    "plus output, the tokens the work cost rather than the context re-read on every turn — `default` for "
+    "any not named; `scripts/agents/benchmark.py` prints what is left at every `start` and says over budget "
+    "at every `end` that passed one. `bar` is the severity at or above which an adversary finding must close before the "
     "merge; below it a finding is stowed into the fairway's careen and the slice merges, and nothing "
     "CRITICAL is ever stowed. `decision_ceiling` is how many decisions may stand unread before a fairway "
     "parks. `wait_bound` is how long a wait may go with nothing written to the harbour log before it is a "
@@ -96,8 +98,17 @@ def budget_section() -> str:
     """The `/sail` section that says what a stage does when it reaches its budget."""
     return f"""### When a stage reaches its budget
 
-Every stage has one, in `{CONFIG}`: wall-clock minutes and thousands of input tokens. A stage that reaches
-either does **not** keep going, and does not quietly hand its leftovers to the next slice. It stows.
+Every stage has one, in `{CONFIG}`: wall-clock minutes and thousands of **work tokens** — uncached input
+plus output, the tokens the work itself cost. Not all input: a budget on all input measured the context
+re-read on every turn, and a long host context spent its 1,200k in a few turns of nothing while nobody
+looked. A stage that reaches either does **not** keep going, and does not quietly hand its leftovers to the
+next slice. It stows.
+
+**The number is read at every bracket, not remembered.** `python3 scripts/agents/benchmark.py start` prints
+the stage's budget and what the slice has spent of its bunker; `end` says *over budget* when the stage
+passed either number, and writes it on the entry. Under `/cruise` the captain also ends a stage whose log
+has gone silent for its minutes; under `/sail` those two lines are the control, and a session that reads
+*over budget* stows before the next rung's `start` rather than after it.
 
 1. **Write what is left into the fairway's careen** — `fairways/<name>/careen.md`, one row per item, each
    saying what is wrong and what closing it would take, with `budget` as the row's *From*.

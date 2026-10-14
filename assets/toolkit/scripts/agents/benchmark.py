@@ -370,13 +370,21 @@ def codex_usage(path: Path, offset: int, start_total: dict[str, int] | None,
                 continue
             add_usage(by_model.setdefault(model, empty_usage()), payload["usage"], CODEX_FIELDS)
     if records_seen:
-        return by_model, "token_usage_record lines, one per response"
+        return uncached(by_model), "token_usage_record lines, one per response"
     end_total = codex_total(path, offset)
     if start_total is None or end_total is None:
         return {}, "no token_count event either side of the stage"
-    return ({model: {key: end_total[key] - start_total[key] for key in USAGE_KEYS}},
+    return (uncached({model: {key: end_total[key] - start_total[key] for key in USAGE_KEYS}}),
             "the difference between token_count totals"
             + (", which a bracket open at the same time shares" if shared else ""))
+
+
+def uncached(by_model: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]:
+    """Codex's `input_tokens` includes `cached_input_tokens`; Claude Code's `input_tokens` excludes its cache
+    reads. One meaning for `input` — the uncached part — so a sum of input and cache read counts a cached token
+    once on either harness, where it used to count a Codex one twice (19.67M read as 39.1M on one record)."""
+    return {model: {**tokens, "input": max(0, tokens["input"] - tokens["cache_read"])}
+            for model, tokens in by_model.items()}
 
 
 def span_now(mark: dict[str, Any]) -> dict[str, dict[str, int]]:
@@ -441,7 +449,8 @@ def usage_since(mark: dict[str, Any], own: Window | None = None, others: list[Wi
     shared = any(other.covers(str(rollout), mark["files"].get(str(rollout), 0)) or other.later_than(own)
                  for other in overlapping) if own is not None else False
     by_model, how = codex_usage(rollout, mark["files"].get(str(rollout), 0), mark.get("total"), keep_codex, shared)
-    return {"source": "codex", "session": mark["session"], "read": how, "host": by_model, "subagents": {}}
+    return {"source": "codex", "session": mark["session"], "read": how, "host": by_model, "subagents": {},
+            "counts": "uncached"}
 
 
 def models_that_ran(usage: dict[str, Any]) -> list[str]:
@@ -493,6 +502,13 @@ def start(directory: Path, stage: str) -> None:
     save(directory, record)
     where = f"usage from {mark['source']}" if mark.get("source") else f"no usage: {mark.get('reason')}"
     print(f"benchmark: {stage} started ({(directory / RECORD).relative_to(ROOT)}; {where})")
+    budget = budget_for(stage)
+    used = spent(record)
+    print(f"benchmark: {budget_line(stage, budget, used)}")
+    if budget is not None and budget["bunker"] is not None and used["work"] >= budget["bunker"]:
+        print(f"benchmark: warning: this slice's bunker is spent ({compact(used['work'])} of "
+              f"{compact(budget['bunker'])} work tokens) — stow before this stage, not after "
+              "(commands/sail.md, *When a stage reaches its budget*)", file=sys.stderr)
 
 
 def end(directory: Path, stage: str, arguments: list[str], clock: Callable[[], str] = now) -> None:
@@ -521,7 +537,12 @@ def end(directory: Path, stage: str, arguments: list[str], clock: Callable[[], s
     entry["delegated"] = any(any(tokens.values()) for tokens in (usage.get("subagents") or {}).values())
     entry["tasks"]["end"] = task_counts(directory)
     entry["signals"] = signals
+    passed = over_budget(entry, budget_for(stage))
+    if passed:
+        entry["over_budget"] = passed
     save(directory, record)
+    if passed:
+        print(over_budget_line(stage, passed), file=sys.stderr)
     if is_unbracketed(entry):
         print(
             f"benchmark: warning: {stage} was not bracketed around its work — start and end were called "
@@ -537,7 +558,8 @@ def summary_line(entry: dict[str, Any]) -> str:
         tokens = "tokens unknown — stage was not bracketed around its work"
     elif usage.get("source"):
         total = totals(entry)
-        tokens = f"in {compact(total['input'] + total['cache_read'] + total['cache_creation'])} · out {compact(total['output'])}"
+        tokens = (f"in {compact(total['input'] + total['cache_read'] + total['cache_creation'])} · "
+                  f"out {compact(total['output'])} · work {compact(work(entry))}")
     else:
         tokens = f"tokens unknown — {usage.get('reason')}"
     ran = ", ".join(entry.get("ran") or []) or ("no transcript lines since start" if usage.get("source") else "model unknown")
@@ -717,12 +739,97 @@ def check() -> list[str]:
 # --- the aggregate ---------------------------------------------------------------------------------------------
 
 def totals(entry: dict[str, Any]) -> dict[str, int]:
+    """One stage's tokens over every model, host and sub-agents together, with `input` meaning uncached input
+    whichever harness wrote the record and whenever: a Codex record written before `uncached` normalised the
+    read still carries its cache reads inside `input`, and is read here as if it did not."""
+    usage = entry.get("usage") or {}
+    legacy_codex = usage.get("source") == "codex" and usage.get("counts") != "uncached"
     total = empty_usage()
     for part in ("host", "subagents"):
-        for tokens in (entry.get("usage") or {}).get(part, {}).values():
+        for tokens in usage.get(part, {}).values():
             for key in USAGE_KEYS:
                 total[key] += tokens.get(key, 0)
+            if legacy_codex:
+                total["input"] -= min(tokens.get("input", 0), tokens.get("cache_read", 0))
     return total
+
+
+def work(entry: dict[str, Any]) -> int:
+    """The tokens the stage's work cost: uncached input plus output. Not the context re-read on every turn,
+    which is what a budget on all input measured — a long host context spent 1.2M in a few turns of nothing."""
+    total = totals(entry)
+    return total["input"] + total["output"]
+
+
+# --- the budget ----------------------------------------------------------------------------------------------
+
+HARBOUR = ROOT / "harbour.json"
+
+
+def budget_for(stage: str, config: Path = HARBOUR) -> dict[str, Any] | None:
+    """What `harbour.json` allows this stage — minutes and work tokens, scaled by the telegraph — and the slice's
+    bunker, or None where the project has no harbour.json. `default` stands for a stage with no row."""
+    try:
+        held = json.loads(config.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return None
+    if not isinstance(held, dict):
+        return None
+    stages = held.get("stages") if isinstance(held.get("stages"), dict) else {}
+    row = stages.get(canonical(stage)) or stages.get(stage) or stages.get("default")
+    if not isinstance(row, dict):
+        return None
+    scale = held.get("stage_scale") if isinstance(held.get("stage_scale"), int | float) else 1.0
+    minutes = row.get("minutes") if isinstance(row.get("minutes"), int | float) else None
+    tokens = row.get("tokens") if isinstance(row.get("tokens"), int | float) else None
+    bunker = held.get("bunker_per_slice") if isinstance(held.get("bunker_per_slice"), int | float) else None
+    return {"minutes": minutes * scale if minutes is not None else None,
+            "tokens": int(tokens * 1000 * scale) if tokens is not None else None,
+            "bunker": int(bunker * 1000) if bunker is not None else None, "scale": scale}
+
+
+def spent(record: dict[str, Any]) -> dict[str, int]:
+    """What the slice has spent over its ended, bracketed stages: seconds and work tokens."""
+    ended = [entry for entry in record.get("stages", []) if "ended" in entry and not is_unbracketed(entry)]
+    return {"seconds": sum(int(entry.get("seconds", 0)) for entry in ended),
+            "work": sum(work(entry) for entry in ended)}
+
+
+def over_budget(entry: dict[str, Any], budget: dict[str, Any] | None) -> dict[str, Any]:
+    """Which of its two numbers this ended stage passed, as `{minutes: (took, allowed)}` and `{tokens: (…)}`."""
+    if budget is None:
+        return {}
+    passed: dict[str, Any] = {}
+    seconds = int(entry.get("seconds", 0))
+    if budget["minutes"] is not None and seconds > budget["minutes"] * 60:
+        passed["minutes"] = [seconds, budget["minutes"]]
+    cost = work(entry)
+    if budget["tokens"] is not None and not is_unbracketed(entry) and cost > budget["tokens"]:
+        passed["tokens"] = [cost, budget["tokens"]]
+    return passed
+
+
+def budget_line(stage: str, budget: dict[str, Any] | None, used: dict[str, int]) -> str:
+    """The line `start` prints: what this stage may spend, and what the slice has spent of its bunker."""
+    if budget is None:
+        return f"budget: none — no harbour.json names one for {stage}"
+    allowed = " / ".join(part for part in (
+        f"{budget['minutes']:g}m" if budget["minutes"] is not None else "",
+        f"{compact(budget['tokens'])} work tokens" if budget["tokens"] is not None else "") if part)
+    scaled = f" (stage_scale {budget['scale']:g})" if budget["scale"] != 1.0 else ""
+    bunker = (f" of its {compact(budget['bunker'])} bunker" if budget["bunker"] is not None else "")
+    return (f"budget: {canonical(stage)} {allowed}{scaled}; this slice has spent {wall(used['seconds'])} / "
+            f"{compact(used['work'])} work tokens{bunker} (work = uncached input + output)")
+
+
+def over_budget_line(stage: str, passed: dict[str, Any]) -> str:
+    parts = []
+    if "minutes" in passed:
+        parts.append(f"took {wall(passed['minutes'][0])} of {passed['minutes'][1]:g}m")
+    if "tokens" in passed:
+        parts.append(f"{compact(passed['tokens'][0])} of {compact(passed['tokens'][1])} work tokens")
+    return (f"benchmark: over budget — {canonical(stage)} {'; '.join(parts)}. Stow what is left before the next "
+            "rung (commands/sail.md, *When a stage reaches its budget*)")
 
 
 def compact(number: int) -> str:

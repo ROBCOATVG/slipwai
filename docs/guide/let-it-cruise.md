@@ -66,8 +66,8 @@ $ slipwai telegraph
 telegraph: half-ahead
   boilers           3         berths lit at once
   fanout            2         delegates one captain may have running
-  bunker_per_slice  1000      thousands of input tokens one slice may spend
-  bunker_per_day    10000     thousands of input tokens the harbour may spend in a day
+  bunker_per_slice  1000      thousands of work tokens (uncached input + output) one slice may spend
+  bunker_per_day    10000     thousands of work tokens (uncached input + output) the harbour may spend in a day
   stage_scale       1.0       what every stage budget in `stages` is multiplied by
   bar               MEDIUM    the severity at or above which an adversary finding must close before a merge
   decision_ceiling  10        decisions that may stand unread before a fairway parks

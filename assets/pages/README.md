@@ -30,7 +30,7 @@ knowing first is quicker.
 {{prerequisites}}
 | {{last-checked}} | **Access to your forge.** GitHub: `gh` signed in (`gh auth login`). Gitea: `GITEA_TOKEN` set to a token with `read:user` and `write:repository` — plus `write:organization` if the repository will belong to an organisation | `gh auth status` · `echo ${GITEA_TOKEN:+set}` |
 | {{repository-row}} | **The repository's URL** — `https://github.com/<owner>/<name>`, `http://localhost:3300/<owner>/<name>` — created on the forge if it does not exist | — |
-| {{passphrase-row}} | **Somewhere to keep a passphrase.** `make bootstrap` prints one, once; it encrypts the committed bootstrap state and every later `make bootstrap` needs it | a password manager |
+| {{passphrase-row}} | **Somewhere to keep a passphrase.** `make bootstrap` generates one, prints it once and, where the target can, keeps it in the account it bootstrapped so a later `make bootstrap` signed in there reads it back; the printed copy is for the day that account is gone | a password manager |
 
 Whether rows 2–{{last-checked}} are on the machine is checked when the project is generated, too; who the CLI is signed
 in as, `make bootstrap` checks before it applies anything. Missing a tool, `./init` still installs Spec Kit,

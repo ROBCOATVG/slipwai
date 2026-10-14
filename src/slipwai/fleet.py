@@ -29,6 +29,7 @@ from pathlib import Path
 
 from .deck import recent
 from .logs import Entry, Unreadable, deck_logs, fold, harbour_logs, open_parks
+from .shell_environment import login_environment
 
 #: Minutes since the last line after which a berth that has not finished is drawn as stalled. The default
 #: where `harbour.json` says nothing: a wait with no bound is indistinguishable from a run that has stopped.
@@ -249,6 +250,16 @@ def clearance_ready(root: Path, feature: str = "") -> tuple[str, dict[str, list[
     return feature, {str(f): [str(s) for s in ids] for f, ids in ready.items()}, ""
 
 
+def project_python() -> str:
+    """The interpreter the project's own scripts run under: the `python3` the login shell finds, which is the
+    one `./init` installed PyYAML into — not this process's, which is the keel's own environment and reads
+    no YAML by design. The keel's as a fallback, so a machine with no other python still gets an answer."""
+    import shutil
+
+    found = shutil.which("python3", path=login_environment().get("PATH"))
+    return found or sys.executable
+
+
 def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:
     """Read the project's existing clearance rule through its offline JSON port, never duplicate it: the
     whole answer — the ready set, every slice's state, the schedule — and a fault where it could not be."""
@@ -274,8 +285,8 @@ def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:
         if not supported:
             return feature, {}, ("the project's clearance script has no offline JSON query port. "
                                  "Run `slipwai migrate` to update it")
-        done = subprocess.run([sys.executable, "-B", str(script.resolve()), "--json", "--feature", feature],
-                              capture_output=True, text=True, timeout=15)
+        done = subprocess.run([project_python(), "-B", str(script.resolve()), "--json", "--feature", feature],
+                              capture_output=True, text=True, timeout=15, env=login_environment())
         try:
             result = json.loads(done.stdout)
         except ValueError as fault:

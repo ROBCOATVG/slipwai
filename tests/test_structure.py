@@ -112,6 +112,52 @@ class GateTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn(f"over the {structure.MODULE_BUDGET}-line budget", said)
 
+    def over(self, by: int = 1) -> str:
+        return "\n".join(f"x{n} = {n}" for n in range(structure.MODULE_BUDGET + by))
+
+    def claimed(self, note: str, body: str = "") -> tuple[int, str]:
+        """The gate, over a keel whose one module carries `note` and `body` after its docstring."""
+        return self.gate({"__init__.py": '"""The keel."""\n', "errors.py": f'"""A refusal."""\n{note}{body}'})
+
+    def test_a_module_may_claim_more_than_the_budget_with_a_reason(self) -> None:
+        """The number is a tad arbitrary; the sentence is what a reader wants. The gate checks that there is one."""
+        note = f"# budget: {structure.MODULE_BUDGET + 50} — one table the terminal and the page both read\n"
+        self.assertEqual(self.claimed(note, self.over()), (0, ""))
+
+    def test_a_claim_without_a_reason_is_refused(self) -> None:
+        code, said = self.claimed(f"# budget: {structure.MODULE_BUDGET + 50}\n", self.over())
+        self.assertEqual(code, 1)
+        self.assertIn("gives no reason", said)
+
+    def test_a_claim_the_module_has_outgrown_is_refused_by_the_number_it_chose(self) -> None:
+        note = f"# budget: {structure.MODULE_BUDGET + 2} — one table the terminal and the page both read\n"
+        code, said = self.claimed(note, self.over(5))
+        self.assertEqual(code, 1)
+        self.assertIn(f"over the {structure.MODULE_BUDGET + 2} it claimed", said)
+
+    def test_a_claim_a_module_no_longer_needs_is_stale_and_refused(self) -> None:
+        """A permission nobody means any more, left where the next person reads it as the rule."""
+        note = f"# budget: {structure.MODULE_BUDGET + 50} — one table the terminal and the page both read\n"
+        code, said = self.claimed(note)
+        self.assertEqual(code, 1)
+        self.assertIn("is stale", said)
+        under = f"# budget: {structure.MODULE_BUDGET} — one table the terminal and the page both read\n"
+        code, said = self.claimed(under, self.over())
+        self.assertEqual(code, 1)
+        self.assertIn("claims no more than", said)
+
+    def test_a_facade_cannot_claim_more(self) -> None:
+        body = "\n".join(f"x{n} = {n}" for n in range(structure.FACADE_BUDGET + 1))
+        note = f"# budget: {structure.MODULE_BUDGET} — dispatch is dispatch, however much of it there is\n"
+        code, said = self.gate({"__init__.py": f'"""The keel."""\n{note}{body}\n'})
+        self.assertEqual(code, 1)
+        self.assertIn("package facade", said)
+
+    def test_a_suite_may_claim_more_too(self) -> None:
+        note = f"# budget: {structure.MODULE_BUDGET + 50} — every question the page asks, one test each\n"
+        code, said = self.gate({"__init__.py": '"""The keel."""\n'}, suites={"test_big.py": note + self.over()})
+        self.assertEqual((code, said), (0, ""))
+
     def test_a_facade_that_does_more_than_dispatch_is_refused(self) -> None:
         body = "\n".join(f"x{n} = {n}" for n in range(structure.FACADE_BUDGET + 1))
         code, said = self.gate({"__init__.py": f'"""The keel."""\n{body}\n'})

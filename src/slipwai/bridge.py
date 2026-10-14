@@ -180,7 +180,7 @@ class Bridge(BaseHTTPRequestHandler):
         over the network and a POST held open for minutes is a page a person reloads and a page that loses
         what it was doing. What it says is read from `/init.json` instead, by the card the board now carries.
         """
-        where = destination(answers)
+        where = destination(answers, self.root)
         named = answers.get("init") or NO_INIT
         type(self).root = where
         type(self).fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),

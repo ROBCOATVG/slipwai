@@ -54,6 +54,29 @@ class GeneratedProjectTest(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.scratch.cleanup()
 
+    @unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "needs a directory this user cannot write in")
+    def test_an_output_parent_that_cannot_be_written_in_is_refused_and_not_a_traceback(self) -> None:
+        """The board once proposed `/` as the output parent, and what the person saw was `mkdtemp`'s stack
+        rather than a line naming the directory and the flag."""
+        with tempfile.TemporaryDirectory() as scratch:
+            sealed = Path(scratch) / "sealed"
+            sealed.mkdir()
+            sealed.chmod(0o500)
+            try:
+                done = subprocess.run(
+                    [sys.executable, "-m", "slipwai", "generate", "demo", "--backend", TOY,
+                     "--frontend", "none", "--target", "none", "--output", str(sealed)],
+                    cwd=REPOSITORY, capture_output=True, text=True,
+                    env={**os.environ, "PYTHONPATH": str(REPOSITORY / "src"),
+                         "SLIPWAI_LANGUAGES": str(checkout_packages.PACKAGES)},
+                )
+            finally:
+                sealed.chmod(0o700)
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
+        self.assertIn("cannot write in --output", done.stderr)
+        self.assertIn(str(sealed), done.stderr)
+
     def test_nothing_the_keel_renders_still_carries_a_placeholder(self) -> None:
         """The third rule of `docs/generated-prose.md`, and the one its other two cannot make: a token can be
         provided, named, and still arrive unresolved if a page is copied by a path that does not render it.

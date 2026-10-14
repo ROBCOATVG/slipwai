@@ -64,9 +64,14 @@ def argv(root: Path, host: str, port: int) -> list[str]:
     return [*relaunch(), "bridge", "--serve", "--root", str(root), "--host", host, "--port", str(port)]
 
 
-def launchd(line: Sequence[str], home: Path) -> Service:
-    """macOS: a per-user agent in `~/Library/LaunchAgents`, kept alive and started at login."""
+def launchd(line: Sequence[str], home: Path, root: Path | None = None) -> Service:
+    """macOS: a per-user agent in `~/Library/LaunchAgents`, kept alive and started at login.
+
+    `root` is its working directory as well as its `--root`: launchd starts an agent in `/`, and a verb the
+    board runs that reads where it is would otherwise read a directory nothing can be written in.
+    """
     log = home / LOG
+    where = f"  <key>WorkingDirectory</key><string>{xml_escape(str(root))}</string>\n" if root else ""
     arguments = "".join(f"    <string>{xml_escape(one)}</string>\n" for one in line)
     uid = os.getuid() if hasattr(os, "getuid") else 0  # pragma: no cover — POSIX is where this is read
     return Service(
@@ -78,6 +83,7 @@ def launchd(line: Sequence[str], home: Path) -> Service:
         '<plist version="1.0"><dict>\n'
         f"  <key>Label</key><string>{LABEL}</string>\n"
         f"  <key>ProgramArguments</key><array>\n{arguments}  </array>\n"
+        f"{where}"
         "  <key>RunAtLoad</key><true/>\n"
         # Restarted when it falls over, and not when it ends cleanly — which it does when it finds a board
         # already serving. `KeepAlive: true` would have launchd start a second one every ten seconds for as
@@ -92,9 +98,10 @@ def launchd(line: Sequence[str], home: Path) -> Service:
     )
 
 
-def systemd(line: Sequence[str], home: Path) -> Service:
+def systemd(line: Sequence[str], home: Path, root: Path | None = None) -> Service:
     """Linux: a user unit, enabled and started in one go, restarted if it ever stops."""
     runs = " ".join(_quoted(one) for one in line)
+    where = f"WorkingDirectory={_quoted(str(root))}\n" if root else ""
     return Service(
         "a systemd user unit",
         home / f".config/systemd/user/{LABEL}.service",
@@ -102,6 +109,7 @@ def systemd(line: Sequence[str], home: Path) -> Service:
         "Description=slipwai — the board\n\n"
         "[Service]\n"
         f"ExecStart={runs}\n"
+        f"{where}"
         # on-failure, not always: ending cleanly is what it does when a board is already serving, and
         # restarting that is a second board every two seconds for as long as the first one is up.
         "Restart=on-failure\n"
@@ -115,12 +123,14 @@ def systemd(line: Sequence[str], home: Path) -> Service:
     )
 
 
-def startup(line: Sequence[str], home: Path) -> Service:
+def startup(line: Sequence[str], home: Path, root: Path | None = None) -> Service:
     """Windows: a shortcut in the Startup folder, which needs no service manager and no administrator."""
+    where = f"cd /d {subprocess.list2cmdline([str(root)])}\r\n" if root else ""
     return Service(
         "a file in the Startup folder",
         home / "AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/slipwai-board.cmd",
         "@echo off\r\n"
+        f"{where}"
         f'start "" /b {subprocess.list2cmdline(list(line))}\r\n',
         at_next="It starts at your next sign-in; until then, the command above is what runs it.",
     )
@@ -136,10 +146,10 @@ def service(root: Path, host: str = "127.0.0.1", port: int = 8099, home: Path | 
     where = Path.home() if home is None else home
     line = argv(root.resolve(), host, port)
     if sys.platform == "darwin":
-        return launchd(line, where)
+        return launchd(line, where, root.resolve())
     if sys.platform == "win32":  # pragma: no cover — read on the platform it is for
-        return startup(line, where)
-    return systemd(line, where)
+        return startup(line, where, root.resolve())
+    return systemd(line, where, root.resolve())
 
 
 def ran(steps: Sequence[Sequence[str]], run: Callable[..., subprocess.CompletedProcess]) -> list[str]:

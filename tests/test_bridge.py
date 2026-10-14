@@ -253,7 +253,7 @@ class LandingTest(ServerTest):
         self.made = Path(tempfile.mkdtemp()) / "demo"
         self.made.mkdir()
         self.patch("generate", lambda answers, root: (True, f"created: {self.made}"))
-        self.patch("destination", lambda answers: self.made)
+        self.patch("destination", lambda answers, root: self.made)
 
     def patch(self, name: str, with_this: object) -> None:
         import slipwai.bridge as module

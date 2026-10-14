@@ -31,7 +31,7 @@ import checkout_packages
 
 from slipwai.bridge import serve
 from slipwai.catalog import CATALOG, axis_applies
-from slipwai.interview_page import asked, form, run, settled
+from slipwai.interview_page import asked, destination, flags, form, run, settled
 from slipwai.targets import offered_backends
 
 #: Where in the terminal's transcript each question of the page is. Both faces read the catalogue; this is
@@ -111,6 +111,21 @@ class QuestionsTest(unittest.TestCase):
         for question in asked({"name": "demo"}):
             with self.subTest(question=question.name):
                 self.assertIn(question.label, said)
+
+    def test_the_output_parent_proposed_is_where_the_board_is_looking(self) -> None:
+        """Not the process's own directory: a board started by a login service holds `/`, and a project
+        staged beside `/` was a traceback on a read-only filesystem rather than a project."""
+        with tempfile.TemporaryDirectory() as scratch:
+            harbour = Path(scratch).resolve()
+            proposed = {q.name: q.default for q in asked({"name": "demo"}, harbour)}["output"]
+            self.assertEqual(proposed, str(harbour))
+            self.assertIn(f'value="{harbour}"', form({"name": "demo"}, harbour))
+            self.assertEqual(destination({"name": "demo"}, harbour), harbour / "demo")
+            said = flags({"name": "demo"}, harbour)
+            self.assertEqual(said[said.index("--output") + 1], str(harbour))
+            typed = {"name": "demo", "output": "/elsewhere"}
+            self.assertEqual(destination(typed, harbour), Path("/elsewhere/demo"),
+                             "an answer somebody typed still wins over the proposal")
 
     def test_an_answer_a_person_typed_is_escaped_and_never_rendered_as_markup(self) -> None:
         self.assertNotIn("<script>alert(1)</script>", form({"name": "<script>alert(1)</script>"}))
@@ -202,6 +217,12 @@ class ServedTest(unittest.TestCase):
 
     def test_the_interview_is_a_page_on_the_board_s_own_server(self) -> None:
         self.assertIn("Start a new project", self.get("/generate"))
+
+    def test_the_served_interview_proposes_the_board_s_own_root_as_the_output_parent(self) -> None:
+        self.assertIn(f'value="{self.root.resolve()}"', self.get("/generate"))
+        code, said = self.post("/generate/ask", {"name": "demo"})
+        self.assertEqual(code, 200)
+        self.assertIn(f'value="{self.root.resolve()}"', said)
 
     def test_the_board_links_to_it_rather_than_naming_a_command(self) -> None:
         self.assertIn('href="/generate"', self.get("/"))

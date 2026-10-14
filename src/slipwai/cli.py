@@ -302,12 +302,21 @@ def generate_main(argv: list[str]) -> None:
             purpose=args.purpose, contexts=args.context,
         )
         output = args.output.resolve()
-        output.mkdir(parents=True, exist_ok=True)
+        # A parent that cannot be written in is a refusal and not a traceback: `/` on macOS is read-only,
+        # and it is what a board started by a login service proposes when nothing else told it where.
+        try:
+            output.mkdir(parents=True, exist_ok=True)
+            staging = tempfile.TemporaryDirectory(prefix=f".{args.name}-", dir=output)
+        except OSError as error:
+            raise GenerationError(
+                f"cannot write in --output {output} ({error.strerror}); choose a directory you can write to"
+            ) from error
         destination = output / args.name
         if destination.exists():
+            staging.cleanup()
             raise GenerationError(f"refusing to overwrite existing target: {destination}")
-        with tempfile.TemporaryDirectory(prefix=f".{args.name}-", dir=output) as staging:
-            staging_path = Path(staging)
+        with staging as staged:
+            staging_path = Path(staged)
             write_project(staging_path, args.name, args.profile, args.target, apps,
                           files=files_with_record(args, apps), shape=args.shape)
             staging_path.rename(destination)

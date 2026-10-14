@@ -50,6 +50,11 @@ from .services import FIRST_SERVICE, FIRST_WEB
 from .shell_environment import login_environment
 from .targets import managed, offered_backends
 
+# budget: 400 — this is the interview's one list of questions, held in step with the terminal question for
+# question (`InStepTest` walks it), and the half that turns the answers back into the flags `generate` takes.
+# Split, the question and the flag it becomes would be in two files, which is the drift the pairing exists
+# to prevent.
+
 
 @dataclass(frozen=True)
 class Question:
@@ -96,7 +101,7 @@ def chosen(answers: Mapping[str, str]) -> dict[str, str]:
     return {"profile": profile, "target": target, "language": language, "backend": backend}
 
 
-def asked(answers: Mapping[str, str]) -> list[Question]:
+def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question]:
     """Every question this set of answers makes askable, in the order the terminal asks them.
 
     The order is `generate`'s: the name, the delivery foundation, where it goes to production, the language
@@ -104,6 +109,11 @@ def asked(answers: Mapping[str, str]) -> list[Question]:
     axis, and where the project is written. An answer changes what comes after it — the target decides the
     menus, the backend decides the axes — so this is called again whenever one changes rather than rendered
     once and patched.
+
+    `root` is where the board is looking, and is what the last question proposes: the terminal proposes the
+    directory it was run in, and the board's equivalent is the harbour it serves rather than the directory
+    its process happens to hold — a board started at login holds `/`, and a project staged there was a
+    traceback on a read-only filesystem.
     """
     held = chosen(answers)
     target, backend, language = held["target"], held["backend"], held["language"]
@@ -154,25 +164,25 @@ def asked(answers: Mapping[str, str]) -> list[Question]:
         said.append(Question(axis, str(spec["prompt"]), answers.get(axis) or axis_default(axis, backend, target),
                              tuple(options), {name: str(spec["options"][name]["label"]) for name in options},
                              why=str(spec["description"])))
-    said.append(Question("output", "Output parent", answers.get("output") or str(DEFAULT_OUTPUT),
+    said.append(Question("output", "Output parent",
+                         answers.get("output") or str(root.resolve() if root is not None else DEFAULT_OUTPUT),
                          why="the directory the project's own directory is made in"))
     return said
 
 
-def settled(answers: Mapping[str, str]) -> dict[str, str]:
+def settled(answers: Mapping[str, str], root: Path | None = None) -> dict[str, str]:
     """Every question's answer, the shown default standing in wherever nobody said otherwise."""
-    return {**{question.name: answers.get(question.name) or question.default for question in asked(answers)},
-            **chosen(answers)}
+    return {**{one.name: answers.get(one.name) or one.default for one in asked(answers, root)}, **chosen(answers)}
 
 
-def flags(answers: Mapping[str, str]) -> list[str]:
+def flags(answers: Mapping[str, str], root: Path | None = None) -> list[str]:
     """The answers as the flags `slipwai generate` takes — which is the interview's own other half.
 
     Only what was actually asked becomes a flag: an axis this profile and backend cannot be given a choice
     about is left to the generator's own default, exactly as a terminal run that never asked it is.
     """
-    held = settled(answers)
-    names = {question.name for question in asked(answers)}
+    held = settled(answers, root)
+    names = {question.name for question in asked(answers, root)}
     argv = [held["name"], "--profile", held["profile"], "--target", held["target"],
             "--backend", held["backend"], "--frontend", held["frontend"],
             "--service-name", held["service-name"], "--output", held["output"]]
@@ -197,10 +207,10 @@ def flags(answers: Mapping[str, str]) -> list[str]:
 NO_INIT = "none"
 
 
-def destination(answers: Mapping[str, str]) -> Path:
+def destination(answers: Mapping[str, str], root: Path | None = None) -> Path:
     """Where this set of answers puts the project. `flags` carries the two halves to the verb separately and
     the verb prints the join; the board needs it before it reads a word of what the verb said."""
-    held = settled(answers)
+    held = settled(answers, root)
     return (Path(held["output"]).expanduser() / held["name"]).resolve()
 
 
@@ -256,7 +266,7 @@ def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
     child is this copy and no other (`assets.relaunch`), so the board cannot generate with a different keel
     from the one serving it; it is given the login shell's environment (`shell_environment`).
     """
-    done = subprocess.run([*relaunch(), "generate", *flags(answers)], cwd=str(root),
+    done = subprocess.run([*relaunch(), "generate", *flags(answers, root)], cwd=str(root),
                           capture_output=True, text=True, env=login_environment())
     return done.returncode == 0, (done.stdout + done.stderr).strip()
 
@@ -281,7 +291,7 @@ def field_html(question: Question) -> str:
 
 def form(answers: Mapping[str, str], root: Path | None = None) -> str:
     """The whole interview, as one card. Re-rendered when an answer changes what comes after it."""
-    rows = "".join(field_html(question) for question in asked(answers))
+    rows = "".join(field_html(question) for question in asked(answers, root))
     rows += field_html(init_asked(answers, root or Path(".")))
     rows += field_html(repository_asked(answers))
     return (f'<div class="card" id="interview"><h2>Start a new project</h2>'

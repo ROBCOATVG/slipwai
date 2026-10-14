@@ -65,6 +65,13 @@ class ShapeTest(unittest.TestCase):
         self.assertIn(f"<string>{LABEL}</string>", one.text)
         self.assertIn(str(self.home / ".slipwai/board.log"), one.text)
 
+    def test_the_launchd_agent_is_started_in_the_directory_it_serves(self) -> None:
+        """launchd starts an agent in `/`, and a board whose process holds `/` proposed it as the output
+        parent and read it wherever a verb reads where it is — which, on macOS, is a read-only filesystem."""
+        one = launchd(self.line, self.home, Path("/projects"))
+        self.assertIn("<key>WorkingDirectory</key><string>/projects</string>", one.text)
+        self.assertNotIn("WorkingDirectory", launchd(self.line, self.home).text)
+
     def test_the_launchd_agent_replaces_one_that_is_already_there(self) -> None:
         """`bootout` before `bootstrap`, and it is an error when there was nothing to boot out — which is
         every first install, so that step is allowed to fail and nothing else is."""
@@ -81,6 +88,12 @@ class ShapeTest(unittest.TestCase):
         self.assertIn(["systemctl", "--user", "enable", "--now", f"{LABEL}.service"],
                       [list(step) for step in one.load])
 
+    def test_the_systemd_unit_is_started_in_the_directory_it_serves(self) -> None:
+        one = systemd(self.line, self.home, Path("/projects"))
+        self.assertIn("WorkingDirectory=/projects\n", one.text)
+        self.assertIn('WorkingDirectory="/My Projects"\n',
+                      systemd(self.line, self.home, Path("/My Projects")).text)
+
     def test_an_exec_start_argument_with_a_space_in_it_is_quoted(self) -> None:
         """systemd splits that line on spaces, and a path with a space in it is a path somebody has."""
         one = systemd(argv(Path("/My Projects"), "127.0.0.1", 8099), self.home)
@@ -88,8 +101,9 @@ class ShapeTest(unittest.TestCase):
 
     def test_windows_gets_a_file_in_the_startup_folder_and_says_when_it_takes_effect(self) -> None:
         """No service manager and no administrator: the one shape that needs neither."""
-        one = startup(self.line, self.home)
+        one = startup(self.line, self.home, Path("C:/projects"))
         self.assertEqual(one.path.name, "slipwai-board.cmd")
+        self.assertIn("cd /d C:/projects\r\n", one.text)
         self.assertIn("Startup", str(one.path))
         self.assertIn("bridge", one.text)
         self.assertIn("next sign-in", one.at_next)
@@ -106,6 +120,7 @@ class InstallTest(unittest.TestCase):
         written = [path for path in self.home.rglob("*") if path.is_file()]
         self.assertEqual(len(written), 1, written)
         self.assertTrue(written[0].read_text(encoding="utf-8").strip())
+        self.assertIn(str(self.root.resolve()), written[0].read_text(encoding="utf-8"))
         self.assertTrue(run.seen, "nothing was run to load it")
         self.assertIn("http://127.0.0.1:8099/", " ".join(said))
 

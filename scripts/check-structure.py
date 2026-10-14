@@ -16,7 +16,10 @@ Four rules, each with a failure it exists to prevent:
    and it reports it as an ImportError from whichever module happened to be first. Checked here, a cycle is
    a named pair before anyone pays for it.
 3. **Size.** A module over the budget is the state this package was split out of: a file nobody reads
-   end to end, whose contents are found by grep and edited in the dark.
+   end to end, whose contents are found by grep and edited in the dark. A module may claim more, in a
+   comment that gives the reason — `# budget: 420 — <why this one is long>` — and the gate holds it to
+   the claim and to the reason, so going over is a sentence somebody wrote rather than a number nobody
+   noticed. The number itself is a tad arbitrary; the sentence is what a reader actually wants.
 4. **The import surface.** A package may import only the keel modules `import-surface.txt` lists *for its
    kind*, and that file may list only modules the keel has. Without it, a package leans on a module nobody
    promised it, and a rename inside the keel breaks a language built somewhere this repository cannot see.
@@ -38,6 +41,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -147,6 +151,15 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
 MODULE_BUDGET = 350
 # A package facade dispatches; anything longer is behaviour hiding somewhere no one looks for it.
 FACADE_BUDGET = 40
+# **A module that needs more says so where it is read.** `# budget: 420 — <reason>`, one comment line
+# anywhere in the module, with the reason on the same line, and the module is held to that number instead.
+# The gate checks the sentence and not its merit — it cannot judge a reason, but it can refuse a missing
+# one — and three things that would let the annotation go stale: a claim at or under the budget says
+# nothing; a module that has shrunk back under the budget carries a permission nobody means any more;
+# and a module over what it claimed is over budget again, by the number it chose. A facade cannot claim:
+# dispatch is forty lines, and a longer one is behaviour, not a long list.
+BUDGET_NOTE = re.compile(r"^#\s*budget:\s*(\d+)\s*(?:[—:-]\s*)?(.*)$", re.MULTILINE)
+REASON_WORDS = 5
 
 # The kinds of package whose Python the keel imports, each in a directory of its own, loaded by name at run
 # time. Extensions are not here: an extension's executable half is the `init.py` that runs inside a
@@ -280,6 +293,26 @@ def read_module(path: Path) -> tuple[str, str | None]:
     return text, None
 
 
+def size_violation(relative: str, text: str, what: str, budget: int, *, claimable: bool = True) -> str | None:
+    """The one line saying this module is longer than it may be, or that its `# budget:` claim is wrong."""
+    length = len(text.splitlines())
+    note = BUDGET_NOTE.search(text) if claimable else None
+    if note is None:
+        return f"{relative}: {length} lines in one {what}, over the {budget}-line budget" if length > budget else None
+    claimed, reason = int(note.group(1)), note.group(2).strip()
+    if len(reason.split()) < REASON_WORDS:
+        return f"{relative}: `# budget: {claimed}` gives no reason; say in a sentence why this {what} is long"
+    if claimed <= budget:
+        return f"{relative}: `# budget: {claimed}` claims no more than the {budget}-line budget; remove it"
+    if length <= budget:
+        return (f"{relative}: {length} lines is within the {budget}-line budget, so `# budget: {claimed}` is stale; "
+                f"remove it")
+    if length > claimed:
+        return (f"{relative}: {length} lines in one {what}, over the {claimed} it claimed; raise the claim with its "
+                f"reason, or split it")
+    return None
+
+
 def surface_violations(modules: set[str]) -> tuple[int, list[str]]:
     """How many packages were read, and each package module's import of a keel module the surface omits.
 
@@ -342,11 +375,11 @@ def main() -> int:
             violations.append(fault)
             continue
         name = module_name(path)
-        length = len(text.splitlines())
-        budget = FACADE_BUDGET if path.name == "__init__.py" else MODULE_BUDGET
-        if length > budget:
-            what = "package facade" if path.name == "__init__.py" else "module"
-            violations.append(f"{relative}: {length} lines in one {what}, over the {budget}-line budget")
+        facade = path.name == "__init__.py"
+        too_long = size_violation(relative, text, "package facade" if facade else "module",
+                                  FACADE_BUDGET if facade else MODULE_BUDGET, claimable=not facade)
+        if too_long:
+            violations.append(too_long)
         if ast.get_docstring(ast.parse(text)) is None:
             violations.append(f"{relative}: no module docstring saying what part this is")
 
@@ -385,10 +418,9 @@ def main() -> int:
         if fault:
             violations.append(fault)
             continue
-        length = len(text.splitlines())
-        if length > MODULE_BUDGET:
-            relative = path.relative_to(ROOT).as_posix()
-            violations.append(f"{relative}: {length} lines in one suite, over the {MODULE_BUDGET}-line budget")
+        too_long = size_violation(path.relative_to(ROOT).as_posix(), text, "suite", MODULE_BUDGET)
+        if too_long:
+            violations.append(too_long)
 
     if violations:
         print("check-structure: the source does not have the shape it claims\n", file=sys.stderr)

@@ -17,9 +17,9 @@ The chart said what each one owns:
 ```yaml
 fairways:
   booking:
-    owns: ["apps/bookings/src/booking/**"]
+    owns: ["apps/bookings/**/booking/**"]
   availability:
-    owns: ["apps/bookings/src/availability/**"]
+    owns: ["apps/bookings/**/availability/**"]
 ```
 
 ```console
@@ -51,7 +51,10 @@ booking: the last 6 line(s) its captain wrote
   2026-10-08T09:14:58Z  merged BOK-01 as a1b2c3d4
 
 $ python3 scripts/agents/clearance.py
-clearance: 3 of 3 slices cleared in booking
+clearance: 2 of 3 slices start now in booking (slots: 3)
+  start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken
+  start  BOK-02  implement  — cleared and sets nothing, so there is nothing to settle
+  done   BOK-01  — merged at a1b2c3d4
 ```
 
 **Read the second line, and then the last one.** The mark was set one second after the slice was claimed.

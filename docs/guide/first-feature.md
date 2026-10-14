@@ -149,13 +149,17 @@ marks it steers by.
 
 ```console
 $ python3 scripts/agents/clearance.py
-clearance: 1 of 3 slices cleared in booking
-  BOK-01
+clearance: 1 of 3 slices start now in booking (slots: 3)
+  start  BOK-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for BookingHeld
+  blocked   AVA-01  — AVA-01 steers by BookingHeld (set by BOK-01), and none of those is set yet
+  blocked   BOK-02  — BOK-02 steers by BookingHeld (set by BOK-01), and none of those is set yet
 ```
 
 **Cleared** means every mark this slice steers by has been set. Nothing has been set yet, so only the slice
-that waits for nothing may start. A slice that is not cleared names what it is waiting for and who is
-setting it, so "blocked" is never a mood — it is a mark with an owner.
+that waits for nothing may start — and it starts in the *prepare* band, the stages before implementation,
+which is why the line says what it may do now and what implementation still waits on. A slice that is not
+cleared names what it is waiting for and who is setting it, so "blocked" is never a mood — it is a mark
+with an owner.
 
 ### 7. Then, per slice, until the demo
 
@@ -208,10 +212,10 @@ worktree, before anything merged. Run clearance again and the slice in the other
 
 ```console
 $ python3 scripts/agents/clearance.py
-clearance: 3 of 3 slices cleared in booking
-  AVA-01
-  BOK-01
-  BOK-02
+clearance: 2 of 3 slices start now in booking (slots: 3)
+  start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken
+  start  BOK-02  implement  — cleared and sets nothing, so there is nothing to settle
+  done   BOK-01  — merged at a1b2c3d4
 ```
 
 One line in a log, and two more slices may start. **Nothing merged.** A second fairway can start on the

@@ -15,8 +15,17 @@ the mark names `docs/event-model/model.yaml` with the event as its fragment, whi
 can open and a gate can check the existence of. The standard profile writes JSON Schema files because it
 has no model; this profile has one, which is the whole difference between them.
 
-The chart compares as data rather than as text, so re-rendering with a different YAML writer, or a
-reordered model, is not drift. Drift is a fairway, a mark or a slice that says something different.
+The chart compares as data rather than as text, so re-rendering with a different YAML writer is not
+drift. Drift is a fairway, a mark or a slice that says something different — **or the slices in another
+order**, which is slice 18.1 and the one thing this paragraph used to say the opposite of.
+
+**The order of the `slices` block is the order every captain takes them in.** `captain.py` walks it top to
+bottom and takes the first cleared row, the ready set is in it, and merges inside a fairway are in it. So
+it is a decision, and while this renderer sorted by id it was a decision taken by whatever the ids happened
+to spell: a project whose billing slices sort before its ordering ones ran them in that order, and nobody
+had said so. The model's own list order is what the split agreed — `check.py` already requires a `reads` to
+name an event an *earlier* slice raises, so that order is topological before it gets here — and this
+renders it unchanged.
 """
 from __future__ import annotations
 
@@ -154,13 +163,18 @@ def render(model: object, deployables: dict[str, dict], model_path: str = MODEL_
             service_of[context] = found
 
     fairways, marks, charted = {}, {}, {}
-    for context, (service, record) in sorted(service_of.items()):
+    # In first-appearance order, for the same reason the slices are: with 18.2 the `fairways` block's order
+    # is which captain is lit first when `boilers` is below the fairway count, and sorting it here would
+    # hand that to the alphabet. `service_of` is filled walking the slices, so this is the order the
+    # fairways' first slices come in — the split's own answer to which stream leads.
+    for context, (service, record) in service_of.items():
         fairways[context] = {"context": context, "service": str(record.get("path") or service),
                              "owns": owns(service, record, context)}
-    for item in sorted(items, key=lambda entry: str(entry["id"])):
-        for event in events_of(item):
-            marks[event] = {"kind": "event", "schema": f"{model_path}#{event}"}
-    for item in sorted(items, key=lambda entry: str(entry["id"])):
+    # Marks are sorted and slices are not, and the difference is what each is. A mark is a name another
+    # slice steers by, looked up rather than read in order; the slices are a running order.
+    for event in sorted({event for item in items for event in events_of(item)}):
+        marks[event] = {"kind": "event", "schema": f"{model_path}#{event}"}
+    for item in items:
         reads = item.get("reads")
         charted[str(item["id"])] = {
             "fairway": str(item.get("context") or ""),
@@ -216,7 +230,11 @@ def main() -> int:
     document = (
         f"# Rendered from {MODEL.relative_to(ROOT).as_posix()} by `make chart`. Never edit by hand:\n"
         "# `make check-chart` refuses a chart that disagrees with the model.\n"
-        + yaml.safe_dump(chart, sort_keys=True, default_flow_style=False, allow_unicode=True)
+        # `sort_keys=False`, because the slices are in the order the split agreed and sorting them here
+        # would throw away the decision the renderer has just been careful to carry. Everything else is
+        # built in its own order — fairways and marks sorted, the blocks as `render` writes them — so the
+        # file is as stable as it was when the writer did the sorting.
+        + yaml.safe_dump(chart, sort_keys=False, default_flow_style=False, allow_unicode=True)
     )
     path.write_text(document, encoding="utf-8")
     print(f"chart: {path.relative_to(ROOT).as_posix()} written from the model — "

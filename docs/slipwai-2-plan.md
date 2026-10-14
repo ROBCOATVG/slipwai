@@ -1564,7 +1564,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 170 of 176 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 1/5. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 170 of 178 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 1/5, phase 18 0/2. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2404,6 +2404,53 @@ Depends on: phase 10, for the pattern and for the gate `test_no_frontend_named.p
 npm-workspace language package to receive the material, which is a second repository and the reason 17.2 is
 sized L rather than M. **Not a dependency of anything.** 17.1 is behaviour-neutral and 17.2 removes a tree
 nothing reachable was reading, so the phase can be stopped after any slice.
+
+### Phase 18. The order is a decision, after 2.0.0
+
+Asked 2026-10-14. The order slices start in is the order of the `slices` block in
+`specs/<feature>/chart.yaml`, and nothing says so to anybody. `captain.py`'s `next_slice` walks that block
+top to bottom and takes the first cleared row; `clearance.py`'s ready set is in it; merges inside a fairway
+are in it; `fleet.py` lights captains in the order fairways first appear in it. The split writes that order
+as a side effect of writing the rows, and on the event profile `chart.py` sorts the rows by id, so the
+order is whatever the ids happen to spell. A decision every captain follows, taken by nobody, is the shape
+section 8 exists to prevent — and it is the one decision a person most wants to take when they look at a
+board: *this one first*.
+
+Two slices, and the second is the one with a runtime. First, the split **proposes** the order with a reason
+per slice and writes what was confirmed, the way `/chart` proposes fairways and marks rather than asking.
+Second, the order of fairways becomes the order berths are lit and slots are filled, and a person — or the
+cruise, as a decision — can move a fairway up while the run is going.
+
+**Not a scheduler.** A captain never reorders on its own: the chart stays the one statement of what runs
+next, and a runtime shift is a telegraph setting folded onto it, read at a boundary like every other
+setting and shown as *adjusted* like every other number. The alternative — a captain weighing its own
+queue — makes two fairways' logs disagree about why something ran, which is the fold's whole value gone.
+
+| Slice | What | From | Size | Done when | Status |
+|---|---|---|---|---|---|
+| 18.1 | The split proposes the order. `python3 scripts/agents/clearance.py --order` prints the chart's slices in order with what each row is read off — the marks it sets and how many siblings steer by them, what it steers by, and whether it is its capability's first — and the split's new `## Order` step puts that to the person as a proposal with one reason per row, in the `/chart` manner: evidence by file and line, the unsure rows flagged, the undecidable ones left as questions. The confirmed order is the order `slices` is written in. Under `/cruise`, `decide: recommended-first` takes the proposal as a `D<n>` entry and `skipper-always` delegates it. On the event profile the confirmed order is written back as the model's `slices` list order, `chart.py` renders in that order rather than by id, and `check-chart` refuses a committed chart whose slice order differs from the model's — order is now something the chart says, so a reordered model *is* drift and the sentence at the top of `chart.py` that says otherwise goes | new (owner, 2026-10-14) | M | A split's log shows the order proposed, the reason each row carried and what the person changed; a generated project's first `/sail` starts the slice the split named first; `tests/test_chart_render.py` proves two model orders render two charts, `tests/test_chart.py` proves the gate refuses the stale one, and `tests/test_clearance.py` proves `--order` says what each row is read off |  |
+| 18.2 | Fairway order lights berths and fills slots, and can be moved while running. The chart's `fairways` block order is the priority: `fleet.py` lights captains in it rather than in first-appearance order, and `clearance.py`'s schedule hands slots to the earlier fairway's slices first. `--set fairways=billing,ordering` on the telegraph overrides it in `harbour.json` — unset means the chart's order, a fairway the chart has not got is refused, and the board reads *adjusted* as it does for a number. A captain whose fairway has dropped below the lit line reads that at its next slice boundary, as it reads every telegraph change, writes `yielded` with the fairway that displaced it and exits; the harbourmaster's pass lights the fairway now above the line, which is the one thing `fleet.py` does not do because it starts and gets out of the way | new (owner, 2026-10-14) | M | With `boilers=1` and two fairways, `--set fairways=` naming the second first has its captain running after the first's current slice merges, with a `yielded` line saying why; `tests/test_fleet_start.py` proves the lit order is the block's order and the override's, `tests/test_clearance.py` proves a slot goes to the earlier fairway when both have a ready slice, `tests/test_telegraph.py` proves the refusal, and `tests/test_captain.py` proves a captain yields at a boundary and never mid-slice |  |
+
+**How each lands.** 18.1 is three RED tests before any prose: a model whose slices are listed `BIL-01,
+ORD-01` renders a chart in that order; `check-chart` against a chart in the other order fails naming the
+first row that differs; `clearance.py --order` on the two-slice chart prints `ORD-01` as *sets OrderPlaced,
+which 1 slice steers by* and `BIL-01` as *steers by OrderPlaced*. Then the `## Order` step in
+`skills/story-splitting/SKILL.md`, between *Chart* and *Fairways*, written as a proposal and not a
+questionnaire, and the one paragraph in `commands/cruise.md` that says which decision mode takes it. 18.2
+is four: `fleet.fairways()` reads the block; `schedule()` with one slot and two fairways' ready slices
+starts the earlier fairway's; `parse_setting("fairways=billing,ordering")` returns the list and refuses
+`fairways=harbour`; a captain whose fairway is below the line after a `merged` line writes `yielded` and
+exits 0. The harbourmaster's relight is the last increment, because it is the only one with a process in
+it, and `tests/test_fleet_start.py`'s fake captain is what proves it. Neither slice touches the standard
+profile's hand-written `slices` block beyond the order it is written in.
+
+18.1 before 18.2: a fairway order that nobody proposed is the same accident one level up, and 18.2's
+`--set` should override a decision, not a side effect.
+
+Depends on: phase 7's captains and harbourmaster, and 11.1's claim ref — a captain that yields holds the
+fairway's claim, so yielding releases it, or the relit captain cannot take the fairway and the shift
+parks. **Not a dependency of anything.** The loop runs in chart order today and goes on running in it; the
+phase makes that order said, and then movable.
 
 ### Risks the plan carries, and where each is caught
 

@@ -296,6 +296,103 @@ def cleared(charted: dict, settled: set[str], slice_id: str) -> bool | str:
     return f"{slice_id} steers by {', '.join(owed)}, and none of those is set yet"
 
 
+def preferred_fairways(config: Path) -> list[str]:
+    """The fairway order the harbour holds — `fairways` in `harbour.json`, set while a run is going.
+
+    Read on every query rather than once, because that is the point of it: a person moves a stream up at
+    half past three and the next boundary is where it takes effect.
+    """
+    try:
+        held = json.loads(config.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return []
+    wanted = held.get("fairways") if isinstance(held, dict) else None
+    return [str(name) for name in wanted] if isinstance(wanted, list) else []
+
+
+def fairway_order(charted: dict, preferred: list[str]) -> list[str]:
+    """Every fairway the chart names, in the order their captains are lit — slice 18.2.
+
+    **The `fairways` block's order, and the harbour's answer over it.** With fewer berths than fairways,
+    which captain is lit is which stream the run makes progress on at all, so it is a priority and is read
+    from the block the split wrote rather than from wherever a fairway's first slice happens to fall. Both
+    profiles write that block deliberately: `/chart` with a person present, the renderer from the model.
+
+    `preferred` is `fairways` in `harbour.json`, which `slipwai telegraph --set fairways=billing` writes. It
+    moves the names it holds to the front and does nothing else. It is **not** the list of fairways to run:
+    one that silently stopped the streams it did not name would be a way to park a fairway nobody meant to
+    park, and a name left behind after the chart changed would then park the lot. So the chart says which
+    fairways there are, and the harbour says which of them goes first.
+    """
+    named = [str(name) for name in (charted.get("fairways") or {})]
+    if not named:
+        # A chart without the block, which `check-chart` refuses but a half-written feature can be holding.
+        for body in (charted.get("slices") or {}).values():
+            name = str((body or {}).get("fairway", "")) if isinstance(body, dict) else ""
+            if name and name not in named:
+                named.append(name)
+    first = [name for name in preferred if name in named]
+    return first + [name for name in named if name not in first]
+
+
+def fairway_of(charted: dict) -> dict[str, str]:
+    """Which fairway each slice belongs to, for a reader that has the states and not the chart."""
+    return {str(slice_id): str((body or {}).get("fairway", ""))
+            for slice_id, body in (charted.get("slices") or {}).items()}
+
+
+def order_reasons(charted: dict) -> list[tuple[str, str]]:
+    """Every slice in the chart's own order, with what that position is read off — slice 18.1.
+
+    The order of the `slices` block is the order every captain takes them in: `next_slice` walks it top to
+    bottom, the ready set is in it, and merges inside a fairway are in it. It was written by the split as a
+    side effect of writing the rows, so the one decision that governs what the whole loop does next was the
+    only one nobody argued. This is what the split reads out to propose it, and a proposal is an order with
+    a reason per row — the `/chart` rule, applied to the stage that commits the running order.
+
+    Three clauses, in the order a person weighs them. **What holds it** is the hard constraint and comes
+    first: a row cannot go above the slices that set the marks it steers by, whatever anybody prefers.
+    **What waits on it** is the judgement the proposal is actually about — a slice four siblings steer by
+    is a slice that unblocks a fairway by going early. **Where it falls in its capability** is last and is
+    the reason not to shuffle rows purely by weight: a capability is what a person's demo is of, so a
+    capability's slices finishing together is worth more than the odd slice starting sooner.
+    """
+    slices = charted.get("slices") or {}
+    waited_on: dict[str, int] = {}
+    for body in slices.values():
+        for mark in (body or {}).get("steers_by") or []:
+            waited_on[str(mark)] = waited_on.get(str(mark), 0) + 1
+    seen: dict[str, str] = {}
+    found: list[tuple[str, str]] = []
+    for slice_id, body in slices.items():
+        slice_id, body = str(slice_id), body or {}
+        if body.get("observed"):
+            found.append((slice_id, "observed — already in the tree, so it is a record and not work"))
+            continue
+        holds = [f"{mark} ({setter_of(charted, str(mark)) or 'nobody — the chart is wrong'})"
+                 for mark in body.get("steers_by") or []]
+        sets = [str(mark) for mark in body.get("sets") or []]
+        waiting = sum(waited_on.get(mark, 0) for mark in sets)
+        capability = str(body.get("capability") or "")
+        said = [f"steers by {said_list(holds)}" if holds else "steers by nothing"]
+        said.append(f"sets {said_list(sets)}, which "
+                    f"{'nothing' if not waiting else f'{waiting} slice' + ('s' if waiting > 1 else '')} "
+                    f"steers by" if sets else "sets nothing")
+        if capability:
+            said.append(f"first of {capability}" if capability not in seen
+                        else f"{capability}, after {seen[capability]}")
+            seen.setdefault(capability, slice_id)
+        found.append((slice_id, "; ".join(said)))
+    return found
+
+
+def said_list(names: list[str]) -> str:
+    """`a`, `a and b`, `a, b and c` — a list a person reads rather than one a parser does."""
+    if len(names) <= 1:
+        return names[0] if names else ""
+    return f"{', '.join(names[:-1])} and {names[-1]}"
+
+
 def cleared_slices(charted: dict, settled: set[str]) -> list[str]:
     """Every slice that may start now, in the chart's own order, which is split order.
 
@@ -387,11 +484,25 @@ def position(charted: dict, folded_logs: Folded, slice_id: str,
 
 
 def positions(charted: dict, folded_logs: Folded,
-              done: frozenset[str] | set[str] = frozenset()) -> dict[str, tuple[str, str]]:
-    """Every slice that is work, in split order, with its state. `observed` slices are not offered."""
+              done: frozenset[str] | set[str] = frozenset(),
+              fairways: list[str] | None = None) -> dict[str, tuple[str, str]]:
+    """Every slice that is work, in the order it is offered, with its state. `observed` ones are not.
+
+    Split order, under the fairway priority — slice 18.2. `fairways` is that priority, and the sort by it
+    is stable, so **within one fairway the chart's own order is untouched**: across streams the priority
+    decides which gets a scarce slot, and inside one the split's order is the whole rule, which is what
+    makes the merge order predictable. None leaves the rows exactly as the chart has them, which is what
+    every caller that has no fairway question gets and what this did before there was one.
+    """
     never = observed(charted)
-    return {str(slice_id): position(charted, folded_logs, str(slice_id), done)
-            for slice_id in (charted.get("slices") or {}) if str(slice_id) not in never}
+    found = {str(slice_id): position(charted, folded_logs, str(slice_id), done)
+             for slice_id in (charted.get("slices") or {}) if str(slice_id) not in never}
+    if not fairways:
+        return found
+    place = {name: number for number, name in enumerate(fairways)}
+    of_fairway = fairway_of(charted)
+    return dict(sorted(found.items(),
+                       key=lambda row: place.get(of_fairway.get(row[0], ""), len(place))))
 
 
 def schedule(found: dict[str, tuple[str, str]], slots: int | None,
@@ -404,6 +515,10 @@ def schedule(found: dict[str, tuple[str, str]], slots: int | None,
     that lets two sessions take one, so the queue says *claims could not be read* and the host fixes the
     read before it fills a slot. Running and waiting slices are listed so the host answers the question
     that is always asked next — why is this one not going — without a second query.
+
+    The rows are walked in the order they come in, which is the order `positions` put them in: the chart's
+    own, under the fairway priority of slice 18.2. So a scarce slot goes to the stream that is meant to have
+    it without this having to know what a fairway is.
     """
     start: list[dict[str, str]] = []
     queued: list[dict[str, str]] = []
@@ -524,6 +639,25 @@ def numbers_line(numbers: dict[str, int | None]) -> str:
             f"running){inside}")
 
 
+def say_order(charted: dict, feature: str) -> int:
+    """The chart's running order with what each row is read off, for the split to propose from — 18.1.
+
+    Reads the chart and no log: this is asked before any slice has started, by the stage that is deciding
+    what the order should be. Everything else here answers *what may start now*, which is a question about
+    a run; this one is about the decision the run will then follow.
+    """
+    rows = order_reasons(charted)
+    print(f"clearance: {feature} — {len(rows)} slices in the chart's order, "
+          f"which is the order every captain takes them in")
+    width = max((len(slice_id) for slice_id, _ in rows), default=0)
+    for place, (slice_id, why) in enumerate(rows, start=1):
+        fairway = str(((charted.get("slices") or {}).get(slice_id) or {}).get("fairway", ""))
+        print(f"  {place:>3}  {slice_id:<{width}}  {fairway}  — {why}")
+    print("\nPropose this order or a better one, a reason per row, and write what the person confirms: the "
+          "`slices` block's order is the decision.")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if "--json" in argv:
         # A board's read query never installs a dependency or reaches the network.
@@ -548,6 +682,8 @@ def main(argv: list[str]) -> int:
     if not charted:
         print("clearance: no chart yet, so nothing is waiting on anything")
         return 0
+    if "--order" in argv:
+        return say_order(charted, feature)
     found = lines(feature)
     done = done_marked(feature)
     if "--baseline-marks" in argv:
@@ -558,7 +694,8 @@ def main(argv: list[str]) -> int:
         print(f"clearance: {said}")
         return 0 if written or "nothing to baseline" in said else 1
     folded_logs = folded(found)
-    states = positions(charted, folded_logs, done)
+    order = fairway_order(charted, preferred_fairways(ROOT / "harbour.json"))
+    states = positions(charted, folded_logs, done, order)
     claims: set[str] | None = set(folded_logs.claimed)
     if "--claims-unreadable" in argv:
         claims = None
@@ -575,11 +712,15 @@ def main(argv: list[str]) -> int:
     planned = schedule(states, slots, claims)
     if "--json" in argv:
         settled = folded_logs.marks | already_set(charted)
+        # Keyed in the fairway priority, so a reader takes the first key and has the stream that is
+        # meant to go first rather than the one the chart happens to name first.
         ready: dict[str, list[str]] = {}
-        for slice_id in cleared_slices(charted, settled):
-            fairway = str((charted.get("slices") or {})[slice_id].get("fairway", ""))
-            ready.setdefault(fairway, []).append(slice_id)
-        print(json.dumps({"v": QUERY_VERSION, "feature": feature, "ready": ready,
+        of_fairway = fairway_of(charted)
+        for slice_id in sorted(cleared_slices(charted, settled),
+                               key=lambda one: order.index(of_fairway.get(one, ""))
+                               if of_fairway.get(one, "") in order else len(order)):
+            ready.setdefault(of_fairway.get(slice_id, ""), []).append(slice_id)
+        print(json.dumps({"v": QUERY_VERSION, "feature": feature, "ready": ready, "fairways": order,
                           "states": {slice_id: {"state": state, "why": why, "band": BANDS.get(state)}
                                      for slice_id, (state, why) in states.items()},
                           "slots": slots, "numbers": numbers,

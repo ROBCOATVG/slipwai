@@ -293,6 +293,48 @@ in neither is one nobody has seen. A feature whose `mock-states.md` says `surfac
 empty on every row. Every approved state belongs to exactly one slice by the end of the split, or the split
 has left part of what a person approved unbuilt.
 
+## Order
+
+**The order the rows are written in is the order they run in**, so it is a decision and this is where it is
+taken. `captain.py` walks the `slices` block top to bottom and takes the first cleared row; the ready set
+is in that order; merges inside a fairway are in it. Nothing re-sorts it by size, by risk or by age, and no
+captain reorders on its own — the chart is the one statement of what runs next, which is what makes two
+fairways' logs agree about why something ran.
+
+Run `python3 scripts/agents/clearance.py --order`. It prints every row in the order the block currently
+holds with what that position is read off: what holds it, how many siblings steer by what it sets, and
+where it falls in its capability. **Then propose an order, with a reason per row** — the `/chart` rule,
+because this commits what the whole loop does next:
+
+- **Every proposal carries what it was read off.** "ORD-02 above BIL-01 because two slices steer by
+  `PricingPort` and nothing steers by `InvoiceRaised`" is a proposal a person can disagree with. A list is
+  not.
+- **Say which ones you are unsure about before the person reads the list.** Rows nothing distinguishes are
+  rows where the order is arbitrary, and saying so is what stops a person confirming an arbitrary choice at
+  the same speed as an argued one.
+- **A product order is a question, not a proposal.** Where two capabilities could equally go first and the
+  answer is which one somebody wants to see demoed, ask it. That is a product decision and this stage has a
+  person in it.
+
+Three things the order is held to, which are not preferences:
+
+1. **Nothing goes above what sets the marks it steers by.** Not a style rule: a slice whose marks are unset
+   is not cleared, so a row placed above its setters simply waits, and the fairway looks blocked for a
+   reason nobody wrote down.
+2. **A capability's slices stay together** unless there is a reason to split them. A capability is what a
+   person's demo is of, so scattering one defers its demo behind unrelated work.
+3. **The walking skeleton goes first** where the split cut one. It is the row that proves the path, and
+   proving the path late is the whole failure it exists to prevent.
+
+Write the confirmed order as the order of the `slices` block. On the event-modelling profile the block is
+rendered, so write the confirmed order as the order of `model.yaml`'s `slices` list and run `make chart`:
+`make check-chart` refuses a chart whose rows are in another order than the model's, because two orders are
+two answers to what runs first.
+
+Under `/cruise` this is a decision like any other. With `decide: recommended-first` the proposal is taken
+here and recorded as a `D<n>` entry with its reasons, because the stage recommends an answer; with
+`decide: skipper-always` it goes to a delegate. Either way what is written down is an order somebody argued.
+
 ## Fairways
 
 Read from `specs/<feature>/chart.yaml`'s `fairways` block, never typed beside it. One row per fairway,

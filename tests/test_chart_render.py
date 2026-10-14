@@ -143,6 +143,41 @@ class RenderedChartTest(unittest.TestCase):
         self.assertIn("disagree(s) with docs/event-model/model.yaml", done.stderr)
         self.assertIn("run `make chart`", done.stderr)
 
+    def test_the_chart_keeps_the_order_the_model_lists_its_slices_in(self) -> None:
+        """Slice 18.1. The order of the `slices` block is the order every captain takes them in, so it is
+        a decision — and a decision is taken by the split and written down, never spelled by whatever the
+        ids happen to sort as. The renderer used to sort by id, which made `BIL-01` run before `ORD-01`
+        for no reason anybody had given."""
+        self.render()
+        self.assertEqual(list(self.chart()["slices"]), ["PlaceOrder", "RaiseInvoice"])
+        path = self.tree / "docs/event-model/model.yaml"
+        model = path.read_text(encoding="utf-8")
+        first = model.index("  - id: PlaceOrder")
+        path.write_text(model[:first] + "\n".join(
+            [model[model.index("  - id: RaiseInvoice"):].rstrip(),
+             model[first:model.index("  - id: RaiseInvoice")].rstrip(), ""]), encoding="utf-8")
+        self.render()
+        self.assertEqual(list(self.chart()["slices"]), ["RaiseInvoice", "PlaceOrder"])
+        # And the fairways with them: with 18.2 that block's order is which captain is lit first, so the
+        # alphabet must not be what decides it either.
+        self.assertEqual(list(self.chart()["fairways"]), ["billing", "ordering"])
+
+    def test_a_chart_in_a_different_order_from_the_model_is_drift(self) -> None:
+        """The same rows in another order are another decision about what runs first, so the gate reads
+        them as disagreeing and names the first row that differs."""
+        import yaml
+        self.render()
+        path = self.tree / "specs/ordering/chart.yaml"
+        held = yaml.safe_load(path.read_text(encoding="utf-8"))
+        held["slices"] = dict(reversed(list(held["slices"].items())))
+        path.write_text(yaml.safe_dump(held, sort_keys=False), encoding="utf-8")
+        done = subprocess.run([sys.executable, "scripts/check-chart.py"], cwd=self.tree,
+                              capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("RaiseInvoice", done.stderr)
+        self.assertIn("order", done.stderr)
+        self.assertIn("run `make chart`", done.stderr)
+
     def test_a_project_with_no_model_is_told_which_stage_writes_its_chart(self) -> None:
         (self.tree / "docs/event-model/model.yaml").unlink()
         done = self.render()

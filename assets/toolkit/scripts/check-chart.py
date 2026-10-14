@@ -36,8 +36,10 @@ what it says: the committed chart must be what `make chart` would render from `m
 the source of truth on that profile, so a chart edited by hand is a second answer to a question that
 already had one, and the two diverge silently because nothing else reads both. This holds it the way
 `make check-drawio` holds the committed canvas. It compares the two as data rather than as text, so a
-different YAML writer or a reordered model is not drift; a fairway, a mark or a slice that says something
-different is.
+different YAML writer is not drift; a fairway, a mark or a slice that says something different is — **and
+so is the same slices in another order**, which is slice 18.1. The order of the `slices` block is the order
+every captain takes them in, so two orders are two answers to what runs first, and a chart reordered by
+hand is the decision taken away from the split that took it.
 
 Before the five, the shape: the keys that have to be there, the four mark kinds, and a slice naming a
 fairway that exists. A malformed chart is reported as a shape fault and the five rules are not run over it,
@@ -225,13 +227,37 @@ def model_drift(path: Path) -> list[str]:
     if meant is None or module.chart_path() != path:
         return []
     committed = load_yaml(path.read_text(encoding="utf-8"))
-    if committed == meant:
-        return []
     where = path.relative_to(ROOT).as_posix()
+    out_of_order = order_drift(committed, meant)
+    if committed == meant and not out_of_order:
+        return []
     differing = sorted(block for block in ("fairways", "marks", "slices")
                        if not isinstance(committed, dict) or committed.get(block) != meant[block])
-    return [f"{where}: {', '.join(differing) or 'the chart'} disagree(s) with docs/event-model/model.yaml. "
+    said = ", ".join(differing + out_of_order) or "the chart"
+    return [f"{where}: {said} disagree(s) with docs/event-model/model.yaml. "
             f"The model is the source of truth here; run `make chart` rather than editing the chart"]
+
+
+def order_drift(committed: object, meant: dict) -> list[str]:
+    """The blocks whose rows are the same and in another order, each naming the first row that differs.
+
+    Equality is not enough for these two, which is the whole of slice 18.1: a dict holding the same rows in
+    another order is equal to it, and the order of `slices` is the order every captain takes them in. So a
+    chart with two slices swapped compares equal to the one the model means and tells every captain to do
+    something else, and before this the gate said it was fine.
+    """
+    if not isinstance(committed, dict):
+        return []
+    found: list[str] = []
+    for block in ("fairways", "slices"):
+        here, there = committed.get(block), meant.get(block)
+        if not isinstance(here, dict) or not isinstance(there, dict) or set(here) != set(there):
+            continue  # A row added or dropped is a difference the equality above reports better.
+        differing = [(name, expected) for name, expected in zip(here, there) if name != expected]
+        if differing:
+            name, expected = differing[0]
+            found.append(f"the order of `{block}` (`{name}` is where the model has `{expected}`)")
+    return found
 
 
 def main() -> int:

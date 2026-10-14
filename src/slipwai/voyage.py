@@ -119,8 +119,11 @@ def viewer_script() -> tuple[bytes, str]:
     there are none, the line that says why."""
     if VIEWER.is_file():
         return VIEWER.read_bytes(), ""
+    # Named, because the host fronts the file with a proxy that answers 403 to Python's default agent —
+    # the same refusal the aws bootstrap script met on a self-hosted forge, for the same reason.
+    request = urllib.request.Request(VIEWER_URL, headers={"User-Agent": "slipwai-board"})
     try:
-        with urllib.request.urlopen(VIEWER_URL, timeout=30) as answer:
+        with urllib.request.urlopen(request, timeout=30) as answer:
             body = answer.read()
     except (urllib.error.URLError, OSError, ValueError) as fault:
         return b"", (f"draw.io's viewer could not be fetched from {VIEWER_URL} ({fault}); the model is shown "

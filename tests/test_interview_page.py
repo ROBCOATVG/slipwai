@@ -19,6 +19,7 @@ import filecmp
 import io
 import json
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -126,7 +127,7 @@ class QuestionsTest(unittest.TestCase):
             said = flags({"name": "demo"}, harbour)
             self.assertEqual(said[said.index("--output") + 1], str(harbour))
             typed = {"name": "demo", "output": "/elsewhere"}
-            self.assertEqual(destination(typed, harbour), Path("/elsewhere/demo"),
+            self.assertEqual(destination(typed, harbour), Path("/elsewhere/demo").resolve(),
                              "an answer somebody typed still wins over the proposal")
 
     def test_the_last_question_is_the_document_and_it_is_a_file(self) -> None:
@@ -180,6 +181,7 @@ class ByteIdenticalTest(unittest.TestCase):
             self.assertGreater(len(list((terminal / "demo").rglob("*"))), 100)
             self.assertEqual(differences(terminal / "demo", board / "demo"), [])
 
+    @unittest.skipIf(sys.platform == "win32", "a login shell is asked with `-ilc`, which Windows has no shell for")
     def test_the_child_is_given_the_login_shells_path_and_keeps_its_own_variables(self) -> None:
         """A board started from a launcher has `PATH=/usr/bin:/bin` and no tokens, and `generate` then refuses
         a target on a machine that has every tool. The login shell is what the person's terminal has."""

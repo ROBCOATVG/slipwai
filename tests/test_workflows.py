@@ -36,10 +36,15 @@ class GateTest(unittest.TestCase):
 
     def test_the_gate_reads_no_package_but_the_toy(self) -> None:
         """The line theme A draws. A keel whose gate checks seven packages cannot be changed without
-        them, which is the coupling the packages were split out to remove."""
-        for package in ("slipwai-language-go", "slipwai-language-java", "submodule"):
+        them, which is the coupling the packages were split out to remove.
+
+        The checkout does take the submodules: the two target pointers are public and anonymous, and the
+        structure gate refuses an empty package directory. What the gate may not do is name a language
+        package, or run a package's own suite — those run in the package's own repository."""
+        for package in ("slipwai-language-go", "slipwai-language-java", "packages/go", "packages/typescript"):
             with self.subTest(absent=package):
                 self.assertNotIn(package, self.gate)
+        self.assertIn("submodules: true", self.gate)
 
     def test_the_gate_runs_the_fast_half_and_never_the_matrix(self) -> None:
         self.assertIn("make verify", self.gate)

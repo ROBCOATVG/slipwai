@@ -10,6 +10,7 @@ ever looks at is a file that is wrong on the other two for a year.
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -42,6 +43,8 @@ class Recorder:
         return subprocess.CompletedProcess(line, self.code, "", "it would not" if self.code else "")
 
 
+@unittest.skipIf(sys.platform == "win32",
+                 "the shapes are read in POSIX path spelling; Windows spells /projects its own way")
 class ShapeTest(unittest.TestCase):
     """What each platform's file says."""
 

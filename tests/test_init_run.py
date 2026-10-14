@@ -8,6 +8,7 @@ keel owns — the command it builds, the lines it says, and the tail the board r
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import time
 import unittest
@@ -66,6 +67,8 @@ class CommandTest(unittest.TestCase):
         self.assertIn("written and committed either way", said)
 
 
+@unittest.skipIf(sys.platform == "win32",
+                 "the board's children run through a pty and `sh`, which Windows has neither of")
 class BackgroundTest(unittest.TestCase):
     """The board's face: a child that outlives the request, read by polling."""
 

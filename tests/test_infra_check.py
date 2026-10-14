@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -110,6 +111,11 @@ class ValidateTest(unittest.TestCase):
         self.addCleanup(scratch.cleanup)
         self.stack = Path(scratch.name)
         (self.stack / "main.tf").write_text("locals {\n  a = 1\n}\n", encoding="utf-8")
+        # The tool is stood in for, so these say what the reading does with an answer, on a runner that
+        # has no tofu as much as on a laptop that does.
+        found = mock.patch("slipwai.infra_check.shutil.which", return_value="/usr/local/bin/tofu")
+        found.start()
+        self.addCleanup(found.stop)
 
     def answer(self, code: int, said: str) -> subprocess.CompletedProcess:
         return subprocess.CompletedProcess(["tofu"], code, "", said)

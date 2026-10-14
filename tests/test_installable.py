@@ -72,8 +72,9 @@ class WorkerTest(unittest.TestCase):
 class NotRunningTest(unittest.TestCase):
     def test_it_says_what_starts_the_board(self) -> None:
         from slipwai.assets import this_command
+        from slipwai.page_shell import esc
         said = not_running()
-        self.assertIn(this_command(), said)
+        self.assertIn(esc(this_command()), said, "a quoted path is escaped the way the page escapes everything")
         self.assertIn("Nothing is serving the board", said)
 
     def test_it_does_not_ask_to_be_installed_while_it_is_the_page_that_is_showing(self) -> None:

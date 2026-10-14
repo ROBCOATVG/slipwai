@@ -124,7 +124,8 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(len(written), 1, written)
         self.assertTrue(written[0].read_text(encoding="utf-8").strip())
         self.assertIn(str(self.root.resolve()), written[0].read_text(encoding="utf-8"))
-        self.assertTrue(run.seen, "nothing was run to load it")
+        # The Startup folder needs no loader: Windows reads it at sign-in, so nothing is run to load it there.
+        self.assertEqual(bool(run.seen), sys.platform != "win32", "nothing was run to load it")
         self.assertIn("http://127.0.0.1:8099/", " ".join(said))
 
     def test_it_says_where_it_starts_and_how_to_undo_it(self) -> None:
@@ -162,7 +163,10 @@ class BoardInstallTest(unittest.TestCase):
         """The file is written either way: a person who was told it worked and finds no board has nothing
         to go on, which is the one outcome worth preventing here."""
         said = " ".join(install(self.root, "127.0.0.1", 8099, self.home, Recorder(code=2)))
-        self.assertIn("exited 2", said)
+        if sys.platform == "win32":  # the Startup folder runs no step, so there is nothing to fail
+            self.assertNotIn("exited", said)
+        else:
+            self.assertIn("exited 2", said)
 
     def test_a_step_allowed_to_fail_is_not_reported(self) -> None:
         self.assertEqual(ran([("anything", MAY_FAIL)], Recorder(code=1)), [])

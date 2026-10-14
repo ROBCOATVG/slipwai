@@ -250,6 +250,36 @@ class RunTest(unittest.TestCase):
         done = self.fire("before-stop", {"last_assistant_message": "Done."})
         self.assertEqual(done.stdout.strip(), "")
 
+    def returned(self, kind: str, text: str) -> subprocess.CompletedProcess:
+        return self.fire("after-delegate", {"tool_name": "Agent", "tool_input": {"subagent_type": kind, "prompt": "T3"},
+                                            "tool_response": text})
+
+    def test_a_shipwright_that_names_no_commit_is_sent_back_for_the_hash(self) -> None:
+        """What the session integrates is a commit, never files copied out of a working tree — which is how
+        a host once took a sibling's files while its next rule was still RED."""
+        done = self.returned("sail-implement-shipwright", "Done: R3 green, two tests added, make unit passed.")
+        self.assertEqual(done.returncode, 2)
+        self.assertIn("without naming a commit", done.stderr)
+
+    def test_a_return_naming_its_commit_goes_through(self) -> None:
+        done = self.returned("sail-implement-shipwright", "commit 1a2b3c4d — R3 green; boundary: rule; cycle: rule")
+        self.assertEqual(done.returncode, 0)
+
+    def test_the_honest_empty_return_is_not_refused(self) -> None:
+        done = self.returned("sail-implement-shipwright",
+                             "No commit: every example was already green, nothing written.")
+        self.assertEqual(done.returncode, 0)
+
+    def test_a_type_that_does_not_commit_is_not_asked_for_a_hash(self) -> None:
+        done = self.returned("sail-review-mate", "Three findings, ranked. No edits.")
+        self.assertEqual(done.returncode, 0)
+
+    def test_a_structured_response_is_read_the_same_way(self) -> None:
+        done = self.fire("after-delegate", {
+            "tool_name": "Task", "tool_input": {"subagent_type": "sail-implement-shipwright"},
+            "tool_response": [{"type": "text", "text": "Committed as commit 9f8e7d6c5b."}]})
+        self.assertEqual(done.returncode, 0)
+
     def test_a_resumed_context_is_given_the_log_and_not_a_retelling(self) -> None:
         self.line("ORD", "claimed", slice="1.1")
         done = self.fire("after-compact", {}, SLIPWAI_FAIRWAY="ORD", SLIPWAI_SLICE="1.1")

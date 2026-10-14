@@ -37,12 +37,16 @@
 # Re-taken for the review cadence — once per slice over the whole diff, a return spot-checked and never
 # reviewed (`changelog.d/loop-cadence-review-once-per-slice.md`).
 # Only the rows named there moved: `agents/sail-review-mate.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the committed return — a shipwright hands back `commit <hash>` or `no commit`, and the session
+# integrates the commit (`changelog.d/loop-cadence-a-return-is-a-commit.md`).
+# Only the rows named there moved: `agents/sail-implement-shipwright.md`. Every other row is still its earlier reading.
 f8044f22e29f509742026aa15d65d0838c8ce8244d484dbbbf6b774ccffdaee3  .  agents/sail-adversary-privateer.md
 957afc3978fcc12d13ea93aeedd300a39a7c283ce85bc7ee1b5e7a23f8f66aba  .  agents/sail-converge-navigator.md
 31084abcb45191d51720516d9ddf8b2d4f5186d88185b9b9dbee855661a87b36  .  agents/sail-decide-skipper.md
 76f932bc1bcc3bd46267a51be9b18e2c630b3acec687b42f22b85218cc7b90cc  .  agents/sail-demo-hand.md
 fabac80fdc2c115675ddc7a9fe8feaf80f33783872bdf55b28c95ac37abe1b3a  .  agents/sail-gaps-lookout.md
-965a1dc50aedd94fe65ffcbf11f180a3e3fde4a1ef040e2be63a40b3a4a93bee  .  agents/sail-implement-shipwright.md
+487cb6f64c9d604e6ccb783112a26bf9cd942cb5dab8357132dadc723f8b9bc5  .  agents/sail-implement-shipwright.md
 79afefb77378e381ecd6b1ff76b9a3710030a8c6e3fac9fd0bcb591483dc8c2b  .  agents/sail-mutation-shipworm.md
 1a894b4c0d7b65d14dfd54e9f6b0d3045c38d9f7be595e69d8ec3645d2a27a4d  .  agents/sail-review-mate.md
 ff463e9fd03812efffe1b46e4c6ed70ce7ead796a91d1887698fe50ca8b2de29  .  agents/sail-slice-watch.md
@@ -53,7 +57,7 @@ f931126f2cb4e7e4a2441f7f919a6bffc7a699cd7cfd3869bc375a6fbccb087b  delivery  agen
 31084abcb45191d51720516d9ddf8b2d4f5186d88185b9b9dbee855661a87b36  delivery  agents/sail-decide-skipper.md
 97e7f27446c6757b3167ce384debf5bac2750464d1bca518f2aba86703128d40  delivery  agents/sail-demo-hand.md
 fabac80fdc2c115675ddc7a9fe8feaf80f33783872bdf55b28c95ac37abe1b3a  delivery  agents/sail-gaps-lookout.md
-d5c437759e0b2adcd33fac93a28bcd88c11bc85fe2e56e17895157617dffdaf1  delivery  agents/sail-implement-shipwright.md
+e01f95e1aa6ea42f966243b7880458ae3c23165e35fc584fbead245148886aa8  delivery  agents/sail-implement-shipwright.md
 8f09a4d8d217f04cd7517df059cc8f79ddcd6e5d64a925c398d4f93c37463b26  delivery  agents/sail-mutation-shipworm.md
 1a894b4c0d7b65d14dfd54e9f6b0d3045c38d9f7be595e69d8ec3645d2a27a4d  delivery  agents/sail-review-mate.md
 3dbe69cab71878eb4f450a7c01917f48a3224c3cfb2b22401583900acc79614f  delivery  agents/sail-slice-watch.md

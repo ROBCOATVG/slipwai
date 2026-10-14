@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -300,6 +301,53 @@ def session() -> int:
     return extensions(GUARDS, "session", about())
 
 
+#: The delegate type whose return is a commit. A shipwright commits each green increment locally and hands
+#: back the hash, and the session integrates that commit and nothing else — never files copied out of a
+#: working tree, which is how a host once took a sibling's files while its next rule was still RED.
+COMMITTING = ("sail-implement-shipwright",)
+#: A commit named in a return: the word, then a hash of seven to forty hex digits somewhere after it.
+NAMED_COMMIT = re.compile(r"\bcommit\b[^\n]{0,80}?\b[0-9a-f]{7,40}\b", re.IGNORECASE)
+#: The honest empty return — nothing was committed, and the return says so and why.
+NO_COMMIT = re.compile(r"\bno commit\b", re.IGNORECASE)
+
+
+def delegate_type(given: dict) -> str:
+    """Which agent type the delegate was, as the harness's tool input names it, or nothing."""
+    tool_input = given.get("tool_input")
+    tool_input = tool_input if isinstance(tool_input, dict) else {}
+    for field in ("subagent_type", "agent", "agent_type", "type"):
+        named = tool_input.get(field)
+        if isinstance(named, str) and named:
+            return named
+    return ""
+
+
+def response_text(given: dict) -> str:
+    """What the delegate said, flattened: a string, or whatever structure the harness wrapped it in."""
+    answer = given.get("tool_response", given.get("tool_result", ""))
+    if isinstance(answer, str):
+        return answer
+    try:
+        return json.dumps(answer)
+    except (TypeError, ValueError):
+        return str(answer)
+
+
+def uncommitted_return(given: dict) -> str | None:
+    """Why a committing delegate's return is refused, or None: it named neither a commit nor `no commit`."""
+    if delegate_type(given) not in COMMITTING:
+        return None
+    text = response_text(given)
+    if not text.strip():
+        return None  # no evidence of what was said is never a reason to refuse
+    if NAMED_COMMIT.search(text) or NO_COMMIT.search(text):
+        return None
+    return (f"slipwai: {delegate_type(given)} returned without naming a commit. A boundary returns a committed "
+            "candidate — `commit <hash>` in the report — and the session integrates that commit, never files "
+            "copied out of a working tree; or it says `no commit` and why. Ask the delegate to commit its green "
+            "increment and return the hash (commands/sail.md, *Who runs each stage*).")
+
+
 def after_delegate() -> int:
     """A delegate has answered, before its answer is used. The one guard that fires *after* a tool call.
 
@@ -308,11 +356,16 @@ def after_delegate() -> int:
     that fails. The same test every other guard passes.
 
     A delegate came back having edited whatever it edited, so this is also where an extension that keeps an
-    index of the tree gets to notice; refusing is the rarer half of what it is for.
+    index of the tree gets to notice; refusing is the rarer half of what it is for. The keel's own refusal
+    here is the committed return: an implementing delegate that names no commit and does not say `no commit`
+    is sent back for the hash, because what the session integrates is a commit and not a working tree.
     """
-    given = event().get("tool_input")
-    given = given if isinstance(given, dict) else {}
-    return extensions(GUARDS, "after-delegate", {**about(), "tool": str(event().get("tool_name") or "")})
+    given = event()
+    refused = uncommitted_return(given)
+    if refused is not None:
+        print(refused, file=sys.stderr)
+        return REFUSE
+    return extensions(GUARDS, "after-delegate", {**about(), "tool": str(given.get("tool_name") or "")})
 
 
 

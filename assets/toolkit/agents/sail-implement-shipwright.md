@@ -45,3 +45,12 @@ Return what you finished, the boundary you were given and the cycle unit you ran
 into how many groups, the tests you added with their names, the commands you ran and their
 results, and anything you had to leave undone. A task that cannot be done as specified is reported, not reinterpreted:
 say what the plan assumed and what the code actually is.
+
+**The return names a commit, or says `no commit` and why.** What you hand back is the hash of the local
+commit your green increment made — `commit <hash>` in the first lines of the report — and the session that
+dispatched you integrates that commit and nothing else: never a file copied out of a working tree, which is
+how a host once took a sibling's files while its next rule was RED. A report that names no hash while the
+tree carries your edits is refused at the boundary and comes back to you. Where there was genuinely nothing
+to commit — the task could not be done as specified, or every example was already green and you wrote
+nothing — say `no commit` and the reason, so the refusal can tell an honest empty return from a forgotten
+one.

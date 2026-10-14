@@ -135,7 +135,14 @@ Verify their claims by spot-checking the recorded reproduction or RED evidence; 
 investigation in the host context. Do not re-investigate. **The spot-check is this session's, never a
 reviewer's**: `sail-review-mate` reads the slice's whole diff once, after it converged (the *Review and
 reshape* rung), and a return sent to it instead is a review the rung did not ask for and a fix round the
-slice pays for — one run paid eight of each for nine pieces of coding. A delegate that was stopped has filed nothing:
+slice pays for — one run paid eight of each for nine pieces of coding. **And what is integrated is a
+commit, named by its hash in the return**: `sail-implement-shipwright` commits each green increment locally and
+reports the hash, and this session takes that commit into the slice's tree — `git cherry-pick` or a merge
+from the delegate's worktree — never files copied out of a working tree, which is how a host once took a
+sibling's files while its next rule was still RED and spent a verification run on the mixture. A return
+that names no hash while its tree carries edits is refused at the boundary by the `after-delegate` guard
+(`scripts/agents/session.py`) and goes back to the delegate; `no commit` with a reason is the honest empty
+return and is not refused. A delegate that was stopped has filed nothing:
 everything in its stop notification is a lead, never a result, and a lead is re-run before it is written
 anywhere outside this session. An adversary pass is the same kind of batch:
 disjoint-manifest seams of one pass are concurrent `sail-adversary-privateer` siblings in one turn, and the host

@@ -67,6 +67,13 @@ jobs:
         run: python -m mypy
       - if: runner.os == 'Windows'
         run: python scripts/check-structure.py
+      # The loop suite on its own first. The whole run's summary is where a failure's message is printed,
+      # and a run interrupted before its end prints none; this suite's verdict is on the log either way.
+      - if: runner.os == 'Windows'
+        run: python -m unittest -v test_loop
+        env:
+          PYTHONPATH: src;tests
+        continue-on-error: true
       - if: runner.os == 'Windows'
         run: python -m unittest discover -s tests -v
         env:

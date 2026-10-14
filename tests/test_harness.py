@@ -51,6 +51,9 @@ class Fixture(unittest.TestCase):
         (self.root / "commands").mkdir()
         (self.root / "commands/sail.md").write_text("# sail\n", encoding="utf-8")
         self.harness = loaded(self.root)
+        # The tests below stand in for `shutil.which`, and the module's `shutil` is everybody's: put it back,
+        # or every suite that runs after this one finds the stand-in.
+        self.addCleanup(setattr, self.harness.shutil, "which", self.harness.shutil.which)
 
     def installed(self, *keys: str) -> None:
         (self.root / ".specify").mkdir(exist_ok=True)

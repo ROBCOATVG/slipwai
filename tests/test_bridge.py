@@ -25,7 +25,7 @@ from slipwai.fleet import board
 from slipwai.project.harbour import START, harbour_config
 from slipwai.telegraph import MEANS
 
-# budget: 400 — one server and every route it answers, driven against the same bound fixture: the fleet
+# budget: 480 — one server and every route it answers, driven against the same bound fixture: the fleet
 # pages, the controls, and the landing a generate leaves behind. A suite per route would be a fixture
 # per suite, which is the duplication this one exists to avoid.
 
@@ -85,6 +85,9 @@ class PageTest(Fixture):
         said = self.rendered()
         self.assertLess(said.index("Waiting on you"), said.index("Streams"))
         self.assertIn("look at this", said)
+        # Clicking it opens the stream's own lines and a box to answer from, which becomes a `told`.
+        self.assertIn("<details", said[said.index("Waiting on you"):said.index("Streams")])
+        self.assertIn('data-tell="ORD" data-box="tell-wait-0"', said)
 
     def test_a_message_from_a_person_is_escaped_and_never_rendered_as_markup(self) -> None:
         self.deck("ORD", logs.entry("told", fairway="ORD", message="<script>alert(1)</script>"))
@@ -132,9 +135,17 @@ class ServerTest(Fixture):
         self.assertEqual(self.server.server_address[0], "127.0.0.1")
 
     def test_the_page_is_served(self) -> None:
+        """The Board is the landing — looking at, where it stands, what can be started — and the live cards
+        are on the Voyage tab, beside the stages and the model."""
         code, said = self.get("/")
         self.assertEqual(code, 200)
-        self.assertIn("Streams", said)
+        self.assertIn("Start something", said)
+        self.assertNotIn("<h2>Streams</h2>", said)
+        code, said = self.get("/voyage")
+        self.assertEqual(code, 200)
+        self.assertIn("<h2>Streams</h2>", said)
+        self.assertIn("<h2>Speed</h2>", said)
+        self.assertIn('data-ring', said, "the controls came with the cards")
 
     def test_the_board_is_also_json_for_anything_that_would_rather_read_it(self) -> None:
         code, said = self.get("/board.json")
@@ -277,7 +288,7 @@ class LandingTest(ServerTest):
 
     def test_it_lands_with_the_receipt_for_what_it_made(self) -> None:
         self.land()
-        code, said = self.get("/")
+        code, said = self.get("/voyage")
         self.assertEqual(code, 200)
         self.assertIn("Made demo", said)
         self.assertIn(str(self.made), said)
@@ -313,6 +324,50 @@ class LandingTest(ServerTest):
         self.assertTrue(json.loads(self.get("/voyage.json")[1])["launchable"])
         self.assertIn('id="launch"', self.get("/voyage")[1])
 
+    def test_mock_ups_are_on_the_voyage_and_served_from_the_project(self) -> None:
+        home = self.made / "specs/001-demo/mockups"
+        home.mkdir(parents=True)
+        (home / "catalog.html").write_text("<html><head><title>Mock: catalog</title></head><body>hi</body></html>",
+                                           encoding="utf-8")
+        self.land()
+        said = self.get("/voyage")[1]
+        self.assertIn("<h2>Mockups · 1</h2>", said)
+        self.assertIn('src="/mockups/001-demo/catalog.html"', said)
+        # With a storyboard, that is the door and the mock-ups are reached from it.
+        (home / "storyboard.html").write_text("<html><head><title>Storyboard: 001 — review</title></head></html>",
+                                              encoding="utf-8")
+        said = self.get("/voyage")[1]
+        self.assertIn("<h2>Storyboard</h2>", said)
+        self.assertIn('src="/mockups/001-demo/storyboard.html"', said)
+        self.assertNotIn('src="/mockups/001-demo/catalog.html"', said)
+        self.assertIn("1 mock-ups, from the storyboard", said)
+        self.assertEqual(self.get("/mockups/001-demo/catalog.html"), (200, (home / "catalog.html").read_text()))
+        with self.assertRaises(urllib.error.HTTPError) as refused:
+            self.get("/mockups/001-demo/../../project.json")
+        self.assertEqual(refused.exception.code, 404)
+
+    def test_a_split_with_no_fleet_running_offers_to_cast_off_and_the_button_runs_make_cruise(self) -> None:
+        import slipwai.bridge as module
+        self.land()
+        self.assertEqual(self.post("/cast-off", {})[0], 400, "no split, nothing to cast off")
+        rows = [{"slice": "S01", "state": "todo", "title": "", "why": "", "fairway": "", "clearance": "blocked",
+                 "feature": "001-demo"}]
+        self.patch("folded", lambda root, feature="": (rows, ""))
+        (self.made / "Makefile").write_text("cruise:\n\t@echo 'captain started'\n", encoding="utf-8")
+        found = json.loads(self.get("/voyage.json")[1])
+        self.assertTrue(found["castable"])
+        self.assertEqual(next(s for s in found["stages"] if s["key"] == "slices")["state"], "waiting")
+        self.assertIn('id="cast-off"', self.get("/voyage")[1])
+        self.assertEqual(self.post("/cast-off", {}), (200, "casting off"))
+        for _ in range(100):
+            receipt = json.loads(self.get("/init.json")[1])
+            if receipt["done"]:
+                break
+            time.sleep(0.1)
+        self.assertIn("captain started", receipt["lines"])
+        self.assertEqual(receipt["step"], "cruise")
+        del module
+
     def test_the_viewer_is_served_from_the_copy_the_board_keeps_or_the_page_says_why(self) -> None:
         import slipwai.bridge as module
         self.patch("viewer_script", lambda: (b"// viewer", ""))
@@ -335,7 +390,7 @@ class LandingTest(ServerTest):
         (self.made / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
         (self.made / "Makefile").write_text("launch:\n\t@echo 'cast off'\n", encoding="utf-8")
         self.assertTrue(json.loads(self.get("/init.json")[1])["launchable"])
-        self.assertIn('id="launch"', self.get("/")[1])
+        self.assertIn('id="launch"', self.get("/voyage")[1])
         code, said = self.post("/launch", {})
         self.assertEqual((code, said), (200, "continuing the build"))
         for _ in range(100):
@@ -344,7 +399,7 @@ class LandingTest(ServerTest):
                 break
             time.sleep(0.1)
         self.assertIn("cast off", receipt["lines"])
-        self.assertIn("Made demo", self.get("/")[1], "the receipt is carried into the new run")
+        self.assertIn("Made demo", self.get("/voyage")[1], "the receipt is carried into the new run")
         self.assertFalse(receipt["launchable"], "pressed once")
         self.assertEqual(self.post("/launch", {})[0], 400)
 

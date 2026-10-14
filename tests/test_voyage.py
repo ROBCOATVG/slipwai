@@ -14,7 +14,19 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.voyage import cell_id, counts, folded, model_xml, restroked, states_of, viewer_config
+from slipwai.voyage import (
+    cell_id,
+    counts,
+    fleet_running,
+    folded,
+    mockup_file,
+    mockups,
+    model_xml,
+    restroked,
+    states_of,
+    titles,
+    viewer_config,
+)
 
 
 def cell(name: str, value: str, style: str, parent: str) -> str:
@@ -73,13 +85,60 @@ class ModelTest(unittest.TestCase):
     def test_the_viewer_is_given_the_picture_and_a_read_only_toolbar(self) -> None:
         held = json.loads(viewer_config(DRAWIO))
         self.assertEqual(held["xml"], DRAWIO)
-        self.assertIn("zoom", held["toolbar"])
+        self.assertEqual(held["toolbar"], "", "the board's own controls stand in for the viewer's")
+        self.assertFalse(held["resize"], "a fixed canvas, panned and zoomed, rather than one sized to the picture")
         self.assertFalse(held["lightbox"])
+
+
+class MockupsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.home = self.root / "specs/001-demo/mockups"
+        self.home.mkdir(parents=True)
+        (self.home / "catalog.html").write_text("<html><head><title>Mock: catalog — Demo</title></head></html>",
+                                                encoding="utf-8")
+        (self.home / "mock.css").write_text("body{}", encoding="utf-8")
+        (self.home / "research.md").write_text("# notes\n", encoding="utf-8")
+        (self.root / "secret.txt").write_text("no", encoding="utf-8")
+
+    def test_every_wireframe_is_listed_by_its_own_title(self) -> None:
+        found = mockups(self.root)
+        self.assertEqual([(row["feature"], row["name"], row["title"], row["href"]) for row in found],
+                         [("001-demo", "catalog.html", "catalog — Demo", "/mockups/001-demo/catalog.html")])
+        self.assertEqual(mockups(Path(tempfile.mkdtemp())), [])
+
+    def test_the_route_serves_a_mock_up_and_its_stylesheet_and_nothing_outside_them(self) -> None:
+        self.assertEqual(mockup_file(self.root, "001-demo/catalog.html"), (self.home / "catalog.html").resolve())
+        self.assertEqual(mockup_file(self.root, "001-demo/mock.css"), (self.home / "mock.css").resolve())
+        for outside in ("001-demo/../../secret.txt", "001-demo/../spec.md", "../secret.txt", "001-demo/", "",
+                        "nope/x.html"):
+            self.assertIsNone(mockup_file(self.root, outside), outside)
 
 
 class FoldTest(unittest.TestCase):
     def test_no_chart_is_no_slices_and_no_fault(self) -> None:
         self.assertEqual(folded(Path(tempfile.mkdtemp())), ([], ""))
+
+    def test_a_slice_s_title_is_read_off_the_split(self) -> None:
+        """The chart carries ids; the split's table is where a slice is called something a person would say."""
+        root = Path(tempfile.mkdtemp())
+        (root / "specs/001-demo").mkdir(parents=True)
+        (root / "specs/001-demo/story-split.md").write_text(
+            "**S02 Publish a listing** — a host publishes a table\n\n"
+            "| Slice | Outcome |\n|---|---|\n| S01 Set up an account | A signed-in person has a name |\n"
+            "| S02 Publish a listing | A host can offer chairs |\n", encoding="utf-8")
+        self.assertEqual(titles(root, "001-demo"), {"S01": "Set up an account", "S02": "Publish a listing"})
+        self.assertEqual(titles(root, "002-none"), {})
+
+    def test_the_fleet_is_running_only_while_a_pid_it_wrote_is_alive(self) -> None:
+        root = Path(tempfile.mkdtemp())
+        self.assertFalse(fleet_running(root), "nothing started")
+        (root / ".slipwai/running").mkdir(parents=True)
+        (root / ".slipwai/running/captain-x.pid").write_text("999999999\n", encoding="utf-8")
+        self.assertFalse(fleet_running(root), "a captain that has died")
+        import os
+        (root / ".slipwai/running/harbourmaster.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+        self.assertTrue(fleet_running(root))
 
     def test_counts_and_states_read_the_rows(self) -> None:
         rows = [{"slice": "A", "state": "done"}, {"slice": "B", "state": "todo"}, {"slice": "C", "state": "todo"}]

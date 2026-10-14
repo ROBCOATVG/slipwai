@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extensions Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--ground:#f1f3f4;--paper:#fcfcfb;--ink:#172129;--ink-2:#4a5862;--ink-3:#7a8891;--rule:#d9e0e4;--rule-2:#e9eef1;
+  --teal:#0f6b6b;--teal-soft:#dcecea;--brass:#8a6d24;--brass-soft:#f1e9d2;--wait:#b4432f;--wait-soft:#f6e1dc;
+  --plum:#6b3f8a;--plum-soft:#ece2f3;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ground:#10171c;--paper:#1a1a19;--ink:#e6ecef;--ink-2:#b6c1c8;
+  --ink-3:#808e97;--rule:#2c3840;--rule-2:#222c33;--teal:#5fc1bb;--teal-soft:#15302f;--brass:#d2b465;--brass-soft:#2e2814;
+  --wait:#e07a62;--wait-soft:#3a1f19;--plum:#b38fd0;--plum-soft:#2b1f36}}
+:root[data-theme="dark"]{--ground:#10171c;--paper:#1a1a19;--ink:#e6ecef;--ink-2:#b6c1c8;--ink-3:#808e97;--rule:#2c3840;
+  --rule-2:#222c33;--teal:#5fc1bb;--teal-soft:#15302f;--brass:#d2b465;--brass-soft:#2e2814;--wait:#e07a62;--wait-soft:#3a1f19;
+  --plum:#b38fd0;--plum-soft:#2b1f36}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
+  padding-inline:clamp(16px,4vw,40px);padding-block:28px 64px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:24px}
+h1{font-size:1.6rem;font-weight:600;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:1.05rem;font-weight:600;margin:0}h3{font-size:.92rem;font-weight:600;margin:0}
+p{margin:0}.lede{max-width:70ch;color:var(--ink-2)}
+.eyebrow{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+code{font-family:var(--mono);font-size:.86em}
+.card{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:18px 20px;display:grid;gap:12px}
+.diagram{overflow-x:auto}
+.diagram svg{display:block;min-width:960px;max-width:100%;height:auto}
+.lane-title{font:600 11px var(--sans);fill:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
+.lane-rule{stroke:var(--rule-2)}
+.box{fill:var(--paper);stroke:var(--rule);stroke-width:1.5}
+.box.keel{stroke:var(--teal)}.box.project{stroke:var(--brass)}.box.agent{stroke:var(--plum)}.box.person{stroke:var(--wait)}
+.box.file{fill:var(--rule-2);stroke:var(--ink-3);stroke-dasharray:3 3}
+.t{font:500 11.5px var(--sans);fill:var(--ink)}.t.sub{font:10.5px var(--mono);fill:var(--ink-3)}.t.b{font-weight:600}
+.edge{stroke:var(--ink-3);stroke-width:1.4;fill:none;marker-end:url(#arrow)}
+.edge.fire{stroke:var(--plum)}.edge.refuse{stroke:var(--wait);stroke-dasharray:5 4}
+.edge-label{font:10px var(--mono);fill:var(--ink-3)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--ink-2)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;border:2px solid;vertical-align:-2px;margin-right:5px}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+td:first-child{font-family:var(--mono);white-space:nowrap}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+ol.plain{margin:0;padding-left:1.2em;display:grid;gap:7px;font-size:.9rem}
+ul.plain{margin:0;padding-left:1.2em;display:grid;gap:6px;font-size:.88rem}
+.note{font-size:.85rem;color:var(--ink-2);max-width:74ch}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header style="display:grid;gap:8px">
+  <p class="eyebrow">Refresher · slipwai extensions</p>
+  <h1>How an extension gets into a project, and where it is allowed to act</h1>
+  <p class="lede">An extension is optional dev tooling a project <b>elects at <code>./init</code></b>. It never changes generated code, which is the line between it and a language or a target. It is a package like the others, found and installed the same way, and it reaches the workflow through exactly three kinds of attachment: <b>hooks</b> at closed points, <b>guards</b> in front of tool calls, and <b>tools</b> a headless session is allowed to reach.</p>
+</header>
+
+<section class="card">
+  <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:baseline">
+    <h2>The journey, left to right</h2>
+    <div class="legend"><span><i class="sw" style="border-color:var(--teal)"></i>the keel</span><span><i class="sw" style="border-color:var(--brass)"></i>inside the project</span><span><i class="sw" style="border-color:var(--plum)"></i>a session or captain</span><span><i class="sw" style="border-color:var(--wait)"></i>a person</span><span><i class="sw" style="border-color:var(--ink-3);border-style:dashed"></i>a file written</span></div>
+  </div>
+  <div class="diagram" id="diagram"></div>
+  <p class="note">Four lanes, four moments. The package is written and published once; the machine installs it once; every project generated after that carries its files and offers it at <code>./init</code>; and from then on it only ever runs where a point fires, a guard is consulted, or a gate runs. Nothing in a generated project imports slipwai: everything the project runs is a toolkit script shipped with it.</p>
+</section>
+
+<div class="two">
+  <section class="card">
+    <h2>What <code>extension.json</code> declares</h2>
+    <table>
+      <thead><tr><th>Field</th><th>What it is</th></tr></thead>
+      <tbody>
+        <tr><td>key · name</td><td>What a person types (<code>./init --extension codegraph</code>) and what the menu shows.</td></tr>
+        <tr><td>description · tags</td><td>What the menu says under it, and what <code>slipwai search</code> matches.</td></tr>
+        <tr><td>ignore</td><td>gitignore text for the local state it leaves, written into the project's <code>.gitignore</code>.</td></tr>
+        <tr><td>hooks</td><td>Which closed points it attaches a script to: <code>{"init": "init.py", "after-stage": {"run": "hooks/sync.py", "stages": ["implement"]}}</code>.</td></tr>
+        <tr><td>guards</td><td>Which tool calls it may refuse, and in whose words it explains itself.</td></tr>
+        <tr><td>tools</td><td>The tool names a headless session must be allowed, such as <code>mcp__codegraph__*</code>. The fact belongs to whoever brings the tool, not to the harness registry.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Everything beside the manifest is copied into the project at generation, under <code>scripts/extensions/&lt;key&gt;/</code>, so <code>./init</code> can run it with no keel present. The manifest stays behind: it is read by the keel, which is the one place that cares.</p>
+  </section>
+
+  <section class="card">
+    <h2>The six obligations the entry point is held to</h2>
+    <ol class="plain">
+      <li><b>Idempotent.</b> Running the election twice does what running it once did. Files are written whole, never appended.</li>
+      <li><b>Non-fatal.</b> A tool that is not on this machine is a message and a clean exit, never a failed <code>./init</code>.</li>
+      <li><b>Projects.</b> Its <code>AGENTS.md</code> block sits between <code>&lt;!-- extension:&lt;key&gt;:begin --&gt;</code> and <code>:end</code>, so re-projection replaces exactly that.</li>
+      <li><b>Gated.</b> Anything that can go stale, an index or a cache, ships a <code>check-&lt;key&gt;.py</code> that <code>make verify</code> runs.</li>
+      <li><b>Recovers.</b> Every message about a problem names the command that fixes it.</li>
+      <li><b>Merges.</b> Everything outside its markers is a person's and stays exactly as it was.</li>
+    </ol>
+    <p class="note"><code>python -m slipwai.conformance --extension &lt;dir&gt;</code> runs four of them against a scratch project and reads the other two; <code>slipwai package new &lt;key&gt;</code> scaffolds one that passes all six on day one.</p>
+  </section>
+</div>
+
+<div class="two">
+  <section class="card">
+    <h2>Hooks: the closed set of points</h2>
+    <table>
+      <thead><tr><th>Point</th><th>Fires</th></tr></thead>
+      <tbody>
+        <tr><td>init</td><td>Once per election, from <code>./init --extension &lt;key&gt;</code>. The entry point installs what it needs.</td></tr>
+        <tr><td>project</td><td>Every re-projection: <code>make agents</code>, <code>migrate</code>, <code>./init --integration</code>. Writes the <code>AGENTS.md</code> block and each harness's MCP file.</td></tr>
+        <tr><td>check</td><td>On <code>make verify</code>, as one more gate. The only point that may fail anything.</td></tr>
+        <tr><td>before-stage · after-stage</td><td>Around each rung of the ladder, from the captain, with the stage, slice, fairway and berth.</td></tr>
+        <tr><td>boundary</td><td>At every captain boundary, after the inbox is read.</td></tr>
+        <tr><td>before-merge · after-merge</td><td>On the rebased branch before the full gate, and once the slice is on trunk, from the harbourmaster.</td></tr>
+        <tr><td>before-compact · after-compact</td><td>Around a harness compacting its context.</td></tr>
+      </tbody>
+    </table>
+    <p class="note"><b>A hook is a second belt.</b> It is reported, never fatal: a hook that fails is a <code>hook</code> line in the deck log naming the extension, the point and the last thing it printed, and the rung completes. The captain's own controls work with every hook removed. <code>slipwai hooks</code> prints the set with what is attached.</p>
+  </section>
+
+  <section class="card">
+    <h2>Guards and tools: the two other attachments</h2>
+    <h3>Guards may refuse a tool call</h3>
+    <p class="note">A guard runs in front of one call, from <code>session.py</code> at the harness's own moment, and refuses it by exiting 2; what it printed is what the agent is told, and the agent does something else. Anything other than exit 2 is a hook's behaviour: said, and the call goes ahead. Points: <code>before-search</code>, <code>before-write</code>, <code>before-command</code>, <code>before-fetch</code>, <code>before-stop</code>.</p>
+    <p class="note">Because a guard refuses things a person asked for, it is <b>agreed to separately</b>: <code>./init</code> asks once (<code>guards.py --offer</code>) over the elected extensions, and only the agreed ones are written to <code>.slipwai/guards.json</code>. Installed is not the same as agreed.</p>
+    <h3>Tools let a headless session reach it</h3>
+    <p class="note">A captain's <code>/sail</code> session runs under an allow-list. An extension's <code>tools</code> are added to that list at election (<code>.slipwai/hooks.json</code> carries them), so a delegate can call the MCP server the extension brought. Nothing is validated against a harness: a pattern is a string in the harness's own spelling.</p>
+    <h3>The files an election leaves</h3>
+    <ul class="plain">
+      <li><code>.slipwai/hooks.json</code> — which extensions, by point, in firing order, plus their tool names. A controlled file: a run that edits it is refused.</li>
+      <li><code>.slipwai/guards.json</code> — the guards a person agreed to.</li>
+      <li><code>.slipwai/extensions.json</code> — what was elected, read by every re-projection.</li>
+      <li><code>AGENTS.md</code> — the marker-fenced block, and each harness's project MCP file where a tool was declared.</li>
+    </ul>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Three ways a project elects one</h2>
+  <ol class="plain">
+    <li><b>The menu.</b> <code>./init</code> shows a checkbox list built from <code>available.json</code>, the catalogue the generator wrote from the packages installed on the machine at generation. What is offered is what the project can actually run.</li>
+    <li><b>A quickstart.</b> A project generated from a quickstart carries <code>.slipwai/quickstart.json</code> naming the extensions it elects and the guards already agreed to; <code>elected.py</code> hands those to <code>./init</code> and no menu appears.</li>
+    <li><b>Later, by hand.</b> <code>./init --extension &lt;key&gt;</code> at any time, repeatable; a re-election is the same as the first, which is what obligation 1 is for.</li>
+  </ol>
+</section>
+
+</div>
+
+<script>
+(function(){
+  const W = 1180, laneH = 150, left = 110, top = 30;
+  const lanes = ["Publish & install", "Generate", "./init — election", "The voyage"];
+  const esc = v => String(v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  // boxes: id, lane, x, w, kind, title, sub
+  const boxes = [
+    ["new", 0, 130, 150, "person", "slipwai package new", "six obligations, day one"],
+    ["check", 0, 300, 160, "keel", "conformance --extension", "4 run · 2 read"],
+    ["reg", 0, 480, 150, "keel", "package register", "signed, in the chandlery"],
+    ["inst", 0, 650, 180, "keel", "slipwai extension install", "~/.slipwai/packages/<key>/"],
+    ["man", 0, 860, 170, "file", "extension.json", "hooks · guards · tools"],
+    ["gen", 1, 130, 160, "keel", "slipwai generate", "copies every installed extension"],
+    ["files", 1, 320, 210, "file", "scripts/extensions/<key>/", "init.py, hooks, check-<key>.py"],
+    ["avail", 1, 560, 220, "file", "available*.json", "hooks · tools · guards, from manifests"],
+    ["ign", 1, 810, 140, "file", ".gitignore", "the `ignore` text"],
+    ["menu", 2, 130, 150, "person", "the menu, or --extension", "or a quickstart's election"],
+    ["initp", 2, 310, 150, "project", "init.py  (init point)", "installs what it needs"],
+    ["elect", 2, 490, 170, "project", "hooks.py --elect", ".slipwai/hooks.json"],
+    ["offer", 2, 690, 160, "person", "guards.py --offer", ".slipwai/guards.json"],
+    ["proj", 2, 880, 170, "project", "project point", "AGENTS.md block · MCP files"],
+    ["cap", 3, 130, 170, "agent", "captain / harbourmaster", "before/after-stage, boundary, merges"],
+    ["fire", 3, 330, 150, "project", "hooks.py <point>", "never fatal · a `hook` line"],
+    ["sess", 3, 510, 170, "agent", "session.py (harness hook)", "before-search/write/command/fetch/stop"],
+    ["guard", 3, 710, 150, "project", "guards.py <point>", "exit 2 refuses · stderr to the agent"],
+    ["verify", 3, 890, 160, "project", "make verify → check", "check-<key>.py, the one gate"],
+  ];
+  const edges = [
+    ["new","check"],["check","reg"],["reg","inst"],["inst","man"],
+    ["man","gen","read at generate"],["gen","files"],["files","avail"],["avail","ign"],
+    ["avail","menu","offered"],["menu","initp"],["initp","elect"],["elect","offer"],["offer","proj"],
+    ["cap","fire","fire"],["sess","guard","refuse"],["fire","verify","",true],
+  ];
+  const at = Object.fromEntries(boxes.map(b => [b[0], b]));
+  const H = top + lanes.length * laneH + 10;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="How an extension reaches a project and where it acts">`
+    + `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>`;
+  lanes.forEach((name, i) => {
+    const y = top + i * laneH;
+    svg += `<line class="lane-rule" x1="0" y1="${y}" x2="${W}" y2="${y}"/><text class="lane-title" x="12" y="${y + 20}">${esc(name)}</text>`;
+  });
+  const centre = b => ({x: b[2] + b[3] / 2, y: top + b[1] * laneH + 60, l: b[2], r: b[2] + b[3], t: top + b[1] * laneH + 36, btm: top + b[1] * laneH + 84});
+  edges.forEach(([a, b, label, dashed]) => {
+    const A = centre(at[a]), B = centre(at[b]);
+    let d, lx, ly;
+    if (at[a][1] === at[b][1]) { d = `M${A.r},${A.y} L${B.l},${B.y}`; lx = (A.r + B.l) / 2; ly = A.y - 6; }
+    else { d = `M${A.x},${A.btm} C${A.x},${A.btm + 30} ${B.x},${B.t - 30} ${B.x},${B.t}`; lx = (A.x + B.x) / 2 + 8; ly = (A.btm + B.t) / 2; }
+    const kind = label === "fire" ? " fire" : label === "refuse" ? " refuse" : "";
+    svg += `<path class="edge${kind}" d="${d}"${dashed ? ' stroke-dasharray="2 4"' : ""}/>`;
+    if (label && label !== "fire" && label !== "refuse") svg += `<text class="edge-label" x="${lx}" y="${ly}" text-anchor="middle">${esc(label)}</text>`;
+  });
+  boxes.forEach(b => {
+    const c = centre(b);
+    svg += `<rect class="box ${b[4]}" x="${b[2]}" y="${c.t}" width="${b[3]}" height="48" rx="7"/>`;
+    svg += `<text class="t b" x="${c.x}" y="${c.t + 20}" text-anchor="middle">${esc(b[5])}</text>`;
+    svg += `<text class="t sub" x="${c.x}" y="${c.t + 36}" text-anchor="middle">${esc(b[6])}</text>`;
+  });
+  svg += "</svg>";
+  document.getElementById("diagram").innerHTML = svg;
+})();
+</script>
+</body>
+</html>

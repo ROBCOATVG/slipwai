@@ -71,6 +71,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "conformance.extension", "index_schema", "trust", "cli_trust", "ed25519", "rungs", "renamed",
        "channel", "channel_new", "channel_page", "cli_channel", "telegraph", "cli_telegraph", "fleet", "cli_fleet",
        "bridge", "bridge_page", "cli_bridge", "cli_start", "whats_new", "deck", "brand",
+       # The board's Voyage tab: where a project stands, read off the tree, and the landing beside it.
+       "passage", "voyage", "voyage_page", "landing_page",
        # Phase 13: a named set of answers, the verb over it, and the interview that offers one first —
        # which the experiment had no equivalent of, because it asked every question every time.
        "quickstart", "cli_quickstart", "cli_generate", "quickstart_install", "cli_migrate",

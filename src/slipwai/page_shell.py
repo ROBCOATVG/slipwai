@@ -263,7 +263,9 @@ self.addEventListener('activate', event => {{
     .then(() => self.clients.claim()));
 }});
 self.addEventListener('fetch', event => {{
-  if (event.request.mode !== 'navigate') return;
+  // A window's navigation, not a frame's: a mock-up shown small on the Voyage is a frame, and one that
+  // fails to load should fail, not become the not-running page in a tile.
+  if (event.request.mode !== 'navigate' || event.request.destination === 'iframe') return;
   event.respondWith(fetch(event.request).catch(() => caches.match(PAGE)));
 }});
 """

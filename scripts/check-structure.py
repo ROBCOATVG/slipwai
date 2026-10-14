@@ -118,7 +118,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # what bare `slipwai` does, which is open that same board.
               "page_shell", "bridge", "bridge_page", "cli_bridge", "cli_start", "interview_page", "adopt_page",
               # Where the project stands, read for the board's Voyage tab: the stages, the slices, the model.
-              "passage", "voyage", "voyage_page",
+              "passage", "voyage", "voyage_page", "landing_page",
               # The chandlery as a tab of it: `search` and the install verbs, rendered.
               "chandlery_page",
               # The conformance suite a package runs against itself, and its generated-variant

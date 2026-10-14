@@ -72,8 +72,13 @@ class OpenedBoardTest(unittest.TestCase):
         self.assertEqual(len(self.opened), 1)
         self.assertTrue(self.opened[0].startswith("http://127.0.0.1:"))
 
-    def test_a_harbour_opens_on_its_fleet(self) -> None:
-        self.assertIn("Streams", self.board(self.harbour()))
+    def test_a_harbour_opens_on_the_landing_and_the_fleet_is_a_tab_away(self) -> None:
+        """The Board is where a person points the board and starts something; the live cards are on the
+        Voyage tab, beside the stages and the model, which the bar links to."""
+        said = self.board(self.harbour())
+        self.assertIn("Looking at", said)
+        self.assertIn('href="/voyage"', said)
+        self.assertNotIn("<h2>Streams</h2>", said)
 
     def test_a_directory_that_is_no_project_opens_the_board_anyway(self) -> None:
         """Empty, with what it *can* do from there. The alternative is a sentence telling somebody to go
@@ -82,9 +87,10 @@ class OpenedBoardTest(unittest.TestCase):
         self.assertIn("Start a new project", said)
         self.assertIn("Adopt a repository", said)
 
-    def test_what_can_be_started_leads_where_there_is_no_fleet_to_lead_with(self) -> None:
+    def test_what_can_be_started_is_on_the_landing_and_nothing_live_is(self) -> None:
         said = self.board(self.root)
-        self.assertLess(said.index("Start a new project"), said.index("Waiting on you"))
+        self.assertIn("Start a new project", said)
+        self.assertNotIn("Waiting on you", said)
 
 
 class FallbackTest(unittest.TestCase):

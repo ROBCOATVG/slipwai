@@ -96,6 +96,13 @@ class StagesTest(unittest.TestCase):
         found = states(root, slices={"done": 2}, fleet={"accepted": ["orders"]})
         self.assertEqual(found["accepted"], "done")
         self.assertEqual(states(root, slices={"done": 2}, fleet={"demo_due": ["orders"]})["accepted"], "working")
+        self.assertEqual(states(root, slices={"todo": 2}, fleet={"running": False})["slices"], "waiting",
+                         "split and nothing running is a silence a person is told about")
+        self.assertIn("not running", next(one.detail for one in stages(root, slices={"todo": 2}, fleet={})
+                                          if one.key == "slices"))
+        self.assertEqual(states(root, slices={"todo": 2}, fleet={"running": True})["slices"], "todo")
+        self.assertEqual(states(root, receipt={"step": "cruise", "done": False, "code": None},
+                                slices={"todo": 2})["slices"], "working")
         self.assertEqual(states(root, slices={})["chart"], "todo")
         self.assertIn("charted, not split", next(one.detail for one in stages(root) if one.key == "chart"))
 

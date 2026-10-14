@@ -19,6 +19,7 @@ to keep in step, and the first one to drift.
 from __future__ import annotations
 
 import json
+import mimetypes
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -35,11 +36,13 @@ from .errors import GenerationError
 from .fleet import board
 from .harbour import config
 from .init_run import Fitting
+from .init_run import cast_off as start_fleet
 from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .interview_page import NO_INIT, destination, form, repository_for
 from .interview_page import page as interview
 from .interview_page import run as generate
+from .landing_page import landing
 from .logs import deck_path, entry
 from .page_shell import (
     ICON,
@@ -54,10 +57,23 @@ from .page_shell import (
 )
 from .passage import EVENT_PROFILE, modelled, profile_of, stages
 from .telegraph import Refused
-from .voyage import counts, folded, model_xml, states_of, viewer_script
+from .voyage import (
+    MOCK_ROUTE,
+    counts,
+    fleet_running,
+    folded,
+    mockup_file,
+    mockups,
+    model_xml,
+    states_of,
+    viewer_script,
+)
+from .voyage_page import now_said
 from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 
+# budget: 420 — one server and every route the board answers, each a few lines handing off to a page module;
+# a second server would be two things each sure they are the board, which `open_board` exists to prevent.
 LIMIT = 4 * 1024 * 1024  # bytes a request body may be: a sentence, or a PRD riding in a generate's answers
 #: The four an installable page is made of, each with what it is served as. A browser decides whether to
 #: offer the install on the content type as much as the content, so none of these is served as HTML.
@@ -146,6 +162,16 @@ class Bridge(BaseHTTPRequestHandler):
         if where == "/voyage.json" and self.controls:
             self.send(200, self.voyage_json(), "application/json; charset=utf-8")
             return
+        # A mock-up as the stage wrote it, from the project: a page, or the stylesheet beside it.
+        if where.startswith(MOCK_ROUTE) and self.controls:
+            path = mockup_file(self.root, where.removeprefix(MOCK_ROUTE))
+            if path is None:
+                self.send(404, "<p>No such mock-up.</p>")
+                return
+            kind = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+            self.send(200, path.read_text(encoding="utf-8", errors="replace"),
+                      f"{kind}; charset=utf-8" if kind.startswith("text/") else kind)
+            return
         if where == "/drawio-viewer.js" and self.controls:
             script, fault = viewer_script()
             self.send(503 if fault else 200, fault or script.decode("utf-8", "replace"),
@@ -182,8 +208,11 @@ class Bridge(BaseHTTPRequestHandler):
                            "/board.json and /init.json.</p>")  # and the four an installable page is made of
             return
         held = config(self.root)
-        self.send(200, page(board(self.root, held), held, controls=self.controls, made=self.made(),
-                            root=str(self.root.resolve())))
+        if not self.controls:  # the published copy: the live cards alone, nothing to press
+            self.send(200, page(board(self.root, held), held, controls=False))
+            return
+        self.send(200, landing(str(self.root.resolve()), self.root.resolve().name, now_said(self.voyage_parts()[0]),
+                               (self.root / "project.json").is_file()))
 
     def land(self, answers: dict[str, str], out: str) -> str:
         """Move the board into the project that was just made, and start the step that finishes it.
@@ -224,20 +253,29 @@ class Bridge(BaseHTTPRequestHandler):
         said["launchable"] = self.launchable()
         return said
 
-    def voyage_parts(self) -> tuple[list, list[dict[str, str]], str]:
+    def voyage_parts(self) -> tuple[list, list[dict[str, str]], str, dict, dict]:
         rows, fault = folded(self.root)
         held = config(self.root)
-        found = stages(self.root, self.receipt() if self.fitting else None, board(self.root, held), counts(rows))
-        return found, rows, fault
+        fleet = {**board(self.root, held), "running": fleet_running(self.root)}
+        found = stages(self.root, self.receipt() if self.fitting else None, fleet, counts(rows))
+        return found, rows, fault, fleet, held
+
+    def castable(self, rows: list[dict[str, str]], fleet: dict) -> bool:
+        """Whether the fleet can be cast off from here: a split to work, nothing of it running, and no child
+        of this board on the way."""
+        idle = not self.fitting or self.fitting.said()["done"]
+        return bool(rows) and not fleet.get("running") and idle and any(row["state"] != "done" for row in rows)
 
     def voyage(self) -> str:
-        found, rows, fault = self.voyage_parts()
+        found, rows, fault, fleet, held = self.voyage_parts()
         xml, note = model_xml(self.root, states_of(rows))
-        return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable())
+        return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
+                      mockups(self.root), self.castable(rows, fleet))
 
     def voyage_json(self) -> str:
-        found, _, _ = self.voyage_parts()
-        return voyage_payload(found, self.launchable(), any(one.state == "working" for one in found))
+        found, rows, _, fleet, _ = self.voyage_parts()
+        return voyage_payload(found, self.launchable(), any(one.state == "working" for one in found),
+                              self.castable(rows, fleet))
 
     def attach(self, named: str) -> str:
         """Point this board at another directory, or say why it cannot be.
@@ -305,6 +343,12 @@ class Bridge(BaseHTTPRequestHandler):
                 said = self.attach(str(held.get("root", "")))
             # The one button a person presses between a drafted specification and a running fleet. The
             # receipt is carried into the new run, so the card keeps saying what was made and drafted.
+            elif self.path.rstrip("/") == "/cast-off":
+                _, rows, _, fleet, _ = self.voyage_parts()
+                if not self.castable(rows, fleet):
+                    raise ValueError("nothing to cast off: no split to work, or the fleet is already running")
+                type(self).fitting = start_fleet(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                said = "casting off"
             elif self.path.rstrip("/") == "/launch":
                 if not self.launchable():
                     raise ValueError("nothing to continue from here: a specification under specs/, written by "

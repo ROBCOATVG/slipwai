@@ -253,11 +253,15 @@ def clearance_ready(root: Path, feature: str = "") -> tuple[str, dict[str, list[
 def project_python() -> str:
     """The interpreter the project's own scripts run under: the `python3` the login shell finds, which is the
     one `./init` installed PyYAML into — not this process's, which is the keel's own environment and reads
-    no YAML by design. The keel's as a fallback, so a machine with no other python still gets an answer."""
-    import shutil
+    no YAML by design. The keel's as a fallback, so a machine with no other python still gets an answer.
+    The walk is spelled out rather than borrowed from `shutil.which`, which a suite elsewhere stands in for."""
+    import os
 
-    found = shutil.which("python3", path=login_environment().get("PATH"))
-    return found or sys.executable
+    for directory in (login_environment().get("PATH") or "").split(os.pathsep):
+        candidate = Path(directory) / "python3"
+        if directory and candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return sys.executable
 
 
 def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:

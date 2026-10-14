@@ -20,7 +20,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .assets import this_command
 from .fleet import NOTHING, inbox_detail
 from .page_shell import STYLE, THEME, document, esc  # noqa: F401 — STYLE and THEME are read by name here
 from .telegraph import MEANS, POSITIONS
@@ -115,7 +114,7 @@ document.addEventListener('click', event => {
   if (dial) send('/ring', {position: dial.dataset.ring});
   const say = event.target.closest('[data-tell]');
   if (say) {
-    const box = document.getElementById('tell-' + say.dataset.tell);
+    const box = document.getElementById(say.dataset.box || 'tell-' + say.dataset.tell);
     if (box && box.value.trim()) send('/tell', {fairway: say.dataset.tell, message: box.value.trim()});
   }
   if (event.target.id === 'launch') {
@@ -170,15 +169,24 @@ def berth_rows(rows: list[dict], streams: dict) -> str:
     return f"<table>{head}{body}</table>"
 
 
-def inbox_rows(rows: list[dict], controls: bool) -> str:
+def inbox_rows(rows: list[dict], controls: bool, streams: dict | None = None) -> str:
+    """Each thing waiting on a person, opened by clicking it: what the stream has been saying, and a box
+    to answer it from here. The answer becomes a `told` in the stream's deck log, which its captain reads at
+    the next boundary — the one way a park is lifted without a terminal."""
     if not rows:
         return '<p class="empty">Nothing is waiting on you.</p>'
     said = []
-    for row in rows:
-        detail = inbox_detail(row)
-        said.append(f"<tr><td><b>{esc(row['fairway'])}</b></td><td>{esc(row['kind'])}</td>"
-                    f"<td>{esc(detail)}</td><td class=\"mono\">{esc(row['t'])}</td></tr>")
-    return f"<table>{''.join(said)}</table>"
+    for index, row in enumerate(rows):
+        name, detail = str(row["fairway"]), inbox_detail(row)
+        lines = (streams or {}).get(name) or []
+        log = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines[-20:])
+        box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
+               f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button></div>'
+               if controls else "")
+        said.append(f'<details class="log"><summary><b>{esc(name)}</b> · {esc(row["kind"])} · {esc(detail)} '
+                    f'<span class="mono">{esc(row["t"])}</span></summary>'
+                    f'<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}</ol>{box}</details>')
+    return "".join(said)
 
 
 def answer_boxes(rows: list[dict]) -> str:
@@ -196,29 +204,6 @@ def answer_boxes(rows: list[dict]) -> str:
 #: The two things a person does *before* there is anything to watch, each with the verb that does it. They
 #: are on the board because the board is where somebody who typed one word arrives, and a board that could
 #: only show an empty harbour would be a page telling them to go back to the terminal.
-STARTING = (
-    ("Start a new project", "generate", "/generate",
-     "The interview, asked here: the delivery foundation, the language, what the first service owns, and "
-     "where it goes to production."),
-    ("Adopt a repository you already have", "adopt", "/adopt",
-     "The method installed around code that exists, with what it found and what it would write shown "
-     "before anything is written."),
-)
-
-
-def starting_points(command: str | None = None) -> str:
-    """What can be started from here, whether or not there is a project in this directory.
-
-    Both the page and the verb, because both are true: the link is where somebody who arrived by typing one
-    word goes next, and the command is what they type the second time, from a script or from habit.
-    """
-    command = this_command() if command is None else command
-    rows = "".join(f'<dt><a href="{esc(where)}"><b>{esc(title)}</b></a>'
-                   f'<div class="empty">{esc(why)}</div></dt>'
-                   f"<dd><code>{esc(command)} {esc(verb)}</code></dd>" for title, verb, where, why in STARTING)
-    return f'<div class="card"><h2>Start something</h2><dl>{rows}</dl></div>'
-
-
 def clock(seconds: float) -> str:
     """How long it has been going, as a person reads a clock: `0:07`, `2:41`."""
     whole = int(seconds)
@@ -249,22 +234,6 @@ def fitting_card(made: dict) -> str:
             f'{esc(said)}\n</pre><div class="ask">{launch}</div></div>')
 
 
-def looking(root: str) -> str:
-    """Which directory this board is a view of, and the box that points it at another one.
-
-    The board has always been a view of one directory, decided by where it was started and changed only by
-    stopping it and starting it again with `--root`. That was the terminal deciding something for a page
-    that has a person sitting in front of it: nothing here is cached, every request re-folds the logs at
-    `root`, so moving the board is a sentence rather than a restart. A generate moves it by itself, to the
-    project it just made; this is the same move, made on purpose.
-    """
-    return ('<div class="card" id="looking"><h2>Looking at</h2>'
-            f'<div class="ask"><input id="attach" value="{esc(root)}">'
-            '<button class="go" id="attach-go">Attach</button></div>'
-            '<div class="why">any project with a <code>.slipwai/</code> in it — its streams, its inbox and '
-            'its telegraph are what this page then shows</div></div>')
-
-
 def dial(position: str, controls: bool) -> str:
     buttons = []
     for name in POSITIONS:
@@ -288,42 +257,45 @@ def tune(config: dict, controls: bool) -> str:
     return f'<div class="card"><h2>Fine tune</h2><dl>{"".join(rows)}</dl>{apply}</div>'
 
 
-def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge",
-         made: dict | None = None, root: str = "") -> str:
-    """The whole page. `controls` off is the read-only copy, which is the same page with nothing to press."""
-    berths = found["berths"]
-    waiting = found["inbox"]
-    pressure = found["pressure"]
-    bunker = found["bunker"]
+def live_sub(found: dict) -> str:
+    """The one line over the live cards: what is waiting, what is running, what today has cost."""
+    berths, waiting, bunker = found["berths"], found["inbox"], found["bunker"]
     spent = bunker["spent"]
     stalled = [row for row in berths if row["state"] == "stalled"]
-    sub = (f"{len(waiting)} waiting on you · {len(berths)} stream(s)"
-           + (f" · {len(stalled)} stalled" if stalled else "")
-           + f" · {spent if spent is not None else NOTHING}/{bunker['allowed']}k today")
+    return (f"{len(waiting)} waiting on you · {len(berths)} stream(s)"
+            + (f" · {len(stalled)} stalled" if stalled else "")
+            + f" · {spent if spent is not None else NOTHING}/{bunker['allowed']}k today")
+
+
+def live_cards(found: dict, config: dict, controls: bool = True) -> str:
+    """Everything folded from the logs, with its controls: the inbox, the answer boxes, the streams, the
+    speed, the fine tune and the feed. The Voyage tab carries these beside the stages and the model; the
+    published copy carries them alone, with nothing to press."""
+    berths, waiting, pressure = found["berths"], found["inbox"], found["pressure"]
     banked = f'<p class="empty">{esc(pressure["banked"])}</p>' if pressure["banked"] else ""
     # Every line the fold carries, not the last fifteen: the list is a tail now, so what used to be cut to
     # keep the page short is scrolled instead, and the newest is the one it opens on.
     feed = "".join(f"<li>{esc(w)}  {esc(who)}  {esc(kind)}</li>" for w, who, kind in found["feed"])
-    # What can be started leads where there is no fleet to lead with, and is the tab bar's business where
-    # there is: a harbour with ten streams running is not a page about making an eleventh project, and a
-    # card saying twice what the tabs already say is a page repeating itself. The published copy has it
-    # nowhere — it is a file on somebody's Pages site, and nothing can be started from there.
-    start = starting_points() if controls and not berths else ""
     clearance_fault = (found.get("unreadable") or {}).get("clearance", "")
     unavailable = (f'<div class="card"><h2>Waiting counts unavailable</h2>'
                    f'<p class="empty">{esc(clearance_fault)}</p></div>') if clearance_fault else ""
-    landed = fitting_card(made) if made and controls else ""
-    # The published copy is a file on somebody's Pages site and is a view of nothing it could move to.
-    at = looking(root) if controls and root else ""
-    body = f"""{landed}{at}{start}{unavailable}
-<div class="card"><h2>Waiting on you</h2>{inbox_rows(waiting, controls)}</div>
+    return f"""{unavailable}
+<div class="card" id="waiting"><h2>Waiting on you</h2>{inbox_rows(waiting, controls, found.get("streams"))}</div>
 {answer_boxes(berths) if controls else ""}
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {})}</div>
 <div class="card"><h2>Speed</h2>{dial(str(pressure["position"]), controls)}{banked}</div>
 {tune(config, controls)}
 <div class="card"><h2>Last lines</h2><ul class="feed" data-tail>{feed or "<li>nothing yet</li>"}</ul></div>"""
-    # The published copy is one file and has no other tab to reach, so it gets no bar.
-    return document(title, sub, body, SCRIPT if controls else "", now="/" if controls else "")
+
+
+def page(found: dict, config: dict, controls: bool = True, title: str = "Bridge",
+         made: dict | None = None, root: str = "") -> str:
+    """The live cards as a page of their own — the published copy, which has no other tab to reach and
+    nothing to press. `made` and `root` are kept for the callers that still pass them; the served board
+    is `landing_page.landing` and the live cards are on the Voyage tab."""
+    del made, root
+    return document(title, live_sub(found), live_cards(found, config, controls), SCRIPT if controls else "",
+                    now="/" if controls else "")
 
 
 def read_only(found: dict, config: dict, title: str = "Bridge") -> str:

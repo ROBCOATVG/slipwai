@@ -31,6 +31,10 @@ from pathlib import Path
 
 from .shell_environment import login_environment
 
+# budget: 400 — one runner for every child the board starts in a project, and the four steps it runs through
+# it: `./init`, the draft, the launch and the cast-off. A module per step would be four copies of the pty,
+# the tail and the receipt, which is the duplication the steps were made one runner to avoid.
+
 #: What a child writes when it believes it is on a terminal — which, through a pseudo-terminal, it does.
 #: Stripped rather than rendered: the card is a log of what was said, not a terminal emulator.
 ANSI = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[=>()][0-9A-B]?")
@@ -152,6 +156,19 @@ LAUNCH = ["make", "launch"]
 LAUNCHING = ("Continuing the build — `make launch`: the chart and the split in a headless session, then /cruise "
              "enabled and the fleet cast off. The streams on this board are the fleet; a captain that parks is "
              "waiting on you.")
+
+
+#: What the Cast off button runs: `fleet.py start`, through the Makefile — the harbourmaster and a captain
+#: per fairway the telegraph allows, and the lines that say which were lit and which are waiting for a berth.
+CRUISE = ["make", "cruise"]
+CRUISING = ("Casting off — `make cruise`: the harbourmaster and a captain per fairway, as many at once as the "
+            "telegraph allows. What was lit, and what waits for a berth, is said below.")
+
+
+def cruised(code: int) -> str:
+    if code == 0:
+        return "`make cruise` is done. The streams below are the fleet; `make cruise-watch` is the seat beside it."
+    return f"`make cruise` exited {code}; nothing was cast off. Its last lines say why — the telegraph, usually."
 
 
 def drafted(code: int) -> str:
@@ -313,6 +330,13 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
     if steps and prd:
         steps.append(Step(DRAFT, DRAFTING, drafted, "draft"))
     fitting = Fitting(where, steps, said)
+    fitting.thread.start()
+    return fitting
+
+
+def cast_off(where: Path, said: list[str] | None = None) -> Fitting:
+    """The fleet started, in the background: what the board's Cast off button starts."""
+    fitting = Fitting(where, [Step(CRUISE, CRUISING, cruised, "cruise")], said)
     fitting.thread.start()
     return fitting
 

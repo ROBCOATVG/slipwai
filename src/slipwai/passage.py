@@ -143,12 +143,16 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
 
     berths = fleet.get("berths") or []
     inbox = fleet.get("inbox") or []
+    cruising = step_state(receipt, "cruise")
     working = any(row.get("state") == "running" for row in berths) or counts.get("working", 0) > 0
     waiting = bool(inbox) or counts.get("waiting", 0) > 0
     all_done = split and counts.get("done", 0) == sum(counts.values())
-    found.append(Stage("slices", "Slices", "waiting" if waiting else "working" if working else
-                       "done" if all_done else "todo", "deck logs",
+    # Split, not done, nothing running: the one silence the tree cannot explain, said as a wait on a person.
+    becalmed = split and not all_done and not working and not fleet.get("running") and not cruising
+    found.append(Stage("slices", "Slices", cruising or ("waiting" if waiting or becalmed else "working" if working
+                       else "done" if all_done else "todo"), "deck logs",
                        "make cruise; make cruise-tell answers a park",
+                       "the fleet is not running: cast off" if becalmed and not waiting else
                        f"{counts.get('done', 0)} of {sum(counts.values())} merged" if split
                        else "the fleet, under /cruise"))
 

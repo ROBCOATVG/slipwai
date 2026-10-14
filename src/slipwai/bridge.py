@@ -52,7 +52,11 @@ from .page_shell import (
     manifest,
     not_running,
 )
+from .passage import EVENT_PROFILE, modelled, profile_of, stages
 from .telegraph import Refused
+from .voyage import counts, folded, model_xml, states_of, viewer_script
+from .voyage_page import page as voyage
+from .voyage_page import payload as voyage_payload
 
 LIMIT = 4 * 1024 * 1024  # bytes a request body may be: a sentence, or a PRD riding in a generate's answers
 #: The four an installable page is made of, each with what it is served as. A browser decides whether to
@@ -136,6 +140,17 @@ class Bridge(BaseHTTPRequestHandler):
         if where == "/init.json" and self.controls:
             self.send(200, json.dumps(self.receipt(since(query))), "application/json; charset=utf-8")
             return
+        if where == "/voyage" and self.controls:
+            self.send(200, self.voyage())
+            return
+        if where == "/voyage.json" and self.controls:
+            self.send(200, self.voyage_json(), "application/json; charset=utf-8")
+            return
+        if where == "/drawio-viewer.js" and self.controls:
+            script, fault = viewer_script()
+            self.send(503 if fault else 200, fault or script.decode("utf-8", "replace"),
+                      "text/plain; charset=utf-8" if fault else "text/javascript; charset=utf-8")
+            return
         if where == "/board.json":
             held = config(self.root)
             self.send(200, payload(board(self.root, held)), "application/json; charset=utf-8")
@@ -191,17 +206,38 @@ class Bridge(BaseHTTPRequestHandler):
                                      repository_for(answers), prd=bool(str(answers.get("prd") or "").strip()))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
 
-    def receipt(self, since: int = 0) -> dict:
-        """What the board's child has said after the `since`th line, and whether the build can be continued
-        from here: the last step ended well, a specification exists to build from, and nothing has been
-        launched from this board since it landed."""
-        if not self.fitting:
-            return {"lines": [], "at": 0, "done": True, "launchable": False}
-        said = self.fitting.said(since)
+    def launchable(self) -> bool:
+        """Whether the build can be continued from here: a specification to build from and no chart yet — on
+        the event profile, a model too — nothing running or failed on this board, and not launched already."""
         specs = self.root / "specs"
-        specified = specs.is_dir() and any(specs.glob("*/spec.md"))
-        said["launchable"] = bool(said["done"] and not said["code"] and specified and not self.launched)
+        if self.launched or not (specs.is_dir() and any(specs.glob("*/spec.md"))) or any(specs.glob("*/chart.yaml")):
+            return False
+        if self.fitting and (not self.fitting.said()["done"] or self.fitting.said()["code"]):
+            return False
+        return profile_of(self.root) != EVENT_PROFILE or modelled(self.root)
+
+    def receipt(self, since: int = 0) -> dict:
+        """What the board's child has said after the `since`th line, and whether the build can be continued."""
+        if not self.fitting:
+            return {"lines": [], "at": 0, "done": True, "step": "", "launchable": self.launchable()}
+        said = self.fitting.said(since)
+        said["launchable"] = self.launchable()
         return said
+
+    def voyage_parts(self) -> tuple[list, list[dict[str, str]], str]:
+        rows, fault = folded(self.root)
+        held = config(self.root)
+        found = stages(self.root, self.receipt() if self.fitting else None, board(self.root, held), counts(rows))
+        return found, rows, fault
+
+    def voyage(self) -> str:
+        found, rows, fault = self.voyage_parts()
+        xml, note = model_xml(self.root, states_of(rows))
+        return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable())
+
+    def voyage_json(self) -> str:
+        found, _, _ = self.voyage_parts()
+        return voyage_payload(found, self.launchable(), any(one.state == "working" for one in found))
 
     def attach(self, named: str) -> str:
         """Point this board at another directory, or say why it cannot be.
@@ -270,7 +306,7 @@ class Bridge(BaseHTTPRequestHandler):
             # The one button a person presses between a drafted specification and a running fleet. The
             # receipt is carried into the new run, so the card keeps saying what was made and drafted.
             elif self.path.rstrip("/") == "/launch":
-                if not self.receipt()["launchable"]:
+                if not self.launchable():
                     raise ValueError("nothing to continue from here: a specification under specs/, written by "
                                      "`make draft` or with the agent, is what the build continues from")
                 type(self).launched = True

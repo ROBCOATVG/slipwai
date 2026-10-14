@@ -7,6 +7,7 @@ keel owns — the command it builds, the lines it says, and the tail the board r
 """
 from __future__ import annotations
 
+import json
 import tempfile
 import time
 import unittest
@@ -15,7 +16,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai.init_run import DECLINED, Fitting, command, ended, launch, start
+from slipwai.init_run import DECLINED, Fitting, command, ended, folded_line, launch, start
 
 
 def project(says: list[str], code: int = 0) -> Path:
@@ -157,6 +158,30 @@ class BackgroundTest(unittest.TestCase):
         said = finished(launch(root))
         self.assertEqual(said["code"], 2)
         self.assertIn("nothing was cast off", said["lines"][-1])
+
+    def test_the_receipt_says_which_step_it_is_on(self) -> None:
+        root = with_makefile(project(["init ran"]), {"draft": "drafted"})
+        fitting = start(root, "claude", prd=True)
+        self.assertEqual(finished(fitting)["step"], "draft", "the last step it ran")
+        (root / "Makefile").write_text("launch:\n\t@echo x\n", encoding="utf-8")
+        self.assertEqual(finished(launch(root))["step"], "launch")
+
+    def test_claude_s_json_stream_is_folded_to_the_words_a_person_wants(self) -> None:
+        """Print mode writes one event per line; the card says the assistant's text, the tools it reaches
+        for and the result with its cost, and drops the harness talking to itself."""
+        assistant = json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "Reading the PRD.\nTwo requirements."}, {"type": "tool_use", "name": "Bash"}]}})
+        self.assertEqual(folded_line(assistant), ["• Reading the PRD.", "• Two requirements.", "→ Bash"])
+        result = json.dumps({"type": "result", "result": "Drafted.\nMore.", "usage": {"output_tokens": 1234}})
+        self.assertEqual(folded_line(result), ["result: Drafted. — 1,234 output tokens"])
+        self.assertEqual(folded_line(json.dumps({"type": "system", "subtype": "init"})), [])
+        self.assertEqual(folded_line(json.dumps({"type": "user", "message": {}})), [])
+        self.assertEqual(folded_line("plain words"), ["plain words"])
+        self.assertEqual(folded_line("{not json"), ["{not json"])
+        root = Path(tempfile.mkdtemp())
+        (root / "init").write_text(f"#!/bin/sh\nprintf '%s\\n' '{assistant}'\n", encoding="utf-8")
+        (root / "init").chmod(0o755)
+        self.assertIn("• Reading the PRD.", finished(start(root, "claude"))["lines"])
 
     def test_declining_is_a_finished_run_that_says_what_the_next_step_is(self) -> None:
         """The board still lands in the project; what it does not do is start anything in it."""

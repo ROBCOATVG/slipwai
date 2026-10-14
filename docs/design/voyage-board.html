@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voyage Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* The board's own tokens (page_shell.py), with the three states a design doc needs and two the board lacks. */
+:root{
+  --ground:#f1f3f4;--paper:#fcfcfb;--ink:#172129;--ink-2:#4a5862;--ink-3:#7a8891;--rule:#d9e0e4;--rule-2:#e9eef1;
+  --teal:#0f6b6b;--teal-soft:#dcecea;--brass:#8a6d24;--brass-soft:#f1e9d2;--good:#0ca30c;
+  --wait:#b4432f;--wait-soft:#f6e1dc;--todo:#c8d0d5;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#10171c;--paper:#1a1a19;--ink:#e6ecef;--ink-2:#b6c1c8;--ink-3:#808e97;--rule:#2c3840;--rule-2:#222c33;
+  --teal:#5fc1bb;--teal-soft:#15302f;--brass:#d2b465;--brass-soft:#2e2814;--good:#4fd04f;
+  --wait:#e07a62;--wait-soft:#3a1f19;--todo:#3a474f;
+}}
+:root[data-theme="dark"]{
+  --ground:#10171c;--paper:#1a1a19;--ink:#e6ecef;--ink-2:#b6c1c8;--ink-3:#808e97;--rule:#2c3840;--rule-2:#222c33;
+  --teal:#5fc1bb;--teal-soft:#15302f;--brass:#d2b465;--brass-soft:#2e2814;--good:#4fd04f;
+  --wait:#e07a62;--wait-soft:#3a1f19;--todo:#3a474f;
+}
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
+  padding-inline:clamp(16px,4vw,40px);padding-block:28px 64px}
+a{color:var(--teal)}
+h1,h2,h3{text-wrap:balance;margin:0}
+h1{font-size:1.6rem;font-weight:600;letter-spacing:-.01em}
+h2{font-size:1.05rem;font-weight:600}
+h3{font-size:.95rem;font-weight:600}
+p{margin:0}
+code,.mono{font-family:var(--mono);font-size:.86em}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:28px}
+.lede{max-width:68ch;color:var(--ink-2)}
+.eyebrow{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.note{font-size:.85rem;color:var(--ink-2);max-width:72ch}
+.card{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:18px 20px;display:grid;gap:14px}
+.card.lift{box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px -16px rgba(23,33,41,.35)}
+.head{display:flex;justify-content:space-between;gap:16px;align-items:baseline;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;padding:3px 9px;border-radius:999px;
+  border:1px solid var(--rule);color:var(--ink-2);background:var(--rule-2);white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--todo)}
+.chip.done{color:var(--teal);background:var(--teal-soft);border-color:transparent}.chip.done::before{background:var(--teal)}
+.chip.working{color:var(--brass);background:var(--brass-soft);border-color:transparent}.chip.working::before{background:var(--brass)}
+.chip.waiting{color:var(--wait);background:var(--wait-soft);border-color:transparent}.chip.waiting::before{background:var(--wait)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin-top:4px}
+.tabs span{font-size:.88rem;color:var(--ink-2);padding:8px 14px;border-radius:7px 7px 0 0;border:1px solid transparent;border-bottom:none}
+.tabs span.now{background:var(--paper);border-color:var(--rule);color:var(--ink)}
+.tabs span.new{outline:1.5px dashed var(--brass);outline-offset:-1px}
+
+/* The passage: one strip, one node per stage, read left to right. */
+.passage{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:0;position:relative;padding-top:6px}
+.passage::before{content:"";position:absolute;left:6%;right:6%;top:20px;height:3px;background:var(--rule);border-radius:2px}
+.stage{display:grid;gap:8px;justify-items:center;text-align:center;padding:0 6px;position:relative;min-width:0}
+.stage .dot{width:30px;height:30px;border-radius:50%;border:3px solid var(--todo);background:var(--paper);display:grid;place-items:center;
+  font-family:var(--mono);font-size:.72rem;color:var(--ink-3);position:relative}
+.stage.done .dot{background:var(--teal);border-color:var(--teal);color:#fff}
+.stage.working .dot{border-color:var(--brass);color:var(--brass);background:var(--brass-soft)}
+.stage.working .dot::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid var(--brass);opacity:.5;animation:pulse 1.6s ease-out infinite}
+.stage.waiting .dot{border-color:var(--wait);color:var(--wait);background:var(--wait-soft)}
+@keyframes pulse{from{transform:scale(.85);opacity:.6}to{transform:scale(1.25);opacity:0}}
+@media (prefers-reduced-motion:reduce){.stage.working .dot::after{animation:none;opacity:.35}}
+.stage b{font-size:.84rem;font-weight:600;line-height:1.2}
+.stage small{font-size:.74rem;color:var(--ink-3);line-height:1.3}
+.stage.working b{color:var(--brass)}
+.stage.done small{color:var(--ink-2)}
+.stage .ev{font-family:var(--mono);font-size:.68rem;color:var(--ink-3);word-break:break-all}
+.stage.todo b,.stage.todo .dot{opacity:.75}
+.stage.skipped{opacity:.4}
+.now{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:start;border-top:1px solid var(--rule-2);padding-top:14px}
+.now .tail{background:var(--ground);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:.76rem;
+  color:var(--ink-2);white-space:pre-wrap;max-height:120px;overflow:auto}
+.btn{font:inherit;font-weight:500;padding:8px 16px;border-radius:7px;border:1px solid var(--teal);background:var(--teal);color:#fff;cursor:pointer}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.quiet{background:transparent;color:var(--teal)}
+:root[data-theme="dark"] .btn,:root:not([data-theme="light"]) .btn{color:var(--paper)}
+.btn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--ink-2)}
+
+/* The model: three lanes, the notation's own picture, status on each slice. */
+.model{overflow-x:auto}
+.model svg{display:block;min-width:720px;max-width:100%;height:auto}
+.lane-label{font:600 11px var(--sans);fill:var(--ink-3);letter-spacing:.06em;text-transform:uppercase}
+.box{stroke-width:1.5}
+.box.ui{fill:var(--paper);stroke:var(--ink-3)}
+.box.cmd{fill:#dbe8f6;stroke:#3b6fa8}.box.rmo{fill:#dff2df;stroke:#3f8a3f}.box.evt{fill:#fbe3b9;stroke:#b7791f}
+:root[data-theme="dark"] .box.cmd,:root:not([data-theme="light"]) .box.cmd{fill:#1d3350}
+:root[data-theme="dark"] .box.rmo,:root:not([data-theme="light"]) .box.rmo{fill:#1d3a1d}
+:root[data-theme="dark"] .box.evt,:root:not([data-theme="light"]) .box.evt{fill:#4a3410}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .box.cmd{fill:#dbe8f6}:root:not([data-theme="dark"]) .box.rmo{fill:#dff2df}:root:not([data-theme="dark"]) .box.evt{fill:#fbe3b9}}
+.box-text{font:500 11px var(--sans);fill:var(--ink)}
+.slice-title{font:600 12px var(--sans);fill:var(--ink)}
+.slice-status{font:500 10px var(--mono);letter-spacing:.04em;text-transform:uppercase}
+.arrow{stroke:var(--ink-3);stroke-width:1.2;fill:none}
+.grid-line{stroke:var(--rule-2)}
+.slice-band{fill:none;stroke-dasharray:4 4}
+.slice-band.done{stroke:var(--teal)}.slice-band.working{stroke:var(--brass)}.slice-band.todo{stroke:var(--todo)}.slice-band.waiting{stroke:var(--wait)}
+
+/* The viewer: draw.io's chrome around draw.io's picture, which keeps its own colours in both themes. */
+.viewer{border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:#fff}
+.viewer .bar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid #e3e3e3;background:#f7f7f7;color:#555;font-size:.78rem}
+.viewer .bar b{font-weight:500;color:#333}
+.viewer .bar .sp{flex:1}
+.viewer .bar button{font:inherit;font-size:.78rem;padding:2px 8px;border:1px solid #d0d0d0;border-radius:4px;background:#fff;color:#444;cursor:default}
+.viewer .canvas{overflow-x:auto;background:#fff;background-image:linear-gradient(#f3f3f3 1px,transparent 1px),linear-gradient(90deg,#f3f3f3 1px,transparent 1px);background-size:20px 20px}
+.viewer svg{display:block;min-width:900px;max-width:100%;height:auto}
+.dio-frame{fill:none;stroke:#b3b3b3;stroke-width:1}
+.dio-title{font:28px var(--sans);fill:#8c8c8c}
+.dio-lane{font:600 11px var(--sans);fill:#8c8c8c;letter-spacing:.06em;text-transform:uppercase}
+.dio-text{font:500 11px var(--sans);fill:#222}
+.dio-sub{font:9px var(--mono);fill:#666}
+.dio-cap{font:600 12px var(--sans);fill:#333}
+.dio-state{font:500 10px var(--mono);letter-spacing:.04em;text-transform:uppercase}
+.dio-seq{stroke:#4a4a4a;stroke-width:1.5;fill:none}
+.dio-reads{stroke:#9a9a9a;stroke-width:1.5;fill:none;stroke-dasharray:8 6}
+.dio-caption{fill:#fff;stroke:#dbdada;stroke-width:1.5}
+.dio-caption.done{stroke:#0f6b6b;stroke-width:3}
+.dio-caption.working{stroke:#8a6d24;stroke-width:3}
+.dio-caption.waiting{stroke:#b4432f;stroke-width:3;stroke-dasharray:6 4}
+.dio-caption.todo{stroke:#dbdada}
+
+/* The work: four columns, cards fold from the deck logs. */
+.columns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.col{display:grid;gap:8px;align-content:start}
+.col h3{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);
+  padding-bottom:6px;border-bottom:2px solid var(--todo)}
+.col.done h3{border-color:var(--teal)}.col.working h3{border-color:var(--brass)}.col.waiting h3{border-color:var(--wait)}
+.col h3 span{font-family:var(--mono);font-weight:400;color:var(--ink-3)}
+.slice{border:1px solid var(--rule);border-radius:8px;padding:10px 12px;display:grid;gap:4px;background:var(--paper)}
+.slice b{font-size:.88rem;font-weight:600}
+.slice .fw{font-size:.74rem;color:var(--ink-3);font-family:var(--mono)}
+.slice .why{font-size:.8rem;color:var(--ink-2)}
+.slice.waiting{border-color:var(--wait);background:var(--wait-soft)}
+.slice.working{border-color:var(--brass)}
+.slice.done{border-color:var(--teal-soft)}
+.marks{display:flex;gap:4px;flex-wrap:wrap}
+.mark{font-family:var(--mono);font-size:.68rem;padding:1px 6px;border-radius:4px;background:var(--rule-2);color:var(--ink-2)}
+.mark.set{background:var(--teal-soft);color:var(--teal)}
+.empty{font-size:.82rem;color:var(--ink-3);padding:10px;border:1px dashed var(--rule);border-radius:8px;text-align:center}
+
+/* The reading: a table, because this is a design for an engineer too. */
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+td:first-child{font-weight:600;white-space:nowrap}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+ol.plain{margin:0;padding-left:1.2em;display:grid;gap:8px;font-size:.9rem}
+ol.plain li::marker{color:var(--ink-3);font-family:var(--mono);font-size:.8em}
+.kbd{font-family:var(--mono);font-size:.8em;background:var(--rule-2);padding:1px 6px;border-radius:4px}
+.example{font-size:.74rem;color:var(--ink-3);font-style:italic}
+
+@media (max-width:900px){.passage{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:22px}.passage::before{display:none}
+  .now,.twocol{grid-template-columns:1fr}.columns{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.columns{grid-template-columns:1fr}.passage{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header style="display:grid;gap:10px">
+  <p class="eyebrow">Design · a new tab on the board</p>
+  <h1>Voyage: where this project stands, read off the tree</h1>
+  <p class="lede">One page that answers "what step are we on" without a scrollback search. Three bands, top to bottom: the <b>passage</b> (the stages from PRD to accepted work), the <b>model</b> (the event model, with each slice's standing on it), and the <b>work</b> (slices by what the deck logs say). Nothing on it is a status field anybody typed: every state is derived from a file that exists, a marker that is gone, or a log line that was written, the same rule the toolkit already lives by.</p>
+  <div class="tabs" aria-hidden="true"><span>Board</span><span class="now new">Voyage</span><span>Start a project</span><span>Adopt a repository</span><span>Packages</span></div>
+</header>
+
+<!-- ───────────────────────── 1. The passage ───────────────────────── -->
+<section class="card lift" aria-labelledby="passage-h">
+  <div class="head">
+    <div><p class="eyebrow">Band 1 · the passage</p><h2 id="passage-h">game-thing <span class="chip working">drafting the specification · 4:12</span></h2></div>
+    <div class="legend"><span class="chip done">done</span><span class="chip working">working</span><span class="chip waiting">waiting on you</span><span class="chip">to do</span></div>
+  </div>
+
+  <div class="passage" role="list">
+    <div class="stage done" role="listitem"><div class="dot">✓</div><b>PRD</b><small>docs/prd.md</small><span class="ev">1.8 kB · given at generate</span></div>
+    <div class="stage done" role="listitem"><div class="dot">✓</div><b>Init</b><small>Spec Kit, claude</small><span class="ev">.specify/integration.json</span></div>
+    <div class="stage done" role="listitem"><div class="dot">✓</div><b>Constitution</b><small>ratified from the PRD</small><span class="ev">template markers gone</span></div>
+    <div class="stage working" role="listitem"><div class="dot">●</div><b>Specification</b><small>make draft, in a headless session</small><span class="ev">specs/001-game-finder/spec.md</span></div>
+    <div class="stage todo" role="listitem"><div class="dot">5</div><b>Event model</b><small>a modelling conversation</small><span class="ev">docs/event-model/model.yaml</span></div>
+    <div class="stage todo" role="listitem"><div class="dot">6</div><b>Chart &amp; split</b><small>make launch</small><span class="ev">specs/…/chart.yaml</span></div>
+    <div class="stage todo" role="listitem"><div class="dot">7</div><b>Slices</b><small>the fleet, under /cruise</small><span class="ev">deck logs</span></div>
+    <div class="stage todo" role="listitem"><div class="dot">8</div><b>Accepted</b><small>every capability demoed</small><span class="ev">accepted lines</span></div>
+  </div>
+
+  <div class="now">
+    <div style="display:grid;gap:10px">
+      <h3>Now: the specification is being drafted</h3>
+      <p class="note">One headless session of Claude Code is reading <code>docs/prd.md</code> and writing <code>specs/001-game-finder/spec.md</code>. It stops when the spec is committed. The card shows the session's text, not its JSON — the stream is folded to assistant lines, with the token count on the chip.</p>
+      <div class="tail">• Reading docs/prd.md (1,812 bytes) and AGENTS.md
+• A game finder for board-game groups: who is free, which games fit the table, and when.
+• Constitution ratified: 5 principles, none invented beyond the document.
+• Running speckit.specify with the whole document as the description…
+• 14 functional requirements, 9 acceptance criteria; 2 assumptions recorded under ## Assumptions</div>
+    </div>
+    <div style="display:grid;gap:10px;align-content:start">
+      <h3>Next: read it, then continue</h3>
+      <p class="note">The button appears the moment the spec is committed. Until then it is here, disabled, so the next step is never a surprise. On the event-modelling profile the next step is the model, not the chart, and the button says so.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" disabled>Continue the build</button><button class="btn quiet">Open specs/001-game-finder/spec.md</button></div>
+      <p class="example">Example data: game-thing's real stages, the session lines are illustrative.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 2. The model ───────────────────────── -->
+<section class="card" aria-labelledby="model-h">
+  <div class="head">
+    <div><p class="eyebrow">Band 2 · the model</p><h2 id="model-h">The event model, with each slice's standing on it</h2></div>
+    <div class="legend"><span>2 implemented</span><span>·</span><span>1 planned</span><span>·</span><span>1 modelled</span><span>·</span><span>1 proposed</span></div>
+  </div>
+  <p class="note">The committed <code>docs/event-model/model.drawio</code>, shown in draw.io's own read-only viewer — the same picture a person opens in draw.io, with pan, zoom, layers and a lightbox, which a timeline that grows sideways forever needs. The board adds the one thing the file cannot carry: each slice's caption is re-stroked by where the slice actually is, folded from the deck logs. The recoloured copy lives only in the response; the committed file is untouched and <code>make check-drawio</code> keeps holding it to <code>model.yaml</code>. View only: the source stays the YAML and the modelling conversation.</p>
+  <div class="viewer" aria-label="draw.io viewer, read-only">
+    <div class="bar"><b>model.drawio</b><span>· read-only · draw.io viewer, served by the board</span><span class="sp"></span>
+      <button type="button" aria-label="Zoom out">−</button><button type="button">100%</button><button type="button" aria-label="Zoom in">+</button><button type="button">Fit</button><button type="button">Layers</button><button type="button" aria-label="Open in a lightbox">⤢</button></div>
+    <div class="canvas" id="model"></div>
+  </div>
+  <p class="example">Example model: four slices a game finder would have, drawn the way the toolkit's renderer lays a model out — a captioned strip per slice above the bands, lane labels in the gutter, the palette's own fills. An empty model says so and links the modelling conversation.</p>
+</section>
+
+<!-- ───────────────────────── 3. The work ───────────────────────── -->
+<section class="card" aria-labelledby="work-h">
+  <div class="head">
+    <div><p class="eyebrow">Band 3 · the work</p><h2 id="work-h">Slices, by what the deck logs say</h2></div>
+    <div class="legend"><span>fairways: <b>sessions</b>, <b>catalogue</b></span></div>
+  </div>
+  <div class="columns">
+    <div class="col">
+      <h3>To do <span>3</span></h3>
+      <div class="slice"><b>Notify players</b><span class="fw">sessions · automation</span><div class="marks"><span class="mark">steers: session-joined</span></div><span class="why">cleared when session-joined is set</span></div>
+      <div class="slice"><b>Rate a session</b><span class="fw">sessions · state-change</span><div class="marks"><span class="mark">steers: session-joined</span></div></div>
+      <div class="slice"><b>Browse by player count</b><span class="fw">catalogue · state-view</span><div class="marks"><span class="mark">steers: game-registered</span></div></div>
+    </div>
+    <div class="col working">
+      <h3>Working <span>1</span></h3>
+      <div class="slice working"><b>Join a session</b><span class="fw">sessions · captain-sessions · 11 min</span><div class="marks"><span class="mark set">examples</span><span class="mark set">contract</span><span class="mark">session-joined</span></div><span class="why">Phase 3 implement · 2 of 3 marks set</span></div>
+    </div>
+    <div class="col waiting">
+      <h3>Waiting on you <span>1</span></h3>
+      <div class="slice waiting"><b>Search games</b><span class="fw">catalogue · parked 23 min</span><span class="why">"Which fields does a search match on — name only, or designer and mechanics too? The PRD names both without saying." <b>Tell the stream</b></span></div>
+    </div>
+    <div class="col done">
+      <h3>Done <span>2</span></h3>
+      <div class="slice done"><b>Register a game</b><span class="fw">catalogue · merged</span><div class="marks"><span class="mark set">game-registered</span></div><span class="why">demo accepted · capability: a catalogue to pick from</span></div>
+      <div class="slice done"><b>Propose a session</b><span class="fw">sessions · merged</span><div class="marks"><span class="mark set">session-proposed</span></div></div>
+    </div>
+  </div>
+  <p class="example">Example slices: the real columns fold from claimed, mark-set, parked, merged and accepted lines, exactly as the Streams card does today.</p>
+</section>
+
+<!-- ───────────────────────── The reading ───────────────────────── -->
+<section class="card" aria-labelledby="reading-h">
+  <div class="head"><div><p class="eyebrow">What each state is read from</p><h2 id="reading-h">No status field; every state is a fact on disk</h2></div></div>
+  <div style="overflow-x:auto">
+  <table>
+    <thead><tr><th>Stage</th><th>Done when</th><th>Working when</th><th>Waiting when</th></tr></thead>
+    <tbody>
+      <tr><td>PRD</td><td><code>docs/prd.md</code> exists</td><td>—</td><td>—</td></tr>
+      <tr><td>Init</td><td><code>.specify/integration.json</code> names a harness</td><td>the board's <code>./init</code> child is running</td><td>it exited non-zero</td></tr>
+      <tr><td>Constitution</td><td>the template's markers are gone from <code>.specify/memory/constitution.md</code> (what <code>next_steps.template_gone</code> reads)</td><td><code>make draft</code> is running</td><td>—</td></tr>
+      <tr><td>Specification</td><td>any <code>specs/*/spec.md</code></td><td><code>make draft</code> is running</td><td>the draft exited non-zero</td></tr>
+      <tr><td>Event model</td><td><code>model.yaml</code> holds at least one slice and <code>check-model</code> is green; event profile only, otherwise the stage is skipped and drawn faint</td><td>—</td><td>—</td></tr>
+      <tr><td>Chart &amp; split</td><td><code>specs/&lt;f&gt;/chart.yaml</code> has fairways, marks and slices</td><td><code>make launch</code> is running</td><td>the launch session parked</td></tr>
+      <tr><td>Slices</td><td>every charted slice has a merged line</td><td>a captain is alive and a slice is claimed</td><td>any <code>parked</code> line with no later claim</td></tr>
+      <tr><td>Accepted</td><td>every capability has an <code>accepted</code> line</td><td>a <code>demo-due</code> is open</td><td>—</td></tr>
+      <tr><td>A slice (band 2 and 3)</td><td><code>merged</code> → done; <code>accepted</code> on its capability → demoed</td><td><code>claimed</code> with no merge, and its captain writing</td><td><code>parked</code>; stalled for longer than the stall bound</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">The "working" column is the one thing the tree cannot tell on its own, so it comes from the two things the board already knows: its own child (init, draft, launch) and the fleet's heartbeats. That is also why "waiting on you" is loud and "working" is quiet: a stalled captain and a finished one look the same in a status field, and only the log tells them apart.</p>
+</section>
+
+<!-- ───────────────────────── Build notes ───────────────────────── -->
+<section class="twocol">
+  <div class="card">
+    <p class="eyebrow">Shape of the implementation</p>
+    <ol class="plain">
+      <li><b><code>passage.py</code></b>, a reading like <code>next_steps.py</code>: one function returning the eight stages with state, evidence and the next command. It reuses <code>template_gone</code>, the spec glob, the chart reader and the fleet's fold. Nothing writes.</li>
+      <li><b><code>/voyage</code> and <code>/voyage.json</code></b> on the bridge: the page, and the payload the page polls at the cadence <code>/init.json</code> already uses. The fitting's receipt is folded into stages 2–6 so the strip moves while a child runs.</li>
+      <li><b>The model band</b> is draw.io's viewer script, vendored into the keel's assets and served as a route like the manifest and worker, so it draws offline. The board reads <code>model.drawio</code>, runs <code>make model-drawio</code> first when <code>model.yaml</code> is newer, and rewrites the style of each slice's caption cell — found by the deterministic id the renderer gives it — from the same fold band 3 uses. The committed file is never written.</li>
+      <li><b>The fitting card</b> folds Claude Code's stream-json to assistant text, keeping the usage counts on the chip. A small change in <code>init_run.read</code>: a line that parses as JSON with a <code>message.content</code> is replaced by its text.</li>
+      <li><b>The button</b> moves from the Made card to the strip's current stage, and on the event profile reads "Model it next" instead of "Continue the build", linking the modelling conversation rather than launching.</li>
+      <li><b>Tests</b> mirror the existing ones: a tree with files at each stage asserts the strip, a fake fleet asserts the columns, and the served page asserts the payload. Byte gates are untouched: nothing generated changes.</li>
+    </ol>
+  </div>
+  <div class="card">
+    <p class="eyebrow">Decisions this design makes</p>
+    <ol class="plain">
+      <li><b>A tab, not a card.</b> The Board stays the operations view (streams, speed, inbox); Voyage is the "where are we" view. One link each way, and the Made card after a generate lands on Voyage, since that is the question a person has at that moment.</li>
+      <li><b>Three states plus "waiting on you".</b> Done, working, to do are the strip's; waiting is a fourth because it is the only one that asks for a person, and it should look like it.</li>
+      <li><b>The event model stage is profile-specific.</b> On the standard profile it is drawn faint and skipped, not hidden, so both profiles read the same strip.</li>
+      <li><b>drawio is shown, not drawn.</b> The viewer renders the committed file rather than a second picture, so what the board shows is what a person opens in draw.io. The one addition is a border, and the one thing it refuses is editing: an edit there would drift from <code>model.yaml</code> and fail the gate on the next commit. The diagram keeps draw.io's colours in both themes, which a diagram is allowed to.</li>
+      <li><b>No kanban drag.</b> Columns are read-only: moving a card would be a status field by another name. The one action in band 3 is <i>Tell the stream</i>, which already exists.</li>
+      <li><b>Type.</b> IBM Plex Sans for the page and Plex Mono for every identifier — paths, marks, fairways — so a thing you can type looks like one. The board's current system stack remains the fallback; the palette is the board's own tokens plus one critical hue.</li>
+    </ol>
+  </div>
+</section>
+
+</div>
+
+<script>
+// The model, drawn the way the toolkit's drawio renderer lays it out: one frame, a caption strip per slice,
+// lane labels in a gutter, the palette's fills. The real page hands the committed XML to draw.io's viewer.
+(function(){
+  const fill = {ui:["#ffffff","#dbdada"], pcr:["#edb3f6","#b88cbf"], cmd:["#bcd6fe","#679ac3"], rmo:["#d3f1a2","#a3b732"], evt:["#ffb778","#c19a0f"]};
+  const slices = [
+    {name:"Register a game", state:"done", said:"merged · demoed", actor:"Organiser", frames:[["ui","Register game"],["cmd","RegisterGame"],["evt","GameRegistered","game-{id}"]]},
+    {name:"Propose a session", state:"done", said:"merged", actor:"Organiser", frames:[["ui","Propose session"],["cmd","ProposeSession"],["evt","SessionProposed","session-{id}"]]},
+    {name:"Join a session", state:"working", said:"claimed · 11 min", actor:"Player", frames:[["ui","Join"],["cmd","JoinSession"],["evt","SessionJoined","session-{id}"]]},
+    {name:"Search games", state:"waiting", said:"parked · 23 min", actor:"Player", frames:[["rmo","GameCatalogue"],["ui","Search"]], reads:"GameRegistered"},
+    {name:"Notify players", state:"todo", said:"not started", actor:"System", frames:[["rmo","SessionRoster"],["pcr","Notifier"],["cmd","NotifyPlayers"],["evt","PlayersNotified","session-{id}"]]},
+  ];
+  const gutter = 120, frameW = 136, boxW = 118, boxH = 38, laneH = 92, capH = 30, pad = 16;
+  const topOfCaps = 60, topOfLanes = topOfCaps + capH + 18;
+  const lanes = {ui:0, pcr:0, cmd:1, rmo:1, evt:2};
+  let frame = 0; const draws = []; const caps = [];
+  slices.forEach(s => {
+    const start = frame;
+    s.frames.forEach(f => { draws.push({kind:f[0], text:f[1], sub:f[2], x:gutter + frame*frameW, lane:lanes[f[0]], actor:s.actor, slice:s}); frame++; });
+    caps.push({x0:gutter + start*frameW, x1:gutter + frame*frameW - 18, slice:s});
+  });
+  const W = gutter + frame*frameW + pad, H = topOfLanes + laneH*3 + pad;
+  const esc = v => String(v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const stateColour = {done:"#0f6b6b", working:"#8a6d24", waiting:"#b4432f", todo:"#8c8c8c"};
+  let svg = `<svg viewBox="0 0 ${W+pad} ${H+pad}" width="${W+pad}" role="img" aria-label="model.drawio in the draw.io viewer, slice captions re-stroked by state">`;
+  svg += `<rect class="dio-frame" x="${pad/2}" y="${pad/2}" width="${W}" height="${H}"/>`;
+  svg += `<text class="dio-title" x="${pad+8}" y="${pad+30}">game-thing — event model</text>`;
+  ["ui / processors","commands · read models","events · streams"].forEach((l,i) => {
+    const y = topOfLanes + i*laneH;
+    svg += `<line x1="${pad}" y1="${y}" x2="${W}" y2="${y}" stroke="#ececec"/><text class="dio-lane" x="${pad+8}" y="${y+18}">${esc(l)}</text>`;
+  });
+  caps.forEach(c => {
+    const s = c.slice, w = c.x1 - c.x0;
+    svg += `<rect class="dio-caption ${s.state}" x="${c.x0}" y="${topOfCaps}" width="${w}" height="${capH}" rx="4"/>`;
+    svg += `<text class="dio-cap" x="${c.x0+8}" y="${topOfCaps+19}">${esc(s.name)}</text>`;
+    svg += `<text class="dio-state" x="${c.x1-8}" y="${topOfCaps+19}" text-anchor="end" fill="${stateColour[s.state]}">${esc(s.said)}</text>`;
+  });
+  draws.forEach((d, i) => {
+    const y = topOfLanes + d.lane*laneH + 30, [f, st] = fill[d.kind];
+    svg += `<rect x="${d.x}" y="${y}" width="${boxW}" height="${boxH}" fill="${f}" stroke="${st}" stroke-width="1.5"/>`;
+    svg += `<text class="dio-text" x="${d.x+boxW/2}" y="${y+(d.sub?16:23)}" text-anchor="middle">${esc(d.text)}</text>`;
+    if (d.sub) svg += `<text class="dio-sub" x="${d.x+boxW/2}" y="${y+30}" text-anchor="middle">${esc(d.sub)}</text>`;
+    if (d.lane===0) svg += `<text class="dio-sub" x="${d.x}" y="${y-6}">${esc(d.actor)}</text>`;
+    const n = draws[i+1];
+    if (n && n.slice === d.slice) {
+      const y1 = y + boxH/2, y2 = topOfLanes + n.lane*laneH + 30 + boxH/2;
+      svg += `<path class="dio-seq" d="M${d.x+boxW},${y1} C${d.x+boxW+12},${y1} ${n.x-12},${y2} ${n.x},${y2}"/>`;
+    }
+    if (d.kind==="rmo" && d.slice.reads) {
+      // the reads caption under the read model, as the renderer writes one
+      svg += `<text class="dio-sub" x="${d.x+boxW/2}" y="${y+boxH+14}" text-anchor="middle">reads ${esc(d.slice.reads)}</text>`;
+      const src = draws.find(o => o.kind==="evt" && o.text===d.slice.reads);
+      if (src) { const ys = topOfLanes + 2*laneH + 30; svg += `<path class="dio-reads" d="M${src.x+boxW/2},${ys} C${src.x+boxW/2},${ys-40} ${d.x+boxW/2},${y+boxH+40} ${d.x+boxW/2},${y+boxH}"/>`; }
+    }
+  });
+  svg += "</svg>";
+  document.getElementById("model").innerHTML = svg;
+})();
+</script>
+</body>
+</html>

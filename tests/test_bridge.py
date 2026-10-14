@@ -297,6 +297,33 @@ class LandingTest(ServerTest):
     def test_declining_init_still_says_what_the_next_step_is(self) -> None:
         self.assertIn("./init was not run", self.land()[1])
 
+    def test_the_voyage_says_what_stage_the_project_is_on_and_moves_with_the_child(self) -> None:
+        """The tab a generate lands on: every stage with its state, polled while the child runs."""
+        self.land()
+        code, said = self.get("/voyage")
+        self.assertEqual(code, 200)
+        self.assertIn('data-stage="prd"', said)
+        self.assertIn("Made demo", said, "the receipt is on this page too")
+        self.assertIn('href="/voyage"', self.get("/")[1])
+        found = json.loads(self.get("/voyage.json")[1])
+        self.assertEqual([one["key"] for one in found["stages"]][:2], ["prd", "init"])
+        self.assertFalse(found["launchable"])
+        (self.made / "specs/001-demo").mkdir(parents=True)
+        (self.made / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
+        self.assertTrue(json.loads(self.get("/voyage.json")[1])["launchable"])
+        self.assertIn('id="launch"', self.get("/voyage")[1])
+
+    def test_the_viewer_is_served_from_the_copy_the_board_keeps_or_the_page_says_why(self) -> None:
+        import slipwai.bridge as module
+        self.patch("viewer_script", lambda: (b"// viewer", ""))
+        code, said = self.get("/drawio-viewer.js")
+        self.assertEqual((code, said), (200, "// viewer"))
+        self.patch("viewer_script", lambda: (b"", "could not be fetched"))
+        with self.assertRaises(urllib.error.HTTPError) as refused:
+            self.get("/drawio-viewer.js")
+        self.assertEqual(refused.exception.code, 503)
+        del module
+
     def test_the_build_can_be_continued_once_a_specification_exists_and_once_only(self) -> None:
         """The button is the person's word that the specification is good to build from. Before a
         specification there is nothing to continue; after pressing it, the fleet is cast off and a second

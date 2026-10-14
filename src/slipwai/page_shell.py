@@ -160,6 +160,7 @@ font-weight:600}
 #: a row here rather than an edit in three files.
 TABS: tuple[tuple[str, str], ...] = (
     ("/", "Board"),
+    ("/voyage", "Voyage"),
     ("/generate", "Start a project"),
     ("/adopt", "Adopt a repository"),
     ("/packages", "Packages"),

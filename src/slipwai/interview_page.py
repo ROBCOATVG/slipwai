@@ -362,9 +362,9 @@ document.addEventListener('click', async event => {
   said.textContent = await answer.text();
   said.scrollTop = said.scrollHeight;
   if (!answer.ok) { said.className = 'said bad'; return; }
-  // Made. The board is this project's board from here, and it carries the same text plus whatever `./init`
-  // says next — so the page a person is left looking at is the one about the thing they just made.
-  location.href = '/';
+  // Made. The board is this project's board from here, and the page a person is left looking at is the one
+  // that says what stage the thing they just made is on, with `./init` and the draft saying their lines on it.
+  location.href = '/voyage';
 });
 """
 

@@ -18,6 +18,7 @@ is the rule `adopt` already has for the same step (`cli_init.run_init`), and it 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -95,11 +96,47 @@ class Step:
     argv: list[str]
     announced: str
     ended: Callable[[int], str]
+    #: Which step this is — `init`, `draft`, `launch` — for the page that says what stage the project is on.
+    key: str = ""
 
 
 def init_step(where: Path, harness: str, repository: str | None) -> Step:
     return Step(command(harness, repository), announced(where, harness, repository),
-                lambda code: ended(code, harness, repository))
+                lambda code: ended(code, harness, repository), "init")
+
+
+def folded_line(line: str) -> list[str]:
+    """Claude Code's print mode writes one JSON event per line, and a person watching the card wants the
+    words: an assistant event's text, one line per tool it reaches for, the result's first line with what it
+    cost. System events and tool results are the harness talking to itself and are dropped. A line that is
+    not JSON is said as it came."""
+    if not line.startswith("{"):
+        return [line]
+    try:
+        event = json.loads(line)
+    except ValueError:
+        return [line]
+    if not isinstance(event, dict):
+        return [line]
+    kind = event.get("type")
+    if kind == "assistant":
+        said: list[str] = []
+        message = event.get("message")
+        for block in (message.get("content") if isinstance(message, dict) else None) or []:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "text":
+                said += [f"• {part}" for part in str(block.get("text", "")).splitlines() if part.strip()]
+            elif block.get("type") == "tool_use":
+                said.append(f"→ {block.get('name', 'tool')}")
+        return said
+    if kind == "result":
+        text = str(event.get("result") or "").strip().splitlines()
+        usage = event.get("usage")
+        tokens = usage.get("output_tokens") if isinstance(usage, dict) else None
+        cost = f" — {tokens:,} output tokens" if isinstance(tokens, int) else ""
+        return [f"result: {text[0] if text else event.get('subtype', 'ended')}{cost}"]
+    return []
 
 
 #: The step after `./init` where a PRD came with the answers: the constitution and the first specification,
@@ -146,6 +183,7 @@ class Fitting:
         self.steps = list(steps or [])
         self.lines: list[str] = [*(said or []), self.steps[0].announced if self.steps else DECLINED]
         self.dropped = 0  # lines said and since let go of, so `since` keeps meaning the same thing
+        self.step = self.steps[0].key if self.steps else ""
         self.code: int | None = None
         self.began = time.monotonic()
         self.stopped: float | None = None
@@ -198,9 +236,11 @@ class Fitting:
                 break
             *lines, held = re.split(r"\r\n|\r|\n", held + chunk.decode("utf-8", "replace"))
             for line in lines:
-                self.say(ANSI.sub("", line).rstrip())
+                for said in folded_line(ANSI.sub("", line).rstrip()):
+                    self.say(said)
         if held.strip():
-            self.say(ANSI.sub("", held).rstrip())
+            for said in folded_line(ANSI.sub("", held).rstrip()):
+                self.say(said)
 
     def run(self) -> None:
         """Each step's child, read a line at a time until it ends; a step that fails ends the run there. A
@@ -215,6 +255,8 @@ class Fitting:
             self.stop(0)
             return
         for index, step in enumerate(self.steps):
+            with self.lock:
+                self.step = step.key
             if index:
                 self.say(step.announced)
             last = index == len(self.steps) - 1
@@ -257,7 +299,7 @@ class Fitting:
         """
         with self.lock:
             kept = max(since - self.dropped, 0)
-            return {"where": str(self.where), "lines": self.lines[kept:],
+            return {"where": str(self.where), "lines": self.lines[kept:], "step": self.step,
                     "at": self.dropped + len(self.lines),
                     "seconds": round((self.stopped or time.monotonic()) - self.began, 1),
                     "done": self.code is not None, "code": self.code}
@@ -269,7 +311,7 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
     agent was named to draft with. Returned rather than awaited: what it says is read by polling."""
     steps = [init_step(where, harness, repository)] if harness else []
     if steps and prd:
-        steps.append(Step(DRAFT, DRAFTING, drafted))
+        steps.append(Step(DRAFT, DRAFTING, drafted, "draft"))
     fitting = Fitting(where, steps, said)
     fitting.thread.start()
     return fitting
@@ -277,7 +319,7 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
 
 def launch(where: Path, said: list[str] | None = None) -> Fitting:
     """The build continued, in the background: what the board's button starts, carrying the receipt so far."""
-    fitting = Fitting(where, [Step(LAUNCH, LAUNCHING, launched)], said)
+    fitting = Fitting(where, [Step(LAUNCH, LAUNCHING, launched, "launch")], said)
     fitting.thread.start()
     return fitting
 

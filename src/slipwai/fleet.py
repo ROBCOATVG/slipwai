@@ -239,7 +239,19 @@ def inbox_detail(row: dict) -> str:
 
 
 def clearance_ready(root: Path, feature: str = "") -> tuple[str, dict[str, list[str]], str]:
-    """Read the project's existing clearance rule through its offline JSON port, never duplicate it."""
+    """The ready set, by fairway: the one answer the berth table needs out of the clearance query."""
+    feature, result, fault = clearance_query(root, feature)
+    if fault or not result:
+        return feature, {}, fault
+    ready = result.get("ready")
+    if not isinstance(ready, dict) or any(not isinstance(ids, list) for ids in ready.values()):
+        return feature, {}, "clearance returned no ready set"
+    return feature, {str(f): [str(s) for s in ids] for f, ids in ready.items()}, ""
+
+
+def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:
+    """Read the project's existing clearance rule through its offline JSON port, never duplicate it: the
+    whole answer — the ready set, every slice's state, the schedule — and a fault where it could not be."""
     charts = [path for path in sorted((root / "specs").glob("*/chart.yaml"))
               if not feature or path.parent.name == feature]
     if not charts:
@@ -272,12 +284,9 @@ def clearance_ready(root: Path, feature: str = "") -> tuple[str, dict[str, list[
             raise ValueError("clearance returned no v1 object")
         if done.returncode != 0 or result.get("error"):
             return feature, {}, str(result.get("error") or done.stderr or "clearance query failed")
-        ready = result.get("ready")
-        if not isinstance(ready, dict) or any(not isinstance(ids, list) for ids in ready.values()):
-            raise ValueError("clearance returned no ready set")
         if result.get("feature") != feature:
             raise ValueError(f"clearance returned {result.get('feature')!r} instead of {feature!r}")
-        return feature, {str(f): [str(s) for s in ids] for f, ids in ready.items()}, ""
+        return feature, result, ""
     except (OSError, ValueError, SyntaxError, subprocess.TimeoutExpired) as fault:
         return feature, {}, (f"clearance could not be read ({fault}). Run "
                              f"`python3 {script} --json --feature {feature}` and repair the reported fault")
@@ -297,8 +306,14 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         if fault:
             clearance_faults.add(feature)
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
+    accepted = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "accepted"]
+    due = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "demo-due"]
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
+        # The acceptance facts, for the voyage's last stage: a demo owed is a capability due and not yet
+        # accepted, and accepted is the only line a capability ends on.
+        "accepted": sorted(set(accepted)),
+        "demo_due": sorted(set(due) - set(accepted)),
         # Each stream's own lines, said rather than printed. The board answers "is anything stuck"; the
         # next question is always "what has this one been doing", and that is forty lines of one file.
         "streams": {one.name: recent(root, one.name)[0] for one in found},

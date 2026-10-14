@@ -241,6 +241,22 @@ class AcceptanceTest(unittest.TestCase):
         self.assertEqual([row["slice"] for row in refilled["start"]], ["ORD-02"])
         self.assertEqual([row["slice"] for row in refilled["done"]], ["ORD-01"])
 
+    def test_the_two_concurrency_numbers_are_read_as_two_things_and_printed_as_such(self) -> None:
+        """`boilers` bounds slices and `fanout` bounds the delegates inside one; a run that read one as the
+        other dispatched two where it had room for three. The line says both and what they add up to."""
+        import json
+        import tempfile
+        config = Path(tempfile.mkdtemp()) / "harbour.json"
+        config.write_text(json.dumps({"boilers": 3, "fanout": 2}), encoding="utf-8")
+        numbers = chart.numbers_from(config, running=1)
+        self.assertEqual((numbers["slots"], numbers["fanout"], numbers["tree"]), (2, 2, 9))
+        self.assertEqual(chart.slots_from(config, 1), 2)
+        line_ = chart.numbers_line(numbers)
+        self.assertIn("2 slice(s) may start (boilers 3 − 1 running)", line_)
+        self.assertIn("fanout 2 delegate(s) inside each slice", line_)
+        self.assertIn("tree ≤ 9", line_)
+        self.assertIn("unbounded", chart.numbers_line(chart.numbers_from(config.with_name("none.json"), 0)))
+
     def test_a_migrated_shipped_prerequisite_requires_recorded_evidence_not_a_fabricated_mark(self) -> None:
         """ORD-01 shipped before marks were logged: the done marker names it and no log does. BIL-01 is told
         *migration evidence required* and not *blocked*, nothing is cleared on the marker alone, and the

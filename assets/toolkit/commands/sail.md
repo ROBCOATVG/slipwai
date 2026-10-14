@@ -324,9 +324,18 @@ from the ready set, and the answer is taken at the boundary it arrives at. A dem
 behind a demo it is not part of. Merges stay ordered within a fairway, as *Fairways* says; order is a rule
 about merging and not about starting.
 
-**Count the whole tree.** A whole-slice delegate carrying `[P]` tasks is not one agent: it is one plus
-`fanout` (`harbour.json`), and the slices running at once are bounded by `boilers`, so the harness is asked
-for up to `boilers × (1 + fanout)` agents at the fan-out's widest. Hold that product to what the harness
+**Count the whole tree, and read the two numbers as the two things they are.** A whole-slice delegate
+carrying `[P]` tasks is not one agent: it is one plus `fanout` (`harbour.json`), and the slices running at
+once are bounded by `boilers`, so the harness is asked for up to `boilers × (1 + fanout)` agents at the
+fan-out's widest. `boilers` bounds slices; `fanout` bounds the delegates inside one slice; neither is the
+other, and a run that read the slice number as the delegate number dispatched two where it had room for
+three and then wrote that the harness disagreed with the configuration. `python3 scripts/agents/clearance.py`
+prints both on its second line, with the slots left and the tree they add up to — read it there rather than
+from memory. **Inside a running slice the same duty holds at every boundary**: a `[P]` task or a
+disjoint-manifest sibling left undispatched while `fanout` has room has one of these reasons, said in the
+stage line — an overlapping writer, a RED-GREEN-REFACTOR cycle in progress on the same files, a `question`
+it waits on, the stage's budget, or the harness's own limit — and *I had not looked* is not among them,
+there either. Hold the product to what the harness
 can actually run at once — its own limit, where it states one — and lower `boilers` before `fanout`, since
 a slice that cannot start costs nothing and a slice that starts and starves costs the retry. Browser-driven
 checks are bounded separately, by `browsers`: several worktrees are still one machine, and five Playwright

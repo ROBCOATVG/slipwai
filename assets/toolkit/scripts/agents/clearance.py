@@ -487,16 +487,41 @@ def baseline(charted: dict, done: set[str], found: list[dict], machine: str,
     return owed, f"baselined {len(owed)} mark(s) for {len({row.fields['slice'] for row in owed})} shipped slice(s)"
 
 
-def slots_from(config: Path, running: int) -> int | None:
-    """How many more delegates this turn may start: the telegraph's `boilers` less what is already running.
-    None where no harbour.json says — a harness that said nothing is not bounded here, and the page says
-    what to do with that."""
+def numbers_from(config: Path, running: int) -> dict[str, int | None]:
+    """The telegraph's two concurrency numbers and what they bound this turn, read from `harbour.json`.
+
+    Two numbers, because they bound two different things and a run confused them once: `boilers` is how
+    many slices may run at once — one `sail-slice-watch` delegate each — and `fanout` is how many delegates
+    may run *inside* one slice, the `[P]` siblings a whole-slice delegate hands to `sail-implement-shipwright`.
+    `slots` is boilers less the slices already running; `tree` is the most agents the harness is asked for
+    at the fan-out's widest, boilers × (1 + fanout). None where no harbour.json says — a harness that said
+    nothing is not bounded here, and the page says what to do with that.
+    """
     try:
         held = json.loads(config.read_text(encoding="utf-8"))
     except (OSError, ValueError, UnicodeDecodeError):
-        return None
-    boilers = held.get("boilers") if isinstance(held, dict) else None
-    return max(0, int(boilers) - running) if isinstance(boilers, int) else None
+        held = {}
+    held = held if isinstance(held, dict) else {}
+    boilers = held.get("boilers") if isinstance(held.get("boilers"), int) else None
+    fanout = held.get("fanout") if isinstance(held.get("fanout"), int) else None
+    return {"boilers": boilers, "fanout": fanout, "running": running,
+            "slots": max(0, boilers - running) if boilers is not None else None,
+            "tree": boilers * (1 + fanout) if boilers is not None and fanout is not None else None}
+
+
+def slots_from(config: Path, running: int) -> int | None:
+    """How many more slices this turn may start: the telegraph's `boilers` less what is already running."""
+    return numbers_from(config, running)["slots"]
+
+
+def numbers_line(numbers: dict[str, int | None]) -> str:
+    """The one line that says what bounds what, so a host never again reads one number as the other."""
+    if numbers["boilers"] is None:
+        return "slots: unbounded — no `boilers` in harbour.json"
+    inside = (f" · fanout {numbers['fanout']} delegate(s) inside each slice · tree ≤ {numbers['tree']} agents"
+              if numbers["fanout"] is not None else " · no `fanout` in harbour.json")
+    return (f"slots: {numbers['slots']} slice(s) may start (boilers {numbers['boilers']} − {numbers['running']} "
+            f"running){inside}")
 
 
 def main(argv: list[str]) -> int:
@@ -541,10 +566,12 @@ def main(argv: list[str]) -> int:
         index = argv.index("--claims") + 1
         claims = {name for name in (argv[index] if index < len(argv) else "").split(",") if name}
     in_flight = sum(1 for state, _ in states.values() if state in ("running", "awaiting-demo"))
-    slots = slots_from(ROOT / "harbour.json", in_flight)
+    numbers = numbers_from(ROOT / "harbour.json", in_flight)
+    slots = numbers["slots"]
     if "--slots" in argv:
         index = argv.index("--slots") + 1
         slots = int(argv[index]) if index < len(argv) and argv[index].lstrip("-").isdigit() else slots
+        numbers = {**numbers, "slots": slots}
     planned = schedule(states, slots, claims)
     if "--json" in argv:
         settled = folded_logs.marks | already_set(charted)
@@ -555,7 +582,8 @@ def main(argv: list[str]) -> int:
         print(json.dumps({"v": QUERY_VERSION, "feature": feature, "ready": ready,
                           "states": {slice_id: {"state": state, "why": why, "band": BANDS.get(state)}
                                      for slice_id, (state, why) in states.items()},
-                          "slots": slots, "claims": "unreadable" if claims is None else sorted(claims),
+                          "slots": slots, "numbers": numbers,
+                          "claims": "unreadable" if claims is None else sorted(claims),
                           "schedule": planned}))
         return 0
     asked = [arg for arg in argv if not arg.startswith("--") and arg not in (requested,)
@@ -567,6 +595,7 @@ def main(argv: list[str]) -> int:
         return 0 if state in BANDS else 1
     print(f"clearance: {len(planned['start'])} of {len(states)} slices start now in {feature}"
           f" (slots: {'unbounded' if slots is None else slots})")
+    print(f"  {numbers_line(numbers)}")
     for row in planned["start"]:
         print(f"  start  {row['slice']}  {row['band']}  — {row['why']}")
     for row in planned["queued"]:

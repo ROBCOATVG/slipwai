@@ -10,7 +10,8 @@ boundary you were handed; a story is never one batch of tests.
 
 Work each rule as a single RED-GREEN-REFACTOR increment: the failing examples that name the behaviour, the smallest
 change that passes them, then the refactor with the quickest relevant test command scoped to the same file or
-area green. Within a rule the cycle unit says how: `rule`, its examples written together and implemented
+area green — and, where the project has more than one deployable, that deployable's own `{{make}} unit-<name>`
+rather than `{{make}} unit` over all of them, so a service's increment never pays for the browser suite. Within a rule the cycle unit says how: `rule`, its examples written together and implemented
 against; `example`, one at a time. Either way each example is observed failing for its own stated reason: stub
 whatever an example names, as a no-op or a default return, before writing it, so a broken build is never the
 RED. That local, fast feedback is all this increment needs. Commit the increment locally when it is

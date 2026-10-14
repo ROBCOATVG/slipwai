@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 // backing-service:__TRANSPORT__:begin
 /**
@@ -66,5 +66,10 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
+    // A mutation run copies this app into `.stryker-tmp/sandbox-*/` and runs the suite there; a `make unit`
+    // that started while one was running discovered those copies as tests of their own — 1,104 files where
+    // there were 514, with every copied fixture path failing on ENOENT — and the run was thrown away.
+    // Vitest's own defaults exclude `node_modules` and `dist`; the sandbox is this project's to exclude.
+    exclude: [...configDefaults.exclude, '**/.stryker-tmp/**'],
   },
 });

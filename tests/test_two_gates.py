@@ -15,10 +15,14 @@ import unittest
 
 import checkout_packages  # noqa: F401
 
-from slipwai.assets import GUIDANCE_ROOT
+from slipwai.assets import GUIDANCE_ROOT, TOOLKIT_ROOT
 from slipwai.project import ladder
+from slipwai.project.makefile import makefile
 from slipwai.project.native_commands import DEFAULT_FAST, TARGETS, fast_targets
+from slipwai.project.unit_targets import unit_targets
 from slipwai.registry import FAST_TARGETS, PROTOCOL
+from slipwai.selection import Selection
+from slipwai.services import App, service_app
 
 
 class FastTargetsTest(unittest.TestCase):
@@ -42,6 +46,43 @@ class FastTargetsTest(unittest.TestCase):
         for target in DEFAULT_FAST:
             with self.subTest(target=target):
                 self.assertIn(target, TARGETS)
+
+
+class PerDeployableUnitTest(unittest.TestCase):
+    """`make unit` is one target over every deployable, which is right for the merge and wrong for the
+    increment: a Go increment paid about ninety seconds of Vitest each time on one project. A project with
+    more than one deployable gets `unit-<name>` per deployable; one with one gets nothing to add."""
+
+    def service(self, name: str, first: bool = False) -> App:
+        return service_app(name, "toy-plain", 8000, Selection({}), first=first)
+
+    def test_a_service_and_a_browser_app_each_get_their_own_fast_target(self) -> None:
+        web = App("web", "apps/web", "web", "typescript", "react-vite", 5173, api="service", first=True)
+        phony, targets = unit_targets([self.service("service", first=True), web])
+        self.assertEqual(phony, "unit-service unit-web")
+        self.assertIn("unit-service: ## The fast tests of apps/service alone", targets)
+        self.assertIn("unit-web: ## The fast tests of apps/web alone", targets)
+        self.assertIn("npm --workspace apps/web test", targets)
+        self.assertNotIn("npm --workspace", targets.split("unit-web:")[0])
+
+    def test_two_services_each_get_their_own_and_the_makefile_carries_them(self) -> None:
+        apps = [self.service("orders", first=True), self.service("billing")]
+        written = makefile("shop", "standard", apps)
+        self.assertIn(".PHONY: unit unit-orders unit-billing test", written)
+        self.assertIn("\nunit-orders: ## The fast tests of apps/orders alone", written)
+        self.assertIn("\nunit-billing: ## The fast tests of apps/billing alone", written)
+        self.assertNotIn("apps/billing", written.split("unit-orders:")[1].split("unit-billing:")[0])
+
+    def test_one_deployable_has_unit_and_nothing_to_add(self) -> None:
+        alone = [self.service("service", first=True)]
+        self.assertEqual(unit_targets(alone), ("", ""))
+        self.assertNotIn("unit-service", makefile("shop", "standard", alone))
+
+    def test_the_rung_and_the_brief_name_the_owning_target(self) -> None:
+        rung = " ".join(ladder.sail_ladder(event=True, apps=[], target="aws").split())
+        self.assertIn("`make unit-<name>`", rung)
+        brief = (TOOLKIT_ROOT / "agents/sail-implement-shipwright.md").read_text(encoding="utf-8")
+        self.assertIn("{{make}} unit-<name>", brief)
 
 
 class LadderGateTest(unittest.TestCase):

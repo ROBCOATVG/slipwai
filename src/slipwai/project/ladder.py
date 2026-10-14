@@ -173,7 +173,10 @@ def sail_ladder(
    This rung is RED-GREEN-REFACTOR and nothing else: a failing test observed failing for its own stated
    reason, the smallest code that passes it, then the code tidied before the next one. The green step's
    gate is the fast checks — `make unit`, lint and types — and never the full gate, which belongs to the
-   merge. The refactor beat is the third beat of each cycle and is not the reshape pass further down the
+   merge. Where the project has more than one deployable, the increment runs the fast tests of the one its
+   boundary owns — `make unit-<name>`, which the `Makefile` writes per deployable — so a service's domain
+   increment does not pay for the browser suite each time; `make unit` over all of them is the slice's,
+   before its demo. The refactor beat is the third beat of each cycle and is not the reshape pass further down the
    ladder: dropping it is what makes the big one necessary.
    Read `.specify/sail.json` before delegating — `python3 scripts/agents/sail.py` — and say in the stage
    line which boundary and which cycle this slice is running at. Where a veto narrowed them, say that too

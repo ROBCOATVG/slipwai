@@ -71,8 +71,9 @@ constitution, the product specification, the split, or the slice's own tasks. Wo
 `/gaps` over the slice's acceptance criteria, plan, tasks, RED-GREEN-REFACTOR implementation, the installed
 Spec Kit converge command until it reports converged or reaches its bound, `/gaps` over the slice diff, and an actor-visible
 demo. Pause at the demo for feedback; after acceptance run `/adversary` when the slice changed attack
-surface or closed the split — `commands/adversary.md` makes and records that decision — then `/mutation` and
-`make verify`. Stop earlier only for a product decision or unavailable external input.
+surface or closed the split — `commands/adversary.md` makes and records that decision — then `make verify`;
+`/mutation` is the capability's, run once before the person is shown it. Stop earlier only for a product
+decision or unavailable external input.
 <!-- end section -->
 <!-- section: continuation-cruise -->
 
@@ -87,7 +88,7 @@ Continue until the actor-visible path is ready for a demo, a product decision or
 blocks progress, or the ordered split is exhausted. Before the demo, run the installed Spec Kit converge
 command until it reports converged or reaches its bound, and `/gaps` over the slice diff. At the demo, pause for feedback. On
 acceptance, harden and finish the slice — `/adversary` when the slice changed attack surface or closed the
-split, then `/mutation` and `make verify` — then continue to the ready slices (not done, every `depends_on` done): every unclaimed one runs concurrently in the band its state admits — preparation needs clearance alone, implementation needs the slice's own marks set and no open question — one delegate per slice on a `slice/<id>` branch, refilled at every boundary, merged in split order (`commands/sail.md`, *Running ready slices concurrently*); where the harness cannot delegate, the earliest in split order, naming the rest.
+split, then `make verify`; `/mutation` runs once per capability before its demo stop — then continue to the ready slices (not done, every `depends_on` done): every unclaimed one runs concurrently in the band its state admits — preparation needs clearance alone, implementation needs the slice's own marks set and no open question — one delegate per slice on a `slice/<id>` branch, refilled at every boundary, merged in split order (`commands/sail.md`, *Running ready slices concurrently*); where the harness cannot delegate, the earliest in split order, naming the rest.
 
 Under `/cruise` the same contract holds with nobody at the wheel: the two stops that were a person's — a
 product decision and the demo — are answered by `sail-decide-skipper` and `sail-demo-hand`, every answer is written where

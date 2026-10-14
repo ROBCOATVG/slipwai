@@ -177,7 +177,8 @@ accept this? [y/n/notes]
 ```
 
 Say yes and the line goes in the log. Say no with notes and they go back into the slice. After the demo
-come the review and reshape stage, the adversary pass, the mutation gate, and the merge to trunk.
+come the review and reshape stage, the adversary pass, and the merge to trunk; the mutation gate is the
+capability's, run once before you are shown it.
 
 ```console
 $ slipwai fleet booking

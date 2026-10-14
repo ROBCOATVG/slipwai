@@ -74,6 +74,15 @@ python3 scripts/agents/capabilities.py --due
 In version 1 every slice carried a stop, and what the person was shown was a fraction of a capability they
 had to assemble in their head.
 
+**Before the stop, one mutation run over the capability.** `/mutation` runs once here, not once per slice:
+over every production file the capability's slices changed since the first of them branched
+(`make mutation SINCE=<that commit>`, and the browser half where there is one), delegated to
+`sail-mutation-shipworm` under its `harbour.json` budget. A run that reaches the budget is killed — its own
+process tree, nothing else — and leaves a qualified receipt naming what it covered and what it did not,
+never a score; a run that finishes leaves its score, and survivors are closed before the person is shown
+the capability. Per slice this took hours apiece and was taken out of one loop by hand; per capability it
+is one run over the thing a person is about to accept, which is the only thing a score is evidence about.
+
 **Accepting it is not a release decision.** Acceptance says the capability is right. Hoisting a flag says
 the business wants it live, which may be another quarter or never, and stays a person's act on their own
 timing. A capability may sit accepted and dark for as long as the business wants, and nothing here asks

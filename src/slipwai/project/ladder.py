@@ -214,9 +214,16 @@ def sail_ladder(
         """**Adversary** — `specs/<feature>/adversary-log.md` carries this slice's row: the attack that was
    run, or the recorded decision not to. Otherwise run `/adversary`. One round, and findings below the
    severity bar are stowed rather than argued: *After the hand's verdict, and after Phase 4 clears* says how.""",
-        """**Mutation gate** — `/mutation` has run since the last test was added, and the score is at or
-   above the project's threshold. A slice under it does not merge, and nothing is carried to the next
-   slice: a gap left here is a gap the next slice inherits and the one after that pays for.""",
+        """**Mutation gate** — the slice's capability has its mutation evidence, or this slice says which
+   capability's run it waits for. The run is **once per capability, not per slice**: when a capability's
+   last slice has merged and before the person's demo stop walks it, `/mutation` runs over every production
+   file the capability's slices changed, bounded by the `mutation-shipworm` budget in `harbour.json` — a
+   run that reaches the budget is killed, its process tree and nothing else, and records a qualified receipt
+   naming the scope it covered and the scope it did not, never a score. A score at or above the project's
+   threshold is the capability's gate; under it, the survivors are closed before the demo, and nothing is
+   carried: a gap left here is a gap the next capability inherits and the one after that pays for. Per
+   slice it took hours apiece and was taken out of one loop by hand; per capability it is one run over the
+   thing a person is about to accept.""",
         """**Merge to main** — the slice is on trunk. Rebase first, run the full `make verify` on the
    rebased branch, and merge. This is the only rung that runs the full gate, and the only one a person
    holds: until a captain enforces the stage boundaries, nothing here merges itself.""",

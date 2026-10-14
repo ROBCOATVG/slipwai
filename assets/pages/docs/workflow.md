@@ -88,8 +88,8 @@ For one small vertical slice:
 5. Run the installed Spec Kit converge command, implement whatever it appends, and repeat until it reports
    converged or reaches its bound; then `/gaps` over the slice diff.
 6. Demonstrate the actor-visible path and pause for feedback.
-7. After acceptance, run `/mutation` and `make verify` — and `/adversary` first, when the slice changed
-   attack surface or closed the split.
+7. After acceptance, run `make verify` — and `/adversary` first, when the slice changed attack surface or
+   closed the split. `/mutation` runs once per capability, before the person's demo of it.
 
 The principles stage has a gate of its own. `.specify/memory/constitution.md` is what every stage after it
 treats as the authority, so `make check-constitution` fails the build when that file stops carrying minimum
@@ -108,7 +108,9 @@ converge every unbuilt task reads as a gap and buries the findings that need jud
 an end-of-phase pass rather than a per-slice one: `commands/adversary.md` runs it when the diff changed
 attack surface and at the close of the split regardless, and records the decision either way in
 `specs/<feature>/adversary-log.md` — which is what lets a later slice decline on evidence instead of
-judgement. The trigger table is in that row before any spawn. `/mutation` still runs on every accepted slice, and when both run adversary goes first, since it
+judgement. The trigger table is in that row before any spawn. **`/mutation`** runs once per capability — when its last
+slice has merged, before the person is shown it, bounded by its budget and leaving a qualified receipt rather
+than a score when capped — and when both run adversary goes first, since it
 adds tests and mutation measures whatever exists when it runs.
 
 `/sail` owns resumption and sequencing, and is safe to call at any point on this diagram: it enters at the

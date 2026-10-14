@@ -185,6 +185,16 @@ class LadderTest(unittest.TestCase):
         written = headings(every_rung())
         self.assertEqual(written[-3:], ["Adversary", "Mutation gate", "Merge to main"])
 
+    def test_the_mutation_gate_is_the_capability_s_and_bounded(self) -> None:
+        """Per slice it took hours apiece and was taken out of one loop by hand; per capability it is one run
+        over the thing a person is about to accept, and a run that hits its budget is a receipt, not a score."""
+        rung = " ".join(rung_bodies(every_rung())["Mutation gate"].split())
+        self.assertIn("once per capability, not per slice", rung)
+        self.assertIn("before the person's demo stop", rung)
+        self.assertIn("`mutation-shipworm` budget in `harbour.json`", rung)
+        self.assertIn("qualified receipt", rung)
+        self.assertIn("never a score", rung)
+
     def test_the_implement_rung_names_the_cycle_and_where_the_widths_are_read(self) -> None:
         rung = " ".join(rung_bodies(every_rung())["Implementation"].split())
         self.assertIn("RED-GREEN-REFACTOR", rung)

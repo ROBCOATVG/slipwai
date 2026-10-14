@@ -188,10 +188,13 @@ lock ref from `main`; that is not the implementation.
 After a green verdict, run `/adversary`, which decides whether the slice changed attack surface or closed the
 split and records the attack or the skip — `make check-decisions` holds every done slice to that row. Close the
 adversary benchmark entry after its findings are triaged; implement confirmed defects through failing tests,
-each in an `implement` entry. Then run `/mutation`, then `make verify`. `commands/adversary.md` owns the
+each in an `implement` entry. Then run `make verify`. `commands/adversary.md` owns the
 trigger table; do not spawn before it is in the log. It records that decision in
-`specs/<feature>/adversary-log.md` either way, so do not make it here. The order is not arbitrary: the pass
-adds tests, and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
+`specs/<feature>/adversary-log.md` either way, so do not make it here. **`/mutation` is not run here**: it
+runs once per capability, when the capability's last slice has merged and before the person's demo stop
+walks it (*What the demo stop has to contain*), bounded by the shipworm's budget — the *Mutation gate* rung
+says what this slice records meanwhile. The order still holds when it runs: the adversary pass adds tests,
+and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
 unavailable input.
 
 Once that evidence is clean, **continue on the same run**: mark the finished slice done —
@@ -378,8 +381,9 @@ That is the first implementation push, and it is what starts CI. A slice converg
 artifacts are where two merges meet, and split order is what makes those resolutions predictable;
 regenerate the Mermaid diagrams (`{{make}} model`) after a merge, never in a branch, and the canvas
 (`{{make}} model-drawio`) after each merge as well, taking both sides' blocks. No slice's Phase 4 runs until its demo is
-accepted, and a sibling's demo never waits on another's Phase 4. Phase 4 itself — adversary, mutation,
-`{{make}} verify`, marking the slice done — runs here, on `main`, one slice at a time. Delete the
+accepted, and a sibling's demo never waits on another's Phase 4. Phase 4 itself — adversary,
+`{{make}} verify`, marking the slice done — runs here, on `main`, one slice at a time; mutation is the
+capability's, once, before its demo stop. Delete the
 `slice/<id>` branch once its Phase 4 clears: the claim is spent.
 
 **Where the harness cannot delegate**, run one slice at a time here — claim the earliest in split order,

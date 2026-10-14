@@ -68,4 +68,21 @@ merges anyway.
 A run that cannot happen at all — no tooling configured — is the setup decision above, reported as a stop
 rather than passed as a score. A gate that is green because it did not run is the one failure mode worse
 than a red one.
+
+## Once per capability, bounded
+
+The run is the capability's, not the slice's: it runs when a capability's last slice has merged and before
+the person's demo stop walks it (`commands/sail.md`, *What the demo stop has to contain*), over every
+production file the capability's slices changed since the first of them branched. Per slice it took hours
+apiece — one project's owner took it out of the loop by hand — and measured a fraction of what a person
+accepts.
+
+It is bounded by the `mutation-shipworm` row of `harbour.json`, and the bound is enforced rather than hoped
+for: before the run, estimate the work from the scope and say whether the scope is file-level or
+changed-line; run it in the background with a root-readable log and report, so the session that delegated
+it can read and stop the job without waking the delegate; at the budget, kill the task's own process tree
+and nothing beside it. A capped or incomplete run leaves a **qualified receipt** — the scope covered, the
+scope not, the mutants tested and surviving so far — and never a score, and the gate reads that receipt as
+*not run* for the scope it missed. Scope, score and completion come from the tool's own completed report,
+never from the scrollback.
 {scoping}"""

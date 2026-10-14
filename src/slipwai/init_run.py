@@ -26,6 +26,8 @@ import threading
 import time
 from pathlib import Path
 
+from .shell_environment import login_environment
+
 #: What a child writes when it believes it is on a terminal — which, through a pseudo-terminal, it does.
 #: Stripped rather than rendered: the card is a log of what was said, not a terminal emulator.
 ANSI = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[=>()][0-9A-B]?")
@@ -116,7 +118,10 @@ class Fitting:
         everything at once, which is the opposite of watching something run. Windows has no pty and gets the
         pipe it always had.
         """
-        env = {**os.environ, **PLAIN}
+        # The login shell's environment, as `generate`'s child is given it: a board started by a login
+        # service has `PATH=/usr/bin:/bin`, and `./init` run with that found neither brew nor uv nor the
+        # cloud's own tools on a machine that had every one of them, and fell through to the system pip.
+        env = {**login_environment(), **PLAIN}
         shape: dict = {"cwd": self.where, "stdin": subprocess.DEVNULL, "stderr": subprocess.STDOUT, "env": env}
         argv = command(self.harness, self.repository)
         if sys.platform == "win32":  # pragma: no cover — the pty path is what every other platform takes

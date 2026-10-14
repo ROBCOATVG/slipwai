@@ -11,6 +11,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -99,6 +100,19 @@ class BackgroundTest(unittest.TestCase):
         (root / "init").chmod(0o755)
         said = finished(start(root, "claude"), seconds=10.0)
         self.assertIn("went on without being answered", said["lines"])
+
+    def test_the_child_is_given_the_login_shells_environment(self) -> None:
+        """A board started at login has `PATH=/usr/bin:/bin`, and `./init` run with that found neither brew
+        nor uv nor the cloud's tools on a machine that had every one of them. `generate`'s child already gets
+        the login shell's environment; this is the other child the board starts."""
+        root = Path(tempfile.mkdtemp())
+        (root / "init").write_text("#!/bin/sh\necho \"path=$PATH\"\necho \"token=$TOKEN\"\n", encoding="utf-8")
+        (root / "init").chmod(0o755)
+        login = {"PATH": "/opt/tools/bin:/usr/bin:/bin", "TOKEN": "from-login"}
+        with mock.patch("slipwai.init_run.login_environment", lambda: login):
+            said = finished(start(root, "claude"), seconds=10.0)
+        self.assertIn("path=/opt/tools/bin:/usr/bin:/bin", said["lines"])
+        self.assertIn("token=from-login", said["lines"])
 
     def test_declining_is_a_finished_run_that_says_what_the_next_step_is(self) -> None:
         """The board still lands in the project; what it does not do is start anything in it."""

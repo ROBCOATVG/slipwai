@@ -24,6 +24,7 @@ head of `asked`, and the gate above is what will hold them to the terminal's wor
 from __future__ import annotations
 
 import subprocess
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -70,6 +71,9 @@ class Question:
     default: str = ""
     choices: tuple[str, ...] = ()
     labels: Mapping[str, str] = field(default_factory=dict)
+    #: `text`, or `file` for the one answer that is a document rather than a word — the browser reads it and
+    #: sends its text, and `run` writes that back to a file for the flag the terminal takes a path in.
+    kind: str = "text"
     why: str = ""
     unavailable: Mapping[str, str] = field(default_factory=dict)
     optional: bool = False
@@ -167,6 +171,10 @@ def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question
     said.append(Question("output", "Output parent",
                          answers.get("output") or str(root.resolve() if root is not None else DEFAULT_OUTPUT),
                          why="the directory the project's own directory is made in"))
+    said.append(Question("prd", "Product requirements document", "", optional=True, kind="file",
+                         why="optional: a PRD, copied into the project as docs/prd.md. After ./init the agent "
+                             "drafts the constitution and the first specification from it and stops; the "
+                             "build continues when you have read the specification and said so"))
     return said
 
 
@@ -266,8 +274,16 @@ def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
     child is this copy and no other (`assets.relaunch`), so the board cannot generate with a different keel
     from the one serving it; it is given the login shell's environment (`shell_environment`).
     """
-    done = subprocess.run([*relaunch(), "generate", *flags(answers, root)], cwd=str(root),
-                          capture_output=True, text=True, env=login_environment())
+    with tempfile.TemporaryDirectory(prefix=".prd-") as held:
+        argv = flags(answers, root)
+        # The document arrived as text, because a browser hands a page a file's contents and never its
+        # path; the verb takes a path, so it is written back to one for the length of the run.
+        if (text := str(answers.get("prd") or "")).strip():
+            document = Path(held) / (Path(str(answers.get("prd-name") or "")).name or "prd.md")
+            document.write_text(text, encoding="utf-8")
+            argv += ["--prd", str(document)]
+        done = subprocess.run([*relaunch(), "generate", *argv], cwd=str(root),
+                              capture_output=True, text=True, env=login_environment())
     return done.returncode == 0, (done.stdout + done.stderr).strip()
 
 
@@ -279,6 +295,9 @@ def field_html(question: Question) -> str:
             f'<option value="{esc(name)}"{" selected" if name == question.default else ""}>'
             f"{esc(question.labels.get(name, name))}</option>" for name in question.choices)
         asking = f'<select id="{esc(question.name)}" name="{esc(question.name)}" data-asks>{options}</select>'
+    elif question.kind == "file":
+        asking = (f'<input id="{esc(question.name)}" name="{esc(question.name)}" type="file" '
+                  f'accept=".md,.markdown,.txt,text/markdown,text/plain">')
     else:
         asking = (f'<input id="{esc(question.name)}" name="{esc(question.name)}" value="{esc(question.default)}"'
                   f'{"" if question.optional else " required"}>')
@@ -305,17 +324,33 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
 #: rather than patched, because deciding in the browser which questions follow would be the second reading
 #: of the catalogue this slice exists to avoid.
 SCRIPT = """
-const answers = () => Object.fromEntries(
-  new FormData(document.querySelector('form.ask-page')).entries());
+// A file input's entry is a File, which JSON would render as `{}`: it is read here and sent as its text,
+// with its name beside it, and only when it is about to be used — a re-ask of the questions is sent the
+// name alone.
+const answers = async (withFiles) => {
+  const held = Object.fromEntries(new FormData(document.querySelector('form.ask-page')).entries());
+  for (const [name, value] of Object.entries(held)) {
+    if (!(value instanceof File)) continue;
+    held[name] = withFiles && value.size ? await value.text() : '';
+    if (value.size) held[name + '-name'] = value.name;
+  }
+  return held;
+};
 
-async function post(path){
+async function post(path, withFiles){
   return fetch(path, {method:'POST', headers:{'Content-Type':'application/json'},
-                      body: JSON.stringify(answers())});
+                      body: JSON.stringify(await answers(withFiles))});
 }
 document.addEventListener('change', async event => {
   if (!event.target.matches('[data-asks]')) return;
-  const answer = await post('/generate/ask');
-  if (answer.ok) document.getElementById('interview').outerHTML = await answer.text();
+  // The form is rendered again from the catalogue, and a chosen file does not survive that unless carried.
+  const chosen = document.getElementById('prd');
+  const files = chosen && chosen.files.length ? chosen.files : null;
+  const answer = await post('/generate/ask', false);
+  if (!answer.ok) return;
+  document.getElementById('interview').outerHTML = await answer.text();
+  const again = document.getElementById('prd');
+  if (again && files) again.files = files;
 });
 document.addEventListener('click', async event => {
   if (event.target.id !== 'generate') return;
@@ -323,7 +358,7 @@ document.addEventListener('click', async event => {
   said.hidden = false;
   said.className = 'said';
   said.textContent = 'generating…';
-  const answer = await post('/generate/run');
+  const answer = await post('/generate/run', true);
   said.textContent = await answer.text();
   said.scrollTop = said.scrollHeight;
   if (!answer.ok) { said.className = 'said bad'; return; }

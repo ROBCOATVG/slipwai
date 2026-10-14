@@ -129,7 +129,8 @@ def constitution_coverage_command(event: bool, apps: list[App]) -> str:
 BASE_COMMANDS = ("drive", "mockups", "chart", "example-map", "careen", "where-are-we", "whats-next", "gaps", "adversary", "mutation",
                  "constitution-coverage",
                  "model-delegation-settings", "sail-settings", "benchmark", "cruise", "cruise-settings",
-                 "cruise-status", "cruise-stop", "cruise-tell", "cruise-watch", "add-service", "add-frontend",
+                 "cruise-status", "cruise-stop", "cruise-tell", "cruise-watch", "draft", "launch", "add-service",
+                 "add-frontend",
                  "catch-up")
 # Copied whole from `assets/profiles/event-modelling/commands/`; listed because the documentation names them in order.
 # `example-map` left this list in slice 5.17: it is a stage of both profiles now and ships from the toolkit.
@@ -166,6 +167,11 @@ def command_files(
         "commands/cruise-stop.md": cruise_stop_command(layout),
         "commands/cruise-tell.md": cruise_tell_command(layout),
         "commands/cruise-watch.md": cruise_watch_command(layout),
+        # A project started from a PRD: the specification drafted by the agent and read by a person, then the
+        # build continued from it with nobody at the wheel. Two pages because they are two decisions — a
+        # specification somebody has read is the line between them.
+        "commands/draft.md": page(COMMANDS, "draft.md", {"make": layout.make}),
+        "commands/launch.md": page(COMMANDS, "launch.md", {"make": layout.make}),
         "commands/where-are-we.md": where_are_we_command(event, target),
         "commands/whats-next.md": whats_next_command(event),
         "commands/gaps.md": gaps_command(event, apps),

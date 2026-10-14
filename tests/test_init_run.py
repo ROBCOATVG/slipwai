@@ -15,7 +15,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai.init_run import DECLINED, Fitting, command, ended, start
+from slipwai.init_run import DECLINED, Fitting, command, ended, launch, start
 
 
 def project(says: list[str], code: int = 0) -> Path:
@@ -25,6 +25,13 @@ def project(says: list[str], code: int = 0) -> Path:
     said = "\n".join(f"echo '{line}'" for line in says)
     script.write_text(f"#!/bin/sh\n{said}\nexit {code}\n", encoding="utf-8")
     script.chmod(0o755)
+    return root
+
+
+def with_makefile(root: Path, targets: dict[str, str]) -> Path:
+    """A `Makefile` beside `init`, one echoing recipe per target, for the steps the board runs through make."""
+    rules = "".join(f"{name}:\n\t@echo '{says}'\n" for name, says in targets.items())
+    (root / "Makefile").write_text(rules, encoding="utf-8")
     return root
 
 
@@ -113,6 +120,43 @@ class BackgroundTest(unittest.TestCase):
             said = finished(start(root, "claude"), seconds=10.0)
         self.assertIn("path=/opt/tools/bin:/usr/bin:/bin", said["lines"])
         self.assertIn("token=from-login", said["lines"])
+
+    def test_a_prd_continues_into_the_draft_once_init_has_ended_well(self) -> None:
+        """The second step the answers asked for: `make draft`, in the project, after `./init` — and only
+        after it ended well, because a draft in a tree Spec Kit never reached is a session with no commands."""
+        root = with_makefile(project(["init ran"]), {"draft": "drafted the specification"})
+        said = finished(start(root, "claude", prd=True))
+        self.assertEqual(said["code"], 0)
+        lines = said["lines"]
+        self.assertLess(lines.index("init ran"), lines.index("drafted the specification"))
+        self.assertTrue(any("make draft" in line and "Drafting" in line for line in lines), lines)
+        self.assertIn("read it", lines[-1])
+
+    def test_a_failed_init_does_not_go_on_to_draft(self) -> None:
+        root = with_makefile(project(["init failed"], code=3), {"draft": "should not run"})
+        said = finished(start(root, "claude", prd=True))
+        self.assertEqual(said["code"], 3)
+        self.assertNotIn("should not run", said["lines"])
+
+    def test_without_a_prd_init_is_the_whole_run(self) -> None:
+        root = with_makefile(project(["init ran"]), {"draft": "should not run"})
+        said = finished(start(root, "claude"))
+        self.assertEqual(said["code"], 0)
+        self.assertNotIn("should not run", said["lines"])
+
+    def test_continuing_the_build_is_make_launch_carrying_the_receipt_so_far(self) -> None:
+        root = with_makefile(project([]), {"launch": "cast off"})
+        said = finished(launch(root, ["made demo", "drafted"]))
+        self.assertEqual(said["code"], 0)
+        self.assertEqual(said["lines"][:2], ["made demo", "drafted"])
+        self.assertIn("cast off", said["lines"])
+        self.assertIn("make launch", said["lines"][-1])
+
+    def test_a_launch_that_failed_says_nothing_was_cast_off(self) -> None:
+        root = with_makefile(project([]), {"launch": "no spec'; exit 2; echo '"})
+        said = finished(launch(root))
+        self.assertEqual(said["code"], 2)
+        self.assertIn("nothing was cast off", said["lines"][-1])
 
     def test_declining_is_a_finished_run_that_says_what_the_next_step_is(self) -> None:
         """The board still lands in the project; what it does not do is start anything in it."""

@@ -13,6 +13,7 @@ DOC_HOOKS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
         ("getting-started.md", "bootstrap Spec Kit, run the gate, and start the first slice"),
         ("workflow.md", "the delivery loop each slice travels, drawn from the constitution to the hardening passes"),
         ("first-slice.md", "what a slice looks like on disk, and the four things that cost real debugging to learn"),
+        ("prd.md", "the product requirements this project was started from, which `/draft` read to write the first specification"),
     )),
     ("This project", (
         ("whats-included.md", "everything that was generated, in one list"),

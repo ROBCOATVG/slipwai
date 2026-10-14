@@ -208,3 +208,22 @@ ca1d8c81e7f6ff15bd7ba100cb679f887c7cfe2c31793dfbb8d492303adc078f  adopted-settle
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  adopted-settled  commands/survey.md
 4653314c98bb090b6ed6ebfac93d8a128ea0f0be7b368227d3168c0e13b0b7f1  adopted-settled  commands/whats-next.md
 c5e9245e13a20c2c785c8a939d65084bfa315c56f05d0afd964c5d241eb05999  adopted-settled  commands/where-are-we.md
+
+# Two pages added after the record was taken — `draft.md` and `launch.md`, a project started from a PRD —
+# recorded from the generator that introduced them. Every row above is as it was at 074aa35.
+a6290c95857768ef300402102900b1f4fa3b0e6e39654b0a1a84ab3f16836085  standard  commands/draft.md
+98f4176205965ea61b789f3ac7a0091ad5c817007150fc2ce42b2c3dbf7e6a94  standard  commands/launch.md
+a6290c95857768ef300402102900b1f4fa3b0e6e39654b0a1a84ab3f16836085  event  commands/draft.md
+98f4176205965ea61b789f3ac7a0091ad5c817007150fc2ce42b2c3dbf7e6a94  event  commands/launch.md
+a6290c95857768ef300402102900b1f4fa3b0e6e39654b0a1a84ab3f16836085  event-state  commands/draft.md
+98f4176205965ea61b789f3ac7a0091ad5c817007150fc2ce42b2c3dbf7e6a94  event-state  commands/launch.md
+06da521fbd13b0418bcdf74f78af0475a2360c1e571ff5693da20c887d8f87ee  event-two-services  commands/draft.md
+5fc0fedf59e07000d188f71af69af13289a0530699fc3720f658edc800f1e3e5  event-two-services  commands/launch.md
+a6290c95857768ef300402102900b1f4fa3b0e6e39654b0a1a84ab3f16836085  standard-managed  commands/draft.md
+98f4176205965ea61b789f3ac7a0091ad5c817007150fc2ce42b2c3dbf7e6a94  standard-managed  commands/launch.md
+a6290c95857768ef300402102900b1f4fa3b0e6e39654b0a1a84ab3f16836085  no-applications  commands/draft.md
+98f4176205965ea61b789f3ac7a0091ad5c817007150fc2ce42b2c3dbf7e6a94  no-applications  commands/launch.md
+06da521fbd13b0418bcdf74f78af0475a2360c1e571ff5693da20c887d8f87ee  adopted  commands/draft.md
+5fc0fedf59e07000d188f71af69af13289a0530699fc3720f658edc800f1e3e5  adopted  commands/launch.md
+a6290c95857768ef300402102900b1f4fa3b0e6e39654b0a1a84ab3f16836085  adopted-settled  commands/draft.md
+98f4176205965ea61b789f3ac7a0091ad5c817007150fc2ce42b2c3dbf7e6a94  adopted-settled  commands/launch.md

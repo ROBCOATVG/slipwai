@@ -14,7 +14,7 @@ from __future__ import annotations
 
 def agent_targets() -> str:
     """The `.PHONY` block between the npm workspace targets and the native gate targets."""
-    return """.PHONY: check-python agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell check-decisions
+    return """.PHONY: check-python agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft launch check-decisions
 check-python: ## Fail, first, when python3 is older than the 3.10 every gate script is written for
 \t@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 'check-python: ' + sys.executable + ' is Python ' + sys.version.split()[0] + ', and the gate scripts need 3.10 or newer; put a newer python3 first on PATH (a non-interactive macOS shell finds /usr/bin/python3, which is 3.9, before Homebrew)')"
 agents: ## Refresh elected extensions, then skills, commands and agent types in every installed agent harness
@@ -44,6 +44,10 @@ cruise-stop: ## Ask the harbourmaster and every captain to stop. A captain stops
 \tpython3 scripts/agents/fleet.py stop
 cruise-tell: ## Tell one stream something; its captain reads it at the next boundary (STREAM=<name> MSG=\"…\"; CRUISE_FLAGS=--everyone tells them all)
 \tpython3 scripts/agents/fleet.py tell $(CRUISE_FLAGS) $(STREAM) $(MSG)
+draft: ## Draft the constitution and the first specification from a PRD in a headless session, and stop for a person to read it (PRD=<path>; default docs/prd.md)
+\tpython3 scripts/agents/draft.py $(PRD)
+launch: ## Continue the build from a drafted specification: chart and split it in a headless session, enable /cruise and cast off (CRUISE_FLAGS="--boilers <n>")
+\tpython3 scripts/agents/launch.py $(CRUISE_FLAGS)
 check-decisions: ## Fail when a decision log or demo log /cruise wrote has lost its shape
 \tpython3 scripts/check-decisions.py
 """

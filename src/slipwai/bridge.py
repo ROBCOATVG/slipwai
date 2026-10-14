@@ -35,6 +35,7 @@ from .errors import GenerationError
 from .fleet import board
 from .harbour import config
 from .init_run import Fitting
+from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .interview_page import NO_INIT, destination, form, repository_for
 from .interview_page import page as interview
@@ -53,7 +54,7 @@ from .page_shell import (
 )
 from .telegraph import Refused
 
-LIMIT = 64 * 1024  # bytes a request body may be; nothing here takes more than a sentence
+LIMIT = 4 * 1024 * 1024  # bytes a request body may be: a sentence, or a PRD riding in a generate's answers
 #: The four an installable page is made of, each with what it is served as. A browser decides whether to
 #: offer the install on the content type as much as the content, so none of these is served as HTML.
 APP_FILES: dict[str, tuple[Callable[[], str], str]] = {
@@ -101,6 +102,9 @@ class Bridge(BaseHTTPRequestHandler):
     #: beside `root` because it is the same kind of fact — this server's one state — and because the two
     #: move together: the board lands in the project it just made, and this is the receipt it lands with.
     fitting: Fitting | None = None
+    #: Whether the build has been continued from this board since it last landed. The button is shown once:
+    #: a fleet cast off twice is two harbourmasters, which `fleet.py` refuses, but the refusal reads as a fault.
+    launched: bool = False
 
     def log_message(self, format: str, *args: Any) -> None:
         """Quiet. The run's log is the log; a request line per reload is noise over the top of it."""
@@ -130,8 +134,7 @@ class Bridge(BaseHTTPRequestHandler):
         where, _, query = self.path.partition("?")
         where = where.rstrip("/")
         if where == "/init.json" and self.controls:
-            said = self.fitting.said(since(query)) if self.fitting else {"lines": [], "at": 0, "done": True}
-            self.send(200, json.dumps(said), "application/json; charset=utf-8")
+            self.send(200, json.dumps(self.receipt(since(query))), "application/json; charset=utf-8")
             return
         if where == "/board.json":
             held = config(self.root)
@@ -183,9 +186,22 @@ class Bridge(BaseHTTPRequestHandler):
         where = destination(answers, self.root)
         named = answers.get("init") or NO_INIT
         type(self).root = where
+        type(self).launched = False
         type(self).fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
-                                     repository_for(answers))
+                                     repository_for(answers), prd=bool(str(answers.get("prd") or "").strip()))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
+
+    def receipt(self, since: int = 0) -> dict:
+        """What the board's child has said after the `since`th line, and whether the build can be continued
+        from here: the last step ended well, a specification exists to build from, and nothing has been
+        launched from this board since it landed."""
+        if not self.fitting:
+            return {"lines": [], "at": 0, "done": True, "launchable": False}
+        said = self.fitting.said(since)
+        specs = self.root / "specs"
+        specified = specs.is_dir() and any(specs.glob("*/spec.md"))
+        said["launchable"] = bool(said["done"] and not said["code"] and specified and not self.launched)
+        return said
 
     def attach(self, named: str) -> str:
         """Point this board at another directory, or say why it cannot be.
@@ -203,7 +219,7 @@ class Bridge(BaseHTTPRequestHandler):
 
     def made(self) -> dict | None:
         """What this board last made, for the card that says so — nothing, on a board that has made nothing."""
-        return self.fitting.said() if self.fitting else None
+        return self.receipt() if self.fitting else None
 
     def body(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
@@ -251,6 +267,15 @@ class Bridge(BaseHTTPRequestHandler):
             # again with `--root`. The same assignment `land` makes, and the only other thing that makes it.
             elif self.path.rstrip("/") == "/attach":
                 said = self.attach(str(held.get("root", "")))
+            # The one button a person presses between a drafted specification and a running fleet. The
+            # receipt is carried into the new run, so the card keeps saying what was made and drafted.
+            elif self.path.rstrip("/") == "/launch":
+                if not self.receipt()["launchable"]:
+                    raise ValueError("nothing to continue from here: a specification under specs/, written by "
+                                     "`make draft` or with the agent, is what the build continues from")
+                type(self).launched = True
+                type(self).fitting = continue_build(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                said = "continuing the build"
             elif self.path.rstrip("/") == "/tell":
                 said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")))
             elif self.path.rstrip("/") == "/ring":

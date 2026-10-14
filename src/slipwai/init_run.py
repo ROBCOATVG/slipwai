@@ -24,6 +24,8 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from .shell_environment import login_environment
@@ -86,22 +88,63 @@ def here(root: Path, harness: str | None = None) -> int:
     return done.returncode
 
 
-class Fitting:
-    """One `./init` running somewhere nobody is watching the terminal, and everything it has said so far.
+@dataclass(frozen=True)
+class Step:
+    """One command the board runs in the project, with the line said before it and the one said after."""
 
-    Lines rather than a stream: the board polls, and a poll answers with what has been said since the line
-    the asker last had. The lock is around the list and the status because the reader is the server's thread
+    argv: list[str]
+    announced: str
+    ended: Callable[[int], str]
+
+
+def init_step(where: Path, harness: str, repository: str | None) -> Step:
+    return Step(command(harness, repository), announced(where, harness, repository),
+                lambda code: ended(code, harness, repository))
+
+
+#: The step after `./init` where a PRD came with the answers: the constitution and the first specification,
+#: drafted by the agent in a headless session (`make draft`, `scripts/agents/draft.py`), and then a stop.
+#: The board shows the specification's existence as a button, and nothing is built until it is pressed —
+#: a specification somebody has read is the line between what the agent drafts and what runs unattended.
+DRAFT = ["make", "draft"]
+DRAFTING = ("Drafting the constitution and the first specification from docs/prd.md — `make draft`, a headless "
+            "session of the coding agent in the project. It stops at the specification: read it, then "
+            "Continue the build.")
+#: What the button runs: the chart and the split in a second session, `/cruise` enabled, the fleet cast off.
+LAUNCH = ["make", "launch"]
+LAUNCHING = ("Continuing the build — `make launch`: the chart and the split in a headless session, then /cruise "
+             "enabled and the fleet cast off. The streams on this board are the fleet; a captain that parks is "
+             "waiting on you.")
+
+
+def drafted(code: int) -> str:
+    if code == 0:
+        return ("`make draft` is done. The specification is under specs/: read it, and Continue the build charts "
+                "and splits it and casts off.")
+    return (f"`make draft` exited {code}; the project is made and `./init` has run either way. Fix what it named "
+            f"and run `make draft` in the project, or write the specification with the agent.")
+
+
+def launched(code: int) -> str:
+    if code == 0:
+        return "`make launch` is done: the fleet is cast off. `make cruise-watch` is the seat beside it."
+    return f"`make launch` exited {code}; nothing was cast off. Its last lines say why."
+
+
+class Fitting:
+    """The board's one child running somewhere nobody is watching the terminal, and everything it has said.
+
+    `./init`, and after it whatever steps the answers asked for, each a command run in the project. Lines
+    rather than a stream: the board polls, and a poll answers with what has been said since the line the
+    asker last had. The lock is around the list and the status because the reader is the server's thread
     and the writer is this one, and a tail that occasionally lost its last line would be the kind of fault
     nobody can reproduce.
     """
 
-    def __init__(self, where: Path, harness: str | None = None, said: list[str] | None = None,
-                 repository: str | None = None) -> None:
+    def __init__(self, where: Path, steps: list[Step] | None = None, said: list[str] | None = None) -> None:
         self.where = where
-        self.harness = harness
-        self.repository = repository
-        self.lines: list[str] = [*(said or []),
-                                 announced(where, harness, repository) if harness else DECLINED]
+        self.steps = list(steps or [])
+        self.lines: list[str] = [*(said or []), self.steps[0].announced if self.steps else DECLINED]
         self.dropped = 0  # lines said and since let go of, so `since` keeps meaning the same thing
         self.code: int | None = None
         self.began = time.monotonic()
@@ -109,7 +152,7 @@ class Fitting:
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
-    def child(self) -> tuple[subprocess.Popen[bytes], int, bool]:
+    def child(self, argv: list[str]) -> tuple[subprocess.Popen[bytes], int, bool]:
         """The child, the descriptor its output is read from, and whether that descriptor is ours to close.
 
         Through a pseudo-terminal wherever this machine has one, which is not a nicety. `./init` is a shell
@@ -123,7 +166,6 @@ class Fitting:
         # cloud's own tools on a machine that had every one of them, and fell through to the system pip.
         env = {**login_environment(), **PLAIN}
         shape: dict = {"cwd": self.where, "stdin": subprocess.DEVNULL, "stderr": subprocess.STDOUT, "env": env}
-        argv = command(self.harness, self.repository)
         if sys.platform == "win32":  # pragma: no cover — the pty path is what every other platform takes
             child = subprocess.Popen(argv, stdout=subprocess.PIPE, **shape)
             return child, child.stdout.fileno() if child.stdout else -1, False
@@ -161,28 +203,34 @@ class Fitting:
             self.say(ANSI.sub("", held).rstrip())
 
     def run(self) -> None:
-        """The child, read a line at a time until it ends. Its own failure to start is a line like any other:
-        a board that showed nothing where `./init` could not be executed would be a board hiding the answer.
+        """Each step's child, read a line at a time until it ends; a step that fails ends the run there. A
+        child's own failure to start is a line like any other: a board that showed nothing where `./init`
+        could not be executed would be a board hiding the answer.
 
         Nothing to run is also a finished run: the board still lands in the project and still says what was
         made, and a receipt that only appeared when a child happened to be started would be the one thing
         missing on the path somebody chose deliberately.
         """
-        if not self.harness:
+        if not self.steps:
             self.stop(0)
             return
-        try:
-            child, reading, ours = self.child()
-        except OSError as fault:
-            self.say(f"{' '.join(command(self.harness, self.repository))} could not be run here: {fault}",
-                     code=1)
-            return
-        with child:  # closed and waited on by the context manager, so a long run leaks no pipe
-            self.read(reading)
-            code = child.wait()
-        if ours:
-            os.close(reading)
-        self.say(ended(code, self.harness, self.repository), code=code)
+        for index, step in enumerate(self.steps):
+            if index:
+                self.say(step.announced)
+            last = index == len(self.steps) - 1
+            try:
+                child, reading, ours = self.child(step.argv)
+            except OSError as fault:
+                self.say(f"{' '.join(step.argv)} could not be run here: {fault}", code=1)
+                return
+            with child:  # closed and waited on by the context manager, so a long run leaks no pipe
+                self.read(reading)
+                code = child.wait()
+            if ours:
+                os.close(reading)
+            self.say(step.ended(code), code=code if code or last else None)
+            if code:
+                return
 
     def say(self, line: str, code: int | None = None) -> None:
         with self.lock:
@@ -216,9 +264,20 @@ class Fitting:
 
 
 def start(where: Path, harness: str | None = None, said: list[str] | None = None,
-          repository: str | None = None) -> Fitting:
-    """`./init` begun in the background. Returned rather than awaited: what it says is read by polling."""
-    fitting = Fitting(where, harness, said, repository)
+          repository: str | None = None, prd: bool = False) -> Fitting:
+    """`./init` begun in the background — and the draft after it, where a PRD came with the answers and an
+    agent was named to draft with. Returned rather than awaited: what it says is read by polling."""
+    steps = [init_step(where, harness, repository)] if harness else []
+    if steps and prd:
+        steps.append(Step(DRAFT, DRAFTING, drafted))
+    fitting = Fitting(where, steps, said)
+    fitting.thread.start()
+    return fitting
+
+
+def launch(where: Path, said: list[str] | None = None) -> Fitting:
+    """The build continued, in the background: what the board's button starts, carrying the receipt so far."""
+    fitting = Fitting(where, [Step(LAUNCH, LAUNCHING, launched)], said)
     fitting.thread.start()
     return fitting
 

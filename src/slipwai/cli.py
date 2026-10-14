@@ -27,7 +27,7 @@ from .cli_bridge import bridge_main
 from .cli_channel import channel_main
 from .cli_extension import extension_main, hooks_main
 from .cli_fleet import fleet_main
-from .cli_generate import interview
+from .cli_generate import interview, prd_files
 from .cli_language import (
     braced,
     language_main,
@@ -43,7 +43,7 @@ from .cli_prompts import (
     validate_project_name,
 )
 from .cli_quickstart import applied as quickstart_applied
-from .cli_quickstart import files_with_record, quickstart_flag, quickstart_main
+from .cli_quickstart import quickstart_flag, quickstart_main
 from .cli_search import search_main, show_main
 from .cli_start import board_or_usage
 from .cli_target import target_main
@@ -254,6 +254,11 @@ def generate_main(argv: list[str]) -> None:
     quickstart_flag(parser)
     init_flag(parser)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--prd", type=Path, default=None, metavar="FILE",
+        help="a product requirements document, copied into the project as docs/prd.md: what `/draft` reads to "
+             "write the constitution and the first specification, which the board runs after ./init",
+    )
     # A production target needs tools scaffolding does not, and they are checked the moment the target is
     # known rather than at the end of `./init`. Skipped only when another machine will run that.
     parser.add_argument(
@@ -318,7 +323,7 @@ def generate_main(argv: list[str]) -> None:
         with staging as staged:
             staging_path = Path(staged)
             write_project(staging_path, args.name, args.profile, args.target, apps,
-                          files=files_with_record(args, apps), shape=args.shape)
+                          files=prd_files(args, apps), shape=args.shape)
             staging_path.rename(destination)
         print(f"created: {destination}")
         # Last, and after the tree is written and committed: `./init` is the step that reaches the network,

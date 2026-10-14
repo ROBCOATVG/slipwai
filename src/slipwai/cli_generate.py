@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from . import quickstart
@@ -35,7 +36,7 @@ from .cli_prompts import (
     prompt_purpose,
     prompt_target,
 )
-from .cli_quickstart import fetches, missing
+from .cli_quickstart import fetches, files_with_record, missing
 from .errors import GenerationError
 from .loaded_targets import answer
 from .preflight import check as check_requirements
@@ -160,6 +161,63 @@ def interview(args: Any, named: dict[str, str | None]) -> None:
         if named[axis] is None and axis_applies(axis, args.profile, args.backend, args.target):
             named[axis] = prompt_axis(axis, args.profile, args.backend, args.target)
     args.output = prompt_output(DEFAULT_OUTPUT)
+    args.prd = prompt_prd()
+
+
+def prompt_prd() -> Path | None:
+    """Ask for a product requirements document, the one input the first specification can be drafted from.
+
+    Blank is the usual answer and is not pressed: a project started without one is specified in the agent,
+    with a person, which is what every project did before this question existed. Given one, it is read now
+    rather than at the end, so a mistyped path is one more try here and not a refusal after the last
+    question.
+    """
+    while True:
+        try:
+            answer = input("Product requirements document (a path; Enter for none): ").strip()
+        except EOFError as error:
+            raise GenerationError("the product requirements document is required in non-interactive use") from error
+        if not answer:
+            return None
+        path = Path(answer).expanduser()
+        if path.is_file():
+            return path
+        print(f"  {path} is not a file")
+
+
+#: Where the document lands in the project: beside the other pages a person reads first, and where
+#: `commands/draft.md` looks when it is given no argument.
+PRD = "docs/prd.md"
+
+
+def prd_files(args: Any, apps: list[Any]) -> dict[str, str] | None:
+    """The project's files with the PRD among them, or what `files_with_record` answered where none was given.
+
+    Read here rather than left to the tree: a document that cannot be read, or is not text, is a refusal
+    naming the flag before anything is staged, not a traceback from inside `write_project`. The docs index
+    is rendered again over the result, because it is built from the pages the project actually ships and
+    this is one more of them.
+    """
+    files = files_with_record(args, apps)
+    given = getattr(args, "prd", None)
+    if given is None:
+        return files
+    path = Path(given).expanduser()
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise GenerationError(f"--prd {path} cannot be read: {error.strerror or error}") from error
+    except UnicodeDecodeError as error:
+        raise GenerationError(f"--prd {path} is not UTF-8 text; a PRD is a Markdown or plain-text file") from error
+    if not text.strip():
+        raise GenerationError(f"--prd {path} is empty")
+    if files is None:
+        from .scaffold import project_files
+        files = project_files(args.name, args.profile, args.target, apps, shape=getattr(args, "shape", None))
+    from .project.docs_index import docs_index
+    files = {**files, PRD: text}
+    files["docs/README.md"] = docs_index(files)
+    return files
 
 
 def ask_language(args: Any) -> str:

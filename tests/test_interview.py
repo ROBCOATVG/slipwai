@@ -41,7 +41,8 @@ DOCUMENT: dict[str, Any] = {
 }
 #: Every question the interview asks, by the name `cli_generate` calls it: what a test counts.
 QUESTIONS = ("prompt_profile", "prompt_target", "prompt_axis", "prompt_project_name", "prompt_purpose",
-             "prompt_context", "prompt_application_name", "prompt_output", "prompt_choice", "ask_language")
+             "prompt_context", "prompt_application_name", "prompt_output", "prompt_prd", "prompt_choice",
+             "ask_language")
 
 
 def written(into: Path, document: dict) -> Path:

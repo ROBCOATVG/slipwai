@@ -18,6 +18,7 @@ import contextlib
 import filecmp
 import io
 import json
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -49,6 +50,7 @@ IN_THE_TERMINAL = {
     "frontend": "Frontend",
     "frontend-name": "Browser app name",
     "output": "Output parent",
+    "prd": "Product requirements document",
 }
 
 
@@ -127,6 +129,17 @@ class QuestionsTest(unittest.TestCase):
             self.assertEqual(destination(typed, harbour), Path("/elsewhere/demo"),
                              "an answer somebody typed still wins over the proposal")
 
+    def test_the_last_question_is_the_document_and_it_is_a_file(self) -> None:
+        """A PRD is the one answer that is a document rather than a word: the board asks for it with a file
+        picker, the terminal with a path, and `--prd` is the flag both become."""
+        last = asked({"name": "demo"})[-1]
+        self.assertEqual((last.name, last.kind, last.optional), ("prd", "file", True))
+        said = form({"name": "demo"})
+        self.assertIn('id="prd"', said)
+        self.assertIn('type="file"', said)
+        self.assertNotIn("--prd", flags({"name": "demo", "prd": "# A document\n"}),
+                         "the text is not a flag; `run` writes it to a file and names that")
+
     def test_an_answer_a_person_typed_is_escaped_and_never_rendered_as_markup(self) -> None:
         self.assertNotIn("<script>alert(1)</script>", form({"name": "<script>alert(1)</script>"}))
 
@@ -181,6 +194,22 @@ class ByteIdenticalTest(unittest.TestCase):
         self.assertEqual(found["TOKEN"], "from-login")
         self.assertEqual(found["KEPT"], "mine", "this process's own variable wins where both have one")
         self.assertEqual(login_environment({"PATH": "/bin"}, shell="/nonexistent/shell"), {"PATH": "/bin"})
+
+    def test_a_document_given_on_the_board_lands_in_the_project_as_the_prd(self) -> None:
+        """What the picker is for: the text arrives with the answers, and the project is made with it under
+        `docs/`, listed in the docs index, before its first commit."""
+        with tempfile.TemporaryDirectory() as scratch:
+            board = Path(scratch)
+            ok, said = run({"name": "demo", "output": scratch, "prd": "# Demo\n\nSell more demos.\n",
+                            "prd-name": "demo-prd.md"}, board)
+            self.assertTrue(ok, said)
+            self.assertEqual((board / "demo/docs/prd.md").read_text(encoding="utf-8"), "# Demo\n\nSell more demos.\n")
+            self.assertIn("prd.md", (board / "demo/docs/README.md").read_text(encoding="utf-8"))
+            self.assertIn("commands/draft.md", (board / "demo/docs/skills-and-commands.md").read_text(encoding="utf-8"))
+            self.assertTrue((board / "demo/commands/launch.md").is_file())
+            self.assertTrue((board / "demo/scripts/agents/draft.py").is_file())
+            self.assertIn("docs/prd.md", subprocess.run(["git", "show", "--stat", "HEAD"], cwd=board / "demo",
+                                                        capture_output=True, text=True).stdout)
 
     def test_the_board_says_where_it_put_the_project(self) -> None:
         with tempfile.TemporaryDirectory() as scratch:

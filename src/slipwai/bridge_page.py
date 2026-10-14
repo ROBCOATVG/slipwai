@@ -102,6 +102,8 @@ if (fitting) {
       chip.dataset.state = said.code ? 'stopped' : 'done';
       chip.className = said.code ? 'chip stalled' : 'chip';
     }
+    const launch = document.getElementById('launch');
+    if (launch) launch.hidden = !said.launchable;
     paint();
     if (running) setTimeout(poll, 700);
   };
@@ -115,6 +117,10 @@ document.addEventListener('click', event => {
   if (say) {
     const box = document.getElementById('tell-' + say.dataset.tell);
     if (box && box.value.trim()) send('/tell', {fairway: say.dataset.tell, message: box.value.trim()});
+  }
+  if (event.target.id === 'launch') {
+    event.target.disabled = true;
+    send('/launch', {});
   }
   if (event.target.id === 'attach-go') {
     const box = document.getElementById('attach');
@@ -234,10 +240,13 @@ def fitting_card(made: dict) -> str:
     # said "running" and nothing else, for the two minutes Spec Kit takes, is a card a person reloads.
     chip = (f'<span class="chip {esc(state)}" data-state="{esc(state)}" data-seconds="{esc(seconds)}">'
             f'{esc(state)} · {esc(clock(seconds))}</span>')
+    # The button is on the card whether or not it can be pressed yet, hidden until the poll says the draft
+    # has ended well; a specification a person has read is what pressing it means.
+    launch = f'<button class="go" id="launch"{"" if made.get("launchable") else " hidden"}>Continue the build</button>'
     return (f'<div class="card" id="fitting"><h2>Made {esc(Path(str(made["where"])).name)}</h2>'
             f'<p class="empty">{esc(made["where"])} — {chip}</p>'
             f'<pre class="said" id="fitting-said" data-tail data-at="{esc(made["at"])}">'
-            f'{esc(said)}\n</pre></div>')
+            f'{esc(said)}\n</pre><div class="ask">{launch}</div></div>')
 
 
 def looking(root: str) -> str:

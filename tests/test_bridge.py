@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -23,6 +24,10 @@ from slipwai.cli_fleet import config
 from slipwai.fleet import board
 from slipwai.project.harbour import START, harbour_config
 from slipwai.telegraph import MEANS
+
+# budget: 400 — one server and every route it answers, driven against the same bound fixture: the fleet
+# pages, the controls, and the landing a generate leaves behind. A suite per route would be a fixture
+# per suite, which is the duplication this one exists to avoid.
 
 
 class Fixture(unittest.TestCase):
@@ -291,6 +296,30 @@ class LandingTest(ServerTest):
 
     def test_declining_init_still_says_what_the_next_step_is(self) -> None:
         self.assertIn("./init was not run", self.land()[1])
+
+    def test_the_build_can_be_continued_once_a_specification_exists_and_once_only(self) -> None:
+        """The button is the person's word that the specification is good to build from. Before a
+        specification there is nothing to continue; after pressing it, the fleet is cast off and a second
+        press would be a second harbourmaster."""
+        self.land()
+        self.assertFalse(json.loads(self.get("/init.json")[1])["launchable"])
+        self.assertEqual(self.post("/launch", {})[0], 400)
+        (self.made / "specs/001-demo").mkdir(parents=True)
+        (self.made / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
+        (self.made / "Makefile").write_text("launch:\n\t@echo 'cast off'\n", encoding="utf-8")
+        self.assertTrue(json.loads(self.get("/init.json")[1])["launchable"])
+        self.assertIn('id="launch"', self.get("/")[1])
+        code, said = self.post("/launch", {})
+        self.assertEqual((code, said), (200, "continuing the build"))
+        for _ in range(100):
+            receipt = json.loads(self.get("/init.json")[1])
+            if receipt["done"]:
+                break
+            time.sleep(0.1)
+        self.assertIn("cast off", receipt["lines"])
+        self.assertIn("Made demo", self.get("/")[1], "the receipt is carried into the new run")
+        self.assertFalse(receipt["launchable"], "pressed once")
+        self.assertEqual(self.post("/launch", {})[0], 400)
 
 
 if __name__ == "__main__":

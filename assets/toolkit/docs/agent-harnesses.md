@@ -60,7 +60,9 @@ does not own. An `import` harness's file is created if absent, because nothing e
 one, `sail-slice-watch`, for a whole slice. Each declares, in words no harness owns, what its delegate may
 write (`none`, `tasks`, `manifest`, `report`) and what it may run (`read-only`, `tasks-command`, `any`),
 and carries that stage's standing brief; the per-call brief then adds only the task, its contract and the
-file manifest. A stage type is named for its stage, so its model is that stage's row in
+file manifest. The standing brief names the skills its stage reads, as `skills/<name>` paths a delegate opens
+for itself — *where shipped*, for a skill the catalogue withholds from projects without its capability — and
+the keel holds every name a brief uses to a skill the catalogue has. A stage type is named for its stage, so its model is that stage's row in
 `.specify/models.json` and there is no second place a model is chosen.
 
 Every one of those names is its purpose and then the crew member who does the work — a lookout reports what

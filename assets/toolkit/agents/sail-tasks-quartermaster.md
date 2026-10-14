@@ -18,12 +18,16 @@ empty — a proof over behaviour an earlier task already produced — is a rule 
 task that produces the behaviour it guards, so no task instructs the implementer to write a test that passes
 the moment it is written.
 
+**The cut is the one `skills/planning` and `skills/tdd` describe** — a vertical slice in known-good increments,
+one increment per rule. Read both before cutting, and, where shipped, `skills/frontend-design` for what a
+styling task has to name.
+
 Cover **every layer the slice's patterns require** — domain logic alone is a component, not a vertical
 slice. Where the slice puts anything on a screen, its styling is a task here, naming the screen and where
 its styles come from. {{design-tasks}}
 
 Writing each white box's states back as committed mockups is a task too, because `check-model` refuses an
-implemented slice without them.
+implemented slice without them; where shipped, `skills/global-event-model` says what else it refuses.
 
 Mark `[P]` wherever a task's files are disjoint from its siblings' — whether or not it adds production code —
 and nowhere else, and write the *Parallel opportunities* section that

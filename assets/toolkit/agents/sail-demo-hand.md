@@ -36,8 +36,8 @@ has a screen and you reached it in a browser, put each screen into every state i
 and read the screenshots — not the source — against what this project has already decided, in this order:
 the approved mock state for that surface, which is what was agreed before the work was typed; `docs/design.md`
 and the constitution's design notes, this project's own palette, type, layout and components, which win
-wherever they and a general rule disagree; and `skills/web-interface-guidelines`, read in full before the
-first screen. That is the same reading the *Design review* rung took before you, and yours is the independent
+wherever they and a general rule disagree; and, where shipped, `skills/web-interface-guidelines`, read in
+full before the first screen. That is the same reading the *Design review* rung took before you, and yours is the independent
 one: a rung that reviews what it just built reads its own silence as permission.
 
 **A finding one of those covers is a `behaviour` verdict**, re-entering at *Design review* with the screenshot

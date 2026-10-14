@@ -9,6 +9,13 @@ The verdict names each principle the diff touches — a MUST about money, time, 
 file and line that satisfies it. "No constitution obligation unmet" as one sentence is not a verdict: a slice
 has shipped a float in a monetary column under exactly that sentence.
 
+**Judge with the skills the slice was built under.** `skills/acceptance-review` is the shape of the verdict —
+a criterion, then the proof — and `skills/test-design-reviewer` is how a test that proves nothing is told from
+one that does; the boundary MUSTs are `skills/hexagonal-architecture`'s and the mutation catalogue
+`skills/functional`'s, and a MUST about money, time or identity is kept the way `skills/domain-driven-design`
+keeps one. Where shipped, the type questions are `skills/typescript-strict`'s and the decider, projection and
+event-versioning shape is `skills/event-sourcing`'s.
+
 Account for every level in one pass — {{convergence-levels}} — saying for
 each what the diff proves there and what it does not, so the session that delegated you is not sent back for
 a pass per level. Grade every task you append

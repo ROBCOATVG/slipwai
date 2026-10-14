@@ -19,6 +19,7 @@ pass with the substitution stubbed out to the empty string.
 from __future__ import annotations
 
 import hashlib
+import re
 import unittest
 from pathlib import Path
 
@@ -28,8 +29,14 @@ from slipwai.errors import GenerationError
 from slipwai.layout import Layout
 from slipwai.project import briefs, prose
 from slipwai.project.agents import agent_files, types
+from slipwai.toolkit import skill_declarations
 
 RECORD = Path(__file__).resolve().parent / "fixtures/agent-briefs.sha256"
+# A brief points its delegate at a skill as `skills/<name>`: the catalogue's own path, never a title.
+NAMED_SKILL = re.compile(r"`skills/([a-z0-9-]+)`")
+# A skill the catalogue withholds from projects without its capability is named under this word, in the
+# same sentence, so a delegate in a project that never received it does not go looking.
+GUARD = "shipped"
 
 
 def recorded() -> dict[tuple[str, str], str]:
@@ -122,6 +129,60 @@ class FrontmatterTest(unittest.TestCase):
         with self.assertRaises(GenerationError) as raised:
             briefs.read("sail-navigator")
         self.assertIn("sail-navigator.md", str(raised.exception))
+
+
+class SkillPointerTest(unittest.TestCase):
+    """A brief names the skills its stage reads, and names only ones a delegate will find.
+
+    The briefs are written in words no harness owns, so a skill reaches a delegate by being named in the
+    text rather than by a harness's preload field. That makes the name a path the keel has to hold: a skill
+    renamed or withdrawn from the catalogue would otherwise leave a brief sending every delegate to a file
+    that is not there, and nothing in a generated project would say so. The withheld ones are the sharper
+    case: a standard-profile project with no frontend receives neither `frontend-design` nor
+    `web-interface-guidelines`, and a 2026-10-14 generation found both named unguarded in the quartermaster's
+    substituted styling passage — which is why the rendered briefs are read here and not the assets alone.
+    """
+
+    def setUp(self) -> None:
+        # The raw assets, and the briefs as a project receives them: a substituted passage — `{{design-tasks}}`
+        # — can name a skill the asset never does, and the asset alone would not show it.
+        self.assets = {**assets(), **{f"rendered:{path}": text for path, text in agent_files(Layout()).items()}}
+        self.catalogue = skill_declarations()
+
+    def sentences(self, text: str) -> list[str]:
+        return re.split(r"(?<=\.)\s+", text.replace("\n", " "))
+
+    def test_every_skill_a_brief_names_is_in_the_catalogue(self) -> None:
+        for name, text in self.assets.items():
+            for skill in NAMED_SKILL.findall(text):
+                with self.subTest(brief=name, skill=skill):
+                    self.assertIn(skill, self.catalogue, f"{name} names skills/{skill}, which the toolkit has not got")
+
+    def test_a_skill_the_catalogue_withholds_is_named_only_where_shipped(self) -> None:
+        for name, text in self.assets.items():
+            for sentence in self.sentences(text):
+                for skill in NAMED_SKILL.findall(sentence):
+                    if self.catalogue.get(skill) is None:
+                        continue
+                    with self.subTest(brief=name, skill=skill):
+                        self.assertIn(GUARD, sentence,
+                                      f"{name} names skills/{skill}, which serves "
+                                      f"{', '.join(self.catalogue[skill] or ())} and is withheld elsewhere, "
+                                      f"without saying `{GUARD}` in the same sentence")
+
+    def test_the_implementer_is_sent_to_the_discipline_its_brief_compresses(self) -> None:
+        """The shipwright's RED-GREEN-REFACTOR paragraph is a digest of three skills; the digest and the
+        skills can only be kept from drifting apart while the brief still names them."""
+        named = set(NAMED_SKILL.findall(self.assets["sail-implement-shipwright"]))
+        self.assertLessEqual({"tdd", "testing", "refactoring"}, named)
+
+    def test_a_stage_the_commands_already_point_at_a_skill_for_agrees_with_them(self) -> None:
+        """`/adversary` and `/gaps` name the skill their stage reads; the delegate that runs the same stage
+        in a fresh context names the same one, or the two readings of one stage differ."""
+        for brief, skill in (("sail-adversary-privateer", "adversarial-testing"),
+                             ("sail-gaps-lookout", "find-gaps")):
+            with self.subTest(brief=brief):
+                self.assertIn(skill, NAMED_SKILL.findall(self.assets[brief]))
 
 
 class ByteForByteTest(unittest.TestCase):

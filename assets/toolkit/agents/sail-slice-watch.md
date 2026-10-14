@@ -14,7 +14,10 @@ band, **strictly sequential inside the slice**: its backend and its frontend are
 RED-GREEN-REFACTOR increment starts from a green, committed suite. *Who runs each stage* in
 `commands/sail.md` still applies inside you — read the line before each stage, delegate the ones that have a
 type of their own, and say which ran what. Before a browser-driven check, take a `browsers` slot
-(`harbour.json`) and say so in your lines: several worktrees are one machine.
+(`harbour.json`) and say so in your lines: several worktrees are one machine. The stages you run yourself have skills: the example map is
+`skills/event-modeling`'s conversation and the block of the model it settles is `skills/global-event-model`'s,
+both where shipped; the gaps pass before planning reads `skills/find-gaps` and `skills/acceptance-review`, as
+the `/gaps` command does.
 
 Your commits touch this slice's own `specs/<feature>/slices/<id>/`, the feature's cumulative artifacts, its
 block of `model.yaml` and the canvas regenerated from it, the code and tests of the service that owns it, the

@@ -90,6 +90,10 @@ writer per file, always.
 through the inbox under `/sail` or to the skipper under `/cruise`. Under no circumstances do you guess past
 one: a sibling is building against the same contract and your guess becomes their rework.
 
+**A `fix-trunk` is diagnosed before it is touched.** `skills/ci-debugging` is the method — a hypothesis,
+a local reproduction, the delta between the gate's environment and yours — and the fix is a slice's commit on
+the branch that broke it, never an edit to the gate.
+
 **You do not edit the gates you are judged by** — the Makefile, `scripts/`, the CI workflows, the control
 files. Needing one changed is a `told` or a `request`, not a small exception.
 

@@ -18,6 +18,14 @@ sibling slice, rather than a second way to do one thing. Can it be **simplified*
 a state nothing reads, a layer that forwards and does nothing else. And is the **boundary kept**: does the
 domain still import nothing outward, does the slice touch only what its fairway owns.
 
+**The four questions have skills, and you read them before the diff, not while ranking.** Correct is
+`skills/acceptance-review`. Reuse and simplify are `skills/codebase-design` and the assessment in
+`skills/refactoring`, with `skills/functional` for the mutation a branch hides. The boundary is
+`skills/hexagonal-architecture`'s, and the tests in the diff are read by `skills/test-design-reviewer`. Where
+Where a file landed is `skills/structure-codebase`'s question and a contract the slice changed is
+`skills/api-design`'s. Where shipped, `skills/typescript-strict` reads the types and `skills/event-sourcing`
+the decider and its projections.
+
 Report findings in the shape the gaps stage uses — where it is, what is wrong, what it would take — so one
 triage reads both. Rank them, and say plainly which you would not bother with; a review that returns
 everything it noticed makes the reader do the ranking you were asked for.

@@ -8,6 +8,16 @@ each rule its own RED-GREEN-REFACTOR cycle, in this one context, in the map's or
 the cycle unit — `rule` or `example` — from `.specify/sail.json`. The licence below is the same whichever
 boundary you were handed; a story is never one batch of tests.
 
+**The skills are the method; this brief is the boundary.** Before the first RED, read `skills/tdd`,
+`skills/testing` and `skills/refactoring` in full: the cycle below says what this ladder adds to them, not what
+they say. The shape of what you write is `skills/functional`, `skills/hexagonal-architecture`,
+`skills/codebase-design` and `skills/domain-driven-design`, and, where shipped, `skills/typescript-strict` and
+`skills/event-sourcing`. Where the code you touch has no tests to start from, `skills/finding-seams` and
+`skills/characterisation-tests` are how a first RED is reached without rewriting what nobody has pinned.
+Where the slice has a screen and the skills are shipped, its tests are `skills/front-end-testing`'s and
+`skills/react-testing`'s and its styling task is `skills/frontend-design`'s. A name you introduce is
+`skills/ubiquitous-language`'s to settle and a file you add is `skills/structure-codebase`'s to place.
+
 Work each rule as a single RED-GREEN-REFACTOR increment: the failing examples that name the behaviour, the smallest
 change that passes them, then the refactor with the quickest relevant test command scoped to the same file or
 area green — and, where the project has more than one deployable, that deployable's own `{{make}} unit-<name>`

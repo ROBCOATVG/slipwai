@@ -47,25 +47,28 @@
 #
 # Re-taken for mutation once per capability, bounded (`changelog.d/loop-cadence-mutation-once-per-capability.md`).
 # Only the rows named there moved: `agents/sail-mutation-shipworm.md`. Every other row is still its earlier reading.
-f8044f22e29f509742026aa15d65d0838c8ce8244d484dbbbf6b774ccffdaee3  .  agents/sail-adversary-privateer.md
-957afc3978fcc12d13ea93aeedd300a39a7c283ce85bc7ee1b5e7a23f8f66aba  .  agents/sail-converge-navigator.md
-31084abcb45191d51720516d9ddf8b2d4f5186d88185b9b9dbee855661a87b36  .  agents/sail-decide-skipper.md
-76f932bc1bcc3bd46267a51be9b18e2c630b3acec687b42f22b85218cc7b90cc  .  agents/sail-demo-hand.md
-fabac80fdc2c115675ddc7a9fe8feaf80f33783872bdf55b28c95ac37abe1b3a  .  agents/sail-gaps-lookout.md
-da67be0110746c61bfbd54de8b6c60f68db4f0658f40138dc3a472eb8d2a3a3a  .  agents/sail-implement-shipwright.md
-88705af52b2fce4e86929fe8c786120fa3270251c37f3c07c0994d1e223d063b  .  agents/sail-mutation-shipworm.md
-1a894b4c0d7b65d14dfd54e9f6b0d3045c38d9f7be595e69d8ec3645d2a27a4d  .  agents/sail-review-mate.md
-ff463e9fd03812efffe1b46e4c6ed70ce7ead796a91d1887698fe50ca8b2de29  .  agents/sail-slice-watch.md
-5c90b643f694e31a2aa9f99a8f988ff5ce74a11b2d58fabdd752f762b038a28c  .  agents/sail-tasks-quartermaster.md
-453abfa5a0d1939086f67e33fe53f37d9d6ea34a759cff9ef4118829a14390a6  .  agents/sail-unblock-bosun.md
-f8044f22e29f509742026aa15d65d0838c8ce8244d484dbbbf6b774ccffdaee3  delivery  agents/sail-adversary-privateer.md
-f931126f2cb4e7e4a2441f7f919a6bffc7a699cd7cfd3869bc375a6fbccb087b  delivery  agents/sail-converge-navigator.md
-31084abcb45191d51720516d9ddf8b2d4f5186d88185b9b9dbee855661a87b36  delivery  agents/sail-decide-skipper.md
-97e7f27446c6757b3167ce384debf5bac2750464d1bca518f2aba86703128d40  delivery  agents/sail-demo-hand.md
-fabac80fdc2c115675ddc7a9fe8feaf80f33783872bdf55b28c95ac37abe1b3a  delivery  agents/sail-gaps-lookout.md
-03cb10c6f2ce2c65fcf22ec6832d7791251d3f549a0dc8d7b0801917d5785a01  delivery  agents/sail-implement-shipwright.md
-3fed5d927a06bbabea40b4e17463f8c8edfb9a39d7f7522a0bc9fae163a0d77b  delivery  agents/sail-mutation-shipworm.md
-1a894b4c0d7b65d14dfd54e9f6b0d3045c38d9f7be595e69d8ec3645d2a27a4d  delivery  agents/sail-review-mate.md
-3dbe69cab71878eb4f450a7c01917f48a3224c3cfb2b22401583900acc79614f  delivery  agents/sail-slice-watch.md
-5c90b643f694e31a2aa9f99a8f988ff5ce74a11b2d58fabdd752f762b038a28c  delivery  agents/sail-tasks-quartermaster.md
-6a7931a03287910312e527678670fed3ea1edabd91faeb445b1439426eb139e1  delivery  agents/sail-unblock-bosun.md
+# 2026-10-14: every brief that runs a stage now names the skills that stage reads, and the quartermaster's
+# substituted styling passage guards the two it names; the eleven briefs below moved for that edit alone
+# (`changelog.d/agents-name-their-skills.md`).
+b64d788a26bc199356c787c5637c30419d29369b33aba3833f05ef94cda350b2  .  agents/sail-adversary-privateer.md
+62ea8fcb399095529f3ab64005bf8bcf2c12a6acad3fa1ebe304d53b78c49683  .  agents/sail-converge-navigator.md
+1ca270d2141ceaa0ca3b9364cd0831b40c9335a43d109feb3709903678bcbab8  .  agents/sail-decide-skipper.md
+40ddf119c1ee79de931e5af154d440808d0a29b08f899628ca9b7ec2d0ad5477  .  agents/sail-demo-hand.md
+4599b27c9a291b8cc8efe7fd5c1dc2041d3792d197ea418c2833e54174d3c28a  .  agents/sail-gaps-lookout.md
+67df59697b77097a97aabf103ad5cf32f0adb6cb4188c1dd03645b318a66bdf7  .  agents/sail-implement-shipwright.md
+74e769fca3d3571b21d32f4119a474ae6f0a03e3bbfe513ee79e02eda3a15d75  .  agents/sail-mutation-shipworm.md
+74c8ecf80eb243bbeca42ea779491b9dcaf11a8b8a45e77a5e0e8241e1a7df6d  .  agents/sail-review-mate.md
+8fd3dbe59f2441a0ee1795f1f0bbcafd4897b646cc311acc87e00091f91b8b9b  .  agents/sail-slice-watch.md
+7edfc00f7122d13164532b53abc725176e4718c53ffeb2c05bcd14b634910e12  .  agents/sail-tasks-quartermaster.md
+11db71ae6d5675ef05aa8583f7c70925f2269001f57d7db08f7a9e6747c52984  .  agents/sail-unblock-bosun.md
+b64d788a26bc199356c787c5637c30419d29369b33aba3833f05ef94cda350b2  delivery  agents/sail-adversary-privateer.md
+793418a24383052c6261529cfcb489eb019d0ff977e455c29e5dfced1ff715b8  delivery  agents/sail-converge-navigator.md
+1ca270d2141ceaa0ca3b9364cd0831b40c9335a43d109feb3709903678bcbab8  delivery  agents/sail-decide-skipper.md
+26dd9f10be2b340ef03ca9f2fc9bf1947b5e1f5603af7a3675d7abc0ad517338  delivery  agents/sail-demo-hand.md
+4599b27c9a291b8cc8efe7fd5c1dc2041d3792d197ea418c2833e54174d3c28a  delivery  agents/sail-gaps-lookout.md
+c3bf8e090f4bef10d5096cb50016220ca955a8e14009e02e5efcc9c7f7f1c131  delivery  agents/sail-implement-shipwright.md
+37393cbc33c19b47a8aeab5b958022c5adc04fd45aff0611541d8afec76670f6  delivery  agents/sail-mutation-shipworm.md
+74c8ecf80eb243bbeca42ea779491b9dcaf11a8b8a45e77a5e0e8241e1a7df6d  delivery  agents/sail-review-mate.md
+44bb6f45066db1064c1e8cc2c440fd202e2b652306b92937d5e395111c41e906  delivery  agents/sail-slice-watch.md
+7edfc00f7122d13164532b53abc725176e4718c53ffeb2c05bcd14b634910e12  delivery  agents/sail-tasks-quartermaster.md
+59f4509f32da98d0d244ca49b2fc87c98a5ff452cc87582c6088009f75b773b5  delivery  agents/sail-unblock-bosun.md

@@ -57,8 +57,9 @@ def design_review_stage(baseline: str) -> str:
 def tasks_brief() -> str:
     """What the tasks delegate writes into `tasks.md` for a slice with a screen, inside its styling task."""
     return """The styling task names the design steps inside it, so a brief built from it
-carries them: `skills/frontend-design`'s second pass over the plan before any code, and the review of the
-rendered screens against `skills/web-interface-guidelines` before the demo — each with whatever an extension
+carries them — where shipped, since a project with no browser app receives neither — `skills/frontend-design`'s
+second pass over the plan before any code, and the review of the rendered screens against
+`skills/web-interface-guidelines` before the demo — each with whatever an extension
 block in `AGENTS.md` adds to `/sail`'s *Screen design* or *Design review* rung. Leave a `## Design review`
 heading for the `Designed:` and `Reviewed:` lines those rungs write, or `No screen in this slice` under it
 where the slice has none."""

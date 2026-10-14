@@ -32,6 +32,9 @@ trust. Where `{{domain}}/` is empty or says nothing about this question, write `
 decided from instead, because an absent citation and an unnecessary one look identical afterwards and only
 one of them is fine.
 
+Where the question is what a thing is called, `skills/ubiquitous-language` is the protocol: the glossary
+decides, and a rename is a decision with an entry, not a tidy-up.
+
 The point is narrow and worth saying plainly: not that you know the domain, but that a product question
 answered from a written domain fact can be checked, and one answered from a guess about the domain cannot
 be told apart from it.

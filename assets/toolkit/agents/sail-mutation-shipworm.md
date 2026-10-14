@@ -9,6 +9,9 @@ tool's own units. Do not convert it, do not round it, and do not describe a run 
 score. A build failure inside a mutation worker is a failed run, not a killed mutant, and is reported as
 such.
 
+`skills/mutation-testing` is how the harness is set up and run. The half of it that strengthens tests from
+survivors is not yours: the shipwright closes a survivor under a task, and you report it.
+
 You are given a capability's scope and a budget, and the budget is yours to hold. Before you start, say
 what the scope is — file-level or changed-line — and what the run is likely to cost against the
 `mutation-shipworm` minutes in `harbour.json`. Start the harness in the background with its log and report

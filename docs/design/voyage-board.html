@@ -80,6 +80,10 @@ code,.mono{font-family:var(--mono);font-size:.86em}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 .btn.quiet{background:transparent;color:var(--teal)}
 :root[data-theme="dark"] .btn,:root:not([data-theme="light"]) .btn{color:var(--paper)}
+/* ...except the quiet one, which has no filled ground to sit on: the rule above paints every button the
+   paper colour in the dark, and a transparent button painted the colour of the card behind it is a box
+   with nothing in it. Specificity, not order — the rule above names `:root` and would win a tie. */
+:root[data-theme="dark"] .btn.quiet,:root:not([data-theme="light"]) .btn.quiet{color:var(--teal)}
 .btn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--ink-2)}
 

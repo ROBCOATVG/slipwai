@@ -30,8 +30,15 @@ session they are in, and that run picks up at section 2's stop with the drawings
 ## 1. The researcher
 
 Delegate this half to a fresh context that may write under `specs/<feature>/mockups/` and nowhere else. Give
-it `specs/<feature>/spec.md`, the domain knowledge in `.specify/domain/`, and the paths of any mock-ups a
-person has already put in the directory. It answers four questions **per surface the spec implies**, and a
+it `specs/<feature>/spec.md`, the domain knowledge in `.specify/domain/`, **everything under `docs/design/`**,
+and the paths of any mock-ups a person has already put in the directory.
+
+`docs/design/` is what this project was handed rather than what it generated — a brand sheet, a stylesheet,
+wireframes somebody drew, a competitor teardown — carried in beside `docs/prd.md` at generation. Where it
+holds a direction, **follow it rather than invent one**, and say in the research note which file each
+decision came from. A drawing that ignores the direction a person already settled is the stage doing the
+one thing it exists to prevent. Where the directory is empty or absent, there is nothing to follow and the
+note says so. It answers four questions **per surface the spec implies**, and a
 surface is any place a person or another system meets this feature: a screen, a command line, an email, a
 webhook, a report.
 

@@ -37,6 +37,7 @@ from .cli_prompts import (
     prompt_target,
 )
 from .cli_quickstart import fetches, files_with_record, missing
+from .design_docs import handed_over, referenced
 from .errors import GenerationError
 from .loaded_targets import answer
 from .preflight import check as check_requirements
@@ -219,18 +220,28 @@ def prompt_prd() -> Path | None:
 PRD = "docs/prd.md"
 
 
-def prd_files(args: Any, apps: list[Any]) -> dict[str, str] | None:
-    """The project's files with the PRD among them, or what `files_with_record` answered where none was given.
+def prd_files(args: Any, apps: list[Any]) -> tuple[dict[str, str] | None, dict[str, Path]]:
+    """The project's files with the PRD among them, and the files handed over to be copied in beside it.
 
     Read here rather than left to the tree: a document that cannot be read, or is not text, is a refusal
     naming the flag before anything is staged, not a traceback from inside `write_project`. The docs index
     is rendered again over the result, because it is built from the pages the project actually ships and
     this is one more of them.
+
+    The second half is what the document *stands on*: `design_docs` says which of its references travel and
+    rewrites them to where they land, and `--design` is a folder handed over whole. They come back separately
+    because they are copied as bytes — a wireframe is a PNG — and because nothing a person handed over
+    belongs in the manifest a replay regenerates from.
     """
     files = files_with_record(args, apps)
     given = getattr(args, "prd", None)
+    design = getattr(args, "design", None)
+    carry = handed_over(str(design)) if design is not None else {}
     if given is None:
-        return files
+        if carry:
+            raise GenerationError("--design is the material a PRD stands on, so it needs --prd with it; "
+                                  "without a document there is nothing citing any of it")
+        return files, {}
     path = Path(given).expanduser()
     try:
         text = path.read_text(encoding="utf-8")
@@ -243,10 +254,14 @@ def prd_files(args: Any, apps: list[Any]) -> dict[str, str] | None:
     if files is None:
         from .scaffold import project_files
         files = project_files(args.name, args.profile, args.target, apps, shape=getattr(args, "shape", None))
+    cited, text = referenced(path.resolve(), text)
     from .project.docs_index import docs_index
     files = {**files, PRD: text}
-    files["docs/README.md"] = docs_index(files)
-    return files
+    # The folder second, so a file named both ways is the one `--design` points at: the flag is the more
+    # deliberate of the two, and the reference it overrides still resolves to the same place.
+    carry = {**cited, **carry}
+    files["docs/README.md"] = docs_index(files, sorted(carry))
+    return files, carry
 
 
 def ask_language(args: Any) -> str:

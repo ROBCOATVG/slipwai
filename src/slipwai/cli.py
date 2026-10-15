@@ -259,6 +259,12 @@ def generate_main(argv: list[str]) -> None:
         help="a product requirements document, copied into the project as docs/prd.md: what `/draft` reads to "
              "write the constitution and the first specification, which the board runs after ./init",
     )
+    parser.add_argument(
+        "--design", type=Path, default=None, metavar="DIR",
+        help="a folder of design material — a brand sheet, wireframes, a stylesheet — copied into the "
+             "project under docs/design/, which the mock-up stage reads before it draws a surface. What "
+             "the PRD itself links to is carried there too, without this",
+    )
     # A production target needs tools scaffolding does not, and they are checked the moment the target is
     # known rather than at the end of `./init`. Skipped only when another machine will run that.
     parser.add_argument(
@@ -322,8 +328,9 @@ def generate_main(argv: list[str]) -> None:
             raise GenerationError(f"refusing to overwrite existing target: {destination}")
         with staging as staged:
             staging_path = Path(staged)
+            files, carry = prd_files(args, apps)
             write_project(staging_path, args.name, args.profile, args.target, apps,
-                          files=prd_files(args, apps), shape=args.shape)
+                          files=files, shape=args.shape, carry=carry)
             staging_path.rename(destination)
         print(f"created: {destination}")
         # Last, and after the tree is written and committed: `./init` is the step that reaches the network,

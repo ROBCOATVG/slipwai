@@ -218,6 +218,7 @@ def write_project(
     layout: Layout = AT_ROOT,
     adoption: Adoption | None = None,
     shape: str | None = None,
+    carry: dict[str, Path] | None = None,
 ) -> None:
     """Write the project and commit it, once, as the repository it starts life as.
 
@@ -226,6 +227,11 @@ def write_project(
     project it replays still has on disk, with `settled` the ones whose markers that project has already
     shed. Left unsaid, a project keeps every feature its answers selected and stays open to choose again.
     `layout` is the one `files` was assembled for.
+
+    `carry` is the other kind of file: handed over by a person rather than rendered from the answers — the
+    PRD's own references, and `--design`. Copied as bytes, because a wireframe is a PNG and `files` is text
+    by the time it reaches here; kept out of `files` for the better reason too, which is that nothing a
+    person handed over belongs in the manifest a replay regenerates from.
     """
     files = project_files(project_name, profile, target, apps, layout, adoption, shape) if files is None else files
     executables = {layout.place(path) for path in executable_paths(profile, apps)}
@@ -245,6 +251,11 @@ def write_project(
         path.write_text(content, encoding="utf-8", newline="")
         desired_mode = 0o755 if relative in executables else 0o644
         path.chmod(desired_mode)
+    for relative, source in (carry or {}).items():
+        path = contained(destination, relative)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(source.read_bytes())
+        path.chmod(0o644)
     prunable = set(prunable_features_of(apps)) if keep is None else keep
     # Marked regions are written whole above and cut down here, so "which features this project has" is
     # decided in exactly one place — the same code the project itself runs from `./init`. The markers

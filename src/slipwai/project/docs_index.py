@@ -46,12 +46,17 @@ DOC_HOOKS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
 )
 
 
-def docs_index(files: dict[str, str]) -> str:
+def docs_index(files: dict[str, str], carried: list[str] | None = None) -> str:
     """`docs/README.md`, built from the docs the project actually ships.
 
     Called last, over the complete file set, so a page contributed by a profile, a target or an asset tree
     is indexed the same as a generated one. A page `DOC_HOOKS` does not know is listed under its own first
     heading, at the end — an unlisted page is how a reader fails to find a diagram that exists.
+
+    `carried` is what a person handed over with the PRD — `docs/design/`, which is a wireframe and a brand
+    sheet as often as it is a page. Listed by name rather than by heading for that reason: a PNG has no
+    first line to read, and the same rule applies to it — material that is there and unlisted is material
+    the next reader does not know they have.
     """
     pages = {
         path.removeprefix("docs/"): text
@@ -72,6 +77,12 @@ def docs_index(files: dict[str, str]) -> str:
         others.append(f"- [`{page}`]({page}) — {heading}")
     if others:
         sections.append("## Also here\n\n" + "\n".join(others) + "\n")
+    handed = [one.removeprefix("docs/") for one in sorted(carried or [])]
+    if handed:
+        sections.append(
+            "## Handed over\n\nWhat this project was given rather than what it generated: the material "
+            "`prd.md` stands on, which the mock-up stage reads before it draws a surface.\n\n"
+            + "\n".join(f"- [`{page}`]({page})" for page in handed) + "\n")
     return (
         "# Documentation\n\nStart with [getting started](getting-started.md), then use [the workflow](workflow.md). "
         "Every page under `docs/` is listed here.\n\n" + "\n".join(sections)

@@ -25,6 +25,7 @@ import tempfile
 from dataclasses import replace
 from pathlib import Path
 
+from . import githooks
 from .assets import NOTES, VERSION
 from .catch_up import moved_languages, notes
 from .errors import GenerationError
@@ -43,7 +44,6 @@ PROJECTOR = "scripts/agents/project.py"
 # this question before it runs `agents`, and this is the same question asked for the same reason.
 PROJECTED = ".specify/integration.json"
 EXTENSION_STATE = ".slipwai/extensions.json"
-
 
 
 def checked(root: Path) -> dict:
@@ -147,6 +147,9 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
     it to a failure in a follow-up step would be the worse outcome by far.
     """
     respelled, skipped = unlabel(root, layout)
+    # Per-checkout config and not a file, so no merge carried it and a project predating the hook has it
+    # set nowhere. It writes nothing into the tree, so it cannot fail the commit below.
+    hooked = githooks.install(root, layout)
     extension_projector = layout.place(EXTENSION_PROJECTOR)
     agent_projector = layout.place(PROJECTOR)
     commands: list[list[str]] = []
@@ -169,6 +172,7 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
         if projected.returncode != 0:
             return Refresh(
                 uncommitted=respelled, skipped=skipped,
+                hooked=hooked.set, hooks=hooked.why,
                 failed=(projected.stderr.strip() or projected.stdout.strip() or "no reason given")
             )
     # The tree was clean before the merge and the merge committed, so everything uncommitted now is the
@@ -185,12 +189,12 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
         git(root, "add", "--", *respelled)
     else:
         # Nothing to project and nothing respelled: nothing of this command's is in the tree to stage.
-        return Refresh(skipped=skipped)
+        return Refresh(skipped=skipped, hooked=hooked.set, hooks=hooked.why)
     staged = tuple(git(root, "diff", "--cached", "--name-only").splitlines())
     respelled = tuple(path for path in respelled if path in staged)
     changed = tuple(path for path in staged if path not in respelled)
     if not staged:
-        return Refresh(written=bool(commands), skipped=skipped)
+        return Refresh(written=bool(commands), skipped=skipped, hooked=hooked.set, hooks=hooked.why)
     before = git(root, "rev-parse", "HEAD")
     if respelled and changed:
         subject = (f"Take the adoption label off {', '.join(respelled)} and re-derive {name}'s factory "
@@ -205,12 +209,13 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
     )
     if committed.returncode != 0:
         reason = committed.stderr.strip() or committed.stdout.strip() or "the commit was refused"
-        return Refresh(written=True, refused=reason, uncommitted=staged, skipped=skipped)
+        return Refresh(written=True, refused=reason, uncommitted=staged, skipped=skipped,
+                       hooked=hooked.set, hooks=hooked.why)
     if set_undo:
         # No merge populated ORIG_HEAD. Set it only once the commit exists: a refused commit moved nothing, and a
         # no-op migration must not overwrite the undo point left by the previous real migration.
         git(root, "update-ref", "ORIG_HEAD", before)
-    return Refresh(changed, respelled, True, skipped=skipped)
+    return Refresh(changed, respelled, True, skipped=skipped, hooked=hooked.set, hooks=hooked.why)
 
 
 def commit_says(refresh: Refresh, *, merge: bool = False) -> str:
@@ -288,6 +293,7 @@ def report_of(done: Migration) -> str:
             "The extension and harness projections were re-derived from the sources this brought in; they are "
             "ignored by Git or already current, so there is nothing to commit."
         )
+    lines += githooks.note(done.refresh.hooked, done.refresh.hooks)
     lines.append("Nothing pushed; `git reset --hard ORIG_HEAD` undoes all of it.")
     if done.unwritten is None:
         lines.append(
@@ -327,11 +333,18 @@ def not_committed(refresh: Refresh) -> str:
 def catch_up(done: Migration, then: str = "Then") -> list[str]:
     """The report's last step: `/catch-up` over the notes, or — the one case the notes are not there — why
     not and where to read them instead. Never a bare `make verify`, which reads as nothing being owed."""
+    # `make crossing` first: what it asks about is state the merge could not carry — a second feature with
+    # no chart, a slice still `modelled` that is in trunk, a log ref nothing has pushed — and none of it
+    # fails a gate, which is exactly why it needs saying once while somebody is looking.
+    owed = ["Then: make crossing, for what this crossing could not carry."]
     if done.unwritten is None:
-        return [f"{then}: /catch-up, which reads {NOTES} — what these versions ask of code already here — and "
+        return [*owed,
+                f"Then: /catch-up, which reads {NOTES} — what these versions ask of code already here — and "
                 "runs make verify against it."]
     return [
         f"The catch-up notes could not be written to {NOTES}: {done.unwritten}",
         f"Read the factory's CHANGELOG.md from {done.was or 'its first entry'} to {VERSION} instead — what those "
-        f"versions ask of code already here, which no merge can do. {then}: make verify",
+        f"versions ask of code already here, which no merge can do.",
+        *owed,
+        f"{then}: make verify",
     ]

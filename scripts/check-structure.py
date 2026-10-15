@@ -90,7 +90,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # The whole of a project, assembled and written, and the whole of it again from a newer keel — and the
     # same material assembled for a harness to install with no project at all, which is this tier for the
     # same reason the rest of it is: it reads every part.
-    ("assembly", ("plugin", "native", "unlabel", "next_steps", "scaffold", "adopt_report", "add_service", "adopt",
+    ("assembly", ("plugin", "native", "unlabel", "githooks", "next_steps", "scaffold", "adopt_report",
+                  "add_service", "adopt",
                   "migration_legacy", "migration_flight", "migration_settings", "migration_claims",
                   "migration_crossing", "migration_result", "migration_merge", "migration_renames",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),

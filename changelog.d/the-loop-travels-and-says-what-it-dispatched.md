@@ -38,11 +38,33 @@ three of the registry's thirty-six harnesses. Git reaches all of them. Decision 
 (`T018`) are excluded by shape, and a project with no plan at all — an adopted repository before its first
 chart — is not held.
 
+**The hook path is set by the thing that makes the checkout.** `core.hooksPath` is per-checkout git
+config, so it travels with no clone, worktree or cloud runner — which would have left the one rule that
+holds whoever is driving installed nowhere, the same shape as the bug it catches. Generation sets it, and
+`slipwai migrate` sets it for a project that predates the hook. A path somebody else owns — husky,
+lefthook, an adopted repository's own — is reported and never taken.
+
+**And `make crossing` asks what a migration could not carry.** The merge carries the files; it cannot
+carry the state those files are about. One project migrated cleanly and twenty minutes later had a chart
+covering the first of its two features, eleven slices still `modelled` that were built and merged, a log
+ref the design names and nothing had ever created, and no hook path — and had passed every gate it had.
+`scripts/check-crossing.py` asks the six questions out loud: a chart per feature, every slice folder named
+in one, statuses against trunk, a mark recorded for what already shipped, somewhere for the logs to
+travel, and this checkout's hooks. A report by default, `--strict` to fail, because a project mid-crossing
+is not a broken project and a command that refused to run is one nobody runs twice.
+
+**Clearance refuses a feature it cannot answer for.** It takes the first feature with a chart, so a
+project with two features and one chart answered for the charted one *whatever it was asked about* — and
+a `/sail` on the uncharted one read every slice of the other feature as queued or blocked and took that
+for *nothing may start*. A named feature with no chart is now `cannot schedule`, naming what is charted;
+answering for one feature of several says which it is not about.
+
 **Catch-up:** `slipwai migrate` carries `travel.py`, `preflight.py`, `harness.py`, the new
-`scripts/agents/dispatch.py` and `scripts/check-dispatch.py`, rewrites `commands/sail.md`, and adds
-`check-dispatch` to `verify`. Run `make hooks` once per checkout — git config is not cloned, so a
-cloud runner and every new machine need it, and CI holds the same rule for the pushes it never sees. A
-project whose shipped slices predate the ledger will have `check-dispatch` refuse a commit naming one:
-either the slice is already merged and the commit is prose about it (no slice-shaped token before the
-colon), or record what was dispatched. A feature with no `chart.yaml` is unknown to the gate — `make
-chart` first, or its slices read as work no plan knows.
+`scripts/agents/dispatch.py`, `scripts/check-dispatch.py` and `scripts/check-crossing.py`, rewrites
+`commands/sail.md`, adds `check-dispatch` to `verify`, and points this checkout at `.githooks`. **Run
+`make crossing` after it** — and `make hooks` in every other clone, worktree and cloud runner, because
+git config is not cloned and CI holds the same rule for the pushes a hook never sees. A project whose
+shipped slices predate the ledger will have `check-dispatch` refuse a commit naming one: either the slice
+is already merged and the commit is prose about it (no slice-shaped token before the colon), or record
+what was dispatched. A feature with no `chart.yaml` is unknown to both gates — `make chart` first, or its
+slices read as work no plan knows.

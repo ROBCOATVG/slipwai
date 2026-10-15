@@ -56,6 +56,10 @@ class Refresh:
     uncommitted: tuple[str, ...] = ()
     # The pages the respell left alone, each with why: a symbolic link is never written through.
     skipped: tuple[str, ...] = ()
+    # Whether this checkout was pointed at the project's own git hooks, and the sentence where it was not —
+    # a path somebody else owns is reported and never taken. Empty where there was nothing to say.
+    hooked: bool = False
+    hooks: str = ""
 
 
 def read_page(page: Path) -> str | None:

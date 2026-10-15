@@ -11,6 +11,7 @@ import os
 import subprocess
 from pathlib import Path
 
+from . import githooks
 from .assets import ADOPTION_ROOT, contained
 from .catalog import CATALOG
 from .deployment_shapes import row, selected
@@ -261,6 +262,10 @@ def write_project(
 def commit_all(repository: Path, message: str) -> None:
     """Make `repository` a Git repository on `main` with everything in it as one commit."""
     subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repository, check=True)
+    # Before the commit, because `core.hooksPath` is per-checkout config and not a file: it travels with
+    # no clone, no worktree and no cloud runner, so the one rule that holds whoever is driving would
+    # otherwise be installed nowhere. Never fatal, and never over somebody else's hook path.
+    githooks.install(repository)
     subprocess.run(["git", "add", "."], cwd=repository, check=True)
     # No auto-maintenance: `git commit` would otherwise launch a detached `git maintenance run --auto`, which
     # takes its lock inside .git/objects/ after this returns — and a caller that deletes the repository next

@@ -106,6 +106,22 @@ def chart(feature: str = "") -> tuple[dict, str]:
     return {}, ""
 
 
+def features() -> list[str]:
+    """Every feature under `specs/`, charted or not. What the chart covers is a subset of this."""
+    return sorted(path.name for path in SPECS.iterdir() if path.is_dir()) if SPECS.is_dir() else []
+
+
+def uncharted(answering: str) -> list[str]:
+    """The features this answer is **not** about, and that no chart covers either.
+
+    A project with two features and one chart answers for the charted one and says nothing about the
+    other, which is how `/sail <feature>` on an uncharted feature got the charted feature's schedule:
+    every slice it asked about came back queued or blocked, because they are in a chart that is not its.
+    """
+    charts = {path.parent.name for path in SPECS.glob("*/chart.yaml")} if SPECS.is_dir() else set()
+    return [name for name in features() if name != answering and name not in charts]
+
+
 def log_paths(feature: str) -> list[Path]:
     """Every log a mark can be set in: the feature's deck logs, and every machine's harbour log.
 
@@ -676,6 +692,16 @@ def main(argv: list[str]) -> int:
             return 1
         requested = argv[index]
     charted, feature = chart(requested)
+    # **Cannot schedule, rather than a calm nothing.** A feature somebody named and no chart covers is the
+    # one case where silence is worst: the answer that came back was the *other* feature's, every slice in
+    # it read as queued or blocked, and a run took that for "nothing may start" and went its own way.
+    if requested and not charted:
+        known = ", ".join(path.parent.name for path in sorted(SPECS.glob("*/chart.yaml"))) or "none"
+        said = (f"cannot schedule {requested}: it has no specs/{requested}/chart.yaml, so nothing says what "
+                f"its slices set or steer by. Run `make chart` for it. Charted here: {known}")
+        print(json.dumps({"v": QUERY_VERSION, "error": said}) if "--json" in argv
+              else f"clearance: {said}", file=None if "--json" in argv else sys.stderr)
+        return 1
     if "--json" in argv and not charted:
         print(json.dumps({"v": QUERY_VERSION, "error": "no readable chart exists. Run `make chart`"}))
         return 1
@@ -736,6 +762,10 @@ def main(argv: list[str]) -> int:
         return 0 if state in BANDS else 1
     print(f"clearance: {len(planned['start'])} of {len(states)} slices start now in {feature}"
           f" (slots: {'unbounded' if slots is None else slots})")
+    if (elsewhere := uncharted(feature)):
+        print(f"  this answer is about {feature} alone; {', '.join(elsewhere)} "
+              f"{'has' if len(elsewhere) == 1 else 'have'} no chart and nothing here is about "
+              f"{'it' if len(elsewhere) == 1 else 'them'}")
     print(f"  {numbers_line(numbers)}")
     for row in planned["start"]:
         print(f"  start  {row['slice']}  {row['band']}  — {row['why']}")

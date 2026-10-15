@@ -107,6 +107,19 @@ class StagesTest(unittest.TestCase):
         root = tree(**{**made, "specs__001-demo__mockups__mock-states.md": settled})
         self.assertEqual(states(root)["storyboard"], "done", "approved and n/a are both settled")
 
+    def test_surfaces_drawn_and_nothing_approved_is_waiting_on_a_person_rather_than_still_to_do(self) -> None:
+        """The reading was `mock-states.md` or nothing, and that file is written at the *end* of the stage.
+        Between the drawing and the verdicts — which is where the board's Draw the surfaces button leaves a
+        project, and where a person is the only thing holding it up — the strip said *to do*."""
+        made = {**INIT, "specs__001-demo__spec.md": "# Demo\n",
+                "specs__001-demo__mockups__basket.html": "<title>Mock: Basket</title>\n"}
+        root = tree(**made)
+        self.assertEqual(states(root)["storyboard"], "waiting")
+        self.assertIn("drawn", next(one.detail for one in stages(root) if one.key == "storyboard"))
+        self.assertEqual(states(tree(**{**made, "specs__001-demo__mockups__mock-states.md":
+                                        "## Surface: Basket\n- empty \u2014 approved\n"}))["storyboard"],
+                         "done", "and the verdicts settle it")
+
     def test_a_feature_with_no_surfaces_has_run_the_stage_rather_than_skipped_it(self) -> None:
         """A written answer, not an absence."""
         root = tree(**{**INIT, "specs__001-demo__spec.md": "# Demo\n",

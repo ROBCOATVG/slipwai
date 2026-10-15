@@ -31,7 +31,10 @@ from pathlib import Path
 
 from .shell_environment import login_environment
 
-# budget: 400 — one runner for every child the board starts in a project, and the four steps it runs through
+# budget: 420 — one runner for every child the board starts in a project, and the five steps it runs
+# through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
+# lines of command, prose and verdict beside the others, which is what makes them comparable; split by
+# step they would be five modules of twelve lines and one import list each.
 # it: `./init`, the draft, the launch and the cast-off. A module per step would be four copies of the pty,
 # the tail and the receipt, which is the duplication the steps were made one runner to avoid.
 
@@ -151,6 +154,16 @@ DRAFT = ["make", "draft"]
 DRAFTING = ("Drafting the constitution and the first specification from docs/prd.md — `make draft`, a headless "
             "session of the coding agent in the project. It stops at the specification: read it, then "
             "Continue the build.")
+#: What the Draw the surfaces button runs: the first half of `/mockups` — the research, the wireframes and
+#: the storyboard — in a headless session, and then a stop. The second half is a person looking at one
+#: surface at a time, which is the stage rather than a step on the way to it, and is why nothing here marks
+#: anything approved. Before the model deliberately: `project/ladder.py` has the review there, because a
+#: surface nobody has seen becomes a read model, a route and a set of tests, and all three cost more to
+#: move than a drawing does.
+SURFACES = ["make", "surfaces"]
+DRAWING = ("Drawing the surfaces — `make surfaces`: the research, the wireframes and the storyboard in a "
+           "headless session of the coding agent. It stops at the storyboard, which is where you come in: "
+           "nothing is approved by a session nobody was in.")
 #: What the button runs: the chart and the split in a second session, `/cruise` enabled, the fleet cast off.
 LAUNCH = ["make", "launch"]
 LAUNCHING = ("Continuing the build — `make launch`: the chart and the split in a headless session, then /cruise "
@@ -194,6 +207,16 @@ def drafted(code: int) -> str:
                 "and splits it and casts off.")
     return (f"`make draft` exited {code}; the project is made and `./init` has run either way. Fix what it named "
             f"and run `make draft` in the project, or write the specification with the agent.")
+
+
+def drew(code: int) -> str:
+    if code == 0:
+        return ("`make surfaces` is done. The storyboard is below: open it, then `/mockups` in the agent "
+                "walks you through approving each state, which is what the model and the chart read.")
+    return (f"`make surfaces` exited {code}; nothing was drawn and nothing was approved. Its last lines say "
+            f"why. **No rule to make target** means this project was generated before the stage had one: "
+            f"`slipwai migrate` carries it in, and `/mockups` in the agent does the whole stage by hand "
+            f"meanwhile.")
 
 
 def launched(code: int) -> str:
@@ -361,6 +384,13 @@ def cast_off(where: Path, said: list[str] | None = None) -> Fitting:
 def stop(where: Path, said: list[str] | None = None) -> Fitting:
     """The fleet asked to stop, in the background: what the board's Stop button starts."""
     fitting = Fitting(where, [Step(STOP, STOPPING, stopped, "stop")], said)
+    fitting.thread.start()
+    return fitting
+
+
+def draw(where: Path, said: list[str] | None = None) -> Fitting:
+    """The surfaces drawn, in the background: what the board's Draw the surfaces button starts."""
+    fitting = Fitting(where, [Step(SURFACES, DRAWING, drew, "surfaces")], said)
     fitting.thread.start()
     return fitting
 

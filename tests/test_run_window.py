@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 import time
 import unittest
@@ -133,6 +134,93 @@ class StopTest(BoardTest):
         (self.root / "Makefile").write_text("cruise-stop:\n\t@sleep 2\n", encoding="utf-8")
         self.assertEqual(self.post("/stop", {})[0], 200)
         self.assertEqual(self.post("/stop", {})[0], 400)
+
+
+class DrawTest(BoardTest):
+    """The stage between a specification and a model, which had no button at all.
+
+    The page said "Next: /mockups in the agent" to somebody sitting in front of a board that had just run
+    two headless sessions for them. This runs the half of that stage nobody has to be present for, and
+    stops where the stage actually is: a person looking at a storyboard.
+    """
+
+    def specified(self) -> None:
+        (self.root / "specs/001-ordering").mkdir(parents=True)
+        (self.root / "specs/001-ordering/spec.md").write_text("# Ordering\n", encoding="utf-8")
+
+    def test_there_is_nothing_to_draw_without_a_specification(self) -> None:
+        """The surfaces are drawn from the specification, so there is nothing to draw them from."""
+        code, said = self.post("/draw", {})
+        self.assertEqual(code, 400)
+        self.assertIn("nothing to draw", said)
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["drawable"])
+        self.assertIn('id="draw"', self.get("/voyage")[1], "on the card, hidden, so the poll can show it")
+
+    def test_a_drafted_specification_can_have_its_surfaces_drawn_from_the_page(self) -> None:
+        self.specified()
+        self.assertTrue(json.loads(self.get("/voyage.json")[1])["drawable"])
+        (self.root / "Makefile").write_text("surfaces:\n\t@echo 'storyboard drawn'\n", encoding="utf-8")
+        self.assertEqual(self.post("/draw", {}), (200, "drawing the surfaces"))
+        for _ in range(100):
+            receipt = json.loads(self.get("/init.json")[1])
+            if receipt["done"]:
+                break
+            time.sleep(0.1)
+        self.assertIn("storyboard drawn", receipt["lines"])
+        self.assertIn("surfaces", receipt["step"])
+
+    def test_surfaces_already_drawn_are_waiting_on_a_person_rather_than_on_this(self) -> None:
+        """The button goes the moment there are drawings, because what they wait on is a verdict on each
+        state and no button gives one. Pressing it again would redraw the thing being read."""
+        self.specified()
+        mockups = self.root / "specs/001-ordering/mockups"
+        mockups.mkdir()
+        (mockups / "basket.html").write_text("<title>Mock: Basket</title>", encoding="utf-8")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["drawable"])
+        code, said = self.post("/draw", {})
+        self.assertEqual(code, 400)
+        self.assertIn("your verdict", said)
+
+
+class ShapeTest(BoardTest):
+    """A window stays current without anybody reloading it.
+
+    The strip repaints from the poll and always did; the cards do not. A window opened while `make draft`
+    ran watched the specification land and showed nothing of it — no Open spec button, no storyboard, no
+    work — until somebody pressed reload, which is the one thing a page that polls is there to save them.
+    """
+
+    def shape_of(self, page: str) -> str:
+        found = re.search(r'id="passage" data-shape="([^"]*)"', page)
+        assert found is not None, "the card carries the signature it was drawn with"
+        return found.group(1)
+
+    def test_the_page_and_the_poll_agree_on_what_the_page_is_made_of(self) -> None:
+        """They have to: a disagreement is a window that reloads itself for ever."""
+        self.assertEqual(self.shape_of(self.get("/voyage")[1]),
+                         json.loads(self.get("/voyage.json")[1])["shape"])
+
+    def test_a_specification_landing_under_an_open_window_changes_the_signature(self) -> None:
+        before = json.loads(self.get("/voyage.json")[1])["shape"]
+        (self.root / "specs/001-ordering").mkdir(parents=True)
+        (self.root / "specs/001-ordering/spec.md").write_text("# Ordering\n", encoding="utf-8")
+        self.assertNotEqual(json.loads(self.get("/voyage.json")[1])["shape"], before)
+        self.assertEqual(self.shape_of(self.get("/voyage")[1]),
+                         json.loads(self.get("/voyage.json")[1])["shape"],
+                         "and the window that reloads on it is drawn with the new one")
+
+    def test_a_surface_drawn_under_an_open_window_changes_the_signature(self) -> None:
+        """The storyboard card is rendered once, out of files the window was opened before."""
+        mockups = self.root / "specs/001-ordering/mockups"
+        mockups.mkdir(parents=True)
+        before = json.loads(self.get("/voyage.json")[1])["shape"]
+        (mockups / "basket.html").write_text("<title>Mock: Basket</title>", encoding="utf-8")
+        self.assertNotEqual(json.loads(self.get("/voyage.json")[1])["shape"], before)
+
+    def test_nothing_changing_leaves_the_signature_alone(self) -> None:
+        """The other half of the rule, and the one that keeps a window from reloading every eight seconds."""
+        first = json.loads(self.get("/voyage.json")[1])["shape"]
+        self.assertEqual(json.loads(self.get("/voyage.json")[1])["shape"], first)
 
 
 class WheelRouteTest(BoardTest):

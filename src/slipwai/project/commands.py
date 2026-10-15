@@ -171,6 +171,11 @@ def command_files(
         # build continued from it with nobody at the wheel. Two pages because they are two decisions — a
         # specification somebody has read is the line between them.
         "commands/draft.md": page(COMMANDS, "draft.md", {"make": layout.make}),
+        # And between them the surfaces: the stage a person is in for the half that counts, whose other
+        # half the board can start. Written here rather than copied verbatim because it now names the
+        # project's own make spelling, and a page that shipped `{{make}}` raw would read as a typo in the
+        # method rather than as a bug in the keel.
+        "commands/mockups.md": page(COMMANDS, "mockups.md", {"make": layout.make}),
         "commands/launch.md": page(COMMANDS, "launch.md", {"make": layout.make}),
         "commands/where-are-we.md": where_are_we_command(event, target),
         "commands/whats-next.md": whats_next_command(event),

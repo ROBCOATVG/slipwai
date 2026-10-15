@@ -249,3 +249,27 @@ def spec_file(root: Path, feature: str) -> Path | None:
 def states_of(rows: list[dict[str, str]]) -> dict[str, str]:
     return {row["slice"]: row["state"] for row in rows}
 
+
+def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, made: bool) -> str:
+    """What this page is *made of*, as one short line, so that a poll can tell a changed page from a
+    changed strip.
+
+    The strip repaints itself from `/voyage.json`, and for a while that was the whole of keeping this page
+    current. It is not: the Open spec button, the storyboard, the model and the work cards are all rendered
+    once, by the server, out of files that were not there yet. A window opened during the draft watched the
+    specification land and showed nothing of it until somebody reloaded, which is the one thing a page that
+    polls is supposed to save a person from.
+
+    So the poll carries this as well, the page remembers the one it was drawn with, and a difference is a
+    reload. A reload rather than a repaint because what changes here is which cards exist, and that is rare
+    — a file appearing — where the strip's states change every few seconds. Every part below is a count, a
+    name or an mtime: this is asked for as long as a window is open, so nothing here reads a file.
+    """
+    specs = root / "specs"
+    drawn = sorted(page.relative_to(specs).as_posix()
+                   for page in specs.glob(f"*/{MOCKUPS}/*.html")) if specs.is_dir() else []
+    picture = root / DRAWIO
+    berths = [str(one.get("state", "")) for one in (fleet.get("berths") or []) if isinstance(one, dict)]
+    return "|".join((feature, "".join(str(row["state"])[:1] for row in rows), ",".join(drawn),
+                     str(int(picture.stat().st_mtime) if picture.is_file() else 0), ",".join(berths),
+                     str(len(fleet.get("inbox") or [])), "f" if made else ""))

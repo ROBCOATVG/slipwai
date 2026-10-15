@@ -19,9 +19,10 @@ import checkout_packages  # noqa: F401
 from board_fixture import BoardTest, Fixture
 
 from slipwai import logs
-from slipwai.bridge import serve, tell
+from slipwai.bridge import serve
 from slipwai.bridge_page import PLAIN, page, read_only
 from slipwai.cli_fleet import config
+from slipwai.deck import tell
 from slipwai.fleet import board
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS

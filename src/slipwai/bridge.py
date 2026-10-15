@@ -48,11 +48,13 @@ from .bridge_page import page, payload
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
+from .deck import tell
 from .errors import GenerationError
 from .fleet import board
 from .harbour import config
 from .init_run import Fitting
 from .init_run import cast_off as start_fleet
+from .init_run import draw as draw_surfaces
 from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
@@ -60,7 +62,6 @@ from .interview_page import NO_INIT, destination, form, repository_for
 from .interview_page import page as interview
 from .interview_page import run as generate
 from .landing_page import landing
-from .logs import deck_path, entry
 from .page_shell import (
     ICON,
     MANIFEST,
@@ -72,7 +73,7 @@ from .page_shell import (
     manifest,
     not_running,
 )
-from .passage import EVENT_PROFILE, modelled, profile_of, specifications, stages
+from .passage import EVENT_PROFILE, drawn, modelled, profile_of, specifications, stages
 from .seats import Bench, Outfit, Seat, parameter
 from .telegraph import Refused
 from .voyage import (
@@ -84,6 +85,7 @@ from .voyage import (
     mockup_file,
     mockups,
     model_xml,
+    shape,
     spec_file,
     states_of,
     viewer_script,
@@ -112,32 +114,6 @@ APP_FILES: dict[str, tuple[Callable[[], str], str]] = {
 #: purpose: a poll carries the seat of the page that made it, and a `curl /board.json` carries none and
 #: should read the board rather than be redirected into a seat it would then have to keep.
 SEATED: tuple[str, ...] = ("", "/index.html", "/voyage", "/generate", "/adopt", "/packages")
-
-
-def feature_of(root: Path, fairway: str) -> str:
-    """Which feature's directory this stream's log is in, or `''` where it has none yet."""
-    place = root / ".slipwai/logs"
-    for path in sorted(place.rglob(f"{fairway}.jsonl")) if place.is_dir() else []:
-        return path.parent.name
-    return ""
-
-
-def tell(root: Path, fairway: str, message: str) -> str:
-    """Write a person's message into that stream's deck log, or say why it could not be.
-
-    Into the deck log rather than anywhere of its own: the log is what the captain reads at its next
-    boundary, and a message somewhere else is a message nothing is watching.
-    """
-    if not fairway or not message.strip():
-        raise ValueError("a message needs a stream to go to and something to say")
-    feature = feature_of(root, fairway)
-    if not feature:
-        raise ValueError(f"{fairway} has no log here, so there is nowhere for this to go. "
-                         f"A stream gets a log when its captain writes its first line")
-    path = root / deck_path(feature, fairway)
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(entry("told", fairway=fairway, message=message.strip()).line())
-    return f"told {fairway}"
 
 
 class Bridge(BaseHTTPRequestHandler):
@@ -386,27 +362,46 @@ class Bridge(BaseHTTPRequestHandler):
         answer, and the button would read as having done nothing."""
         return bool(fleet.get("running")) and (not self.fitting or self.fitting.said()["done"])
 
+    def drawable(self) -> bool:
+        """Whether the surfaces can be drawn from here: a specification to draw them from, nothing drawn
+        yet, and no child of this board already on its way.
+
+        Gone the moment there are drawings, and that is the point of it rather than a limit on it. What a
+        storyboard nobody has looked at is waiting for is a person's verdict on each state, and there is no
+        button that gives one: pressing this again would redraw the thing already waiting to be read.
+        """
+        idle = not self.fitting or self.fitting.said()["done"]
+        return bool(specifications(self.root)) and not drawn(self.root) and idle
+
     def castable(self, rows: list[dict[str, str]], fleet: dict) -> bool:
         """Whether the fleet can be cast off from here: a split to work, nothing of it running, and no child
         of this board on the way."""
         idle = not self.fitting or self.fitting.said()["done"]
         return bool(rows) and not fleet.get("running") and idle and any(row["state"] != "done" for row in rows)
 
+    def made_of(self, rows: list[dict[str, str]], fleet: dict) -> tuple[str, str]:
+        """The feature this window is about, and the one-line signature of what its page is built out of —
+        which the poll carries so that a page built before a file existed can tell, and reload."""
+        specs = specifications(self.root)
+        feature = specs[0].parent.name if specs else ""
+        return feature, shape(self.root, rows, fleet, feature, bool(self.made()))
+
     def voyage(self) -> str:
         found, rows, fault, fleet, held = self.voyage_parts()
-        specs = specifications(self.root)
+        feature, made_of = self.made_of(rows, fleet)
         xml, note = model_xml(self.root, states_of(rows))
         # The frames are the one thing on this page the browser fetches without a script's help, so the
         # seat goes on their addresses here: a frame that asked unseated would be shown another window's
         # project inside this one's page.
         return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
-                      orders(self.root), specs[0].parent.name if specs else "")
+                      orders(self.root), feature, self.drawable(), made_of)
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
         return voyage_payload(found, self.launchable(), any(one.state == "working" for one in found),
-                              self.castable(rows, fleet), self.stoppable(fleet))
+                              self.castable(rows, fleet), self.stoppable(fleet), self.drawable(),
+                              self.made_of(rows, fleet)[1])
 
     def attach(self, named: str) -> str:
         """Point this board at another directory, or say why it cannot be.
@@ -497,6 +492,16 @@ class Bridge(BaseHTTPRequestHandler):
                                      "already asking it to")
                 self.fitting = stop_fleet(self.root, self.fitting.said()["lines"] if self.fitting else None)
                 said = "asking the fleet to stop"
+            # The one button between a specification a person has read and a storyboard they have not seen
+            # yet. Half a stage: the drawing, which nobody has to be present for, and then the stop that is
+            # the stage — which is why this ends with the strip amber rather than with a tick.
+            elif where == "/draw":
+                if not self.drawable():
+                    raise ValueError("nothing to draw: the surfaces are drawn from a specification under "
+                                     "specs/, and once they are drawn what they wait on is your verdict on "
+                                     "each state, which `/mockups` in the agent asks you for")
+                self.fitting = draw_surfaces(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                said = "drawing the surfaces"
             elif where == "/launch":
                 if not self.launchable():
                     raise ValueError("nothing to continue from here: a specification under specs/, written by "

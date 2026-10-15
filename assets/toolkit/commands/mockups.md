@@ -15,6 +15,18 @@ stage called them.
 
 Everything this stage writes lives under `specs/<feature>/mockups/`.
 
+**Typed by a person**, this file is the rules from here down, both halves of it, in the session you are in.
+
+**In a session dispatched by `scripts/agents/surfaces.py`** (`SLIPWAI_STAGE=surfaces` in the environment —
+the board's **Draw the surfaces** button, or `{{make}} surfaces`), **run sections 1 and 2 and stop at the
+storyboard.** Nobody is in that session: there is no one to show a surface to, so the stop in section 2 is
+where it ends, and section 3 is not yours to write. Do not create `mock-states.md`, and do not mark a state
+`approved`, `parked` or `n/a` — a verdict is the one thing here that only a person can give, and a file of
+approvals nobody gave is exactly the failure this stage was added to prevent. Write the research, the
+mock-ups and the storyboard, say what you drew and which surfaces the specification implies, and leave the
+questions from section 1 in the inbox as usual. The person runs `/mockups <feature>` afterwards, in a
+session they are in, and that run picks up at section 2's stop with the drawings already there.
+
 ## 1. The researcher
 
 Delegate this half to a fresh context that may write under `specs/<feature>/mockups/` and nowhere else. Give

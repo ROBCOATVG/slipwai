@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .logs import Entry, Unreadable, deck_logs, deck_path, fold
+from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold
 
 #: How many lines one stream shows by default. Enough to cover a slice; short enough to read.
 RECENT = 60
@@ -69,6 +69,25 @@ def streams(root: Path) -> list[tuple[str, str]]:
 def feature_of(root: Path, fairway: str) -> str:
     """Which feature this stream's log is under, or `''` where it has none."""
     return next((feature for feature, name in streams(root) if name == fairway), "")
+
+
+def tell(root: Path, fairway: str, message: str) -> str:
+    """Write a person's message into that stream's deck log, or say why it could not be.
+
+    Into the deck log rather than anywhere of its own: the log is what the captain reads at its next
+    boundary, and a message somewhere else is a message nothing is watching. Here rather than beside the
+    board's route for it, because this is a line in a deck log and that is what this module is.
+    """
+    if not fairway or not message.strip():
+        raise ValueError("a message needs a stream to go to and something to say")
+    feature = feature_of(root, fairway)
+    if not feature:
+        raise ValueError(f"{fairway} has no log here, so there is nowhere for this to go. "
+                         f"A stream gets a log when its captain writes its first line")
+    path = root / deck_path(feature, fairway)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(entry("told", fairway=fairway, message=message.strip()).line())
+    return f"told {fairway}"
 
 
 def entries(root: Path, fairway: str, feature: str = "") -> tuple[list[Entry], str]:

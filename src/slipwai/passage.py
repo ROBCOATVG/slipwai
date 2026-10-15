@@ -85,6 +85,19 @@ def storyboards(root: Path) -> list[Path]:
     return sorted(specs.glob("*/mockups/mock-states.md")) if specs.is_dir() else []
 
 
+def drawn(root: Path) -> bool:
+    """Whether anybody has drawn a surface yet, which is a different question from whether anybody has
+    approved one.
+
+    The stage ends at `mock-states.md`, so that file was the whole reading — and it left the half of the
+    stage a person is actually in with nothing to say for it. Surfaces drawn and no verdicts written is a
+    storyboard waiting to be looked at, which is the loudest state the strip has and the one it was showing
+    as *to do*.
+    """
+    specs = root / "specs"
+    return bool(specs.is_dir() and next(specs.glob("*/mockups/*.html"), None))
+
+
 def surfaces(root: Path) -> tuple[int, int, int]:
     """Across every feature that has run the stage: states seen, states approved, and states parked.
 
@@ -148,7 +161,7 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     event = profile_of(root) == EVENT_PROFILE
     harness = harness_of(root)
     specs = specifications(root)
-    drawn = charts(root)
+    charted = charts(root)
     found: list[Stage] = []
 
     prd = root / "docs/prd.md"
@@ -184,13 +197,18 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     # order — the screens are what the modelling conversation is held over.
     written = storyboards(root)
     seen, approved, parked = surfaces(root)
+    sketched = drawn(root)
+    drawing = step_state(receipt, "surfaces")
     found.append(Stage("storyboard", "Storyboard",
-                       "waiting" if written and parked else "done" if written else "todo",
+                       drawing or ("waiting" if (written and parked) or (sketched and not written)
+                                   else "done" if written else "todo"),
                        written[0].relative_to(root).as_posix() if written
                        else "specs/<feature>/mockups/mock-states.md",
                        "/mockups in the agent, then approve each state on the storyboard",
                        (f"{approved} of {seen} states approved" + (f", {parked} parked" if parked else ""))
-                       if seen else "no surfaces on this feature" if written else "nobody has seen a surface yet",
+                       if seen else "no surfaces on this feature" if written
+                       else "drawn: nobody has approved a state yet" if sketched
+                       else "nobody has seen a surface yet",
                        expect="The surfaces are researched, drawn and storyboarded, then shown to you one "
                               "state at a time. **It stops for you at every surface** \u2014 that is the "
                               "stage, not a fault. Minutes to draft; as long as you take to approve."))
@@ -210,10 +228,10 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     launching = step_state(receipt, "launch")
     split = bool(counts)
     found.append(Stage("chart", "Chart & split", launching or ("done" if split else "todo"),
-                       drawn[0].relative_to(root).as_posix() if drawn else "specs/<feature>/chart.yaml",
+                       charted[0].relative_to(root).as_posix() if charted else "specs/<feature>/chart.yaml",
                        "make launch (the board's Continue the build)",
                        f"{sum(counts.values())} slice(s) charted" if split else
-                       "charted, not split" if drawn else "fairways, marks and slices",
+                       "charted, not split" if charted else "fairways, marks and slices",
                        expect="A headless session draws the chart and splits it into slices \u2014 minutes. "
                               "It does not stop for you."))
 

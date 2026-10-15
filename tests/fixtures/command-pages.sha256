@@ -59,6 +59,13 @@
 # own fetch, `make dispatch` before any delegate, and `make depart` at every boundary, and the
 # single-slice exit is a recorded probe rather than a judgement. Only those rows were re-taken.
 # See changelog.d/the-loop-travels-and-says-what-it-dispatched.md.
+#
+# Re-taken for the surfaces stage — the mock-up review's first half can now be started from the
+# board, so `commands/mockups.md` names the project's own make spelling and is written by the
+# generator rather than copied verbatim (`changelog.d/the-surfaces-can-be-drawn-from-the-board.md`).
+# Nothing moved: every earlier row is still its earlier reading, and the only rows below that are
+# new are the eight `commands/mockups.md` ones, one per project.
+
 0cef2fd0ce2492fd8e97ce83fb424d12995945ff7b319bf9084aa23960552a85  standard  commands/add-frontend.md
 62b5c15263c6eebbd9960b9eb17ffc0b2641c8658905af8d3c271742bf84704a  standard  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  standard  commands/adversary.md
@@ -81,6 +88,7 @@ c3ac7b43c17b1118994541b68cf103f0d90753d0afb121fcec7a7f1eab0ad6e2  standard  comm
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard  commands/survey.md
 4653314c98bb090b6ed6ebfac93d8a128ea0f0be7b368227d3168c0e13b0b7f1  standard  commands/whats-next.md
 c5e9245e13a20c2c785c8a939d65084bfa315c56f05d0afd964c5d241eb05999  standard  commands/where-are-we.md
+9074eaea31fd2677f4de73a8efee337dc4d2b90dc8f6f0c7bcdcfcab87dea9a9  standard  commands/mockups.md
 0cef2fd0ce2492fd8e97ce83fb424d12995945ff7b319bf9084aa23960552a85  event  commands/add-frontend.md
 62b5c15263c6eebbd9960b9eb17ffc0b2641c8658905af8d3c271742bf84704a  event  commands/add-service.md
 2dff5ffa8119e326997a32d7c5109e6c1952c02447e1757157759c4e7b9e5067  event  commands/adversary.md
@@ -104,6 +112,7 @@ ccddefe7035c02b19ddf5724bfd52e8cff311e95b094b90282a36ba72cd88c03  event  command
 b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event  commands/survey.md
 4a0d47ee886ee086a976c2eee050e25741786c2f9f4e15a75cabbf049ecdc3a5  event  commands/whats-next.md
 fd7477f3a46db98f5fc06bd50d7b9cff28bd47992bf97b300d40e1dcdb1640da  event  commands/where-are-we.md
+9074eaea31fd2677f4de73a8efee337dc4d2b90dc8f6f0c7bcdcfcab87dea9a9  event  commands/mockups.md
 33adc6001f8734fa856c7452345fdbddb90ac5481ac56cbe1714ba7971277801  event-state  commands/add-frontend.md
 169f7b703f6bdf835c39ddd91c7b9d55e7e873d69bebe31fb20d5b7b5bb40b1b  event-state  commands/add-service.md
 c8927247a29da2376f634ae77f49f4bee8659414e33026971bf3afacea014ea3  event-state  commands/adversary.md
@@ -127,6 +136,7 @@ bfb12516009f925cbd61730e1db3a84828afd5e8a705632dacf0978f93b305f5  event-state  c
 b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event-state  commands/survey.md
 4a0d47ee886ee086a976c2eee050e25741786c2f9f4e15a75cabbf049ecdc3a5  event-state  commands/whats-next.md
 fd7477f3a46db98f5fc06bd50d7b9cff28bd47992bf97b300d40e1dcdb1640da  event-state  commands/where-are-we.md
+9074eaea31fd2677f4de73a8efee337dc4d2b90dc8f6f0c7bcdcfcab87dea9a9  event-state  commands/mockups.md
 1d2f129c23f96626bab0692f2d3cada93b5b9253b5b8271e19c234750cc36de2  event-two-services  commands/add-frontend.md
 0dd0cebe59e3986c41bde0cb550718a54ce13ecc922ae06625039a868ade8509  event-two-services  commands/add-service.md
 2d4477d6e429314e6be8c5950a2bf39cf92a5f88bd9651a380cb40d99290a133  event-two-services  commands/adversary.md
@@ -150,6 +160,7 @@ a0317f0ffc046b6b69d5373cf2466bc3f9936c7154da47ac25f2df8934edc7cd  event-two-serv
 67c2effb5e863122c5022fd14f37a8eaeb68c79f8ab998d421ec2e9d767978cb  event-two-services  commands/survey.md
 4a0d47ee886ee086a976c2eee050e25741786c2f9f4e15a75cabbf049ecdc3a5  event-two-services  commands/whats-next.md
 b6ccd963fc8578d4f3580d9929f2bf923b4d934c4cfcbcbb8ef34166ddc41c3f  event-two-services  commands/where-are-we.md
+504b6da661ed9eeed82ce1c1422b51e59c5af65b7d296c05dc969ffae13425f8  event-two-services  commands/mockups.md
 d197a22ca61016540773cdd92acb63323db80d37ef8438abeab2a0a790eee311  standard-managed  commands/add-frontend.md
 578ace6176147945a3f297f8b9725f27a3a49aa1eae3650619a045111b2af234  standard-managed  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  standard-managed  commands/adversary.md
@@ -172,6 +183,7 @@ faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  standard-manag
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard-managed  commands/survey.md
 4653314c98bb090b6ed6ebfac93d8a128ea0f0be7b368227d3168c0e13b0b7f1  standard-managed  commands/whats-next.md
 e6adf4cbc54c8a4b41925052c18ef3953e9b7a8a0181781e25e04bdecb8dd414  standard-managed  commands/where-are-we.md
+9074eaea31fd2677f4de73a8efee337dc4d2b90dc8f6f0c7bcdcfcab87dea9a9  standard-managed  commands/mockups.md
 57ff532151fb63427fe10ed60988980741686ccac8f5ce454a47949d69b540e0  no-applications  commands/add-frontend.md
 cf9431cb8cd6a9f7d6fc1fcd3ca27fb81870882b59295ed055cdc9fb2745304b  no-applications  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  no-applications  commands/adversary.md
@@ -194,6 +206,7 @@ faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  no-application
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  no-applications  commands/survey.md
 4653314c98bb090b6ed6ebfac93d8a128ea0f0be7b368227d3168c0e13b0b7f1  no-applications  commands/whats-next.md
 c5e9245e13a20c2c785c8a939d65084bfa315c56f05d0afd964c5d241eb05999  no-applications  commands/where-are-we.md
+9074eaea31fd2677f4de73a8efee337dc4d2b90dc8f6f0c7bcdcfcab87dea9a9  no-applications  commands/mockups.md
 672edaecd35f98820cf343f57c2a83c1ea204ef2269998fb2580c147d950d58a  adopted  commands/add-frontend.md
 648f734fe5124c7b4680fdf23b90ae93c5f59fd5ae03bb76d698cf1ed1a0a73d  adopted  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  adopted  commands/adversary.md
@@ -218,6 +231,7 @@ f35f950ed760f5a593b9135748bf1a0a3e7d75557c4aee6d4c1cbe6f09205dd7  adopted  comma
 67c2effb5e863122c5022fd14f37a8eaeb68c79f8ab998d421ec2e9d767978cb  adopted  commands/survey.md
 4a0d47ee886ee086a976c2eee050e25741786c2f9f4e15a75cabbf049ecdc3a5  adopted  commands/whats-next.md
 fd7477f3a46db98f5fc06bd50d7b9cff28bd47992bf97b300d40e1dcdb1640da  adopted  commands/where-are-we.md
+504b6da661ed9eeed82ce1c1422b51e59c5af65b7d296c05dc969ffae13425f8  adopted  commands/mockups.md
 672edaecd35f98820cf343f57c2a83c1ea204ef2269998fb2580c147d950d58a  adopted-settled  commands/add-frontend.md
 80ce114e1a95ccf2443de7cba454eba997e2c3003c0098110f057267987f8ba9  adopted-settled  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  adopted-settled  commands/adversary.md
@@ -241,6 +255,7 @@ faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  adopted-settle
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  adopted-settled  commands/survey.md
 4653314c98bb090b6ed6ebfac93d8a128ea0f0be7b368227d3168c0e13b0b7f1  adopted-settled  commands/whats-next.md
 c5e9245e13a20c2c785c8a939d65084bfa315c56f05d0afd964c5d241eb05999  adopted-settled  commands/where-are-we.md
+9074eaea31fd2677f4de73a8efee337dc4d2b90dc8f6f0c7bcdcfcab87dea9a9  adopted-settled  commands/mockups.md
 a6290c95857768ef300402102900b1f4fa3b0e6e39654b0a1a84ab3f16836085  standard  commands/draft.md
 98f4176205965ea61b789f3ac7a0091ad5c817007150fc2ce42b2c3dbf7e6a94  standard  commands/launch.md
 a6290c95857768ef300402102900b1f4fa3b0e6e39654b0a1a84ab3f16836085  event  commands/draft.md

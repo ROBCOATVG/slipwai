@@ -17,9 +17,11 @@ from .passage import Stage, current
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 from .wheel import ASKS, STOPS, known
 
-# budget: 440 — the five bands of one window: where the project stands, what to expect of the stage it is
+# budget: 470 — the five bands of one window: where the project stands, what to expect of the stage it is
 # on, who answers at each stop of the run, the model, and the work. A module per band would be five copies
-# of the poll that repaints them all.
+# of the poll that repaints them all — and the poll is now the reason as much as the bands are: it repaints
+# the strip, and reloads the window when the signature says the page is built out of different files than
+# the ones it was drawn from. Both halves have to agree on what a band is, so both are here.
 
 TITLES = {"todo": "To do", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -124,16 +126,31 @@ SCRIPT = BOARD_SCRIPT + """
     if (cast) cast.hidden = !found.castable;
     const stop = document.getElementById('stop');
     if (stop) { stop.hidden = !found.stoppable; stop.disabled = false; }
+    const draw = document.getElementById('draw');
+    if (draw) { draw.hidden = !found.drawable; draw.disabled = false; }
   };
+  // Two things change on this page and only one of them is the strip. The cards — the storyboard, the
+  // model, the work, the button that opens the specification — are rendered once, out of files that may
+  // not exist yet, and a window opened during the draft watched the specification land and showed nothing
+  // of it. So the poll carries a signature of what the page was built from, and a difference is a reload:
+  // what changes there is which cards exist, which is rare, and a repaint of it would be the server
+  // rendering the page twice.
+  let shape = strip.closest('.card').dataset.shape;
   const poll = async () => {
     let found;
-    try { found = await (await fetch('/voyage.json')).json(); } catch (fault) { return; }
+    // Slower when nothing is moving, and never stopped: the stages that move this project on are run in
+    // the agent, by a person, and the board is not told. A poll that gave up the moment nothing of its
+    // own was running is what made this page stale in the first place.
+    try { found = await (await fetch('/voyage.json')).json(); }
+    catch (fault) { setTimeout(poll, 8000); return; }
+    if (found.shape !== shape) { location.reload(); return; }
     paint(found);
-    if (found.moving) setTimeout(poll, 2500);
+    setTimeout(poll, found.moving ? 2500 : 8000);
   };
   setTimeout(poll, 2500);
   document.addEventListener('click', event => {
     if (event.target.id === 'cast-off') { event.target.disabled = true; send('/cast-off', {}); }
+    if (event.target.id === 'draw') { event.target.disabled = true; send('/draw', {}); }
     // No confirm(): a dialog blocks every later event in this window, and stopping is asked rather than
     // done — a captain finishes its stage, so there is nothing here to be sorry about afterwards.
     if (event.target.id === 'stop') { event.target.disabled = true; send('/stop', {}); }
@@ -301,7 +318,7 @@ def wheel_card(held: dict[str, str]) -> str:
 
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
-                 stoppable: bool = False, feature: str = "") -> str:
+                 stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "") -> str:
     strip = "".join(stage_html(one, index) for index, one in enumerate(found))
     wide = f"--stages:{max(1, len(found))}"
     said = now_said(found)
@@ -316,6 +333,10 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     # Beside them whatever else the strip says, because the one thing a person wants at the moment they
     # want it is the way to make it stop. Not styled as the primary action: stopping is the exception.
     button += (f'<button class="install" id="stop"{"" if stoppable else " hidden"}>Stop the fleet</button>')
+    # The stage between a specification and a model had no button at all, and its line said to go and type
+    # a command in the agent — on the page a person had just run two headless sessions from. This runs the
+    # half of it nobody has to be present for; the half they do is the storyboard, below.
+    button += (f'<button class="go" id="draw"{"" if drawable else " hidden"}>Draw the surfaces</button>')
     # And the thing to do *before* pressing the primary one. Continue the build is a person's word that the
     # specification is good to build from, and a page that asks for that word while giving no way to read
     # the file is asking somebody to agree to something they have not opened. Quiet, beside it, and in its
@@ -323,7 +344,7 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     if feature:
         button += (f'<a class="quiet" href="{esc(SPEC_ROUTE)}{esc(feature)}" target="_blank" rel="noopener">'
                    f"Open specs/{esc(feature)}/{esc(SPEC)}</a>")
-    return (f'<div class="card" id="passage"><h2>{esc(name)}</h2>'
+    return (f'<div class="card" id="passage" data-shape="{esc(shape)}"><h2>{esc(name)}</h2>'
             f'<div class="passage" role="list" style="{esc(wide)}">{strip}</div>'
             f'<div class="next"><p id="now">{esc(said)}</p><div class="ask">{button}</div></div></div>')
 
@@ -396,7 +417,8 @@ def work_card(rows: list[dict[str, str]], fault: str) -> str:
 def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str, xml: str, note: str,
          viewer_fault: str, made: dict | None, launchable: bool, fleet: dict | None = None,
          config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
-         stoppable: bool = False, orders: dict[str, str] | None = None, feature: str = "") -> str:
+         stoppable: bool = False, orders: dict[str, str] | None = None, feature: str = "",
+         drawable: bool = False, shape: str = "") -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
@@ -404,8 +426,9 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     # The live cards, with their controls, under the model: how the work is going belongs on the page that
     # says what the work is.
     live = live_cards(fleet, config or {}, True) if fleet else ""
-    body = (f"<style>{STYLE}</style>"
-            f"{passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable, feature)}"
+    where = passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable, feature,
+                         drawable, shape)
+    body = (f"<style>{STYLE}</style>{where}"
             f"{expect_card(found)}{wheel_card(orders or {})}{landed}"
             f"{model_card(xml, note, viewer_fault)}{mockups_card(mocks or [])}{work_card(rows, fault)}{live}")
     script = SCRIPT + ("" if viewer_fault or not xml else "\n")
@@ -427,6 +450,7 @@ def now_said(found: list[Stage]) -> str:
 
 
 def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False,
-            stoppable: bool = False) -> str:
+            stoppable: bool = False, drawable: bool = False, shape: str = "") -> str:
     return json.dumps({"stages": stage_payload(found), "launchable": launchable, "moving": moving,
-                       "castable": castable, "stoppable": stoppable, "now": now_said(found)})
+                       "castable": castable, "stoppable": stoppable, "drawable": drawable,
+                       "shape": shape, "now": now_said(found)})

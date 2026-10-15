@@ -17,11 +17,8 @@ pointed at would be a generate that reads anything the author could name.
 """
 from __future__ import annotations
 
-import base64
-import binascii
-import json
 import re
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from .errors import GenerationError
 
@@ -156,46 +153,3 @@ def handed_over(named: str) -> dict[str, Path]:
     if not found:
         raise GenerationError(f"--design {home} holds no files")
     return weighed(found, f"--design {home}")
-
-
-def unpacked(payload: str, into: Path) -> Path | None:
-    """A board's design material, written to a directory `--design` can be pointed at.
-
-    A browser hands a page a file's *contents* and never its path, so what arrives is the name and the
-    bytes — base64, because half of this is images and a PNG is not text. Written back to files for the
-    length of the run, exactly as the PRD already is; `None` where nothing was picked.
-
-    Every guard `handed_over` applies is applied again here and for a stronger reason: that function reads
-    a directory a person typed on their own command line, and this reads a JSON payload. A `path` with
-    `..` in it, an absolute one, or one naming `.git` is refused rather than written.
-    """
-    try:
-        found = json.loads(payload or "[]")
-    except ValueError as fault:
-        raise GenerationError(f"the design material did not arrive as a list of files ({fault})") from None
-    if not isinstance(found, list) or not found:
-        return None
-    if len(found) > FILES:
-        raise GenerationError(f"{len(found)} files is over the {FILES} one handed-over tree may carry")
-    into.mkdir(parents=True, exist_ok=True)
-    total = 0
-    for one in found:
-        if not isinstance(one, dict):
-            raise GenerationError("each piece of design material is a name and its bytes")
-        named = str(one.get("path") or "").strip().replace("\\", "/")
-        where = PurePosixPath(named)
-        if not named or where.is_absolute() or ".." in where.parts or any(
-                part.startswith(".") for part in where.parts):
-            raise GenerationError(f"{named!r} is not a name this writes to")
-        try:
-            body = base64.b64decode(str(one.get("data") or ""), validate=True)
-        except (binascii.Error, ValueError):
-            raise GenerationError(f"{named}'s bytes did not arrive intact") from None
-        total += len(body)
-        if total > BYTES:
-            raise GenerationError(f"the design material is over the {BYTES // (1024 * 1024)}MB one "
-                                  f"handed-over tree may carry")
-        path = into / where
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(body)
-    return into

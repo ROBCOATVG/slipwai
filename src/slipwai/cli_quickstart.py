@@ -268,11 +268,17 @@ def applied(args: Any, named: dict[str, str | None], argv: list[str]) -> Quickst
     one = quickstart.find(args.quickstart)
     refuse_missing(one)
     already = typed(argv)
+    # `--backend` is the one-word spelling of `--language` with `--framework`, so somebody who typed it
+    # has answered both — and the verb refuses the two spellings mixed, by name. Filling either half in
+    # from the quickstart was that refusal: the board always passes `--backend`, so every quickstart that
+    # answers a language failed on it, which is every quickstart worth naming.
+    spoken_for = {"language", "framework"} if "backend" in already else set()
     print(f"\nFrom the {one.name} quickstart — {one.suits}")
     for flag, value in quickstart.answered(one).items():
         attribute = flag.replace("-", "_")
-        if attribute in already:
-            print(f"  {flag:<13} {getattr(args, attribute, named.get(flag))}  (yours, not the quickstart's)")
+        if attribute in already or attribute in spoken_for:
+            said = getattr(args, attribute, None) or named.get(flag) or getattr(args, "backend", "")
+            print(f"  {flag:<13} {said}  (yours, not the quickstart's)")
             continue
         if flag in named:
             named[flag] = value

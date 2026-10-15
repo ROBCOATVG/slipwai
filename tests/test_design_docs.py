@@ -8,8 +8,6 @@ pointed at would read anything its author could name.
 """
 from __future__ import annotations
 
-import base64
-import json
 import subprocess
 import tempfile
 import unittest
@@ -18,7 +16,7 @@ from pathlib import Path
 import checkout_packages
 from support import FactoryTestCase
 
-from slipwai.design_docs import DESIGN, FILES, briefed, handed_over, inside, referenced, unpacked
+from slipwai.design_docs import DESIGN, FILES, briefed, handed_over, inside, referenced
 from slipwai.errors import GenerationError
 
 #: The first bytes of a real PNG, which is the point: this is not text.
@@ -189,47 +187,6 @@ class BriefTest(unittest.TestCase):
         carried, _ = referenced(home / "brief/docs/prd.md",
                                 (home / "brief/docs/prd.md").read_text(), home / "brief")
         self.assertEqual(carried, {})
-
-
-class PayloadTest(unittest.TestCase):
-    """What the board sends: a browser hands a page a file's contents and never its path, so a brief
-    arrives as names and bytes and is written back to a folder for the length of the run."""
-
-    def test_the_files_are_written_back_with_the_shape_they_had(self) -> None:
-        into = Path(tempfile.mkdtemp()) / "brief"
-        payload = json.dumps([{"path": "prd.md", "data": base64.b64encode(b"# P\n").decode()},
-                              {"path": "shots/home.png", "data": base64.b64encode(PNG).decode()}])
-        self.assertEqual(unpacked(payload, into), into)
-        self.assertEqual((into / "prd.md").read_bytes(), b"# P\n")
-        self.assertEqual((into / "shots/home.png").read_bytes(), PNG, "bytes, not text through an encoder")
-
-    def test_nothing_picked_is_nothing_written(self) -> None:
-        into = Path(tempfile.mkdtemp()) / "brief"
-        for payload in ("", "[]"):
-            self.assertIsNone(unpacked(payload, into))
-        self.assertFalse(into.exists())
-
-    def test_a_name_that_reaches_out_of_the_folder_is_refused(self) -> None:
-        """This reads a JSON payload rather than a directory somebody typed, so every guard is applied
-        again and for a stronger reason."""
-        into = Path(tempfile.mkdtemp()) / "brief"
-        for named in ("../escaped.md", "/etc/passwd", ".git/config", ""):
-            with self.subTest(path=named), self.assertRaises(GenerationError):
-                unpacked(json.dumps([{"path": named, "data": "eA=="}]), into)
-        self.assertFalse((into.parent / "escaped.md").exists())
-
-    def test_bytes_that_did_not_arrive_intact_are_refused(self) -> None:
-        into = Path(tempfile.mkdtemp()) / "brief"
-        with self.assertRaises(GenerationError) as caught:
-            unpacked(json.dumps([{"path": "a.md", "data": "not base64!!"}]), into)
-        self.assertIn("did not arrive intact", str(caught.exception))
-
-    def test_more_than_a_handed_over_tree_may_carry_is_refused(self) -> None:
-        into = Path(tempfile.mkdtemp()) / "brief"
-        many = [{"path": f"f{index}.md", "data": "eA=="} for index in range(FILES + 1)]
-        with self.assertRaises(GenerationError) as caught:
-            unpacked(json.dumps(many), into)
-        self.assertIn(f"over the {FILES}", str(caught.exception))
 
 
 if __name__ == "__main__":

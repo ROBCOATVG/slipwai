@@ -7,6 +7,8 @@ is why every one of these tests is about what the file says in words rather than
 """
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -14,6 +16,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 from unittest import mock
 
 import checkout_packages  # noqa: F401
@@ -286,6 +290,47 @@ class GenerateTest(unittest.TestCase):
             self.assertIn("absent", done.stderr)
             self.assertIn("install absent", done.stderr)
             self.assertFalse((Path(area) / "bookings").exists())
+
+
+class BackendSpellingTest(unittest.TestCase):
+    """`--backend` is the one-word spelling of `--language` with `--framework`, and the verb refuses the
+    two spellings mixed. A quickstart filling in either half for somebody who typed `--backend` *was* that
+    mixture — and the board always passes `--backend`, so every quickstart that answers a language failed
+    from it, which is every quickstart there is.
+    """
+
+    def applied(self, backend: str, **answers: str) -> tuple[Any, list[str]]:
+        one = quickstart.Quickstart("demo", "a demo", **answers)  # type: ignore[arg-type]
+        args = SimpleNamespace(quickstart="demo", backend=backend, language=None, framework=None,
+                               profile=None, target=None, frontend=None)
+        said = io.StringIO()
+        with (mock.patch.object(quickstart, "find", lambda _name: one),
+              mock.patch.object(cli_quickstart, "refuse_missing", lambda _one: None),
+              contextlib.redirect_stdout(said)):
+            cli_quickstart.applied(args, {}, ["demo", "--quickstart", "demo", "--backend", backend])
+        return args, said.getvalue().splitlines()
+
+    def test_a_typed_backend_answers_the_language_the_quickstart_would_have_given(self) -> None:
+        args, lines = self.applied("typescript", language="typescript", profile="event-modelling")
+        self.assertIsNone(args.language, "filling this in is the refusal the verb raises by name")
+        self.assertEqual(args.profile, "event-modelling", "and everything else is still filled in")
+        self.assertIn("  language      typescript  (yours, not the quickstart's)", lines)
+
+    def test_it_answers_the_framework_too(self) -> None:
+        """The half only `azure-staff-service` exercises, which needs a language this machine may not
+        have — so it is held here rather than through a generate."""
+        args, _ = self.applied("java-spring", language="java", framework="spring")
+        self.assertEqual((args.language, args.framework), (None, None))
+
+    def test_a_quickstart_still_answers_the_language_where_nobody_typed_a_backend(self) -> None:
+        one = quickstart.Quickstart("demo", "a demo", language="go")
+        args = SimpleNamespace(quickstart="demo", backend=None, language=None, framework=None,
+                               profile=None, target=None, frontend=None)
+        with (mock.patch.object(quickstart, "find", lambda _name: one),
+              mock.patch.object(cli_quickstart, "refuse_missing", lambda _one: None),
+              contextlib.redirect_stdout(io.StringIO())):
+            cli_quickstart.applied(args, {}, ["demo", "--quickstart", "demo"])
+        self.assertEqual(args.language, "go", "which is what a quickstart is for")
 
 
 if __name__ == "__main__":  # pragma: no cover

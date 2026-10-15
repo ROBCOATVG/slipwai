@@ -174,15 +174,17 @@ class QuestionsTest(unittest.TestCase):
         terminal with paths, and `--prd` and `--design` are the flags both become."""
         document, brief = asked({"name": "demo"})[-2:]
         self.assertEqual((document.name, document.kind, document.optional), ("prd", "file", True))
-        self.assertEqual((brief.name, brief.kind, brief.optional), ("brief", "folder", True))
+        self.assertEqual((brief.name, brief.kind, brief.optional), ("brief", "text", True))
         said = form({"name": "demo"})
         self.assertIn('id="prd"', said)
-        self.assertIn('type="file"', said)
+        self.assertIn('type="file"', said, "a document is small and a browser can hand over its text")
         self.assertIn('id="brief"', said)
-        self.assertIn("webkitdirectory", said, "a folder: a brief is rarely one file")
-        for name, answer in (("prd", "# A document\n"), ("brief", '[{"path": "a.md", "data": "eA=="}]')):
-            self.assertNotIn(f"--{name}", flags({"name": "demo", name: answer}),
-                             "the bytes are not a flag; `run` writes them out and names where")
+        self.assertNotIn("webkitdirectory", said,
+                         "a path, not an upload: this board generates on the machine the folder is on")
+        self.assertNotIn("--prd", flags({"name": "demo", "prd": "# A document\n"}),
+                         "the text is not a flag; `run` writes it to a file and names that")
+        self.assertNotIn("--brief", flags({"name": "demo", "brief": "/tmp/x"}),
+                         "nor is the path; `run` passes it, and only where one was given")
 
     def test_an_answer_a_person_typed_is_escaped_and_never_rendered_as_markup(self) -> None:
         self.assertNotIn("<script>alert(1)</script>", form({"name": "<script>alert(1)</script>"}))

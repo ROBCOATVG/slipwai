@@ -22,8 +22,12 @@ a PRD exists, so a brand sheet handed over with the specification written in the
 direction the mock-up stage follows just the same — the refusal was the keel insisting on a dependency its
 own stage does not have.
 
-A brief picked in a browser arrives as names and bytes, because a page is handed a file's contents and
-never its path. Every guard the command-line half applies is applied again to it and for a stronger
-reason: one reads a directory a person typed, the other reads JSON. A name with `..` in it, an absolute
-one, or one naming `.git` is refused rather than written, and the board's request limit is raised to hold
-a brief at all — base64 is a third larger than the bytes it carries.
+**On the board the brief is a path, not an upload.** The board binds this machine only and generates on
+it, so the folder is already somewhere the verb can read: carrying its bytes up through a browser and
+writing them back out would be a copy nobody asked for, with a size limit nobody needs.
+
+**And a quickstart no longer collides with the board's own flags.** `--backend` is the one-word spelling
+of `--language` with `--framework`, and the verb refuses the two spellings mixed — so a quickstart filling
+in either half for somebody who had typed `--backend` *was* that refusal. The board always passes
+`--backend`, which made every quickstart that answers a language fail from it: all six of the ones this
+keel carries.

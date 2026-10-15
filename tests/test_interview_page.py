@@ -12,6 +12,9 @@ matter and the rest are about them:
 
 It generates projects, so it is in the Makefile's `SLOW` list.
 """
+# budget: 400 — the two gates, the driver that works the terminal interview, and the table saying where
+# each of the page's questions is in what that interview printed. The table is the seam the first gate
+# reads, so a suite split away from it would leave the pairing described in one file and checked in another.
 from __future__ import annotations
 
 import contextlib
@@ -31,8 +34,10 @@ from unittest import mock
 
 import checkout_packages
 
+from slipwai import identity
 from slipwai.bridge import serve
 from slipwai.catalog import CATALOG, axis_applies
+from slipwai.cli_generate import DECLINE, quickstart_menu
 from slipwai.interview_page import asked, destination, flags, form, run, settled
 from slipwai.targets import offered_backends
 
@@ -41,6 +46,8 @@ from slipwai.targets import offered_backends
 #: fact about the *other* face.
 IN_THE_TERMINAL = {
     "name": "Project name",
+    "quickstart": "Start from a quickstart?",
+    identity.WHO: identity.PROMPT,
     "profile": "Use Event Modeling?",
     "target": "Production target",
     "language": "Language",
@@ -56,7 +63,14 @@ IN_THE_TERMINAL = {
 
 
 def in_the_terminal(name: str) -> str:
-    """What the terminal prints when it asks the question the page calls `name`."""
+    """What the terminal prints when it asks the question the page calls `name`.
+
+    An identity axis is headed by the answer that led to it rather than by its own name in the catalogue
+    (`identity.label`), and this suite drives every question by its default — so the heading looked for is
+    the one the default answer produces, in both faces.
+    """
+    if name in identity.AXES:
+        return identity.label(identity.DEFAULT, name)
     return str(CATALOG["axes"][name]["prompt"]) if name in CATALOG["axes"] else IN_THE_TERMINAL[name]
 
 
@@ -103,11 +117,34 @@ class QuestionsTest(unittest.TestCase):
         self.assertEqual("target" in asked_now, len(declared) > 1)
 
     def test_every_axis_the_answers_make_applicable_is_asked_and_no_other(self) -> None:
-        """Read from the catalogue, so an axis added to `catalog.json` is asked here with no edit."""
+        """Read from the catalogue, so an axis added to `catalog.json` is asked here with no edit.
+
+        The two identity axes are the one exception and they are named here: `who signs in` is asked in
+        their place and leaves whichever of them that answer needs (`identity`), so the applicable pair is
+        not the asked pair.
+        """
         answers = settled({"name": "demo"})
         applicable = [axis for axis in CATALOG["axes"]
                       if axis_applies(axis, answers["profile"], answers["backend"], answers["target"])]
-        self.assertEqual([q.name for q in asked({"name": "demo"}) if q.name in CATALOG["axes"]], applicable)
+        rows = [q.name for q in asked({"name": "demo"}) if q.name in CATALOG["axes"]]
+        expected = [axis for axis in applicable if axis not in identity.AXES]
+        if identity.applies(answers["profile"], answers["backend"], answers["target"]):
+            expected += list(identity.asks(answers[identity.WHO]))
+        else:
+            expected += [axis for axis in applicable if axis in identity.AXES]
+        self.assertEqual(rows, expected)
+
+    def test_the_quickstarts_the_terminal_offers_are_the_rows_the_page_offers(self) -> None:
+        """The offer is the terminal's own menu, rendered — same rows, same sentence about each, declining
+        first. A board that listed a different set would be a second reading of the quickstart directory."""
+        rows, describe = quickstart_menu()
+        found = [q for q in asked({"name": "demo"}) if q.name == "quickstart"]
+        if len(rows) == 1:  # nothing this machine can carry out: no question, the terminal's rule
+            self.assertEqual(found, [])
+            return
+        self.assertEqual(list(found[0].choices), rows)
+        self.assertEqual(found[0].default, DECLINE)
+        self.assertEqual({name: found[0].labels[name] for name in rows}, {name: describe(name) for name in rows})
 
     def test_the_form_asks_every_question_by_its_label(self) -> None:
         said = form({"name": "demo"})

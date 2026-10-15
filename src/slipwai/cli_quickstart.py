@@ -286,12 +286,19 @@ def applied(args: Any, named: dict[str, str | None], argv: list[str]) -> Quickst
 
 
 def listing() -> list[str]:
-    names = quickstart.saved_names()
+    """Every quickstart this machine can name, the ones the keel carries marked as carried.
+
+    Marked rather than listed apart: they are chosen the same way and given to `generate` the same way, and
+    the one moment the difference matters is `remove`, which has nothing of ours to take away.
+    """
+    names = quickstart.names()
     if not names:
         return [f"no quickstart is saved here. `{this_command()} quickstart save <name> --suits '<a sentence>'` "
                 f"writes one from a project, and `{this_command()} search --kind quickstart` lists published ones"]
+    carried = quickstart.carried()
     width = max(len(name) for name in names)
-    return [f"  {one.name:<{width}}  {one.suits}" for one in map(quickstart.find, names)]
+    return [f"  {one.name:<{width}}  {one.suits}" + ("  (carried by this keel)" if one.name in carried else "")
+            for one in map(quickstart.find, names)]
 
 
 def quickstart_main(argv: list[str]) -> None:

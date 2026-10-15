@@ -12,8 +12,8 @@ people who are not it. What this directory is for is to be read, copied and chan
 ## Using it
 
 ```sh
-slipwai quickstart install docs/reference/typescript-ui      # from this checkout
-slipwai quickstart show typescript-ui                        # what it would do, before it does any of it
+slipwai quickstart list                               # this keel carries it; nothing to install
+slipwai quickstart show typescript-ui                 # what it would do, before it does any of it
 slipwai generate bookings --quickstart typescript-ui
 ```
 

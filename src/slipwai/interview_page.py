@@ -17,9 +17,12 @@ takes and this runs that command — the non-interactive form of the interview, 
 terminal reaches through the same assembly. A second path into `write_project` would be a second thing to
 keep in step, and the first one to drift.
 
-A question the catalogue cannot answer is asked nowhere here: the quickstarts of phase 13 are to be offered
-first, the way 13.2 has the terminal offer them, and they are not in the keel yet. The place they go is the
-head of `asked`, and the gate above is what will hold them to the terminal's wording.
+Two questions are not the catalogue's. The quickstart is offered first, the way the terminal offers it
+(`cli_generate.offer_quickstart`), from the same menu and with the same rows greyed out; choosing one fills
+in every answer it gives and leaves all of them changeable, which is what a default is. And who signs in is
+asked once in place of the two identity axes (`identity`), because the page is read by the same person the
+terminal's version of that question was rewritten for. Both are in `asked` rather than beside it, so the
+gate above holds them to the terminal's wording too.
 """
 from __future__ import annotations
 
@@ -29,6 +32,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import identity, quickstart
 from .assets import DEFAULT_OUTPUT, relaunch
 from .browser_app import frontend_menu
 from .catalog import (
@@ -42,6 +46,7 @@ from .catalog import (
     framework_of,
     resolve_backend,
 )
+from .cli_generate import DECLINE, quickstart_menu, unavailable_quickstarts
 from .cli_offered import not_installed_frameworks, not_installed_languages
 from .cli_prompts import PROFILE_GUIDANCE
 from .errors import GenerationError
@@ -51,10 +56,12 @@ from .services import FIRST_SERVICE, FIRST_WEB
 from .shell_environment import login_environment
 from .targets import managed, offered_backends
 
-# budget: 400 — this is the interview's one list of questions, held in step with the terminal question for
+# budget: 530 — this is the interview's one list of questions, held in step with the terminal question for
 # question (`InStepTest` walks it), and the half that turns the answers back into the flags `generate` takes.
 # Split, the question and the flag it becomes would be in two files, which is the drift the pairing exists
-# to prevent.
+# to prevent — and the two questions that are not one flag each, the quickstart that fills in many and the
+# one that stands in for the identity pair, are exactly the two whose answers must be turned into flags
+# within sight of the rows that asked for them.
 
 
 @dataclass(frozen=True)
@@ -79,12 +86,49 @@ class Question:
     optional: bool = False
 
 
+#: The hidden field carrying the quickstart the form in front of the reader was rendered from. Without it
+#: a quickstart chosen on the board would be overruled by the page's own last answers, which arrive with
+#: every re-ask: the browser posts what is on the form, and what is on the form is the previous quickstart's
+#: answers, or the catalogue's. With it, `given` can tell the one case where the quickstart must win — the
+#: press that chose it — from every re-ask afterwards, where what the reader has since changed must.
+WAS = "quickstart-was"
+
+
+def given(answers: Mapping[str, str]) -> dict[str, str]:
+    """`answers`, with the chosen quickstart's own answers filled in.
+
+    Every answer, where the quickstart has just been chosen; only the ones nothing has answered yet,
+    afterwards. That is the difference between a default and a decision made on somebody's behalf, and it
+    is the same rule `quickstart.applied` holds the flags to — a person who changes the persistence a
+    quickstart proposed has changed it, and a form that snapped back on the next re-ask would be the board
+    arguing with them.
+
+    A name that no longer reads is passed through rather than raised on: the menu greys it out and says
+    why, and a half-rendered page is a worse answer to a file somebody edited by hand than a page asking
+    its own questions.
+    """
+    name = (answers.get("quickstart") or "").strip()
+    if not name or name == DECLINE:
+        return dict(answers)
+    try:
+        said = quickstart.answered(quickstart.find(name))
+    except GenerationError:
+        return dict(answers)
+    taken = dict(answers)
+    fresh = answers.get(WAS) != name
+    for flag, value in said.items():
+        if fresh or not taken.get(flag):
+            taken[flag] = value
+    return taken
+
+
 def chosen(answers: Mapping[str, str]) -> dict[str, str]:
     """The three answers every later question is decided by: the profile, the target and the backend.
 
     Two of them may not be asked at all — a target nothing else is offered under, a family with one
     framework — and the questions after them still have to be filtered by what they are.
     """
+    answers = given(answers)
     profile = answers.get("profile") or str(CATALOG["default"]["profile"])
     declared = [name for name in CATALOG["targets"] if offered_backends(CATALOG, name)]
     preferred = str(CATALOG["default"]["target"])
@@ -120,11 +164,13 @@ def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question
     traceback on a read-only filesystem.
     """
     held = chosen(answers)
+    answers = given(answers)
     target, backend, language = held["target"], held["backend"], held["language"]
     offered = offered_backends(CATALOG, target)
     known = families()
     said = [Question("name", "Project name", answers.get("name", ""),
                      why="lowercase letters, numbers, '.', '_' or '-'; it is the repository's name too")]
+    said += starting_from(answers)
     recommended = str(CATALOG["default"]["profile"])
     profiles = (recommended, *(name for name in CATALOG["profiles"] if name != recommended))
     said.append(Question("profile", "Delivery foundation", held["profile"], profiles,
@@ -157,17 +203,17 @@ def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question
     if frontend != "none":
         said.append(Question("frontend-name", "Browser app name",
                              answers.get("frontend-name") or FIRST_WEB))
-    for axis, spec in CATALOG["axes"].items():
+    # The two identity axes are one question and then whichever of them that answer leaves to ask, emitted
+    # at the first of the pair the catalogue offers so the order the terminal asks in is kept.
+    asking_identity = True
+    for axis in CATALOG["axes"]:
         if not axis_applies(axis, held["profile"], backend, target):
             continue
-        options = axis_options(axis, backend, target)
-        # A target that deploys this axis's answer takes the no-infrastructure one off the menu rather than
-        # offering it and refusing it a moment later.
-        if axis_required(axis, target):
-            options = [name for name in options if name != spec["absent"]]
-        said.append(Question(axis, str(spec["prompt"]), answers.get(axis) or axis_default(axis, backend, target),
-                             tuple(options), {name: str(spec["options"][name]["label"]) for name in options},
-                             why=str(spec["description"])))
+        if axis in identity.AXES:
+            said += signing_in(answers, held["profile"], backend, target) if asking_identity else []
+            asking_identity = False
+            continue
+        said.append(axis_asked(axis, answers, backend, target))
     said.append(Question("output", "Output parent",
                          answers.get("output") or str(root.resolve() if root is not None else DEFAULT_OUTPUT),
                          why="the directory the project's own directory is made in"))
@@ -178,9 +224,66 @@ def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question
     return said
 
 
+def starting_from(answers: Mapping[str, str]) -> list[Question]:
+    """The quickstart offer, where this machine has one that can be carried out.
+
+    Nothing at all where it has none: a board that gained a question for people with no quickstart would
+    have made the common path worse to serve the uncommon one, which is the terminal's rule for the same
+    offer. The rows that cannot be carried out here are named under it with the line that fetches what
+    they want, rather than being left out — somebody who wrote one should see it is still theirs.
+    """
+    rows, describe = quickstart_menu()
+    if len(rows) == 1:
+        return []
+    return [Question("quickstart", "Start from", answers.get("quickstart") or DECLINE, tuple(rows),
+                     {name: describe(name) for name in rows},
+                     unavailable=unavailable_quickstarts(),
+                     why="a set of answers somebody already settled — which languages, how the project is "
+                         "laid out, and which optional tooling it switches on. Every answer it gives is "
+                         "filled in below and every one of them stays yours to change")]
+
+
+def axis_asked(axis: str, answers: Mapping[str, str], backend: str, target: str,
+               label: str = "", why: str = "") -> Question:
+    """One axis as a row of the form. `label` and `why` are the words of a question that led here, where
+    one did, exactly as `cli_prompts.prompt_axis` takes them."""
+    spec = CATALOG["axes"][axis]
+    options = axis_options(axis, backend, target)
+    # A target that deploys this axis's answer takes the no-infrastructure one off the menu rather than
+    # offering it and refusing it a moment later.
+    if axis_required(axis, target):
+        options = [name for name in options if name != spec["absent"]]
+    return Question(axis, label or str(spec["prompt"]), answers.get(axis) or axis_default(axis, backend, target),
+                    tuple(options), {name: str(spec["options"][name]["label"]) for name in options},
+                    why=why or str(spec["description"]))
+
+
+def signing_in(answers: Mapping[str, str], profile: str, backend: str, target: str) -> list[Question]:
+    """Who signs in, and the provider question that answer leads to — the terminal's `ask_identity`, as rows.
+
+    Where the catalogue can only be given one of the two axes, the question standing in for both would be
+    standing in for one, so that axis is asked on its own terms instead.
+    """
+    if not identity.applies(profile, backend, target):
+        return [axis_asked(axis, answers, backend, target) for axis in identity.AXES
+                if axis_applies(axis, profile, backend, target)]
+    who = answers.get(identity.WHO) or identity.implied(answers)
+    asking = [Question(identity.WHO, identity.LABEL, who, tuple(name for name, _ in identity.ROWS),
+                       dict(identity.ROWS), why=identity.WHY)]
+    return asking + [axis_asked(axis, answers, backend, target,
+                                identity.label(who, axis), identity.says(who, axis))
+                     for axis in identity.asks(who)]
+
+
 def settled(answers: Mapping[str, str], root: Path | None = None) -> dict[str, str]:
-    """Every question's answer, the shown default standing in wherever nobody said otherwise."""
-    return {**{one.name: answers.get(one.name) or one.default for one in asked(answers, root)}, **chosen(answers)}
+    """Every question's answer, the shown default standing in wherever nobody said otherwise.
+
+    Read off the answers a chosen quickstart has already filled in, so that a question this page did not
+    ask — an axis the quickstart answered and the catalogue does not offer here — is still its answer and
+    not the generator's.
+    """
+    taken = given(answers)
+    return {**{one.name: taken.get(one.name) or one.default for one in asked(answers, root)}, **chosen(answers)}
 
 
 def flags(answers: Mapping[str, str], root: Path | None = None) -> list[str]:
@@ -205,8 +308,20 @@ def flags(answers: Mapping[str, str], root: Path | None = None) -> list[str]:
     if "frontend-name" in names:
         argv += ["--frontend-name", held["frontend-name"]]
     for axis in CATALOG["axes"]:
-        if axis in names:
+        if axis in names and axis not in identity.AXES:
             argv += [f"--{axis}", held[axis]]
+    # Both identity axes, always, where the one question stood in for them: the axis nobody was asked about
+    # is the one this answer said has nobody on it, and leaving it to the generator's default would be the
+    # page deciding less than the reader was shown it had.
+    if identity.WHO in names:
+        for axis, answer in identity.settled(held[identity.WHO], held).items():
+            argv += [f"--{axis}", answer]
+    else:
+        argv += [word for axis in identity.AXES if axis in names for word in (f"--{axis}", held[axis])]
+    # The quickstart is given to the verb as well as read here: it is what writes `.slipwai/quickstart.json`
+    # and elects the extensions it names, neither of which is an answer to a question on this form.
+    if (name := held.get("quickstart", DECLINE)) != DECLINE:
+        argv += ["--quickstart", name]
     return argv
 
 
@@ -311,6 +426,8 @@ def field_html(question: Question) -> str:
 def form(answers: Mapping[str, str], root: Path | None = None) -> str:
     """The whole interview, as one card. Re-rendered when an answer changes what comes after it."""
     rows = "".join(field_html(question) for question in asked(answers, root))
+    rows += (f'<input type="hidden" name="{WAS}" '
+             f'value="{esc(given(answers).get("quickstart") or DECLINE)}">')
     rows += field_html(init_asked(answers, root or Path(".")))
     rows += field_html(repository_asked(answers))
     return (f'<div class="card" id="interview"><h2>Start a new project</h2>'

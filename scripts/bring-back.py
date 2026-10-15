@@ -83,6 +83,9 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # Phase 13: a named set of answers, the verb over it, and the interview that offers one first —
        # which the experiment had no equivalent of, because it asked every question every time.
        "quickstart", "cli_quickstart", "cli_generate", "quickstart_install", "cli_migrate",
+       # Who signs in, asked once in place of the two identity axes. Version 1 asked both of everybody, so
+       # what there is to bring back is the fault rather than the module.
+       "identity",
        "plugin", "native", "mcp", "cli_mcp",
        # The third kind of package. The experiment had clouds in the keel and so had no target package to
        # bring back: its declaration, the protocol its `TARGET` answers, and what `package new` writes.

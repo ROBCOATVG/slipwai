@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .assets import moved_home, this_command
+from .assets import ROOT, moved_home, this_command
 from .errors import GenerationError
 from .language_shape import name_fault
 from .versions import parse_range
@@ -44,6 +44,13 @@ SUFFIX = ".json"
 #: The one directory `--quickstart <name>` looks in, and the variable that replaces it whole.
 VARIABLE = "SLIPWAI_QUICKSTARTS"
 HOME = "quickstarts"
+#: Where the quickstarts this keel *carries* are: the worked set published beside the pages that explain
+#: them, each a package directory of its own. Carried rather than waiting to be installed, because the
+#: machine a quickstart is worth most on is the one where nothing has been installed yet — somebody who
+#: typed one word and got a board has nothing saved, and an offer with no rows in it is no offer. They are
+#: read-only and `install` never writes here: a published one of the same name is saved in `directory()`
+#: and wins there, which is how a team replaces ours with their own.
+CARRIED = "docs/reference"
 #: What a project generated from one carries, so `./init` elects without asking the menu again and the
 #: guard question is not asked a second time (13.4).
 RECORD = ".slipwai/quickstart.json"
@@ -229,6 +236,25 @@ def saved_names() -> list[str]:
     return sorted(path.stem for path in place.glob(f"*{SUFFIX}")) if place.is_dir() else []
 
 
+def carried() -> dict[str, str]:
+    """Every quickstart the keel ships, by name, each with the path to the manifest holding it.
+
+    Read off the directory rather than listed here, so a worked quickstart added to the set is offered with
+    no edit to this module — which is the same rule the axes are asked by.
+    """
+    place = ROOT / CARRIED
+    return {path.parent.name: str(path) for path in sorted(place.glob(f"*/{MANIFEST}"))} if place.is_dir() else {}
+
+
+def names() -> list[str]:
+    """Every quickstart this machine can name: the ones saved here and the ones the keel carries.
+
+    One list, because a person choosing between them is not choosing where the file is. Where both have the
+    name, `find` reads the saved one: a team who saved their own over ours meant theirs.
+    """
+    return sorted(set(saved_names()) | set(carried()))
+
+
 def load(path: Path) -> Quickstart:
     """One quickstart read off disk, with the refusal naming the file rather than the fault alone."""
     try:
@@ -251,12 +277,15 @@ def find(request: str) -> Quickstart:
     if is_path(request):
         return load(Path(request).expanduser())
     path = directory() / f"{request}{SUFFIX}"
-    if not path.is_file():
-        have = ", ".join(saved_names()) or "none"
-        raise GenerationError(f"no quickstart named `{request}` is saved here (saved: {have}). "
-                              f"`{this_command()} quickstart list` lists them, and `{this_command()} search "
-                              f"--kind quickstart` lists what the chandlery has")
-    return load(path)
+    if path.is_file():
+        return load(path)
+    held = carried().get(request)
+    if held is not None:
+        return load(Path(held))
+    have = ", ".join(names()) or "none"
+    raise GenerationError(f"no quickstart named `{request}` is saved here or carried by this keel "
+                          f"(there are: {have}). `{this_command()} quickstart list` lists them, and "
+                          f"`{this_command()} search --kind quickstart` lists what the chandlery has")
 
 
 def answered(one: Quickstart) -> dict[str, str]:

@@ -69,6 +69,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "features", "extensions", "extension_shape", "extension_tools", "hooks", "guards",
                   "telegraph", "targets", "target_shape", "target_protocol", "target_directory",
                   "axes", "catalog", "rungs",
+                  # Who signs in, asked once in place of the two identity axes. Here beside `axes` because
+                  # it is a reading of the catalogue and nothing else: no prompt, no page, no flag.
+                  "identity",
                   "catalog_checks", "catalog_merge",
                   # A named set of answers — which languages, which axes, which extensions — read as a
                   # document and nothing more, which is why it sits with the other shapes the chandlery

@@ -24,10 +24,10 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import chandlery_page
+from slipwai import chandlery_page, quickstart
 from slipwai.bridge import serve
 from slipwai.catalog import reread
-from slipwai.chandlery_page import page, put, sections
+from slipwai.chandlery_page import BUILT_IN, page, put, sections
 from slipwai.errors import GenerationError
 from slipwai.index_schema import EXTENSION, LANGUAGE, QUICKSTART, TARGET
 from slipwai.language_index import Release
@@ -127,7 +127,21 @@ class SectionsTest(Fixture):
         self.assertEqual(self.named(LANGUAGE)[0], "python")
         self.assertEqual(self.named(EXTENSION)[0], "codegraph")
         self.assertEqual(self.named(TARGET)[0], "aws")
-        self.assertEqual(self.named(QUICKSTART), ["browser-app"])
+        self.assertIn("browser-app", self.named(QUICKSTART))
+
+    def test_the_quickstarts_the_keel_carries_are_on_the_page_with_nothing_installed(self) -> None:
+        """The machine this page exists for has installed nothing yet, and the quickstarts are exactly what
+        it should be offered. Before this they were shipped in the checkout, listed by no channel and saved
+        in nobody's directory, so the one kind of package a beginner needs most had an empty table."""
+        carried = quickstart.carried()
+        self.assertTrue(carried, "the keel carries no quickstarts at all")
+        rows = {row.name: row for row in self.rows(QUICKSTART)}
+        for name in carried:
+            with self.subTest(quickstart=name):
+                self.assertIn(name, rows)
+                self.assertTrue(rows[name].here, f"{name} is offered for install rather than shown as here")
+                self.assertEqual(rows[name].version, BUILT_IN)
+                self.assertEqual(rows[name].what, quickstart.find(name).suits)
 
     def test_an_extension_is_not_listed_as_a_language_it_happens_to_sit_beside(self) -> None:
         self.install("codegraph", manifest="extension.json")

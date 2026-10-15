@@ -41,7 +41,12 @@ NOTES = ".slipwai/catch-up.md"
 #: copy has no checkout to read it from. Said once here, and `tests/test_bundled.py` holds the wheel, the
 #: source distribution and the executable's spec to it — `docs/rename.json` was read by `migrate` and
 #: carried by none of the three, so the verb worked in a checkout and ended in a traceback everywhere else.
-BUNDLED = ("VERSION", "catalog.json", "assets", "CHANGELOG.md", "changelog.d", "docs/rename.json")
+#: `docs/reference` is the last of them and the only one a person reads: it carries the worked quickstarts
+#: this keel offers out of the box (`quickstart.CARRIED`), each beside the page explaining its answers. A
+#: board on a machine where nothing has been installed yet is exactly where that offer is worth having,
+#: and that board has no checkout to read them from.
+BUNDLED = ("VERSION", "catalog.json", "assets", "CHANGELOG.md", "changelog.d", "docs/rename.json",
+           "docs/reference")
 # What slipwai last left at each path it writes and has not seen committed, by digest, so that the next answer
 # `/ground` records can write over its own regeneration and still refuse a person's edit (`uncommitted.py`).
 # It is this checkout's state, never a record, so it lives under `.delivery-tools/`, which every `.gitignore`

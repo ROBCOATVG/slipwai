@@ -69,6 +69,15 @@ $ slipwai generate
 Create a new product monorepo. Press Enter to accept a shown default.
 Project name: bookings
 
+Start from a quickstart? Each one is a set of answers somebody already settled — which languages, how
+the project is laid out, and which optional tooling it switches on.
+  none — ask me every question — the interview as it has always been
+  laptop-trial — A first project you intend to read, run and throw away: one service on your own
+    machine, a real store in a single file, with nothing to install, start or log into.
+  internal-tool — A screen over a table for people who work here: a handful of forms, a list, and
+    nobody will ever ask what it looked like last March…
+Start from (none/laptop-trial/internal-tool/…) [none]:
+
 Delivery foundation:
   event-modelling — Event Modeling — everything above, plus the workflow modelled before it is built
     and delivered one stamped slice at a time, every event a named business fact. Where truth lives is a
@@ -110,12 +119,15 @@ Persistence:
     append-only table where the write model is `events`, a version column checked on save where it is…
 Choose (memory/postgres) [postgres]: memory
 
-Internal authentication:
-  …
-Choose (none/keycloak) [none]:
+Who signs in to this product?
+  everyone — everyone, through one identity provider — the people who run it and the people it is for
+  staff — people who work here, and nobody else — no public sign-up
+  separately — staff and customers, through separate issuers — a realm or tenant each, asked separately
+Who signs in (everyone/staff/separately) [everyone]:
 
-External authentication:
-  …
+Authentication:
+  Who signs everybody in. One OIDC issuer for the whole product, with sign-up, verification and
+  password reset, and a login the browser app owns. Answer `none` to leave identity until later…
 Choose (none/keycloak) [none]:
 
 Output parent [~/code]:
@@ -127,10 +139,17 @@ reaches the network once, here.
 ```
 
 A question with nothing to explain is the one-line form — `Language (typescript) [typescript]:`. One where
-the answers need describing prints them first and then asks, which is why `Write model`, `Persistence` and
-the two authentication questions look different. In a terminal all of them are a list you move through with
-the arrow keys; the typed form above is what you get in a pipe, a script, or a terminal that cannot be put
-into raw mode.
+the answers need describing prints them first and then asks, which is why the quickstart offer, `Write
+model`, `Persistence` and the authentication questions look different. In a terminal all of them are a list
+you move through with the arrow keys; the typed form above is what you get in a pipe, a script, or a
+terminal that cannot be put into raw mode.
+
+**The first question and the identity one are both there to save you the rest.** A quickstart is a set of
+answers somebody already settled, offered by what the product it suits is like rather than by the packages
+it names; this keel carries six, `slipwai quickstart list` names them, and every answer one gives is a flag
+you could have typed and can still change. `Who signs in` stands in for two axes — the people who run the
+product and the people it is for — and asks about the providers only for the ones your answer says exist.
+Answer `separately` and you get both questions, which is what every product used to get.
 
 **Two of these questions are different in kind, and only one of them is hard to undo.** `Use Event
 Modeling?` decides whether the workflow is drawn before it is built — whether there is a model at all. It is

@@ -21,8 +21,8 @@ that is what it is. Install it first and the question does not arise.
 ## Using it
 
 ```sh
-slipwai quickstart install docs/reference/aws-customer-product      # from this checkout
-slipwai quickstart show aws-customer-product                        # before it does any of it
+slipwai quickstart list                                        # this keel carries it; nothing to install
+slipwai quickstart show aws-customer-product                   # what it would do, before it does any of it
 slipwai generate storefront --quickstart aws-customer-product
 ```
 

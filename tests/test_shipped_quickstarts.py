@@ -33,9 +33,11 @@ from __future__ import annotations
 import io
 import json
 import re
+import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -280,6 +282,54 @@ class ReasoningTest(unittest.TestCase):
                 continue
             with self.subTest(quickstart=root.name):
                 self.assertIn(f"slipwai target install {one.target}", self.page(root))
+
+
+class CarriedTest(unittest.TestCase):
+    """That the keel carries them, which is the difference between a worked example and an offer.
+
+    For six phases these were six directories nobody's copy had. They were not in any channel's index, they
+    were not in anybody's `~/.slipwai/quickstarts`, and the only way to meet one was to know the path to it
+    in a checkout — so `slipwai quickstart list` said "no quickstart is saved here", the interview asked no
+    question at all, and the board's Quickstarts table was empty on every machine in the world. The set is
+    carried now, and these are what hold it to being carried.
+    """
+
+    def empty(self) -> mock._patch_dict:
+        """A quickstart directory with nothing in it: what a machine that has saved none looks like."""
+        return mock.patch.dict("os.environ", {quickstart.VARIABLE: tempfile.mkdtemp()})
+
+    def test_every_shipped_quickstart_is_one_the_keel_carries(self) -> None:
+        self.assertEqual(sorted(quickstart.carried()), sorted(root.name for root in shipped()))
+
+    def test_each_is_named_and_found_on_a_machine_that_has_saved_none(self) -> None:
+        """By name and with no path, which is what `--quickstart <name>` and both interviews do."""
+        with self.empty():
+            self.assertEqual(quickstart.saved_names(), [])
+            for root in shipped():
+                with self.subTest(quickstart=root.name):
+                    self.assertIn(root.name, quickstart.names())
+                    self.assertEqual(quickstart.find(root.name).name, root.name)
+
+    def test_a_saved_one_of_the_same_name_is_the_one_found(self) -> None:
+        """A team who saved their own over ours meant theirs. Carried is a default, like everything else a
+        quickstart is."""
+        with tempfile.TemporaryDirectory() as area:
+            name = sorted(quickstart.carried())[0]
+            ours = quickstart.find(name)
+            mine = {**quickstart.document(ours), "suits": "mine, and not the one this keel carries"}
+            (Path(area) / f"{name}{quickstart.SUFFIX}").write_text(json.dumps(mine), encoding="utf-8")
+            with mock.patch.dict("os.environ", {quickstart.VARIABLE: area}):
+                self.assertEqual(quickstart.find(name).suits, mine["suits"])
+                self.assertEqual(quickstart.names().count(name), 1)
+
+    def test_the_keel_reads_them_from_beside_itself_rather_than_from_a_checkout(self) -> None:
+        """`assets.ROOT` is the repository in a checkout and `slipwai/_bundle` in an installed copy, which
+        is why `docs/reference` is in `assets.BUNDLED`. Read any other way, every case above would pass
+        here and the feature would be absent from every copy anybody installs."""
+        from slipwai.assets import BUNDLED, ROOT
+        self.assertIn(quickstart.CARRIED, BUNDLED)
+        for path in quickstart.carried().values():
+            self.assertTrue(Path(path).is_relative_to(ROOT / quickstart.CARRIED), path)
 
 
 if __name__ == "__main__":  # pragma: no cover

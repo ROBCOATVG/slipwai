@@ -21,6 +21,8 @@ analysis = Analysis(
         (str(root / "changelog.d"), "changelog.d"),
         # The rename table `migrate` applies to a version 1 project, for the same reason.
         (str(root / "docs/rename.json"), "docs"),
+        # The worked quickstarts `generate` offers before its first question, read from beside the keel.
+        (str(root / "docs/reference"), "docs/reference"),
     ],
     # A language package is loaded from the package directory at run time and imports the keel by name,
     # so every keel module stays in the executable whether or not a static import from `__main__`

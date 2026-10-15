@@ -11,8 +11,8 @@ generation anywhere reaches for it. What this directory is for is to be read, co
 ## Using it
 
 ```sh
-slipwai quickstart install docs/reference/internal-tool      # from this checkout
-slipwai quickstart show internal-tool                        # before it does any of it
+slipwai quickstart list                            # this keel carries it; nothing to install
+slipwai quickstart show internal-tool              # what it would do, before it does any of it
 slipwai generate rates --quickstart internal-tool
 ```
 

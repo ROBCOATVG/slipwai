@@ -21,8 +21,8 @@ that is what it is. Install it first and the question does not arise.
 ## Using it
 
 ```sh
-slipwai quickstart install docs/reference/azure-staff-service      # from this checkout
-slipwai quickstart show azure-staff-service                        # before it does any of it
+slipwai quickstart list                                   # this keel carries it; nothing to install
+slipwai quickstart show azure-staff-service               # what it would do, before it does any of it
 slipwai generate ledger --quickstart azure-staff-service
 ```
 

@@ -18,7 +18,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from . import quickstart
+from . import identity, quickstart
 from .assets import DEFAULT_OUTPUT
 from .browser_app import frontend_menu
 from .catalog import CATALOG, axis_applies, default_language, families, resolve_backend
@@ -57,7 +57,7 @@ def quickstart_menu() -> tuple[list[str], Callable[[str], str]]:
     person this slice exists for does not know what `uipro` is, and a menu of package names is addressed to
     somebody who already does.
     """
-    usable = [name for name in quickstart.saved_names() if name not in unavailable_quickstarts()]
+    usable = [name for name in quickstart.names() if name not in unavailable_quickstarts()]
     suits = {name: quickstart.find(name).suits for name in usable}
 
     def describe(name: str) -> str:
@@ -73,7 +73,7 @@ def unavailable_quickstarts() -> dict[str, str]:
     still theirs and be told the one command that makes it work, not conclude it was lost.
     """
     absent = {}
-    for name in quickstart.saved_names():
+    for name in quickstart.names():
         try:
             one = quickstart.find(name)
         except GenerationError as fault:  # a file somebody edited by hand, said and not offered
@@ -157,11 +157,40 @@ def interview(args: Any, named: dict[str, str | None]) -> None:
     # One question per axis, asked separately, because they are separate questions: where events are stored
     # has nothing to do with who issues identities. An axis is asked only when this profile and backend can
     # actually be given a choice, so the prompt never offers a combination `resolve_selection` would refuse.
+    # The two identity axes are the exception, and `ask_identity` says why.
     for axis in CATALOG["axes"]:
-        if named[axis] is None and axis_applies(axis, args.profile, args.backend, args.target):
-            named[axis] = prompt_axis(axis, args.profile, args.backend, args.target)
+        if named[axis] is not None or not axis_applies(axis, args.profile, args.backend, args.target):
+            continue
+        if axis in identity.AXES:
+            ask_identity(args, named)
+            continue
+        named[axis] = prompt_axis(axis, args.profile, args.backend, args.target)
     args.output = prompt_output(DEFAULT_OUTPUT)
     args.prd = prompt_prd()
+
+
+def ask_identity(args: Any, named: dict[str, str | None]) -> None:
+    """Ask who signs in, once, and write both identity axes from the answer.
+
+    Reached at the first identity axis the loop above comes to, and it fills in the other, so the pair keeps
+    its place in the order rather than moving to the head of the interview. Where only one of the two is
+    unanswered — a quickstart gave the other, or a flag did — the question is not put at all and that axis
+    is asked on its own terms: a person who has already said there are staff accounts is not then asked
+    whether there are.
+    """
+    if not identity.applies(args.profile, args.backend, args.target) \
+            or any(named[axis] is not None for axis in identity.AXES):
+        for axis in identity.AXES:
+            if named[axis] is None:
+                named[axis] = prompt_axis(axis, args.profile, args.backend, args.target)
+        return
+    rows = dict(identity.ROWS)
+    who = prompt_choice(identity.LABEL, list(rows), identity.DEFAULT, lambda name: rows[name],
+                        question=identity.PROMPT)
+    given = {axis: prompt_axis(axis, args.profile, args.backend, args.target,
+                               identity.label(who, axis), identity.says(who, axis))
+             for axis in identity.asks(who)}
+    named.update(identity.settled(who, given))
 
 
 def prompt_prd() -> Path | None:

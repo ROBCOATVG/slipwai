@@ -231,11 +231,15 @@ def prompt_profile() -> str:
     )
 
 
-def prompt_axis(axis: str, profile: str, backend: str, target: str) -> str:
+def prompt_axis(axis: str, profile: str, backend: str, target: str, heading: str = "", says: str = "") -> str:
     """Ask one axis, showing what each answer means.
 
     The label matters more than the option name here: "postgres" and "sqlite" look interchangeable until
     somebody reads that only one of them can prove a concurrency guarantee.
+
+    `heading` and `says` replace the catalogue's own two lines where an earlier question has already made
+    the distinction this axis is named for (`identity`): the options stay the axis's, the words above them
+    belong to the question that led here.
     """
     spec = CATALOG["axes"][axis]
     options = axis_options(axis, backend, target)
@@ -244,8 +248,8 @@ def prompt_axis(axis: str, profile: str, backend: str, target: str) -> str:
     # offering it and refusing it a moment later.
     if axis_required(axis, target):
         options = [name for name in options if name != spec["absent"]]
-    print(f"\n{spec['prompt']}:")
-    print(f"  {spec['description']}\n")
+    print(f"\n{heading or spec['prompt']}:")
+    print(f"  {says or spec['description']}\n")
     return prompt_choice("Choose", options, default, lambda name: spec["options"][name]["label"])
 
 

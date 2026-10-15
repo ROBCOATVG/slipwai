@@ -52,7 +52,8 @@ SECTIONS: tuple[tuple[str, str, str], ...] = (
     (LANGUAGE, "Languages", "what a service is written in — a project needs one"),
     (EXTENSION, "Extensions", "optional dev tooling, elected in a project with `./init --extension <key>`"),
     (TARGET, "Targets", "where a project is deployed to"),
-    (QUICKSTART, "Quickstarts", "a settled set of answers to start from, with `generate --quickstart <name>`"),
+    (QUICKSTART, "Quickstarts", "a settled set of answers to start from, offered before `generate`'s "
+                 "first question and given by `generate --quickstart <name>`"),
 )
 #: The kinds whose install asks about the publisher, which is the only place the tick-box means anything.
 #: A language's install does not ask — nothing on the language path calls `trust.admitted` — and a box that
@@ -122,9 +123,23 @@ def here() -> dict[str, dict[str, tuple[str, str]]]:
                                                               or manifest.get("name", "")))
     for name, manifest in targets_here(place):
         said[TARGET][name] = (version_of(files, name), str(manifest.get("label", "")))
-    for name in quickstart.saved_names():
-        said[QUICKSTART][name] = ("", "")
+    carried = quickstart.carried()
+    for name in quickstart.names():
+        said[QUICKSTART][name] = (BUILT_IN if name in carried else "", suits(name))
     return said
+
+
+def suits(name: str) -> str:
+    """A quickstart's own sentence about the product it suits — the one thing worth putting in its row.
+
+    Nothing where the document cannot be read, which is a file somebody edited by hand: it is still listed,
+    because the table says what this machine has and a row that vanished when its file went wrong would
+    leave a person looking for a quickstart they can see in the directory.
+    """
+    try:
+        return quickstart.find(name).suits
+    except GenerationError:
+        return ""
 
 
 def version_of(files: Mapping[str, object], name: str) -> str:

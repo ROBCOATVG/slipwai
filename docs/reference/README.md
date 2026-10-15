@@ -30,13 +30,14 @@ real captain session against a generated fixture.
 
 ## The worked examples
 
-Things the keel can hold but deliberately does not ship: a file somebody would otherwise write from scratch,
-with the reasoning next to it. Nothing here is loaded, installed or offered by any command. It is read,
-copied and changed.
+Six quickstarts, each a directory of `quickstart.json`, `README.md` and `VERSION`, publishable to a channel
+like any other package. They are picked to be *different projects* rather than variations on one, because
+what a reader needs from an example is the one nearest their own.
 
-Six quickstarts, each a directory of `quickstart.json`, `README.md` and `VERSION`, installable from this
-checkout and publishable to a channel like any other package. They are picked to be *different projects*
-rather than variations on one, because what a reader needs from an example is the one nearest their own.
+**The keel carries them**, so there is nothing to install: `slipwai quickstart list` names all six on any
+machine, both interviews offer them before their first question, and the board's Packages tab shows them as
+`built in`. A quickstart you save under one of these names is the one that is found — carried is a default,
+the same as every other thing a quickstart gives you.
 
 | Example | What it is |
 |---|---|
@@ -47,11 +48,12 @@ rather than variations on one, because what a reader needs from an example is th
 | [existing-platform-service](existing-platform-service/) | Go joining a platform somebody else owns: Postgres and Keycloak that are already there, and a factory that provisions nothing |
 | [internal-tool](internal-tool/) | TypeScript on both sides under the standard profile — the one that names no rung and no store, because it is asked for neither |
 
-**Why an example and not a default.** A quickstart elects extensions, and an extension is a third-party
+**Carried, and still never a default.** A quickstart elects extensions, and an extension is a third-party
 package. A default quickstart would be this keel choosing somebody's dev tooling for them in every project
 they ever generate, on no evidence beyond one person's preference. So the interview's first row is *ask me
-every question*, there is no default quickstart, and the ones the owner asked for live here — where they can
-be read before they are agreed to.
+every question* and it stays the selected one: carrying these makes them findable, not chosen. Each is read
+before it is agreed to, on the page beside it, and `slipwai quickstart show <name>` prints every answer it
+would give before any of them is given.
 
 **The target a quickstart answers is a package it needs.** `aws-customer-product` and
 `azure-staff-service` answer `target: aws` and `target: azure`, and neither is carried by the keel. The

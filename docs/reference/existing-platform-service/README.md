@@ -11,8 +11,8 @@ generation anywhere reaches for it. What this directory is for is to be read, co
 ## Using it
 
 ```sh
-slipwai quickstart install docs/reference/existing-platform-service      # from this checkout
-slipwai quickstart show existing-platform-service                        # before it does any of it
+slipwai quickstart list                                           # this keel carries it; nothing to install
+slipwai quickstart show existing-platform-service                 # what it would do, before it does any of it
 slipwai generate payments --quickstart existing-platform-service
 ```
 

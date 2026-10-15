@@ -25,6 +25,10 @@ from pathlib import Path
 
 import checkout_packages
 
+# budget: 400 — one generation, driven, and every link of the chain read back off it. Splitting it splits
+# the fixture: `setUpClass` generates a whole project because that is the slow part, and two modules would
+# be two generations of it — which the class docstring already refuses for the same reason five subclasses
+# were refused. The cases are small; the thing they share is expensive.
 REPOSITORY = Path(__file__).resolve().parents[1]
 TOY = "toy-plain"
 #: Two streams, and the second steers by a mark the first sets. The whole point in six lines of YAML.
@@ -142,6 +146,45 @@ class LoopTest(unittest.TestCase):
         import shutil
         shutil.rmtree(self.project / ".slipwai", ignore_errors=True)
         (self.project / "specs/model/chart.yaml").unlink(missing_ok=True)
+        # And a case that inherited the last one's *processes* is the same bug wearing a hat. A
+        # harbourmaster relights the fleet once a pass, so any case that runs one leaves detached captains
+        # behind — started from the harbourmaster's own environment, which has no `SLIPWAI_SAIL`, so they
+        # find no harness, claim a fairway and park it. Landing in the *next* case's freshly made log, that
+        # reads as a captain that claimed and gave up, and the case that started them passes. Registered
+        # here rather than in the cases that run a harbourmaster, because the next one to do so would have
+        # to know; and run as a cleanup rather than at the top of `setUp`, because the pid files live under
+        # `.slipwai/` and the rmtree above would take them with it while the processes were still alive.
+        self.addCleanup(self.put_the_fires_out)
+
+    def put_the_fires_out(self) -> None:
+        """Stop every process the fleet recorded, and wait for it to actually be gone.
+
+        `fleet.py stop` is a SIGTERM, and a captain that is asked to stop stops *at its next boundary* —
+        which is the right manners for a run and useless here, where the next boundary may be inside the
+        next case. So this is the undiplomatic version, and it waits: a process that is merely asked is one
+        that writes its park line while somebody else is reading the file.
+        """
+        import contextlib
+        import signal
+        import time
+        running = self.project / ".slipwai/running"
+        pids = []
+        for path in sorted(running.glob("*.pid")) if running.is_dir() else []:
+            try:
+                pids.append(int(path.read_text(encoding="utf-8").strip()))
+            except (OSError, ValueError):
+                continue
+        for pid in pids:
+            with contextlib.suppress(OSError):
+                os.kill(pid, signal.SIGKILL)
+        bound = time.monotonic() + 5.0
+        for pid in pids:
+            while time.monotonic() < bound:
+                try:
+                    os.kill(pid, 0)
+                except OSError:
+                    break
+                time.sleep(0.02)
 
     def run_in(self, *argv: str, sail: bool = False) -> subprocess.CompletedProcess:
         env = {**os.environ}

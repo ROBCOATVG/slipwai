@@ -14,8 +14,8 @@ from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card, live_cards, live_sub
 from .page_shell import document, esc
 from .passage import Stage, current
+from .settings_card import project_tabs
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
-from .wheel import ASKS, STOPS, known
 
 # budget: 470 — the five bands of one window: where the project stands, what to expect of the stage it is
 # on, who answers at each stop of the run, the model, and the work. A module per band would be five copies
@@ -64,12 +64,6 @@ a.quiet:hover{background:var(--teal-soft)}
 .expect ol{margin:8px 0 0;padding:0 0 0 18px;display:grid;gap:7px;font-size:.86rem;color:var(--ink-2)}
 .expect ol b.who{color:var(--ink);font-weight:600}
 .expect ol li.gone{opacity:.45}
-.wheel{display:grid;gap:10px}
-.wheel .stop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 14px;align-items:center}
-.wheel .stop small{grid-column:1 / -1;color:var(--ink-3);font-size:.76rem;margin-top:-4px}
-.wheel .dial{margin:0}
-.wheel .dial .now.asks{background:var(--brass);border-color:var(--brass)}
-@media (max-width:600px){.wheel .stop{grid-template-columns:1fr}}
 .columns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .col h3{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;
   padding-bottom:6px;border-bottom:2px solid var(--rule)}
@@ -154,9 +148,20 @@ SCRIPT = BOARD_SCRIPT + """
     // No confirm(): a dialog blocks every later event in this window, and stopping is asked rather than
     // done — a captain finishes its stage, so there is nothing here to be sorry about afterwards.
     if (event.target.id === 'stop') { event.target.disabled = true; send('/stop', {}); }
-    if (event.target.dataset && event.target.dataset.stop) {
+    const dial = event.target.dataset && event.target.dataset.dial;
+    if (dial) {
       event.target.disabled = true;
-      send('/wheel', {stop: event.target.dataset.stop, value: event.target.dataset.value});
+      send(dial === 'cruise' ? '/wheel' : '/dial',
+           dial === 'cruise' ? {stop: event.target.dataset.key, value: event.target.dataset.value}
+                             : {panel: dial, key: event.target.dataset.key,
+                                value: event.target.dataset.value});
+    }
+  });
+  // A menu rather than a dial, where a setting has twenty-two rows: the same send, on the value chosen.
+  document.addEventListener('change', event => {
+    const where = event.target.dataset && event.target.dataset.dial;
+    if (where && event.target.tagName === 'SELECT') {
+      send('/dial', {panel: where, key: event.target.dataset.key, value: event.target.value});
     }
   });
 })();
@@ -281,42 +286,6 @@ def expect_card(found: list[Stage]) -> str:
             f"{here}<ol>{rows}</ol></div>")
 
 
-#: Said once, over the stops. The second half is the half that makes the card usable: a captain reads this
-#: at a boundary, so a change here is about the next stop rather than the one being worked now.
-WHEEL = ("Under /cruise the skipper answers and the hand demos. Each stop below can be set to park instead, "
-         "which is what /sail does with it: the fleet stops and the question arrives under Waiting on you. "
-         "A captain reads this at its next boundary, so a change applies to the next stop rather than to "
-         "one already under way.")
-
-
-def wheel_card(held: dict[str, str]) -> str:
-    """Who answers at each stop of this run, and the way to change one.
-
-    Nothing where the project has no `.specify/cruise.json` \u2014 a harbour, an adopted repository that has
-    not been given one, a project generated before this was configurable. A card offering to set a file
-    that is not there would be a control that refuses every press.
-    """
-    if not held:
-        return ""
-    rows = ""
-    for name, title, says in STOPS:
-        now = held.get(name, "")
-        dial = "".join(
-            (f'<span class="now{" asks" if value == ASKS else ""}">{esc(says.get(value, value))}</span>'
-             if value == now else
-             f'<button data-stop="{esc(name)}" data-value="{esc(value)}">{esc(says.get(value, value))}</button>')
-            for value in known(name))
-        rows += (f'<div class="stop"><b>{esc(title)}</b><div class="dial">{dial}</div>'
-                 f"<small>{esc(name)} in .specify/cruise.json</small></div>")
-    asked = [title for name, title, _ in STOPS if held.get(name) == ASKS]
-    # Not `says`, which the loop above binds to each stop's own words: one name for the map of what a
-    # value is called and for the sentence under the whole card is one of them read as the other.
-    stopping = (f"This run stops for you at: {', '.join(one.lower() for one in asked)}." if asked
-                else "Nothing here stops for you: this run answers every one of them itself.")
-    return (f'<div class="card wheel" id="wheel"><h2>Who answers</h2>'
-            f'<p class="empty">{esc(WHEEL)}</p>{rows}<p class="empty">{esc(stopping)}</p></div>')
-
-
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
                  stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "") -> str:
     strip = "".join(stage_html(one, index) for index, one in enumerate(found))
@@ -417,19 +386,18 @@ def work_card(rows: list[dict[str, str]], fault: str) -> str:
 def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str, xml: str, note: str,
          viewer_fault: str, made: dict | None, launchable: bool, fleet: dict | None = None,
          config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
-         stoppable: bool = False, orders: dict[str, str] | None = None, feature: str = "",
-         drawable: bool = False, shape: str = "") -> str:
+         stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "") -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
     landed = fitting_card(made) if made else ""
     # The live cards, with their controls, under the model: how the work is going belongs on the page that
     # says what the work is.
-    live = live_cards(fleet, config or {}, True) if fleet else ""
+    live = live_cards(fleet, config or {}, True, project_tabs(root, True)) if fleet else ""
     where = passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable, feature,
                          drawable, shape)
     body = (f"<style>{STYLE}</style>{where}"
-            f"{expect_card(found)}{wheel_card(orders or {})}{landed}"
+            f"{expect_card(found)}{landed}"
             f"{model_card(xml, note, viewer_fault)}{mockups_card(mocks or [])}{work_card(rows, fault)}{live}")
     script = SCRIPT + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person

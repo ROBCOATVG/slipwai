@@ -29,6 +29,24 @@ from .brand import MARK, favicon, inline, svg
 # document that is the only reason it exists in another, which is the seam 14.4 removed.
 
 
+#: The method's word, and the word on the page. The page never shows the left-hand column.
+PLAIN = {
+    "boilers": "Captains at once",
+    "fanout": "Delegates per captain",
+    "bunker_per_slice": "Budget per slice (k tokens)",
+    "bunker_per_day": "Budget per day (k tokens)",
+    "stage_scale": "Stage budgets ×",
+    "bar": "Stop a merge at or above",
+    "decision_ceiling": "Unread decisions allowed",
+    "wait_bound": "Longest wait (minutes)",
+    "attempts": "Retries per piece of work",
+    "browsers": "Browser test runs at once",
+    "fairway": "Stream",
+    "berth": "Workspace",
+    "slice": "Piece of work",
+    "capability": "Capability",
+}
+
 def esc(value: object) -> str:
     return html.escape(str(value), quote=True)
 

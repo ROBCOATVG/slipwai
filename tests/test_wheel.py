@@ -16,7 +16,7 @@ from pathlib import Path
 import checkout_packages  # noqa: F401
 
 from slipwai.project.cruise import cruise_config
-from slipwai.voyage_page import wheel_card
+from slipwai.settings_card import stops_tab
 from slipwai.wheel import ASKS, CONFIG, STOPS, asking, known, orders, set_stop
 
 #: A script that records what it was asked instead of writing anything, so the test holds *that the board
@@ -28,6 +28,12 @@ REFUSER = """import sys
 print("that is not one of this stop's answers", file=sys.stderr)
 sys.exit(1)
 """
+
+
+def tab(answers: dict[str, str]) -> str:
+    """The stops tab's HTML. A tab is (key, what the bar says, the panel); the panel is what is read here."""
+    found = stops_tab(answers, True)
+    return found[2] if found else ""
 
 
 class WheelTest(unittest.TestCase):
@@ -55,12 +61,12 @@ class WheelTest(unittest.TestCase):
     def test_a_generated_project_answers_every_stop_itself(self) -> None:
         """Which is what `/cruise` is. A fresh project stops for nobody, and the card says so."""
         self.assertEqual(asking(self.root), [])
-        self.assertIn("Nothing here stops for you", wheel_card(orders(self.root)))
+        self.assertIn("Nothing here stops for you", tab(orders(self.root)))
 
     def test_a_stop_set_to_park_is_this_run_asking_a_person(self) -> None:
         self.answer(unblock=ASKS, release=ASKS)
         self.assertEqual(asking(self.root), ["A block", "A release"])
-        said = wheel_card(orders(self.root))
+        said = tab(orders(self.root))
         self.assertIn("This run stops for you at: a block, a release.", said)
         self.assertIn('class="now asks"', said, "the amber of a control that waits on somebody")
 
@@ -68,7 +74,7 @@ class WheelTest(unittest.TestCase):
         """A harbour, or a repository adopted before this was configurable. A card offering to set a file
         that is not there would be a control that refuses every press."""
         self.assertEqual(orders(Path(tempfile.mkdtemp())), {})
-        self.assertEqual(wheel_card({}), "")
+        self.assertIsNone(stops_tab({}, True), "no tab at all, rather than an empty one")
 
     def test_setting_one_runs_the_project_s_own_script_rather_than_writing_the_file(self) -> None:
         """`scripts/agents/cruise.py` is what `/cruise-settings` runs and what `make check-agents` holds.

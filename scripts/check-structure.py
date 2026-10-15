@@ -125,7 +125,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "adopt_page",
               # Where the project stands, read for the board's Voyage window: the stages, the slices, the
               # model, and who answers at each stop of the run.
-              "passage", "voyage", "wheel", "voyage_page", "landing_page",
+              "passage", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
               # And the documents that window links to, rendered rather than served: a person asked to say
               # a specification is good is shown the specification, not its markup.
               "spec_page",

@@ -103,7 +103,8 @@ class ServerTest(BoardTest):
         code, said = self.get("/voyage")
         self.assertEqual(code, 200)
         self.assertIn("<h2>Streams</h2>", said)
-        self.assertIn("<h2>Speed</h2>", said)
+        self.assertIn("<h2>Settings</h2>", said)
+        self.assertIn('for="tab-speed"', said, "the speed is a tab of the settings box now")
         self.assertIn('data-ring', said, "the controls came with the cards")
 
     def test_the_board_is_also_json_for_anything_that_would_rather_read_it(self) -> None:

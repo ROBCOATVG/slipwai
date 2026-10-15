@@ -21,28 +21,12 @@ import json
 from pathlib import Path
 
 from .fleet import NOTHING, inbox_detail
-from .page_shell import STYLE, THEME, document, esc  # noqa: F401 — STYLE and THEME are read by name here
-from .telegraph import MEANS, POSITIONS, SETTINGS
 
-#: The method's word, and the word on the page. The page never shows the left-hand column.
-PLAIN = {
-    "boilers": "Captains at once",
-    "fanout": "Delegates per captain",
-    "bunker_per_slice": "Budget per slice (k tokens)",
-    "bunker_per_day": "Budget per day (k tokens)",
-    "stage_scale": "Stage budgets ×",
-    "bar": "Stop a merge at or above",
-    "decision_ceiling": "Unread decisions allowed",
-    "wait_bound": "Longest wait (minutes)",
-    "attempts": "Retries per piece of work",
-    "browsers": "Browser test runs at once",
-    "fairway": "Stream",
-    "berth": "Workspace",
-    "slice": "Piece of work",
-    "capability": "Capability",
-}
-#: How a position reads on the dial. Sentence case, as the mockup has it.
-DIAL = {name: name.replace("-", " ").capitalize() for name in POSITIONS}
+# PLAIN, STYLE and THEME are read by name here — and `PLAIN` by the suite, which is where the board's
+# plain-words table was until the settings box needed it too.
+from .page_shell import PLAIN, STYLE, THEME, document, esc  # noqa: F401
+from .settings_card import settings
+
 #: What each state means in a word a reader does not have to be told. `stalled` stays `stalled`: it is the
 #: one that has to be noticed, and a gentler word for it would be the dashboard hiding something.
 STATES = {"working": "running", "stalled": "stalled", "parked": "waiting on you",
@@ -234,59 +218,6 @@ def fitting_card(made: dict) -> str:
             f'{esc(said)}\n</pre><div class="ask">{launch}</div></div>')
 
 
-def dial(position: str, controls: bool) -> str:
-    buttons = []
-    for name in POSITIONS:
-        if name == position:
-            buttons.append(f'<span class="now">{esc(DIAL[name])}</span>')
-        elif controls:
-            buttons.append(f'<button data-ring="{esc(name)}">{esc(DIAL[name])}</button>')
-        else:
-            buttons.append(f"<span>{esc(DIAL[name])}</span>")
-    return f'<div class="dial">{"".join(buttons)}</div>'
-
-
-#: The three numbers somebody is actually choosing between when they ring: how much runs at once, and what
-#: a day may cost. Every other number moves with them, and Fine tune below is where they all are.
-HEADLINE = ("boilers", "fanout", "bunker_per_day")
-
-#: Why the dial is one control and not nine, said once. The second sentence is the one people get wrong:
-#: a slower run is also a stricter one, which is a judgement the telegraph's own table makes and not an
-#: arithmetic that could be guessed from the position's name.
-SPEED = ("The dial moves everything together: ringing a position sets every number under Fine tune as a "
-         "group. Slower is not only cheaper \u2014 a slowed run also stops a merge at a lower severity and "
-         "parks sooner on unread decisions, because a run somebody has slowed down is one where less gets "
-         "deferred. A captain reads a new position at its next boundary, never mid-stage, so ringing it "
-         "changes what happens next rather than what is happening now.")
-
-
-def positions(now: str) -> str:
-    """What each notch of the dial sets, read from the telegraph's own table.
-
-    From `SETTINGS` rather than written out here, because a page that described the dial in its own words
-    would be a second copy of the numbers and the first one to drift.
-    """
-    head = "".join(f"<th>{esc(PLAIN[name])}</th>" for name in HEADLINE)
-    rows = ""
-    for name in POSITIONS:
-        held = SETTINGS[name]
-        cells = "".join(f"<td>{esc(held.get(one, NOTHING))}</td>" for one in HEADLINE)
-        here = ' <span class="chip running">now</span>' if name == now else ""
-        rows += f"<tr><td><b>{esc(DIAL[name])}</b>{here}</td>{cells}</tr>"
-    return f"<table><thead><tr><th>Position</th>{head}</tr></thead><tbody>{rows}</tbody></table>"
-
-
-def tune(config: dict, controls: bool) -> str:
-    """The fine-tune panel, in plain words. Writes `harbour.json` through the same code the verb uses."""
-    rows = []
-    for name in MEANS:
-        value = config.get(name, NOTHING)
-        cell = (f'<input data-number="{esc(name)}" value="{esc(value)}">' if controls else esc(value))
-        rows.append(f"<dt>{esc(PLAIN.get(name, name))}</dt><dd>{cell}</dd>")
-    apply = '<div class="ask"><button class="go" id="apply">Apply</button></div>' if controls else ""
-    return f'<div class="card"><h2>Fine tune</h2><dl>{"".join(rows)}</dl>{apply}</div>'
-
-
 def live_sub(found: dict) -> str:
     """The one line over the live cards: what is waiting, what is running, what today has cost."""
     berths, waiting, bunker = found["berths"], found["inbox"], found["bunker"]
@@ -297,12 +228,12 @@ def live_sub(found: dict) -> str:
             + f" · {spent if spent is not None else NOTHING}/{bunker['allowed']}k today")
 
 
-def live_cards(found: dict, config: dict, controls: bool = True) -> str:
+def live_cards(found: dict, config: dict, controls: bool = True,
+               more: list[tuple[str, str, str]] | None = None) -> str:
     """Everything folded from the logs, with its controls: the inbox, the answer boxes, the streams, the
     speed, the fine tune and the feed. The Voyage tab carries these beside the stages and the model; the
     published copy carries them alone, with nothing to press."""
     berths, waiting, pressure = found["berths"], found["inbox"], found["pressure"]
-    banked = f'<p class="empty">{esc(pressure["banked"])}</p>' if pressure["banked"] else ""
     # Every line the fold carries, not the last fifteen: the list is a tail now, so what used to be cut to
     # keep the page short is scrolled instead, and the newest is the one it opens on.
     feed = "".join(f"<li>{esc(w)}  {esc(who)}  {esc(kind)}</li>" for w, who, kind in found["feed"])
@@ -313,9 +244,7 @@ def live_cards(found: dict, config: dict, controls: bool = True) -> str:
 <div class="card" id="waiting"><h2>Waiting on you</h2>{inbox_rows(waiting, controls, found.get("streams"))}</div>
 {answer_boxes(berths) if controls else ""}
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {})}</div>
-<div class="card"><h2>Speed</h2>{dial(str(pressure["position"]), controls)}{banked}
-<p class="empty">{esc(SPEED)}</p>{positions(str(pressure["position"]))}</div>
-{tune(config, controls)}
+{settings(pressure, config, controls, more)}
 <div class="card"><h2>Last lines</h2><ul class="feed" data-tail>{feed or "<li>nothing yet</li>"}</ul></div>"""
 
 

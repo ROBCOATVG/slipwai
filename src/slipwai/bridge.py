@@ -49,6 +49,7 @@ from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
 from .deck import tell
+from .dials import set_dial
 from .errors import GenerationError
 from .fleet import board
 from .harbour import config
@@ -94,7 +95,7 @@ from .voyage import (
 from .voyage_page import now_said
 from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
-from .wheel import orders, set_stop
+from .wheel import set_stop
 
 # budget: 560 — one server and every route the board answers, each a few lines handing off to a page module
 # or to a guarded read out of the project, plus the three reads a request makes through its seat
@@ -401,7 +402,7 @@ class Bridge(BaseHTTPRequestHandler):
         # project inside this one's page.
         return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
-                      orders(self.root), feature, self.drawable(), made_of)
+                      feature, self.drawable(), made_of)
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
@@ -491,6 +492,11 @@ class Bridge(BaseHTTPRequestHandler):
             # holds. A second writer here would be the first one to drift from the project's own checker.
             elif where == "/wheel":
                 said = set_stop(self.root, str(held.get("stop", "")), str(held.get("value", "")))
+            # The same again for the two files the ladder reads, which had no control at all: how `/sail`
+            # delegates, and which model runs which stage. Each written by its own project script.
+            elif where == "/dial":
+                said = set_dial(self.root, str(held.get("panel", "")), str(held.get("key", "")),
+                                str(held.get("value", "")))
             elif where == "/stop":
                 _, _, _, fleet, _ = self.voyage_parts()
                 if not self.stoppable(fleet):

@@ -235,8 +235,9 @@ class WheelRouteTest(BoardTest):
             'import pathlib, sys\npathlib.Path("asked.txt").write_text(" ".join(sys.argv[1:]))\n',
             encoding="utf-8")
         said = self.get("/voyage")[1]
-        self.assertIn('data-stop="unblock"', said)
+        self.assertIn('data-dial="cruise" data-key="unblock"', said)
         self.assertIn("Nothing here stops for you", said)
+        self.assertIn('for="tab-answers"', said, "a tab of the settings box, beside Speed")
         self.assertEqual(self.post("/wheel", {"stop": "unblock", "value": "park"}),
                          (200, "unblock = park"))
         self.assertEqual((self.root / "asked.txt").read_text(encoding="utf-8"), "--set unblock=park")
@@ -246,8 +247,11 @@ class WheelRouteTest(BoardTest):
         self.assertEqual(code, 400)
         self.assertIn("not a stop this board sets", said)
 
-    def test_a_harbour_with_no_cruise_answers_carries_no_card(self) -> None:
-        self.assertNotIn('id="wheel"', self.get("/voyage")[1])
+    def test_a_harbour_with_no_cruise_answers_carries_no_tab(self) -> None:
+        """A tab offering to set a file that is not there would be a control that refuses every press."""
+        said = self.get("/voyage")[1]
+        self.assertNotIn('for="tab-answers"', said)
+        self.assertIn('for="tab-speed"', said, "the telegraph's tabs are the board's own and always there")
 
 
 class RunWindowTest(BoardTest):

@@ -37,7 +37,7 @@ from .language_directory import directory
 from .language_index import Index, Release
 from .language_install import builtin, installed
 from .language_plan import install as put_language
-from .page_shell import document, esc
+from .page_shell import WORKS, document, esc
 from .quickstart_install import install as put_quickstart
 from .target_install import catalogue as targets_here
 from .target_install import install as put_target
@@ -251,7 +251,7 @@ def card(kind: str, title: str, why: str, rows: list[Row], empty: str) -> str:
 #: then the page again — every control on the board reloads, because the board is a fold of what is on disk
 #: and a page that showed a package installed without re-reading the directory would be the one view that
 #: was a memory of a click rather than a reading of the machine.
-SCRIPT = """
+SCRIPT = WORKS + """
 const said = () => document.getElementById('said');
 document.addEventListener('click', async event => {
   const button = event.target.closest('[data-install]');
@@ -261,15 +261,24 @@ document.addEventListener('click', async event => {
   out.hidden = false;
   out.className = 'said';
   out.textContent = 'installing ' + button.dataset.install + '…';
-  button.disabled = true;
-  const answer = await fetch('/packages/install', {method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({kind: button.dataset.kind, name: button.dataset.install,
-                          accept: !!(box && box.checked)})});
-  out.textContent = await answer.text();
-  button.disabled = false;
+  // In the button as well as in the log: an install reaches the network and the log is a card away, so a
+  // row that went quiet read as a press that never landed — which is a press somebody makes again.
+  const was = working(button, 'Installing…');
+  let answer;
+  try {
+    answer = await fetch('/packages/install', {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({kind: button.dataset.kind, name: button.dataset.install,
+                            accept: !!(box && box.checked)})});
+    out.textContent = await answer.text();
+  } catch (fault) {
+    out.textContent = 'the board could not be reached: ' + fault;
+    out.className = 'said bad';
+    return;
+  } finally { was(); }
   if (answer.ok) {
     out.textContent += '\\n\\nreading the package directory again…';
+    working(button, 'Installed');
     setTimeout(() => location.reload(), 1500);
   } else out.className = 'said bad';
 });

@@ -222,7 +222,7 @@ def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question
                          why="optional: a PRD, copied into the project as docs/prd.md. After ./init the agent "
                              "drafts the constitution and the first specification from it and stops; the "
                              "build continues when you have read the specification and said so"))
-    said.append(Question("brief", "Everything else", answers.get("brief", ""), optional=True,
+    said.append(Question("brief", "Everything else", answers.get("brief", ""), optional=True, kind="path",
                          why="optional: the path to the folder your brief is in — wireframes, a brand "
                              "sheet, a stylesheet, screenshots, and the requirements document itself if "
                              "you have not picked it above. It is read from where it already is, and "
@@ -244,12 +244,13 @@ def starting_from(answers: Mapping[str, str]) -> list[Question]:
     rows, describe = quickstart_menu()
     if len(rows) == 1:
         return []
-    return [Question("quickstart", "Start from", answers.get("quickstart") or DECLINE, tuple(rows),
+    return [Question("quickstart", "Preset", answers.get("quickstart") or DECLINE, tuple(rows),
                      {name: describe(name) for name in rows},
                      unavailable=unavailable_quickstarts(),
-                     why="a set of answers somebody already settled — which languages, how the project is "
-                         "laid out, and which optional tooling it switches on. Every answer it gives is "
-                         "filled in below and every one of them stays yours to change")]
+                     why="optional: a set of answers somebody already settled — which languages, how the "
+                         "project is laid out, which optional tooling it switches on. Picking one fills in "
+                         "the questions below, and every answer it fills in stays yours to change. None is "
+                         "picked for you")]
 
 
 def axis_asked(axis: str, answers: Mapping[str, str], backend: str, target: str,

@@ -52,6 +52,7 @@ from .deck import tell
 from .dials import set_dial
 from .errors import GenerationError
 from .fleet import board
+from .folder_choice import chosen
 from .harbour import config
 from .init_run import Fitting
 from .init_run import cast_off as start_fleet
@@ -461,6 +462,12 @@ class Bridge(BaseHTTPRequestHandler):
                 if worked:
                     out = self.land(answers, out)
                 self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
+                return
+            # The machine's own folder chooser, for the one answer on the form that is a path. A read,
+            # and 200 whatever came back: cancelling is an answer — it means the field keeps what it had.
+            if where == "/choose":
+                self.send(200, chosen(Path(str(held.get("start") or "")).expanduser() or self.root),
+                          "text/plain; charset=utf-8")
                 return
             # Looking is a read and answers 200 whatever it found, refusal included: what it found is the
             # page's content, and a repository that cannot be adopted is a finding rather than a fault.

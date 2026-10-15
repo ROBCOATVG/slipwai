@@ -81,12 +81,13 @@ class MenuTest(unittest.TestCase):
         self.assertIn("toy-ui", choices)
         self.assertEqual(describe("toy-ui"), DOCUMENT["suits"])
 
-    def test_declining_is_the_first_row_and_the_default_and_says_what_it_does(self) -> None:
-        """Declining is one keystroke: the default is the row that asks every question, because a default
-        quickstart would be this keel choosing somebody's third-party tooling for them."""
+    def test_declining_is_the_first_row_and_the_default_and_says_what_it_is(self) -> None:
+        """Declining is one keystroke, because a default quickstart would be this keel choosing somebody's
+        third-party tooling for them. Said as what it is rather than as a mode: *ask me every question*
+        described the terminal and read as nonsense on a form, where every question is already on it."""
         choices, describe = cli_generate.quickstart_menu()
         self.assertEqual(choices[0], cli_generate.DECLINE)
-        self.assertIn("every question", describe(cli_generate.DECLINE))
+        self.assertEqual(describe(cli_generate.DECLINE), "No preset")
 
     def test_one_whose_packages_are_not_here_is_offered_as_unavailable_with_the_install(self) -> None:
         """Said rather than hidden: a person who wrote that quickstart should see that it is theirs and be

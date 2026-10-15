@@ -31,6 +31,11 @@ from .language_release import Source, read_source
 from .manifest import recorded_languages
 from .versions import base, below, key, satisfies
 
+# budget: 390 — one planner, and the plan is the hard half of installing: which package answers a
+# request, which family it needs under it, which frameworks that family cannot load without, and which
+# of those are already here. Each is a few lines and they only make sense beside each other — split,
+# the question "what else does this bring" would be answered in two files.
+
 LOCAL = "release file or directory"
 SCHEMA = str(CORE["schemaVersion"])
 Item = Step | Release  # a request: a local source read into a step, or the index's release for a name
@@ -190,6 +195,34 @@ def with_family(resolver: Resolver, item: Item, chosen: dict[str, Step]) -> list
     return [resolver.step(family_release, why=f" — the family {name} needs"), resolver.step(item)]
 
 
+def family_frameworks(resolver: Resolver, family: Step, chosen: dict[str, Step]) -> list[Step]:
+    """Every *other* framework of this family the index offers, which a family's own package may need.
+
+    A family's `prune_rows` are the family's, and may name a feature any of its backends declares — and a
+    feature arrives with the backend that declares it. So a family whose frameworks are separate packages
+    cannot be loaded one framework at a time: `java` alone brought quarkus, whose rows name `spring-web`,
+    and the loader refused what it could not read. Installing both at once always worked; nothing said so.
+
+    Only java has more than one framework package in the index today, so this brings nothing anywhere
+    else — and where the index cannot be reached, `default_framework` says what is missing, as it did.
+    """
+    assert family.source is not None
+    name, version = family.name, family.source.version
+    try:
+        index = resolver.index()
+    except Unreachable:
+        return []
+
+    def of_this_family(release: Release) -> bool:
+        return (family_of(release.fragment) == name and release.name != name
+                and held(version, needs(release.fragment)))
+
+    found = [one for other in index.releases
+             if (one := newest(index, other, SCHEMA, resolver.prerelease, of_this_family))]
+    return [resolver.step(one, why=f" — a framework of {name}") for one in found
+            if one.name not in chosen and one.name not in resolver.have]
+
+
 def default_framework(resolver: Resolver, family: Step, chosen: dict[str, Step]) -> Step | str | None:
     """The step a family's `default_framework` brings, a line saying why it could not, or None where nothing is owed."""
     assert family.source is not None
@@ -255,6 +288,10 @@ def plan_install(requests: list[str], directory: Path, index_reader: Callable[[]
             chosen.setdefault(placed.name, placed)
     for family in [step for step in list(chosen.values()) if not is_framework(step)]:
         taken_by_installed(resolver, family)
+        # Every framework of the family, not only its default: a family's prune rows may name a feature
+        # that arrives with any of its backends, so one at a time is a package the loader cannot read.
+        for one in family_frameworks(resolver, family, chosen):
+            chosen.setdefault(one.name, one)
         brought = default_framework(resolver, family, chosen)
         if isinstance(brought, Step):
             chosen[brought.name] = brought

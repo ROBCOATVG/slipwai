@@ -47,8 +47,12 @@ from .targets import check_project_name, managed, offered_backends
 
 #: The row that declines, which is the first one and the default. There is deliberately no default
 #: quickstart: a quickstart elects third-party extensions, and nobody asked this keel to choose those.
+#:
+#: Said as what it is rather than as a mode. "Ask me every question" described the terminal, where this
+#: menu decides how many prompts follow — and read as nonsense on a form, where every question is already
+#: on the page and a preset only fills some of them in.
 DECLINE = "none"
-DECLINED = "ask me every question — the interview as it has always been"
+DECLINED = "No preset"
 
 
 def quickstart_menu() -> tuple[list[str], Callable[[str], str]]:
@@ -80,8 +84,12 @@ def unavailable_quickstarts() -> dict[str, str]:
         except GenerationError as fault:  # a file somebody edited by hand, said and not offered
             absent[name] = str(fault)
             continue
-        if missing(one):
-            absent[name] = "; ".join(f"`{line}`" for line in fetches(one)) + " installs what it names"
+        if (wanted := missing(one)):
+            # What is wrong first, then the fix. "installs what it names" said neither: a reader already
+            # knew an install installs things, and still did not know why this row was greyed out.
+            absent[name] = (f"needs {', '.join(wanted)}, which "
+                            f"{'is' if len(wanted) == 1 else 'are'} not installed here — "
+                            + "; ".join(f"`{line}`" for line in fetches(one)))
     return absent
 
 

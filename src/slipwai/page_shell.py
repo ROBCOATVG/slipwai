@@ -24,7 +24,8 @@ import json
 from .assets import this_command
 from .brand import MARK, favicon, inline, svg
 
-# budget: 400 — one stylesheet, one document, the bar, and the four routes an installable page is made of,
+# budget: 440 — one stylesheet, one document, the bar, the four routes an installable page is made of,
+# and the one button state every page shares: a press that waits on something slow saying so in itself,
 # with the seat every page carries. Splitting the stylesheet out would put the look in one file and the
 # document that is the only reason it exists in another, which is the seam 14.4 removed.
 
@@ -155,6 +156,38 @@ THEME = """<fieldset class="theme" aria-label="Theme">
 
 #: What a form on this page is made of. Here rather than in the page that asks the questions, because the
 #: adoption tab and the interview tab ask them the same way and a second stylesheet is a second look.
+#: A button that is waiting on something slow says so in itself. The log a page writes to is often a card
+#: away from the button that filled it, so a press with nothing happening *at the button* reads as a press
+#: that did not land — which is what somebody does again, and again.
+#:
+#: Turning a button into one that is waiting, and the call that turns it back. Returned rather than
+#: toggled in place so every caller's `finally` is one word: a button left spinning after a failure is
+#: worse than one that never spun.
+WORKS = """
+function working(button, saying){
+  const was = {text: button.textContent, off: button.disabled};
+  button.disabled = true;
+  button.classList.add('working');
+  if (saying) button.textContent = saying;
+  return () => {
+    button.classList.remove('working');
+    button.textContent = was.text;
+    button.disabled = was.off;
+  };
+}
+"""
+
+
+WORKING = """
+button.working{position:relative;padding-left:28px;cursor:progress}
+button.working::before{content:"";position:absolute;left:10px;top:50%;width:11px;height:11px;margin-top:-6px;
+  box-sizing:border-box;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;
+  animation:spinning .7s linear infinite}
+@keyframes spinning{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){button.working::before{animation:none;opacity:.5}}
+"""
+
+
 FORM = """
 form.ask-page{display:grid;gap:14px;margin:0}
 form.ask-page .q{display:grid;gap:4px}
@@ -162,6 +195,12 @@ form.ask-page label{font-size:.85rem;color:var(--ink-2);font-weight:500}
 form.ask-page .why{color:var(--ink-3);font-size:.8rem;white-space:pre-line}
 /* A checkbox group. Rows rather than a multiple-select, because what each one is for has to be readable
    at once — that is the whole reason this question can be answered on a page and not in a terminal menu. */
+/* A path and the button that fills it in, beside it. The pair is held to the measure every other field
+   on this form has, so the button sits against the box rather than out at the card's edge — the input's
+   own `max-width` is lifted, because the row is what carries it now. */
+form.ask-page .path{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;max-width:460px}
+form.ask-page .path input{min-width:0;max-width:none}
+form.ask-page .path button{white-space:nowrap;align-self:stretch}
 form.ask-page .checks{display:grid;gap:6px;padding:2px 0}
 form.ask-page .check{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;
   font-weight:400;color:var(--ink);cursor:pointer}
@@ -380,7 +419,7 @@ def document(title: str, sub: str, body: str, script: str = "", now: str = "") -
 <title>{esc(title)}</title>
 <link rel="icon" href="{favicon()}">
 {HEAD if served else ""}
-<style>{STYLE}{FORM}</style></head>
+<style>{STYLE}{FORM}{WORKING}</style></head>
 <body><div class="wrap">
 <div class="top"><div><h1>{esc(title)}</h1><div class="sub">{esc(sub)}</div></div>
 <div class="corner">{INSTALL if served else ""}{THEME}{inline(

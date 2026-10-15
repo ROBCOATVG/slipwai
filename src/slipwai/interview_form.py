@@ -22,7 +22,7 @@ from .interview_page import (
     init_asked,
     repository_asked,
 )
-from .page_shell import document, esc
+from .page_shell import WORKS, document, esc
 
 
 def field_html(question: Question) -> str:
@@ -41,6 +41,14 @@ def field_html(question: Question) -> str:
             f'<option value="{esc(name)}"{" selected" if name == question.default else ""}>'
             f"{esc(question.labels.get(name, name))}</option>" for name in question.choices)
         asking = f'<select id="{esc(question.name)}" name="{esc(question.name)}" data-asks>{options}</select>'
+    elif question.kind == "path":
+        # A text field and a button, not a file input. A browser may not learn where anything is on the
+        # disk — that is the rule, not an oversight — so the path is typed, or the board asks the machine
+        # for it with the same dialog every other program on this computer opens.
+        asking = (f'<div class="path"><input id="{esc(question.name)}" name="{esc(question.name)}" '
+                  f'value="{esc(question.default)}" placeholder="a folder on this machine">'
+                  f'<button type="button" class="install" data-choose="{esc(question.name)}">'
+                  f"Choose\u2026</button></div>")
     elif question.kind == "file":
         asking = (f'<input id="{esc(question.name)}" name="{esc(question.name)}" type="file" '
                   f'accept=".md,.markdown,.txt,text/markdown,text/plain">')
@@ -75,7 +83,7 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
 #: — the target decides which languages are offered, the backend decides which axes apply — is asked again
 #: rather than patched, because deciding in the browser which questions follow would be the second reading
 #: of the catalogue this slice exists to avoid.
-SCRIPT = """
+SCRIPT = WORKS + """
 // A file input's entry is a File, which JSON would render as `{}`: it is read here and sent as its text,
 // with its name beside it, and only when it is about to be used — a re-ask of the questions is sent the
 // name alone.
@@ -95,6 +103,22 @@ const answers = async (withFiles) => {
   }
   return held;
 };
+
+// The machine's folder chooser, for the one answer that is a path. The board is on this machine, so it
+// opens the dialog and hands back where it landed; a cancel comes back empty and the field keeps what it
+// had. Not `send`, which reloads the page: this fills a field in and the rest of the form stays put.
+document.addEventListener('click', async event => {
+  const button = event.target.closest('[data-choose]');
+  if (!button) return;
+  const box = document.getElementById(button.dataset.choose);
+  button.disabled = true;
+  try {
+    const answer = await fetch('/choose', {method:'POST', headers:{'Content-Type':'application/json'},
+                                           body: JSON.stringify({start: box.value})});
+    const picked = (await answer.text()).trim();
+    if (picked) { box.value = picked; box.dispatchEvent(new Event('change', {bubbles: true})); }
+  } finally { button.disabled = false; }
+});
 
 async function post(path, withFiles){
   return fetch(path, {method:'POST', headers:{'Content-Type':'application/json'},
@@ -117,8 +141,18 @@ document.addEventListener('click', async event => {
   said.hidden = false;
   said.className = 'said';
   said.textContent = 'generating…';
-  const answer = await post('/generate/run', true);
-  said.textContent = await answer.text();
+  // The longest press on this board: a tree written, committed, and `./init` started in it. The button
+  // says so itself rather than only the log below, which on a long form is off the bottom of the screen.
+  const was = working(event.target, 'Generating…');
+  let answer;
+  try {
+    answer = await post('/generate/run', true);
+    said.textContent = await answer.text();
+  } catch (fault) {
+    said.textContent = 'the board could not be reached: ' + fault;
+    said.className = 'said bad';
+    return;
+  } finally { was(); }
   said.scrollTop = said.scrollHeight;
   if (!answer.ok) { said.className = 'said bad'; return; }
   // Made. This window is the new project's window from here, and the voyage opens beside it rather than

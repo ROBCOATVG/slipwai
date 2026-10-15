@@ -174,13 +174,15 @@ class QuestionsTest(unittest.TestCase):
         terminal with paths, and `--prd` and `--design` are the flags both become."""
         document, brief = asked({"name": "demo"})[-2:]
         self.assertEqual((document.name, document.kind, document.optional), ("prd", "file", True))
-        self.assertEqual((brief.name, brief.kind, brief.optional), ("brief", "text", True))
+        self.assertEqual((brief.name, brief.kind, brief.optional), ("brief", "path", True))
         said = form({"name": "demo"})
         self.assertIn('id="prd"', said)
         self.assertIn('type="file"', said, "a document is small and a browser can hand over its text")
         self.assertIn('id="brief"', said)
         self.assertNotIn("webkitdirectory", said,
                          "a path, not an upload: this board generates on the machine the folder is on")
+        self.assertIn('data-choose="brief"', said,
+                      "and the machine's own chooser fills it in, because a browser may not")
         self.assertNotIn("--prd", flags({"name": "demo", "prd": "# A document\n"}),
                          "the text is not a flag; `run` writes it to a file and names that")
         self.assertNotIn("--brief", flags({"name": "demo", "brief": "/tmp/x"}),

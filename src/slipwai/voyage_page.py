@@ -289,10 +289,12 @@ def wheel_card(held: dict[str, str]) -> str:
         rows += (f'<div class="stop"><b>{esc(title)}</b><div class="dial">{dial}</div>'
                  f"<small>{esc(name)} in .specify/cruise.json</small></div>")
     asked = [title for name, title, _ in STOPS if held.get(name) == ASKS]
-    says = (f"This run stops for you at: {', '.join(one.lower() for one in asked)}." if asked
-            else "Nothing here stops for you: this run answers every one of them itself.")
+    # Not `says`, which the loop above binds to each stop's own words: one name for the map of what a
+    # value is called and for the sentence under the whole card is one of them read as the other.
+    stopping = (f"This run stops for you at: {', '.join(one.lower() for one in asked)}." if asked
+                else "Nothing here stops for you: this run answers every one of them itself.")
     return (f'<div class="card wheel" id="wheel"><h2>Who answers</h2>'
-            f'<p class="empty">{esc(WHEEL)}</p>{rows}<p class="empty">{esc(says)}</p></div>')
+            f'<p class="empty">{esc(WHEEL)}</p>{rows}<p class="empty">{esc(stopping)}</p></div>')
 
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,

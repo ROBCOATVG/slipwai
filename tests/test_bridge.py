@@ -314,7 +314,11 @@ class LandingTest(BoardTest):
         self.assertIn('href="/spec/001-demo"', said)
         self.assertIn("Open specs/001-demo/spec.md", said)
         self.assertIn('target="_blank"', said, "read it beside the run, not instead of it")
-        self.assertEqual(self.get("/spec/001-demo"), (200, "# Demo\n\nWhat it does.\n"))
+        code, shown = self.get("/spec/001-demo")
+        self.assertEqual(code, 200)
+        # Rendered rather than served: `test_spec_page` holds what the renderer makes of each construct.
+        self.assertIn("<h1>Demo</h1>", shown)
+        self.assertNotIn("# Demo", shown)
 
     def test_the_specification_route_serves_that_file_and_nothing_near_it(self) -> None:
         """The same guard the mock-up route has, for the same reason: a route that takes a name out of a

@@ -31,7 +31,7 @@ from pathlib import Path
 
 from .shell_environment import login_environment
 
-# budget: 420 — one runner for every child the board starts in a project, and the five steps it runs
+# budget: 430 — one runner for every child the board starts in a project, and the five steps it runs
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
 # step they would be five modules of twelve lines and one import list each.

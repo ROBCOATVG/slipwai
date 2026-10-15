@@ -75,6 +75,7 @@ from .page_shell import (
 )
 from .passage import EVENT_PROFILE, drawn, modelled, profile_of, specifications, stages
 from .seats import Bench, Outfit, Seat, parameter
+from .spec_page import page as spec
 from .telegraph import Refused
 from .voyage import (
     MOCK_ROUTE,
@@ -263,7 +264,12 @@ class Bridge(BaseHTTPRequestHandler):
             if path is None:
                 self.send(404, "<p>No specification under that feature.</p>")
                 return
-            self.send(200, path.read_text(encoding="utf-8", errors="replace"), "text/plain; charset=utf-8")
+            # Rendered, not served: Continue the build is a person's word that this document is good, and
+            # a page that asks for that word and hands back `text/plain` is asking them to read markup.
+            # Against the resolved root: `spec_file` resolves, and on a machine whose temporary directory
+            # is a symlink — every macOS one — an unresolved root is not a parent of it.
+            self.send(200, spec(path.relative_to(self.root.resolve()).as_posix(),
+                                path.read_text(encoding="utf-8", errors="replace")))
             return
         if where == "/drawio-viewer.js" and self.controls:
             script, fault = viewer_script()

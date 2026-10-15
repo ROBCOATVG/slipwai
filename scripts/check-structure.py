@@ -126,6 +126,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # Where the project stands, read for the board's Voyage window: the stages, the slices, the
               # model, and who answers at each stop of the run.
               "passage", "voyage", "wheel", "voyage_page", "landing_page",
+              # And the documents that window links to, rendered rather than served: a person asked to say
+              # a specification is good is shown the specification, not its markup.
+              "spec_page",
               # The chandlery as a tab of it: `search` and the install verbs, rendered.
               "chandlery_page",
               # The conformance suite a package runs against itself, and its generated-variant

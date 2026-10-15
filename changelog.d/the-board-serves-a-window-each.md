@@ -34,6 +34,12 @@ Voyage shows all four with what each answer means, says in a line which of them 
 at, and writes a change through the project's own `scripts/agents/cruise.py`, which is what
 `/cruise-settings` runs and what `make check-agents` holds. A captain reads it at its next boundary.
 
+**The specification can be read from the page that asks you to agree to it.** Continue the build is a
+person's word that the specification is good to build from, and the page asked for that word while giving
+no way to open the file. It is beside the button now, quiet and in its own tab, served as the text the
+agent wrote — the keel has no markdown renderer and does not grow one to show somebody a document they are
+about to agree to.
+
 **And the fleet can be stopped from the page it is watched on.** `make cruise-stop`, beside Cast off: it
 asks rather than kills, so a captain finishes the stage it is on and leaves its worktree, its branch and its
 deck log in a state the next cast-off picks up.

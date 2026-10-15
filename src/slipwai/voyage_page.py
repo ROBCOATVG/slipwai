@@ -14,7 +14,7 @@ from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card, live_cards, live_sub
 from .page_shell import document, esc
 from .passage import Stage, current
-from .voyage import COLUMNS, viewer_config
+from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 from .wheel import ASKS, STOPS, known
 
 # budget: 440 — the five bands of one window: where the project stands, what to expect of the stage it is
@@ -52,6 +52,9 @@ STYLE = """
 .stage .ev{font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:var(--ink-3);word-break:break-all}
 .stage.skipped{opacity:.4}.stage.todo .dot{opacity:.75}
 .next{border-top:1px solid var(--rule-2);padding-top:12px;display:grid;gap:8px}
+a.quiet{font:inherit;padding:7px 14px;border-radius:7px;border:1px solid var(--teal);background:transparent;
+  color:var(--teal);text-decoration:none;align-self:center}
+a.quiet:hover{background:var(--teal-soft)}
 .expect .now{border-left:3px solid var(--brass);padding-left:12px;margin:0 0 10px}
 .expect .now .who{display:block;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;
   color:var(--brass);margin-bottom:3px}
@@ -298,7 +301,7 @@ def wheel_card(held: dict[str, str]) -> str:
 
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
-                 stoppable: bool = False) -> str:
+                 stoppable: bool = False, feature: str = "") -> str:
     strip = "".join(stage_html(one, index) for index, one in enumerate(found))
     wide = f"--stages:{max(1, len(found))}"
     said = now_said(found)
@@ -313,6 +316,13 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     # Beside them whatever else the strip says, because the one thing a person wants at the moment they
     # want it is the way to make it stop. Not styled as the primary action: stopping is the exception.
     button += (f'<button class="install" id="stop"{"" if stoppable else " hidden"}>Stop the fleet</button>')
+    # And the thing to do *before* pressing the primary one. Continue the build is a person's word that the
+    # specification is good to build from, and a page that asks for that word while giving no way to read
+    # the file is asking somebody to agree to something they have not opened. Quiet, beside it, and in its
+    # own tab, so reading it does not cost the page the run is watched on.
+    if feature:
+        button += (f'<a class="quiet" href="{esc(SPEC_ROUTE)}{esc(feature)}" target="_blank" rel="noopener">'
+                   f"Open specs/{esc(feature)}/{esc(SPEC)}</a>")
     return (f'<div class="card" id="passage"><h2>{esc(name)}</h2>'
             f'<div class="passage" role="list" style="{esc(wide)}">{strip}</div>'
             f'<div class="next"><p id="now">{esc(said)}</p><div class="ask">{button}</div></div></div>')
@@ -386,7 +396,7 @@ def work_card(rows: list[dict[str, str]], fault: str) -> str:
 def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str, xml: str, note: str,
          viewer_fault: str, made: dict | None, launchable: bool, fleet: dict | None = None,
          config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
-         stoppable: bool = False, orders: dict[str, str] | None = None) -> str:
+         stoppable: bool = False, orders: dict[str, str] | None = None, feature: str = "") -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
@@ -395,7 +405,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     # says what the work is.
     live = live_cards(fleet, config or {}, True) if fleet else ""
     body = (f"<style>{STYLE}</style>"
-            f"{passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable)}"
+            f"{passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable, feature)}"
             f"{expect_card(found)}{wheel_card(orders or {})}{landed}"
             f"{model_card(xml, note, viewer_fault)}{mockups_card(mocks or [])}{work_card(rows, fault)}{live}")
     script = SCRIPT + ("" if viewer_fault or not xml else "\n")

@@ -72,17 +72,19 @@ from .page_shell import (
     manifest,
     not_running,
 )
-from .passage import EVENT_PROFILE, modelled, profile_of, stages
+from .passage import EVENT_PROFILE, modelled, profile_of, specifications, stages
 from .seats import Bench, Outfit, Seat, parameter
 from .telegraph import Refused
 from .voyage import (
     MOCK_ROUTE,
+    SPEC_ROUTE,
     counts,
     fleet_running,
     folded,
     mockup_file,
     mockups,
     model_xml,
+    spec_file,
     states_of,
     viewer_script,
 )
@@ -91,9 +93,10 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import orders, set_stop
 
-# budget: 530 — one server and every route the board answers, each a few lines handing off to a page module,
-# plus the three reads a request makes through its seat (`seats.py` holds the table itself). A second server
-# would be two things each sure they are the board, which `open_board` exists to prevent.
+# budget: 560 — one server and every route the board answers, each a few lines handing off to a page module
+# or to a guarded read out of the project, plus the three reads a request makes through its seat
+# (`seats.py` holds the table itself). A second server would be two things each sure they are the board,
+# which `open_board` exists to prevent.
 LIMIT = 4 * 1024 * 1024  # bytes a request body may be: a sentence, or a PRD riding in a generate's answers
 #: The four an installable page is made of, each with what it is served as. A browser decides whether to
 #: offer the install on the content type as much as the content, so none of these is served as HTML.
@@ -276,6 +279,16 @@ class Bridge(BaseHTTPRequestHandler):
             self.send(200, path.read_text(encoding="utf-8", errors="replace"),
                       f"{kind}; charset=utf-8" if kind.startswith("text/") else kind)
             return
+        # The specification, as the agent wrote it. Plain text rather than rendered: the keel has no
+        # markdown renderer and should not grow one to show somebody a file they are about to agree to,
+        # and a browser shows this one readably as it stands.
+        if where.startswith(SPEC_ROUTE) and self.controls:
+            path = spec_file(self.root, where.removeprefix(SPEC_ROUTE))
+            if path is None:
+                self.send(404, "<p>No specification under that feature.</p>")
+                return
+            self.send(200, path.read_text(encoding="utf-8", errors="replace"), "text/plain; charset=utf-8")
+            return
         if where == "/drawio-viewer.js" and self.controls:
             script, fault = viewer_script()
             self.send(503 if fault else 200, fault or script.decode("utf-8", "replace"),
@@ -381,13 +394,14 @@ class Bridge(BaseHTTPRequestHandler):
 
     def voyage(self) -> str:
         found, rows, fault, fleet, held = self.voyage_parts()
+        specs = specifications(self.root)
         xml, note = model_xml(self.root, states_of(rows))
         # The frames are the one thing on this page the browser fetches without a script's help, so the
         # seat goes on their addresses here: a frame that asked unseated would be shown another window's
         # project inside this one's page.
         return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
-                      orders(self.root))
+                      orders(self.root), specs[0].parent.name if specs else "")
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()

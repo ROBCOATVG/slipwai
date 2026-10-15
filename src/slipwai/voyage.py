@@ -179,6 +179,11 @@ def viewer_config(xml: str) -> str:
 #: Where the mock-up stage writes, under a feature, and the route the board serves it at.
 MOCKUPS = "mockups"
 MOCK_ROUTE = "/mockups/"
+#: The specification a feature is built from, and the route the board serves it at. Served at all because
+#: Continue the build is a person's word that the specification is good, and a page that asks for that word
+#: and gives no way to read the thing is asking somebody to agree to a file they have not opened.
+SPEC = "spec.md"
+SPEC_ROUTE = "/spec/"
 
 
 def mockups(root: Path, seat: str = "") -> list[dict[str, str]]:
@@ -215,6 +220,25 @@ def mockup_file(root: Path, where: str) -> Path | None:
     home = (root / "specs" / feature / MOCKUPS).resolve()
     try:
         path = (home / name).resolve()
+    except OSError:
+        return None
+    if not path.is_relative_to(home) or not path.is_file() or not home.is_relative_to(root.resolve()):
+        return None
+    return path
+
+
+def spec_file(root: Path, feature: str) -> Path | None:
+    """The `specs/<feature>/spec.md` a `/spec/<feature>` request names, or nothing where it names anything
+    else — a path with `..` in it, a symlink out of the checkout, a feature that has no specification.
+
+    One file and not a directory, which is the difference between this and `mockup_file`: a mock-up is a
+    page with its own stylesheet and images beside it, and a specification is a document.
+    """
+    if not feature or "/" in feature.strip("/"):
+        return None
+    home = (root / "specs").resolve()
+    try:
+        path = (home / feature.strip("/") / SPEC).resolve()
     except OSError:
         return None
     if not path.is_relative_to(home) or not path.is_file() or not home.is_relative_to(root.resolve()):

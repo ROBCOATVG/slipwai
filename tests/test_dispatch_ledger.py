@@ -133,6 +133,58 @@ class LedgerTest(unittest.TestCase):
             self.assertEqual(row["v"], 1)
             self.assertTrue(row["t"].endswith("Z"), row)
 
+    def shipped_without_marks(self) -> None:
+        """A crossing's own state: SB1 is done in the tree and set its mark in no log, so SB2 — which
+        steers by it — reads as waiting on work that merged before there was a log to write it in."""
+        (self.feature / "chart.yaml").write_text(
+            "v: 1\nfeature: 036-shared\nfairways:\n  f:\n    owns: []\n"
+            "marks:\n  OrderPlaced: {}\n"
+            "slices:\n"
+            "  SB1:\n    fairway: f\n    capability: c\n    sets: [OrderPlaced]\n    steers_by: []\n"
+            "  SB2:\n    fairway: f\n    capability: c\n    sets: []\n    steers_by: [OrderPlaced]\n",
+            encoding="utf-8")
+        (self.feature / "slices/SB1").mkdir(parents=True, exist_ok=True)
+        (self.feature / "slices/README.md").write_text(
+            "| Slice | What |\n|---|---|\n| `SB1` | shipped before the mark log existed |\n",
+            encoding="utf-8")
+
+    def test_it_takes_the_baseline_a_crossing_owes_rather_than_asking_for_it(self) -> None:
+        """Left to a person this is a command nobody runs, and every slice steering by a shipped mark
+        stays blocked for ever in a loop nobody is watching."""
+        self.shipped_without_marks()
+        self.flown(True)
+        done = self.run_it()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        written = self.ledger()
+        first = written[0]
+        self.assertEqual(first["outcome"], "baselined")
+        self.assertEqual(first["slice"], "")
+        self.assertIn("baselined", first["why"])
+        self.assertIn("SB2", [row["slice"] for row in written], "SB2 did not clear after the baseline")
+
+    def test_the_baseline_it_took_is_stamped_in_the_log_as_derived(self) -> None:
+        """An earned mark was written by the stage that did the work. A baselined one was inferred from a
+        done marker, and a reader has to be able to tell which for ever."""
+        self.shipped_without_marks()
+        self.flown(True)
+        self.run_it()
+        written = [json.loads(line) for path in (self.root / ".slipwai/logs").rglob("*.jsonl")
+                   for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        baselined = [row for row in written if row.get("kind") == "mark-set"]
+        self.assertTrue(baselined, written)
+        self.assertTrue(all(row.get("provenance") == "baseline" for row in baselined), baselined)
+
+    def test_it_is_never_taken_twice(self) -> None:
+        """One per project, ever. Otherwise it is a way past the gate rather than a crossing's catch-up."""
+        self.shipped_without_marks()
+        self.flown(True)
+        self.run_it()
+        self.flown(True)
+        done = self.run_it()
+        self.assertEqual(len([row for row in self.ledger() if row["outcome"] == "baselined"]), 1,
+                         self.ledger())
+        self.assertEqual(done.returncode, 0, done.stderr)
+
     def test_a_feature_with_no_chart_writes_nothing_and_says_why(self) -> None:
         self.flown(True)
         done = self.run_it()

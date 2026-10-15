@@ -56,7 +56,11 @@ LEDGER = "dispatch-ledger.jsonl"
 #: hands a band to one fresh `sail-slice-watch` and that delegate chooses stage by stage inside itself.
 DELEGATE = "sail-slice-watch"
 #: What a line may say about a slice. A closed set: a word nobody wrote down is one nobody reviewed.
-OUTCOMES = ("dispatched", "taken-here", "left-named")
+#: `baselined` is the one that names no slice — it is about the run, not about a piece of work.
+OUTCOMES = ("dispatched", "taken-here", "left-named", "baselined")
+#: The clearance state that says a slice waits on a mark whose setter already shipped. Not `blocked`: the
+#: work is done and the wait is an artefact of crossing into a version that has a mark log.
+NEEDS_BASELINE = "migration-evidence-required"
 
 
 def now() -> str:
@@ -86,9 +90,9 @@ def preflight() -> tuple[dict, str]:
     return found, ""
 
 
-def clearance(feature: str) -> tuple[dict, str]:
+def clearance(feature: str, *flags: str) -> tuple[dict, str]:
     """What may start now, asked of the one thing that knows. Never guessed from a status field."""
-    command = [sys.executable, str(HERE / "clearance.py"), "--json"]
+    command = [sys.executable, str(HERE / "clearance.py"), "--json", *flags]
     if feature:
         command += ["--feature", feature]
     try:
@@ -102,6 +106,36 @@ def clearance(feature: str) -> tuple[dict, str]:
     if found.get("error"):
         return {}, str(found["error"])
     return found, ""
+
+
+def owed_a_baseline(found: dict) -> list[str]:
+    """The slices waiting on a mark that shipped before there was a log to write it in.
+
+    `clearance.py` calls this state `migration-evidence-required` rather than `blocked` for exactly this
+    reason: the setter is *done*, so the wait is an artefact of the crossing and not of the work.
+    """
+    return sorted(slice_id for slice_id, row in (found.get("states") or {}).items()
+                  if isinstance(row, dict) and row.get("state") == NEEDS_BASELINE)
+
+
+def baseline(feature: str) -> tuple[bool, str]:
+    """Record the marks a crossing owes, once. (it was taken, what it said).
+
+    **Run here rather than asked of a person.** It derives rather than invents — one `mark-set` per mark a
+    *done* slice sets, stamped `provenance: baseline` with the evidence it read — and `clearance.py`
+    refuses a second one outright, so automating it cannot turn it into a way past the gate. Left to a
+    person it is a command nobody runs, and every slice steering by a shipped mark stays blocked for ever
+    in a loop nobody is watching.
+    """
+    command = [sys.executable, str(HERE / "clearance.py"), "--baseline-marks"]
+    if feature:
+        command += ["--feature", feature]
+    try:
+        done = subprocess.run(command, capture_output=True, text=True, timeout=120, cwd=ROOT, check=False)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return False, f"the baseline could not be taken: {type(error).__name__}: {error}"
+    said = (done.stdout or done.stderr).strip().splitlines()
+    return done.returncode == 0, (said[-1] if said else "nothing was said").removeprefix("clearance: ")
 
 
 def lines(found: dict, able: bool, why: str, machine: str, key: str) -> list[dict]:
@@ -176,9 +210,31 @@ def main(argv: list[str]) -> int:
     if why_not:
         print(f"dispatch: {why_not}", file=sys.stderr)
         return 1
+    # Before anything is scheduled, because a slice waiting on a shipped mark is not a slice that may not
+    # start — it is one nothing has written the evidence for yet, and the schedule below would leave it out.
+    owed, taken = owed_a_baseline(found), ""
+    if owed:
+        recorded, said = baseline(feature)
+        if recorded:
+            taken = said
+            found, why_not = clearance(feature)
+            if why_not:
+                print(f"dispatch: {why_not}", file=sys.stderr)
+                return 1
+        else:
+            # A baseline already spent, or one that could not run. Said once and never written to the
+            # ledger: a line per dispatch saying the same thing is a line nobody reads by the third one.
+            print(f"dispatch: {len(owed)} slice(s) wait on a shipped mark and no baseline was taken — "
+                  f"{said}", file=sys.stderr)
     able = bool(flown.get("delegates") is True)
     why = str(flown.get("why") or "no reason was recorded")
     written = lines(found, able, why, logs.machine(), harness.current_key())
+    if taken:
+        # Named in the ledger as well as in the harbour log, so a reader of *this run* can see that what it
+        # dispatched on stood partly on derived evidence rather than on marks any stage here earned.
+        written.insert(0, {"v": 1, "t": now(), "feature": str(found.get("feature", "")), "slice": "",
+                           "band": "", "slot": 0, "outcome": "baselined", "why": taken, "delegate": "",
+                           "harness": harness.current_key(), "machine": logs.machine(), "worktree": ""})
     if not written:
         print("dispatch: clearance names nothing that may start now, so there is nothing to dispatch")
         return 0

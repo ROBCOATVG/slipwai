@@ -165,25 +165,48 @@ def travelling() -> list[dict]:
                   "every clone and cloud runner reads it as a project where nothing has been started")]
 
 
-def hooked() -> list[dict]:
+def hooked(fix: bool = False) -> list[dict]:
+    """Whether this checkout is pointed at the hooks it carries — and, asked, point it.
+
+    `--fix-hooks` is what `make hooks` runs and what `make dispatch` depends on, because *every clone and
+    worktree needs it once* is a sentence nobody acts on in a loop nobody is watching. Setting it is safe
+    to automate for the same reason the baseline is: it is idempotent, and it never takes a path somebody
+    else owns.
+    """
     if not (ROOT / HOOKS).is_dir():
         return [asked("hooks", None, f"{HOOKS}/ is not in this checkout")]
     where = git("config", "--get", "core.hooksPath").strip()
     if where == HOOKS:
         return [asked("hooks", True, f"core.hooksPath is {HOOKS}")]
     if where:
+        # Never taken. An adopted repository on husky or lefthook keeps what it has, and is told how to
+        # chain rather than finding its own hooks quietly turned off by a factory.
         return [asked("hooks", False, f"core.hooksPath is `{where}`, not {HOOKS}",
                       f"chain {HOOKS}/pre-push from it, or `git config core.hooksPath {HOOKS}`")]
+    if fix:
+        # `git config <key> <value>` prints nothing either way, so the answer is read back rather than
+        # taken from the call: a set that silently did not happen is the one outcome worth catching.
+        git("config", "core.hooksPath", HOOKS)
+        if git("config", "--get", "core.hooksPath").strip() == HOOKS:
+            return [asked("hooks", True, f"core.hooksPath set to {HOOKS} by this run")]
+        return [asked("hooks", False, "core.hooksPath could not be set", "run `make hooks`")]
     return [asked("hooks", False, "core.hooksPath is unset in this checkout",
                   "run `make hooks` — it is per-checkout config, so every clone and worktree needs it once")]
 
 
-def crossing() -> list[dict]:
-    return [*charts(), *covered(), *statuses(), *marks(), *travelling(), *hooked()]
+def crossing(fix_hooks: bool = False) -> list[dict]:
+    return [*charts(), *covered(), *statuses(), *marks(), *travelling(), *hooked(fix_hooks)]
 
 
 def main(argv: list[str]) -> int:
-    found = crossing()
+    if "--fix-hooks" in argv and "--json" not in argv:
+        # What `make hooks` runs: the one question, answered and fixed, without the other five.
+        for row in hooked(fix=True):
+            print(f"check-crossing: {row['what']}")
+            if row["ok"] is False and row["fix"]:
+                print(f"                {row['fix']}")
+        return 0
+    found = crossing("--fix-hooks" in argv)
     owed = [row for row in found if row["ok"] is False]
     if "--json" in argv:
         print(json.dumps({"v": 1, "root": str(ROOT), "checks": found, "owed": len(owed)}))

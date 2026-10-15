@@ -23,12 +23,11 @@ arrive: ## Land what other machines wrote: every deck log and in-flight branch p
 \tpython3 scripts/agents/travel.py --arrive
 depart: ## Push what this machine wrote, so the next machine — or the cloud — reads the same loop state
 \tpython3 scripts/agents/travel.py --depart
-dispatch: ## Record what starts now and with what — or that this session could not delegate, and why
+dispatch: hooks ## Record what starts now and with what — or that this session could not delegate, and why
 \tpython3 scripts/agents/preflight.py --record
 \tpython3 scripts/agents/dispatch.py $(DISPATCH_FLAGS)
-hooks: ## Install the git hooks, so a push that names unplanned or undispatched work is refused locally
-\tgit config core.hooksPath .githooks
-\t@echo 'hooks: core.hooksPath is .githooks; `git config --unset core.hooksPath` undoes it'
+hooks: ## Point this checkout at .githooks, so a push naming unplanned or undispatched work is refused here
+\tpython3 scripts/check-crossing.py --fix-hooks
 crossing: ## What a migration could not carry: charts, marks, statuses, log refs, hooks. CROSSING_FLAGS="--strict" to fail
 \tpython3 scripts/check-crossing.py $(CROSSING_FLAGS)
 agents: ## Refresh elected extensions, then skills, commands and agent types in every installed agent harness

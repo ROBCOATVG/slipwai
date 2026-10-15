@@ -29,6 +29,16 @@ the deck logs, because it is evidence about a commit and the gate that reads it 
 only what git carries. It will not write a line without a current `preflight --record`, so a run that
 skipped the check has nothing to dispatch with rather than a judgement to record.
 
+**The crossing's own catch-up is taken, not asked for.** A slice that shipped before the mark log existed
+set nothing in it, so everything steering by its marks reads as blocked for ever —
+`clearance.py` calls that `migration-evidence-required` rather than `blocked` for exactly that reason.
+`make dispatch` now takes the baseline when it sees that state, re-reads clearance, and records a
+`baselined` line in the ledger so the run says what it stood on. Safe to automate for the reason it was
+safe to write down: it derives from the done markers already in the tree, stamps every line
+`provenance: baseline`, and refuses a second baseline outright, so automating it cannot turn it into a way
+past the gate. `make hooks` is the same shape — idempotent, never takes a path somebody else owns — so
+`make dispatch` depends on it and every clone, worktree and cloud runner gets it without being asked.
+
 **And one gate holds whoever is driving.** `scripts/check-dispatch.py` reads commit subjects up to their
 first colon and refuses two things: a slice-shaped token no chart, event model or `slices/` directory
 knows, and a planned slice no dispatch ledger accounts for. It is on `verify` and in a `pre-push` hook
@@ -62,8 +72,8 @@ answering for one feature of several says which it is not about.
 **Catch-up:** `slipwai migrate` carries `travel.py`, `preflight.py`, `harness.py`, the new
 `scripts/agents/dispatch.py`, `scripts/check-dispatch.py` and `scripts/check-crossing.py`, rewrites
 `commands/sail.md`, adds `check-dispatch` to `verify`, and points this checkout at `.githooks`. **Run
-`make crossing` after it** — and `make hooks` in every other clone, worktree and cloud runner, because
-git config is not cloned and CI holds the same rule for the pushes a hook never sees. A project whose
+`make crossing` after it** for what no command can take for you — a chart per feature, statuses against
+trunk. CI holds the push rule for every push a local hook never sees. A project whose
 shipped slices predate the ledger will have `check-dispatch` refuse a commit naming one: either the slice
 is already merged and the commit is prose about it (no slice-shaped token before the colon), or record
 what was dispatched. A feature with no `chart.yaml` is unknown to both gates — `make chart` first, or its

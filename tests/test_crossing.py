@@ -118,6 +118,27 @@ class CrossingTest(unittest.TestCase):
         self.assertIn("OWED", self.run_it().stdout)
         self.assertEqual(self.run_it("--strict").returncode, 1)
 
+    def test_fix_hooks_points_an_unset_checkout_at_the_projects_own(self) -> None:
+        """What `make hooks` runs and `make dispatch` depends on. *Every clone and worktree needs it once*
+        is a sentence nobody acts on in a loop nobody is watching."""
+        (self.root / ".githooks").mkdir()
+        done = self.run_it("--fix-hooks")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.git("config", "--get", "core.hooksPath").stdout.strip(), ".githooks")
+
+    def test_fix_hooks_never_takes_a_path_somebody_else_owns(self) -> None:
+        (self.root / ".githooks").mkdir()
+        self.git("config", "core.hooksPath", ".husky")
+        done = self.run_it("--fix-hooks")
+        self.assertEqual(self.git("config", "--get", "core.hooksPath").stdout.strip(), ".husky")
+        self.assertIn("chain", done.stdout)
+
+    def test_fix_hooks_is_idempotent(self) -> None:
+        (self.root / ".githooks").mkdir()
+        self.run_it("--fix-hooks")
+        self.assertEqual(self.run_it("--fix-hooks").returncode, 0)
+        self.assertEqual(self.git("config", "--get", "core.hooksPath").stdout.strip(), ".githooks")
+
     def test_an_empty_project_is_asked_nothing_it_cannot_answer(self) -> None:
         """Adopted, before its first chart. Everything here is `none`, and nothing is owed."""
         done = self.run_it("--strict")

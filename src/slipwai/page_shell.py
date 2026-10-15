@@ -160,6 +160,13 @@ form.ask-page{display:grid;gap:14px;margin:0}
 form.ask-page .q{display:grid;gap:4px}
 form.ask-page label{font-size:.85rem;color:var(--ink-2);font-weight:500}
 form.ask-page .why{color:var(--ink-3);font-size:.8rem;white-space:pre-line}
+/* A checkbox group. Rows rather than a multiple-select, because what each one is for has to be readable
+   at once — that is the whole reason this question can be answered on a page and not in a terminal menu. */
+form.ask-page .checks{display:grid;gap:6px;padding:2px 0}
+form.ask-page .check{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;
+  font-weight:400;color:var(--ink);cursor:pointer}
+form.ask-page .check input{margin:3px 0 0;accent-color:var(--teal)}
+form.ask-page .check span{font-size:.86rem;line-height:1.35}
 form.ask-page input,form.ask-page select{font:inherit;padding:7px 10px;border:1px solid var(--rule);
 border-radius:7px;background:var(--paper);color:var(--ink);width:100%;max-width:460px}
 form.ask-page .no{color:var(--brass);font-size:.8rem}

@@ -38,7 +38,8 @@ from slipwai import identity
 from slipwai.bridge import serve
 from slipwai.catalog import CATALOG, axis_applies
 from slipwai.cli_generate import DECLINE, quickstart_menu
-from slipwai.interview_page import asked, destination, flags, form, run, settled
+from slipwai.interview_form import form
+from slipwai.interview_page import asked, destination, flags, run, settled
 from slipwai.targets import offered_backends
 
 #: Where in the terminal's transcript each question of the page is. Both faces read the catalogue; this is

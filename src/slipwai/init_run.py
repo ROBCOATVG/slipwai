@@ -31,7 +31,7 @@ from pathlib import Path
 
 from .shell_environment import login_environment
 
-# budget: 430 — one runner for every child the board starts in a project, and the five steps it runs
+# budget: 450 — one runner for every child the board starts in a project, and the five steps it runs
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
 # step they would be five modules of twelve lines and one import list each.
@@ -61,22 +61,35 @@ DECLINED = ("./init was not run. It is the next step, in a terminal: `./init` as
 SCRIPT = "init"
 
 
-def command(harness: str | None = None, repository: str | None = None) -> list[str]:
-    """`./init`, with the agent named where somebody has named one, and the forge where somebody has.
+def command(harness: str | None = None, repository: str | None = None,
+            extensions: tuple[str, ...] = ()) -> list[str]:
+    """`./init`, with the agent named where somebody has named one, the forge where somebody has, and the
+    extensions somebody checked.
 
     Unnamed, Spec Kit keeps its own question — which is right where there is a terminal to ask it in and
     wrong everywhere else, so the caller that has no terminal is the one that passes a harness. The
     repository is the same shape of answer for the same reason: a project with a production target
     configures its pipeline on the repository it is pushed to, and `./init` asks for that over `/dev/tty`.
+
+    **The extensions are the third of those and the one nothing was passing.** `./init`'s menu reads
+    `/dev/tty` and prints nothing where there is none, so every `./init` this board has ever run elected
+    nothing — silently, because an empty capture is indistinguishable from a person checking no boxes.
+    A `--extension` given here is an explicit answer, and `./init` never second-guesses one.
     """
     return [f"./{SCRIPT}", *(["--integration", harness] if harness else []),
-            *(["--repository", repository] if repository else [])]
+            *(["--repository", repository] if repository else []),
+            *(word for key in extensions for word in ("--extension", key))]
 
 
-def announced(root: Path, harness: str | None, repository: str | None = None) -> str:
-    """The line said before it starts, wherever it is about to start."""
-    return (f"Running {' '.join(command(harness, repository))} in {root} — it installs Spec Kit for the "
-            f"coding agent, so it reaches the network once, here.")
+def announced(root: Path, harness: str | None, repository: str | None = None,
+              extensions: tuple[str, ...] = ()) -> str:
+    """The line said before it starts, wherever it is about to start.
+
+    The whole command, extensions included, because that is what makes an election visible: a person who
+    checked three boxes sees the three flags go by, and one who checked none sees that too.
+    """
+    return (f"Running {' '.join(command(harness, repository, extensions))} in {root} — it installs Spec Kit "
+            f"for the coding agent, so it reaches the network once, here.")
 
 
 def ended(code: int, harness: str | None, repository: str | None = None) -> str:
@@ -107,8 +120,9 @@ class Step:
     key: str = ""
 
 
-def init_step(where: Path, harness: str, repository: str | None) -> Step:
-    return Step(command(harness, repository), announced(where, harness, repository),
+def init_step(where: Path, harness: str, repository: str | None,
+              extensions: tuple[str, ...] = ()) -> Step:
+    return Step(command(harness, repository, extensions), announced(where, harness, repository, extensions),
                 lambda code: ended(code, harness, repository), "init")
 
 
@@ -363,10 +377,10 @@ class Fitting:
 
 
 def start(where: Path, harness: str | None = None, said: list[str] | None = None,
-          repository: str | None = None, prd: bool = False) -> Fitting:
+          repository: str | None = None, prd: bool = False, extensions: tuple[str, ...] = ()) -> Fitting:
     """`./init` begun in the background — and the draft after it, where a PRD came with the answers and an
     agent was named to draft with. Returned rather than awaited: what it says is read by polling."""
-    steps = [init_step(where, harness, repository)] if harness else []
+    steps = [init_step(where, harness, repository, extensions)] if harness else []
     if steps and prd:
         steps.append(Step(DRAFT, DRAFTING, drafted, "draft"))
     fitting = Fitting(where, steps, said)

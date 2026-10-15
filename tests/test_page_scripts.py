@@ -17,7 +17,7 @@ import unittest
 import checkout_packages  # noqa: F401
 
 from slipwai.bridge_page import SCRIPT
-from slipwai.interview_page import SCRIPT as ASK
+from slipwai.interview_form import SCRIPT as ASK
 from slipwai.page_shell import REGISTER, WORKER_SOURCE
 
 SCRIPTS = {"bridge_page": SCRIPT, "interview_page": ASK,

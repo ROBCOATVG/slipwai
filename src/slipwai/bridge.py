@@ -59,8 +59,9 @@ from .init_run import draw as draw_surfaces
 from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
-from .interview_page import NO_INIT, destination, form, repository_for
-from .interview_page import page as interview
+from .interview_form import form
+from .interview_form import page as interview
+from .interview_page import NO_INIT, destination, elected_in, repository_for
 from .interview_page import run as generate
 from .landing_page import landing
 from .page_shell import (
@@ -97,7 +98,10 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 560 — one server and every route the board answers, each a few lines handing off to a page module
+# budget: 580 — one server and every route the board answers, each a few lines handing off to a page module.
+# The number is the route count rather than any one route's length: a control a person can press is ten
+# lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
+# board has gained the surfaces, the settings dials and the rendered specification since this was 560.
 # or to a guarded read out of the project, plus the three reads a request makes through its seat
 # (`seats.py` holds the table itself). A second server would be two things each sure they are the board,
 # which `open_board` exists to prevent.
@@ -333,7 +337,8 @@ class Bridge(BaseHTTPRequestHandler):
         self.look(where)
         self.launched = False
         self.fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
-                               repository_for(answers), prd=bool(str(answers.get("prd") or "").strip()))
+                               repository_for(answers), prd=bool(str(answers.get("prd") or "").strip()),
+                               extensions=elected_in(answers))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
 
     def launchable(self) -> bool:

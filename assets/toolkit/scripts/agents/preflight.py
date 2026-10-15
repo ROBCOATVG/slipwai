@@ -27,7 +27,19 @@ import socket
 import subprocess
 import sys
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+
+try:
+    import harness  # noqa: E402
+except ImportError:  # pragma: no cover - a checkout holding this script and not its siblings
+    # Carried on without, rather than crashed on. Every other check here is about whether an increment can
+    # run, and a missing sibling is a reason to say one question could not be asked — never a reason to
+    # stop asking the rest.
+    harness = None  # type: ignore[assignment]
 
 
 def project_root(script: Path) -> Path:
@@ -41,6 +53,9 @@ def project_root(script: Path) -> Path:
 ROOT = project_root(Path(__file__))
 MANIFEST = ROOT / "project.json"
 EXTENSIONS = ROOT / ".slipwai/extensions.json"
+#: What `--record` writes and `dispatch.py` reads. This checkout's own answer, never committed and never
+#: travelled: another machine's preflight is not evidence about this one.
+RECORD = ROOT / ".slipwai/preflight.json"
 #: Extensions whose election says a directory should be in the checkout for a delegate to query it.
 INDEXED = {"codegraph": ".codegraph"}
 
@@ -154,18 +169,65 @@ def index_checks() -> list[dict]:
     return found
 
 
+def method_checks() -> list[dict]:
+    """Whether the method itself can run in this checkout, which no other gate asks.
+
+    `project.py --check` deliberately passes where the projections are absent — *not drift, a clone
+    `./init` has not run in* — and it is right to, because it cannot tell a clone nobody will run `/sail`
+    in from one somebody is about to. Here that distinction is gone: this runs because a slice is about to
+    start. So absence is a failure here and nowhere else.
+
+    One run asked a method built on delegates to fan out in a checkout holding none of them, decided it was
+    working alone, and spent eleven hours proving it. Neither half of that is a judgement either — both are
+    one question to the registry and one to the filesystem, and they are these two lines.
+    """
+    if harness is None:
+        return [check("delegates", None, "harness.py is not beside this script, so nothing here can say "
+                                         "whether this session may delegate",
+                      "run this from a project's own scripts/agents/, where its siblings are")]
+    answer = harness.can_delegate()
+    where, declared = answer.get("where") or "", answer.get("declared") or []
+    if answer["able"]:
+        return [check("delegates", True, answer["why"])]
+    if not where or not declared:
+        # Thirty of the registry's thirty-six rows have no sub-agents at all, so *cannot delegate* is the
+        # ordinary answer here and not a broken checkout. Recorded, never failed: a gate that refused every
+        # harness without delegates would refuse most of them, and be turned off in a week.
+        return [check("delegates", None, answer["why"],
+                      "run the ready set one slice at a time, and let the dispatch ledger carry this reason")]
+    return [check("delegates", False, answer["why"], "run `make agents`, then start a new session")]
+
+
 def checks() -> list[dict]:
     try:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         manifest = {}
     return [*python_checks(), socket_check(), *deployable_checks(manifest if isinstance(manifest, dict) else {}),
-            *index_checks()]
+            *index_checks(), *method_checks()]
+
+
+def record(found: list[dict], failed: list[dict]) -> dict:
+    """What this run answered, as the file `dispatch.py` reads before it will write a ledger line.
+
+    Under `.slipwai/`, so it is this checkout's and never committed: what a *different* machine's preflight
+    found is not evidence about this one, and a record that travelled would be exactly the wrong thing to
+    trust. The timestamp is the whole point — a dispatch stands on an answer from this checkout, now.
+    """
+    answer = {"v": 1, "at": datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+              "root": str(ROOT), "checks": found, "failed": len(failed),
+              "delegates": next((row["ok"] for row in found if row["check"] == "delegates"), None),
+              "why": next((row["what"] for row in found if row["check"] == "delegates"), "")}
+    RECORD.parent.mkdir(parents=True, exist_ok=True)
+    RECORD.write_text(json.dumps(answer, indent=1) + "\n", encoding="utf-8")
+    return answer
 
 
 def main(argv: list[str]) -> int:
     found = checks()
     failed = [row for row in found if row["ok"] is False]
+    if "--record" in argv:
+        record(found, failed)
     if "--json" in argv:
         print(json.dumps({"v": 1, "root": str(ROOT), "checks": found, "failed": len(failed)}))
         return 1 if failed else 0

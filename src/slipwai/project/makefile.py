@@ -174,7 +174,7 @@ def makefile(
     if formatting:
         formatting = f"format: ## Rewrite this project's own code the way `make lint` expects to find it\n\t{formatting}\n"
     verify_dependencies = (
-        "check-python lint typecheck check-imports check-migrations check-chart check-rendered check-surfaces check-slice-scope check-extensions check-agents check-speckit "
+        "check-python lint typecheck check-imports check-migrations check-chart check-dispatch check-rendered check-surfaces check-slice-scope check-extensions check-agents check-speckit "
         "check-constitution check-benchmark check-decisions test"
     )
     style_target = ""
@@ -303,7 +303,7 @@ install: ## Install native dependencies; refresh agent projections after init
 \t@if [ -f .specify/integration.json ]; then $(MAKE){layout.make_flag} --no-print-directory agents; else echo 'Spec Kit not initialized; run ./init when ready.'; fi
 {npm_workspace_targets(apps, target)}
 {agent_targets()}
-.PHONY: decisions typecheck lint {'format ' if formatting else ''}check-imports check-migrations check-chart check-rendered check-surfaces check-slice-scope {'check-styles ' if web else ''}{'check-flags ' if target != 'none' else ''}check-speckit check-constitution constitution-requirements{role_dependency}
+.PHONY: decisions typecheck lint {'format ' if formatting else ''}check-imports check-migrations check-chart check-dispatch check-rendered check-surfaces check-slice-scope {'check-styles ' if web else ''}{'check-flags ' if target != 'none' else ''}check-speckit check-constitution constitution-requirements{role_dependency}
 typecheck: ## Run the native compiler or static type check
 \t{native['typecheck']}
 lint: ## Run the native formatting and static-analysis gate
@@ -315,6 +315,8 @@ check-migrations: ## Fail when a migration contracts the schema without naming t
 \tpython3 scripts/check-migrations.py
 check-chart: ## Fail when the chart's marks are untyped, double-set, withdrawn, or a slice names no capability
 \tpython3 scripts/check-chart.py
+check-dispatch: ## Fail when a commit names work no plan knows, or a slice no dispatch ledger accounts for
+\tpython3 scripts/check-dispatch.py
 check-rendered: ## Fail when a decisions or adversary log, or the split's held_by, is not what it renders from
 \tpython3 scripts/render-fairways.py --check
 check-surfaces: ## Fail when a slice delivers a state nobody approved, or an approved state no slice delivers

@@ -14,11 +14,21 @@ from __future__ import annotations
 
 def agent_targets() -> str:
     """The `.PHONY` block between the npm workspace targets and the native gate targets."""
-    return """.PHONY: check-python preflight agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft launch check-decisions
+    return """.PHONY: check-python preflight arrive depart dispatch hooks agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft launch check-decisions
 check-python: ## Fail, first, when python3 is older than the 3.10 every gate script is written for
 \t@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 'check-python: ' + sys.executable + ' is Python ' + sys.version.split()[0] + ', and the gate scripts need 3.10 or newer; put a newer python3 first on PATH (a non-interactive macOS shell finds /usr/bin/python3, which is 3.9, before Homebrew)')"
 preflight: ## Check once, in a fresh worktree, that an increment can run here: toolchains, caches, a socket, the index
 	python3 scripts/agents/preflight.py
+arrive: ## Land what other machines wrote: every deck log and in-flight branch pushed since this checkout last looked
+\tpython3 scripts/agents/travel.py --arrive
+depart: ## Push what this machine wrote, so the next machine — or the cloud — reads the same loop state
+\tpython3 scripts/agents/travel.py --depart
+dispatch: ## Record what starts now and with what — or that this session could not delegate, and why
+\tpython3 scripts/agents/preflight.py --record
+\tpython3 scripts/agents/dispatch.py $(DISPATCH_FLAGS)
+hooks: ## Install the git hooks, so a push that names unplanned or undispatched work is refused locally
+\tgit config core.hooksPath .githooks
+\t@echo 'hooks: core.hooksPath is .githooks; `git config --unset core.hooksPath` undoes it'
 agents: ## Refresh elected extensions, then skills, commands and agent types in every installed agent harness
 \tpython3 scripts/extensions/project.py
 \tpython3 scripts/agents/project.py

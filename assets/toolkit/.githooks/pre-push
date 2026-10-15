@@ -1,0 +1,26 @@
+#!/bin/sh
+# Refuse a push that names work no plan knows, or a slice no dispatch ledger accounts for.
+#
+# This is the only rule in the method that holds whoever is driving. The command page is prose, `make
+# verify` runs when something runs it, and the session-start guards reach three of the registry's
+# thirty-six harnesses. Git reaches all of them, because git does not know which agent is pushing.
+#
+# Installed by `make hooks`, which sets `core.hooksPath` to this directory. Git config is not cloned, so a
+# fresh checkout — a cloud runner, a new machine — has to run that once; CI holds the same rule for the
+# pushes this never sees. `git push --no-verify` skips it, which is a person's call to make and still
+# leaves CI to answer for it.
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+gate="$root/scripts/check-dispatch.py"
+
+[ -f "$gate" ] || exit 0
+
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "pre-push: python3 is not on PATH, so the dispatch gate could not run." >&2
+    echo "pre-push: every gate in this project is a python3 script; install it, or push with" >&2
+    echo "pre-push: --no-verify and let CI answer for this push." >&2
+    exit 1
+fi
+
+exec python3 "$gate" --stdin

@@ -75,6 +75,10 @@ OF_STAGE = 2.0
 ROUND_TRIP = 60.0 + 60.0 + 30.0
 #: The empty tree, which every git repository has. A ref with no parent starts from it.
 EMPTY_TREE = claims.EMPTY_TREE
+#: What the branch for a slice is called. Declared here because travelling is what needs it to be one
+#: name: a machine that pushed `slice/<id>` and one that landed some other spelling would be two names for
+#: one piece of work, and neither would find the other's. The captain and the harbourmaster read it here.
+BRANCH = "slice/{slice}"
 
 
 def deck_ref(fairway: str) -> str:
@@ -383,10 +387,152 @@ def land_wip(root: Path, ref: str, branch: str) -> tuple[bool, str]:
     return True, ""
 
 
+def ours(root: Path) -> list[str]:
+    """The fairways this machine holds the claim for, which are the only deck logs it may push.
+
+    One ref per writer, and a fairway's writer is whichever captain holds it: a machine pushing the log of
+    a fairway it does not hold would be a second writer on that ref, which is the one thing there may never
+    be. Asked in one fetch rather than one per fairway.
+    """
+    machine = logs.machine()
+    fairways = [path.stem for path in logs.deck_logs(root)]
+    return [fairway for fairway, claim in claims.every(root, fairways).items()
+            if claim is not None and claim.machine == machine]
+
+
+def in_flight(path: Path) -> str:
+    """The slice this fairway is still working on — claimed, and not merged — or `""` where there is none.
+
+    What travels is work that is *in flight*: a merged slice's branch is in trunk already, and a WIP ref
+    that went on being pushed after the merge would be a ref nobody reads growing for ever.
+    """
+    try:
+        found = logs.fold(path.read_text(encoding="utf-8").splitlines())
+    except (OSError, UnicodeDecodeError, logs.Unreadable):
+        return ""
+    merged = {str(entry.fields.get("slice", "")) for entry in found if entry.kind == "merged"}
+    for entry in reversed(found):
+        if entry.kind == "claimed" and str(entry.fields.get("slice", "")) not in merged:
+            return str(entry.fields.get("slice", ""))
+    return ""
+
+
+def arrive(root: Path) -> list[str]:
+    """Bring in what other machines have written, and put it where this project's readers already look.
+
+    Never fatal: a project on one machine has no remote, and one that cannot reach its forge still has
+    every local fairway to read. What it returns is the files it wrote, for a caller that says so.
+    """
+    return land(root, logs.machine(), ours(root))
+
+
+def wrote(root: Path, machine: str) -> list[str]:
+    """The fairways whose deck log this machine is the author of, **whether or not it still holds them**.
+
+    Not `ours`, and the difference is a line that would otherwise never arrive. A captain writes its final
+    `merged` or `parked` line and *then* releases; the next pass still owes that suffix to the forge, and a
+    set built from held claims alone would have dropped the fairway one pass before its last line travelled.
+    A released claim retains its author, so this is still one publisher until the claim changes hands, and
+    a cache on another machine cannot publish itself.
+    """
+    claims.fetch(root)
+    return [path.stem for path in logs.deck_logs(root)
+            if (claim := claims.read(root, path.stem)) is not None and claim.machine == machine]
+
+
+def departing(root: Path, machine: str, authored: list[str]) -> list[tuple[Path, str]]:
+    """Each file this machine may push, with the ref it travels as: its own harbour log, and the deck log
+    of every fairway it wrote. Nothing else — a second writer on a ref is the one thing there may never be.
+    """
+    found = [(root / logs.harbour_path(machine), harbour_ref(machine))]
+    found += [(path, deck_ref(path.stem)) for path in logs.deck_logs(root) if path.stem in authored]
+    return [(path, ref) for path, ref in found if path.is_file()]
+
+
+def depart(root: Path) -> tuple[list[str], list[str]]:
+    """Put this machine's logs and in-flight branches where the other machines can read them.
+
+    (the refs that travelled, the reasons the rest did not). This is the writing end of section 14's fourth
+    broken link: both processes fetched `refs/slipwai/logs/*` and neither ever wrote them, so the fetch was
+    ceremony and getting one machine's log onto another was a person with `scp`.
+
+    Every refusal is returned rather than swallowed. A push that is not an append is a log about to lose
+    lines, and the whole design rests on hearing about that rather than on it being rare.
+    """
+    machine = logs.machine()
+    if not forge(root):
+        return [], []
+    # Two different sets, and conflating them loses a line. A **log** travels for every fairway this
+    # machine authored, released or not, because the release follows the final line. A **branch** travels
+    # only for one still held: pushing the in-flight work of a fairway somebody else has taken would be a
+    # second writer on that ref.
+    authored, held = wrote(root, machine), ours(root)
+    went: list[str] = []
+    refused: list[str] = []
+    for path, ref in departing(root, machine, authored):
+        ok, why = push_log(root, path, ref, machine)
+        if ok:
+            went.append(ref)
+        else:
+            refused.append(why)
+    for path in logs.deck_logs(root):
+        slice_id = in_flight(path) if path.stem in held else ""
+        if not slice_id:
+            continue
+        ok, why = push_wip(root, BRANCH.format(slice=slice_id), wip_ref(path.stem))
+        if ok:
+            went.append(wip_ref(path.stem))
+        else:
+            refused.append(why)
+    return went, refused
+
+
+def arrived(root: Path) -> int:
+    """`--arrive`: land every other machine's lines here, and say what landed."""
+    machine = logs.machine()
+    if not forge(root):
+        print(f"travel: no `origin`, so nothing travels onto {machine} and nothing is missing here")
+        return 0
+    landed = arrive(root)
+    for where in landed:
+        print(f"travel: landed {where}")
+    print(f"travel: {len(landed)} log(s) landed on {machine}; what the other machines wrote is here")
+    return 0
+
+
+def departed(root: Path) -> int:
+    """`--depart`: push what this machine wrote, and fail loudly where a log could not travel."""
+    machine = logs.machine()
+    if not forge(root):
+        print(f"travel: no `origin`, so nothing travels off {machine}. Add a remote and the logs and the "
+              f"in-flight branches follow it")
+        return 0
+    went, refused = depart(root)
+    for ref in went:
+        print(f"travel: pushed {ref}")
+    for why in refused:
+        print(f"travel: {why}", file=sys.stderr)
+    if refused:
+        print(f"travel: {len(refused)} of {len(went) + len(refused)} did not travel off {machine}; what is "
+              f"written here is not yet readable anywhere else", file=sys.stderr)
+        return 1
+    print(f"travel: {len(went)} ref(s) pushed from {machine}; what was written here is readable elsewhere")
+    return 0
+
+
 def main(argv: list[str]) -> int:
-    """What has travelled, as a person asks it. Reads only: pushing is the harbourmaster's pass."""
+    """What has travelled, and — asked for — what travels now.
+
+    `--arrive` and `--depart` are the two halves `/sail` runs: the loop's memory is in the deck logs, and a
+    session that cannot read the last machine's lines reads exactly like a session in a project where the
+    work was never done. Bare, this still only reads.
+    """
     root = claims.project_root(Path(__file__).resolve())
     machine = logs.machine()
+    if "--arrive" in argv:
+        return arrived(root)
+    if "--depart" in argv:
+        return departed(root)
     if not forge(root):
         print(f"travel: this harbour has no `origin`, so nothing travels off {machine}. Add a remote and "
               f"the logs and the in-flight branches follow it")

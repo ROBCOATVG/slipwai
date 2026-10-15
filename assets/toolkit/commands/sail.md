@@ -45,6 +45,16 @@ head and its distance from trunk in the same breath as the stage. Where the fetc
 or a remote this environment cannot reach — the line says *could not verify this checkout is current*, and
 that never reads as *current*.
 
+**And the commit is only half of what goes stale: run `{{make}} arrive` in the same breath as the fetch.**
+The plans are in git and arrive with the clone; the loop's own record — what was claimed, what mark was
+set, which question is open, which branch has work in flight — is in the deck logs, which git ignores and
+which travel as `refs/slipwai/logs/*`. A checkout that has not landed them has the plans and none of the
+history, which reads exactly like a project where nothing has been started: one run saw six slices as
+unstarted that another machine had prepared that morning, rebuilt their work on trunk, and abandoned eight
+worktrees nobody could reach. `{{make}} arrive` is one command and it is the difference between those two
+readings. Where it could not run, the evidence line says *could not land what other machines wrote* — and
+that never reads as *nothing has been started*.
+
 {{ladder}}
 
 Being invoked before any of this exists is a valid start, not an error: it means the entry stage is near the
@@ -298,7 +308,18 @@ the same turn: claim it, give it a worktree (`git worktree add ../<project>-<id>
 the Agent tool's `isolation: worktree` makes one), run `{{make}} preflight` in it — toolchains on PATH, build
 caches writable, a localhost socket a test may bind, dependencies installed, the code index present where one
 is elected — and fix what it reports here, once, before anything is dispatched: one run's delegates found
-each of those in series, a dispatch and a host repair apiece, and none of it was about the product. Then
+each of those in series, a dispatch and a host repair apiece, and none of it was about the product.
+Preflight also answers whether this checkout can delegate **at all**: the delegate types are derived from
+`agents/` and git ignores them, so a fresh clone has none and a session there is reading a method built on
+delegates with nothing to call. That answer is a reading, not a judgement — `scripts/agents/harness.py
+--can-delegate` is the whole of it.
+
+**Then `{{make}} dispatch`, before any delegate is called.** It writes one line per slice to
+`specs/<feature>/dispatch-ledger.jsonl` — the slot, the worktree and the delegate, or *this session could
+not delegate and here is the reason* — and it is committed with the work, because a run that fanned out
+and a run that took the ready set one slice at a time were otherwise indistinguishable afterwards except
+by reading a transcript by hand. `{{make}} verify` refuses a commit naming a slice no line accounts for,
+and so does the `pre-push` hook `{{make}} hooks` installs. Then
 delegate the band its state admits to one fresh
 `sail-slice-watch` delegate (`agents/sail-slice-watch.md`, the standing brief) with a manifest naming the
 **band** — `prepare`, `implement`, or `whole` — the worktree, the slice's block of the model, its
@@ -387,7 +408,18 @@ capability's, once, before its demo stop. Delete the
 `slice/<id>` branch once its Phase 4 clears: the claim is spent.
 
 **Where the harness cannot delegate**, run one slice at a time here — claim the earliest in split order,
-name the rest — and say so in the line that says which model ran (`harness cannot delegate`).
+name the rest — and say so in the line that says which model ran (`harness cannot delegate`). **That is a
+reading and never a judgement**: `{{make}} dispatch` has already asked
+(`scripts/agents/harness.py --can-delegate`), written the answer and its reason into the ledger, and
+marked the earliest *taken-here* and the rest *left-named*. Thirty of the registry's thirty-six harnesses
+cannot delegate at all, so this is the ordinary path rather than the rare one — which is exactly why it is
+recorded rather than asserted. A run that decided this for itself, wrote no line and pushed eighteen
+commits to trunk is what the ledger exists to make impossible to mistake for the other thing.
+
+**And at every boundary, `{{make}} depart`.** A slice marked done, a demo accepted, the turn ending: push
+this machine's deck log and in-flight branch so the next session — on another machine, in the cloud, under
+another harness — lands them with `{{make}} arrive` and reads the same loop. Work that never departed is
+not merely unclaimed but unreachable, and the machine that holds it may be one nobody opens again.
 
 ### Fairways
 

@@ -32,6 +32,7 @@ import json
 import os
 import shlex
 import shutil
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -207,3 +208,132 @@ def child_environment(harness: dict[str, Any] | None) -> dict[str, str]:
     if headless is not None and isinstance(headless.get("env"), dict):
         environment.update({str(key): str(value) for key, value in headless["env"].items()})
     return environment
+
+
+#: Where the project declares its delegate types, which every harness's own directory is projected from.
+TYPES = ROOT / "agents"
+
+
+def current_key() -> str:
+    """Which harness this session is running inside, from its own session variable, or `""`.
+
+    Asked of the environment rather than of `.specify/integration.json`, because what is *installed* and
+    what is *running right now* are different questions and only the second decides whether this session
+    can delegate. Two rows declare the variable; where none is set the caller falls back to what is
+    installed and says that it did, because a guess reported as a reading is the expensive kind.
+    """
+    for key, row in registry().items():
+        variable = (row.get("usage") or {}).get("env")
+        if variable and os.environ.get(str(variable)):
+            return key
+    return ""
+
+
+def declared_types() -> list[str]:
+    """The delegate types this project declares: one `agents/<name>.md` each, at the root and committed."""
+    return sorted(path.stem for path in TYPES.glob("*.md")) if TYPES.is_dir() else []
+
+
+def projected_types(harness: dict[str, Any]) -> tuple[str, list[str]]:
+    """Where this harness reads its delegate types, and which of them are actually in this checkout."""
+    row = harness.get("agentFile")
+    if not isinstance(row, dict) or not row.get("dir"):
+        return "", []
+    where = str(row["dir"])
+    extension = str(row.get("extension") or ".md")
+    place = ROOT / where
+    found = sorted(path.name[: -len(extension)] for path in place.glob(f"*{extension}")) if place.is_dir() else []
+    return where, found
+
+
+def delegation(key: str) -> dict[str, Any]:
+    """Whether a session in this harness may delegate here, and the sentence that says why not.
+
+    Three different noes, and a run told only *cannot delegate* would have to read source to tell which:
+    the harness has no sub-agents at all, the types are declared and this checkout has none of them
+    projected, or some are missing.
+
+    The middle one is what this exists for. A cloud checkout has `agents/` from git and nothing under
+    `.claude/agents/`, because the projections are derived and git ignores them — so a session there reads
+    a method built on delegates and has none to call. That was the sentence nothing was in a position to
+    write, and writing it is the whole of this.
+    """
+    harness = registry().get(key)
+    if harness is None:
+        return {"harness": key, "name": key, "able": False, "where": "", "declared": [], "projected": [],
+                "why": f"no harness row is recorded for {key or 'this session'}, so nothing says whether "
+                       f"it delegates"}
+    name = str(harness.get("name") or key)
+    declared = declared_types()
+    where, found = projected_types(harness)
+    answer = {"harness": key, "name": name, "where": where, "declared": declared, "projected": found}
+    if not where:
+        return {**answer, "able": False,
+                "why": f"{name} has no delegate types: the registry records no directory it reads them "
+                       f"from, so every slice a session here takes runs in that session"}
+    if not declared:
+        return {**answer, "able": False,
+                "why": f"this project declares no delegate types in agents/, so there is nothing for "
+                       f"{name} to delegate to"}
+    missing = [one for one in declared if one not in found]
+    if not found:
+        return {**answer, "able": False,
+                "why": f"{where}/ holds none of this project's {len(declared)} delegate types. They are "
+                       f"derived from agents/ and git ignores them, so a fresh clone — a cloud runner, a "
+                       f"new machine — has none. Run `make agents`, then start a new session: a harness "
+                       f"reads its delegate types once, at session start"}
+    if missing:
+        return {**answer, "able": False,
+                "why": f"{where}/ is missing {len(missing)} of {len(declared)} delegate types "
+                       f"({', '.join(missing[:3])}{'…' if len(missing) > 3 else ''}). Run `make agents`, "
+                       f"then start a new session"}
+    return {**answer, "able": True,
+            "why": f"{name} reads {len(found)} delegate type(s) from {where}/, so the ready set may fan out"}
+
+
+def can_delegate() -> dict[str, Any]:
+    """The answer for this session: its own harness where it says which, else what is installed here.
+
+    How it was decided travels with the answer. *This session's own variable* and *the first of three
+    installed* are different grades of evidence, and a ledger that recorded only the verdict would lose
+    which one it rests on.
+    """
+    key = current_key()
+    if key:
+        return {**delegation(key), "how": "this session's own harness variable"}
+    installed = [one for one in installed_keys() if one in registry()]
+    if len(installed) == 1:
+        return {**delegation(installed[0]), "how": "the one harness installed here; no session variable was set"}
+    for one in installed:
+        answer = delegation(one)
+        if answer["able"]:
+            return {**answer, "how": "an installed harness that can; no session variable said which is running"}
+    if installed:
+        return {**delegation(installed[0]),
+                "how": "the first installed harness; no session variable said which is running"}
+    return {"harness": "", "name": "", "able": False, "where": "", "declared": declared_types(),
+            "projected": [], "how": "nothing is installed here",
+            "why": "no harness is initialised in this checkout, so nothing projects delegate types and "
+                   "there is nothing to delegate to. Run `./init`"}
+
+
+def main(argv: list[str]) -> int:
+    """`--can-delegate`: whether this session may fan out, as a sentence or as a record.
+
+    Exit 1 where it may not, so a run that takes one slice at a time has a recorded reason rather than a
+    judgement. `commands/sail.md` carries the prose; this carries the answer it was asserting.
+    """
+    if "--can-delegate" not in argv:
+        print("harness: run `python3 scripts/agents/harness.py --can-delegate [--json]`", file=sys.stderr)
+        return 2
+    answer = can_delegate()
+    if "--json" in argv:
+        print(json.dumps({"v": 1, **answer}))
+    else:
+        print(f"harness: {'can delegate' if answer['able'] else 'cannot delegate'} — {answer['why']}")
+        print(f"  decided by {answer['how']}")
+    return 0 if answer["able"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

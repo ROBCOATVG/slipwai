@@ -55,6 +55,7 @@ def loaded(name: str) -> Any:
 
 
 claims = loaded("claims")
+logs = loaded("logs")
 travel = loaded("travel")
 
 
@@ -252,6 +253,74 @@ class WipTest(Fixture):
         landed, why = travel.land_wip(self.two, travel.wip_ref("ordering"), "slice/ORD-01")
         self.assertFalse(landed)
         self.assertIn("project.json", why)
+
+
+class DepartTest(Fixture):
+    """The pass `/sail` runs at every boundary, and the two sets inside it that are not the same set.
+
+    `travel.depart` is what a plain session calls and what the harbourmaster calls, which is the point of
+    it being here: a credentialled process and a person's `/sail` travelling by two different rules would
+    be two answers to what travels.
+    """
+
+    #: What `depart` calls itself in this process. The fixture's ONE and TWO name two *clones*; the
+    #: machine identity is whatever `logs.machine()` answers here, and `depart` pushes what that wrote.
+    HERE = ""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.HERE = logs.machine()
+
+    def push(self, where: Path, fairway: str, machine: str = "") -> tuple[list[str], list[str]]:
+        claims.take(where, fairway, machine or self.HERE)
+        return travel.depart(where)
+
+    def test_it_pushes_the_log_of_a_fairway_this_machine_holds(self) -> None:
+        self.deck(self.one, "ordering", line("claimed", "2026-10-12T09:00:00Z",
+                                             fairway="ordering", slice="ORD-01"))
+        went, refused = self.push(self.one, "ordering")
+        self.assertIn(travel.deck_ref("ordering"), went)
+        # The one refusal here is the in-flight branch: the log names a claimed slice and no `slice/ORD-01`
+        # was ever made, which is exactly what `push_wip` is meant to say rather than invent.
+        self.assertTrue(all("wip" in why or "slice/ORD-01" in why for why in refused), refused)
+        travel.fetch(self.two)
+        self.assertIn("ORD-01", travel.held(self.two, travel.deck_ref("ordering")) or "")
+
+    def test_a_released_fairway_still_owes_its_final_line(self) -> None:
+        """A captain writes `merged` or `parked` and *then* releases, so the last line is always written
+        one pass before the release. A set built from held claims alone drops it, and nobody sees it
+        again: the log is on one machine and the ref is a line behind for ever."""
+        path = self.deck(self.one, "ordering", line("claimed", "2026-10-12T09:00:00Z",
+                                                    fairway="ordering", slice="ORD-01"))
+        self.push(self.one, "ordering")
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(line("merged", "2026-10-12T10:00:00Z", fairway="ordering", slice="ORD-01",
+                              commit="abc1234"))
+        claims.release(self.one, "ordering", self.HERE)
+        went, _ = travel.depart(self.one)
+        self.assertIn(travel.deck_ref("ordering"), went)
+        travel.fetch(self.two)
+        self.assertIn("merged", travel.held(self.two, travel.deck_ref("ordering")) or "")
+
+    def test_it_never_pushes_the_log_of_a_fairway_another_machine_holds(self) -> None:
+        """One ref per writer is the invariant the whole design rests on."""
+        self.deck(self.one, "ordering", line("claimed", "2026-10-12T09:00:00Z", fairway="ordering"))
+        claims.take(self.one, "ordering", TWO)
+        went, _ = travel.depart(self.one)
+        self.assertNotIn(travel.deck_ref("ordering"), went)
+
+    def test_arrive_lands_what_the_other_machine_pushed(self) -> None:
+        path = self.deck(self.one, "ordering", line("mark-set", "2026-10-12T09:00:00Z",
+                                                    fairway="ordering", slice="ORD-01", mark="OrderPlaced"))
+        self.push(self.one, "ordering")
+        self.assertEqual(travel.arrive(self.two), [".slipwai/logs/model/ordering.jsonl"])
+        self.assertEqual((self.two / ".slipwai/logs/model/ordering.jsonl").read_text(encoding="utf-8"),
+                         path.read_text(encoding="utf-8"))
+
+    def test_a_project_with_no_forge_departs_nothing_and_is_not_an_error(self) -> None:
+        """One machine, no remote. Everything still works; nothing travels, and that is not a failure."""
+        git("remote", "remove", "origin", where=self.one)
+        self.assertEqual(travel.depart(self.one), ([], []))
 
 
 class LeaseTest(unittest.TestCase):

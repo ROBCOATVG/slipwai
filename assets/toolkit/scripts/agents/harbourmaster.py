@@ -136,8 +136,9 @@ GREEN = ("success", "skipped", "neutral")
 RED = ("failure", "timed_out", "startup_failure")
 #: Where a merge is rebased and gated. Under `.slipwai/` so it is ignored by git and swept with the rest.
 SCRATCH = ROOT / ".slipwai/merge"
-#: What the branch for a slice is called, which `check-slice-scope` holds every branch to as well.
-BRANCH = "slice/{slice}"
+#: What the branch for a slice is called, which `check-slice-scope` holds every branch to as well. Read
+#: from `travel`, which is where it has to be one name: two spellings travel as two pieces of work.
+BRANCH = travel.BRANCH
 #: Used where nothing says otherwise. `origin/HEAD` answers it on a repository with a remote.
 DEFAULT_TRUNK = "main"
 
@@ -809,31 +810,16 @@ def fill_free_berths() -> None:
 def ours() -> list[str]:
     """The fairways this machine holds the claim for, which are the only deck logs it may push.
 
-    One ref per writer, and a fairway's writer is whichever captain holds it: a machine pushing the log of
-    a fairway it does not hold would be a second writer on that ref, which is the one thing there may never
-    be. Asked in one fetch rather than one per fairway.
+    `travel` owns the rule, because the rule is about what may travel: one ref per writer, and a fairway's
+    writer is whichever captain holds it. This process and a plain `/sail` therefore ask the same question
+    and get the same answer, which is the whole of why it moved there.
     """
-    machine = logs.machine()
-    fairways = [path.stem for path in deck_logs()]
-    return [fairway for fairway, claim in claims.every(ROOT, fairways).items()
-            if claim is not None and claim.machine == machine]
+    return travel.ours(ROOT)
 
 
 def in_flight(path: Path) -> str:
-    """The slice this fairway is still working on — claimed, and not merged — or `""` where there is none.
-
-    What travels is work that is *in flight*: a merged slice's branch is in trunk already, and a WIP ref
-    that went on being pushed after the merge would be a ref nobody reads growing for ever.
-    """
-    try:
-        found = logs.fold(path.read_text(encoding="utf-8").splitlines())
-    except (OSError, UnicodeDecodeError, logs.Unreadable):
-        return ""
-    merged = {str(e.fields.get("slice", "")) for e in found if e.kind == "merged"}
-    for entry in reversed(found):
-        if entry.kind == "claimed" and str(entry.fields.get("slice", "")) not in merged:
-            return str(entry.fields.get("slice", ""))
-    return ""
+    """The slice this fairway is still working on, or `""`. `travel`'s, for the reason `ours` gives."""
+    return travel.in_flight(path)
 
 
 def arrive() -> None:
@@ -848,37 +834,14 @@ def arrive() -> None:
 def depart() -> None:
     """Put this machine's logs and in-flight branches where the other machines can read them.
 
-    This is section 14's fourth broken link, closed from the writing end: both processes fetched
-    `refs/slipwai/logs/*` and neither ever wrote them, so the fetch was ceremony and getting one machine's
-    log onto another was a person with `scp`. A captain holds no credential, so this is the process that
-    pushes — its own harbour log, the deck log of every fairway it last held, and a held fairway's in-flight
-    branch, which is what makes a lapsed claim recoverable rather than merely transferable.
+    `travel` does it, and does it the same way for a plain `/sail`: this process holds the credential but
+    not the rule, and a harbourmaster that pushed by one rule while a session pushed by another would be
+    two answers to what travels. Every refusal is said here — a push that is not an append is a log about
+    to lose lines, and hearing about it is the whole design.
     """
-    machine = logs.machine()
-    if not travel.forge(ROOT):
-        return
-    # A captain writes its final merged or parked line and then releases. The next pass still owes
-    # that last writer's suffix to the forge. A released claim retains its author, so this remains one
-    # publisher until the claim changes hands; caches on other machines cannot publish themselves.
-    claims.fetch(ROOT)
-    departing = [path for path in deck_logs()
-                 if (claim := claims.read(ROOT, path.stem)) is not None and claim.machine == machine]
-    for path, ref in [(written_to(), travel.harbour_ref(machine))] + [
-            (path, travel.deck_ref(path.stem)) for path in departing]:
-        if not path.is_file():
-            continue
-        went, why = travel.push_log(ROOT, path, ref, machine)
-        if not went:
-            print(f"harbourmaster: {why}", file=sys.stderr)
-    for path in deck_logs():
-        if path.stem not in ours():
-            continue
-        slice_id = in_flight(path)
-        if not slice_id:
-            continue
-        went, why = travel.push_wip(ROOT, BRANCH.format(slice=slice_id), travel.wip_ref(path.stem))
-        if not went:
-            print(f"harbourmaster: {why}", file=sys.stderr)
+    _, refused = travel.depart(ROOT)
+    for why in refused:
+        print(f"harbourmaster: {why}", file=sys.stderr)
 
 
 def clear_park(fairway: str, parked: str, what: str) -> tuple[bool, str]:

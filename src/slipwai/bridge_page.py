@@ -22,7 +22,7 @@ from pathlib import Path
 
 from .fleet import NOTHING, inbox_detail
 from .page_shell import STYLE, THEME, document, esc  # noqa: F401 — STYLE and THEME are read by name here
-from .telegraph import MEANS, POSITIONS
+from .telegraph import MEANS, POSITIONS, SETTINGS
 
 #: The method's word, and the word on the page. The page never shows the left-hand column.
 PLAIN = {
@@ -246,6 +246,36 @@ def dial(position: str, controls: bool) -> str:
     return f'<div class="dial">{"".join(buttons)}</div>'
 
 
+#: The three numbers somebody is actually choosing between when they ring: how much runs at once, and what
+#: a day may cost. Every other number moves with them, and Fine tune below is where they all are.
+HEADLINE = ("boilers", "fanout", "bunker_per_day")
+
+#: Why the dial is one control and not nine, said once. The second sentence is the one people get wrong:
+#: a slower run is also a stricter one, which is a judgement the telegraph's own table makes and not an
+#: arithmetic that could be guessed from the position's name.
+SPEED = ("The dial moves everything together: ringing a position sets every number under Fine tune as a "
+         "group. Slower is not only cheaper \u2014 a slowed run also stops a merge at a lower severity and "
+         "parks sooner on unread decisions, because a run somebody has slowed down is one where less gets "
+         "deferred. A captain reads a new position at its next boundary, never mid-stage, so ringing it "
+         "changes what happens next rather than what is happening now.")
+
+
+def positions(now: str) -> str:
+    """What each notch of the dial sets, read from the telegraph's own table.
+
+    From `SETTINGS` rather than written out here, because a page that described the dial in its own words
+    would be a second copy of the numbers and the first one to drift.
+    """
+    head = "".join(f"<th>{esc(PLAIN[name])}</th>" for name in HEADLINE)
+    rows = ""
+    for name in POSITIONS:
+        held = SETTINGS[name]
+        cells = "".join(f"<td>{esc(held.get(one, NOTHING))}</td>" for one in HEADLINE)
+        here = ' <span class="chip running">now</span>' if name == now else ""
+        rows += f"<tr><td><b>{esc(DIAL[name])}</b>{here}</td>{cells}</tr>"
+    return f"<table><thead><tr><th>Position</th>{head}</tr></thead><tbody>{rows}</tbody></table>"
+
+
 def tune(config: dict, controls: bool) -> str:
     """The fine-tune panel, in plain words. Writes `harbour.json` through the same code the verb uses."""
     rows = []
@@ -283,7 +313,8 @@ def live_cards(found: dict, config: dict, controls: bool = True) -> str:
 <div class="card" id="waiting"><h2>Waiting on you</h2>{inbox_rows(waiting, controls, found.get("streams"))}</div>
 {answer_boxes(berths) if controls else ""}
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {})}</div>
-<div class="card"><h2>Speed</h2>{dial(str(pressure["position"]), controls)}{banked}</div>
+<div class="card"><h2>Speed</h2>{dial(str(pressure["position"]), controls)}{banked}
+<p class="empty">{esc(SPEED)}</p>{positions(str(pressure["position"]))}</div>
 {tune(config, controls)}
 <div class="card"><h2>Last lines</h2><ul class="feed" data-tail>{feed or "<li>nothing yet</li>"}</ul></div>"""
 

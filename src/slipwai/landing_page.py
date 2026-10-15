@@ -8,6 +8,8 @@ what it is looking at and offers the two ways in rather than a table of streams 
 """
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from .assets import this_command
 from .page_shell import document, esc
 
@@ -58,24 +60,38 @@ def looking(root: str) -> str:
     that has a person sitting in front of it: nothing here is cached, every request re-folds the logs at
     `root`, so moving the board is a sentence rather than a restart. A generate moves it by itself, to the
     project it just made; this is the same move, made on purpose.
+
+    It moves *this window* and no other. Each window on this board has a seat of its own, so a second one
+    opened on another project is a second view rather than the same one re-pointed — which is what makes
+    two projects at once a thing a person can do.
     """
     return ('<div class="card" id="looking"><h2>Looking at</h2>'
             f'<div class="ask"><input id="attach" value="{esc(root)}">'
             '<button class="go" id="attach-go">Look here</button></div>'
-            '<p class="empty">A directory on this machine: a project, or a harbour of them. The board '
-            "re-reads it on every request, so looking somewhere else is a sentence, not a restart.</p></div>")
+            '<p class="empty">A directory on this machine: a project, or a harbour of them. This window '
+            "re-reads it on every request, so looking somewhere else is a sentence, not a restart — and it "
+            "moves this window only, so another one can be open on another project.</p></div>")
 
 
-def standing(name: str, now: str, project: bool) -> str:
-    """Where the project the board is looking at stands, in one line, and the way to the page about it."""
+def standing(root: str, name: str, now: str, project: bool) -> str:
+    """Where the project this window is looking at stands, in one line, and the way to the page about it.
+
+    The way there is a window of its own, and the link names the project rather than relying on this one's
+    seat: a run is what a person leaves open on another screen while they come back here to start the next
+    thing, and a voyage that was a tab would be a voyage closed by pressing Packages. `look` is read once,
+    by the seat the new window is given on arrival, and is gone from its address after that.
+    """
     if not project:
         return ('<div class="card"><h2>No project here</h2><p class="empty">This directory has no '
                 "project.json, so there is nothing to stand anywhere: look at a project, or start one below.</p></div>")
     return (f'<div class="card"><h2>{esc(name)}</h2><p class="empty">{esc(now)}</p>'
-            '<div class="ask"><a class="go" href="/voyage">Open the voyage</a></div></div>')
+            f'<div class="ask"><a class="go" href="/voyage?look={quote(root)}" target="_blank" '
+            'rel="noopener">Open the voyage \u2197</a></div>'
+            '<p class="empty">In a window of its own, so it can be left open while this one goes on to '
+            "the next thing.</p></div>")
 
 
 def landing(root: str, name: str, now: str, project: bool) -> str:
     """The Board: looking at, where that stands, what can be started."""
-    body = f"{looking(root)}{standing(name, now, project)}{starting_points()}"
+    body = f"{looking(root)}{standing(root, name, now, project)}{starting_points()}"
     return document("Board", "start here", body, SCRIPT, now="/")

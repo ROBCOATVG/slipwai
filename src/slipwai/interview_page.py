@@ -362,9 +362,12 @@ document.addEventListener('click', async event => {
   said.textContent = await answer.text();
   said.scrollTop = said.scrollHeight;
   if (!answer.ok) { said.className = 'said bad'; return; }
-  // Made. The board is this project's board from here, and the page a person is left looking at is the one
-  // that says what stage the thing they just made is on, with `./init` and the draft saying their lines on it.
-  location.href = '/voyage';
+  // Made. This window is the new project's window from here, and the voyage opens beside it rather than
+  // over it: a run is watched for an afternoon and this window is where the next project is started from.
+  // `look` and not this window's seat, so the two are genuinely two — a Look here typed in this one later
+  // moves this one, and the run goes on being watched where it was opened.
+  const receipt = await (await fetch('/init.json')).json();
+  window.open('/voyage?look=' + encodeURIComponent(receipt.root), '_blank', 'noopener');
 });
 """
 

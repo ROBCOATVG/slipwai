@@ -10,10 +10,17 @@ field somebody typed. Every state here is a file that exists, a marker that is g
 already knows: its own child (`./init`, `make draft`, `make launch`, which `init_run` says the step of) and
 the fleet's fold. Waiting on you is the fourth state, loud on purpose: it is the only one that asks for a
 person.
+
+**And every stage says what to expect while it runs**, which is the other half of the same question. A
+strip that says a stage is working answers "where are we" and leaves "is this normal" unanswered — and a
+stage that stops for a person *by design* is indistinguishable, from the outside, from one that has hung.
+`Stage.expect` is that sentence: roughly how long, and whether it will stop for you. It is written here
+beside the state rather than in the page, because the stage is what knows it.
 """
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,6 +42,18 @@ class Stage:
     evidence: str
     next: str
     detail: str = ""
+    #: What to expect while this stage runs: roughly how long, and whether it stops for a person. The
+    #: second half is the one that matters — a stage that waits for somebody by design looks exactly like
+    #: a stage that has hung, and the difference is a sentence nobody had written down.
+    expect: str = ""
+
+
+#: One state of one surface in `specs/<feature>/mockups/mock-states.md`, marked by the person who looked
+#: at it. The spelling is `scripts/check-surfaces.py`'s, which is the gate that holds this file in a
+#: generated project; this only reads it.
+VERDICT = re.compile(r"^-\s*(?P<state>.+?)\s*\u2014\s*(?P<verdict>approved|parked|n/a)\b", re.MULTILINE)
+#: What a feature with nothing to draw writes instead. A written answer, not an absence.
+NO_SURFACES = "surfaces: none"
 
 
 def profile_of(root: Path) -> str:
@@ -58,6 +77,34 @@ def harness_of(root: Path) -> str:
 def specifications(root: Path) -> list[Path]:
     specs = root / "specs"
     return sorted(specs.glob("*/spec.md")) if specs.is_dir() else []
+
+
+def storyboards(root: Path) -> list[Path]:
+    """Every feature that has run the mock-up stage, by the file the stage leaves behind."""
+    specs = root / "specs"
+    return sorted(specs.glob("*/mockups/mock-states.md")) if specs.is_dir() else []
+
+
+def surfaces(root: Path) -> tuple[int, int, int]:
+    """Across every feature that has run the stage: states seen, states approved, and states parked.
+
+    A feature that wrote `surfaces: none` has run the stage and has nothing to show anybody, which is an
+    answer: it adds no states, rather than reading as a feature nobody has looked at. A parked state is
+    the one thing here that waits on a person, and it is what the strip goes amber for.
+    """
+    seen = approved = parked = 0
+    for path in storyboards(root):
+        try:
+            said = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if NO_SURFACES in said:
+            continue
+        for found in VERDICT.finditer(said):
+            seen += 1
+            approved += found.group("verdict") == "approved"
+            parked += found.group("verdict") == "parked"
+    return seen, approved, parked
 
 
 def modelled(root: Path) -> bool:
@@ -107,31 +154,58 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     prd = root / "docs/prd.md"
     found.append(Stage("prd", "PRD", "done" if prd.is_file() else "skipped", "docs/prd.md",
                        "slipwai generate --prd <file>",
-                       f"{prd.stat().st_size:,} bytes" if prd.is_file() else "started without one"))
+                       f"{prd.stat().st_size:,} bytes" if prd.is_file() else "started without one",
+                       expect="Nothing runs here. This is what the generate was handed, or was not."))
 
     init = step_state(receipt, "init") or ("done" if harness else "todo")
     found.append(Stage("init", "Init", init, ".specify/integration.json", "./init --integration <agent>",
-                       f"Spec Kit, {harness}" if harness else "installs Spec Kit for the agent"))
+                       f"Spec Kit, {harness}" if harness else "installs Spec Kit for the agent",
+                       expect="A few minutes, over the network: Spec Kit installed, then the skills and "
+                              "commands projected into the agent. It does not stop for you."))
 
     drafting = step_state(receipt, "draft")
     ratified = template_gone(root)
     found.append(Stage("constitution", "Constitution", drafting or ("done" if ratified else "todo"),
                        ".specify/memory/constitution.md",
                        "make draft, or /speckit-constitution in the agent",
-                       "ratified" if ratified else "the template's markers still stand"))
+                       "ratified" if ratified else "the template's markers still stand",
+                       expect="Written in a headless session by `make draft` \u2014 minutes, not seconds. It "
+                              "does not stop for you; read it afterwards."))
     found.append(Stage("specification", "Specification", drafting or ("done" if specs else "todo"),
                        specs[0].relative_to(root).as_posix() if specs else "specs/<feature>/spec.md",
                        "make draft from docs/prd.md, or /speckit-specify in the agent",
-                       f"{len(specs)} feature(s)" if specs else "nothing to build from yet"))
+                       f"{len(specs)} feature(s)" if specs else "nothing to build from yet",
+                       expect="Written in the same draft as the constitution. It does not stop for you, but "
+                              "Continue the build does: that button is your word that this is good."))
+
+    # Straight after the specification and before the model, which is where `project/ladder.py` has the
+    # mock-up review: a surface nobody has seen becomes a read model, a route and a set of tests, and all
+    # three cost more to move than a drawing. The model is one of the three, which is what settles the
+    # order — the screens are what the modelling conversation is held over.
+    written = storyboards(root)
+    seen, approved, parked = surfaces(root)
+    found.append(Stage("storyboard", "Storyboard",
+                       "waiting" if written and parked else "done" if written else "todo",
+                       written[0].relative_to(root).as_posix() if written
+                       else "specs/<feature>/mockups/mock-states.md",
+                       "/mockups in the agent, then approve each state on the storyboard",
+                       (f"{approved} of {seen} states approved" + (f", {parked} parked" if parked else ""))
+                       if seen else "no surfaces on this feature" if written else "nobody has seen a surface yet",
+                       expect="The surfaces are researched, drawn and storyboarded, then shown to you one "
+                              "state at a time. **It stops for you at every surface** \u2014 that is the "
+                              "stage, not a fault. Minutes to draft; as long as you take to approve."))
 
     if event:
         has_model = modelled(root)
         found.append(Stage("model", "Event model", "done" if has_model else "todo", "docs/event-model/model.yaml",
                            "the event-modeling skill in the agent, then make check-model",
-                           "modelled" if has_model else "a modelling conversation, with a person"))
+                           "modelled" if has_model else "a modelling conversation, with a person",
+                           expect="A conversation, in the agent, with you in it. It stops for you by "
+                                  "definition \u2014 nothing here moves until somebody models."))
     else:
         found.append(Stage("model", "Event model", "skipped", "docs/event-model/model.yaml", "",
-                           "not on this profile"))
+                           "not on this profile",
+                           expect="Not on this profile. The chart is drawn from the specification instead."))
 
     launching = step_state(receipt, "launch")
     split = bool(counts)
@@ -139,7 +213,9 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                        drawn[0].relative_to(root).as_posix() if drawn else "specs/<feature>/chart.yaml",
                        "make launch (the board's Continue the build)",
                        f"{sum(counts.values())} slice(s) charted" if split else
-                       "charted, not split" if drawn else "fairways, marks and slices"))
+                       "charted, not split" if drawn else "fairways, marks and slices",
+                       expect="A headless session draws the chart and splits it into slices \u2014 minutes. "
+                              "It does not stop for you."))
 
     berths = fleet.get("berths") or []
     inbox = fleet.get("inbox") or []
@@ -154,13 +230,18 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                        "make cruise; make cruise-tell answers a park",
                        "the fleet is not running: cast off" if becalmed and not waiting else
                        f"{counts.get('done', 0)} of {sum(counts.values())} merged" if split
-                       else "the fleet, under /cruise"))
+                       else "the fleet, under /cruise",
+                       expect="The fleet: a captain per fairway, working its slices. Hours, and the Speed "
+                              "card below is what sets how many run at once. It stops for you when a "
+                              "captain parks, and the park appears under *Waiting on you*."))
 
     demos = fleet.get("demo_due") or []
     accepted = fleet.get("accepted") or []
     found.append(Stage("accepted", "Accepted", "working" if demos else "done" if all_done and accepted else "todo",
                        "accepted lines", "the demo, as the actor; /cruise-tell records the verdict",
-                       f"{len(accepted)} capability(ies) accepted" if accepted else "every capability demoed"))
+                       f"{len(accepted)} capability(ies) accepted" if accepted else "every capability demoed",
+                       expect="Each capability demoed to you as the actor. It stops for you at every demo, "
+                              "and the verdict is typed under *Waiting on you*."))
     return found
 
 

@@ -15,6 +15,7 @@ import threading
 import unittest
 import urllib.request
 from pathlib import Path
+from urllib.parse import quote
 
 import checkout_packages  # noqa: F401
 
@@ -86,13 +87,17 @@ class OneServerTest(Fixture):
         self.assertFalse(running("127.0.0.1", port))
 
     def test_opening_the_board_again_starts_no_second_one(self) -> None:
+        """One board, joined rather than rivalled — and the window it opens is on the directory this
+        invocation named, which is what `look` carries."""
         second = open_board(self.root, "127.0.0.1", self.port, open_page=self.opened.append)
         self.assertIsNone(second, "a second server was bound while one was already serving")
-        self.assertEqual(self.opened, [f"http://127.0.0.1:{self.port}/"])
+        self.assertEqual(self.opened,
+                         [f"http://127.0.0.1:{self.port}/?look={quote(str(self.root.resolve()))}"])
 
     def test_the_browser_is_still_pointed_at_the_tab_that_was_asked_for(self) -> None:
         open_board(self.root, "127.0.0.1", self.port, open_page=self.opened.append, at="/adopt")
-        self.assertEqual(self.opened, [f"http://127.0.0.1:{self.port}/adopt"])
+        self.assertEqual(self.opened,
+                         [f"http://127.0.0.1:{self.port}/adopt?look={quote(str(self.root.resolve()))}"])
 
 
 class TabBarTest(unittest.TestCase):

@@ -15,6 +15,11 @@ from .bridge_page import fitting_card, live_cards, live_sub
 from .page_shell import document, esc
 from .passage import Stage, current
 from .voyage import COLUMNS, viewer_config
+from .wheel import ASKS, STOPS, known
+
+# budget: 440 — the five bands of one window: where the project stands, what to expect of the stage it is
+# on, who answers at each stop of the run, the model, and the work. A module per band would be five copies
+# of the poll that repaints them all.
 
 TITLES = {"todo": "To do", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -26,7 +31,11 @@ MODEL_CONTROLS = (("left", "←", "Nudge left"), ("right", "→", "Nudge right")
 DOTS = {"done": "✓", "working": "●", "waiting": "!", "skipped": "·"}
 
 STYLE = """
-.passage{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));position:relative;padding-top:6px}
+.passage{display:grid;grid-template-columns:repeat(var(--stages,8),minmax(0,1fr));position:relative;padding-top:6px}
+/* Below a certain width a nine-across strip is nine words broken into letters. Two rows of dots is still
+   a strip; the rule behind them is not, so it goes. */
+@media (max-width:860px){.passage{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 0}
+  .passage::before{display:none}}
 .passage::before{content:"";position:absolute;left:6%;right:6%;top:20px;height:3px;background:var(--rule);border-radius:2px}
 .stage{display:grid;gap:6px;justify-items:center;text-align:center;padding:0 6px;position:relative;min-width:0}
 .stage .dot{width:30px;height:30px;border-radius:50%;border:3px solid var(--rule);background:var(--paper);display:grid;
@@ -43,6 +52,19 @@ STYLE = """
 .stage .ev{font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:var(--ink-3);word-break:break-all}
 .stage.skipped{opacity:.4}.stage.todo .dot{opacity:.75}
 .next{border-top:1px solid var(--rule-2);padding-top:12px;display:grid;gap:8px}
+.expect .now{border-left:3px solid var(--brass);padding-left:12px;margin:0 0 10px}
+.expect .now .who{display:block;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--brass);margin-bottom:3px}
+.expect .now p{margin:0;font-size:.9rem;color:var(--ink-2)}
+.expect ol{margin:8px 0 0;padding:0 0 0 18px;display:grid;gap:7px;font-size:.86rem;color:var(--ink-2)}
+.expect ol b.who{color:var(--ink);font-weight:600}
+.expect ol li.gone{opacity:.45}
+.wheel{display:grid;gap:10px}
+.wheel .stop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 14px;align-items:center}
+.wheel .stop small{grid-column:1 / -1;color:var(--ink-3);font-size:.76rem;margin-top:-4px}
+.wheel .dial{margin:0}
+.wheel .dial .now.asks{background:var(--brass);border-color:var(--brass)}
+@media (max-width:600px){.wheel .stop{grid-template-columns:1fr}}
 .columns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .col h3{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;
   padding-bottom:6px;border-bottom:2px solid var(--rule)}
@@ -97,6 +119,8 @@ SCRIPT = BOARD_SCRIPT + """
     if (launch) launch.hidden = !found.launchable;
     const cast = document.getElementById('cast-off');
     if (cast) cast.hidden = !found.castable;
+    const stop = document.getElementById('stop');
+    if (stop) { stop.hidden = !found.stoppable; stop.disabled = false; }
   };
   const poll = async () => {
     let found;
@@ -107,6 +131,13 @@ SCRIPT = BOARD_SCRIPT + """
   setTimeout(poll, 2500);
   document.addEventListener('click', event => {
     if (event.target.id === 'cast-off') { event.target.disabled = true; send('/cast-off', {}); }
+    // No confirm(): a dialog blocks every later event in this window, and stopping is asked rather than
+    // done — a captain finishes its stage, so there is nothing here to be sorry about afterwards.
+    if (event.target.id === 'stop') { event.target.disabled = true; send('/stop', {}); }
+    if (event.target.dataset && event.target.dataset.stop) {
+      event.target.disabled = true;
+      send('/wheel', {stop: event.target.dataset.stop, value: event.target.dataset.value});
+    }
   });
 })();
 """
@@ -171,15 +202,23 @@ MODEL_SCRIPT = """
 
 def stage_html(stage: Stage, index: int) -> str:
     """One stage of the strip. A stage waiting on a person is a link to the thing that is waiting: the
-    inbox for the fleet's stages, the receipt for the board's own child."""
+    inbox for the fleet's stages, the receipt for the board's own child.
+
+    A skipped stage shows no evidence, and that is the whole of what evidence is: the file that proves the
+    stage done. A stage this profile has not got is never going to be done, so the path under it was a file
+    the project will never have — `docs/event-model/model.yaml` under a faint Event model on the standard
+    profile, which reads as a thing to go and make rather than a column that is there to be ignored.
+    """
     dot = DOTS.get(stage.state, "") or str(index + 1)
     title = esc(stage.title)
     if stage.state == "waiting":
-        where = "#waiting" if stage.key in ("slices", "accepted") else "#fitting"
+        where = ("#waiting" if stage.key in ("slices", "accepted")
+                 else "#mockups" if stage.key == "storyboard" else "#fitting")
         title = f'<a href="{where}">{title}</a>'
+    shown = "" if stage.state == "skipped" else stage.evidence
     return (f'<div class="stage {esc(stage.state)}" data-stage="{esc(stage.key)}" role="listitem">'
             f'<div class="dot">{esc(dot)}</div><b>{title}</b><small>{esc(stage.detail)}</small>'
-            f'<span class="ev">{esc(stage.evidence)}</span></div>')
+            f'<span class="ev">{esc(shown)}</span></div>')
 
 
 def stage_payload(found: list[Stage]) -> list[dict[str, str]]:
@@ -188,8 +227,78 @@ def stage_payload(found: list[Stage]) -> list[dict[str, str]]:
              "dot": DOTS.get(one.state, "") or str(index + 1)} for index, one in enumerate(found)]
 
 
-def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False) -> str:
+def said(line: str) -> str:
+    """One expectation, with the half that matters in bold.
+
+    `**…**` and not markup, because the sentence is written in `passage.py`, where a stage knows what to
+    expect of itself and nothing knows it is going to be read in a browser.
+    """
+    parts = esc(line).split("**")
+    return "".join(f"<b>{part}</b>" if index % 2 else part for index, part in enumerate(parts))
+
+
+def expect_card(found: list[Stage]) -> str:
+    """What the stage this project is on will do, and whether it will stop for a person.
+
+    The strip above says where the work is. This says whether what it is doing is normal, which is a
+    different question and the one somebody asks at the twenty-minute mark: a stage that waits for a person
+    by design looks exactly like a stage that has hung, and until this nothing on the page said which it
+    was. The stage somebody is on is given its own space; the rest are the whole voyage in order, so the
+    answer to "and then what" is on the same page as the answer to "what now".
+
+    A skipped stage is left out. The strip keeps its faint column, which says something worth saying — that
+    this project is on the standard profile — but there is nothing to expect of a stage that is not going to
+    happen, and a line here about one would be the page mentioning a non-event twice.
+    """
+    now = current(found)
+    rows = "".join(
+        f'<li class="{"" if one.state in ("working", "waiting", "todo") else "gone"}">'
+        f"<b class=\"who\">{esc(one.title)}</b> \u2014 {said(one.expect)}</li>"
+        for one in found if one.expect and one.state != "skipped")
+    here = (f'<div class="now"><span class="who">Now \u00b7 {esc(now.title)}</span>'
+            f"<p>{said(now.expect)}</p></div>" if now and now.expect else "")
+    return ('<div class="card expect"><h2>What to expect</h2>'
+            f"{here}<ol>{rows}</ol></div>")
+
+
+#: Said once, over the stops. The second half is the half that makes the card usable: a captain reads this
+#: at a boundary, so a change here is about the next stop rather than the one being worked now.
+WHEEL = ("Under /cruise the skipper answers and the hand demos. Each stop below can be set to park instead, "
+         "which is what /sail does with it: the fleet stops and the question arrives under Waiting on you. "
+         "A captain reads this at its next boundary, so a change applies to the next stop rather than to "
+         "one already under way.")
+
+
+def wheel_card(held: dict[str, str]) -> str:
+    """Who answers at each stop of this run, and the way to change one.
+
+    Nothing where the project has no `.specify/cruise.json` \u2014 a harbour, an adopted repository that has
+    not been given one, a project generated before this was configurable. A card offering to set a file
+    that is not there would be a control that refuses every press.
+    """
+    if not held:
+        return ""
+    rows = ""
+    for name, title, says in STOPS:
+        now = held.get(name, "")
+        dial = "".join(
+            (f'<span class="now{" asks" if value == ASKS else ""}">{esc(says.get(value, value))}</span>'
+             if value == now else
+             f'<button data-stop="{esc(name)}" data-value="{esc(value)}">{esc(says.get(value, value))}</button>')
+            for value in known(name))
+        rows += (f'<div class="stop"><b>{esc(title)}</b><div class="dial">{dial}</div>'
+                 f"<small>{esc(name)} in .specify/cruise.json</small></div>")
+    asked = [title for name, title, _ in STOPS if held.get(name) == ASKS]
+    says = (f"This run stops for you at: {', '.join(one.lower() for one in asked)}." if asked
+            else "Nothing here stops for you: this run answers every one of them itself.")
+    return (f'<div class="card wheel" id="wheel"><h2>Who answers</h2>'
+            f'<p class="empty">{esc(WHEEL)}</p>{rows}<p class="empty">{esc(says)}</p></div>')
+
+
+def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
+                 stoppable: bool = False) -> str:
     strip = "".join(stage_html(one, index) for index, one in enumerate(found))
+    wide = f"--stages:{max(1, len(found))}"
     said = now_said(found)
     # On the event profile the step after the specification is a conversation, not a button: the chart is
     # drawn from the model, so there is nothing to launch until somebody has modelled.
@@ -199,8 +308,11 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
               if model_next else
               f'<button class="go" id="launch"{"" if launchable else " hidden"}>Continue the build</button>'
               f'<button class="go" id="cast-off"{"" if castable else " hidden"}>Cast off the fleet</button>')
+    # Beside them whatever else the strip says, because the one thing a person wants at the moment they
+    # want it is the way to make it stop. Not styled as the primary action: stopping is the exception.
+    button += (f'<button class="install" id="stop"{"" if stoppable else " hidden"}>Stop the fleet</button>')
     return (f'<div class="card" id="passage"><h2>{esc(name)}</h2>'
-            f'<div class="passage" role="list">{strip}</div>'
+            f'<div class="passage" role="list" style="{esc(wide)}">{strip}</div>'
             f'<div class="next"><p id="now">{esc(said)}</p><div class="ask">{button}</div></div></div>')
 
 
@@ -246,13 +358,13 @@ def mockups_card(found: list[dict[str, str]]) -> str:
             f'{sum(1 for one in found if one["feature"] == row["feature"]) - 1} mock-ups, from the storyboard'
             "</span></a>"
             for row in boards)
-        return f'<div class="card"><h2>Storyboard</h2><div class="mocks">{tiles}</div></div>'
+        return f'<div class="card" id="mockups"><h2>Storyboard</h2><div class="mocks">{tiles}</div></div>'
     tiles = "".join(
         f'<a class="mock" href="{esc(row["href"])}" target="_blank" rel="noopener">'
         f'<iframe src="{esc(row["href"])}" loading="lazy" tabindex="-1" title="{esc(row["title"])}"></iframe>'
         f'<b>{esc(row["title"])}</b><span class="fw">{esc(row["feature"])} · {esc(row["name"])}</span></a>'
         for row in found)
-    return f'<div class="card"><h2>Mockups · {len(found)}</h2><div class="mocks">{tiles}</div></div>'
+    return f'<div class="card" id="mockups"><h2>Mockups · {len(found)}</h2><div class="mocks">{tiles}</div></div>'
 
 
 def work_card(rows: list[dict[str, str]], fault: str) -> str:
@@ -271,19 +383,23 @@ def work_card(rows: list[dict[str, str]], fault: str) -> str:
 
 def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str, xml: str, note: str,
          viewer_fault: str, made: dict | None, launchable: bool, fleet: dict | None = None,
-         config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False) -> str:
+         config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
+         stoppable: bool = False, orders: dict[str, str] | None = None) -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
-    model_next = now is not None and now.key == "model" and now.state == "todo"
+    model_next = any(one.key == "model" and one.state == "todo" for one in found)
     landed = fitting_card(made) if made else ""
     # The live cards, with their controls, under the model: how the work is going belongs on the page that
     # says what the work is.
     live = live_cards(fleet, config or {}, True) if fleet else ""
-    body = (f"<style>{STYLE}</style>{passage_card(root.resolve().name, found, launchable, model_next, castable)}"
-            f"{landed}"
+    body = (f"<style>{STYLE}</style>"
+            f"{passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable)}"
+            f"{expect_card(found)}{wheel_card(orders or {})}{landed}"
             f"{model_card(xml, note, viewer_fault)}{mockups_card(mocks or [])}{work_card(rows, fault)}{live}")
     script = SCRIPT + ("" if viewer_fault or not xml else "\n")
-    page_html = document("Voyage", sub, body, script, now="/voyage")
+    # Named for the project rather than "Voyage": this is a window of its own now, and what a person
+    # picks it out by — in the dock, in a window switcher, across two runs open at once — is its title.
+    page_html = document(f"Voyage \u00b7 {root.resolve().name}", sub, body, script, now="/voyage")
     if xml and not viewer_fault:
         page_html = page_html.replace(
             "</body>", f'<script src="/drawio-viewer.js"></script><script>{MODEL_SCRIPT}</script></body>', 1)
@@ -298,6 +414,7 @@ def now_said(found: list[Stage]) -> str:
             else "Every stage is done: the voyage is complete.")
 
 
-def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False) -> str:
+def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False,
+            stoppable: bool = False) -> str:
     return json.dumps({"stages": stage_payload(found), "launchable": launchable, "moving": moving,
-                       "castable": castable, "now": now_said(found)})
+                       "castable": castable, "stoppable": stoppable, "now": now_said(found)})

@@ -21,11 +21,12 @@ import unittest
 import urllib.request
 from pathlib import Path
 from unittest import mock
+from urllib.parse import quote
 
 import checkout_packages  # noqa: F401
 
 from slipwai.cli import VERBS, main
-from slipwai.cli_start import open_board, start_main, will_open
+from slipwai.cli_start import looking_at, open_board, running, start_main, will_open
 from slipwai.project.harbour import harbour_config
 
 
@@ -72,13 +73,55 @@ class OpenedBoardTest(unittest.TestCase):
         self.assertEqual(len(self.opened), 1)
         self.assertTrue(self.opened[0].startswith("http://127.0.0.1:"))
 
-    def test_a_harbour_opens_on_the_landing_and_the_fleet_is_a_tab_away(self) -> None:
-        """The Board is where a person points the board and starts something; the live cards are on the
-        Voyage tab, beside the stages and the model, which the bar links to."""
+    def test_the_window_is_opened_on_the_directory_that_was_named(self) -> None:
+        """`--root` was dropped at a board that was already serving, because the board was one view of one
+        directory and only the process that bound the port could set it. A window carries its own now, so
+        the flag means what it says — and `slipwai --root ~/a` then `slipwai --root ~/b` is two projects
+        at once from a terminal."""
+        self.board(self.harbour())
+        self.assertIn(f"look={quote(str(self.root.resolve()))}", self.opened[0])
+
+    def test_a_board_already_serving_is_joined_and_still_opened_where_it_was_told(self) -> None:
+        """One board, so a second verb opens a window on the first rather than binding a rival port —
+        and the window it opens is on the directory this invocation named, not on the first one's."""
+        server = open_board(self.harbour(), "127.0.0.1", 0, open_page=self.opened.append)
+        assert server is not None
+        port = server.server_address[1]
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        self.assertTrue(running("127.0.0.1", port), "the fixture's board answers /board.json")
+
+        elsewhere = Path(tempfile.mkdtemp())
+        joined = open_board(elsewhere, "127.0.0.1", port, open_page=self.opened.append)
+        self.assertIsNone(joined, "joined the board that was already serving, rather than binding a second")
+        self.assertIn(f"look={quote(str(elsewhere.resolve()))}", self.opened[-1])
+
+        with urllib.request.urlopen(self.opened[-1], timeout=5) as answer:
+            self.assertIn(str(elsewhere.resolve()), answer.read().decode("utf-8"))
+
+    def test_a_page_that_already_carries_a_question_keeps_it(self) -> None:
+        """`bridge` deep-links into the board, so `at` is not always a bare path."""
+        self.assertEqual(looking_at(Path("/tmp"), "/voyage?since=3"),
+                         f"/voyage?since=3&look={quote(str(Path('/tmp').resolve()))}")
+
+    def test_a_harbour_opens_on_the_landing_and_a_run_is_a_window_away(self) -> None:
+        """The Board is where a person points the board and starts something; the live cards are in the
+        Voyage window, beside the stages and the model, which the project's card links to.
+
+        A link to a run only where there is a run to link to: this harbour holds no project, so the card
+        says so rather than offering a voyage of nothing. The bar does not carry one at all — a run is
+        watched for an afternoon, and a tab is a thing you lose by pressing Packages."""
         said = self.board(self.harbour())
         self.assertIn("Looking at", said)
-        self.assertIn('href="/voyage"', said)
         self.assertNotIn("<h2>Streams</h2>", said)
+        self.assertNotIn(">Voyage</a>", said)
+        self.assertIn("No project here", said)
+
+        (self.root / "project.json").write_text("{}", encoding="utf-8")
+        said = self.board(self.root)
+        self.assertIn("/voyage?look=", said)
+        self.assertIn('target="_blank"', said)
 
     def test_a_directory_that_is_no_project_opens_the_board_anyway(self) -> None:
         """Empty, with what it *can* do from there. The alternative is a sentence telling somebody to go

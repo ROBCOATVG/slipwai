@@ -23,6 +23,7 @@ import webbrowser
 from collections.abc import Callable
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import quote
 
 from .assets import this_command
 from .bridge import serve
@@ -82,6 +83,18 @@ def running(host: str = HOST, port: int = PORT, timeout: float = 0.5) -> bool:
         return False
 
 
+def looking_at(root: Path, at: str = "/") -> str:
+    """That page, naming the directory the window opening it should look at.
+
+    The board was one view of one directory until windows had seats of their own, so `--root` could only
+    mean anything to the process that bound the port: typed at a board that was already serving it was
+    dropped, and the tab that opened showed whatever that board was looking at. A window carries its own
+    directory now, so the flag can mean what it says — `look` is read once, by the seat the new window is
+    given on arrival, and is gone from the address after that.
+    """
+    return f"{at}{'&' if '?' in at else '?'}look={quote(str(root.expanduser().resolve()))}"
+
+
 def open_board(root: Path, host: str = HOST, port: int = PORT,
                open_page: Callable[[str], object] = webbrowser.open,
                at: str = "/") -> ThreadingHTTPServer | None:
@@ -92,15 +105,20 @@ def open_board(root: Path, host: str = HOST, port: int = PORT,
     port. Two servers each sure they are the board is the failure this prevents, and it is not theoretical:
     a person who ran `slipwai bridge` in one terminal and `slipwai` in another had two.
 
+    Either way the window is opened on `root`, which is the whole of what makes two projects at once a
+    thing somebody can do from a terminal: `slipwai --root ~/a` and then `slipwai --root ~/b` is two
+    windows on two projects, rather than a second window on the first one's directory.
+
     Bound first and opened second, always: a browser sent to a port nothing is listening on is a blank tab
     and a person who concludes the command is broken. The server is returned rather than run, so a test can
     drive it and close it.
     """
+    where = looking_at(root, at)
     if running(host, port):
-        open_page(f"http://{host}:{port}{at}")
+        open_page(f"http://{host}:{port}{where}")
         return None
     server = serve(root, host, port)
-    open_page(f"http://{host}:{server.server_address[1]}{at}")
+    open_page(f"http://{host}:{server.server_address[1]}{where}")
     return server
 
 

@@ -74,8 +74,12 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # Pointing a checkout at the hooks it carries. Version 2's: version 1 had no hook that held a push,
        # and `core.hooksPath` is per-checkout, so nothing about it could have been brought back.
        "githooks",
-       # The board's Voyage tab: where a project stands, read off the tree, and the landing beside it.
+       # The board's Voyage window: where a project stands, read off the tree, and the landing beside it.
        "passage", "voyage", "voyage_page", "landing_page",
+       # A window each. The experiment's board served one directory, so it had no table of who is looking
+       # at what to bring back. `wheel` is the other half of a board that is answered from: who answers at
+       # each stop of a run, which the experiment left to a file somebody edited.
+       "seats", "wheel",
        # Phase 13: a named set of answers, the verb over it, and the interview that offers one first —
        # which the experiment had no equivalent of, because it asked every question every time.
        "quickstart", "cli_quickstart", "cli_generate", "quickstart_install", "cli_migrate",

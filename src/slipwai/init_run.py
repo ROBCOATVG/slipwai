@@ -165,10 +165,27 @@ CRUISING = ("Casting off — `make cruise`: the harbourmaster and a captain per 
             "telegraph allows. What was lit, and what waits for a berth, is said below.")
 
 
+#: What the Stop button runs: `fleet.py stop`, through the Makefile. Asking, not killing — a captain stops
+#: at its next boundary, which is what leaves the worktree, the branch and the deck log in a state the next
+#: cast-off can pick up. A fleet killed mid-stage is a slice half typed with nothing saying so.
+STOP = ["make", "cruise-stop"]
+STOPPING = ("Stopping the fleet — `make cruise-stop`: the harbourmaster and every captain are asked to stop. "
+            "A captain finishes the stage it is on and stops at the boundary, so this is not instant and "
+            "nothing is lost. Cast off again when you want it going.")
+
+
 def cruised(code: int) -> str:
     if code == 0:
         return "`make cruise` is done. The streams below are the fleet; `make cruise-watch` is the seat beside it."
     return f"`make cruise` exited {code}; nothing was cast off. Its last lines say why — the telegraph, usually."
+
+
+def stopped(code: int) -> str:
+    if code == 0:
+        return ("`make cruise-stop` is done: every captain has been asked to stop and will, at its next "
+                "boundary. The Streams card says when each has.")
+    return (f"`make cruise-stop` exited {code}. Its last lines say why; `make cruise-status` in the project "
+            f"says what is still running.")
 
 
 def drafted(code: int) -> str:
@@ -337,6 +354,13 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
 def cast_off(where: Path, said: list[str] | None = None) -> Fitting:
     """The fleet started, in the background: what the board's Cast off button starts."""
     fitting = Fitting(where, [Step(CRUISE, CRUISING, cruised, "cruise")], said)
+    fitting.thread.start()
+    return fitting
+
+
+def stop(where: Path, said: list[str] | None = None) -> Fitting:
+    """The fleet asked to stop, in the background: what the board's Stop button starts."""
+    fitting = Fitting(where, [Step(STOP, STOPPING, stopped, "stop")], said)
     fitting.thread.start()
     return fitting
 

@@ -181,9 +181,14 @@ MOCKUPS = "mockups"
 MOCK_ROUTE = "/mockups/"
 
 
-def mockups(root: Path) -> list[dict[str, str]]:
+def mockups(root: Path, seat: str = "") -> list[dict[str, str]]:
     """Every wireframe the mock-up stage has written, by feature: its name, its title and where the board
-    serves it. The title is the page's own `<title>`, with the stage's `Mock:` prefix taken off."""
+    serves it. The title is the page's own `<title>`, with the stage's `Mock:` prefix taken off.
+
+    `seat` goes on each address because these are shown in frames, and a frame is the one thing on the
+    voyage the browser fetches without a script's help: unseated it would be served out of whatever
+    directory the board was started in, which is another window's project inside this one's page.
+    """
     specs = root / "specs"
     found: list[dict[str, str]] = []
     for page in sorted(specs.glob(f"*/{MOCKUPS}/*.html")) if specs.is_dir() else []:
@@ -195,7 +200,7 @@ def mockups(root: Path) -> list[dict[str, str]]:
         match = re.search(r"<title>(.*?)</title>", head, re.IGNORECASE | re.DOTALL)
         title = re.sub(r"^\s*mock(-?up)?:\s*", "", match.group(1).strip(), flags=re.IGNORECASE) if match else page.stem
         found.append({"feature": feature, "name": page.name, "title": title or page.stem,
-                      "href": f"{MOCK_ROUTE}{feature}/{page.name}"})
+                      "href": f"{MOCK_ROUTE}{feature}/{page.name}" + (f"?seat={seat}" if seat else "")})
     return found
 
 

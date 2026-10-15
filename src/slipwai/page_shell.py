@@ -24,6 +24,10 @@ import json
 from .assets import this_command
 from .brand import MARK, favicon, inline, svg
 
+# budget: 400 — one stylesheet, one document, the bar, and the four routes an installable page is made of,
+# with the seat every page carries. Splitting the stylesheet out would put the look in one file and the
+# document that is the only reason it exists in another, which is the seam 14.4 removed.
+
 
 def esc(value: object) -> str:
     return html.escape(str(value), quote=True)
@@ -155,25 +159,38 @@ font-weight:600}
 """
 
 
-#: The board's three places, in the order a person meets them: where the work is, and the two things that
-#: start some. Written once and read by the bar, by the server's routes and by the suite, so a fourth tab is
-#: a row here rather than an edit in three files.
+#: The board's four places, in the order a person meets them: where they are looking, and the three things
+#: they do from there. Written once and read by the bar, by the server's routes and by the suite, so a fifth
+#: tab is a row here rather than an edit in three files.
+#:
+#: **The Voyage is not one of them, and that is the point.** These four are the harbour: pointing somewhere,
+#: starting a project, adopting a repository, installing a language. A voyage is one product's run, which is
+#: a thing a person leaves open on another screen for an afternoon — and a tab is a thing they lose the
+#: moment they press Packages. So a voyage opens in a window of its own, and the board keeps its own.
 TABS: tuple[tuple[str, str], ...] = (
     ("/", "Board"),
-    ("/voyage", "Voyage"),
     ("/generate", "Start a project"),
     ("/adopt", "Adopt a repository"),
     ("/packages", "Packages"),
 )
 
+#: What a page that is not one of the board's tabs carries instead: the one way back, in its own window.
+#: Its own window for the same reason it is not a tab — a run window that navigated itself to the board
+#: would be a run nobody is watching, and the board it went to is probably already open behind it.
+AWAY = ('<nav class="tabs" aria-label="Board">'
+        '<a href="/" target="_blank" rel="noopener">The board \u2197</a></nav>')
+
 
 def tabs(now: str) -> str:
-    """The bar, with the tab being shown marked as the one it is.
+    """The bar, with the tab being shown marked as the one it is — or, on a page that is not one of the
+    board's, the one link back to it.
 
     Links, not a script: a tab is a place, and a place has a URL somebody can keep. That is also what makes
     `slipwai fleet` and `slipwai bridge` deep links into one page rather than three commands that each open
     something of their own.
     """
+    if not any(where == now for where, _ in TABS):
+        return AWAY
     here = ' aria-current="page"'
     rows = "".join(f'<a href="{esc(where)}"{here if where == now else ""}>{esc(name)}</a>'
                    for where, name in TABS)
@@ -234,6 +251,38 @@ window.addEventListener('appinstalled', () => {{
   const button = document.getElementById('install');
   if (button) button.hidden = true;
 }});
+"""
+
+
+#: The window's own seat, carried in its own URL and put on everything this page asks for or links to.
+#:
+#: One board serves many windows, and each is a person sitting in front of a directory of their own. The
+#: seat is what says which: the server mints one when a window loads a page carrying none, and from then on
+#: that window's address bar carries it — a reload keeps it, and a link opened in a new window has none and
+#: is given a seat of its own, which is the whole of what this is for.
+#:
+#: Here rather than in each page's own script, for the reason the stylesheet is here: a page that forgot
+#: would quietly answer about somebody else's directory, which is the one wrong answer this board can give.
+#: Rewritten on the click rather than once at load, because a card the board repaints can carry a link that
+#: was not in the document when this ran.
+SEATED = """
+const SEAT = new URLSearchParams(location.search).get('seat') || '';
+function seated(where){
+  if (!SEAT || typeof where !== 'string') return where;
+  const url = new URL(where, location.href);
+  if (url.origin !== location.origin || url.searchParams.has('seat')) return where;
+  if (url.searchParams.has('look')) return where;   // names the project it opens: it wants a seat of its own
+  url.searchParams.set('seat', SEAT);
+  return url.pathname + url.search + url.hash;
+}
+if (SEAT) {
+  const plain = window.fetch.bind(window);
+  window.fetch = (where, how) => plain(seated(where), how);
+  document.addEventListener('click', event => {
+    const link = event.target.closest ? event.target.closest('a[href]') : null;
+    if (link) link.setAttribute('href', seated(link.getAttribute('href')));
+  }, true);
+}
 """
 
 
@@ -313,6 +362,6 @@ def document(title: str, sub: str, body: str, script: str = "", now: str = "") -
     title="slipwai — the little tug that moves the big one")}</div></div>
 {tabs(now) if now else ""}
 {body}
-</div>{"<script>" + script + REGISTER + "</script>" if served else
+</div>{"<script>" + SEATED + script + REGISTER + "</script>" if served else
        "<script>" + script + "</script>" if script else ""}</body></html>
 """

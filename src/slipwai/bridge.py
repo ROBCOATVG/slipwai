@@ -15,15 +15,31 @@ and then permanently. `--host` is there for somebody who means it.
 **Writes go through the same code the verbs do.** Ringing the telegraph calls `cli_telegraph.ring`, and the
 fine-tune panel calls `set_one`. A second path that wrote `harbour.json` its own way would be a second thing
 to keep in step, and the first one to drift.
+
+**One board, many seats.** The board is a server and a window is a person sitting at it, and the two were
+the same thing for as long as this server kept one `root` on its handler class: a second window opened on
+the same board looked wherever the first one had pointed it, and a generate in one moved the other. A seat
+is a window — an id minted when a page is loaded without one and carried in that window's URL from then on
+— and what belongs to a window belongs to its seat.
+
+**What a seat owns, and what it does not.** A seat owns where it is looking, and nothing else, because
+nothing else about the board is a property of the person looking. The streams, the logs, the telegraph and
+the fine tune are folds of files on disk, and two windows open on the same project see the same run because
+they both read it. `Outfit` — the `./init` this board started in a project, and whether its build has been
+continued from here — is keyed by the project for the same reason: there is one such child per tree, not
+one per person watching it, and a second window that could start a second would be two harbourmasters,
+which `fleet.py` refuses and `launched` exists to prevent.
 """
 from __future__ import annotations
 
 import json
 import mimetypes
+import secrets
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 from .adopt_page import looked
 from .adopt_page import page as adoption
@@ -39,6 +55,7 @@ from .init_run import Fitting
 from .init_run import cast_off as start_fleet
 from .init_run import launch as continue_build
 from .init_run import start as fit_out
+from .init_run import stop as stop_fleet
 from .interview_page import NO_INIT, destination, form, repository_for
 from .interview_page import page as interview
 from .interview_page import run as generate
@@ -56,6 +73,7 @@ from .page_shell import (
     not_running,
 )
 from .passage import EVENT_PROFILE, modelled, profile_of, stages
+from .seats import Bench, Outfit, Seat, parameter
 from .telegraph import Refused
 from .voyage import (
     MOCK_ROUTE,
@@ -71,9 +89,11 @@ from .voyage import (
 from .voyage_page import now_said
 from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
+from .wheel import orders, set_stop
 
-# budget: 420 — one server and every route the board answers, each a few lines handing off to a page module;
-# a second server would be two things each sure they are the board, which `open_board` exists to prevent.
+# budget: 530 — one server and every route the board answers, each a few lines handing off to a page module,
+# plus the three reads a request makes through its seat (`seats.py` holds the table itself). A second server
+# would be two things each sure they are the board, which `open_board` exists to prevent.
 LIMIT = 4 * 1024 * 1024  # bytes a request body may be: a sentence, or a PRD riding in a generate's answers
 #: The four an installable page is made of, each with what it is served as. A browser decides whether to
 #: offer the install on the content type as much as the content, so none of these is served as HTML.
@@ -83,6 +103,12 @@ APP_FILES: dict[str, tuple[Callable[[], str], str]] = {
     ICON: (icon, "image/svg+xml; charset=utf-8"),
     NOT_RUNNING: (not_running, "text/html; charset=utf-8"),
 }
+
+
+#: The pages a person sits on, each of which is given a seat on arrival. The data routes are not here on
+#: purpose: a poll carries the seat of the page that made it, and a `curl /board.json` carries none and
+#: should read the board rather than be redirected into a seat it would then have to keep.
+SEATED: tuple[str, ...] = ("", "/index.html", "/voyage", "/generate", "/adopt", "/packages")
 
 
 def feature_of(root: Path, fairway: str) -> str:
@@ -115,16 +141,76 @@ class Bridge(BaseHTTPRequestHandler):
     """The board's pages, the board as JSON, and the things a person can do from them to a run or to this
     machine's packages."""
 
-    root: Path = Path(".")
     controls: bool = True
     server_version = "slipwai-bridge"
-    #: What the last generate from this board made, and what `./init` has said in it since. On the class
-    #: beside `root` because it is the same kind of fact — this server's one state — and because the two
-    #: move together: the board lands in the project it just made, and this is the receipt it lands with.
-    fitting: Fitting | None = None
-    #: Whether the build has been continued from this board since it last landed. The button is shown once:
-    #: a fleet cast off twice is two harbourmasters, which `fleet.py` refuses, but the refusal reads as a fault.
-    launched: bool = False
+    #: This board's windows, and what is under way in each project they have been pointed at. Replaced per
+    #: server by `serve`, so two boards in one process are two sets of windows.
+    bench: Bench = Bench(Path("."))
+
+    def named_seat(self) -> str:
+        """Which window this request came from, off `?seat=<id>`.
+
+        Empty where it carries none, and that is a seat too — the one a poller, a `curl` and the suite sit
+        in. A request with no id is not a fault to refuse: it is somebody reading the board the way the
+        board was always read before windows had names, and it reads the directory the board was started in.
+        """
+        return parameter(self.path.partition("?")[2], "seat")
+
+    def seat(self) -> Seat:
+        """This request's window. `seats.Bench.seat` says what an id this board has not seen means."""
+        return self.bench.seat(self.named_seat())
+
+    def minted(self, where: str, query: str) -> str:
+        """The address a window with no seat is sent to: one of its own, at the directory it was opened on.
+
+        `?look=<directory>` is how one window opens another on a project that is not the one it is looking
+        at — the voyage link does it, because a run belongs in a window of its own and that window has to
+        arrive already pointed at the right tree. It is read exactly once, here, by a seat that does not
+        exist yet, and is gone from the address after this redirect; moving a seat that *does* exist is
+        `/attach`, which is a POST, and stays one.
+
+        A `look` at something that is not a directory is not refused. A refusal here would be a blank
+        window with a sentence in it, where falling back to where the board was started is a window on the
+        harbour with its "Looking at" box right there — which is the answer a person can act on.
+        """
+        named = secrets.token_urlsafe(8)
+        looked = unquote(parameter(query, "look"))
+        at = Path(looked).expanduser().resolve() if looked.strip() else self.bench.start
+        self.bench.sit(named, at if at.is_dir() else self.bench.start)
+        kept = "&".join(pair for pair in query.split("&") if pair and not pair.startswith("look="))
+        return f"{where or '/'}?seat={named}{'&' + kept if kept else ''}"
+
+    @property
+    def root(self) -> Path:
+        """Which directory this request's window is a view of. Read fresh per request and never cached,
+        which is what lets a seat be moved with a sentence rather than a restart."""
+        return self.seat().root
+
+    def look(self, where: Path) -> None:
+        """Point this request's window at a directory, and no other window with it."""
+        self.seat().root = where
+
+    def outfit(self, starting: bool = False) -> Outfit:
+        """What is under way in the project this window is looking at."""
+        return self.bench.outfit(self.root, starting)
+
+    @property
+    def fitting(self) -> Fitting | None:
+        """The child this board last started in this project, and everything it has said."""
+        return self.outfit().fitting
+
+    @fitting.setter
+    def fitting(self, one: Fitting | None) -> None:
+        self.outfit(starting=True).fitting = one
+
+    @property
+    def launched(self) -> bool:
+        """Whether this project's build has been continued from this board."""
+        return self.outfit().launched
+
+    @launched.setter
+    def launched(self, one: bool) -> None:
+        self.outfit(starting=True).launched = one
 
     def log_message(self, format: str, *args: Any) -> None:
         """Quiet. The run's log is the log; a request line per reload is noise over the top of it."""
@@ -136,6 +222,19 @@ class Bridge(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
+
+    def sent_to(self, where: str) -> None:
+        """A redirect, which is how a window comes by its seat.
+
+        The address bar is the only place a seat can live that a window keeps and a second window does not
+        inherit: a cookie is one per browser rather than one per window, and anything a script stashed
+        would be gone by the time the next page was asked for. So the first load of a page is answered with
+        the same page at an address that names a seat, and from there the window carries it.
+        """
+        self.send_response(303)
+        self.send_header("Location", where)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802 — http.server's own spelling
         """A page, or the one line saying why there is none.
@@ -153,6 +252,11 @@ class Bridge(BaseHTTPRequestHandler):
     def answer(self) -> None:
         where, _, query = self.path.partition("?")
         where = where.rstrip("/")
+        # Before any of the routes, because every one of them below reads `self.root`, and which directory
+        # that is, is a question only a seated window has an answer to.
+        if where in SEATED and self.controls and not self.named_seat():
+            self.sent_to(self.minted(where, query))
+            return
         if where == "/init.json" and self.controls:
             self.send(200, json.dumps(self.receipt(since(query))), "application/json; charset=utf-8")
             return
@@ -217,11 +321,12 @@ class Bridge(BaseHTTPRequestHandler):
     def land(self, answers: dict[str, str], out: str) -> str:
         """Move the board into the project that was just made, and start the step that finishes it.
 
-        The board is a view of one directory, and the moment a generate succeeds the directory worth looking
+        A window is a view of one directory, and the moment a generate succeeds the directory worth looking
         at is the new one: everything the page can do next — its streams, its telegraph, its fine tune — is
-        about that project rather than about wherever the board happened to be started. `root` is a class
-        attribute of this server's own handler and every request reads it fresh, nothing being cached
-        anywhere, so landing is one assignment and the next page served is the new project's.
+        about that project rather than about wherever the board happened to be started. Every request reads
+        its seat's root fresh, nothing being cached anywhere, so landing is one assignment and the next page
+        served to *this* window is the new project's. Another window is somebody else at another desk and
+        does not move: a generate in one tab that re-pointed every open tab was the thing seats are for.
 
         `./init` is then started in it as a child that outlives this request, because it installs Spec Kit
         over the network and a POST held open for minutes is a page a person reloads and a page that loses
@@ -229,10 +334,10 @@ class Bridge(BaseHTTPRequestHandler):
         """
         where = destination(answers, self.root)
         named = answers.get("init") or NO_INIT
-        type(self).root = where
-        type(self).launched = False
-        type(self).fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
-                                     repository_for(answers), prd=bool(str(answers.get("prd") or "").strip()))
+        self.look(where)
+        self.launched = False
+        self.fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
+                               repository_for(answers), prd=bool(str(answers.get("prd") or "").strip()))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
 
     def launchable(self) -> bool:
@@ -248,9 +353,11 @@ class Bridge(BaseHTTPRequestHandler):
     def receipt(self, since: int = 0) -> dict:
         """What the board's child has said after the `since`th line, and whether the build can be continued."""
         if not self.fitting:
-            return {"lines": [], "at": 0, "done": True, "step": "", "launchable": self.launchable()}
+            return {"lines": [], "at": 0, "done": True, "step": "", "root": str(self.root),
+                    "launchable": self.launchable()}
         said = self.fitting.said(since)
         said["launchable"] = self.launchable()
+        said["root"] = str(self.root)
         return said
 
     def voyage_parts(self) -> tuple[list, list[dict[str, str]], str, dict, dict]:
@@ -259,6 +366,12 @@ class Bridge(BaseHTTPRequestHandler):
         fleet = {**board(self.root, held), "running": fleet_running(self.root)}
         found = stages(self.root, self.receipt() if self.fitting else None, fleet, counts(rows))
         return found, rows, fault, fleet, held
+
+    def stoppable(self, fleet: dict) -> bool:
+        """Whether there is a fleet here to stop: something of it alive, and no child of this board already
+        on its way to stopping it. A second Stop while the first is still asking would be two asks and one
+        answer, and the button would read as having done nothing."""
+        return bool(fleet.get("running")) and (not self.fitting or self.fitting.said()["done"])
 
     def castable(self, rows: list[dict[str, str]], fleet: dict) -> bool:
         """Whether the fleet can be cast off from here: a split to work, nothing of it running, and no child
@@ -269,13 +382,17 @@ class Bridge(BaseHTTPRequestHandler):
     def voyage(self) -> str:
         found, rows, fault, fleet, held = self.voyage_parts()
         xml, note = model_xml(self.root, states_of(rows))
+        # The frames are the one thing on this page the browser fetches without a script's help, so the
+        # seat goes on their addresses here: a frame that asked unseated would be shown another window's
+        # project inside this one's page.
         return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
-                      mockups(self.root), self.castable(rows, fleet))
+                      mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
+                      orders(self.root))
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
         return voyage_payload(found, self.launchable(), any(one.state == "working" for one in found),
-                              self.castable(rows, fleet))
+                              self.castable(rows, fleet), self.stoppable(fleet))
 
     def attach(self, named: str) -> str:
         """Point this board at another directory, or say why it cannot be.
@@ -288,7 +405,7 @@ class Bridge(BaseHTTPRequestHandler):
         where = Path(named).expanduser().resolve()
         if not where.is_dir():
             raise ValueError(f"{where} is not a directory on this machine")
-        type(self).root = where
+        self.look(where)
         return f"looking at {where}"
 
     def made(self) -> dict | None:
@@ -310,12 +427,14 @@ class Bridge(BaseHTTPRequestHandler):
             return
         try:
             held = self.body()
-            if self.path.rstrip("/") == "/generate/ask":
+            # The path without its query, because the seat rides there: `/tell?seat=hVn0` is the tell route.
+            where = self.path.partition("?")[0].rstrip("/")
+            if where == "/generate/ask":
                 # The questions again, for the answers given so far: one of them decides what the next one
                 # offers, and which that is, is the catalogue's business and not the browser's.
                 self.send(200, form({str(a): str(b) for a, b in held.items()}, self.root))
                 return
-            if self.path.rstrip("/") == "/generate/run":
+            if where == "/generate/run":
                 answers = {str(a): str(b) for a, b in held.items()}
                 worked, out = generate(answers, self.root)
                 if worked:
@@ -324,44 +443,59 @@ class Bridge(BaseHTTPRequestHandler):
                 return
             # Looking is a read and answers 200 whatever it found, refusal included: what it found is the
             # page's content, and a repository that cannot be adopted is a finding rather than a fault.
-            if self.path.rstrip("/") == "/adopt/look":
+            if where == "/adopt/look":
                 self.send(200, looked({str(a): str(b) for a, b in held.items()}, self.root))
                 return
-            if self.path.rstrip("/") == "/adopt/run":
+            if where == "/adopt/run":
                 worked, out = adopt({str(a): str(b) for a, b in held.items()}, self.root)
                 self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
                 return
             # Installing is the one control here that reaches a network, and it is still a call rather than
             # a child: `put` is the function each install verb calls, so the page and the verb stage, verify
             # and admit a package the one way. What it said is what the terminal would have printed.
-            if self.path.rstrip("/") == "/packages/install":
+            if where == "/packages/install":
                 said = "\n".join(put(str(held.get("kind", "")), str(held.get("name", "")),
                                       bool(held.get("accept"))))
             # Where this board is looking, moved on purpose rather than by stopping it and starting it
             # again with `--root`. The same assignment `land` makes, and the only other thing that makes it.
-            elif self.path.rstrip("/") == "/attach":
+            elif where == "/attach":
                 said = self.attach(str(held.get("root", "")))
             # The one button a person presses between a drafted specification and a running fleet. The
             # receipt is carried into the new run, so the card keeps saying what was made and drafted.
-            elif self.path.rstrip("/") == "/cast-off":
+            elif where == "/cast-off":
                 _, rows, _, fleet, _ = self.voyage_parts()
                 if not self.castable(rows, fleet):
                     raise ValueError("nothing to cast off: no split to work, or the fleet is already running")
-                type(self).fitting = start_fleet(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                self.fitting = start_fleet(self.root, self.fitting.said()["lines"] if self.fitting else None)
                 said = "casting off"
-            elif self.path.rstrip("/") == "/launch":
+            # The pair of Cast off, and the one control here that ends something. It asks rather than kills:
+            # `make cruise-stop` is `fleet.py stop`, which every captain reads at its next boundary, and a
+            # captain killed mid-stage leaves a worktree half written with nothing saying so.
+            # Who answers at one stop of the run, written by the project's own `scripts/agents/cruise.py`
+            # — the script `/cruise-settings` runs, which validates the value and which `make check-agents`
+            # holds. A second writer here would be the first one to drift from the project's own checker.
+            elif where == "/wheel":
+                said = set_stop(self.root, str(held.get("stop", "")), str(held.get("value", "")))
+            elif where == "/stop":
+                _, _, _, fleet, _ = self.voyage_parts()
+                if not self.stoppable(fleet):
+                    raise ValueError("nothing to stop: no captain of this fleet is running, or this board is "
+                                     "already asking it to")
+                self.fitting = stop_fleet(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                said = "asking the fleet to stop"
+            elif where == "/launch":
                 if not self.launchable():
                     raise ValueError("nothing to continue from here: a specification under specs/, written by "
                                      "`make draft` or with the agent, is what the build continues from")
-                type(self).launched = True
-                type(self).fitting = continue_build(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                self.launched = True
+                self.fitting = continue_build(self.root, self.fitting.said()["lines"] if self.fitting else None)
                 said = "continuing the build"
-            elif self.path.rstrip("/") == "/tell":
+            elif where == "/tell":
                 said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")))
-            elif self.path.rstrip("/") == "/ring":
+            elif where == "/ring":
                 ring(self.root, str(held.get("position", "")))
                 said = f"rung to {held.get('position')}"
-            elif self.path.rstrip("/") == "/set":
+            elif where == "/set":
                 pairs = held.get("pairs")
                 if not isinstance(pairs, list):
                     raise ValueError("`pairs` is a list of `<name>=<value>`")
@@ -379,15 +513,17 @@ class Bridge(BaseHTTPRequestHandler):
 def since(query: str) -> int:
     """How many lines the asker already has, off `?since=<n>`. Anything else is none of them, because a tail
     that answered a malformed poll with a refusal would be a board that stops updating and says nothing."""
-    for pair in query.split("&"):
-        name, _, value = pair.partition("=")
-        if name == "since" and value.isdigit():
-            return int(value)
-    return 0
+    value = parameter(query, "since")
+    return int(value) if value.isdigit() else 0
 
 
 def serve(root: Path, host: str = "127.0.0.1", port: int = 8099,
           controls: bool = True) -> ThreadingHTTPServer:
-    """A bound server, not yet serving. Returned rather than run so a test can drive it and close it."""
-    handler = type("BoundBridge", (Bridge,), {"root": root, "controls": controls})
+    """A bound server, not yet serving. Returned rather than run so a test can drive it and close it.
+
+    Its own `Bench` rather than the class's, because a mutable default on a base class is one object
+    however many subclasses inherit it: two boards in one process — which is what the suite is — would
+    otherwise be one board's windows seen through two ports.
+    """
+    handler = type("BoundBridge", (Bridge,), {"controls": controls, "bench": Bench(root)})
     return ThreadingHTTPServer((host, port), handler)

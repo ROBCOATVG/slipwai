@@ -7,6 +7,7 @@ stream's own log, which is the file the captain reads at its next boundary.
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import threading
 import time
@@ -14,6 +15,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from urllib.parse import quote
 
 import checkout_packages  # noqa: F401
 
@@ -22,12 +24,14 @@ from slipwai.bridge import serve, tell
 from slipwai.bridge_page import PLAIN, page, read_only
 from slipwai.cli_fleet import config
 from slipwai.fleet import board
+from slipwai.project.cruise import cruise_config
 from slipwai.project.harbour import START, harbour_config
 from slipwai.telegraph import MEANS
 
-# budget: 480 — one server and every route it answers, driven against the same bound fixture: the fleet
-# pages, the controls, and the landing a generate leaves behind. A suite per route would be a fixture
-# per suite, which is the duplication this one exists to avoid.
+# budget: 660 — one server and every route it answers, driven against the same bound fixture: the fleet
+# pages, the controls, the seats its windows sit in, the run window with its stop and its wheel, and the
+# landing a generate leaves behind. A suite per route would be a fixture per suite, which is the
+# duplication this one exists to avoid; what each route *does* is held in that route's own suite.
 
 
 class Fixture(unittest.TestCase):
@@ -106,20 +110,41 @@ class PageTest(Fixture):
 
 
 class ServerTest(Fixture):
+    """One board, driven from one window.
+
+    Every request the suite makes carries a seat, because every request a browser makes carries one: a page
+    loaded without a seat is answered with a redirect to the same page at a seat of its own, and a suite
+    that read the unseated board would be testing the one path no person takes. The id is made up rather
+    than fetched — a seat this board has not seen is a new window, which is what makes a reload after a
+    restart work — and `seat=` on a call is how a test opens a second window.
+    """
+
     def setUp(self) -> None:
         super().setUp()
         self.server = serve(self.root, "127.0.0.1", 0)
         self.port = self.server.server_address[1]
+        self.seat = "window-one"
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.addCleanup(self.server.shutdown)
         self.addCleanup(self.server.server_close)
 
-    def get(self, path: str) -> tuple[int, str]:
-        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=5) as answer:
+    def at(self, path: str, seat: str | None = None) -> str:
+        """That path on this board, carrying a window's seat — `seat=""` for a request that carries none."""
+        seat = self.seat if seat is None else seat
+        where, _, query = path.partition("?")
+        asked = "&".join(bit for bit in (f"seat={seat}" if seat else "", query) if bit)
+        return f"http://127.0.0.1:{self.port}{where}" + (f"?{asked}" if asked else "")
+
+    def seats(self) -> dict:
+        """The windows this board is holding, by the id each carries."""
+        return self.server.RequestHandlerClass.bench.seats  # type: ignore[attr-defined]
+
+    def get(self, path: str, seat: str | None = None) -> tuple[int, str]:
+        with urllib.request.urlopen(self.at(path, seat), timeout=5) as answer:
             return answer.status, answer.read().decode("utf-8")
 
-    def post(self, path: str, body: dict) -> tuple[int, str]:
-        request = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}",
+    def post(self, path: str, body: dict, seat: str | None = None) -> tuple[int, str]:
+        request = urllib.request.Request(self.at(path, seat),
                                          data=json.dumps(body).encode("utf-8"),
                                          headers={"Content-Type": "application/json"}, method="POST")
         try:
@@ -256,6 +281,169 @@ class AttachTest(ServerTest):
         self.assertNotIn('id="attach"', read_only(board(self.root, config(self.root)), config(self.root)))
 
 
+class SeatTest(ServerTest):
+    """A window each. One board served one directory for as long as it kept `root` on its handler class:
+    a second window opened on the same board looked wherever the first had pointed it, and a generate in
+    one moved the other. A seat is a window, and where it is looking is the one thing it owns."""
+
+    def test_a_page_asked_for_without_a_seat_is_answered_with_one(self) -> None:
+        """Minted by the server and carried in the address bar, which is the only place a window keeps
+        something that a second window does not inherit."""
+        asked = urllib.request.urlopen(self.at("/", seat=""), timeout=5)
+        with asked:
+            self.assertEqual(asked.status, 200)
+        self.assertIn("seat=", asked.url, "the window was sent to an address of its own")
+        self.assertNotEqual(asked.url.partition("seat=")[2], "")
+
+    def test_two_windows_look_where_each_was_pointed_and_not_where_the_other_was(self) -> None:
+        """The fault this is all for: a second window that showed the first one's project."""
+        elsewhere = Path(tempfile.mkdtemp())
+        self.assertEqual(self.post("/attach", {"root": str(elsewhere)}, seat="window-two")[0], 200)
+        self.assertIn(str(elsewhere.resolve()), self.get("/", seat="window-two")[1])
+        self.assertIn(str(self.root.resolve()), self.get("/")[1], "the first window did not move")
+
+    def test_a_seat_this_board_has_never_seen_is_a_new_window_rather_than_a_refusal(self) -> None:
+        """A board restarted under an open window answers its reload, because a refusal is the one thing
+        a person sitting in front of a page cannot act on."""
+        code, said = self.get("/", seat="never-issued")
+        self.assertEqual(code, 200)
+        self.assertIn(str(self.root.resolve()), said, "a new window starts where the board was started")
+
+    def test_a_window_can_be_opened_straight_onto_a_named_project(self) -> None:
+        """How a voyage gets a window of its own: the link names the tree, the seat arrives pointed at it,
+        and the name is gone from the address afterwards."""
+        elsewhere = Path(tempfile.mkdtemp())
+        asked = urllib.request.urlopen(self.at(f"/?look={elsewhere}", seat=""), timeout=5)
+        with asked:
+            said = asked.read().decode("utf-8")
+        self.assertIn(str(elsewhere.resolve()), said)
+        self.assertIn("seat=", asked.url)
+        self.assertNotIn("look=", asked.url, "read once, by a seat that did not exist yet")
+
+    def test_a_look_at_something_that_is_not_a_directory_opens_the_harbour_instead(self) -> None:
+        """A blank window with a sentence in it is not an answer anybody can act on; a board with its
+        Looking at box in it is."""
+        with urllib.request.urlopen(self.at("/?look=/nowhere/at/all", seat=""), timeout=5) as asked:
+            self.assertIn(str(self.root.resolve()), asked.read().decode("utf-8"))
+
+    def test_a_request_carrying_no_seat_still_reads_the_board_it_was_started_on(self) -> None:
+        """`curl /board.json` and every poller written before windows had names. A data route is not
+        redirected into a seat it would then have to keep."""
+        code, said = self.get("/board.json", seat="")
+        self.assertEqual(code, 200)
+        self.assertIn("berths", json.loads(said), "the board the server was started on, not a redirect")
+
+    def test_the_board_lets_go_of_its_oldest_windows_rather_than_holding_every_one_forever(self) -> None:
+        """A login service keeps this running for a month. Letting one go costs nothing a person sees:
+        the window is given a new seat at the directory the board was started in."""
+        from slipwai.seats import SEATS
+        for number in range(SEATS + 5):
+            self.get("/board.json", seat=f"window-{number}")
+        self.assertLessEqual(len(self.seats()), SEATS)
+        self.assertEqual(self.get("/", seat="window-0")[0], 200)
+
+    def test_looking_at_a_project_is_not_a_reason_to_remember_it(self) -> None:
+        """A board a login service has kept running is pointed at a lot of trees. Only the ones something
+        was started in are held, or a record of nothing accumulates per window per harbour."""
+        outfits = self.server.RequestHandlerClass.bench.outfits  # type: ignore[attr-defined]
+        for number in range(5):
+            where = Path(tempfile.mkdtemp())
+            self.post("/attach", {"root": str(where)}, seat=f"window-{number}")
+            self.get("/voyage", seat=f"window-{number}")
+        self.assertEqual(outfits, {}, "nothing has been started in any of them")
+
+
+class StopTest(ServerTest):
+    """The pair of Cast off. A run a person cannot end from the page they are watching it on is a run that
+    sends them back to a terminal to find the right one, which is the friction this board exists to remove."""
+
+    def test_there_is_nothing_to_stop_where_no_captain_is_running(self) -> None:
+        code, said = self.post("/stop", {})
+        self.assertEqual(code, 400)
+        self.assertIn("nothing to stop", said)
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["stoppable"])
+        self.assertIn('id="stop"', self.get("/voyage")[1], "on the card, hidden, so the poll can show it")
+
+    def test_a_running_fleet_can_be_asked_to_stop_from_the_page(self) -> None:
+        """Asked, not killed: `make cruise-stop` is `fleet.py stop`, and a captain finishes the stage it is
+        on. A captain killed mid-stage leaves a worktree half written with nothing saying so."""
+        running = self.root / ".slipwai/running"
+        running.mkdir(parents=True)
+        (running / "ORD.pid").write_text(str(os.getpid()), encoding="utf-8")
+        (self.root / "Makefile").write_text("cruise-stop:\n\t@echo 'every captain asked'\n", encoding="utf-8")
+        self.assertTrue(json.loads(self.get("/voyage.json")[1])["stoppable"])
+        self.assertEqual(self.post("/stop", {}), (200, "asking the fleet to stop"))
+        for _ in range(100):
+            receipt = json.loads(self.get("/init.json")[1])
+            if receipt["done"]:
+                break
+            time.sleep(0.1)
+        self.assertIn("every captain asked", receipt["lines"])
+        self.assertIn("asked to stop", "\n".join(receipt["lines"]))
+
+    def test_a_second_stop_while_the_first_is_still_asking_is_refused(self) -> None:
+        """Two asks and one answer would read as a button that did nothing."""
+        running = self.root / ".slipwai/running"
+        running.mkdir(parents=True)
+        (running / "ORD.pid").write_text(str(os.getpid()), encoding="utf-8")
+        (self.root / "Makefile").write_text("cruise-stop:\n\t@sleep 2\n", encoding="utf-8")
+        self.assertEqual(self.post("/stop", {})[0], 200)
+        self.assertEqual(self.post("/stop", {})[0], 400)
+
+
+class WheelRouteTest(ServerTest):
+    """The board's half of who answers: the stops are shown on the run's own window, and a press runs the
+    project's own writer. `test_wheel` holds the reading and the writing; this holds the route."""
+
+    def test_a_stop_is_answered_from_the_page_through_the_project_s_own_script(self) -> None:
+        (self.root / ".specify").mkdir()
+        (self.root / ".specify/cruise.json").write_text(cruise_config(), encoding="utf-8")
+        (self.root / "scripts/agents").mkdir(parents=True)
+        (self.root / "scripts/agents/cruise.py").write_text(
+            'import pathlib, sys\npathlib.Path("asked.txt").write_text(" ".join(sys.argv[1:]))\n',
+            encoding="utf-8")
+        said = self.get("/voyage")[1]
+        self.assertIn('data-stop="unblock"', said)
+        self.assertIn("Nothing here stops for you", said)
+        self.assertEqual(self.post("/wheel", {"stop": "unblock", "value": "park"}),
+                         (200, "unblock = park"))
+        self.assertEqual((self.root / "asked.txt").read_text(encoding="utf-8"), "--set unblock=park")
+
+    def test_a_stop_this_board_does_not_draw_is_refused(self) -> None:
+        code, said = self.post("/wheel", {"stop": "model", "value": "gpt-9"})
+        self.assertEqual(code, 400)
+        self.assertIn("not a stop this board sets", said)
+
+    def test_a_harbour_with_no_cruise_answers_carries_no_card(self) -> None:
+        self.assertNotIn('id="wheel"', self.get("/voyage")[1])
+
+
+class RunWindowTest(ServerTest):
+    """A run is a window, not a tab. The board is where a person starts, adopts and installs; a voyage is
+    the one product they are watching, and a tab is a thing they lose by pressing Packages."""
+
+    def test_the_board_s_bar_does_not_carry_the_voyage(self) -> None:
+        said = self.get("/")[1]
+        for name in ("Start a project", "Adopt a repository", "Packages"):
+            self.assertIn(f">{name}</a>", said)
+        self.assertNotIn(">Voyage</a>", said)
+
+    def test_the_way_to_a_run_names_its_project_and_opens_its_own_window(self) -> None:
+        said = self.get("/")[1]
+        self.assertNotIn("/voyage?look=", said, "this directory is a harbour and has no project in it")
+        (self.root / "project.json").write_text("{}", encoding="utf-8")
+        said = self.get("/")[1]
+        self.assertIn(f'href="/voyage?look={quote(str(self.root.resolve()))}"', said)
+        self.assertIn('target="_blank"', said)
+
+    def test_a_run_window_carries_one_way_back_and_it_opens_its_own_window_too(self) -> None:
+        """A run window that navigated itself to the board would be a run nobody is watching."""
+        said = self.get("/voyage")[1]
+        self.assertIn('<a href="/" target="_blank"', said)
+        for name in ("Start a project", "Adopt a repository", "Packages"):
+            self.assertNotIn(f">{name}</a>", said, "a run window is not the board with a tab selected")
+
+
 class LandingTest(ServerTest):
     """What a generate from the board leaves behind: a board looking at the project it just made.
 
@@ -281,10 +469,10 @@ class LandingTest(ServerTest):
         return self.post("/generate/run", {"name": "demo", "init": "none"})
 
     def test_the_board_is_the_new_project_s_board_from_here(self) -> None:
-        """The whole of attaching: root is read fresh on every request, so landing is one assignment."""
+        """The whole of attaching: a seat's root is read fresh on every request, so landing is one
+        assignment — and it is made to the window that generated and to no other."""
         self.assertEqual(self.land()[0], 200)
-        bound = self.server.RequestHandlerClass
-        self.assertEqual(bound.root, self.made)  # type: ignore[attr-defined]  # the subclass `serve` makes
+        self.assertEqual(self.seats()[self.seat].root, self.made)
 
     def test_it_lands_with_the_receipt_for_what_it_made(self) -> None:
         self.land()
@@ -309,13 +497,12 @@ class LandingTest(ServerTest):
         self.assertIn("./init was not run", self.land()[1])
 
     def test_the_voyage_says_what_stage_the_project_is_on_and_moves_with_the_child(self) -> None:
-        """The tab a generate lands on: every stage with its state, polled while the child runs."""
+        """The window a generate opens: every stage with its state, polled while the child runs."""
         self.land()
         code, said = self.get("/voyage")
         self.assertEqual(code, 200)
         self.assertIn('data-stage="prd"', said)
         self.assertIn("Made demo", said, "the receipt is on this page too")
-        self.assertIn('href="/voyage"', self.get("/")[1])
         found = json.loads(self.get("/voyage.json")[1])
         self.assertEqual([one["key"] for one in found["stages"]][:2], ["prd", "init"])
         self.assertFalse(found["launchable"])
@@ -323,6 +510,26 @@ class LandingTest(ServerTest):
         (self.made / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
         self.assertTrue(json.loads(self.get("/voyage.json")[1])["launchable"])
         self.assertIn('id="launch"', self.get("/voyage")[1])
+
+    def test_the_model_is_still_said_to_be_next_with_the_storyboard_in_front_of_it(self) -> None:
+        """On the event profile the chart is drawn from the model, so there is nothing to press until
+        somebody has modelled and the page says so instead. The storyboard now stands before the model, so
+        that sentence hangs on the model's own state rather than on which stage happens to be current — and
+        a page with neither the chip nor a button would say nothing at all."""
+        self.land()
+        (self.made / "project.json").write_text(json.dumps({"profile": "event-modelling"}), encoding="utf-8")
+        (self.made / "specs/001-demo").mkdir(parents=True)
+        (self.made / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
+        said = self.get("/voyage")[1]
+        self.assertIn("Model it next", said)
+        self.assertIn('data-stage="storyboard"', said)
+        self.assertEqual(json.loads(self.get("/voyage.json")[1])["stages"][4]["key"], "storyboard",
+                         "straight after the specification, where the ladder has the mock-up review")
+
+        (self.made / "docs/event-model").mkdir(parents=True)
+        (self.made / "docs/event-model/model.yaml").write_text("version: 1\nslices:\n  - id: A\n",
+                                                               encoding="utf-8")
+        self.assertNotIn("Model it next", self.get("/voyage")[1], "modelled: the chip has done its job")
 
     def test_mock_ups_are_on_the_voyage_and_served_from_the_project(self) -> None:
         home = self.made / "specs/001-demo/mockups"
@@ -332,13 +539,14 @@ class LandingTest(ServerTest):
         self.land()
         said = self.get("/voyage")[1]
         self.assertIn("<h2>Mockups · 1</h2>", said)
-        self.assertIn('src="/mockups/001-demo/catalog.html"', said)
+        self.assertIn(f'src="/mockups/001-demo/catalog.html?seat={self.seat}"', said,
+                      "a frame carries its window's seat: nothing else on it does")
         # With a storyboard, that is the door and the mock-ups are reached from it.
         (home / "storyboard.html").write_text("<html><head><title>Storyboard: 001 — review</title></head></html>",
                                               encoding="utf-8")
         said = self.get("/voyage")[1]
         self.assertIn("<h2>Storyboard</h2>", said)
-        self.assertIn('src="/mockups/001-demo/storyboard.html"', said)
+        self.assertIn(f'src="/mockups/001-demo/storyboard.html?seat={self.seat}"', said)
         self.assertNotIn('src="/mockups/001-demo/catalog.html"', said)
         self.assertIn("1 mock-ups, from the storyboard", said)
         self.assertEqual(self.get("/mockups/001-demo/catalog.html"), (200, (home / "catalog.html").read_text()))

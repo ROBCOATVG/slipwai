@@ -260,6 +260,12 @@ def generate_main(argv: list[str]) -> None:
              "write the constitution and the first specification, which the board runs after ./init",
     )
     parser.add_argument(
+        "--brief", type=Path, default=None, metavar="DIR",
+        help="one folder with everything in it: the product requirements document is found inside it and "
+             "everything else is carried as design material. `--prd` and `--design` name either half "
+             "exactly, and win where both are given",
+    )
+    parser.add_argument(
         "--design", type=Path, default=None, metavar="DIR",
         help="a folder of design material — a brand sheet, wireframes, a stylesheet — copied into the "
              "project under docs/design/, which the mock-up stage reads before it draws a surface. What "

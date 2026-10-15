@@ -8,17 +8,17 @@ pointed at would read anything its author could name.
 """
 from __future__ import annotations
 
+import base64
+import json
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
 
 import checkout_packages
 from support import FactoryTestCase
 
-from slipwai.cli_generate import prd_files
-from slipwai.design_docs import DESIGN, FILES, handed_over, inside, referenced
+from slipwai.design_docs import DESIGN, FILES, briefed, handed_over, inside, referenced, unpacked
 from slipwai.errors import GenerationError
 
 #: The first bytes of a real PNG, which is the point: this is not text.
@@ -130,16 +130,106 @@ class GeneratedTest(FactoryTestCase):
                                    capture_output=True, text=True, check=True).stdout
             self.assertIn("docs/design/home.png", shown, "committed, not left untracked beside the project")
 
+    def test_one_folder_is_sorted_into_the_document_and_the_material_it_stands_on(self) -> None:
+        """What a person actually does: hand over the folder the brief lives in and let it be sorted."""
+        brief = tree(**{"game-prd.md": "# P\n\n![home](wireframes/home.png)\n",
+                        "wireframes__home.png": PNG, "brand.md": "# Brand\n"})
+        with tempfile.TemporaryDirectory() as area:
+            made = self.generate(area, "briefed", profile="standard", language="toy-plain",
+                                 brief=str(brief))
+            self.assertIn("# P", (made / "docs/prd.md").read_text(encoding="utf-8"),
+                          "the one that read as the requirements document")
+            self.assertIn("![home](design/wireframes/home.png)",
+                          (made / "docs/prd.md").read_text(encoding="utf-8"))
+            self.assertEqual((made / "docs/design/wireframes/home.png").read_bytes(), PNG)
+            self.assertTrue((made / "docs/design/brand.md").is_file(), "and everything else")
+            self.assertFalse((made / "docs/design/game-prd.md").exists(),
+                             "the document is not also design material")
 
-class FlagTest(unittest.TestCase):
-    def test_a_design_folder_with_no_document_citing_it_is_refused(self) -> None:
-        """`--design` is the material a PRD stands on. Without the document there is nothing citing it,
-        and a folder dropped into a project nothing points at is a folder nobody reads."""
-        args = SimpleNamespace(prd=None, design=tree(**{"brand.md": "x"}), name="x", profile="standard",
-                               target="none", shape=None)
+
+class BriefTest(unittest.TestCase):
+    """One folder with everything in it, sorted here rather than by the person handing it over."""
+
+    def sorted_out(self, **files: object) -> tuple[str | None, list[str]]:
+        home = tree(**files)
+        found, rest = briefed(home)
+        return (found.name if found else None,
+                sorted(one.relative_to(home).as_posix() for one in rest))
+
+    def test_the_document_is_found_by_its_name_first(self) -> None:
+        self.assertEqual(self.sorted_out(**{"prd.md": "x", "brand.md": "y", "shots__home.png": PNG}),
+                         ("prd.md", ["brand.md", "shots/home.png"]))
+
+    def test_then_by_a_name_that_says_what_it_is(self) -> None:
+        self.assertEqual(self.sorted_out(**{"game-prd.md": "x", "a.css": "y"})[0], "game-prd.md")
+        self.assertEqual(self.sorted_out(**{"requirements-v2.md": "x"})[0], "requirements-v2.md")
+
+    def test_then_by_what_the_document_calls_itself(self) -> None:
+        """The most reliable of the three and the last asked: a file somebody called `v2-final.md` still
+        opens with *# Product Requirements*."""
+        self.assertEqual(self.sorted_out(**{"v2-final.md": "# Product Requirements\n\nSell more.\n",
+                                            "brand.md": "# Brand\n"})[0], "v2-final.md")
+
+    def test_a_folder_with_no_document_in_it_is_an_answer_rather_than_a_failure(self) -> None:
+        """Wireframes and a brand sheet is design material. The specification gets written in the agent,
+        the way it always could be."""
+        self.assertEqual(self.sorted_out(**{"brand.md": "# Brand\n", "home.png": PNG}),
+                         (None, ["brand.md", "home.png"]))
+
+    def test_a_document_nested_in_the_brief_may_point_outside_its_own_folder(self) -> None:
+        """Resolved against the whole brief and not the document's directory: a PRD in `docs/` quite
+        reasonably points at `../wireframes/`, and the containment is the brief's edge."""
+        home = tree(**{"docs__prd.md": "![home](../wireframes/home.png)\n", "wireframes__home.png": PNG})
+        carried, text = referenced(home / "docs/prd.md", (home / "docs/prd.md").read_text(), home)
+        self.assertEqual(sorted(carried), [f"{DESIGN}/wireframes/home.png"])
+        self.assertIn("![home](design/wireframes/home.png)", text)
+
+    def test_the_brief_s_own_edge_still_holds(self) -> None:
+        home = tree(**{"brief__docs__prd.md": "[keys](../../../secret.md)\n", "secret.md": "# Not yours\n"})
+        carried, _ = referenced(home / "brief/docs/prd.md",
+                                (home / "brief/docs/prd.md").read_text(), home / "brief")
+        self.assertEqual(carried, {})
+
+
+class PayloadTest(unittest.TestCase):
+    """What the board sends: a browser hands a page a file's contents and never its path, so a brief
+    arrives as names and bytes and is written back to a folder for the length of the run."""
+
+    def test_the_files_are_written_back_with_the_shape_they_had(self) -> None:
+        into = Path(tempfile.mkdtemp()) / "brief"
+        payload = json.dumps([{"path": "prd.md", "data": base64.b64encode(b"# P\n").decode()},
+                              {"path": "shots/home.png", "data": base64.b64encode(PNG).decode()}])
+        self.assertEqual(unpacked(payload, into), into)
+        self.assertEqual((into / "prd.md").read_bytes(), b"# P\n")
+        self.assertEqual((into / "shots/home.png").read_bytes(), PNG, "bytes, not text through an encoder")
+
+    def test_nothing_picked_is_nothing_written(self) -> None:
+        into = Path(tempfile.mkdtemp()) / "brief"
+        for payload in ("", "[]"):
+            self.assertIsNone(unpacked(payload, into))
+        self.assertFalse(into.exists())
+
+    def test_a_name_that_reaches_out_of_the_folder_is_refused(self) -> None:
+        """This reads a JSON payload rather than a directory somebody typed, so every guard is applied
+        again and for a stronger reason."""
+        into = Path(tempfile.mkdtemp()) / "brief"
+        for named in ("../escaped.md", "/etc/passwd", ".git/config", ""):
+            with self.subTest(path=named), self.assertRaises(GenerationError):
+                unpacked(json.dumps([{"path": named, "data": "eA=="}]), into)
+        self.assertFalse((into.parent / "escaped.md").exists())
+
+    def test_bytes_that_did_not_arrive_intact_are_refused(self) -> None:
+        into = Path(tempfile.mkdtemp()) / "brief"
         with self.assertRaises(GenerationError) as caught:
-            prd_files(args, [])
-        self.assertIn("needs --prd with it", str(caught.exception))
+            unpacked(json.dumps([{"path": "a.md", "data": "not base64!!"}]), into)
+        self.assertIn("did not arrive intact", str(caught.exception))
+
+    def test_more_than_a_handed_over_tree_may_carry_is_refused(self) -> None:
+        into = Path(tempfile.mkdtemp()) / "brief"
+        many = [{"path": f"f{index}.md", "data": "eA=="} for index in range(FILES + 1)]
+        with self.assertRaises(GenerationError) as caught:
+            unpacked(json.dumps(many), into)
+        self.assertIn(f"over the {FILES}", str(caught.exception))
 
 
 if __name__ == "__main__":

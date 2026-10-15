@@ -41,6 +41,12 @@ def field_html(question: Question) -> str:
             f'<option value="{esc(name)}"{" selected" if name == question.default else ""}>'
             f"{esc(question.labels.get(name, name))}</option>" for name in question.choices)
         asking = f'<select id="{esc(question.name)}" name="{esc(question.name)}" data-asks>{options}</select>'
+    elif question.kind == "folder":
+        # A directory, and the script reads everything in it: a browser hands a page a file's contents and
+        # never its path, so a brief arrives as its bytes — each with the path it had inside the folder,
+        # which is what lets it land in the project with its own shape kept.
+        asking = (f'<input id="{esc(question.name)}" name="{esc(question.name)}" type="file" multiple '
+                  f'webkitdirectory data-many>')
     elif question.kind == "file":
         asking = (f'<input id="{esc(question.name)}" name="{esc(question.name)}" type="file" '
                   f'accept=".md,.markdown,.txt,text/markdown,text/plain">')
@@ -76,6 +82,16 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
 #: rather than patched, because deciding in the browser which questions follow would be the second reading
 #: of the catalogue this slice exists to avoid.
 SCRIPT = """
+// Bytes as base64, a chunk at a time: `String.fromCharCode(...bytes)` is one argument per byte and
+// overflows the stack on anything the size of a screenshot.
+const base64 = (buffer) => {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let at = 0; at < bytes.length; at += 0x8000)
+    binary += String.fromCharCode.apply(null, bytes.subarray(at, at + 0x8000));
+  return btoa(binary);
+};
+
 // A file input's entry is a File, which JSON would render as `{}`: it is read here and sent as its text,
 // with its name beside it, and only when it is about to be used — a re-ask of the questions is sent the
 // name alone.
@@ -92,6 +108,15 @@ const answers = async (withFiles) => {
     if (!(value instanceof File)) continue;
     held[name] = withFiles && value.size ? await value.text() : '';
     if (value.size) held[name + '-name'] = value.name;
+  }
+  // A `multiple` input sends one entry per file under one name, so the loop above saw only the last of
+  // them. Each is sent as its bytes, base64: half of this is images, and a PNG is not text. Read only
+  // when they are about to be used — a re-ask of the questions is sent the count and no bytes.
+  for (const box of form.querySelectorAll('input[data-many]')) {
+    const files = [...box.files];
+    held[box.name] = !withFiles || !files.length ? '' : JSON.stringify(await Promise.all(
+      files.map(async one => ({path: one.webkitRelativePath || one.name,
+                               data: base64(await one.arrayBuffer())}))));
   }
   return held;
 };

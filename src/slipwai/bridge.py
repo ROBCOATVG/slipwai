@@ -105,7 +105,10 @@ from .wheel import set_stop
 # or to a guarded read out of the project, plus the three reads a request makes through its seat
 # (`seats.py` holds the table itself). A second server would be two things each sure they are the board,
 # which `open_board` exists to prevent.
-LIMIT = 4 * 1024 * 1024  # bytes a request body may be: a sentence, or a PRD riding in a generate's answers
+# Bytes a request body may be: a sentence, a PRD, or the design material riding in a generate's
+# answers — which is base64 and so a third larger than the files it carries. The board binds this
+# machine only, so what this bounds is a mistake rather than a stranger.
+LIMIT = 32 * 1024 * 1024
 #: The four an installable page is made of, each with what it is served as. A browser decides whether to
 #: offer the install on the content type as much as the content, so none of these is served as HTML.
 APP_FILES: dict[str, tuple[Callable[[], str], str]] = {

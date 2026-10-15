@@ -49,6 +49,7 @@ from .catalog import (
 from .cli_generate import DECLINE, quickstart_menu, unavailable_quickstarts
 from .cli_offered import not_installed_frameworks, not_installed_languages
 from .cli_prompts import PROFILE_GUIDANCE
+from .design_docs import unpacked
 from .errors import GenerationError
 from .extension_install import catalogue
 from .harness import detect, keys, name_of
@@ -222,6 +223,13 @@ def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question
                          why="optional: a PRD, copied into the project as docs/prd.md. After ./init the agent "
                              "drafts the constitution and the first specification from it and stops; the "
                              "build continues when you have read the specification and said so"))
+    said.append(Question("brief", "Everything else", "", optional=True, kind="folder",
+                         why="optional: the whole folder your brief is in — wireframes, a brand sheet, a "
+                             "stylesheet, screenshots, and the requirements document itself if you have "
+                             "not picked it above. It is sorted here: whichever file reads as the "
+                             "requirements document becomes docs/prd.md and everything else lands under "
+                             "docs/design/, which the mock-up stage reads before it draws a surface — "
+                             "where it finds a direction there, it follows it rather than inventing one"))
     return said
 
 
@@ -438,6 +446,11 @@ def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
             document = Path(held) / (Path(str(answers.get("prd-name") or "")).name or "prd.md")
             document.write_text(text, encoding="utf-8")
             argv += ["--prd", str(document)]
+        # And the same for the material it stands on, which arrives the same way and for the same reason:
+        # a browser hands a page a file's contents and never its path. `--design` takes a directory, so
+        # the picked files are written back to one for the length of the run.
+        if (folder := unpacked(str(answers.get("brief") or ""), Path(held) / "brief")) is not None:
+            argv += ["--brief", str(folder)]
         done = subprocess.run([*relaunch(), "generate", *argv], cwd=str(root),
                               capture_output=True, text=True, env=login_environment())
     return done.returncode == 0, (done.stdout + done.stderr).strip()

@@ -58,6 +58,7 @@ IN_THE_TERMINAL = {
     "context": "Bounded contexts",
     "frontend": "Frontend",
     "frontend-name": "Browser app name",
+    "brief": "Everything else",
     "output": "Output parent",
     "prd": "Product requirements document",
 }
@@ -168,16 +169,20 @@ class QuestionsTest(unittest.TestCase):
             self.assertEqual(destination(typed, harbour), Path("/elsewhere/demo").resolve(),
                              "an answer somebody typed still wins over the proposal")
 
-    def test_the_last_question_is_the_document_and_it_is_a_file(self) -> None:
-        """A PRD is the one answer that is a document rather than a word: the board asks for it with a file
-        picker, the terminal with a path, and `--prd` is the flag both become."""
-        last = asked({"name": "demo"})[-1]
-        self.assertEqual((last.name, last.kind, last.optional), ("prd", "file", True))
+    def test_the_last_two_questions_are_the_document_and_what_it_stands_on(self) -> None:
+        """The two answers that are files rather than words: the board asks for them with pickers, the
+        terminal with paths, and `--prd` and `--design` are the flags both become."""
+        document, brief = asked({"name": "demo"})[-2:]
+        self.assertEqual((document.name, document.kind, document.optional), ("prd", "file", True))
+        self.assertEqual((brief.name, brief.kind, brief.optional), ("brief", "folder", True))
         said = form({"name": "demo"})
         self.assertIn('id="prd"', said)
         self.assertIn('type="file"', said)
-        self.assertNotIn("--prd", flags({"name": "demo", "prd": "# A document\n"}),
-                         "the text is not a flag; `run` writes it to a file and names that")
+        self.assertIn('id="brief"', said)
+        self.assertIn("webkitdirectory", said, "a folder: a brief is rarely one file")
+        for name, answer in (("prd", "# A document\n"), ("brief", '[{"path": "a.md", "data": "eA=="}]')):
+            self.assertNotIn(f"--{name}", flags({"name": "demo", name: answer}),
+                             "the bytes are not a flag; `run` writes them out and names where")
 
     def test_an_answer_a_person_typed_is_escaped_and_never_rendered_as_markup(self) -> None:
         self.assertNotIn("<script>alert(1)</script>", form({"name": "<script>alert(1)</script>"}))

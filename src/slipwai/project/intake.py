@@ -172,7 +172,9 @@ came with it. `confirmed` is the yes that this is a new feature — a person in 
 when `/cruise` is driving — and it is written before Spec Kit assesses the idea.
 
 Assessment lives in `.specify/assessments/<slug>/`. Its `decision.md` ends in `go`, `needs-clarification`,
-or `kill`. Only a `go`, after that yes, is handed to `/speckit-specify`. Spec Kit specifies it on the
+or `kill`. Only a `go`, after that yes, is handed to `/speckit-specify`, then `/speckit-clarify`.
+`/speckit-checklist` and the read-only find-gaps survey then run in parallel against the clarified
+specification; the host runs the find-gaps conversation after both return. Spec Kit specifies it on the
 profile `project.json` already names — `event-modelling` or `standard` — and on the one preset
 `.specify/presets/.registry` enables for it. Do not enable the other preset, do not change `project.json`,
 and do not scaffold again. `specified.json` then names the `specs/...` directory Spec Kit created and the

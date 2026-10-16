@@ -73,12 +73,21 @@ This writes `specs/booking/spec.md` — the product, in the language of the peop
 technology in it. Then:
 
 ```
+/speckit-clarify
+```
+
+Clarify writes the open questions back into the specification, under `## Clarifications`. Against that
+clarified snapshot, `/sail` runs `/speckit-checklist` and the read-only find-gaps survey in parallel.
+Checklist writes `specs/booking/checklists/`. When both return, the host continues with:
+
+```
 /gaps
 ```
 
-which reads the specification back and asks what it did not say. Who cancels a booking? What happens when
-two guests take the last table? Answer them now, in the specification, because every one of them becomes a
-slice later and a question answered here costs a sentence.
+which runs the find-gaps conversational loop over the survey's candidates, using the clarifications and
+checklist as evidence rather than substitutes. Who cancels a booking? What happens when two guests take the
+last table? Answer them now, in the specification, because every one of them becomes a slice later and a
+question answered here costs a sentence.
 
 A further feature is handed to `/sail` in the same conversation: the request, or a document that session
 can read. `/sail` writes the record under `docs/intake/`, asks whether it is really a new feature, and
@@ -167,9 +176,11 @@ with an owner.
 
 ### 7. Then, per slice, until the demo
 
-The example map, the slice's own gaps, plan and tasks, implementation one RED-GREEN-REFACTOR increment at
-a time, and convergence. Each writes its artefact under `specs/booking/slices/BOK-01/`, which is how
-`/sail` knows where it got to if you close the terminal.
+The example map, the slice's own gaps, plan and tasks, then `/speckit-analyze` — a read of the spec, the
+plan and the tasks, writing nothing — and only then implementation, one RED-GREEN-REFACTOR increment at a
+time, and convergence. Each writes its artefact under `specs/booking/slices/BOK-01/`, which is how `/sail`
+knows where it got to if you close the terminal. Analyze is the exception: a clean reading is the absence
+of a finding, and there is no file.
 
 ## The demo stops for you
 

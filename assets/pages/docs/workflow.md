@@ -5,7 +5,10 @@
 flowchart LR
   C["/speckit-constitution · principles<br/>make check-constitution gates the coverage"]
   S["/speckit-specify · whole product"]
-  G["/gaps · whole spec"]
+  Q["/speckit-clarify · answers back into spec.md"]
+  CK["/speckit-checklist · checklists/"]
+  GS["find-gaps survey · read-only"]
+  G["/gaps conversation · confirmed answers into spec.md"]
   EMOD(["event-modeling · events, commands, read models, actors"])
   SS["/story-splitting · slices"]
 
@@ -15,13 +18,14 @@ flowchart LR
     EG["/gaps · tighten examples.md, on paper"]
     P["/speckit-plan · one slice"]
     T["/speckit-tasks · one slice"]
+    AN["/speckit-analyze · spec, plan and tasks agree"]
     I["/speckit-implement · RED → GREEN → REFACTOR"]
     CV{"/speckit-converge · is everything the artifacts require built?"}
     DG["/gaps · promise → test → production path"]
     D{"demo · actor-visible path"}
     A["/adversary · only when the surface changed, or the split closed"]
     M["/mutation · measure the suite"]
-    EM --> EG --> P --> T --> I --> CV
+    EM --> EG --> P --> T --> AN --> I --> CV
     CV -->|"appends tasks"| I
     CV -->|"converged"| DG --> D
     D -->|"accepted · new attack surface"| A --> M
@@ -30,7 +34,10 @@ flowchart LR
     D -.->|"feedback changes implementation"| I
   end
 
-  C --> S --> G --> EMOD --> SS --> EM
+  C --> S --> Q
+  Q --> CK --> G
+  Q --> GS --> G
+  G --> EMOD --> SS --> EM
 
   G -.->|"gap found"| S
   EM -.->|"map reveals more than one slice"| SS
@@ -47,7 +54,10 @@ flowchart LR
 flowchart LR
   C["/speckit-constitution · principles<br/>make check-constitution gates the coverage"]
   S["/speckit-specify · whole product"]
-  G["/gaps · whole spec"]
+  Q["/speckit-clarify · answers back into spec.md"]
+  CK["/speckit-checklist · checklists/"]
+  GS["find-gaps survey · read-only"]
+  G["/gaps conversation · confirmed answers into spec.md"]
   SS["/story-splitting · slices"]
 
   subgraph loop["once per slice — /sail owns the loop, repeating until the split is exhausted"]
@@ -55,13 +65,14 @@ flowchart LR
     SG["/gaps · tighten the slice's criteria, on paper"]
     P["/speckit-plan · one slice"]
     T["/speckit-tasks · one slice"]
+    AN["/speckit-analyze · spec, plan and tasks agree"]
     I["/speckit-implement · RED → GREEN → REFACTOR"]
     CV{"/speckit-converge · is everything the artifacts require built?"}
     DG["/gaps · promise → test → production path"]
     D{"demo · actor-visible path"}
     A["/adversary · only when the surface changed, or the split closed"]
     M["/mutation · measure the suite"]
-    SG --> P --> T --> I --> CV
+    SG --> P --> T --> AN --> I --> CV
     CV -->|"appends tasks"| I
     CV -->|"converged"| DG --> D
     D -->|"accepted · new attack surface"| A --> M
@@ -69,7 +80,10 @@ flowchart LR
     D -.->|"feedback changes implementation"| I
   end
 
-  C --> S --> G --> SS --> SG
+  C --> S --> Q
+  Q --> CK --> G
+  Q --> GS --> G
+  G --> SS --> SG
 
   G -.->|"gap found"| S
   P -.->|"title still says 'and'"| SS
@@ -82,13 +96,18 @@ flowchart LR
 For one small vertical slice:
 
 1. {{discovery}}.
-2. Run `/gaps` over what that produced, while a missing state is still a paper edit.
+2. On the specification, run `/speckit-clarify`. Against that clarified snapshot, run
+   `/speckit-checklist` and the read-only find-gaps survey in parallel. When both return, run the find-gaps
+   conversation on the host, using both outputs and writing confirmed answers back while a missing state
+   is still a paper edit. On a slice's example map or its own criteria, `/gaps` is the whole pass.
 3. Create or resume `plan.md` and `tasks.md` with the Spec Kit commands installed by `./init`.
-4. Implement each task RED-GREEN-REFACTOR, keeping `make verify` green.
-5. Run the installed Spec Kit converge command, implement whatever it appends, and repeat until it reports
+4. Run `/speckit-analyze` over `spec.md`, `plan.md` and `tasks.md`. It writes nothing. A finding goes back
+   to the plan or the tasks; a clean reading is what lets implementation start.
+5. Implement each task RED-GREEN-REFACTOR, keeping `make verify` green.
+6. Run the installed Spec Kit converge command, implement whatever it appends, and repeat until it reports
    converged or reaches its bound; then `/gaps` over the slice diff.
-6. Demonstrate the actor-visible path and pause for feedback.
-7. After acceptance, run `make verify` — and `/adversary` first, when the slice changed attack surface or
+7. Demonstrate the actor-visible path and pause for feedback.
+8. After acceptance, run `make verify` — and `/adversary` first, when the slice changed attack surface or
    closed the split. `/mutation` runs once per capability, before the person's demo of it.
 
 The principles stage has a gate of its own. `.specify/memory/constitution.md` is what every stage after it
@@ -100,6 +119,11 @@ normative text at any time. Until that stage has been started the gate stands as
 template, and the untouched template passes, so the walking skeleton reaches `main` — and production, where
 there is a target — before the first principle is written. It applies from the first edit, and from the first
 feature under `specs/` whether or not the constitution was touched.
+
+**Analyze** is the read between tasks and implementation. It compares `spec.md`, `plan.md` and `tasks.md`
+and writes nothing, so a plan that has drifted is caught before any code. It is not either `/gaps` pass:
+the one before planning tightens a single artifact, and the one after converge traces a promise to a test
+and a path.
 
 Three stages in the loop are deliberately not the shape they look like. **Converge** is append-only — its
 only write is new tasks — so it is safe to repeat until it reports converged or reaches its bound, and it is what makes the demo

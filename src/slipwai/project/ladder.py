@@ -68,24 +68,33 @@ def sail_ladder(
    (`nothing drafted yet`). Otherwise run `/speckit-constitution`, then `/constitution-coverage` for
    whatever the gate still reports missing.""",
         """**Product specification** — `specs/<feature>/spec.md` describes the product this slice belongs to,
-   and every directory under `docs/intake/` is either specified or was killed. A person hands a further
-   feature to `/sail` in the conversation — the words, text pasted there, or a document this session can
-   read. This session writes that to `docs/intake/<slug>/brief.md`; the person does not create the
-   directory. An argument that names a slice, a fairway, or a feature that already has `spec.md` is that
-   work. An argument that names an intake directory continues that idea. Anything else is a new idea:
-   capture it, state what was captured, and do not run `/speckit-specify` yet. Ask whether this is a new
-   feature. Under `/cruise`, delegate that one question to `sail-decide-skipper` and record the decision.
-   A yes is `docs/intake/<slug>/confirmed`, the line `yes` and who answered. Then, if the assess commands
-   are not installed, run `specify extension add assess`, and run `/speckit-assess-intake`,
-   `/speckit-assess-research`, `/speckit-assess-define`, `/speckit-assess-shape` and
-   `/speckit-assess-decide` for that slug. The artifacts stay in `.specify/assessments/<slug>/`.
-   `needs-clarification` and `kill` stop. A `go` is handed to `/speckit-specify` with the whole of the
-   brief and the documents beside it, then `/gaps`, then `specified.json` names the `specs/...` directory
-   and the digest `docs/intake/README.md` describes. Spec Kit specifies it on the profile `project.json`
-   already names — `event-modelling` or `standard` — and on the one preset `.specify/presets/.registry`
-   enables for it. Do not enable the other preset, do not change `project.json`, and do not scaffold again.
-   A matching digest is already specified. A different digest is assessed again. A session given a slice id
-   stays on that slice.""",
+   `spec.md` has a `## Clarifications` section (`None.` when `/speckit-clarify` found nothing to ask),
+   `specs/<feature>/checklists/` holds the checklist `/speckit-checklist` wrote, and every directory under
+   `docs/intake/` is either specified or was killed. Where `spec.md` is already written, this rung is the
+   tail and nothing else: run `/speckit-clarify` when it is missing. Then dispatch `/speckit-checklist` and
+   the read-only survey phase of `skills/find-gaps/SKILL.md` in parallel against the same clarified
+   `spec.md`. Wait for both, then run the find-gaps conversational loop on the host, using the checklist
+   and survey together and writing each confirmed answer back. Parallel workers do not edit `spec.md`.
+   Clarify and checklist inform find-gaps rather than replace it. Do not run `/speckit-specify` again. A
+   person hands a further feature to `/sail` in the conversation —
+   the words, text pasted there, or a document this session can read. This session writes that to
+   `docs/intake/<slug>/brief.md`; the person does not create the directory. An argument that names a slice,
+   a fairway, or a feature that already has `spec.md` is that work. An argument that names an intake
+   directory continues that idea. Anything else is a new idea: capture it, state what was captured, and do
+   not run `/speckit-specify` yet. Ask whether this is a new feature. Under `/cruise`, delegate that one
+   question to `sail-decide-skipper` and record the decision. A yes is `docs/intake/<slug>/confirmed`, the
+   line `yes` and who answered. Then, if the assess commands are not installed, run
+   `specify extension add assess`, and run `/speckit-assess-intake`, `/speckit-assess-research`,
+   `/speckit-assess-define`, `/speckit-assess-shape` and `/speckit-assess-decide` for that slug. The
+   artifacts stay in `.specify/assessments/<slug>/`. `needs-clarification` and `kill` stop. A `go` is handed
+   to `/speckit-specify` with the whole of the brief and the documents beside it, then `/speckit-clarify`.
+   Against that clarified snapshot, `/speckit-checklist` and the read-only find-gaps survey run in parallel;
+   after both return, the host runs the find-gaps conversation and writes confirmed answers. Then
+   `specified.json` names the `specs/...` directory and the digest `docs/intake/README.md` describes. Spec Kit specifies it
+   on the profile `project.json` already names — `event-modelling` or `standard` — and on the one preset
+   `.specify/presets/.registry` enables for it. Do not enable the other preset, do not change
+   `project.json`, and do not scaffold again. A matching digest is already specified. A different digest is
+   assessed again. A session given a slice id stays on that slice.""",
         """**Mock-up review** — `specs/<feature>/mockups/mock-states.md` exists and every state in it is
    `approved`, `parked` with the question it waits on, or `n/a` with its reason. A feature with no surface
    at all writes `surfaces: none` and that is the whole file. Otherwise run `/mockups`, which researches
@@ -182,7 +191,12 @@ def sail_ladder(
         + context_decision + (PLAN_STYLING if web else ""),
         """**Implementation** — tasks remain unchecked, and this slice's `examples.md` has at least one
    example under a rule. A map with none is a stop, not a licence to infer: go back to the example map rung
-   and say which rule is waiting on which question. Run the installed Spec Kit implement command.
+   and say which rule is waiting on which question. Before anything is implemented, run `/speckit-analyze`.
+   It reads this slice's `spec.md`, `plan.md` and `tasks.md` and writes nothing. A requirement no task
+   covers, a task the spec never asked for, or a plan that contradicts the spec goes back to the plan or
+   the tasks; a clean reading is what lets implementation start. This is not `/gaps`. The pass before
+   planning already tightened one artifact, and the pass after converge traces a promise to a test and a
+   path. The task list stays in `tasks.md`. Then run the installed Spec Kit implement command.
    This rung is RED-GREEN-REFACTOR and nothing else: a failing test observed failing for its own stated
    reason, the smallest code that passes it, then the code tidied before the next one. The green step's
    gate is the fast checks — `make unit`, lint and types — and never the full gate, which belongs to the

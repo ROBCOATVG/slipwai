@@ -26,7 +26,12 @@ the slug:
 3. Read the verdict. `needs-clarification` and `kill` stop here. Say the verdict and the reason the
    decision gives. Do not specify.
 4. A `go` runs `/speckit-specify` with the whole brief and the documents beside it — the documents, not a
-   summary — then `/gaps`. Spec Kit specifies it on the profile `project.json` already names —
+   summary — then `/speckit-clarify`. Against that clarified snapshot, run `/speckit-checklist` and the
+   read-only survey phase of `skills/find-gaps/SKILL.md` in parallel. Wait for both, then run the find-gaps
+   conversation on the host using both outputs and write each confirmed answer back. Clarify writes a
+   `## Clarifications` section back into `spec.md` (`None.` when it found nothing to ask). Checklist writes
+   `specs/<feature>/checklists/`. Parallel workers do not edit `spec.md`. Spec Kit specifies it on the
+   profile `project.json` already names —
    `event-modelling` or `standard` — and on the one preset `.specify/presets/.registry` enables for it.
    Do not enable the other preset, do not change `project.json`, and do not scaffold again. Write
    `docs/intake/<slug>/specified.json` as `{"feature": "specs/...", "digest": "<sha256>"}`. The digest is

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.passage import current, modelled, stages
+from slipwai.passage import current, modelled, record_verdict, stages
 
 CONSTITUTION = ".specify/memory/constitution.md"
 
@@ -135,6 +135,51 @@ class StagesTest(unittest.TestCase):
         self.assertEqual(states(root)["storyboard"], "done")
         self.assertIn("no surfaces", next(one.detail for one in stages(root) if one.key == "storyboard"))
 
+class StoryboardVerdictTest(unittest.TestCase):
+    """The voyage records the verdict the storyboard was waiting on.
+
+    Approving marks every drawn state approved. Disapproving parks them with the reason, which is what
+    keeps the stage waiting. A file of approvals nobody gave is the failure the stage exists to prevent,
+    so a disapproval with nothing said is refused.
+    """
+
+    def root(self) -> Path:
+        root = tree(**{
+            "specs__001-demo__mockups__storyboard.html": "<title>Storyboard</title>\n",
+            "specs__001-demo__mockups__index.html": "<title>Contents</title>\n",
+            "specs__001-demo__mockups__discover.html": (
+                "<title>Game Finder \u2014 Discover</title>\n"
+                '<article class="state" id="populated"><h2>Populated</h2></article>\n'
+                '<article class="state" id="empty"><h2>Nothing nearby</h2></article>\n'
+            ),
+        })
+        return root
+
+    def test_approving_writes_the_drawn_states_and_not_the_storyboard_page(self) -> None:
+        root = self.root()
+        self.assertEqual(record_verdict(root, "001-demo", "approved"), "approved")
+        text = (root / "specs/001-demo/mockups/mock-states.md").read_text(encoding="utf-8")
+        self.assertIn("## Surface: Discover\n- Populated \u2014 approved\n- Nothing nearby \u2014 approved\n", text)
+        self.assertNotIn("Storyboard", text)
+        self.assertNotIn("Contents", text)
+
+    def test_disapproving_parks_every_state_with_the_reason(self) -> None:
+        root = self.root()
+        with self.assertRaises(ValueError) as refused:
+            record_verdict(root, "001-demo", "parked", "  ")
+        self.assertIn("why", str(refused.exception).lower())
+        self.assertFalse((root / "specs/001-demo/mockups/mock-states.md").exists())
+        record_verdict(root, "001-demo", "parked", "the map shows the street")
+        text = (root / "specs/001-demo/mockups/mock-states.md").read_text(encoding="utf-8")
+        self.assertIn("- Populated \u2014 parked: the map shows the street", text)
+        self.assertEqual(states(root)["storyboard"], "waiting")
+
+    def test_a_feature_that_was_not_drawn_cannot_be_approved(self) -> None:
+        with self.assertRaises(ValueError):
+            record_verdict(tree(), "../secret", "approved")
+
+
+class ExpectationTest(unittest.TestCase):
     def test_every_stage_says_what_to_expect_and_whether_it_stops_for_a_person(self) -> None:
         """The other half of "where are we": at the twenty-minute mark the question is whether this is
         normal, and a stage that waits for somebody by design reads as one that has hung without this."""

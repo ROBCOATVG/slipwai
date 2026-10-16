@@ -34,6 +34,9 @@ PRESETS = ROOT / ".specify/presets"
 # Only one construct matters here — the `file:` values under `provides` — and those are always plain
 # quoted scalars, so a line-oriented match reads them without pretending to parse the document.
 PRESET_FILE_ENTRY = re.compile(r"""^\s*(?:-\s+)?file:\s*["']?([^"'\s#]+)["']?\s*(?:#.*)?$""", re.MULTILINE)
+#: The two profiles a project is generated on. A further feature is specified on the one `project.json`
+#: names, which is the one preset the registry enables.
+PROFILES = ("event-modelling", "standard")
 
 
 def profile_findings() -> list[str]:
@@ -102,6 +105,45 @@ def preset_findings() -> list[str]:
     return findings
 
 
+def profile_preset_findings(root: Path) -> list[str]:
+    """The preset Spec Kit will specify a further feature with is this project's profile, and only that.
+
+    A registry that enables the other profile, or that does not enable this one, is how a new feature
+    lands on a profile the project is not. Absent a manifest or a registry there is nothing to hold.
+    """
+    metadata_path = root / "project.json"
+    registry_path = root / ".specify/presets/.registry"
+    if not metadata_path.is_file() or not registry_path.is_file():
+        return []
+    try:
+        profile = json.loads(metadata_path.read_text(encoding="utf-8")).get("profile")
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return [f"{registry_path}: profile and preset registry could not be read"]
+    if profile not in PROFILES:
+        return []
+    presets = registry.get("presets") if isinstance(registry, dict) else None
+    if not isinstance(presets, dict):
+        return [f"{registry_path}: no presets map"]
+    enabled = [name for name, entry in presets.items()
+               if isinstance(entry, dict) and entry.get("enabled") is not False]
+    findings: list[str] = []
+    try:
+        shown = registry_path.relative_to(root).as_posix()
+    except ValueError:
+        shown = registry_path.as_posix()
+    if profile not in enabled:
+        findings.append(
+            f"{shown}: project.json profile is {profile} and that preset is not enabled. "
+            "A further feature specified by Spec Kit would not be this profile")
+    other = [name for name in PROFILES if name != profile and name in enabled]
+    if other:
+        findings.append(
+            f"{shown}: enables {', '.join(other)} but project.json profile is {profile}. "
+            "Spec Kit would specify the new feature on the other profile")
+    return findings
+
+
 def projection_directories() -> list[Path]:
     """Every harness directory inside the repository, as `scripts/agents/registry.json` names them.
 
@@ -140,7 +182,7 @@ def unprojected_directory(relative: str, directories: list[Path]) -> Path | None
 
 
 def main() -> int:
-    findings = profile_findings() + preset_findings()
+    findings = profile_findings() + preset_findings() + profile_preset_findings(ROOT)
     valid_presets = len(list(PRESETS.glob("*/preset.yml"))) if PRESETS.is_dir() else 0
     preset_note = f", {valid_presets} preset(s) valid" if valid_presets else ""
     if not MANIFESTS.is_dir():

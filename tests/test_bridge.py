@@ -27,7 +27,7 @@ from slipwai.fleet import board
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 470 — every route the board answers, driven against `board_fixture`: the fleet pages, the
+# budget: 560 — every route the board answers, driven against `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
 # hold; the fixture moved out with it rather than being copied, which is what the one-suite rule was for.
@@ -342,20 +342,98 @@ class LandingTest(BoardTest):
         self.land()
         said = self.get("/voyage")[1]
         self.assertIn("<h2>Mockups · 1</h2>", said)
-        self.assertIn(f'src="/mockups/001-demo/catalog.html?seat={self.seat}"', said,
-                      "a frame carries its window's seat: nothing else on it does")
+        self.assertIn(f'src="/mockups/by/{self.seat}/001-demo/catalog.html"', said,
+                      "a frame carries its window's seat on the path: a query would not reach the stylesheet")
         # With a storyboard, that is the door and the mock-ups are reached from it.
         (home / "storyboard.html").write_text("<html><head><title>Storyboard: 001 — review</title></head></html>",
                                               encoding="utf-8")
         said = self.get("/voyage")[1]
         self.assertIn("<h2>Storyboard</h2>", said)
-        self.assertIn(f'src="/mockups/001-demo/storyboard.html?seat={self.seat}"', said)
+        self.assertIn(f'src="/mockups/by/{self.seat}/001-demo/storyboard.html"', said)
         self.assertNotIn('src="/mockups/001-demo/catalog.html"', said)
         self.assertIn("1 mock-ups, from the storyboard", said)
         self.assertEqual(self.get("/mockups/001-demo/catalog.html"), (200, (home / "catalog.html").read_text()))
+        self.assertIn("Approve storyboard", said)
+        self.assertIn("Disapprove", said)
+
+    def test_a_storyboard_s_stylesheet_is_the_project_this_window_is_looking_at(self) -> None:
+        """The frame is seated. The stylesheet it asks for is not, unless the seat is on the path."""
+        home = self.made / "specs/001-demo/mockups"
+        home.mkdir(parents=True)
+        (home / "styles.css").write_text("body{color:red}", encoding="utf-8")
+        (home / "storyboard.html").write_text(
+            '<html><head><title>Storyboard</title><link rel="stylesheet" href="styles.css"></head>'
+            '<body><iframe sandbox="allow-scripts" src="discover.html"></iframe></body></html>',
+            encoding="utf-8")
+        (home / "discover.html").write_text(
+            "<html><head><title>Game Finder \u2014 Discover</title>"
+            '<link rel="stylesheet" href="styles.css"></head>'
+            '<body><article class="state" id="populated"><h2>Populated</h2></article></body></html>',
+            encoding="utf-8")
+        self.land()
+        said = self.get("/voyage")[1]
+        self.assertIn(f'src="/mockups/by/{self.seat}/001-demo/storyboard.html"', said)
+        self.assertEqual(self.get(f"/mockups/by/{self.seat}/001-demo/styles.css", seat=""),
+                         (200, "body{color:red}"))
+        with self.assertRaises(urllib.error.HTTPError) as refused:
+            self.get("/mockups/001-demo/styles.css", seat="")
+        refused.exception.close()
+        self.assertEqual(refused.exception.code, 404)
+        self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "parked"})[0], 400)
+        self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "approved"})[0], 200)
+        self.assertIn("- Populated \u2014 approved", (home / "mock-states.md").read_text(encoding="utf-8"))
+        stage = next(one for one in json.loads(self.get("/voyage.json")[1])["stages"] if one["key"] == "storyboard")
+        self.assertEqual(stage["state"], "done")
         with self.assertRaises(urllib.error.HTTPError) as refused:
             self.get("/mockups/001-demo/../../project.json")
+        refused.exception.close()
         self.assertEqual(refused.exception.code, 404)
+
+    def _storyboard(self, profile: str) -> None:
+        self.land()
+        for _ in range(100):
+            if json.loads(self.get("/init.json")[1])["done"]:
+                break
+            time.sleep(0.05)
+        (self.made / "project.json").write_text(json.dumps({"profile": profile}), encoding="utf-8")
+        home = self.made / "specs/001-demo"
+        (home / "mockups").mkdir(parents=True)
+        (home / "spec.md").write_text("# Demo\n", encoding="utf-8")
+        (home / "mockups/discover.html").write_text(
+            "<html><head><title>Demo \u2014 Discover</title></head>"
+            '<body><article class="state"><h2>Populated</h2></article></body></html>',
+            encoding="utf-8")
+        (self.made / "Makefile").write_text(
+            "launch:\n\t@echo 'chart and split'\nmodel-next:\n\t@echo 'modelling'\n", encoding="utf-8")
+
+    def _until(self, step: str) -> dict:
+        receipt: dict = {}
+        for _ in range(100):
+            receipt = json.loads(self.get("/init.json")[1])
+            if receipt["done"] and receipt["step"] == step:
+                break
+            time.sleep(0.05)
+        return receipt
+
+    def test_approving_a_storyboard_starts_the_chart_on_a_standard_project(self) -> None:
+        """The verdict is the person's word to go on. A standard project charts next."""
+        self._storyboard("standard")
+        self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "approved"})[0], 200)
+        receipt = self._until("launch")
+        self.assertEqual(receipt["step"], "launch")
+        self.assertIn("chart and split", receipt["lines"])
+
+    def test_approving_a_storyboard_starts_the_model_on_an_event_project(self) -> None:
+        """An event-modelling project models next. The chart is drawn from that, so this does not launch."""
+        self._storyboard("event-modelling")
+        self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "parked",
+                                                   "reason": "the map is the street"})[0], 200)
+        self.assertNotEqual(json.loads(self.get("/init.json")[1])["step"], "model")
+        self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "approved"})[0], 200)
+        receipt = self._until("model")
+        self.assertEqual(receipt["step"], "model")
+        self.assertIn("modelling", receipt["lines"])
+        self.assertNotIn("chart and split", receipt["lines"])
 
     def test_a_split_with_no_fleet_running_offers_to_cast_off_and_the_button_runs_make_cruise(self) -> None:
         import slipwai.bridge as module

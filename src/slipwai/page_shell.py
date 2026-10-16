@@ -118,6 +118,13 @@ border:1px solid var(--rule);background:var(--paper);color:var(--ink-2)}
 background:var(--paper);color:var(--ink)}
 button.go{font:inherit;padding:7px 14px;border-radius:7px;border:1px solid var(--teal);background:var(--teal);
 color:#fff;cursor:pointer}
+/* A locked control stays in the row and stops looking like one that can be pressed. The teal and the
+   pointer come from the rules above, which are more specific than a browser's own disabled grey. */
+button:disabled,button.go:disabled,button.install:disabled{background:var(--rule-2);border-color:var(--rule);
+color:var(--ink-3);cursor:not-allowed;opacity:.55}
+button.go:disabled:hover,button.install:disabled:hover{background:var(--rule-2);border-color:var(--rule);
+color:var(--ink-3)}
+.ask input:disabled{color:var(--ink-3);cursor:not-allowed}
 dl{display:grid;grid-template-columns:1fr auto;gap:6px 16px;margin:0;font-size:.88rem}
 dt{color:var(--ink-2)}
 dd{margin:0;text-align:right}

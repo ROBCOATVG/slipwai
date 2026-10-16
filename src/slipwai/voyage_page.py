@@ -17,7 +17,7 @@ from .passage import Stage, current
 from .settings_card import project_tabs
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 540 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# budget: 580 — the bands of one window: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
@@ -153,6 +153,21 @@ SCRIPT = BOARD_SCRIPT + """
     if (event.target.id === 'cast-off') { event.target.disabled = true; send('/cast-off', {}); }
     if (event.target.id === 'draw') { event.target.disabled = true; send('/draw', {}); }
     if (event.target.id === 'intake-go') { event.target.disabled = true; send('/intake', {}); }
+    const story = event.target.dataset && event.target.dataset.storyboard;
+    if (story) {
+      const why = document.getElementById('why-' + story);
+      const buttons = [...document.querySelectorAll('[data-storyboard]')]
+        .filter(one => one.dataset.storyboard === story);
+      buttons.forEach(one => { one.disabled = true; });
+      fetch('/storyboard', {method:'POST', headers:{'Content-Type':'application/json'},
+                            body: JSON.stringify({feature: story, verdict: event.target.dataset.verdict,
+                                                  reason: why ? why.value : ''})})
+        .then(async answer => {
+          if (answer.ok) location.reload();
+          else { buttons.forEach(one => { one.disabled = false; }); alert(await answer.text()); }
+        })
+        .catch(() => buttons.forEach(one => { one.disabled = false; }));
+    }
     // No confirm(): a dialog blocks every later event in this window, and stopping is asked rather than
     // done — a captain finishes its stage, so there is nothing here to be sorry about afterwards.
     if (event.target.id === 'stop') { event.target.disabled = true; send('/stop', {}); }
@@ -412,11 +427,39 @@ def screens_card(shots: list[dict[str, str]], mocks: list[dict[str, str]], app: 
     return f'<div class="card" id="built"><h2>Built screens · {len(shots)}</h2>{link}{blocks}</div>'
 
 
-def mockups_card(found: list[dict[str, str]]) -> str:
+def verdict_form(root: Path, feature: str) -> str:
+    """Approve marks every drawn state approved. Disapprove parks them, and has to say why."""
+    path = root / "specs" / feature / "mockups" / "mock-states.md"
+    note = "Nothing on this storyboard is approved yet."
+    text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
+    parked = next((line.split("parked:", 1)[1].strip()
+                   for line in text.splitlines() if "\u2014 parked:" in line), "")
+    if parked:
+        note = f"Disapproved: {parked}"
+    elif "\u2014 approved" in text:
+        note = "Approved."
+    # Either verdict locks both. A refusal (a disapproval with no reason) turns them back on in the page.
+    held = " disabled" if parked or "\u2014 approved" in text else ""
+    return (f'<form class="verdict" onsubmit="return false"><p class="empty">{esc(note)} '
+            f"Approving marks every drawn state approved. Disapproving keeps the storyboard here.</p>"
+            f'<div class="ask"><input id="why-{esc(feature)}" type="text" maxlength="240" '
+            f'placeholder="Why, if you disapprove"{held}>'
+            f'<button type="button" class="go" data-storyboard="{esc(feature)}" data-verdict="approved"{held}>'
+            f'Approve storyboard</button>'
+            f'<button type="button" class="install" data-storyboard="{esc(feature)}" data-verdict="parked"{held}>'
+            f"Disapprove</button></div></form>")
+
+
+def mockups_card(found: list[dict[str, str]], root: Path | None = None) -> str:
     """The storyboard the mock-up stage wrote, where it wrote one — every mock-up is reached from it, which
     is what it is for — else the wireframes themselves, shown small. Nothing where the stage has not run."""
     if not found:
         return ""
+    features: list[str] = []
+    for row in found:
+        if row["feature"] not in features:
+            features.append(row["feature"])
+    forms = "".join(verdict_form(root, feature) for feature in features) if root is not None else ""
     boards = [row for row in found if row["name"] == "storyboard.html"]
     if boards:
         tiles = "".join(
@@ -426,13 +469,15 @@ def mockups_card(found: list[dict[str, str]]) -> str:
             f'{sum(1 for one in found if one["feature"] == row["feature"]) - 1} mock-ups, from the storyboard'
             "</span></a>"
             for row in boards)
-        return f'<div class="card" id="mockups"><h2>Storyboard</h2><div class="mocks">{tiles}</div></div>'
+        return (f'<div class="card" id="mockups"><h2>Storyboard</h2><div class="mocks">{tiles}</div>'
+                f"{forms}</div>")
     tiles = "".join(
         f'<a class="mock" href="{esc(row["href"])}" target="_blank" rel="noopener">'
         f'<iframe src="{esc(row["href"])}" loading="lazy" tabindex="-1" title="{esc(row["title"])}"></iframe>'
         f'<b>{esc(row["title"])}</b><span class="fw">{esc(row["feature"])} · {esc(row["name"])}</span></a>'
         for row in found)
-    return f'<div class="card" id="mockups"><h2>Mockups · {len(found)}</h2><div class="mocks">{tiles}</div></div>'
+    return (f'<div class="card" id="mockups"><h2>Mockups · {len(found)}</h2><div class="mocks">{tiles}</div>'
+            f"{forms}</div>")
 
 
 def intake_card(found: list) -> str:
@@ -480,7 +525,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             f"{intake_card(ideas or [])}"
             f"{expect_card(found)}{landed}"
             f"{model_card(xml, note, viewer_fault)}{screens_card(shots or [], mocks or [], app)}"
-            f"{mockups_card(left)}{work_card(rows, fault)}{live}")
+            f"{mockups_card(left, root)}{work_card(rows, fault)}{live}")
     script = SCRIPT + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person
     # picks it out by — in the dock, in a window switcher, across two runs open at once — is its title.

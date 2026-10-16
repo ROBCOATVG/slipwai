@@ -26,9 +26,12 @@ the slug:
 3. Read the verdict. `needs-clarification` and `kill` stop here. Say the verdict and the reason the
    decision gives. Do not specify.
 4. A `go` runs `/speckit-specify` with the whole brief and the documents beside it — the documents, not a
-   summary — then `/gaps`. Write `docs/intake/<slug>/specified.json` as `{"feature": "specs/...", "digest":
-   "<sha256>"}`. The digest is sha256 over each file in that directory except `specified.json` and
-   `confirmed`, sorted by relative path, each path, a NUL, the bytes, and a NUL. The feature is the
-   directory Spec Kit created and recorded in `.specify/feature.json`.
+   summary — then `/gaps`. Spec Kit specifies it on the profile `project.json` already names —
+   `event-modelling` or `standard` — and on the one preset `.specify/presets/.registry` enables for it.
+   Do not enable the other preset, do not change `project.json`, and do not scaffold again. Write
+   `docs/intake/<slug>/specified.json` as `{"feature": "specs/...", "digest": "<sha256>"}`. The digest is
+   sha256 over each file in that directory except `specified.json` and `confirmed`, sorted by relative
+   path, each path, a NUL, the bytes, and a NUL. The feature is the directory Spec Kit created and recorded
+   in `.specify/feature.json`.
 5. Commit on the current branch as `Assess <slug>`. Say the verdict, and the feature directory when one
    was written. End the session.

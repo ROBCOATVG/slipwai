@@ -27,7 +27,10 @@ same script after `./init` where a PRD was given when the project was generated.
    check-constitution` has to pass once the specification below exists.
 3. **Write the first specification.** Run Spec Kit's specify command (`speckit.specify`) with the whole
    document as the feature description — the document, not a summary of it — so that every requirement and
-   acceptance criterion it states is in `specs/<feature>/spec.md`. Where Spec Kit asks for a clarification,
+   acceptance criterion it states is in `specs/<feature>/spec.md`. Spec Kit specifies it on the profile
+   `project.json` already names — `event-modelling` or `standard` — and on the one preset
+   `.specify/presets/.registry` enables for it. Do not enable the other preset, do not change
+   `project.json`, and do not scaffold again. Where Spec Kit asks for a clarification,
    answer it from the document. Where the document does not answer, decide as the skipper protocol in
    `commands/cruise.md` decides — recommended first, and written down — and record each such decision in
    the specification under its own `## Assumptions` heading, so that a person reading the specification sees

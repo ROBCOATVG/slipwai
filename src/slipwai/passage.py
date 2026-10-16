@@ -55,6 +55,12 @@ class Stage:
 VERDICT = re.compile(r"^-\s*(?P<state>.+?)\s*\u2014\s*(?P<verdict>approved|parked|n/a)\b", re.MULTILINE)
 #: What a feature with nothing to draw writes instead. A written answer, not an absence.
 NO_SURFACES = "surfaces: none"
+_FEATURE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
+_ARTICLE = re.compile(r'<article\b[^>]*\bclass="[^"]*\bstate\b[^"]*"[^>]*>(.*?)</article>',
+                      re.IGNORECASE | re.DOTALL)
+_HEADING = re.compile(r"<h2>(.*?)</h2>", re.IGNORECASE | re.DOTALL)
+_TITLE = re.compile(r"<title>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_NOT_A_SURFACE = frozenset({"storyboard.html", "index.html"})
 
 
 def profile_of(root: Path) -> str:
@@ -73,6 +79,68 @@ def harness_of(root: Path) -> str:
         return ", ".join(str(key) for key in keys if key)
     except (OSError, ValueError, AttributeError):
         return ""
+
+
+def _plain(text: str) -> str:
+    text = re.sub(r"<[^>]+>", "", text)
+    text = (text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+            .replace("&quot;", '"').replace("&#39;", "'"))
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _surface_name(title: str, stem: str) -> str:
+    title = re.sub(r"^\s*mock(-?up)?:\s*", "", _plain(title), flags=re.IGNORECASE)
+    for mark in ("\u2014", " - "):
+        if mark in title:
+            title = title.split(mark)[-1].strip()
+    return title or stem
+
+
+def drawn_states(root: Path, feature: str) -> list[tuple[str, list[str]]]:
+    """Each drawn surface and the states on its page. The storyboard and the contents page are not surfaces."""
+    if not _FEATURE.fullmatch(feature):
+        raise ValueError(f"no feature {feature}")
+    home = (root / "specs" / feature / "mockups").resolve()
+    if not home.is_dir() or not home.is_relative_to((root / "specs").resolve()):
+        raise ValueError(f"nothing drawn under specs/{feature}/mockups")
+    found: list[tuple[str, list[str]]] = []
+    for page in sorted(home.glob("*.html")):
+        if page.name in _NOT_A_SURFACE:
+            continue
+        html = page.read_text(encoding="utf-8", errors="replace")
+        title = _TITLE.search(html)
+        name = _surface_name(title.group(1) if title else "", page.stem)
+        states: list[str] = []
+        for article in _ARTICLE.finditer(html):
+            heading = _HEADING.search(article.group(1))
+            label = _plain(heading.group(1)) if heading else ""
+            if label and label not in states:
+                states.append(label)
+        found.append((name, states or ["shown"]))
+    if not found:
+        raise ValueError(f"nothing drawn under specs/{feature}/mockups")
+    return found
+
+
+def record_verdict(root: Path, feature: str, verdict: str, reason: str = "") -> str:
+    """Write `mock-states.md` from the drawings a person has just approved or disapproved.
+
+    Approving marks every drawn state approved. Disapproving parks them, and a park with no reason is a
+    blank, which is the one mark this file refuses.
+    """
+    if verdict not in ("approved", "parked"):
+        raise ValueError("approve or disapprove the storyboard")
+    why = re.sub(r"\s+", " ", reason).strip()
+    if verdict == "parked" and not why:
+        raise ValueError("say why you disapprove, so the next drawing knows what to change")
+    lines: list[str] = []
+    for name, states in drawn_states(root, feature):
+        lines.append(f"## Surface: {name}")
+        mark = "approved" if verdict == "approved" else f"parked: {why}"
+        lines.extend(f"- {state} \u2014 {mark}" for state in states)
+        lines.append("")
+    (root / "specs" / feature / "mockups" / "mock-states.md").write_text("\n".join(lines), encoding="utf-8")
+    return "approved" if verdict == "approved" else "disapproved"
 
 
 def specifications(root: Path) -> list[Path]:
@@ -211,7 +279,7 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                                    else "done" if written else "todo"),
                        written[0].relative_to(root).as_posix() if written
                        else "specs/<feature>/mockups/mock-states.md",
-                       "/mockups in the agent, then approve each state on the storyboard",
+                       "approve or disapprove the storyboard on this page",
                        (f"{approved} of {seen} states approved" + (f", {parked} parked" if parked else ""))
                        if seen else "no surfaces on this feature" if written
                        else "drawn: nobody has approved a state yet" if sketched
@@ -222,9 +290,11 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
 
     if event:
         has_model = modelled(root)
-        found.append(Stage("model", "Event model", "done" if has_model else "todo", "docs/event-model/model.yaml",
+        modelling = step_state(receipt, "model")
+        found.append(Stage("model", "Event model", modelling or ("done" if has_model else "todo"),
+                           "docs/event-model/model.yaml",
                            "the event-modeling skill in the agent, then make check-model",
-                           "modelled" if has_model else "a modelling conversation, with a person",
+                           "modelled" if has_model else "a modelling conversation - event first",
                            expect="A conversation, in the agent, with you in it. It stops for you by "
                                   "definition \u2014 nothing here moves until somebody models."))
     else:

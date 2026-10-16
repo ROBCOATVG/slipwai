@@ -31,7 +31,7 @@ from pathlib import Path
 
 from .shell_environment import login_environment
 
-# budget: 470 — one runner for every child the board starts, including assessment of a feature handed to /sail
+# budget: 510 — one runner for every child the board starts, including assessment of a feature handed to /sail
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
 # step they would be five modules of twelve lines and one import list each.
@@ -175,6 +175,11 @@ DRAFTING = ("Drafting the constitution and the first specification from docs/prd
 #: surface nobody has seen becomes a read model, a route and a set of tests, and all three cost more to
 #: move than a drawing does.
 SURFACES = ["make", "surfaces"]
+#: What approving a storyboard starts on an event-modelling project: the model, and then a stop. The chart
+#: is drawn from the model, so this does not launch.
+MODEL = ["make", "model-next"]
+MODELLING = ("Modelling — `make model-next`: the event model from the approved storyboard, in a headless "
+             "session. It stops at the model. The chart waits until that exists.")
 DRAWING = ("Drawing the surfaces — `make surfaces`: the research, the wireframes and the storyboard in a "
            "headless session of the coding agent. It stops at the storyboard, which is where you come in: "
            "nothing is approved by a session nobody was in.")
@@ -228,8 +233,8 @@ def drafted(code: int) -> str:
 
 def drew(code: int) -> str:
     if code == 0:
-        return ("`make surfaces` is done. The storyboard is below: open it, then `/mockups` in the agent "
-                "walks you through approving each state, which is what the model and the chart read.")
+        return ("`make surfaces` is done. The storyboard is below: open it, then Approve or Disapprove it "
+                "on this page. That verdict is what the model and the chart read.")
     return (f"`make surfaces` exited {code}; nothing was drawn and nothing was approved. Its last lines say "
             f"why. **No rule to make target** means this project was generated before the stage had one: "
             f"`slipwai migrate` carries it in, and `/mockups` in the agent does the whole stage by hand "
@@ -422,6 +427,39 @@ def assess(where: Path, slug: str, said: list[str] | None = None) -> Fitting:
 def draw(where: Path, said: list[str] | None = None) -> Fitting:
     """The surfaces drawn, in the background: what the board's Draw the surfaces button starts."""
     fitting = Fitting(where, [Step(SURFACES, DRAWING, drew, "surfaces")], said)
+    fitting.thread.start()
+    return fitting
+
+
+def began_model(code: int) -> str:
+    if code == 0:
+        return ("`make model-next` is done. The model is under docs/event-model/. Continue the build charts "
+                "it once a slice is named there.")
+    return (f"`make model-next` exited {code}. Its last lines say why. **No rule to make target** means this "
+            f"project was generated before approving a storyboard started the model: `slipwai migrate` "
+            f"carries the target in.")
+
+
+def model_session(root: Path) -> dict | None:
+    """A model step still alive in this project, read from the pid file `make model-next` writes.
+
+    The board that started it may have gone. The lines it already printed went with that board, so what
+    this returns is that the session is running and that this window has not got its log.
+    """
+    path = root / ".slipwai" / "model-next.pid"
+    try:
+        pid = int(path.read_text(encoding="utf-8").strip())
+        os.kill(pid, 0)
+    except (OSError, ValueError):
+        return None
+    return {"where": str(root),
+            "lines": ["Modelling is running in this project. This window has not got its log."],
+            "step": "model", "at": 1, "seconds": 0, "done": False, "code": None}
+
+
+def begin_model(where: Path, said: list[str] | None = None) -> Fitting:
+    """The model begun, in the background: what approving a storyboard starts on an event-modelling project."""
+    fitting = Fitting(where, [Step(MODEL, MODELLING, began_model, "model")], said)
     fitting.thread.start()
     return fitting
 

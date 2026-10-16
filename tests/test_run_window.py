@@ -317,7 +317,7 @@ class BuiltScreenRouteTest(BoardTest):
         self.assertIn("Built screens", card)
         self.assertIn("To do", card)
         self.assertIn(f"/screens/001-demo/S01/home.png?seat={self.seat}", card)
-        self.assertIn("/mockups/001-demo/catalog.html", card)
+        self.assertIn(f"/mockups/by/{self.seat}/001-demo/catalog.html", card)
         self.assertIn('href="http://localhost:5173"', card)
         self.assertNotIn("<h2>Mockups", said)
         with urllib.request.urlopen(self.at("/screens/001-demo/S01/home.png"), timeout=5) as answer:

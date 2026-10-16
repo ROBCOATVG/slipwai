@@ -28,7 +28,10 @@ ready: rule 6 says run them concurrently, and that holds in every form but the l
 **Words that name no slice, fairway, or existing feature are a new idea, handed here.** Capture them, and
 any document this session can read, under `docs/intake/<slug>/` as `docs/intake/README.md` describes. State
 what was captured. Then ask whether it is a new feature before Spec Kit assesses it, and do not run
-`/speckit-specify` until that assessment's `decision.md` says `go`. Under `/cruise` the question goes to
+`/speckit-specify` until that assessment's `decision.md` says `go`. Spec Kit specifies it on the profile
+`project.json` already names — `event-modelling` or `standard` — and on the one preset
+`.specify/presets/.registry` enables for it. Do not enable the other preset, do not change `project.json`,
+and do not scaffold again. Under `/cruise` the question goes to
 `sail-decide-skipper`. A session given a slice id stays on that slice. The product-specification rung below
 is the rest of the order.
 

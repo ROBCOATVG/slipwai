@@ -54,7 +54,7 @@ from .errors import GenerationError
 from .fleet import board
 from .folder_choice import chosen
 from .harbour import config
-from .init_run import Fitting
+from .init_run import Fitting, begin_model, model_session
 from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
 from .init_run import draw as draw_surfaces
@@ -77,7 +77,7 @@ from .page_shell import (
     manifest,
     not_running,
 )
-from .passage import EVENT_PROFILE, drawn, modelled, profile_of, specifications, stages
+from .passage import EVENT_PROFILE, drawn, modelled, profile_of, record_verdict, specifications, stages
 from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .spec_page import page as spec
@@ -90,6 +90,7 @@ from .voyage import (
     fleet_running,
     folded,
     mockup_file,
+    mockup_where,
     mockups,
     model_xml,
     running_app,
@@ -105,7 +106,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 630 — one server and every route the board answers, each a few lines handing off to a page
+# budget: 680 — one server and every route the board answers, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail.
 # The number is the route count rather than any one route's length: a control a person can press is ten
 # lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
@@ -271,7 +272,11 @@ class Bridge(BaseHTTPRequestHandler):
             return
         # A mock-up as the stage wrote it, from the project: a page, or the stylesheet beside it.
         if where.startswith(MOCK_ROUTE) and self.controls:
-            path = mockup_file(self.root, where.removeprefix(MOCK_ROUTE))
+            # The seat is a path segment. A query would not survive the stylesheet, the script or the next
+            # frame, and a sandboxed frame does not send the query back.
+            named, rest = mockup_where(where.removeprefix(MOCK_ROUTE))
+            root = self.bench.seat(named).root if named else self.root
+            path = mockup_file(root, rest)
             if path is None:
                 self.send(404, "<p>No such mock-up.</p>")
                 return
@@ -385,11 +390,20 @@ class Bridge(BaseHTTPRequestHandler):
             return False
         if self.fitting and (not self.fitting.said()["done"] or self.fitting.said()["code"]):
             return False
+        if model_session(self.root):
+            return False
         return profile_of(self.root) != EVENT_PROFILE or modelled(self.root)
 
     def receipt(self, since: int = 0) -> dict:
         """What the board's child has said after the `since`th line, and whether the build can be continued."""
         if not self.fitting:
+            held = model_session(self.root)
+            if held is not None:
+                if since >= int(held["at"]):
+                    held = {**held, "lines": []}
+                held["launchable"] = False
+                held["root"] = str(self.root)
+                return held
             return {"lines": [], "at": 0, "done": True, "step": "", "root": str(self.root),
                     "launchable": self.launchable()}
         said = self.fitting.said(since)
@@ -401,7 +415,8 @@ class Bridge(BaseHTTPRequestHandler):
         rows, fault = folded(self.root)
         held = config(self.root)
         fleet = {**board(self.root, held), "running": fleet_running(self.root)}
-        found = stages(self.root, self.receipt() if self.fitting else None, fleet, counts(rows))
+        found = stages(self.root, self.receipt() if self.fitting or model_session(self.root) else None,
+                       fleet, counts(rows))
         return found, rows, fault, fleet, held
 
     def stoppable(self, fleet: dict) -> bool:
@@ -409,6 +424,25 @@ class Bridge(BaseHTTPRequestHandler):
         on its way to stopping it. A second Stop while the first is still asking would be two asks and one
         answer, and the button would read as having done nothing."""
         return bool(fleet.get("running")) and (not self.fitting or self.fitting.said()["done"])
+
+    def after_storyboard(self, said: str) -> str:
+        """Approving starts the next step. A standard project charts; an event-modelling one models.
+
+        Disapproving starts nothing: the storyboard stays here until it is drawn again. A board already
+        running something keeps the verdict and leaves that child alone.
+        """
+        if said != "approved" or (self.fitting and not self.fitting.said()["done"]) or model_session(self.root):
+            return said
+        if profile_of(self.root) == EVENT_PROFILE and not modelled(self.root):
+            if not specifications(self.root):
+                return said
+            self.fitting = begin_model(self.root, self.fitting.said()["lines"] if self.fitting else None)
+            return "approved; modelling"
+        if self.launchable():
+            self.launched = True
+            self.fitting = continue_build(self.root, self.fitting.said()["lines"] if self.fitting else None)
+            return "approved; continuing the build"
+        return said
 
     def drawable(self) -> bool:
         """Whether the surfaces can be drawn from here: a specification to draw them from, nothing drawn
@@ -469,7 +503,9 @@ class Bridge(BaseHTTPRequestHandler):
 
     def made(self) -> dict | None:
         """What this board last made, for the card that says so — nothing, on a board that has made nothing."""
-        return self.receipt() if self.fitting else None
+        if self.fitting or model_session(self.root):
+            return self.receipt()
+        return None
 
     def body(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
@@ -574,11 +610,15 @@ class Bridge(BaseHTTPRequestHandler):
                     said = f"assessing {idea.slug}"
                 else:
                     raise ValueError(f"{idea.slug} is {idea.state}; /sail is what moves an idea in that state")
+            elif where == "/storyboard":
+                said = record_verdict(self.root, str(held.get("feature", "")), str(held.get("verdict", "")),
+                                      str(held.get("reason", "")))
+                said = self.after_storyboard(said)
             elif where == "/draw":
                 if not self.drawable():
                     raise ValueError("nothing to draw: the surfaces are drawn from a specification under "
-                                     "specs/, and once they are drawn what they wait on is your verdict on "
-                                     "each state, which `/mockups` in the agent asks you for")
+                                     "specs/, and once they are drawn what they wait on is your verdict, "
+                                     "which Approve and Disapprove on this page record")
                 self.fitting = draw_surfaces(self.root, self.fitting.said()["lines"] if self.fitting else None)
                 said = "drawing the surfaces"
             elif where == "/launch":

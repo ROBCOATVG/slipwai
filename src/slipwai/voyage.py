@@ -14,7 +14,7 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 420 — the fold, the model, the mock-ups and the screenshots one voyage is read from
+# budget: 450 — the fold, the model, the mock-ups and the screenshots one voyage is read from
 from __future__ import annotations
 
 import json
@@ -183,6 +183,10 @@ def viewer_config(xml: str) -> str:
 #: Where the mock-up stage writes, under a feature, and the route the board serves it at.
 MOCKUPS = "mockups"
 MOCK_ROUTE = "/mockups/"
+#: The path segment that carries a window. A query is dropped by every relative address a mock-up then
+#: asks for — its stylesheet, its script, the next frame — and a sandboxed frame does not send it back.
+SEAT_PATH = "by"
+_SEAT = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 #: The specification a feature is built from, and the route the board serves it at. Served at all because
 #: Continue the build is a person's word that the specification is good, and a page that asks for that word
 #: and gives no way to read the thing is asking somebody to agree to a file they have not opened.
@@ -215,8 +219,27 @@ def mockups(root: Path, seat: str = "") -> list[dict[str, str]]:
         match = re.search(r"<title>(.*?)</title>", head, re.IGNORECASE | re.DOTALL)
         title = re.sub(r"^\s*mock(-?up)?:\s*", "", match.group(1).strip(), flags=re.IGNORECASE) if match else page.stem
         found.append({"feature": feature, "name": page.name, "title": title or page.stem,
-                      "href": f"{MOCK_ROUTE}{feature}/{page.name}" + (f"?seat={seat}" if seat else "")})
+                      "href": mockup_href(feature, page.name, seat)})
     return found
+
+
+def mockup_href(feature: str, name: str, seat: str = "") -> str:
+    """Where the board serves one mock-up. The seat is a path segment, so the page's own files stay on it."""
+    if seat and _SEAT.fullmatch(seat):
+        return f"{MOCK_ROUTE}{SEAT_PATH}/{quote(seat, safe='')}/{feature}/{name}"
+    return f"{MOCK_ROUTE}{feature}/{name}"
+
+
+def mockup_where(where: str) -> tuple[str, str]:
+    """The seat a `/mockups/` remainder names, and the `<feature>/<name>` under it.
+
+    An empty seat is the unseated form, which reads the directory the board was started in.
+    """
+    parts = where.split("/", 3)
+    if (len(parts) == 4 and parts[0] == SEAT_PATH and _SEAT.fullmatch(unquote(parts[1]))
+            and parts[2] and parts[3]):
+        return unquote(parts[1]), f"{parts[2]}/{parts[3]}"
+    return "", where
 
 
 def mockup_file(root: Path, where: str) -> Path | None:
@@ -397,8 +420,10 @@ def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, mad
             if (root / ".specify/assessments" / folder.name / "decision.md").is_file():
                 flags += "d"
             intake.append(f"{folder.name}:{flags}")
+    verdicts = sorted(f"{page.parent.parent.name}:{int(page.stat().st_mtime)}"
+                      for page in specs.glob(f"*/{MOCKUPS}/mock-states.md")) if specs.is_dir() else []
     berths = [str(one.get("state", "")) for one in (fleet.get("berths") or []) if isinstance(one, dict)]
     return "|".join((feature, "".join(str(row["state"])[:1] for row in rows), ",".join(drawn),
-                     ",".join(photographed),
+                     ",".join(photographed), ",".join(verdicts),
                      str(int(picture.stat().st_mtime) if picture.is_file() else 0), ",".join(berths),
                      str(len(fleet.get("inbox") or [])), "f" if made else "", ",".join(intake)))

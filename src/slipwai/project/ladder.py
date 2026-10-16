@@ -81,8 +81,11 @@ def sail_ladder(
    `/speckit-assess-decide` for that slug. The artifacts stay in `.specify/assessments/<slug>/`.
    `needs-clarification` and `kill` stop. A `go` is handed to `/speckit-specify` with the whole of the
    brief and the documents beside it, then `/gaps`, then `specified.json` names the `specs/...` directory
-   and the digest `docs/intake/README.md` describes. A matching digest is already specified. A different
-   digest is assessed again. A session given a slice id stays on that slice.""",
+   and the digest `docs/intake/README.md` describes. Spec Kit specifies it on the profile `project.json`
+   already names — `event-modelling` or `standard` — and on the one preset `.specify/presets/.registry`
+   enables for it. Do not enable the other preset, do not change `project.json`, and do not scaffold again.
+   A matching digest is already specified. A different digest is assessed again. A session given a slice id
+   stays on that slice.""",
         """**Mock-up review** — `specs/<feature>/mockups/mock-states.md` exists and every state in it is
    `approved`, `parked` with the question it waits on, or `n/a` with its reason. A feature with no surface
    at all writes `surfaces: none` and that is the whole file. Otherwise run `/mockups`, which researches

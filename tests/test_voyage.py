@@ -4,9 +4,11 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
+# budget: 390 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import time
 import unittest
@@ -109,6 +111,17 @@ class MockupsTest(unittest.TestCase):
         self.assertEqual([(row["feature"], row["name"], row["title"], row["href"]) for row in found],
                          [("001-demo", "catalog.html", "catalog — Demo", "/mockups/001-demo/catalog.html")])
         self.assertEqual(mockups(Path(tempfile.mkdtemp())), [])
+
+    def test_a_seat_stays_on_the_path_a_mock_up_s_own_files_are_loaded_from(self) -> None:
+        """A query is dropped by the stylesheet, the script and the next frame. A path segment is not."""
+        from slipwai.voyage import mockup_href, mockup_where
+        href = mockup_href("001-demo", "storyboard.html", "window-one")
+        self.assertEqual(href, "/mockups/by/window-one/001-demo/storyboard.html")
+        self.assertEqual(mockup_where("by/window-one/001-demo/storyboard.html"),
+                         ("window-one", "001-demo/storyboard.html"))
+        self.assertEqual(mockup_where("001-demo/styles.css"), ("", "001-demo/styles.css"))
+        self.assertEqual(mockups(self.root, "window-one")[0]["href"],
+                         "/mockups/by/window-one/001-demo/catalog.html")
 
     def test_the_route_serves_a_mock_up_and_its_stylesheet_and_nothing_outside_them(self) -> None:
         self.assertEqual(mockup_file(self.root, "001-demo/catalog.html"), (self.home / "catalog.html").resolve())
@@ -271,6 +284,52 @@ class BuiltScreensPageTest(unittest.TestCase):
         self.assertNotIn('id="built"', html)
         self.assertIn("<h2>Storyboard</h2>", html)
         self.assertNotIn("Open the running app", html)
+
+    def test_either_verdict_disables_approve_and_disapprove(self) -> None:
+        """Pressing one locks both, and a recorded verdict leaves them locked after the reload."""
+        from slipwai.voyage_page import SCRIPT, verdict_form
+        root = Path(tempfile.mkdtemp())
+        home = root / "specs/001-demo/mockups"
+        home.mkdir(parents=True)
+        open_form = verdict_form(root, "001-demo")
+        self.assertNotIn("disabled", open_form)
+        self.assertIn("dataset.storyboard === story", SCRIPT)
+        self.assertIn("one.disabled = true", SCRIPT)
+        for mark in ("approved", "parked: the map"):
+            (home / "mock-states.md").write_text(
+                f"## Surface: Discover\n- Populated \u2014 {mark}\n", encoding="utf-8")
+            closed = verdict_form(root, "001-demo")
+            self.assertIn('data-verdict="approved" disabled', closed, mark)
+            self.assertIn('data-verdict="parked" disabled', closed, mark)
+
+    def test_a_locked_verdict_button_looks_locked(self) -> None:
+        """A disabled control keeps the attribute and loses the teal of a button that can be pressed."""
+        from slipwai.page_shell import STYLE
+        self.assertIn("button.go:disabled", STYLE)
+        self.assertIn("cursor:not-allowed", STYLE)
+
+    def test_a_model_still_running_is_the_voyage_not_a_prompt_to_start_one(self) -> None:
+        """A model step this board did not start still says where the project is, and that the log is not here."""
+        from slipwai.init_run import model_session
+        from slipwai.passage import stages
+        from slipwai.voyage_page import page
+        root = Path(tempfile.mkdtemp())
+        (root / "project.json").write_text('{"profile": "event-modelling"}\n', encoding="utf-8")
+        (root / ".slipwai").mkdir()
+        (root / ".slipwai/model-next.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+        held = model_session(root)
+        self.assertIsNotNone(held)
+        assert held is not None
+        self.assertEqual(held["step"], "model")
+        self.assertFalse(held["done"])
+        found = stages(root, held)
+        self.assertEqual(next(one.state for one in found if one.key == "model"), "working")
+        html = page(root, found, [], "", "", "", "", held, False)
+        self.assertIn('id="fitting"', html)
+        self.assertIn("has not got its log", html)
+        self.assertNotIn("Model it next", html)
+        (root / ".slipwai/model-next.pid").write_text("999999999\n", encoding="utf-8")
+        self.assertIsNone(model_session(root))
 
 
 class FoldTest(unittest.TestCase):

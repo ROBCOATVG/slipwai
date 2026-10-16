@@ -105,12 +105,11 @@ def sail_ladder(
    the one it belongs to in `context` as well. `make check-model` refuses a slice that leaves either
    unsaid. A slice no purpose covers, or a service with no purpose recorded, is a product decision — ask,
    never default to the first service or the first context. Which contexts there are is found here, not
-   declared up front: before slices go to `modelled`, apply Conway's law to the model
-   (`skills/event-modeling/references/nine-steps.md`, end of Step 9) — lanes with vocabularies of their
-   own, joined only by the events one publishes and another reads, are bounded contexts. Record them on
-   the service, with the user, as `slipwai describe-service <name> --context <context>` (once per
-   context; `--purpose` records what the service owns the same way), and place each slice with
-   `context:`. One vocabulary is one context; say so and move on."""
+   declared up front: before slices go to `modelled`, run `make seams` and apply the seam tests to what
+   it prints (`skills/event-modeling/references/nine-steps.md`, *Apply Conway's Law*) — a shared noun
+   is evidence for neither side, and a stream is never split. Record what survives on the service, with
+   the user, as `slipwai describe-service <name> --context <context>` (once per context; `--purpose`
+   records what the service owns the same way), and place each slice with `context:`."""
             + rung_of_the_slice(apps)
         )
     if not event:
@@ -154,15 +153,12 @@ def sail_ladder(
         """ It also names the bounded context inside that service: the one the slice's `model.yaml` entry
    names in `context`, so the code goes under that `src/<context>/`."""
         if event
-        else """ It also names the bounded context inside that service, and this is where contexts are
-   found in a project without an event model: read the specification's vocabulary the way
-   `skills/domain-driven-design/resources/bounded-contexts.md` describes under *The Language Test* — the
-   same word meaning two things, qualifiers creeping in ("billing customer", "shipping customer"), rules
-   that change for different reasons. Two vocabularies are two bounded contexts: record them on the
-   service, with the user, as `slipwai describe-service <name> --context <context>` (once per context), and
-   put each context's code under its own `src/<context>/` behind a `public` module — `make check-imports` keeps them apart from then on. One
-   vocabulary is one context, and saying so is the whole decision. Neither is a reason for a new service;
-   `docs/architecture.md`, *Bounded contexts*, says what is."""
+        else """ It also names the bounded context inside that service, which `/chart` found by the seam
+   tests (`skills/domain-driven-design/resources/bounded-contexts.md`, *The Seam Tests*) — a shared noun
+   is evidence for neither side. Each context is recorded on the service, with the user, as `slipwai
+   describe-service <name> --context <context>` (once per context), and its code goes under its own
+   `src/<context>/` behind a `public` module — `make check-imports` keeps them apart from then on.
+   Neither is a reason for a new service; `docs/architecture.md`, *Bounded contexts*, says what is."""
     )
     # Before the plan, where the decision is written down; absent under `--target none`, which has nothing to decide.
     stages += release_stage(apps, target)

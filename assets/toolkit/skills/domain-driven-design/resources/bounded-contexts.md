@@ -133,6 +133,38 @@ When you find yourself adding qualifiers ("billing user" vs "gifting user"), you
 - You want to "clean up" the architecture (refactoring isn't the same as boundary discovery)
 - Technical concerns differ (use hex arch layers, not context boundaries)
 
+### The Seam Tests
+
+The language test is the strongest signal and the one most often run alone, and run alone it gets one
+answer wrong every time: a product whose every part says *listing*, *seat* and *person* and means the same
+thing by each comes out as one context, however many actors it serves and however many reasons its rules
+have to change. A shared noun is evidence for neither side. So a proposed seam between two candidates is
+tested three ways, and the proposal shows the result of each, with the file and line it was read off.
+
+Start from the work, not the nouns. A candidate is the slices that change one stream's state (in an event
+model, the slices that write one `stream`; in a specification, the stories that change one Key Entity),
+with the views that read only it. A stream is one consistency boundary and is never split across contexts:
+publishing a listing and filling its chairs are one stream whatever else is decided. That rule is what keeps
+the method from mistaking a process stage for a context.
+
+| Test | The question | Split signal | Merge signal |
+|------|--------------|--------------|--------------|
+| **Language** | Does a word both sides use mean two things, or carry a different shape on each side? | "Occasion" as a date and as a billable line; the same listing as a night with a private address and as a pin with a seat count | — (identical meaning is neutral, not a merge reason) |
+| **Change** | Name one plausible change to each side's rules. Does it reach the other? | Seat rules, search radius, a feedback window, a community's house rules each change for a business reason of their own | A change that cascades both ways |
+| **Flow** | Which actor decides the rules on each side, and is the handoff an event the far side only folds? | Host, player and trust record meet at `ListingPublished`, `SeatAccepted`, `SessionCompleted` | A step inside one actor's job; a decision one side cannot take without asking the other |
+
+Then count what crosses the seam. An event folded on the far side is contract coupling, and cheap. A
+command that must read the far side's *current* state at decision time, or share its transaction, is strong
+coupling, and strong coupling stays close: that is the one thing that keeps two candidates together on its
+own. A view that folds several candidates is a view, unless its rules change for reasons of its own, in
+which case it is a context with no writes — and still one, not several.
+
+The output is a table, not a verdict: candidate, streams it writes, the three tests' evidence, what
+crosses, confidence. Then the seams you are unsure about, named before the person reads the list, and the
+genuinely undecidable ones left as questions. Two candidates that share every word and change for one
+reason under one actor are one context. Two that share every word and fail the change test or the flow
+test are two. The decision entry carries all three tests in its *Why* and its *Would reverse if*.
+
 ### How to Find Boundaries in Practice
 
 **1. Listen for language friction.** When domain conversations become awkward — "I mean the *shipping* address, not the *billing* address" — you've found a seam. Map where these qualifiers appear.
@@ -201,5 +233,7 @@ before the boundary is proved means finding it across a network, which is the ex
 
 - **Splitting by technical layer** (a "database context" and an "API context") — contexts are business boundaries, not technical ones
 - **One context per entity** — most entities don't warrant their own context. Split by business capability, not by noun
+- **One context per process stage** — "publishing" and "seating" that write the same stream are one consistency boundary cut in half; a seam through a stream is never a context boundary
+- **One context because the nouns match** — the mirror mistake: parts that share every word and still change for different reasons under different actors are two contexts wearing one glossary
 - **Splitting too early** — start with one context and split when you feel the friction. Premature boundaries create coordination overhead worse than a slightly large model
 - **Ignoring the cost of communication** — every context boundary adds an integration point. Only split when the cost of a unified model exceeds the cost of integration

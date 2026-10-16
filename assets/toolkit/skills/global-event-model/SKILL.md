@@ -98,11 +98,14 @@ entry; then each slice also names its `context`); `make model` renders one canva
 `model.html`, projected from the slices in it — purpose, language, inbound commands, outbound events, read
 models, streams — so the canvas is never edited by hand.
 
-Which contexts a service holds is found in the model, not declared up front: when the slices fall into
-clusters with vocabularies of their own — the same word meaning two things, or terms one cluster never
-uses — those are the contexts (`skills/event-modeling/references/nine-steps.md`, *Apply Conway's Law*).
-Record them on the service's manifest entry before the slices go to `modelled`, then place each slice with
-`context:`. A list nobody has written is not a project with one context; it is a decision not yet taken.
+Which contexts a service holds is found in the model, not declared up front: `make seams` groups the slices
+by the stream they write, and each seam between two groups is tested three ways — language (a shared word
+meaning two things, or shaped differently on each side), change (rules that change for different business
+reasons) and flow (a different actor deciding, with an event as the handoff) — before any of them is called
+a context (`skills/event-modeling/references/nine-steps.md`, *Apply Conway's Law*). A shared noun is
+evidence for neither side, and a stream is never split across two. Record what survives on the service's
+manifest entry before the slices go to `modelled`, then place each slice with `context:`. A list nobody has
+written is not a project with one context; it is a decision not yet taken.
 
 ## What the append is guarded by
 

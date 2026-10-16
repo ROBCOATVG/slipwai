@@ -112,10 +112,13 @@ purpose covers is a decision for the user, not the first service by default;
 a service with no purpose recorded is the first thing to ask about. Someone
 added that service for a reason, and the model is where the reason shows.
 Before the slices go to `modelled`, apply Conway's law to the model
-(`references/nine-steps.md`, end of Step 9): lanes with vocabularies of their
-own are bounded contexts — record them as `contexts` on the service in
-`project.json` and give each slice its `context`. One vocabulary is one
-context; say so and move on.
+(`references/nine-steps.md`, end of Step 9): `make seams` groups the slices
+by the stream they write, and every seam between two groups is tested three
+ways — language, change and flow — with the evidence written down. A shared
+noun is evidence for neither side; a stream is never split. Record what
+survives as `contexts` on the service in `project.json` and give each slice
+its `context`. One stream with one reason to change is one context, and the
+seams output is the evidence for saying so.
 
 ### The Prime Directive: Not Losing Information
 

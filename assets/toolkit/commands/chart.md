@@ -54,12 +54,28 @@ Three rules keep that honest.
 A **fairway** is one bounded context's slices, with one holder. Work out an answer to each of these, then
 put it to the person.
 
-1. **Which bounded contexts does this feature touch?** Read the specification's vocabulary the way
-   `skills/domain-driven-design/resources/bounded-contexts.md` describes under *The Language Test*: the
-   same word meaning two things, qualifiers creeping in like "billing customer" and "shipping customer",
-   rules that change for different reasons. Propose the contexts, with the words that separate them and
-   where each word appears. A bounded context is a part of the product with its own vocabulary, where the
-   same word means something different from what it means next door.
+1. **Which bounded contexts does this feature touch?** Start from the work, not the nouns: the
+   specification's Key Entities whose state the user stories change are the candidates, and an entity's
+   state is never split across two contexts — publishing a listing and filling its chairs change one
+   entity and stay together whatever else is decided. Then test every seam between two candidates three
+   ways, the way `skills/domain-driven-design/resources/bounded-contexts.md` describes under *The Seam
+   Tests*, each with the file and line it was read off:
+   - **Language.** Does a word both sides use mean two things, with qualifiers creeping in like "billing
+     customer" and "shipping customer" — or does one identity carry a different shape on each side, the
+     same listing as a night with a private address and as a pin with a seat count?
+   - **Change.** Name one plausible change to the rules on each side and say whether it reaches the
+     other. Rules that change for different business reasons are the strongest reason to split; a change
+     that cascades both ways is the strongest reason not to.
+   - **Flow.** Which actor decides the rules on each side, and is the handoff between them something the
+     far side only reads — a mark it steers by, never a state it writes?
+
+   Then count what would cross: a mark steered by is cheap; a slice that must read the far side's current
+   state to decide, or share its transaction, keeps the two together on its own. **A shared noun is
+   evidence for neither side.** Two candidates that share every word and pass the change test and the
+   flow test are two contexts; one vocabulary with one reason to change and one owner is one, and saying
+   so with the evidence is the whole decision. Propose the contexts as a table — candidate, entities it
+   owns, the three tests' evidence, what crosses, confidence — with the seams you are unsure about named
+   first.
 2. **Which service holds each one?** Read `project.json`'s `deployables`, each service's recorded `purpose`
    and its existing `contexts`. Where one service plainly covers a context, propose it. Where none does, or
    two could, that is a question and not a proposal. Record the confirmed answer on the service with

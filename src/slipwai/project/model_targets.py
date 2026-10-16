@@ -25,6 +25,10 @@ check-model: ## Validate the global event model and its links to implemented cod
 chart: ## Render specs/<feature>/chart.yaml from model.yaml — the contracts every fairway steers by (no Node)
 \tpython3 scripts/event-model/chart.py
 
+.PHONY: seams
+seams: ## Lay out the evidence for the context decision: the slices grouped by stream, and what crosses between the groups (no Node)
+\tpython3 scripts/event-model/seams.py
+
 .PHONY: model run-state
 model: ## Regenerate the event-model diagrams and browsable page from model.yaml (needs Node; PNG=1 for a raster copy; MERMAID_PUPPETEER_CONFIG=<json> where Chromium cannot sandbox)
 \t{INSTALL}

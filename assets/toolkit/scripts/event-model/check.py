@@ -540,6 +540,32 @@ def validate(
                     )
     findings += depends_on_findings(slices)
     findings += folds_match_their_guard(slices)
+    findings += one_stream_one_context(slices)
+    return findings
+
+
+def one_stream_one_context(slices: list) -> list[str]:
+    """A stream is one consistency boundary and sits in one bounded context — the seam tests' one hard
+    rule (`skills/domain-driven-design/resources/bounded-contexts.md`, *The Seam Tests*), held here."""
+    writers: dict[str, dict[str, list[str]]] = {}
+    for item in slices:
+        if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+            continue
+        stream = item.get("stream")
+        context = item.get("context")
+        if not isinstance(stream, str) or not stream or not isinstance(context, str) or not context:
+            continue
+        name = stream.split("{", 1)[0].rstrip("-_: ") or stream
+        writers.setdefault(name, {}).setdefault(context, []).append(item["id"])
+    findings: list[str] = []
+    for name, by_context in writers.items():
+        if len(by_context) > 1:
+            where = "; ".join(f"{context}: {', '.join(ids)}" for context, ids in by_context.items())
+            findings.append(
+                f"stream {name} is written from {len(by_context)} contexts ({where}); a stream sits in one "
+                "context (bounded-contexts.md, The Seam Tests) — move the slices to one, or give them "
+                "streams of their own"
+            )
     return findings
 
 

@@ -278,21 +278,48 @@ Slice 2: "Project Dashboard" → projects from ProjectInitialized event
 Event Modeling ends by grouping the lanes into units that can change on their own — historically the
 teams that would own them, but the boundary is in the model whether or not there are teams behind it, and
 when one person or an agent does all the work it matters just as much: it is what stops one change from
-rippling through everything. Here that step decides the bounded contexts, and it runs over the model
-rather than over an org chart. Look across the slices for:
+rippling through everything, and it is what lets two of them go on at once. Here that step decides the
+bounded contexts, and it runs over the model rather than over an org chart.
 
-- the same word meaning two things — "Occasion" as a gift-giving date and as a billable line
-- qualifiers creeping in to tell them apart — "gifting user", "billing user"
-- clusters of commands, events and read models that never name each other's terms, joined only by an
-  event one publishes and the other reads
+**Start from the streams, not the nouns.** Run `make seams`: it groups the slices by the stream they
+write, attaches each view to the stream it folds, and lists the views that fold several. Those groups are
+the candidates. A stream is one consistency boundary and is never split across contexts — publishing a
+listing and filling its chairs are one stream and stay together whatever else is decided. That rule is
+what keeps this from becoming a process-stage split, which is the commonest wrong cut.
 
-Each such cluster is a bounded context: one vocabulary, one glossary, one `src/<context>/`. Record them on
-the owning service in `project.json` as `contexts: ["gifting", "budgeting"]`, then give every slice its
-`context:` beside its `service`. From then on `make check-model` requires the field and `make check-imports`
-refuses one context reaching into another except through its `public` module. One vocabulary across the
-whole model is one context — say so and move on; a context is not a service, and finding two does not mean
-adding a deployable (`docs/architecture.md`, *Bounded contexts*, has when it does). This is a decision to
-take with the user: the model shows the seams, the people who own the words confirm them.
+**Then test every seam between two candidates three ways**, each with the file and line it was read off
+(`skills/domain-driven-design/resources/bounded-contexts.md`, *The Seam Tests*):
+
+1. **Language.** Does a word both sides use mean two things — "Occasion" as a gift-giving date and as a
+   billable line — or carry a different shape on each side, the same listing as a published night with a
+   private address and as an approximate pin with a seat count? Qualifiers creeping in ("gifting user",
+   "billing user") are this test failing out loud.
+2. **Change.** Name one plausible change to the rules on each side and say whether it reaches the other.
+   Seat rules, search radius, a feedback window and a community's house rules each change for a business
+   reason of their own; a change that cascades both ways is one context's change.
+3. **Flow.** Which actor decides the rules on each side, and is the handoff between them an event the far
+   side only folds? A host's night, a player's search and the trust record meet at `ListingPublished`,
+   `SeatAccepted` and `SessionCompleted`; a step inside one actor's job is not a seam.
+
+Then count what crosses. An event folded on the far side is contract coupling, and cheap. A command that
+must read the far side's current state at decision time, or share its transaction, is strong coupling and
+keeps the two together on its own. A view that folds several candidates is a view unless its rules change
+for their own reasons, in which case it is a context with no writes, and still one.
+
+**A shared noun is evidence for neither side.** Two candidates that share every word and change for one
+reason, under one actor, are one context. Two that share every word and fail the change test or the flow
+test are two. One vocabulary with one reason to change is still one context, and the seams output saying
+*one stream, one candidate* is the whole of that decision.
+
+Write the proposal as a table — candidate, streams it writes, the three tests' evidence, what crosses,
+confidence — then say which seams you are unsure about and why, and leave the genuinely undecidable ones as
+questions. Record the contexts on the owning service in `project.json` as `contexts: ["tables",
+"community"]`, then give every slice its `context:` beside its `service`. From then on `make check-model`
+requires the field and refuses a stream written from two contexts, and `make check-imports` refuses one
+context reaching into another except through its `public` module. A context is not a service, and finding
+two does not mean adding a deployable (`docs/architecture.md`, *Bounded contexts*, has when it does). This
+is a decision to take with the user: the model shows the seams, the people who own the words confirm them,
+and the decision entry carries all three tests in its *Why* and its *Would reverse if*.
 
 ## Output Structure
 

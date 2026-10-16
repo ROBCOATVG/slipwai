@@ -1,0 +1,666 @@
+# Game Finder, as the run that produced it modelled it: 39 slices in one context, `finding`, on one
+# service. Condensed from a generated project's docs/event-model/model.yaml — ids, names, actors, streams,
+# reads and frame names, with the screen data and mock-up links left out — and kept exactly as that run
+# left it, context included, because this fixture is the characterisation case for finding seams.
+#
+# One vocabulary across the whole of it: account, listing, seat, community and feedback mean one thing
+# each, and the language test alone found one context. Four streams, five actors, and views that fold
+# three streams at once is what the seams script has to surface from it, so that the rule proposes more
+# than `finding` here and still leaves a one-stream model as one candidate (tests/test_seams.py).
+version: 1
+render:
+  lanes:
+    ui: actor
+    data: none
+    events: stream
+slices:
+- id: S1
+  name: Open an account
+  context: finding
+  capability: Have an account
+  pattern: state-change
+  status: modelled
+  actor: Visitor
+  stream: account-{accountId}
+  frames:
+  - type: ui
+    name: SignedOutScreen
+  - type: cmd
+    name: OpenAccount
+  - type: evt
+    name: AccountOpened
+- id: S32
+  name: Forget an account
+  context: finding
+  capability: Have an account
+  pattern: state-change
+  status: modelled
+  actor: Player
+  stream: account-{email}
+  frames:
+  - type: ui
+    name: AskToBeForgotten
+  - type: cmd
+    name: ForgetAccount
+  - type: evt
+    name: AccountForgotten
+- id: S15
+  name: Publish a listing
+  context: finding
+  capability: Host a table
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: HostTableScreen
+  - type: cmd
+    name: PublishListing
+  - type: evt
+    name: ListingPublished
+- id: S18
+  name: Request a seat
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-change
+  status: modelled
+  actor: Player
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: TableDetailScreen
+  - type: cmd
+    name: RequestSeat
+  - type: evt
+    name: SeatRequested
+- id: S19
+  name: Accept a seat request
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: AcceptSeatRequest
+  - type: evt
+    name: SeatAccepted
+- id: S20
+  name: Decline a seat request
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: DeclineSeatRequest
+  - type: evt
+    name: SeatDeclined
+- id: S21
+  name: Withdraw a pending request
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-change
+  status: modelled
+  actor: Player
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: WithdrawSeatRequest
+  - type: evt
+    name: SeatRequestWithdrawn
+- id: S22
+  name: Withdraw an accepted seat
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-change
+  status: modelled
+  actor: Player
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: WithdrawAcceptedSeat
+  - type: evt
+    name: AcceptedSeatWithdrawn
+- id: S23
+  name: Add chairs
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: AddChairs
+  - type: evt
+    name: ChairsAdded
+- id: S24
+  name: Shrink empty chairs
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: RemoveEmptyChairs
+  - type: evt
+    name: EmptyChairsRemoved
+- id: S25
+  name: Ask a public question
+  context: finding
+  capability: Talk at the table
+  pattern: state-change
+  status: modelled
+  actor: Player
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: TableDetailScreen
+  - type: cmd
+    name: AskQuestion
+  - type: evt
+    name: QuestionAsked
+- id: S26
+  name: Answer a public question
+  context: finding
+  capability: Talk at the table
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: TableDetailScreen
+  - type: cmd
+    name: AnswerQuestion
+  - type: evt
+    name: QuestionAnswered
+- id: S27
+  name: Post in the table room
+  context: finding
+  capability: Talk at the table
+  pattern: state-change
+  status: modelled
+  actor: Player
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: PostRoomMessage
+  - type: evt
+    name: RoomMessagePosted
+- id: S28
+  name: Cancel the night
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: CancelNight
+  - type: evt
+    name: NightCancelled
+- id: S29
+  name: Complete the session
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: CompleteSession
+  - type: evt
+    name: SessionCompleted
+- id: S30
+  name: Leave feedback
+  context: finding
+  capability: Leave feedback
+  pattern: state-change
+  status: modelled
+  actor: Co-participant
+  stream: feedback-{listingId}-{fromAccountId}-{aboutAccountId}
+  frames:
+  - type: ui
+    name: FeedbackScreen
+  - type: cmd
+    name: LeaveFeedback
+  - type: evt
+    name: FeedbackLeft
+- id: S31
+  name: Add a correction note
+  context: finding
+  capability: Leave feedback
+  pattern: state-change
+  status: modelled
+  actor: Co-participant
+  stream: feedback-{listingId}-{fromAccountId}-{aboutAccountId}
+  frames:
+  - type: ui
+    name: FeedbackScreen
+  - type: cmd
+    name: AddFeedbackNote
+  - type: evt
+    name: FeedbackNoteAdded
+- id: S2
+  name: Create a community
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Organizer
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: CreateCommunity
+  - type: evt
+    name: CommunityFounded
+- id: S3
+  name: Join a public community
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Player
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: JoinCommunity
+  - type: evt
+    name: CommunityJoined
+- id: S4
+  name: Invite someone to a community
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Member
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: OfferInvitation
+  - type: evt
+    name: InvitationOffered
+- id: S5
+  name: Replace the share link
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Member
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: ReplaceShareLink
+  - type: evt
+    name: ShareLinkReplaced
+- id: S6
+  name: Accept an invitation
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Player
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: AcceptInvitationScreen
+  - type: cmd
+    name: AcceptInvitation
+  - type: evt
+    name: InvitationAccepted
+- id: S7
+  name: Make a community public
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Organizer
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: MakeCommunityPublic
+  - type: evt
+    name: CommunityMadePublic
+- id: S8
+  name: Make a community invite-only
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Organizer
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: MakeCommunityInviteOnly
+  - type: evt
+    name: CommunityMadeInviteOnly
+- id: S9
+  name: Mark a community adults-only
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Organizer
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: MarkCommunityAdultsOnly
+  - type: evt
+    name: CommunityMarkedAdultsOnly
+- id: S10
+  name: Appoint a moderator
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Organizer
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: AppointModerator
+  - type: evt
+    name: ModeratorAppointed
+- id: S11
+  name: Release a moderator
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Organizer
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: ReleaseModerator
+  - type: evt
+    name: ModeratorReleased
+- id: S12
+  name: Remove a member
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Organizer
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: RemoveMember
+  - type: evt
+    name: MemberRemoved
+- id: S13
+  name: Add a catalog game
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Member
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: AddCatalogGame
+  - type: evt
+    name: CatalogGameAdded
+- id: S14
+  name: Remove a catalog game
+  context: finding
+  capability: Gather a community
+  pattern: state-change
+  status: modelled
+  actor: Moderator
+  stream: community-{communityId}
+  frames:
+  - type: ui
+    name: CommunityScreen
+  - type: cmd
+    name: RemoveCatalogGame
+  - type: evt
+    name: CatalogGameRemoved
+- id: S16
+  name: Post a listing into a community
+  context: finding
+  capability: Host a table
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: PostListingIntoCommunity
+  - type: evt
+    name: ListingPostedIntoCommunity
+- id: S17
+  name: Take a listing out of a community
+  context: finding
+  capability: Host a table
+  pattern: state-change
+  status: modelled
+  actor: Host
+  stream: listing-{listingId}
+  frames:
+  - type: ui
+    name: SeatsAndRoomScreen
+  - type: cmd
+    name: RemoveListingFromCommunity
+  - type: evt
+    name: ListingRemovedFromCommunity
+- id: S34
+  name: See tables near you
+  context: finding
+  capability: See what is on nearby
+  pattern: state-view
+  status: modelled
+  actor: Player
+  reads:
+  - ListingPublished
+  - ListingPostedIntoCommunity
+  - ListingRemovedFromCommunity
+  - SeatAccepted
+  - AcceptedSeatWithdrawn
+  - ChairsAdded
+  - EmptyChairsRemoved
+  - NightCancelled
+  - SessionCompleted
+  - CommunityMarkedAdultsOnly
+  - FeedbackLeft
+  frames:
+  - type: rmo
+    name: NearbyTables
+  - type: ui
+    name: DiscoverScreen
+- id: S35
+  name: See a table
+  context: finding
+  capability: See what is on nearby
+  pattern: state-view
+  status: modelled
+  actor: Player
+  reads:
+  - ListingPublished
+  - ListingPostedIntoCommunity
+  - ListingRemovedFromCommunity
+  - SeatRequested
+  - SeatAccepted
+  - SeatDeclined
+  - SeatRequestWithdrawn
+  - AcceptedSeatWithdrawn
+  - ChairsAdded
+  - EmptyChairsRemoved
+  - NightCancelled
+  - SessionCompleted
+  - QuestionAsked
+  - QuestionAnswered
+  - CommunityMarkedAdultsOnly
+  - FeedbackLeft
+  - FeedbackNoteAdded
+  - AccountForgotten
+  frames:
+  - type: rmo
+    name: TableCard
+  - type: ui
+    name: TableDetailScreen
+- id: S36
+  name: See the seats at a table
+  context: finding
+  capability: Keep the seats honest
+  pattern: state-view
+  status: modelled
+  actor: Host
+  reads:
+  - ListingPublished
+  - SeatRequested
+  - SeatAccepted
+  - SeatDeclined
+  - SeatRequestWithdrawn
+  - AcceptedSeatWithdrawn
+  - ChairsAdded
+  - EmptyChairsRemoved
+  - NightCancelled
+  - SessionCompleted
+  - FeedbackLeft
+  - CommunityMarkedAdultsOnly
+  frames:
+  - type: rmo
+    name: SeatList
+  - type: ui
+    name: SeatsAndRoomScreen
+- id: S37
+  name: See the table room
+  context: finding
+  capability: Talk at the table
+  pattern: state-view
+  status: modelled
+  actor: Player
+  reads:
+  - ListingPublished
+  - SeatAccepted
+  - AcceptedSeatWithdrawn
+  - NightCancelled
+  - SessionCompleted
+  - RoomMessagePosted
+  - AccountForgotten
+  - CommunityMarkedAdultsOnly
+  frames:
+  - type: rmo
+    name: TableRoom
+  - type: ui
+    name: SeatsAndRoomScreen
+- id: S39
+  name: See the feedback window
+  context: finding
+  capability: Leave feedback
+  pattern: state-view
+  status: modelled
+  actor: Co-participant
+  reads:
+  - SessionCompleted
+  - NightCancelled
+  - ListingPublished
+  - SeatAccepted
+  - AcceptedSeatWithdrawn
+  - FeedbackLeft
+  - FeedbackNoteAdded
+  frames:
+  - type: rmo
+    name: FeedbackWindow
+  - type: ui
+    name: FeedbackScreen
+- id: S33
+  name: Read an invitation
+  context: finding
+  capability: Gather a community
+  pattern: state-view
+  status: modelled
+  actor: Player
+  reads:
+  - InvitationOffered
+  - CommunityFounded
+  - CommunityMarkedAdultsOnly
+  frames:
+  - type: rmo
+    name: InvitationMessage
+  - type: ui
+    name: InvitationEmail
+- id: S38
+  name: See a community
+  context: finding
+  capability: Gather a community
+  pattern: state-view
+  status: modelled
+  actor: Player
+  reads:
+  - CommunityFounded
+  - CommunityJoined
+  - InvitationAccepted
+  - MemberRemoved
+  - CommunityMadePublic
+  - CommunityMadeInviteOnly
+  - CommunityMarkedAdultsOnly
+  - ModeratorAppointed
+  - ModeratorReleased
+  - CatalogGameAdded
+  - CatalogGameRemoved
+  - ListingPublished
+  - ListingPostedIntoCommunity
+  - ListingRemovedFromCommunity
+  - SeatAccepted
+  - AcceptedSeatWithdrawn
+  - ChairsAdded
+  - EmptyChairsRemoved
+  - NightCancelled
+  - SessionCompleted
+  frames:
+  - type: rmo
+    name: CommunityPage
+  - type: ui
+    name: CommunityScreen

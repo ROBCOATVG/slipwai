@@ -51,8 +51,13 @@ def cell_id(slice_id: str) -> str:
 
 
 def titles(root: Path, feature: str) -> dict[str, str]:
-    """What each slice is called, read off the split's own table — `| S01 Set up an account | …` — or its
-    headings; the chart carries ids and nothing a person would say. Empty where there is no split yet."""
+    """What each slice is called. The chart carries ids and nothing a person would say.
+
+    Three places the split writes a name, and the candidates table is the one that matters: `| S10 |
+    Appoint a moderator |` under a `Value` heading. The same cell (`| S01 Set up an account |`) and a bold
+    heading are the older shapes. The slice graph is `| Slice | depends_on |`, so a second cell is only a
+    name while the heading in force says `Value` — otherwise a slice is called after a dash.
+    """
     page = root / "specs" / feature / "story-split.md"
     if not page.is_file():
         return {}
@@ -62,6 +67,16 @@ def titles(root: Path, feature: str) -> dict[str, str]:
         found.setdefault(slice_id, title.strip())
     for slice_id, title in re.findall(r"^\|\s*(S\d+)\s+([^|\n]+?)\s*\|", text, re.MULTILINE):
         found[slice_id] = title.strip()
+    value = False
+    for line in text.splitlines():
+        if not line.startswith("|"):
+            value = False
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if cells[:1] == ["Slice"]:
+            value = len(cells) > 1 and cells[1] == "Value"
+        elif value and len(cells) > 1 and re.fullmatch(r"S\d+", cells[0]) and cells[1] not in ("", "—", "-"):
+            found[cells[0]] = cells[1]
     return found
 
 

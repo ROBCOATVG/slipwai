@@ -347,6 +347,26 @@ class FoldTest(unittest.TestCase):
         self.assertEqual(titles(root, "001-demo"), {"S01": "Set up an account", "S02": "Publish a listing"})
         self.assertEqual(titles(root, "002-none"), {})
 
+    def test_the_short_description_is_the_value_column_and_the_card_says_so(self) -> None:
+        """The split's candidates table puts the name in the next cell. The slice graph's next cell is a
+        dependency, and reading that would name a slice after a dash."""
+        from slipwai.voyage_page import page
+        root = Path(tempfile.mkdtemp())
+        (root / "specs/001-demo").mkdir(parents=True)
+        (root / "specs/001-demo/story-split.md").write_text(
+            "## Split Candidates\n"
+            "| Slice | Value | Includes |\n|---|---|---|\n"
+            "| S10 | Appoint a moderator | Gather a community |\n\n"
+            "## Slice graph\n"
+            "| Slice | depends_on | parallel_ok_with | Notes |\n|---|---|---|---|\n"
+            "| S10 | — | other slices | Open an account |\n", encoding="utf-8")
+        self.assertEqual(titles(root, "001-demo"), {"S10": "Appoint a moderator"})
+        html = page(root, [], [{"slice": "S10", "state": "todo", "title": "Appoint a moderator",
+                                "why": "cleared", "fairway": "", "clearance": "preparation-ready"}],
+                    "", "", "", "", None, False)
+        self.assertIn("S10 = Appoint a moderator", html)
+        self.assertNotIn("S10 · Appoint", html)
+
     def test_the_fleet_is_running_only_while_a_pid_it_wrote_is_alive(self) -> None:
         root = Path(tempfile.mkdtemp())
         self.assertFalse(fleet_running(root), "nothing started")

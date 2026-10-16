@@ -364,7 +364,7 @@ def model_card(xml: str, note: str, viewer_fault: str) -> str:
 def slice_html(row: dict[str, str]) -> str:
     fairway = f'<span class="fw">{esc(row["fairway"])} · {esc(row["clearance"])}</span>' if row.get("fairway") else \
         f'<span class="fw">{esc(row["clearance"])}</span>'
-    name = f'{row["slice"]} · {row["title"]}' if row.get("title") else row["slice"]
+    name = f'{row["slice"]} = {row["title"]}' if row.get("title") else row["slice"]
     return (f'<div class="slice {esc(row["state"])}"><b>{esc(name)}</b>{fairway}'
             f'<span class="why">{esc(row.get("why", ""))}</span></div>')
 

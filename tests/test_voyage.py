@@ -23,6 +23,9 @@ from slipwai.voyage import (
     mockups,
     model_xml,
     restroked,
+    running_app,
+    screen_file,
+    screens,
     states_of,
     titles,
     viewer_config,
@@ -113,6 +116,161 @@ class MockupsTest(unittest.TestCase):
         for outside in ("001-demo/../../secret.txt", "001-demo/../spec.md", "../secret.txt", "001-demo/", "",
                         "nope/x.html"):
             self.assertIsNone(mockup_file(self.root, outside), outside)
+
+
+PNG = b"\x89PNG\r\n\x1a\n\xff\xfe"
+
+
+class ScreensTest(unittest.TestCase):
+    """Design-review photographs, read from where that rung writes them.
+
+    A picture is evidence the slice was rendered. The voyage's job is to show it beside the mock-up it was
+    drawn from, labelled by the same standing the columns use, and to serve the file itself — nothing that
+    merely sits near it.
+    """
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.design = self.root / "specs/001-demo/slices/S01/design"
+        self.design.mkdir(parents=True)
+        (self.design / "home.png").write_bytes(PNG)
+        (self.design / "empty.webp").write_bytes(b"RIFF")
+        (self.design / "also.jpeg").write_bytes(b"\xff\xd8\xff")
+        (self.design / "icon.gif").write_bytes(b"GIF89a")
+        (self.design / "notes.md").write_text("looked at it\n", encoding="utf-8")
+        (self.design / "diagram.svg").write_text("<svg></svg>", encoding="utf-8")
+        (self.root / "specs/001-demo/slices/S01/loose.png").write_bytes(PNG)
+        other = self.root / "specs/001-demo/slices/S02/design"
+        other.mkdir(parents=True)
+        (other / "list.jpg").write_bytes(b"\xff\xd8\xff")
+        orphan = self.root / "specs/001-demo/slices/S03/design"
+        orphan.mkdir(parents=True)
+        (orphan / "orphan.png").write_bytes(PNG)
+        elsewhere = self.root / "specs/001-other/slices/S01/design"
+        elsewhere.mkdir(parents=True)
+        (elsewhere / "x.png").write_bytes(PNG)
+        (self.root / "secret.png").write_bytes(PNG)
+        self.rows = [
+            {"slice": "S02", "state": "done", "title": "Publish", "feature": "001-demo"},
+            {"slice": "S01", "state": "working", "title": "Set up an account", "feature": "001-demo"},
+        ]
+
+    def test_each_screenshot_carries_its_slice_s_standing_and_nothing_else_is_one(self) -> None:
+        """A note, a drawing and a picture left outside `design/` are not screens. A slice the chart has
+        not got is to do. The same slice id in another feature does not inherit this one's title."""
+        found = screens(self.root, self.rows, "window")
+        self.assertEqual(
+            [(row["feature"], row["slice"], row["title"], row["state"], row["name"]) for row in found],
+            [
+                ("001-demo", "S01", "Set up an account", "working", "also.jpeg"),
+                ("001-demo", "S01", "Set up an account", "working", "empty.webp"),
+                ("001-demo", "S01", "Set up an account", "working", "home.png"),
+                ("001-demo", "S01", "Set up an account", "working", "icon.gif"),
+                ("001-demo", "S02", "Publish", "done", "list.jpg"),
+                ("001-demo", "S03", "", "todo", "orphan.png"),
+                ("001-other", "S01", "", "todo", "x.png"),
+            ])
+        home = next(row for row in found if row["name"] == "home.png")
+        self.assertIn("/screens/001-demo/S01/home.png?", home["href"])
+        self.assertIn("seat=window", home["href"])
+        self.assertIn("v=", home["href"])
+        self.assertEqual(screens(Path(tempfile.mkdtemp()), [], ""), [])
+
+    def test_a_name_with_a_space_is_escaped_on_the_address(self) -> None:
+        held = self.design / "home page.png"
+        held.write_bytes(PNG)
+        found = next(row for row in screens(self.root, [], "") if row["name"] == "home page.png")
+        self.assertIn("home%20page.png", found["href"])
+        self.assertEqual(screen_file(self.root, "001-demo/S01/home%20page.png"), held.resolve())
+
+    def test_the_route_serves_one_screenshot_and_nothing_outside_its_directory(self) -> None:
+        self.assertEqual(screen_file(self.root, "001-demo/S01/home.png"), (self.design / "home.png").resolve())
+        (self.design / "linked.png").symlink_to(self.root / "secret.png")
+        for outside in ("001-demo/S01/../../secret.png", "001-demo/S01/%2e%2e%2f%2e%2e%2fsecret.png",
+                        "001-demo/S01/notes.md", "001-demo/S01/diagram.svg", "001-demo/S01/loose.png",
+                        "001-demo/S01/linked.png", "001-demo/S01/", "", "nope/x.png"):
+            self.assertIsNone(screen_file(self.root, outside), outside)
+        self.assertNotIn("linked.png", [row["name"] for row in screens(self.root, [], "")])
+
+    def test_the_running_app_is_the_first_browser_port_and_only_a_port(self) -> None:
+        """A service's port is not a screen, and a value that is not a port is not an address."""
+        self.assertEqual(running_app(self.root), "")
+        (self.root / "project.json").write_text("{", encoding="utf-8")
+        self.assertEqual(running_app(self.root), "")
+        (self.root / "project.json").write_text(json.dumps({"deployables": {
+            "api": {"kind": "service", "port": 3000},
+            "admin": {"kind": "web", "port": True},
+            "web": {"kind": "web", "port": "5173"},
+            "shop": {"kind": "web", "port": 5174},
+            "later": {"kind": "web", "port": 5175},
+        }}), encoding="utf-8")
+        self.assertEqual(running_app(self.root), "http://localhost:5174")
+        for port in (0, 65536, -1):
+            (self.root / "project.json").write_text(
+                json.dumps({"deployables": {"web": {"kind": "web", "port": port}}}), encoding="utf-8")
+            self.assertEqual(running_app(self.root), "", port)
+
+
+class BuiltScreensPageTest(unittest.TestCase):
+    def page(self, shots: list[dict[str, str]] | None, mocks: list[dict[str, str]], app: str = "") -> str:
+        from slipwai.voyage_page import page
+        return page(Path(tempfile.mkdtemp()), [], [], "", "", "", "", None, False,
+                    mocks=mocks, shots=shots, app=app)
+
+    def test_screenshots_sit_beside_that_feature_s_mock_ups_and_a_title_is_text(self) -> None:
+        mocks = [
+            {"feature": "001-demo", "name": "storyboard.html", "title": "review",
+             "href": "/mockups/001-demo/storyboard.html?seat=w"},
+            {"feature": "001-demo", "name": "catalog.html", "title": "catalog",
+             "href": "/mockups/001-demo/catalog.html?seat=w"},
+            {"feature": "002-other", "name": "basket.html", "title": "basket",
+             "href": "/mockups/002-other/basket.html"},
+        ]
+        shots = [
+            {"feature": "001-demo", "slice": "S01", "title": "Set up an account", "state": "working",
+             "name": "home.png", "href": "/screens/001-demo/S01/home.png?seat=w&v=1"},
+            {"feature": "001-demo", "slice": "S01", "title": "Set up an account", "state": "working",
+             "name": "empty.png", "href": "/screens/001-demo/S01/empty.png?seat=w&v=2"},
+            {"feature": "001-demo", "slice": "S02", "title": "<script>", "state": "waiting",
+             "name": "list.png", "href": '/screens/x" onmouseover="alert(1)'},
+        ]
+        html = self.page(shots, mocks, "http://localhost:5173")
+        card = html[html.index('id="built"'):html.index("<h2>Mockups")]
+        self.assertIn("Built screens · 3", card)
+        self.assertIn("Intended", card)
+        self.assertIn('src="/mockups/001-demo/storyboard.html?seat=w"', card)
+        self.assertNotIn('src="/mockups/001-demo/catalog.html', card, "the storyboard is the door")
+        self.assertIn("Working", card)
+        self.assertIn("Waiting on you", card)
+        self.assertIn('src="/screens/001-demo/S01/home.png?seat=w&amp;v=1"', card)
+        self.assertIn('src="/screens/001-demo/S01/empty.png?seat=w&amp;v=2"', card)
+        self.assertIn('target="_blank"', card)
+        self.assertIn('href="http://localhost:5173"', card)
+        self.assertIn("Open the running app", card)
+        self.assertNotIn("<script>", card)
+        self.assertIn("&lt;script&gt;", card)
+        self.assertNotIn('onmouseover="alert(1)"', card)
+        self.assertIn("basket.html", html[html.index("<h2>Mockups"):], "another feature's mock-up stays")
+
+    def test_wireframes_stand_in_when_there_is_no_storyboard(self) -> None:
+        mocks = [{"feature": "001-demo", "name": "catalog.html", "title": "catalog",
+                  "href": "/mockups/001-demo/catalog.html"}]
+        shots = [{"feature": "001-demo", "slice": "S01", "title": "", "state": "done",
+                  "name": "home.png", "href": "/screens/001-demo/S01/home.png"}]
+        card = self.page(shots, mocks)
+        self.assertIn('src="/mockups/001-demo/catalog.html"', card)
+        self.assertIn(">Done<", card)
+        self.assertNotIn("Open the running app", card)
+        self.assertNotIn("<h2>Mockups", card)
+        self.assertNotIn("<h2>Storyboard", card)
+
+    def test_no_screenshot_leaves_the_mock_ups_where_they_were(self) -> None:
+        mocks = [{"feature": "001-demo", "name": "storyboard.html", "title": "review",
+                  "href": "/mockups/001-demo/storyboard.html"}]
+        html = self.page([], mocks, "http://localhost:5173")
+        self.assertNotIn('id="built"', html)
+        self.assertIn("<h2>Storyboard</h2>", html)
+        self.assertNotIn("Open the running app", html)
 
 
 class FoldTest(unittest.TestCase):

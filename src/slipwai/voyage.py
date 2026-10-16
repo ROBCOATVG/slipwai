@@ -11,7 +11,10 @@ never written, and `make check-drawio` keeps holding it to `model.yaml`.
 The viewer that draws it is draw.io's own, one Apache-licensed script of four and a half megabytes. Not
 carried in the wheel: fetched once into `~/.slipwai/` on the first request and served from there after,
 which is offline from the second time on and says so plainly on a machine that has never reached it.
+
+The screens are the design review's photographs, labelled by the same fold as the columns.
 """
+# budget: 420 — the fold, the model, the mock-ups and the screenshots one voyage is read from
 from __future__ import annotations
 
 import json
@@ -21,6 +24,7 @@ import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import quote, unquote
 
 from .assets import SLIPWAI
 from .fleet import clearance_query, fairways, harbour_log
@@ -184,6 +188,12 @@ MOCK_ROUTE = "/mockups/"
 #: and gives no way to read the thing is asking somebody to agree to a file they have not opened.
 SPEC = "spec.md"
 SPEC_ROUTE = "/spec/"
+#: Where the design review writes a screen it has looked at, and the route the board serves it at.
+SLICES = "slices"
+DESIGN = "design"
+SCREEN_ROUTE = "/screens/"
+#: Raster only. An SVG opened as its own page can carry a script, and a note beside a screenshot is not one.
+IMAGES = frozenset({".png", ".jpg", ".jpeg", ".webp", ".gif"})
 
 
 def mockups(root: Path, seat: str = "") -> list[dict[str, str]]:
@@ -250,12 +260,117 @@ def states_of(rows: list[dict[str, str]]) -> dict[str, str]:
     return {row["slice"]: row["state"] for row in rows}
 
 
+def screen_address(feature: str, slice_id: str, name: str, seat: str, stamp: int) -> str:
+    """The address of one screenshot. `v` is the file's time, so a review that replaces it is a new picture
+    rather than the one the browser kept."""
+    path = "/".join(quote(part, safe="") for part in (feature, slice_id, name))
+    query = [f"seat={quote(seat, safe='')}"] if seat else []
+    query.append(f"v={stamp}")
+    return f"{SCREEN_ROUTE}{path}?{'&'.join(query)}"
+
+
+def screen_file(root: Path, where: str) -> Path | None:
+    """The image a `/screens/<feature>/<slice>/<name>` request names, or nothing where it names anything
+    else — a path with `..` in it, a symlink out of the checkout, a note or a drawing beside the picture.
+
+    One directory and not the slice's whole record: the review's photographs live in `design/`, and a route
+    that served the rest would be serving the slice's plan."""
+    feature, _, rest = unquote(where).partition("/")
+    slice_id, _, name = rest.partition("/")
+    if not feature or not slice_id or not name or "/" in name or Path(name).suffix.lower() not in IMAGES:
+        return None
+    home = (root / "specs" / feature / SLICES / slice_id / DESIGN).resolve()
+    try:
+        path = (home / name).resolve()
+    except OSError:
+        return None
+    if not path.is_relative_to(home) or not path.is_file() or not home.is_relative_to(root.resolve()):
+        return None
+    return path
+
+
+def _shot_paths(root: Path) -> list[tuple[Path, str, str, str]]:
+    """Every photograph the route would serve: the file, its feature, its slice and its name."""
+    specs = root / "specs"
+    found: list[tuple[Path, str, str, str]] = []
+    if not specs.is_dir():
+        return found
+    for page in sorted(specs.glob(f"*/{SLICES}/*/{DESIGN}/*")):
+        parts = page.relative_to(specs).parts
+        if len(parts) != 5 or parts[1] != SLICES or parts[3] != DESIGN or page.suffix.lower() not in IMAGES:
+            continue
+        feature, slice_id, name = parts[0], parts[2], parts[4]
+        if screen_file(root, f"{feature}/{slice_id}/{name}") is None:
+            continue
+        found.append((page, feature, slice_id, name))
+    return found
+
+
+def screens(root: Path, rows: list[dict[str, str]], seat: str = "") -> list[dict[str, str]]:
+    """Every design-review screenshot, with the slice's standing on it.
+
+    The review writes them under `specs/<feature>/slices/<id>/design/`. The standing is the voyage's own
+    fold — done, working, waiting, to do — and a slice the chart has not got is to do, which is what a
+    picture with no row is. The same slice id in two features is two slices."""
+    known = {(str(row.get("feature", "")), str(row.get("slice", ""))): row for row in rows}
+    found: list[dict[str, str]] = []
+    for page, feature, slice_id, name in _shot_paths(root):
+        row = known.get((feature, slice_id), {})
+        state = str(row.get("state", "todo"))
+        if state not in COLUMNS:
+            state = "todo"
+        try:
+            stamp = page.stat().st_mtime_ns
+        except OSError:
+            continue
+        found.append({"feature": feature, "slice": slice_id, "title": str(row.get("title", "")),
+                      "state": state, "name": name,
+                      "href": screen_address(feature, slice_id, name, seat, stamp)})
+    return found
+
+
+def shot_names(root: Path) -> list[str]:
+    """What the poll's signature needs of the screenshots: each path and the time it was written, so a
+    picture landing — or one replaced — is a page built out of different files."""
+    named: list[str] = []
+    for page, _, _, _ in _shot_paths(root):
+        try:
+            named.append(f"{page.relative_to(root / 'specs').as_posix()}:{page.stat().st_mtime_ns}")
+        except OSError:
+            continue
+    return named
+
+
+def running_app(root: Path) -> str:
+    """Where the project's browser app is served, when `project.json` records a port for one.
+
+    The gallery links it. It does not embed it: a dev server, a sign-in and a frame that refuses to be
+    framed are three different ways an embedded app shows nothing, and a link still opens. Empty where
+    there is no browser app, or the value in the port is not one."""
+    try:
+        document = json.loads((root / "project.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return ""
+    deployables = document.get("deployables") if isinstance(document, dict) else None
+    if not isinstance(deployables, dict):
+        return ""
+    for record in deployables.values():
+        if not isinstance(record, dict) or record.get("kind") != "web":
+            continue
+        port = record.get("port")
+        if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+            continue
+        return f"http://localhost:{port}"
+    return ""
+
+
 def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, made: bool) -> str:
     """What this page is *made of*, as one short line, so that a poll can tell a changed page from a
     changed strip.
 
     The strip repaints itself from `/voyage.json`, and for a while that was the whole of keeping this page
-    current. It is not: the Open spec button, the storyboard, the model and the work cards are all rendered
+    current. It is not: the Open spec button, the storyboard, the screenshots, the model and the work cards
+    are all rendered
     once, by the server, out of files that were not there yet. A window opened during the draft watched the
     specification land and showed nothing of it until somebody reloaded, which is the one thing a page that
     polls is supposed to save a person from.
@@ -268,6 +383,7 @@ def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, mad
     specs = root / "specs"
     drawn = sorted(page.relative_to(specs).as_posix()
                    for page in specs.glob(f"*/{MOCKUPS}/*.html")) if specs.is_dir() else []
+    photographed = shot_names(root)
     picture = root / DRAWIO
     home = root / "docs/intake"
     intake = []
@@ -283,5 +399,6 @@ def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, mad
             intake.append(f"{folder.name}:{flags}")
     berths = [str(one.get("state", "")) for one in (fleet.get("berths") or []) if isinstance(one, dict)]
     return "|".join((feature, "".join(str(row["state"])[:1] for row in rows), ",".join(drawn),
+                     ",".join(photographed),
                      str(int(picture.stat().st_mtime) if picture.is_file() else 0), ",".join(berths),
                      str(len(fleet.get("inbox") or [])), "f" if made else "", ",".join(intake)))

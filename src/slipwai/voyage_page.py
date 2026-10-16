@@ -1,4 +1,4 @@
-"""The Voyage tab: where this project stands, as three bands — the passage, the model, the work.
+"""The Voyage tab: where this project stands — the passage, the model, the screens built so far, the work.
 
 The Board is the operations view: streams, speed, the inbox. This is the "where are we" view, and it is a
 tab rather than a card for that reason — one link each way, and the page a generate lands on, because that
@@ -17,11 +17,11 @@ from .passage import Stage, current
 from .settings_card import project_tabs
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 470 — the five bands of one window: where the project stands, what to expect of the stage it is
-# on, who answers at each stop of the run, the model, and the work. A module per band would be five copies
-# of the poll that repaints them all — and the poll is now the reason as much as the bands are: it repaints
-# the strip, and reloads the window when the signature says the page is built out of different files than
-# the ones it was drawn from. Both halves have to agree on what a band is, so both are here.
+# budget: 540 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
+# would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
+# are: it repaints the strip, and reloads the window when the signature says the page is built out of
+# different files than the ones it was drawn from. Both halves have to agree on what a band is, so both are here.
 
 TITLES = {"todo": "To do", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -81,6 +81,12 @@ a.quiet:hover{background:var(--teal-soft)}
 .mock iframe{width:100%;aspect-ratio:4/3;border:0;border-radius:4px;background:#fff;pointer-events:none;
   transform-origin:0 0}
 .mock b{font-size:.84rem}.mock .fw{font-size:.72rem;color:var(--ink-3);font-family:ui-monospace,Menlo,monospace}
+.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.shot{display:grid;gap:4px;text-decoration:none;color:inherit}
+.shot img{width:100%;aspect-ratio:4/3;object-fit:contain;object-position:top;border-radius:4px;background:#fff;
+  border:1px solid var(--rule)}
+.compare{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.compare h3{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
 .viewer{border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:#fff}
 .viewer .bar{display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid #e3e3e3;
   background:#f7f7f7;color:#555;font-size:.78rem}
@@ -94,7 +100,8 @@ a.quiet:hover{background:var(--teal-soft)}
 .viewer .model-dial button:hover{border-color:#0f6b6b;color:#0f6b6b}
 .viewer .hint{font-size:.74rem;color:#666;padding:6px 10px;margin:0;border-top:1px solid #e3e3e3;background:#fafafa}
 @media (max-width:900px){.passage{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:18px}
-  .passage::before{display:none}.columns{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .passage::before{display:none}.columns{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .compare{grid-template-columns:1fr}}
 @media (max-width:520px){.columns{grid-template-columns:1fr}.passage{grid-template-columns:repeat(2,minmax(0,1fr))}}
 """
 
@@ -347,6 +354,64 @@ def slice_html(row: dict[str, str]) -> str:
             f'<span class="why">{esc(row.get("why", ""))}</span></div>')
 
 
+def shot_html(shot: dict[str, str]) -> str:
+    """One photograph, linked at its own size. The address is the file, so opening it is the picture."""
+    label = shot["title"] or shot["name"]
+    return (f'<a class="shot" href="{esc(shot["href"])}" target="_blank" rel="noopener">'
+            f'<img src="{esc(shot["href"])}" alt="{esc(label)}" loading="lazy">'
+            f"<b>{esc(label)}</b></a>")
+
+
+def intended_html(mocks: list[dict[str, str]]) -> str:
+    """The mock-ups of one feature, the storyboard where there is one — it is how the rest are reached."""
+    boards = [row for row in mocks if row["name"] == "storyboard.html"]
+    tiles = "".join(
+        f'<a class="mock" href="{esc(row["href"])}" target="_blank" rel="noopener">'
+        f'<iframe src="{esc(row["href"])}" loading="lazy" tabindex="-1" title="{esc(row["title"])}"></iframe>'
+        f"<b>{esc(row['title'])}</b></a>"
+        for row in (boards or mocks))
+    return f"<div><h3>Intended</h3><div class=\"mocks\">{tiles}</div></div>"
+
+
+def built_group(shots: list[dict[str, str]]) -> str:
+    """One slice's photographs, under its name and the standing the columns already use."""
+    one = shots[0]
+    name = f'{one["slice"]} · {one["title"]}' if one["title"] else one["slice"]
+    images = "".join(shot_html(shot) for shot in shots)
+    return (f'<div class="slice {esc(one["state"])}"><b>{esc(name)}</b>'
+            f'<span class="fw">{esc(TITLES[one["state"]])}</span><div class="shots">{images}</div></div>')
+
+
+def screens_card(shots: list[dict[str, str]], mocks: list[dict[str, str]], app: str) -> str:
+    """What has been rendered, beside the mock-up it was drawn from.
+
+    Nothing where the design review has not photographed a screen yet: an empty band would be a promise
+    that pictures are coming. The running app is a link, where the project records one, and not a frame —
+    the picture is the record, and the link is how a person opens the thing itself.
+    """
+    if not shots:
+        return ""
+    features: list[str] = []
+    for shot in shots:
+        if shot["feature"] not in features:
+            features.append(shot["feature"])
+    blocks = ""
+    for feature in features:
+        mine = [shot for shot in shots if shot["feature"] == feature]
+        groups: list[list[dict[str, str]]] = []
+        for shot in mine:
+            if groups and groups[-1][0]["slice"] == shot["slice"]:
+                groups[-1].append(shot)
+            else:
+                groups.append([shot])
+        built = f"<div><h3>Built</h3>{''.join(built_group(group) for group in groups)}</div>"
+        intended = [row for row in mocks if row["feature"] == feature]
+        blocks += f'<div class="compare">{intended_html(intended)}{built}</div>' if intended else built
+    link = (f'<a class="quiet" href="{esc(app)}" target="_blank" rel="noopener">Open the running app</a>'
+            if app else "")
+    return f'<div class="card" id="built"><h2>Built screens · {len(shots)}</h2>{link}{blocks}</div>'
+
+
 def mockups_card(found: list[dict[str, str]]) -> str:
     """The storyboard the mock-up stage wrote, where it wrote one — every mock-up is reached from it, which
     is what it is for — else the wireframes themselves, shown small. Nothing where the stage has not run."""
@@ -398,7 +463,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          viewer_fault: str, made: dict | None, launchable: bool, fleet: dict | None = None,
          config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
          stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
-         ideas: list | None = None) -> str:
+         ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "") -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
@@ -408,10 +473,14 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     live = live_cards(fleet, config or {}, True, project_tabs(root, True)) if fleet else ""
     where = passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable, feature,
                          drawable, shape)
+    taken = {shot["feature"] for shot in (shots or [])}
+    # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
+    left = [row for row in (mocks or []) if row["feature"] not in taken]
     body = (f"<style>{STYLE}</style>{where}"
             f"{intake_card(ideas or [])}"
             f"{expect_card(found)}{landed}"
-            f"{model_card(xml, note, viewer_fault)}{mockups_card(mocks or [])}{work_card(rows, fault)}{live}")
+            f"{model_card(xml, note, viewer_fault)}{screens_card(shots or [], mocks or [], app)}"
+            f"{mockups_card(left)}{work_card(rows, fault)}{live}")
     script = SCRIPT + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person
     # picks it out by — in the dock, in a window switcher, across two runs open at once — is its title.

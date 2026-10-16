@@ -222,6 +222,22 @@ class ShapeTest(BoardTest):
         first = json.loads(self.get("/voyage.json")[1])["shape"]
         self.assertEqual(json.loads(self.get("/voyage.json")[1])["shape"], first)
 
+    def test_a_screenshot_landing_under_an_open_window_changes_the_signature(self) -> None:
+        """The built-screens card is rendered once, out of files the window was opened before. A note
+        beside a screenshot is not one of those files: it does not redraw the page."""
+        design = self.root / "specs/001-ordering/slices/S01/design"
+        design.mkdir(parents=True)
+        before = json.loads(self.get("/voyage.json")[1])["shape"]
+        (design / "home.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        landed = json.loads(self.get("/voyage.json")[1])["shape"]
+        self.assertNotEqual(landed, before)
+        self.assertEqual(self.shape_of(self.get("/voyage")[1]), landed,
+                         "and the window that reloads on it is drawn with the new one")
+        (design / "notes.md").write_text("looked at it\n", encoding="utf-8")
+        self.assertEqual(json.loads(self.get("/voyage.json")[1])["shape"], landed)
+        (design / "home.png").write_bytes(b"\x89PNG\r\n\x1a\n\xff")
+        self.assertNotEqual(json.loads(self.get("/voyage.json")[1])["shape"], landed)
+
 
 class WheelRouteTest(BoardTest):
     """The board's half of who answers: the stops are shown on the run's own window, and a press runs the
@@ -279,6 +295,40 @@ class RunWindowTest(BoardTest):
         for name in ("Start a project", "Adopt a repository", "Packages"):
             self.assertNotIn(f">{name}</a>", said, "a run window is not the board with a tab selected")
 
+
+class BuiltScreenRouteTest(BoardTest):
+    """The picture the page shows is the file the review wrote, bytes unchanged."""
+
+    def test_a_screenshot_on_the_voyage_is_served_as_itself(self) -> None:
+        feature = self.root / "specs/001-demo"
+        design = feature / "slices/S01/design"
+        design.mkdir(parents=True)
+        png = b"\x89PNG\r\n\x1a\n\xff\xfe"
+        (design / "home.png").write_bytes(png)
+        (design / "notes.md").write_text("private\n", encoding="utf-8")
+        (feature / "mockups").mkdir()
+        (feature / "mockups/catalog.html").write_text(
+            "<html><head><title>Mock: catalog</title></head></html>", encoding="utf-8")
+        (self.root / "project.json").write_text(
+            '{"deployables":{"api":{"kind":"service","port":3000},"web":{"kind":"web","port":5173}}}',
+            encoding="utf-8")
+        said = self.get("/voyage")[1]
+        card = said[said.index('id="built"'):said.index("<h2>The work</h2>")]
+        self.assertIn("Built screens", card)
+        self.assertIn("To do", card)
+        self.assertIn(f"/screens/001-demo/S01/home.png?seat={self.seat}", card)
+        self.assertIn("/mockups/001-demo/catalog.html", card)
+        self.assertIn('href="http://localhost:5173"', card)
+        self.assertNotIn("<h2>Mockups", said)
+        with urllib.request.urlopen(self.at("/screens/001-demo/S01/home.png"), timeout=5) as answer:
+            self.assertEqual(answer.headers.get_content_type(), "image/png")
+            self.assertEqual(answer.read(), png)
+        for asked in ("/screens/001-demo/S01/../../../../harbour.json",
+                      "/screens/001-demo/S01/notes.md"):
+            with self.subTest(asked=asked), self.assertRaises(urllib.error.HTTPError) as refused:
+                self.get(asked)
+            refused.exception.close()
+            self.assertEqual(refused.exception.code, 404, asked)
 
 
 if __name__ == "__main__":

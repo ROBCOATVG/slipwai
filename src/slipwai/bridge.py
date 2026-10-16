@@ -84,6 +84,7 @@ from .spec_page import page as spec
 from .telegraph import Refused
 from .voyage import (
     MOCK_ROUTE,
+    SCREEN_ROUTE,
     SPEC_ROUTE,
     counts,
     fleet_running,
@@ -91,6 +92,9 @@ from .voyage import (
     mockup_file,
     mockups,
     model_xml,
+    running_app,
+    screen_file,
+    screens,
     shape,
     spec_file,
     states_of,
@@ -204,8 +208,8 @@ class Bridge(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         """Quiet. The run's log is the log; a request line per reload is noise over the top of it."""
 
-    def send(self, code: int, body: str, kind: str = "text/html; charset=utf-8") -> None:
-        data = body.encode("utf-8")
+    def send(self, code: int, body: str | bytes, kind: str = "text/html; charset=utf-8") -> None:
+        data = body.encode("utf-8") if isinstance(body, str) else body
         self.send_response(code)
         self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(data)))
@@ -254,6 +258,16 @@ class Bridge(BaseHTTPRequestHandler):
             return
         if where == "/voyage.json" and self.controls:
             self.send(200, self.voyage_json(), "application/json; charset=utf-8")
+            return
+        # A screen the design review photographed, from the project. Bytes, not text: a picture is not
+        # a document, and decoding it would be serving a different file.
+        if where.startswith(SCREEN_ROUTE) and self.controls:
+            path = screen_file(self.root, where.removeprefix(SCREEN_ROUTE))
+            if path is None:
+                self.send(404, "<p>No such screen.</p>")
+                return
+            kind = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+            self.send(200, path.read_bytes(), kind)
             return
         # A mock-up as the stage wrote it, from the project: a page, or the stylesheet beside it.
         if where.startswith(MOCK_ROUTE) and self.controls:
@@ -430,7 +444,8 @@ class Bridge(BaseHTTPRequestHandler):
         # project inside this one's page.
         return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
-                      feature, self.drawable(), made_of, intake_ideas(self.root))
+                      feature, self.drawable(), made_of, intake_ideas(self.root),
+                      screens(self.root, rows, self.named_seat()), running_app(self.root))
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()

@@ -191,7 +191,13 @@ def render(model: object, deployables: dict[str, dict], model_path: str = MODEL_
 
 
 def feature_name() -> str:
-    """The feature in flight: the one directory under `specs/` that has a slice record, else the model's."""
+    """The feature in flight: the first `specs/` directory with a slice record, else `model`.
+
+    One chart per project. The model is global, and this writes that one chart here. Which directory is
+    "in flight" is alphabetical order among those with a `slices/` folder, not anything about the work
+    actually underway. A directory that sorts earlier and later gains a `slices/` folder silently becomes
+    the chart's location, and `check-chart` then wants the file at the new path.
+    """
     candidates = sorted(path.name for path in SPECS.glob("*/") if (path / "slices").is_dir()) if SPECS.is_dir() else []
     return candidates[0] if candidates else "model"
 

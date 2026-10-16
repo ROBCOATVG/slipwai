@@ -12,8 +12,9 @@ page a hundred and thirty-two lines behind its source. Every gate it had passed.
 
 So these are the questions the merge leaves open, asked out loud:
 
-1. **A chart per feature.** `clearance.py` answers for one feature. A second feature with no chart is not
-   half-scheduled, it is invisible — and a `/sail <feature>` on it gets the charted feature's answer.
+1. **The chart of the feature in flight.** `make chart` writes one chart, for the first `specs/` directory
+   that holds a slice record, and that chart covers the whole model. A check that asked for a chart in
+   every feature directory cannot pass on a project with more than one, however well modelled it is.
 2. **Marks for what already shipped.** A slice that merged before the mark log existed sets nothing, so
    everything steering by it reads as blocked for ever. `clearance.py --baseline-marks` records them once.
 3. **Statuses that match what merged.** `status: modelled` on a slice that is in trunk is the field the
@@ -69,17 +70,37 @@ def features() -> list[Path]:
     return sorted(path for path in SPECS.iterdir() if path.is_dir()) if SPECS.is_dir() else []
 
 
+def in_flight() -> str:
+    """The feature `make chart` writes for, decided the same way `event-model/chart.py` decides it.
+
+    The first directory under `specs/` that holds a slice record. That order is alphabetical, which is
+    the renderer's rule and not a record of which feature anybody is working: a directory that sorts
+    earlier and later gains a `slices/` folder becomes the new location. Empty where there is none.
+    """
+    candidates = sorted(path.name for path in SPECS.glob("*/") if (path / "slices").is_dir()) if SPECS.is_dir() else []
+    return candidates[0] if candidates else ""
+
+
 def charts() -> list[dict]:
+    """Whether the one chart `make chart` writes is there.
+
+    The model is global and the renderer writes one chart, into the feature in flight, covering every
+    slice the model names. Asking whether every feature directory has a `chart.yaml` cannot pass on a
+    project with more than one feature, and `make chart` will never write the files that question names.
+    """
     found = features()
     if not found:
         return [asked("charts", None, "there are no features under specs/ yet")]
-    without = [path.name for path in found if not (path / "chart.yaml").is_file()]
-    if not without:
-        return [asked("charts", True, f"all {len(found)} feature(s) under specs/ have a chart")]
+    feature = in_flight()
+    if not feature:
+        return [asked("charts", None, "no feature under specs/ has a slice record, so there is no chart "
+                                      "to render yet")]
+    if (SPECS / feature / "chart.yaml").is_file():
+        return [asked("charts", True, f"the feature in flight ({feature}) has its chart")]
     return [asked("charts", False,
-                  f"{len(without)} of {len(found)} feature(s) have no chart.yaml: {', '.join(without)}",
-                  "run `make chart` for each — clearance answers for charted features only, so a `/sail` "
-                  "on one of these gets another feature's schedule")]
+                  f"the feature in flight ({feature}) has no chart.yaml",
+                  "run `make chart` — clearance answers from the chart, so without it `/sail` has no "
+                  "schedule to read")]
 
 
 def slices_of(feature: Path) -> set[str]:

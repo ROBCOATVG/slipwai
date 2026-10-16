@@ -193,6 +193,26 @@ class Fixture(unittest.TestCase):
                               capture_output=True, text=True, check=False)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
+    def test_a_new_branch_is_judged_against_trunk_not_the_whole_history(self) -> None:
+        """`pre-push` gives forty zeros for a branch the remote has never seen.
+
+        The fallback used to be bare `local`, and `git rev-list` expands that to every ancestor — including
+        commits already on trunk that name slices no plan knows. The commits being pushed are
+        `trunk..local`, which is what a push with no range already judges.
+        """
+        self.ledger(["SB1"])
+        self.commit("036 UI9: already on trunk, and in no plan")
+        self.git("branch", "-f", "origin/main", "HEAD")
+        self.git("checkout", "-b", "slice/SB1")
+        self.commit("036 SB1: the work this push actually carries")
+        head = self.git("rev-parse", "HEAD").stdout.strip()
+        done = subprocess.run(
+            [sys.executable, "scripts/check-dispatch.py", "--stdin"], cwd=self.root,
+            input=f"refs/heads/slice/SB1 {head} refs/heads/slice/SB1 {'0' * 40}\n",
+            capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("UI9", done.stderr + done.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -139,6 +139,7 @@ def ranges(argv: list[str]) -> list[str]:
         return [argv[index]] if index < len(argv) else []
     if "--stdin" in argv:
         found = []
+        base = ""
         for line in sys.stdin.read().splitlines():
             parts = line.split()
             if len(parts) != 4:
@@ -146,7 +147,15 @@ def ranges(argv: list[str]) -> list[str]:
             _, local, _, remote = parts
             if set(local) == {"0"}:
                 continue  # a branch being deleted carries no commits to judge
-            found.append(f"{remote}..{local}" if set(remote) != {"0"} and remote else local)
+            if set(remote) != {"0"} and remote:
+                found.append(f"{remote}..{local}")
+                continue
+            # A branch the remote has never seen. Forty zeros means "new", and bare `local` is every
+            # ancestor — the whole history, including commits already on trunk. The commits being pushed
+            # are the same range a push with no arguments already judges.
+            if not base:
+                base = trunk()
+            found.append(f"{base}..{local}" if base else local)
         return found
     base = trunk()
     return [f"{base}..HEAD"] if base else []

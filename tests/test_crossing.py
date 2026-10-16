@@ -57,15 +57,27 @@ class CrossingTest(unittest.TestCase):
         done = self.run_it("--json")
         return {row["check"]: row for row in json.loads(done.stdout)["checks"]}
 
-    def test_a_feature_with_no_chart_is_owed_and_named(self) -> None:
-        """The failure this exists for: clearance answers for charted features, so an uncharted one is not
-        half-scheduled — it is invisible, and a `/sail` on it gets another feature's answer."""
-        self.feature("001-first", chart=["S1"])
-        self.feature("036-second", chart=None, slices=["SB1"])
+    def test_the_feature_in_flight_with_no_chart_is_owed_and_named(self) -> None:
+        """`make chart` writes one file, into the first feature with a slice record. That is the only
+        chart the report can ask for."""
+        self.feature("001-first", chart=None, slices=["S1"])
+        self.feature("036-second", chart=["SB1"], slices=["SB1"])
         row = self.rows()["charts"]
         self.assertIs(row["ok"], False)
-        self.assertIn("036-second", row["what"])
+        self.assertIn("001-first", row["what"])
+        self.assertNotIn("036-second", row["what"])
         self.assertIn("make chart", row["fix"])
+
+    def test_a_later_feature_without_a_chart_is_not_owed_one(self) -> None:
+        """A second feature directory never receives a chart. The old report owed one for every feature,
+        which no project with more than one feature could satisfy."""
+        self.feature("001-first", chart=["S1"], slices=["S1"])
+        self.feature("036-second", chart=None, slices=["SB1"])
+        row = self.rows()["charts"]
+        self.assertIs(row["ok"], True)
+        self.assertIn("001-first", row["what"])
+        self.assertNotIn("036-second", row["what"])
+        self.assertNotIn("make chart", row["fix"])
 
     def test_every_feature_charted_is_a_pass(self) -> None:
         self.feature("001-first", chart=["S1"])

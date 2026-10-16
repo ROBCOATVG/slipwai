@@ -52,8 +52,8 @@ booking: the last 6 line(s) its captain wrote
 
 $ python3 scripts/agents/clearance.py
 clearance: 2 of 3 slices start now in booking (slots: 3)
-  start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken
   start  BOK-02  implement  — cleared and sets nothing, so there is nothing to settle
+  start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken
   done   BOK-01  — merged at a1b2c3d4
 ```
 

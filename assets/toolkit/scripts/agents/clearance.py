@@ -646,12 +646,16 @@ def slots_from(config: Path, running: int) -> int | None:
 
 
 def numbers_line(numbers: dict[str, int | None]) -> str:
-    """The one line that says what bounds what, so a host never again reads one number as the other."""
+    """The one line that says what bounds what, so a host never again reads one number as the other.
+
+    Every character in it is one cp1252 has: a Windows pipe encodes stdout with it, and a minus sign or a
+    `≤` there raised mid-print and lost every line after the first.
+    """
     if numbers["boilers"] is None:
         return "slots: unbounded — no `boilers` in harbour.json"
-    inside = (f" · fanout {numbers['fanout']} delegate(s) inside each slice · tree ≤ {numbers['tree']} agents"
+    inside = (f" · fanout {numbers['fanout']} delegate(s) inside each slice · tree <= {numbers['tree']} agents"
               if numbers["fanout"] is not None else " · no `fanout` in harbour.json")
-    return (f"slots: {numbers['slots']} slice(s) may start (boilers {numbers['boilers']} − {numbers['running']} "
+    return (f"slots: {numbers['slots']} slice(s) may start (boilers {numbers['boilers']} - {numbers['running']} "
             f"running){inside}")
 
 

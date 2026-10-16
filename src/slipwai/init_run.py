@@ -29,6 +29,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from .process_alive import alive
 from .shell_environment import login_environment
 
 # budget: 510 — one runner for every child the board starts, including assessment of a feature handed to /sail
@@ -449,8 +450,9 @@ def model_session(root: Path) -> dict | None:
     path = root / ".slipwai" / "model-next.pid"
     try:
         pid = int(path.read_text(encoding="utf-8").strip())
-        os.kill(pid, 0)
     except (OSError, ValueError):
+        return None
+    if not alive(pid):
         return None
     return {"where": str(root),
             "lines": ["Modelling is running in this project. This window has not got its log."],

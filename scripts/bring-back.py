@@ -84,6 +84,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "design_docs",
        # Reading a drafted document on the board. The experiment had no board to read one on.
        "spec_page",
+       # Whether a pid file's process is running, asked without the signal Windows reads as Ctrl-C.
+       "process_alive",
        # Phase 13: a named set of answers, the verb over it, and the interview that offers one first —
        # which the experiment had no equivalent of, because it asked every question every time.
        "quickstart", "cli_quickstart", "cli_generate", "quickstart_install", "cli_migrate",

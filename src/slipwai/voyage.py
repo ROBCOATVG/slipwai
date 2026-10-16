@@ -18,7 +18,6 @@ The screens are the design review's photographs, labelled by the same fold as th
 from __future__ import annotations
 
 import json
-import os
 import re
 import urllib.error
 import urllib.request
@@ -28,6 +27,7 @@ from urllib.parse import quote, unquote
 
 from .assets import SLIPWAI
 from .fleet import clearance_query, fairways, harbour_log
+from .process_alive import alive
 
 #: Where the board shows a slice: the four columns, in the order a person reads them.
 COLUMNS = ("todo", "working", "waiting", "done")
@@ -86,8 +86,8 @@ def fleet_running(root: Path) -> bool:
     running = root / ".slipwai/running"
     for pid_file in sorted(running.glob("*.pid")) if running.is_dir() else []:
         try:
-            os.kill(int(pid_file.read_text(encoding="utf-8").strip()), 0)
-            return True
+            if alive(int(pid_file.read_text(encoding="utf-8").strip())):
+                return True
         except (OSError, ValueError):
             continue
     return False

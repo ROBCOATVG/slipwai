@@ -131,6 +131,8 @@ Authentication:
 Choose (none/keycloak) [none]:
 
 Output parent [~/code]:
+Product requirements document (a path; Enter for none):
+Everything else (a folder; Enter for none):
 created: /Users/you/code/bookings
 
 Running ./init in /Users/you/code/bookings — it installs Spec Kit for the coding agent, so it
@@ -177,8 +179,30 @@ context that earned the log beside three that did not. They are two answers now,
 the second per deployable. `slipwai add-service --write-model state` is how a later service answers
 differently from the first; left out, it takes the first service's answer.
 
+**The last two questions are for a project that starts from a document.** Give the requirements document
+and it is copied in as `docs/prd.md` before the first commit; give the folder it sits in instead —
+`slipwai generate --brief <dir>` typed — and the document is found in it for you, by its name or its first
+heading, while everything else lands under `docs/design/` for the mock-up stage to follow. What was
+decided is printed, so a wrong guess is visible. Enter on both is the usual answer, and the specification
+is then written in the agent with you, as on [the next page](first-feature.md).
+
 Everything you were asked is written down in `project.json`, and nothing else keeps a second copy of it:
 the Makefile, `docker-compose.yml`, the CI workflow and the gate scripts all read that one file.
+
+### The same interview, on the board
+
+`slipwai` on its own opens **the board** — a page served from this machine only — and its *Start a
+project* tab is this interview as a form, in the same order and from the same menus. Three things are
+easier there: a quickstart fills in the questions below it and leaves every one yours to change, **Dev
+tooling** is one checkbox per extension installed here and the ticked ones are handed to `./init`, and the
+brief is a folder picked with your own machine's chooser. A project started from a requirements document
+does not stop at `./init`: the board runs `make draft`, which writes the first specification from the
+document — every call the document did not settle under `## Assumptions` — and stops there, on the
+**Voyage** tab, for you to read it. [Your first feature](first-feature.md#from-the-board) carries on from
+that page.
+
+`slipwai bridge install` keeps the board up — a login service for your own account, no root — and opens it
+so the browser can put it in your dock. `slipwai bridge uninstall` takes it away again.
 
 ## 4. Start the repository
 
@@ -233,3 +257,6 @@ watch happen.
 
 Other pages: [a second person joins](a-second-person.md) · [let it cruise](let-it-cruise.md) ·
 [bring an existing codebase](adopt.md) · [the vocabulary](../../GLOSSARY.md)
+
+Want every step on one page? [The generate runsheet](runsheet-generate.md) is this guide as a checklist,
+from installing the command to every release after.

@@ -29,6 +29,9 @@ class ran(contextlib.ExitStack):  # noqa: N801 — it reads as the verb it is at
     The login environment is stubbed with it, and not for tidiness: `import subprocess` is one module
     object, so patching `folder_choice.subprocess.run` patches it for `shell_environment` too — which
     runs a real shell and reads bytes back, and met a string meant for the dialog.
+
+    The platform is pinned to one that always has a chooser: a Linux runner with neither `zenity` nor
+    `kdialog` asks with nothing, and the stubbed answer would never be read.
     """
 
     def __init__(self, stdout: str = "", code: int = 0) -> None:
@@ -39,6 +42,7 @@ class ran(contextlib.ExitStack):  # noqa: N801 — it reads as the verb it is at
 
     def __enter__(self) -> ran:
         super().__enter__()
+        self.enter_context(mock.patch.object(sys, "platform", "darwin"))
         self.enter_context(mock.patch("slipwai.folder_choice.login_environment", lambda: {}))
         self.enter_context(mock.patch("slipwai.folder_choice.subprocess.run", self.answer))
         return self

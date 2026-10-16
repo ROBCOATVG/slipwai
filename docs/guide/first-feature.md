@@ -32,6 +32,30 @@ Three narrower forms exist for when you want one fairway or one slice:
 **Bare is the normal form.** The narrower ones are for when a second person is working beside you, which
 is the next page.
 
+## From the board
+
+The same ladder can be driven from the board's **Voyage** tab (`slipwai`, then Voyage). Across the top is a
+strip of its stages — PRD, init, constitution, specification, storyboard, event model, chart and split,
+slices, accepted — each *done*, *working*, *waiting on you* or *to do*, with the file that proves it and
+the command that moves it. Nothing on it is a status anybody typed: a stage is done when its artefact
+exists. The page keeps itself current while the agent works in another window.
+
+Each stop for a person has its button on the stage it belongs to:
+
+| Where the project is | What the Voyage offers |
+| --- | --- |
+| A specification is written | **Open spec**, rendered rather than as markup, and **Draw the surfaces**, which runs `make surfaces` to draw a wireframe for each screen and storyboard them |
+| The surfaces are drawn | **Approve storyboard** or **Disapprove** with a reason. Approving starts the model on the event-modelling profile and the chart on the standard one |
+| The model is in | **Continue the build**, which runs `make launch`: the chart, the split and the fleet cast off |
+| The split is written and nothing is running | **Cast off the fleet**, which is `make cruise`; **Stop the fleet** asks every captain to stop at its next boundary |
+| A further feature is waiting in `docs/intake/` | **Continue the next feature** |
+
+Under the strip are the model in draw.io's own viewer with each slice coloured by where it stands, the
+mock-ups and the screens each slice has actually rendered, the slices in four columns named as the split
+names them, and one **Settings** box with a tab each for speed, fine tune, who answers at each stop,
+delegation and models. Every button is a `make` target you could type instead, and every setting is
+written by the project's own scripts, never by the board.
+
 ---
 
 ## What it is doing underneath
@@ -164,8 +188,8 @@ marks it steers by.
 $ python3 scripts/agents/clearance.py
 clearance: 1 of 3 slices start now in booking (slots: 3)
   start  BOK-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for BookingHeld
-  blocked   AVA-01  — AVA-01 steers by BookingHeld (set by BOK-01), and none of those is set yet
   blocked   BOK-02  — BOK-02 steers by BookingHeld (set by BOK-01), and none of those is set yet
+  blocked   AVA-01  — AVA-01 steers by BookingHeld (set by BOK-01), and none of those is set yet
 ```
 
 **Cleared** means every mark this slice steers by has been set. Nothing has been set yet, so only the slice
@@ -228,8 +252,8 @@ worktree, before anything merged. Run clearance again and the slice in the other
 ```console
 $ python3 scripts/agents/clearance.py
 clearance: 2 of 3 slices start now in booking (slots: 3)
-  start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken
   start  BOK-02  implement  — cleared and sets nothing, so there is nothing to settle
+  start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken
   done   BOK-01  — merged at a1b2c3d4
 ```
 

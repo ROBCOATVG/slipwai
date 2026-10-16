@@ -129,8 +129,13 @@ The board is the harbour's view of the agents at work; the **bridge** is the sam
 answer from, and a question from a fairway is a line in that fairway's log, so typing the answer on the
 page writes it there. One server, one port, one page: `slipwai bridge` opens it at the board, `slipwai
 fleet --page` does the same without giving up the printed board, and `slipwai` on its own opens it too —
-and none of them starts a second one. Its tabs are the board, starting a project, adopting a repository
-and the packages this copy can be given.
+and none of them starts a second one. Its tabs are the board, starting a project, adopting a repository,
+the packages this copy can be given, and the **Voyage**: where this project stands on the ladder, read off
+the tree, with the model, the mock-ups, the slices and the live fleet beside it, and a button at every stop
+that waits for a person — open and approve the specification, draw and approve the storyboard, continue
+the build, cast off or stop the fleet. A project can be started there from a requirements document or the
+whole folder it sits in; the board drafts the first specification from it and stops for you to read it.
+[Your first feature](guide/first-feature.md#from-the-board) walks the page.
 
 Your browser will also install it: press **Install this board**, and it opens in its own window from the
 dock with no address bar. Installing a window cannot start a server, so when nothing is listening that

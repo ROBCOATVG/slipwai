@@ -63,7 +63,7 @@ answer to "where was I" is a command rather than a scrollback search, and it is 
 
 ```sh
 slipwai adopt --confirm api
-slipwai adopt --confirm worker --language python --purpose "overnight settlement"
+slipwai adopt --confirm worker --language worker=python --purpose "worker=overnight settlement"
 slipwai adopt --decline tools        # a buildable directory that is not an application
 slipwai adopt --as admin=admin-ui    # confirm it under a name of your own
 ```
@@ -116,6 +116,8 @@ the board: a derived reading never silently replaces somebody's word.
 
 You are now where [your first feature](first-feature.md) begins. Everything from `/chart` onwards is the
 same on both doors.
+
+[The adopt runsheet](runsheet-adopt.md) is this page as a checklist, every step in order.
 
 Other pages: [start here](start-here.md) · [a second person joins](a-second-person.md) ·
 [let it cruise](let-it-cruise.md) · [the vocabulary](../../GLOSSARY.md)

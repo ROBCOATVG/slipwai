@@ -10,13 +10,11 @@ typescript installed from the slipwai chandlery 1.0.0, published by ROBCOATVG (v
 $ slipwai generate
 Create a new product monorepo. Press Enter to accept a shown default.
 Project name: bookings
+Start from (none/laptop-trial/internal-tool/…) [none]:
 Use Event Modeling? [Y/n]:
-Production target (none/aws/azure/existing) [none]:
-Service name [service]: bookings
-Bounded contexts bookings holds, comma-separated [bookings]: booking, availability
-Frontend (none/react-vite) [react-vite]:
-
-  bookings/ written — 927 files
+  …   the target, the service and its contexts, how it stores data, who signs in
+Product requirements document (a path; Enter for none): ~/briefs/bookings.md
+created: /Users/you/code/bookings
 
 $ cd bookings && make verify   # ./init ran where the project was made
 
@@ -26,7 +24,19 @@ verify: all gates passed
 That is ten minutes. The other five are one feature — specified, modelled, charted, split, built and
 demoed in front of you — and they are on the next page.
 
-→ **[Start here](docs/guide/start-here.md)**
+**Or do all of it on a page.** `slipwai` on its own opens **the board**, served from this machine only:
+start a project from the same questions, or hand over a requirements document or the folder it sits in,
+and the first specification is drafted for you and waits for you to read it. Its **Voyage** tab then says
+which stage the project is on, read off the tree, with a button at every stop that waits for a person.
+
+## New to this — start here
+
+| | |
+| --- | --- |
+| **[Runsheet: generate a new project](docs/guide/runsheet-generate.md)** | You want a fresh repository. Every step in order, from installing the command to a fleet cruising and every release after |
+| **[Runsheet: adopt an existing repository](docs/guide/runsheet-adopt.md)** | You already have a codebase. Every step in order, from `slipwai adopt` through `/ground` to the first slice |
+
+The runsheets are the sequence; the five guide pages below are the reasoning, a page each.
 
 Coming from version 1? → **[What is new since version 1](docs/whats-new.md)** — every change that affects
 you, what each is for, and the one command that moves your project across.
@@ -81,6 +91,23 @@ telegraph: half-ahead  boilers 3  fanout 2  bunker 126/10000k today
 `slipwai bridge` for the same thing as a page you can answer from. More in
 [docs/captures](docs/captures/), which are from real runs rather than drawn.
 
+## The board
+
+`slipwai` with nothing after it opens one page with a tab each for starting a project, adopting a
+repository, the packages this machine can install, the fleet, and the **Voyage**:
+
+- **The stages**, from PRD to accepted, each *done*, *working*, *waiting on you* or *to do*, with the file
+  that proves it — read off the tree, never typed
+- **The stops**, each a button: open the specification, draw and approve the storyboard, continue the
+  build, cast off or stop the fleet, continue the next feature
+- **The work**: the event model in draw.io's viewer coloured by slice, the mock-ups and the screens each
+  slice has rendered, the slices by state, and the questions waiting on you with a box to answer each
+- **One Settings box** — speed, fine tune, who answers, delegation and models — written by the project's
+  own scripts, never by the board
+
+Every button is a `make` target you could type instead. `slipwai bridge install` keeps the board running
+whenever you log in. [Your first feature](docs/guide/first-feature.md#from-the-board) walks the page.
+
 ## Languages, and everything else
 
 The command knows how to build a repository. It does not know any languages — those come from the
@@ -94,7 +121,11 @@ slipwai install python
 
 Six languages are published at `https://robcoatvg.github.io/slipwai-index/`. A publisher you have not met is
 confirmed once; the checksum is checked every time, whoever published it. Publishing your own is four verbs
-— `slipwai package new`, `check`, `version`, `release` — and a pull request.
+— `slipwai package new`, `check`, `version`, `release` — and a pull request. Clouds (`slipwai target
+install aws`) and dev tooling (`slipwai extension`) are packages the same way.
+
+**Six quickstarts are carried with the command** — a set of answers somebody already settled, offered by
+what the product is like: `slipwai quickstart list`, then `slipwai generate <name> --quickstart <name>`.
 
 ## Reference
 

@@ -252,9 +252,10 @@ class AcceptanceTest(unittest.TestCase):
         self.assertEqual((numbers["slots"], numbers["fanout"], numbers["tree"]), (2, 2, 9))
         self.assertEqual(chart.slots_from(config, 1), 2)
         line_ = chart.numbers_line(numbers)
-        self.assertIn("2 slice(s) may start (boilers 3 − 1 running)", line_)
+        self.assertIn("2 slice(s) may start (boilers 3 - 1 running)", line_)
         self.assertIn("fanout 2 delegate(s) inside each slice", line_)
-        self.assertIn("tree ≤ 9", line_)
+        self.assertIn("tree <= 9", line_)
+        line_.encode("cp1252")
         self.assertIn("unbounded", chart.numbers_line(chart.numbers_from(config.with_name("none.json"), 0)))
 
     def test_a_migrated_shipped_prerequisite_requires_recorded_evidence_not_a_fabricated_mark(self) -> None:

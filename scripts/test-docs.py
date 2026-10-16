@@ -460,8 +460,7 @@ def check_interview(parent: Path, documented: list[str]) -> list[str]:
     transcript = interview(parent / "interview")
     asked = {stem(line) for line in transcript.replace(": ", ": \n").splitlines()}
     spelled = "\n".join(path.read_text(encoding="utf-8") for path in
-                        (ROOT / "src/slipwai/cli_prompts.py", ROOT / "src/slipwai/cli_generate.py",
-                         ROOT / "src/slipwai/cli.py", ROOT / "catalog.json"))
+                        (*sorted((ROOT / "src/slipwai").glob("*.py")), ROOT / "catalog.json"))
     findings = []
     for line in documented:
         question = stem(line)

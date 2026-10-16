@@ -176,7 +176,7 @@ class LoopTest(unittest.TestCase):
                 continue
         for pid in pids:
             with contextlib.suppress(OSError):
-                os.kill(pid, signal.SIGKILL)
+                os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))  # Windows: TerminateProcess
         bound = time.monotonic() + 5.0
         for pid in pids:
             while time.monotonic() < bound:

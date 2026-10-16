@@ -18,6 +18,7 @@ copies exists on the keel's side of the merge. Re-derive them here, extension fi
 receive its current block. The committed `.slipwai/extensions.json` records the election; a legacy project
 with no record is inferred once from markers. Setup and the interactive menu never run during migration.
 """
+# budget: 360 — a clean merge also leaves the intake proposal beside the catch-up notes.
 from __future__ import annotations
 
 import subprocess
@@ -89,6 +90,8 @@ def migrate(root: Path, *, with_claims: bool = False) -> Migration:
         # and half the keel's until somebody decides, and projecting a conflicted file would write the
         # markers into every harness. The report asks for it after the resolving commit instead.
         return Migration(offered, was, conflicts, stat, fast_forward, unwritten=unwritten)
+    from .project.intake_cleanup import write_proposal
+    write_proposal(root)
     return Migration(offered, was, conflicts, stat, fast_forward, refresh(root, name, layout_of(document)), unwritten)
 
 
@@ -298,7 +301,8 @@ def report_of(done: Migration) -> str:
     if done.unwritten is None:
         lines.append(
             f"What the versions crossed ask of code already here — which no merge can do — is written to "
-            f"{NOTES}, git-ignored and disposable."
+            f"{NOTES}, git-ignored and disposable. `.slipwai/intake-cleanup.json` proposes where loose "
+            f"requirements could be recorded; nothing in it is moved until `/catch-up` confirms a row."
         )
     if done.refresh.failed:
         lines += [

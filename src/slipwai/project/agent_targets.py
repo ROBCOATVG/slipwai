@@ -14,7 +14,7 @@ from __future__ import annotations
 
 def agent_targets() -> str:
     """The `.PHONY` block between the npm workspace targets and the native gate targets."""
-    return """.PHONY: check-python preflight arrive depart dispatch hooks crossing agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft surfaces launch check-decisions
+    return """.PHONY: check-python preflight arrive depart dispatch hooks crossing agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft assess surfaces launch check-decisions
 check-python: ## Fail, first, when python3 is older than the 3.10 every gate script is written for
 \t@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 'check-python: ' + sys.executable + ' is Python ' + sys.version.split()[0] + ', and the gate scripts need 3.10 or newer; put a newer python3 first on PATH (a non-interactive macOS shell finds /usr/bin/python3, which is 3.9, before Homebrew)')"
 preflight: ## Check once, in a fresh worktree, that an increment can run here: toolchains, caches, a socket, the index
@@ -59,6 +59,8 @@ cruise-tell: ## Tell one stream something; its captain reads it at the next boun
 \tpython3 scripts/agents/fleet.py tell $(CRUISE_FLAGS) $(STREAM) $(MSG)
 draft: ## Draft the constitution and the first specification from a PRD in a headless session, and stop for a person to read it (PRD=<path>; default docs/prd.md)
 \tpython3 scripts/agents/draft.py $(PRD)
+assess: ## Assess one idea /sail captured, and specify it only after a yes and a go (SLUG=<name>)
+\tpython3 scripts/agents/assess.py $(SLUG)
 surfaces: ## Research, draft and storyboard this feature's surfaces in a headless session, and stop for a person to approve each state (FEATURE=<name>; default the first specified)
 \tpython3 scripts/agents/surfaces.py $(FEATURE)
 launch: ## Continue the build from a drafted specification: chart and split it in a headless session, enable /cruise and cast off (CRUISE_FLAGS="--boilers <n>")

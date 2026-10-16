@@ -14,6 +14,7 @@ DOC_HOOKS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
         ("workflow.md", "the delivery loop each slice travels, drawn from the constitution to the hardening passes"),
         ("first-slice.md", "what a slice looks like on disk, and the four things that cost real debugging to learn"),
         ("prd.md", "the product requirements this project was started from, which `/draft` read to write the first specification"),
+        ("intake/README.md", "the record `/sail` writes when a further feature is handed over in the conversation"),
     )),
     ("This project", (
         ("whats-included.md", "everything that was generated, in one list"),

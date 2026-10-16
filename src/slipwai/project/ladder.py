@@ -67,8 +67,22 @@ def sail_ladder(
    this stage done: the gate lets the untouched template through so the first push can deploy, and says so
    (`nothing drafted yet`). Otherwise run `/speckit-constitution`, then `/constitution-coverage` for
    whatever the gate still reports missing.""",
-        """**Product specification** — `specs/<feature>/spec.md` describes the product this slice belongs to.
-   Otherwise run `/speckit-specify`, then `/gaps` over what it promises.""",
+        """**Product specification** — `specs/<feature>/spec.md` describes the product this slice belongs to,
+   and every directory under `docs/intake/` is either specified or was killed. A person hands a further
+   feature to `/sail` in the conversation — the words, text pasted there, or a document this session can
+   read. This session writes that to `docs/intake/<slug>/brief.md`; the person does not create the
+   directory. An argument that names a slice, a fairway, or a feature that already has `spec.md` is that
+   work. An argument that names an intake directory continues that idea. Anything else is a new idea:
+   capture it, state what was captured, and do not run `/speckit-specify` yet. Ask whether this is a new
+   feature. Under `/cruise`, delegate that one question to `sail-decide-skipper` and record the decision.
+   A yes is `docs/intake/<slug>/confirmed`, the line `yes` and who answered. Then, if the assess commands
+   are not installed, run `specify extension add assess`, and run `/speckit-assess-intake`,
+   `/speckit-assess-research`, `/speckit-assess-define`, `/speckit-assess-shape` and
+   `/speckit-assess-decide` for that slug. The artifacts stay in `.specify/assessments/<slug>/`.
+   `needs-clarification` and `kill` stop. A `go` is handed to `/speckit-specify` with the whole of the
+   brief and the documents beside it, then `/gaps`, then `specified.json` names the `specs/...` directory
+   and the digest `docs/intake/README.md` describes. A matching digest is already specified. A different
+   digest is assessed again. A session given a slice id stays on that slice.""",
         """**Mock-up review** — `specs/<feature>/mockups/mock-states.md` exists and every state in it is
    `approved`, `parked` with the question it waits on, or `n/a` with its reason. A feature with no surface
    at all writes `surfaces: none` and that is the whole file. Otherwise run `/mockups`, which researches

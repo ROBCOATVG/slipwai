@@ -55,6 +55,14 @@ class StagesTest(unittest.TestCase):
         detail = next(one.detail for one in stages(root) if one.key == "init")
         self.assertIn("claude", detail)
 
+    def test_a_captured_idea_is_named_on_the_specification_stage(self) -> None:
+        """Another feature's spec.md does not hide an idea /sail has not finished."""
+        root = tree(**{**INIT, "specs__001-demo__spec.md": "# Demo\n",
+                       "docs__intake__billing__brief.md": "# Billing\n\nBilling\n"})
+        stage = next(one for one in stages(root) if one.key == "specification")
+        self.assertEqual(stage.state, "done")
+        self.assertIn("waiting: billing", stage.detail)
+
     def test_a_constitution_still_carrying_the_template_is_not_ratified(self) -> None:
         root = tree(**{CONSTITUTION.replace("/", "__"): "# [PRINCIPLE_1_NAME]\n"})
         self.assertEqual(states(root)["constitution"], "todo")

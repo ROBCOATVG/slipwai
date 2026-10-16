@@ -32,6 +32,7 @@ from .event_model import event_documentation
 from .evolving import evolving_page
 from .existing import production_included_line
 from .flags import FLAG_GATE_NOTE
+from .intake import README, readme
 from .pins import pin_list
 from .prose import page
 from .skills_page import skills_page
@@ -63,6 +64,7 @@ def documentation_files(
                    + included_model_line(event, apps)),
         WORKFLOW: page(PAGE_ROOT, WORKFLOW, named, ("event-diagram",) if event else ("plain-diagram",)),
         "docs/evolving-the-project.md": evolving_page(),
+        README: readme(),
     }
     # What this project's browser surface looks like and where that is decided; nothing at all without one.
     files.update(design_page(apps))

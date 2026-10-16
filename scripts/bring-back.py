@@ -106,7 +106,10 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "chandlery_page",
        # Phase 15: Phase 1 of the modelling method read off a repository the keel did not make. The
        # experiment bundled Event Modeling with event sourcing and so never built one for brownfield.
-       "big_picture", "big_picture_guards", "project.big_picture_page", "project.observe_command"}
+       "big_picture", "big_picture_guards", "project.big_picture_page", "project.observe_command",
+       # A further feature handed to /sail. The session writes the record; a migration leaves a
+       # proposal for catch-up. Version 1 had neither, so neither module is in the ledger.
+       "project.intake", "project.intake_cleanup"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will
 # grow a verb per slice, `assets` holds the paths and not the asset trees, `__init__` and `__main__` are
 # the package's own. The ledger's row for each describes what it becomes, not what is here, so they are

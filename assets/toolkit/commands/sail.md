@@ -25,6 +25,13 @@ arguments narrows that and nothing else:
 A `fairway=` may be written with any of the others. Nothing here chooses a slice for you where several are
 ready: rule 6 says run them concurrently, and that holds in every form but the last.
 
+**Words that name no slice, fairway, or existing feature are a new idea, handed here.** Capture them, and
+any document this session can read, under `docs/intake/<slug>/` as `docs/intake/README.md` describes. State
+what was captured. Then ask whether it is a new feature before Spec Kit assesses it, and do not run
+`/speckit-specify` until that assessment's `decision.md` says `go`. Under `/cruise` the question goes to
+`sail-decide-skipper`. A session given a slice id stays on that slice. The product-specification rung below
+is the rest of the order.
+
 ## Enter at the first incomplete stage
 
 Read artifacts from disk rather than conversation memory and walk this ladder from the top. The entry stage

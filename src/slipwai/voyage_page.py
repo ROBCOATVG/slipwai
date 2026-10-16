@@ -145,6 +145,7 @@ SCRIPT = BOARD_SCRIPT + """
   document.addEventListener('click', event => {
     if (event.target.id === 'cast-off') { event.target.disabled = true; send('/cast-off', {}); }
     if (event.target.id === 'draw') { event.target.disabled = true; send('/draw', {}); }
+    if (event.target.id === 'intake-go') { event.target.disabled = true; send('/intake', {}); }
     // No confirm(): a dialog blocks every later event in this window, and stopping is asked rather than
     // done — a captain finishes its stage, so there is nothing here to be sorry about afterwards.
     if (event.target.id === 'stop') { event.target.disabled = true; send('/stop', {}); }
@@ -369,6 +370,16 @@ def mockups_card(found: list[dict[str, str]]) -> str:
     return f'<div class="card" id="mockups"><h2>Mockups · {len(found)}</h2><div class="mocks">{tiles}</div></div>'
 
 
+def intake_card(found: list) -> str:
+    """Ideas handed to `/sail` that are not yet specified or killed, and the button that moves the earliest."""
+    pending = [one for one in found if one.state not in ("specified", "kill")]
+    if not pending:
+        return ""
+    rows = "".join(f"<p><b>{esc(one.slug)}</b> — {esc(one.state)}. {esc(one.detail)}</p>" for one in pending)
+    return (f'<div class="card" id="intake"><h2>Next features</h2>{rows}'
+            f'<div class="ask"><button class="go" id="intake-go">Continue the next feature</button></div></div>')
+
+
 def work_card(rows: list[dict[str, str]], fault: str) -> str:
     if fault:
         return f'<div class="card"><h2>The work</h2><p class="empty">{esc(fault)}</p></div>'
@@ -386,7 +397,8 @@ def work_card(rows: list[dict[str, str]], fault: str) -> str:
 def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str, xml: str, note: str,
          viewer_fault: str, made: dict | None, launchable: bool, fleet: dict | None = None,
          config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
-         stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "") -> str:
+         stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
+         ideas: list | None = None) -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
@@ -397,6 +409,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     where = passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable, feature,
                          drawable, shape)
     body = (f"<style>{STYLE}</style>{where}"
+            f"{intake_card(ideas or [])}"
             f"{expect_card(found)}{landed}"
             f"{model_card(xml, note, viewer_fault)}{mockups_card(mocks or [])}{work_card(rows, fault)}{live}")
     script = SCRIPT + ("" if viewer_fault or not xml else "\n")
@@ -413,8 +426,12 @@ def now_said(found: list[Stage]) -> str:
     """The one sentence about where the project is and what moves it, as the strip, the poll and the
     landing all say it."""
     now = current(found)
-    return (f"Now: {now.title.lower()} — {now.detail}. Next: {now.next}." if now
+    said = (f"Now: {now.title.lower()} — {now.detail}. Next: {now.next}." if now
             else "Every stage is done: the voyage is complete.")
+    spec = next((one for one in found if one.key == "specification" and "waiting:" in one.detail), None)
+    if spec and (now is None or now.key != "specification"):
+        said += f" {spec.detail[spec.detail.index('waiting:'):]}."
+    return said
 
 
 def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False,

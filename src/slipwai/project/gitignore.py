@@ -14,7 +14,7 @@ from .openapi import API_CLIENT
 from .shared_packages import PACKAGES, node_workspace
 
 #: Under `.slipwai/`, what is the run's and not the record's. Ignored, in the order a reader meets them.
-RUN_STATE = ("logs/", "run-state.json", "running/", "harbourmaster.json", "berths/")
+RUN_STATE = ("logs/", "run-state.json", "running/", "harbourmaster.json", "berths/", "intake-cleanup.json")
 
 # What each store writes beside the code, keyed by feature, for a store that keeps its data in the working
 # tree. A SQLite event store writes its log next to the code, and WAL mode writes two more files beside it.

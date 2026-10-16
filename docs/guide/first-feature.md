@@ -80,6 +80,10 @@ which reads the specification back and asks what it did not say. Who cancels a b
 two guests take the last table? Answer them now, in the specification, because every one of them becomes a
 slice later and a question answered here costs a sentence.
 
+A further feature is handed to `/sail` in the same conversation: the request, or a document that session
+can read. `/sail` writes the record under `docs/intake/`, asks whether it is really a new feature, and
+runs Spec Kit's assessment before it specifies. A `go` is what becomes the next `specs/<feature>/spec.md`.
+
 ### 3. Mock-ups, approved one at a time
 
 ```

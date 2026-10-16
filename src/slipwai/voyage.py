@@ -269,7 +269,19 @@ def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, mad
     drawn = sorted(page.relative_to(specs).as_posix()
                    for page in specs.glob(f"*/{MOCKUPS}/*.html")) if specs.is_dir() else []
     picture = root / DRAWIO
+    home = root / "docs/intake"
+    intake = []
+    if home.is_dir():
+        for folder in sorted(path for path in home.iterdir() if path.is_dir() and not path.name.startswith(".")):
+            flags = ""
+            if (folder / "confirmed").is_file():
+                flags += "c"
+            if (folder / "specified.json").is_file():
+                flags += "s"
+            if (root / ".specify/assessments" / folder.name / "decision.md").is_file():
+                flags += "d"
+            intake.append(f"{folder.name}:{flags}")
     berths = [str(one.get("state", "")) for one in (fleet.get("berths") or []) if isinstance(one, dict)]
     return "|".join((feature, "".join(str(row["state"])[:1] for row in rows), ",".join(drawn),
                      str(int(picture.stat().st_mtime) if picture.is_file() else 0), ",".join(berths),
-                     str(len(fleet.get("inbox") or [])), "f" if made else ""))
+                     str(len(fleet.get("inbox") or [])), "f" if made else "", ",".join(intake)))

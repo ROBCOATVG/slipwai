@@ -39,3 +39,6 @@ same script after `./init` where a PRD was given when the project was generated.
    assumption made, and that `/launch` — the board's **Continue the build** — is the next step. End the
    session. Do not chart, split, plan, mock up or implement: those are the launch's, after a person has read
    this.
+6. **A further feature is not this command.** Hand it to `/sail`. That session captures it, asks whether
+   it is a new feature, and assesses it. `{{make}} assess SLUG=<slug>` is the headless half, and it runs
+   only after `docs/intake/<slug>/confirmed` exists.

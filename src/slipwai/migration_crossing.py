@@ -314,6 +314,9 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         notes = root / NOTES
         notes.parent.mkdir(parents=True, exist_ok=True)
         notes.write_text(message, encoding="utf-8")
+        if not result.conflicts:
+            from .project.intake_cleanup import write_proposal
+            write_proposal(root)
         reported = Replay(root, offered.destination, offered.name, offered.files, offered.generated_with,
                           offered.base, offered.base_is_factory, offered.languages)
     conflicts = tuple(sorted(result.conflicts))

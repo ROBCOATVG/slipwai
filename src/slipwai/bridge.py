@@ -55,6 +55,7 @@ from .fleet import board
 from .folder_choice import chosen
 from .harbour import config
 from .init_run import Fitting
+from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
 from .init_run import draw as draw_surfaces
 from .init_run import launch as continue_build
@@ -77,6 +78,7 @@ from .page_shell import (
     not_running,
 )
 from .passage import EVENT_PROFILE, drawn, modelled, profile_of, specifications, stages
+from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .spec_page import page as spec
 from .telegraph import Refused
@@ -99,7 +101,8 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 580 — one server and every route the board answers, each a few lines handing off to a page module.
+# budget: 630 — one server and every route the board answers, each a few lines handing off to a page
+# module. The intake route is the voyage button for a feature handed to /sail.
 # The number is the route count rather than any one route's length: a control a person can press is ten
 # lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
 # board has gained the surfaces, the settings dials and the rendered specification since this was 560.
@@ -342,11 +345,29 @@ class Bridge(BaseHTTPRequestHandler):
                                extensions=elected_in(answers))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
 
+    def active_feature(self) -> Path | None:
+        """The feature Continue the build is about: the one `.specify/feature.json` names, else the only
+        specification that has no chart yet."""
+        pointer = self.root / ".specify/feature.json"
+        try:
+            held = json.loads(pointer.read_text(encoding="utf-8"))
+            named = (self.root / str(held.get("feature_directory") or "")).resolve()
+            if named.is_relative_to(self.root.resolve()) and (named / "spec.md").is_file():
+                return named
+        except (OSError, ValueError, AttributeError):
+            pass
+        specs = specifications(self.root)
+        uncharted = [path.parent for path in specs if not (path.parent / "chart.yaml").is_file()]
+        if len(uncharted) == 1:
+            return uncharted[0]
+        return specs[0].parent if len(specs) == 1 else None
+
     def launchable(self) -> bool:
-        """Whether the build can be continued from here: a specification to build from and no chart yet — on
-        the event profile, a model too — nothing running or failed on this board, and not launched already."""
-        specs = self.root / "specs"
-        if self.launched or not (specs.is_dir() and any(specs.glob("*/spec.md"))) or any(specs.glob("*/chart.yaml")):
+        """Whether the build can be continued from here: the active feature has a specification and no chart
+        yet — on the event profile, a model too — nothing running or failed on this board, and not launched
+        already."""
+        feature = self.active_feature()
+        if self.launched or feature is None or (feature / "chart.yaml").is_file():
             return False
         if self.fitting and (not self.fitting.said()["done"] or self.fitting.said()["code"]):
             return False
@@ -396,7 +417,8 @@ class Bridge(BaseHTTPRequestHandler):
         """The feature this window is about, and the one-line signature of what its page is built out of —
         which the poll carries so that a page built before a file existed can tell, and reload."""
         specs = specifications(self.root)
-        feature = specs[0].parent.name if specs else ""
+        feature_path = self.active_feature()
+        feature = feature_path.name if feature_path else (specs[0].parent.name if specs else "")
         return feature, shape(self.root, rows, fleet, feature, bool(self.made()))
 
     def voyage(self) -> str:
@@ -408,7 +430,7 @@ class Bridge(BaseHTTPRequestHandler):
         # project inside this one's page.
         return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
-                      feature, self.drawable(), made_of)
+                      feature, self.drawable(), made_of, intake_ideas(self.root))
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
@@ -519,6 +541,24 @@ class Bridge(BaseHTTPRequestHandler):
             # The one button between a specification a person has read and a storyboard they have not seen
             # yet. Half a stage: the drawing, which nobody has to be present for, and then the stop that is
             # the stage — which is why this ends with the strip amber rather than with a tick.
+            elif where == "/intake":
+                pending = [one for one in intake_ideas(self.root) if one.state not in ("specified", "kill")]
+                if not pending:
+                    raise ValueError("nothing waiting under docs/intake; hand the feature to /sail")
+                idea = pending[0]
+                if idea.state == "confirm":
+                    path = self.root / "docs/intake" / idea.slug / "confirmed"
+                    path.write_text("yes\nperson\n", encoding="utf-8")
+                    said = f"confirmed {idea.slug}"
+                elif idea.state in ("assessing", "go", "changed"):
+                    if self.fitting and not self.fitting.said()["done"]:
+                        raise ValueError("this board is already running something; wait for it to finish, "
+                                         f"then press Continue the next feature for {idea.slug}")
+                    self.fitting = assess_idea(self.root, idea.slug,
+                                               self.fitting.said()["lines"] if self.fitting else None)
+                    said = f"assessing {idea.slug}"
+                else:
+                    raise ValueError(f"{idea.slug} is {idea.state}; /sail is what moves an idea in that state")
             elif where == "/draw":
                 if not self.drawable():
                     raise ValueError("nothing to draw: the surfaces are drawn from a specification under "

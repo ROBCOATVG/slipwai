@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .next_steps import template_gone
+from .project.intake import pending as intake_pending
 
 #: In order. A stage that this profile has not got is kept and drawn faint, so both profiles read one strip.
 STATES = ("done", "working", "waiting", "todo", "skipped")
@@ -184,12 +185,18 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                        "ratified" if ratified else "the template's markers still stand",
                        expect="Written in a headless session by `make draft` \u2014 minutes, not seconds. It "
                               "does not stop for you; read it afterwards."))
+    ideas_waiting = intake_pending(root)
+    held = f"{len(specs)} feature(s)" if specs else "nothing to build from yet"
+    if ideas_waiting:
+        held = f"{held}; waiting: {', '.join(ideas_waiting)}"
     found.append(Stage("specification", "Specification", drafting or ("done" if specs else "todo"),
                        specs[0].relative_to(root).as_posix() if specs else "specs/<feature>/spec.md",
-                       "make draft from docs/prd.md, or /speckit-specify in the agent",
-                       f"{len(specs)} feature(s)" if specs else "nothing to build from yet",
-                       expect="Written in the same draft as the constitution. It does not stop for you, but "
-                              "Continue the build does: that button is your word that this is good."))
+                       "make draft from docs/prd.md, or /sail with the next feature",
+                       held,
+                       expect="The first specification is written in the same draft as the constitution. A "
+                              "further feature is handed to `/sail`, assessed, and specified only after a yes "
+                              "and a go. It does not stop for you mid-assessment, but Continue the build does: "
+                              "that button is your word that the specification is good."))
 
     # Straight after the specification and before the model, which is where `project/ladder.py` has the
     # mock-up review: a surface nobody has seen becomes a read model, a route and a set of tests, and all

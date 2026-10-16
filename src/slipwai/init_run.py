@@ -31,7 +31,7 @@ from pathlib import Path
 
 from .shell_environment import login_environment
 
-# budget: 450 — one runner for every child the board starts in a project, and the five steps it runs
+# budget: 470 — one runner for every child the board starts, including assessment of a feature handed to /sail
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
 # step they would be five modules of twelve lines and one import list each.
@@ -178,6 +178,9 @@ SURFACES = ["make", "surfaces"]
 DRAWING = ("Drawing the surfaces — `make surfaces`: the research, the wireframes and the storyboard in a "
            "headless session of the coding agent. It stops at the storyboard, which is where you come in: "
            "nothing is approved by a session nobody was in.")
+ASSESS = ["make", "assess"]
+ASSESSING = ("Assessing the next feature — `make assess`: Spec Kit decides whether the idea handed to /sail "
+             "deserves a specification, and writes one only when the verdict is go.")
 #: What the button runs: the chart and the split in a second session, `/cruise` enabled, the fleet cast off.
 LAUNCH = ["make", "launch"]
 LAUNCHING = ("Continuing the build — `make launch`: the chart and the split in a headless session, then /cruise "
@@ -398,6 +401,20 @@ def cast_off(where: Path, said: list[str] | None = None) -> Fitting:
 def stop(where: Path, said: list[str] | None = None) -> Fitting:
     """The fleet asked to stop, in the background: what the board's Stop button starts."""
     fitting = Fitting(where, [Step(STOP, STOPPING, stopped, "stop")], said)
+    fitting.thread.start()
+    return fitting
+
+
+def assessed(code: int) -> str:
+    if code == 0:
+        return "`make assess` is done. Read the verdict, and the specification when one was written."
+    return (f"`make assess` exited {code}. Its last lines say why; `make assess SLUG=<slug>` in the project "
+            "retries it.")
+
+
+def assess(where: Path, slug: str, said: list[str] | None = None) -> Fitting:
+    """One captured idea assessed, in the background: what the voyage's next-feature button starts."""
+    fitting = Fitting(where, [Step([*ASSESS, f"SLUG={slug}"], ASSESSING, assessed, "assess")], said)
     fitting.thread.start()
     return fitting
 

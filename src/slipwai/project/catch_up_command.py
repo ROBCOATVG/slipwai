@@ -85,6 +85,14 @@ Run `python3 scripts/check-migration.py` before declaring catch-up complete. A p
 unplaced slice keeps this command open: place the slices with `/chart`, ask the person to confirm, then
 run `python3 scripts/check-migration.py --confirm`. Never confirm on the person's behalf.
 
+## Review the intake proposal
+
+`.slipwai/intake-cleanup.json` lists documents the migration found. `docs/prd.md` and every existing
+specification are `keep` and stay where they are. A row whose action is `intake` is a proposal, not a
+move. Read each one with the person. Set `confirmed` to true only on the rows they accept, and leave
+`ask` rows for them to classify. Then run `python3 scripts/apply-intake.py`. A destination that already
+exists is refused; fix the row and run it again. Do not confirm a row on the person's behalf.
+
 ## Then work it
 
 1. Read every **Owes** line. Some ask for something no gate can check — an answer this project has to give,

@@ -51,7 +51,7 @@ The board `commands/sail.md` opens every demo stop with, in the same order, so t
 - ✅ **Works now** — every accepted slice, one line each, as the thing the actor can do
 - 🔧 **In progress** — the slice being worked, as the thing it will let the actor do, and the stage of
   `/sail`'s ladder it has reached, with the artifact that says so: an example map written, a plan without
-  tasks, tasks half checked, a converged verdict waiting for its demo. Nothing in progress is one line
+  tasks, tasks half checked, a capability with its gates cleared waiting for its demo. Nothing in progress is one line
   saying so
 - ⬜ **Still to come** — the remaining slices of the split, in order and by name, headed by one line of
   counts: `N of M slices accepted`
@@ -90,7 +90,7 @@ specification, {"event model, " if event else ""}split — and what the next sta
   the board. A count an artifact cannot supply is written `unknown`, with the artifact that would have
   supplied it, never estimated.
 - **Does not demo.** It hands over no command to paste and asks no question: that is the demo stop's job,
-  and it belongs to `/sail`. Where the board shows a converged slice waiting for its demo, say so, and say
+  and it belongs to `/sail`. Where the board shows a capability whose gates cleared waiting for its demo, say so, and say
   that `/sail` is what runs it.
 
 {under_cruise_section()}"""

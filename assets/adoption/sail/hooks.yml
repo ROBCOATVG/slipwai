@@ -6,12 +6,12 @@
       enabled: true
       prompt: >-
         This repository adopted the delivery method around code that was already here, and `{{convergence}}` is
-        where it stands on each ladder a generated project sits at the top of. Now that the slice has
-        converged, run `make check-convergence` and read the map against the diff. A rung this slice reached
+        where it stands on each ladder a generated project sits at the top of. Now that converge has run, run
+        `make check-convergence` and read the map against the diff of every slice it covered. A rung a slice reached
         flips its row in `project.json`'s `convergence` (`rung`, `evidence`, `provenance` `confirmed`,
         `planned` cleared), then `/survey` redraws the page. A rung it did not reach stays: the map is never
         moved to match a hope. Then name the lowest row still below its target with nothing planned — that is
-        the next method slice, offered to the split. `{{drive}}`, the Convergence stage, has the rule.
+        the next method slice, offered to the split. `{{drive}}`, the Demo stage, has the rule.
 
   before_specify:
     - extension: "convergence-map"

@@ -12,18 +12,20 @@ slice". Version 2 has no stream pull request — the plan merges each slice to t
 branches — so the point is the capability: whole when its last slice has merged, which
 `scripts/agents/capabilities.py` already computes, and before the person's demo stop walks it.
 
-What stays per slice is what only a slice can answer: converge against its own `tasks.md`, one review of its
-own diff, its examples proven by its own tests, and an adversary pass where it widened identity, authority or
-money. Converge and the adversary pass run at the capability as well, because what slices get wrong *between*
-them is something no slice's own pass can read. **Under the `open` release mode three readings do not wait**:
-where a merge reaches the actor at once, code nobody has looked at would be in front of somebody before the
-capability is whole, so the gaps trace, the design review and the hand's walk run per slice where they used
-to, the adversary pass attacks every slice its trigger table owes, and the capability still runs converge,
-the adversary pass and mutation over the whole.
+What stays per slice is what only a slice can answer, scoped to what the slice added or changed: screen design
+for its own screens, one review of its own diff, its examples proven by its own tests, and the record of which
+attack-surface triggers it widened — a record, not an attack. Convergence is not one of them since 2026-10-17: it is the
+first capability gate, because what it asks — does the code do what the specification requires — has its
+answer only once the slices that share the requirement are all built. **Under the `open` release mode four
+readings do not wait**: where a merge reaches the actor at once, code nobody has looked at would be in front
+of somebody before the capability is whole, so converge, the gaps trace, the design review and the hand's walk
+run per slice where they used to, and a slice that widened authorisation, identity or money is attacked
+before its push. The capability still runs converge, the adversary pass and mutation over the whole, in every
+mode — the adversary pass, as always, only where a slice widened something.
 """
 from __future__ import annotations
 
-from .converge_stage import PASSES, levels
+from .converge_stage import convergence_gate
 
 #: Where a capability's gate record lives: one directory per capability, beside the slices it gathers.
 RECORD = "specs/<feature>/capabilities/<capability>/"
@@ -31,22 +33,25 @@ RECORD = "specs/<feature>/capabilities/<capability>/"
 GATES_FILE = RECORD + "gates.md"
 #: The readings, in the order they run: each one's fixes are code the next one should see.
 GATES = ("converge", "gaps", "design review", "adversary", "mutation", "the hand's walk")
-#: The readings that move back to every slice under the `open` release mode; the rest stay the capability's.
-OPEN_PER_SLICE = ("gaps", "design review", "the hand's walk")
-#: The readings that run both per slice and at the capability, in every release mode.
-BOTH = ("converge", "adversary")
-#: What an adversary row says for a slice that owes no pass of its own, so `check-decisions` reads it as a row.
-DEFERRED_ROW = "## <slice-id> · <commit> · <date> · deferred to capability <capability>"
+#: The readings that run per slice under the `open` release mode, where a merge reaches the actor at once.
+OPEN_PER_SLICE = ("converge", "gaps", "design review", "the hand's walk")
+#: The readings that run over the whole capability in every release mode, `open` included.
+EVERY_MODE = ("converge", "adversary", "mutation")
+#: What a slice's row in the adversary log is headed, so `check-decisions` reads it as that slice's row.
+TRIGGER_ROW = "## <slice-id> · <commit> · <date> · trigger record"
+#: What the capability's row is headed when no slice widened anything and nothing was attacked.
+SKIP_ROW = "## <capability> · <commit> · <date> · skipped: no slice widened a trigger"
 
-OPEN_MODE = """**Under the `open` release mode three of the gates do not wait for the capability.** Where a
+OPEN_MODE = """**Under the `open` release mode four of the gates do not wait for the capability.** Where a
    merge reaches the actor at once — a push to `main` deploys production and nothing holds this slice back (no
    flag seeded off, no keystone left out), which is the case the push check stops for where this page has
-   one — the gaps trace, the design review and the hand's walk run per slice, over the slice's diff and
-   examples, where they used to: `/gaps` after convergence, the design review after implementation, the hand
-   at the *Demo* rung, each recorded in the slice's own folder. The *Adversary* rung attacks every slice its
-   trigger table owes a pass, and nothing defers. Converge, the adversary pass and mutation still run here,
-   over the whole capability, in every mode: what slices get wrong between them is something no slice's own
-   pass could read. Read the mode once, at the merge rung, as the merge does."""
+   one — converge, the gaps trace, the design review and the hand's walk run per slice, over the slice's diff
+   and examples, where they used to: converge and then `/gaps` at the end of *Implementation*, the design
+   review after it, the hand at the *Demo* rung, each recorded in the slice's own folder. The *Attack
+   surface* rung also attacks a slice whose record has the authorisation, identity or money trigger
+   `widened`, before its push; nothing else is attacked per slice. Converge, the adversary pass and mutation
+   still run here, over the whole capability, in every mode: what slices get wrong between them is something
+   no slice's own pass could read. Read the mode once, at the merge rung, as the merge does."""
 
 
 def open_mode_note(where: str) -> str:
@@ -68,8 +73,9 @@ def capability_gates_stage(web: bool) -> str:
       state, `docs/design.md` and the constitution's design notes, and `skills/web-interface-guidelines`,
       doing what an extension block in `AGENTS.md` adds to this rung as well. Look for what a check cannot
       see: browser defaults anywhere, a label crammed against its field, a value the actor was never meant to
-      read, a figure with no labels, an empty state with nothing in it, one thing styled two ways. Each screen
-      gets a `Reviewed:` line in the record naming its screenshots and what was fixed or left with a reason."""
+      read, a figure with no labels, an empty state with nothing in it, one thing styled two ways — and what
+      the slices' own screen design recorded for this reading rather than fixing. Each screen gets a
+      `Reviewed:` line in the record naming its screenshots and what was fixed or left with a reason."""
         if web
         else """
    3. **Design review** — this project has no browser app, so the record says `No screen` and moves on."""
@@ -81,24 +87,18 @@ def capability_gates_stage(web: bool) -> str:
    slice's branch before its merge instead, because that merge is the one that lights the entry point. In this
    order, each over every file the capability's slices changed since the first of them branched:
 
-   1. **Converge** — the installed Spec Kit converge command over the capability's whole diff, against the
-      specification's requirements and every `tasks.md` of the capability's slices, under the bounds the
-      per-slice *Convergence* rung sets and for its reasons: at most {PASSES} passes, only a `CRITICAL` or
-      `HIGH` re-opening the loop and only a `CRITICAL` past the bound, the tree clean after every pass, a
-      stopped pass's finding a lead until its reproduction is re-run, and each task closing the class rather
-      than the instance. Hand the first pass the level list — {levels()} — and ask it to account for each.
-      The verdict goes in the record under `## Convergence`, naming each constitution principle the
-      capability's diff touches with the file and line that satisfies it. What each slice converged on alone
-      can still fail between them: a field one slice writes and the next reads differently, a rule two
-      slices each half-enforce.
+{convergence_gate()}
    2. **Gaps** — `/gaps` over the capability's whole diff, delegated to `sail-gaps-lookout`: every promise in
-      the capability's slices traced to an observable test and a reachable production path. This is the
-      completion audit; the pass before planning stays per slice.{design}
-   4. **Adversary** — one `/adversary` pass over the capability's surface, its row in
-      `specs/<feature>/adversary-log.md` headed by the capability rather than a slice. It attacks what the
-      slices widened together — a seam one slice opened and the next one reached — and every seam a slice
-      deferred to it. A seam a slice's own row already attacked alone is cited rather than probed again,
-      unless a later slice changed it.
+      the capability's slices traced to an observable test and a reachable production path, run after the
+      converged verdict and never before it. This is the completion audit; the pass before planning stays
+      per slice.{design}
+   4. **Adversary** — one `/adversary` pass over the capability's surface, **only where at least one of its
+      slices' trigger records has a trigger `widened`**, or the capability was given `--full`; its row in
+      `specs/<feature>/adversary-log.md` is headed by the capability rather than a slice. It attacks every
+      seam the slices widened, alone and together — a seam one slice opened and the next one reached. Where
+      no slice widened anything, the gate writes a skip row naming the trigger records it relied on, and the
+      skip clears it. A seam a slice's own pass already attacked under `open` is cited rather than probed
+      again, unless a later slice changed it.
    5. **Mutation** — `/mutation` over every production file the capability's slices changed, bounded by the
       `mutation-shipworm` budget in `harbour.json`: a run that reaches the budget is killed, its process tree
       and nothing else, and records a qualified receipt naming the scope it covered and the scope it did not,

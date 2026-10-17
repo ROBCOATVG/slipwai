@@ -139,7 +139,7 @@ discover a dead port.
 module registration, the build — the demo is the application starting with the change in place, by the command
 `run-the-app` records (`make smoke` where one is recorded), and never the suite passing in its place: a suite
 that never builds the context cannot see a constructor the container cannot call, and slices have shipped that
-way, converged and green, with an application that no longer started.
+way, proven and green, with an application that no longer started.
 
 Then it asks directly what using it revealed. A summary of what was built, a compliance table, or a green
 gate report is evidence *for* a demo and never the demo itself: it hands the actor nothing to use and asks

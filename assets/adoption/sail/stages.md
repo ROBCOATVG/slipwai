@@ -46,12 +46,12 @@
 <!-- end section -->
 <!-- section: map -->
  A slice that touched how an application starts — constructors, dependency injection,
-   configuration, module registration, the build — has converged only once that application has started with
-   the change in place: `make smoke` where a `smoke` command is recorded, the command `{{running}}`
-   holds otherwise, and a converged verdict that rests on the suite alone is not one. A runtime or a
+   configuration, module registration, the build — has proven its examples only once that application has
+   started with the change in place: `make smoke` where a `smoke` command is recorded, the command
+   `{{running}}` holds otherwise, and examples proven by the suite alone are not proven. A runtime or a
    framework that moved a major version moves on the Platform row, as a slice of its own and never inside
    another — `/survey` reports a version that moved without the row planning it as a disagreement, and the
-   slice that moved it is not converged until the row, or an ADR, owns the move. Then, because this repository is converging on what a generated one has, hold
+   slice that moved it is not done until the row, or an ADR, owns the move. Then, because this repository is converging on what a generated one has, hold
    the map to what the slice did: run `make check-convergence` and read `{{map}}` against the diff. A rung this
    slice reached — a quarantined suite now green, a role now recorded, a release script now run by CI on
    every commit — flips its row: edit that row in `project.json`'s `convergence` (`rung`, `evidence` naming

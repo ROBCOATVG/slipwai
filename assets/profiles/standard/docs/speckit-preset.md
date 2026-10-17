@@ -106,8 +106,9 @@ narrate anyway, so most projects meet this feature as a line explaining that two
 
 The hooks registered there wrap the constitution phase on both sides — `before_constitution` prints the
 required coverage while it is still cheap to write, `after_constitution` checks what was written before the
-phase that could fix it in one edit has ended — plus a host compact suggestion after tasks, convergence after
-implement, and a promise trace after converge. Read the file: each one carries its own reasoning.
+phase that could fix it in one edit has ended — plus a host compact suggestion after tasks, a note after
+implement saying when convergence runs (once per capability, or now under the `open` release mode), and a
+promise trace after converge. Read the file: each one carries its own reasoning.
 
 Two things to know before adding your own. **Never set `condition:`** — the commands are instructed not to
 evaluate condition expressions and to skip any hook carrying one, so it prevents the hook firing rather than

@@ -20,19 +20,30 @@ flowchart LR
     T["/speckit-tasks · one slice"]
     AN["/speckit-analyze · spec, plan and tasks agree"]
     I["/speckit-implement · RED → GREEN → REFACTOR"]
-    CV{"/speckit-converge · is everything the artifacts require built?"}
-    DG["/gaps · promise → test → production path"]
-    D{"demo · actor-visible path"}
-    A["/adversary · only when the surface changed, or the split closed"]
-    M["/mutation · measure the suite"]
-    EM --> EG --> P --> T --> AN --> I --> CV
-    CV -->|"appends tasks"| I
-    CV -->|"converged"| DG --> D
-    D -->|"accepted · new attack surface"| A --> M
-    D -->|"accepted · surface already in the log"| M
-    D -.->|"feedback changes behaviour"| EM
-    D -.->|"feedback changes implementation"| I
+    EX["examples proven · a test per example"]
+    R["review · the slice's own diff, and nothing beside it"]
+    TR["/adversary · the trigger record, attacking nothing"]
+    MG["merge to trunk"]
+    EM --> EG --> P --> T --> AN --> I --> EX --> R --> TR --> MG
   end
+
+  subgraph gates["once per capability — when its last slice has merged"]
+    direction TB
+    CV{"/speckit-converge · the capability's whole diff against the spec"}
+    FS["follow-up slice · what converge or a gate found above the bar"]
+    DG["/gaps · promise → test → production path"]
+    DR["design review · screenshots of every screen it changed"]
+    A["/adversary · one pass, only where a slice widened a trigger"]
+    M["/mutation · measure the suite"]
+    H["the hand's walk · every example, in the running app"]
+    D{"demo · a person, the whole capability"}
+    CV -->|"appends tasks"| FS --> CV
+    CV -->|"converged"| DG --> DR --> A --> M --> H --> D
+  end
+
+  MG -->|"the capability's last slice"| CV
+  D -.->|"feedback changes behaviour"| EM
+  D -.->|"feedback changes implementation"| FS
 
   C --> S --> Q
   Q --> CK --> G
@@ -42,7 +53,7 @@ flowchart LR
   G -.->|"gap found"| S
   EM -.->|"map reveals more than one slice"| SS
   P -.->|"title still says 'and'"| SS
-  M -.->|"next ready slice"| EM
+  MG -.->|"next ready slice"| EM
   EM -.->|"an event has no name"| EMOD
   D -.->|"feedback changes slice"| SS
   D -.->|"feedback changes event contract"| EMOD
@@ -67,18 +78,29 @@ flowchart LR
     T["/speckit-tasks · one slice"]
     AN["/speckit-analyze · spec, plan and tasks agree"]
     I["/speckit-implement · RED → GREEN → REFACTOR"]
-    CV{"/speckit-converge · is everything the artifacts require built?"}
-    DG["/gaps · promise → test → production path"]
-    D{"demo · actor-visible path"}
-    A["/adversary · only when the surface changed, or the split closed"]
-    M["/mutation · measure the suite"]
-    SG --> P --> T --> AN --> I --> CV
-    CV -->|"appends tasks"| I
-    CV -->|"converged"| DG --> D
-    D -->|"accepted · new attack surface"| A --> M
-    D -->|"accepted · surface already in the log"| M
-    D -.->|"feedback changes implementation"| I
+    EX["examples proven · a test per example"]
+    R["review · the slice's own diff, and nothing beside it"]
+    TR["/adversary · the trigger record, attacking nothing"]
+    MG["merge to trunk"]
+    SG --> P --> T --> AN --> I --> EX --> R --> TR --> MG
   end
+
+  subgraph gates["once per capability — when its last slice has merged"]
+    direction TB
+    CV{"/speckit-converge · the capability's whole diff against the spec"}
+    FS["follow-up slice · what converge or a gate found above the bar"]
+    DG["/gaps · promise → test → production path"]
+    DR["design review · screenshots of every screen it changed"]
+    A["/adversary · one pass, only where a slice widened a trigger"]
+    M["/mutation · measure the suite"]
+    H["the hand's walk · every example, in the running app"]
+    D{"demo · a person, the whole capability"}
+    CV -->|"appends tasks"| FS --> CV
+    CV -->|"converged"| DG --> DR --> A --> M --> H --> D
+  end
+
+  MG -->|"the capability's last slice"| CV
+  D -.->|"feedback changes implementation"| FS
 
   C --> S --> Q
   Q --> CK --> G
@@ -87,7 +109,7 @@ flowchart LR
 
   G -.->|"gap found"| S
   P -.->|"title still says 'and'"| SS
-  M -.->|"next ready slice"| SG
+  MG -.->|"next ready slice"| SG
   D -.->|"feedback changes slice"| SS
   D -.->|"feedback changes behaviour"| S
 ```
@@ -104,16 +126,16 @@ For one small vertical slice:
 4. Run `/speckit-analyze` over `spec.md`, `plan.md` and `tasks.md`. It writes nothing. A finding goes back
    to the plan or the tasks; a clean reading is what lets implementation start.
 5. Implement each task RED-GREEN-REFACTOR, keeping `make verify` green.
-6. Run the installed Spec Kit converge command, implement whatever it appends, and repeat until it reports
-   converged or reaches its bound.
-7. Prove every example in the slice's `examples.md` with a passing test, and review the slice's diff once.
-8. Run `/adversary` — it attacks the slice where it widened identity, authority or money and otherwise
-   defers to the capability — then `make verify`, and merge.
+6. Prove every example in the slice's `examples.md` with a passing test.
+7. Review the slice's diff against its merge base once — only what it added or changed.
+8. Run `/adversary` for the slice's trigger record — which attack-surface triggers it widened, attacking
+   nothing — then `make verify`, and merge.
 9. Once a capability's last slice has merged, run its gates once: converge over its diff, `/gaps`, the design
-   review from screenshots, one adversary pass, `/mutation`, and the hand's walk of every example. Then the
-   person's demo. Under the `open` release mode the gaps trace, the design review and the walk run per slice,
-   at steps 6 to 8, instead, and every slice the adversary table owes is attacked; the capability's converge,
-   adversary pass and mutation still run.
+   review from screenshots, one adversary pass where any slice widened a trigger, `/mutation`, and the hand's
+   walk of every example. Then the person's demo. Under the `open` release mode converge, the gaps trace, the
+   design review and the walk run per slice as well, after step 5, and a slice that widened authorisation,
+   identity or money is attacked before its push; the capability's converge, adversary pass and mutation
+   still run.
 
 The principles stage has a gate of its own. `.specify/memory/constitution.md` is what every stage after it
 treats as the authority, so `make check-constitution` fails the build when that file stops carrying minimum
@@ -130,15 +152,15 @@ and writes nothing, so a plan that has drifted is caught before any code. It is 
 the one before planning tightens a single artifact, and the capability's one after converge traces a promise
 to a test and a path.
 
-Three stages in the loop are deliberately not the shape they look like. **Converge** is append-only — its
-only write is new tasks — so it is safe to repeat until it reports converged or reaches its bound, and it is what makes the demo
-worth showing. The **second `/gaps`** runs once per capability, after every slice under it converged,
-because ahead of converge every unbuilt task reads as a gap, and slice by slice a promise two slices keep
-between them reads as one neither kept. **`/adversary`** is an end-of-phase pass rather than a
-per-increment one: per slice `commands/adversary.md` attacks only a widened identity, authority or money
-surface and defers the rest to the capability's one pass, and records the decision either way in
-`specs/<feature>/adversary-log.md` — which is what lets a later slice decline on evidence instead of
-judgement. The trigger table is in that row before any spawn. **`/mutation`** runs once per capability — when its last
+Three stages in the loop are deliberately not the shape they look like. **Converge** runs once per
+capability, not per slice: it asks whether the code does what the specification requires, and that has its
+answer only once the slices sharing a requirement are all built. It is append-only — its only write is new
+tasks — so it is safe to repeat until it reports converged or reaches its bound. The **second `/gaps`** runs
+after it, once per capability, because ahead of converge every unbuilt task reads as a gap, and slice by
+slice a promise two slices keep between them reads as one neither kept. **`/adversary`** attacks nothing per
+slice: each slice records its trigger table in `specs/<feature>/adversary-log.md`, and the capability is
+attacked once, only where one of those tables has a trigger `widened` — which is what lets a capability
+decline on evidence instead of judgement. **`/mutation`** runs once per capability — when its last
 slice has merged, before the person is shown it, bounded by its budget and leaving a qualified receipt rather
 than a score when capped — and when both run adversary goes first, since it
 adds tests and mutation measures whatever exists when it runs.

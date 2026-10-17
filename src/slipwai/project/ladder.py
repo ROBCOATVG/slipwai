@@ -17,7 +17,7 @@ from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
 from ..services import App, web_apps
 from .capability_gates import capability_gates_stage, open_mode_note
-from .converge_stage import convergence_stage
+from .converge_stage import OPEN_SLICE
 from .design_stage import PLAN_STYLING, with_design_rungs
 from .existing import release_stage
 from .sail_adoption import adoption_ladder
@@ -215,11 +215,13 @@ def sail_ladder(
             f""" A screen this slice
    adds or changes is styled as part of it: apply the project's own styles — `docs/design.md`, or the design
    notes in the constitution or under `specs/` — and where they do not cover what this slice needs, extend
-   the baseline stylesheet and design tokens in {baseline} rather than leaving browser defaults behind."""
+   the baseline stylesheet and design tokens in {baseline} rather than leaving browser defaults behind —
+   in the screens and elements this slice touches, and nowhere else."""
             if web
             else ""
-        ),
-        convergence_stage(),
+        )
+        + """ When the tasks are done the slice goes straight on to its examples: convergence is the
+   capability's first gate, once its slices are all built. """ + open_mode_note(OPEN_SLICE),
         """**Demo** — every example in this slice's `examples.md` is proven by an automated test in the
    slice's own suite that drives it through the slice's outermost boundary — the route, the screen's component
    or browser test, the CLI — and `tasks.md` records it under `## Examples proven`: each example against the
@@ -233,25 +235,32 @@ def sail_ladder(
         """**Review and reshape** — `specs/<feature>/slices/<id>/` records a review of this slice's whole
    diff with every finding closed. Otherwise run `/review`, which gives a fresh context the diff and the
    examples it was built from and returns findings in the shape the gaps stage uses, so one triage reads
-   both. The reviewer never edits: a reviewer that can write is one that edits, and then nobody has read
-   the diff with fresh eyes. This slice's own delegate closes the findings and then reshapes — the diff as
-   a whole, not one cycle's code, with the fast checks green after each step. This is the big refactor the
+   both. **The review is scoped to what the slice added or changed**: the reviewer is handed the slice's diff
+   against its merge base (`git diff <merge-base>...HEAD`) and only as much surrounding code as it takes to
+   read it, and every finding points at an added or changed line. A finding about code the slice did not
+   touch is not this slice's: it is noted for the capability gates or stowed to the careen, and never fixed
+   here — that is how a slice stays small. The reviewer never edits: a reviewer that can write is one that
+   edits, and then nobody has read the diff with fresh eyes. This slice's own delegate closes the findings and
+   then reshapes — the diff as a whole, not one cycle's code, and only code the slice added or changed, never
+   a neighbour "while we're here" — with the fast checks green after each step. This is the big refactor the
    small one inside each cycle is there to make unnecessary; they are not the same pass, and collapsing
-   them loses the small one. A slice does not reach the adversary rung with a review finding open.
+   them loses the small one. A slice does not reach the attack-surface rung with a review finding open.
    **Once per slice, over the whole diff** — a delegate's return is verified by the session that sent it,
    by spot-checking its RED evidence against the tree, and is never sent to a reviewer of its own: a run
    that reviewed every return paid eight reviews and eight fix rounds for nine pieces of coding and delivered
    no more for it. The one earlier reading this rung allows is a single read-only review of one story's
    pinned commit, for a story that touches identity, authority or money, said in that slice's brief; so a
    slice records at most two `review` brackets, and `make check-benchmark` says so about a third.""",
-        """**Adversary** — `specs/<feature>/adversary-log.md` carries this slice's row: the attack that was
-   run, the recorded decision not to, or the deferral to its capability's pass. Otherwise run `/adversary`,
-   whose trigger table decides which. A slice that widened identity, authority or money, or was given
-   `--full`, is attacked here; any other slice writes its table and a row deferring to its capability, whose
-   one pass at *Capability gates* covers every slice under it. One round, and findings below the severity bar
-   are stowed rather than argued: *After the examples are proven, and after Phase 4 clears* says how. """
-   + open_mode_note("every slice the trigger table owes a pass is attacked here, as before, nothing "
-                    "defers, and the capability's own pass still runs"),
+        """**Attack surface** — `specs/<feature>/adversary-log.md` carries this slice's trigger record: the
+   trigger table `/adversary` asks for, each trigger `widened`, `already covered` or `not present` with the
+   diff path or prior row that is the evidence, under a heading ending `trigger record`. **Nothing is
+   attacked here**, `--full` included: the attack is the capability's, at *Capability gates*, and it runs only
+   where at least one of its slices recorded a trigger `widened` — which is what this record is for. Writing
+   it is a read of the diff, not a pass, and spawns nothing. """
+   + open_mode_note("a slice whose record has the authorisation, identity or money trigger `widened` is "
+                    "attacked here as well, before its push, because the merge is live; nothing else is. "
+                    "Everywhere else a merge is held back by a flag or a keystone, so what the capability's "
+                    "pass has not yet covered is dark until it has"),
         capability_gates_stage(bool(web)),
         """**Merge to main** — the slice is on trunk. Rebase first, run the full `make verify` on the
    rebased branch, and merge. This is the only rung that runs the full gate, and the only one a person

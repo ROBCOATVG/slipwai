@@ -6,8 +6,9 @@ per slice, until the two are the same thing. So `/sail` in an adopted repository
 are stages so that the "enter at the first incomplete stage" rule reaches them: **Ground** before Principles — no map,
 no principles, and an unrecorded row on an axis the slice touches is a question before anything else; **Pin** before
 Implementation — code that was here is changed only once `/characterise` has recorded what it does at the seam; and
-Convergence re-checks the map after the slice, flips the row a rung was reached on, and offers the next unplanned row as
-a method slice. The hooks in `.specify/extensions.yml` say the same three things to whoever typed a `/speckit-*` command
+the Demo rung, where the slice's examples are proven, re-checks the map after the slice, flips the row a rung was
+reached on, and offers the next unplanned row as a method slice. (It was the Convergence rung's until convergence
+became the capability's, on 2026-10-17.) The hooks in `.specify/extensions.yml` say the same three things to whoever typed a `/speckit-*` command
 without ever typing `/sail`.
 
 The words are `assets/adoption/sail/`: `stages.md`, one section per stage or addendum, and `hooks.yml`, the
@@ -69,7 +70,7 @@ def stage(name: str, apps: list[App], layout: Layout) -> str:
 def adoption_ladder(stages: list[str], apps: list[App], layout: Layout) -> list[str]:
     """The `/sail` ladder with the adoption phases in it: Ground first, the Plan stage holding the slice's home to
     the decided strategy, Pin before Implementation, the Implementation stage saying how new code beside what was
-    here is tested, and the Convergence stage re-checking the map. The stages are found by their titles, so the
+    here is tested, and the Demo stage re-checking the map. The stages are found by their titles, so the
     ladder's own order holds whatever a profile adds between them."""
     ladder = [stage("ground", apps, layout), *stages]
     for index, found in enumerate(ladder):
@@ -88,8 +89,8 @@ def adoption_ladder(stages: list[str], apps: list[App], layout: Layout) -> list[
     # code never reads, and nothing said *current*.
     ladder[implementation] = ladder[implementation].rstrip() + stage("implementation", apps, layout)
     ladder.insert(implementation, stage("pin", apps, layout))
-    convergence = next(index for index, found in enumerate(ladder) if found.startswith("**Convergence**"))
-    ladder[convergence] = ladder[convergence].rstrip() + stage("map", apps, layout)
+    proven = next(index for index, found in enumerate(ladder) if found.startswith("**Demo**"))
+    ladder[proven] = ladder[proven].rstrip() + stage("map", apps, layout)
     return ladder
 
 

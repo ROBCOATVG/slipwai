@@ -151,12 +151,11 @@ def decisions_gate():
     return loaded
 
 
-class DeferredAdversaryRowTest(unittest.TestCase):
-    """A slice that widened nothing about identity, authority or money defers its attack to its capability.
+class TriggerRecordRowTest(unittest.TestCase):
+    """A slice attacks nothing since 2026-10-17: it records its trigger table, and its capability is attacked.
 
-    The deferral is a row in the adversary log like a skip is, so `check-decisions` must read it as one: a
-    gate that charged every deferring slice with a missing row would push each of them back to a pass the
-    ladder no longer asks for.
+    The trigger record is the slice's row in the adversary log, so `check-decisions` must read it as one, and
+    a capability's skip row — nothing widened, nothing attacked — must not trip it either.
     """
 
     def setUp(self) -> None:
@@ -170,9 +169,16 @@ class DeferredAdversaryRowTest(unittest.TestCase):
         (self.feature / "slices/README.md").write_text("| Slice | Accepted |\n|---|---|\n| S01 | today |\n",
                                                         encoding="utf-8")
 
-    def test_a_deferral_row_is_a_row(self) -> None:
+    def test_a_trigger_record_is_the_slice_s_row(self) -> None:
         (self.feature / "adversary-log.md").write_text(
-            "## S01 · abc123 · 2026-10-17 · deferred to capability place-an-order\n\nSpawned:\n",
+            "## S01 · abc123 · 2026-10-17 · trigger record\n\n| Trigger | Status | Evidence |\n",
+            encoding="utf-8")
+        self.assertEqual(self.gate.check_adversary_rows(), [])
+
+    def test_a_capability_skip_row_beside_it_is_accepted(self) -> None:
+        (self.feature / "adversary-log.md").write_text(
+            "## S01 · abc123 · 2026-10-17 · trigger record\n\n"
+            "## place-an-order · abc124 · 2026-10-18 · skipped: no slice widened a trigger\n\nSpawned:\n",
             encoding="utf-8")
         self.assertEqual(self.gate.check_adversary_rows(), [])
 

@@ -38,7 +38,7 @@ Four labelled lines, in this order, every one in the actor's vocabulary rather t
   ladder still owing an artifact
 - **Stage:** the part of that slice to do now — the first stage of `/sail`'s ladder whose artifact is
   missing, empty or still a placeholder, with the artifact that says so; mid-implementation, the next unchecked
-  task by id and rule; after a converged verdict, the demo
+  task by id and rule; after the examples are proven, the review; after a capability's gates, the demo
 - **Because:** the one fact that selected it — the last slice accepted, this one the earliest ready and
   unclaimed; or the slice in progress on this branch; or the only slice left unblocked
 - **Run:** the command to type — `/sail <id>`, or the upstream command the stage names

@@ -100,14 +100,15 @@ hooks:
         only the user can do; the continuation contract in `AGENTS.md` is unaffected, and implementation
         continues to `/speckit-implement` whether or not the suggestion is taken.
 
-  # Optional, because the ladder in `commands/sail.md` already puts convergence between implementation and
-  # the demo — and a hook that runs a command is a second route through the workflow. What this one is for
-  # is the other entry: `AGENTS.md` says the loop starts when *any* per-slice command is invoked, so someone
-  # who typed `/speckit-implement` and never typed `/sail` has not read that ladder.
+  # Optional, because the ladder in `commands/sail.md` already says when convergence runs — once over a whole
+  # capability, and after each slice's implementation only under the `open` release mode — and a hook that
+  # runs a command is a second route through the workflow. What this one is for is the other entry: `AGENTS.md`
+  # says the loop starts when *any* per-slice command is invoked, so someone who typed `/speckit-implement`
+  # and never typed `/sail` has not read that ladder.
   after_implement:
     - extension: "convergence"
       command: "speckit-converge"
-      description: "Check the codebase against the artifacts before anything is demonstrated"
+      description: "Say when the codebase is checked against the artifacts: at the capability, or now under open"
       optional: true
       enabled: true
       prompt: >-
@@ -121,8 +122,11 @@ hooks:
         again, until it reports converged.
 
 
-        Do this **before** the demo, not after. A demo is a feedback stage, and feedback about a path that
-        turns out to be half-built is feedback spent on the wrong question.
+        **Not after every slice.** Converge runs once the capability this slice belongs to is whole — the
+        first of its gates in `commands/sail.md`, *Capability gates* — because what it asks has its answer only
+        once the slices that share a requirement are all built. The one exception is the `open` release mode,
+        where a merge reaches the actor at once: there, converge this slice now, before its examples are
+        recorded and before anything is demonstrated.
 
   # Not optional, on the same grounds as `after_constitution` above: this adds no way to deliver a change, it
   # re-checks the artifact the phase it follows just produced. The alternative is finding an unreachable
@@ -136,8 +140,9 @@ hooks:
       prompt: >-
         Converge answers "is everything the artifacts require built?" — a mechanical question with a
         termination condition. It does not ask whether the artifacts promised the right observable behaviour,
-        or whether a promise is reachable at all. That is this pass, and running it here is the last point
-        before the demo where the answer is still cheap.
+        or whether a promise is reachable at all. That is this pass, and running it here — after the
+        capability's converge, or a slice's under the `open` release mode — is the last point before the hand's
+        walk and the demo where the answer is still cheap.
 
 
         **If this converge run appended tasks, say so and stop.** The trace belongs to the converged verdict:

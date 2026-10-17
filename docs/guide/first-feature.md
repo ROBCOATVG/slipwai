@@ -202,8 +202,8 @@ with an owner.
 
 The example map, the slice's own gaps, plan and tasks, then `/speckit-analyze` — a read of the spec, the
 plan and the tasks, writing nothing — and only then implementation, one RED-GREEN-REFACTOR increment at a
-time, convergence, every example proven by a test, one review of the slice's diff, the adversary pass where
-the slice widened identity, authority or money, and the merge to trunk. Each writes its artefact under `specs/booking/slices/BOK-01/`, which is how `/sail`
+time, every example proven by a test, one review of the slice's own diff, the record of which attack-surface
+triggers it widened, and the merge to trunk. Each writes its artefact under `specs/booking/slices/BOK-01/`, which is how `/sail`
 knows where it got to if you close the terminal. Analyze is the exception: a clean reading is the absence
 of a finding, and there is no file.
 
@@ -222,10 +222,10 @@ accept this? [y/n/notes]
 
 Say yes and the line goes in the log. Say no with notes and they go back into the slice. You are shown a
 capability once its last slice has merged and its gates have cleared: converge and the gaps trace over its
-whole diff, the design review from screenshots, one adversary pass, the mutation run, and the hand's own walk
-of every example. Under the `open` release mode, where a merge reaches the actor at once, the gaps trace,
-design review and walk run per slice instead; converge, the adversary pass and mutation still run over the
-whole capability.
+whole diff, the design review from screenshots, one adversary pass where a slice widened a trigger, the
+mutation run, and the hand's own walk of every example. Under the `open` release mode, where a merge reaches
+the actor at once, converge, the gaps trace, design review and walk run per slice as well, and a slice that
+widened authorisation, identity or money is attacked before its push.
 
 ```console
 $ slipwai fleet booking

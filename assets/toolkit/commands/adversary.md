@@ -1,5 +1,5 @@
 ---
-description: Attack the attack surface a slice or a whole capability changed, and record what was attacked
+description: Record the attack surface a slice widened, and attack what a whole capability widened
 argument-hint: [feature-or-diff-or-capability] [--full]
 ---
 
@@ -9,18 +9,23 @@ Read `skills/adversarial-testing/SKILL.md`. This is the end-of-phase pass that s
 per-increment one, and it is not a pipeline check: nothing in CI asserts that it happened. What survives a
 pass is the tests it leaves behind, and those keep paying on every later slice.
 
-**Two places run it.** Per slice, at the ladder's *Adversary* rung, where the trigger table below decides
-whether this slice is attacked now or defers to its capability. And once per capability, at *Capability
-gates*, when the capability's last slice has merged: one pass over every boundary the capability's slices
-widened, with the capability's diff as the diff — in every release mode. Under the `open` release mode,
-where a merge reaches the actor at once, nothing defers and every slice the table owes a pass is attacked at
-its own rung as well; the capability's pass then attacks what the slices widened together.
+**A slice records; a capability is attacked.** Per slice, at the ladder's *Attack surface* rung, this command
+writes the slice's trigger table and attacks nothing — `--full` included. Once per capability, at *Capability
+gates*, when its last slice has merged, it runs one pass over every boundary the capability's slices widened,
+with the capability's diff as the diff — **only where at least one of those slices recorded a trigger
+`widened`**, or the capability was given `--full`. Otherwise the capability's row is a skip, and the skip
+clears the gate. The slice that closes a feature's split no longer takes a full pass of its own: a pass runs
+only when something widened.
 
-## Decide whether this slice owes a pass
+**One exception, under the `open` release mode.** Where a merge reaches the actor at once, a slice whose table
+has the authorisation, identity or money trigger `widened` is attacked at its own rung, before its push.
+Everywhere else a merge is held back by a flag or a keystone, so what the capability's pass has not yet
+covered is dark until it has; under `open` it would be live. Nothing else is attacked per slice in any mode.
 
-`specs/<feature>/adversary-log.md` is the record of every surface already attacked. Read it, then compare it
-with the diff. **Do not spawn anything until this slice's trigger table is written into that log.** A pass is
-owed when the diff does any of these:
+## Record the slice's trigger table
+
+`specs/<feature>/adversary-log.md` is the record of every surface already attacked and every slice's table.
+Read it, then compare it with the slice's diff. A trigger is `widened` when the diff does any of these:
 
 - adds or changes a driving adapter — an HTTP route, a CLI command, a queue consumer
 - adds or changes a driven adapter, or the provider types behind one
@@ -35,8 +40,9 @@ owed when the diff does any of these:
 - changes an event schema, or the version a state-stored write is saved at
 <!-- end section -->
 
-Write the trigger table as the first part of this slice's log row — one line per trigger, each `widened`,
-`already covered`, or `not present`, with the diff path or the prior log row that is the evidence:
+Write the trigger table as this slice's row, headed `## <slice-id> · <commit> · <date> · trigger record` — one
+line per trigger, each `widened`, `already covered`, or `not present`, with the diff path or the prior log row
+that is the evidence:
 
 | Trigger | Status | Evidence |
 |---|---|---|
@@ -53,18 +59,21 @@ Write the trigger table as the first part of this slice's log row — one line p
 | event schema, or the version a state-stored write is saved at | widened / already covered / not present | diff path or prior log row |
 <!-- end section -->
 
-A slice that only adds a rule behind a surface the log already covers owes nothing. **Skipping is a reported
-decision, not silence**: name the rows that cover the slice's boundaries and state that the diff did not
-widen them. **A slice is attacked at its own rung only when the authorisation, identity or money row is
-`widened`, or `--full` was passed** — those are the surfaces where a defect left for a later pass is one
-actor reaching another's data or money in the meantime. Any other `widened` row **defers**: the slice writes
-its table and a row headed `deferred to capability <capability>`, `Spawned:` empty, naming the rows that
-widened, and its capability's pass attacks them. A deferral is not a skip and no later slice may rely on it
-as cover. The capability's pass is the full one the slice closing a feature's split used to take: every
-applicable seam the capability's slices widened, whether or not each had already been attacked alone.
-Under the `open` release mode a slice is attacked whenever any trigger is `widened`, the slice closing a
-feature's split takes a full pass, nothing defers, and the capability's pass still runs. Consecutive skips and deferrals must never accumulate
-into a release.
+A slice that only adds a rule behind a surface the log already covers widens nothing, and says so: name the
+rows that cover its boundaries and state that the diff did not widen them. The table is a read of the diff,
+not a pass, and spawns nothing. It is what the capability's pass is decided by, so a trigger written
+`already covered` names the row that covers it, and a table nobody wrote is a capability that cannot be
+skipped.
+
+## Decide whether the capability owes a pass
+
+At *Capability gates*, read every trigger record of the capability's slices. **A pass is owed when at least one
+of them has a trigger `widened`, or `--full` was passed**; it covers every seam any slice widened, alone and
+together — a seam one slice opened and the next one reached. When none widened anything, write the
+capability's row as a skip — headed `## <capability> · <commit> · <date> · skipped: no slice widened a
+trigger`, naming each slice's trigger record it relied on, `Spawned:` empty — and the gate is cleared.
+**Skipping is a reported decision, not silence.** A seam a slice's own pass already attacked under `open` is
+cited rather than probed again, unless a later slice changed it.
 
 ## Triage the seams
 
@@ -72,8 +81,8 @@ The trigger table is what `/sail` must see in the log before any `sail-adversary
 the diff widened against that table and the attack catalogue. Spawn one adversary per widened seam, not one
 per catalogue category. A seam whose brief has no explicit file manifest is not spawned: record it as
 omitted, with why. Record every seam not spawned in `specs/<feature>/adversary-log.md` with the prior rows
-or diff evidence that show why it was not widened. For `--full` and a capability's pass, select every
-applicable catalogue seam, not every seam in the catalogue file; those remain full passes.
+or diff evidence that show why it was not widened. For `--full`, select every applicable catalogue seam, not
+every seam in the catalogue file.
 
 For each selected seam, derive an explicit file manifest from the diff: the external boundary, production
 path, tests, schemas, migrations and configuration the adversary needs. Put those paths in its brief so it
@@ -116,7 +125,8 @@ stage default to `fast`: a per-seam choice is evidence for later slices, not a n
 ## Record it
 
 Append to `specs/<feature>/adversary-log.md` either way. Copy this shape; an unwritten row is a pass that
-has to be run again:
+has to be run again. A slice's trigger record is the heading and the table; a capability's pass, or the
+`open` exception's, adds the lines below it:
 
 ```markdown
 ## <slice-id or capability> · <commit> · <date>
@@ -132,8 +142,8 @@ Findings: none | …
 
 Each selected seam records its file manifest, the type that ran it, its model, and `delegated, fresh
 context`; each omitted seam records why it was not spawned. A skip is a row too, naming the rows it relied
-on, with `Spawned:` empty, and so is a deferral — its heading ends `deferred to capability <capability>` and
-it names the rows that widened. A `predates the adversary gate` row — written once by `check-decisions.py
+on, with `Spawned:` empty, and so is a slice's trigger record — its heading ends `trigger record` and it
+attacks nothing. A `predates the adversary gate` row — written once by `check-decisions.py
 --adversary-baseline` for slices finished before the log was held — records that nothing was attacked, and is
 never a row a skip may rely on. Findings include **no findings**, since an empty result is exactly what makes the
 next slice's skip decidable.
@@ -148,19 +158,18 @@ Each finding carries a severity — `CRITICAL` (data of one actor reaches anothe
 `HIGH`, `MEDIUM`, `LOW` — and a state: `open`, `fixed` with the commit, `stowed` into the fairway's careen,
 or `deferred` with the person's name and their reason, in their words.
 
-**One round, and a bar.** The pass runs once where it runs — per slice or per capability — not until it
-converges: in the experiment it ran 21
-rounds and produced 129 findings, 64 of them LOW and most of those about wording, and slice S20 still ended
-with five open. A finding at or above the fairway's severity bar closes before the merge — at a capability's pass, before the person's demo, in a follow-up slice in the
-same fairway. One below it is
-**stowed** — a row in `fairways/<name>/careen.md` naming this slice — and the slice merges. The careen is a
+**One round, and a bar.** The pass runs once per capability — and per slice only for the `open` exception —
+not until it converges: in the experiment it ran 21 rounds and produced 129 findings, 64 of them LOW and most of those about wording, and slice S20 still ended
+with five open. A finding at or above the fairway's severity bar closes before the person's demo, in a follow-up slice in
+the same fairway — or, for the `open` exception, before the slice's push. One below it is **stowed** — a row
+in `fairways/<name>/careen.md` naming the capability or the slice — and the work goes on. The careen is a
 hardening slice the fairway runs when its planned slices are done, and its demo is that the findings are
 closed. Work is never dropped; it is moved somewhere a person can see the size of it. The bar is the
 harbour's to set and defaults to `MEDIUM`, because the experiment's LOWs were genuinely wording and its
 MEDIUMs genuinely were not.
 
 **An open `CRITICAL` is the next slice**, placed ahead of every product and
-method slice in the split until it is fixed or a person defers it in that row; the loop's Convergence stage
+method slice in the split until it is fixed or a person defers it in that row; the ready set
 offers it first and `/story-splitting` places it there. A triage row that states what a dependency does by
 default — a driver's TLS mode, a framework's role prefix, a runner's reporter — cites the artefact it was
 read from: the jar disassembled, the documentation at the pinned version, a test against the real thing.

@@ -154,7 +154,7 @@ otherwise contend for, so each reports which task it finished and this session t
 When several delegates form one batch, report once when the batch completes rather than once per delegate.
 Verify their claims by spot-checking the recorded reproduction or RED evidence; do not repeat each complete
 investigation in the host context. Do not re-investigate. **The spot-check is this session's, never a
-reviewer's**: `sail-review-mate` reads the slice's whole diff once, after it converged (the *Review and
+reviewer's**: `sail-review-mate` reads the slice's whole diff once, after its examples are proven (the *Review and
 reshape* rung), and a return sent to it instead is a review the rung did not ask for and a fix round the
 slice pays for — one run paid eight of each for nine pieces of coding. **And what is integrated is a
 commit, named by its hash in the return**: `sail-implement-shipwright` commits each green increment locally and
@@ -194,31 +194,32 @@ shared function, ask this project's code index what calls it and what the change
 block in `AGENTS.md` names, loaded by name where the harness defers a tool — and name those callers in the
 delegate's manifest; a project that has adopted none answers with a text search and says so.
 
-When the tasks are done, converge, then record each of this slice's examples against the test that proves
-it, from the unpushed slice branch. **Nobody is stopped here, and no browser is opened.** The hand's walk,
-the design review and the gaps trace are the capability's — *Capability gates*, once its last slice has
-merged, where converge and an adversary pass also run again over the whole — and the person's demo follows
-them, usually several slices later: the
-person, and the hand before them, are shown the whole thing rather than its instalments. Under the `open`
-release mode, where a merge reaches the actor at once, the hand walks this slice's examples here as well
-and the push waits for its verdict; the capability's converge, adversary pass and mutation still run. With every example proven — and only then — a project that has adopted a
-code index brings it up to the tree, then the full `make verify`, then the first push of those increment
-commits (and the merge that lands them on trunk). That push is the integration boundary. A claim of `slice/<id>` at the start of the slice may still push a
+When the tasks are done, go straight to the examples: record each of this slice's examples against the
+test that proves it, from the unpushed slice branch, and have the slice's diff reviewed once. **Nobody is
+stopped here, nothing converges, and no browser is opened.** Converge, the gaps trace, the design review,
+the adversary pass and the hand's walk are the capability's — *Capability gates*, once its last slice has
+merged — and the person's demo follows them, usually several slices later: the person, and the hand before
+them, are shown the whole thing rather than its instalments. Under the `open` release mode, where a merge
+reaches the actor at once, the slice converges and is traced by `/gaps` at the end of *Implementation*, the
+hand walks its examples here as well and the push waits for its verdict, and a slice that widened
+authorisation, identity or money is attacked before its push; the capability's converge, adversary pass and
+mutation still run. With every example proven — and only then — a project that has adopted a code index
+brings it up to the tree, then the full `make verify`, then the first push of those increment commits (and
+the merge that lands them on trunk). That push is the integration boundary. A claim of `slice/<id>` at the start of the slice may still push a
 lock ref from `main`; that is not the implementation.
 
 {{demo-stop}}
 
 ### After the examples are proven, and after Phase 4 clears
 
-With the examples proven and the review closed, run `/adversary`, which decides whether the slice widened
-identity, authority or money and records the attack, the skip, or the deferral to its capability's pass —
-`make check-decisions` holds every done slice to that row. Close the
-adversary benchmark entry after its findings are triaged; implement confirmed defects through failing tests,
-each in an `implement` entry. Then run `make verify`. `commands/adversary.md` owns the
-trigger table; do not spawn before it is in the log. It records that decision in
-`specs/<feature>/adversary-log.md` either way, so do not make it here. **The capability gates are not run
-here**: converge over the capability's diff, gaps over it, the design review, the capability's adversary
-pass, `/mutation` and the hand's walk run once per capability, when its last slice has merged and before the person's demo
+With the examples proven and the review closed, run `/adversary` for the slice's trigger record: its
+trigger table, written into `specs/<feature>/adversary-log.md`, attacking nothing — `make check-decisions`
+holds every done slice to that row. Under the `open` release mode a record with the authorisation, identity
+or money trigger `widened` is attacked here as well: close that adversary benchmark entry after its findings
+are triaged, and implement confirmed defects through failing tests, each in an `implement` entry. Then run
+`make verify`. `commands/adversary.md` owns the trigger table and the decision, so do not make it here.
+**The capability gates are not run here**: converge over the capability's diff, gaps over it, the design review, the capability's adversary
+pass where a slice widened a trigger, `/mutation` and the hand's walk run once per capability, when its last slice has merged and before the person's demo
 stop walks it (*What the demo stop has to contain*) — the *Capability gates* rung says what this slice
 records meanwhile, and what the last slice of a capability starts. The order holds when they run: the
 adversary pass adds tests, and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
@@ -297,7 +298,7 @@ the sentence clearance prints says so.
 **Two bands, and clearance admits a slice to one of them.** *Preparation* is the example map, the contract
 files its marks name, and the gaps pass before planning — the stages that end with the slice's own
 `mark-set` lines. It needs clearance and nothing else. *Implementation* is the plan onward: tasks,
-increments, converge, the examples proven. It needs the slice's own marks set and no open question, which
+increments, the examples proven. It needs the slice's own marks set and no open question, which
 is what *implementation-ready* means. This page used to say *run every ready slice whose contract is
 settled*, and a slice settles its contract by preparing, so a host reading that waited on the one thing the
 wait was stopping: two cleared slices with HTTP contracts still to decide sat idle for an afternoon while
@@ -352,7 +353,7 @@ from that line until a `decision` carries the same `id`, and it is never guessed
 
 **Refill at every boundary.** The ready set is not read once at the top and remembered. It is recomputed —
 `python3 scripts/agents/clearance.py` again — at every one of these, and the free slots filled from what it
-says: a delegate returning, prepared or converged; a `mark-set` landing in any log; a `decision` answering a
+says: a delegate returning, prepared or proven; a `mark-set` landing in any log; a `decision` answering a
 question; a demo verdict; a merge and its Phase 4 clearing; a claim refused because another session got
 there. Each of those changes what may start, and a host that revisits its siblings only when its current
 slice is finished is a host whose siblings waited for nothing. **Where eligible work waits with a slot free,
@@ -409,7 +410,7 @@ several — the context's events module *additively*, **new** migration files na
 is a slice's to write: a delegate that needs one of them hands the need back here, and it lands on `main`
 before the fan-out or between merges. The canonical slot at the feature root is a link, never committed.
 
-**Prove on the slice branch, then verify, then push.** As delegates report converged, check each slice's
+**Prove on the slice branch, then verify, then push.** As delegates report their examples proven, check each slice's
 `## Examples proven` from its unpushed worktree in split order — never from `main`, never by pushing increment
 commits first (and, under the `open` release mode, have the hand walk it there). A claim may already have
 pushed a lock ref from `main`; leave the increment commits local until every example is proven. Then: bring
@@ -420,8 +421,8 @@ capability is *awaiting-demo* once they clear; its siblings are not. The composi
 artifacts are where two merges meet, and split order is what makes those resolutions predictable;
 regenerate the Mermaid diagrams (`{{make}} model`) after a merge, never in a branch, and the canvas
 (`{{make}} model-drawio`) after each merge as well, taking both sides' blocks. No slice's Phase 4 runs until its
-examples are proven, and a sibling never waits on another's Phase 4. Phase 4 itself — adversary or its
-deferral, `{{make}} verify`, marking the slice done — runs here, on `main`, one slice at a time; the gates are
+examples are proven, and a sibling never waits on another's Phase 4. Phase 4 itself — the trigger record,
+`{{make}} verify`, marking the slice done — runs here, on `main`, one slice at a time; the gates are
 the capability's, once, before its demo stop. Delete the
 `slice/<id>` branch once its Phase 4 clears: the claim is spent.
 

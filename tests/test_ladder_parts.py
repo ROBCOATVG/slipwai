@@ -183,7 +183,7 @@ class LadderTest(unittest.TestCase):
     def test_the_ladder_does_not_stop_at_the_demo(self) -> None:
         """The three rungs that decide whether a slice may merge were prose in version 1, read once."""
         written = headings(every_rung())
-        self.assertEqual(written[-3:], ["Adversary", "Capability gates", "Merge to main"])
+        self.assertEqual(written[-3:], ["Attack surface", "Capability gates", "Merge to main"])
 
     def test_the_mutation_gate_is_the_capability_s_and_bounded(self) -> None:
         """Per slice it took hours apiece and was taken out of one loop by hand; per capability it is one run
@@ -289,7 +289,7 @@ class ReviewRungTest(unittest.TestCase):
     def test_it_sits_between_the_demo_and_the_adversary_pass(self) -> None:
         written = headings(every_rung())
         self.assertEqual(written[written.index("Demo") + 1], "Review and reshape")
-        self.assertEqual(written[written.index("Review and reshape") + 1], "Adversary")
+        self.assertEqual(written[written.index("Review and reshape") + 1], "Attack surface")
 
     def test_the_reviewer_never_edits(self) -> None:
         """A reviewer that can write is one that edits, and then nobody has read the diff with fresh eyes."""
@@ -305,7 +305,7 @@ class ReviewRungTest(unittest.TestCase):
 
     def test_a_slice_cannot_reach_the_adversary_rung_with_a_finding_open(self) -> None:
         """Slice 5.8's done-when."""
-        self.assertIn("does not reach the adversary rung with a review finding open", self.rung())
+        self.assertIn("does not reach the attack-surface rung with a review finding open", self.rung())
 
     def test_the_findings_come_back_in_the_shape_the_gaps_stage_uses(self) -> None:
         """So one triage reads both rather than two formats reaching one person."""

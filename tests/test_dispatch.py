@@ -155,6 +155,18 @@ class Fixture(unittest.TestCase):
         done = self.run_gate()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
+    def test_a_slices_own_ledger_file_accounts_for_it_in_the_tree_and_in_the_push(self) -> None:
+        """The line travels in the slice's own pull request, so it never has to reach trunk first."""
+        base = self.git("rev-parse", "HEAD").stdout.strip()
+        self.ledger(["SB4"], at=".slipwai/dispatch/036-shared/SB4.jsonl")
+        self.commit("036 SB4: bounded losses, recording handover")
+        self.assertEqual(self.run_gate().returncode, 0)
+        head = self.git("rev-parse", "HEAD").stdout.strip()
+        done = subprocess.run([sys.executable, "scripts/check-dispatch.py", "--stdin"], cwd=self.root,
+                              input=f"refs/heads/slice/SB4 {head} refs/heads/slice/SB4 {base}\n",
+                              capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
     def test_decisions_and_prose_commits_pass_untouched(self) -> None:
         self.ledger([])
         self.commit("036 D49: players read both armies' pinned lists")

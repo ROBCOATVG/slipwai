@@ -31,7 +31,10 @@ What a slice's change may contain — everything since the branch left `main`, c
   or `V<YYYYMMDDHHMM>__<name>` under Flyway. The shipped numbered ones keep working — the order is lexical
   either way, and every stamp sorts after every number;
 - **the composition root** — one line per use case, the one code file every slice touches, resolved in
-  split order at merge and allowed here for that reason.
+  split order at merge and allowed here for that reason;
+- **its own dispatch ledger file**, `.slipwai/dispatch/<feature>/<id>.jsonl`, which `dispatch.py` writes into
+  the slice's worktree so the evidence of the slice's start rides in the pull request that lands it. Its own
+  only: another slice's file, and the run's `.slipwai/dispatch/<feature>.jsonl`, are the host's.
 
 Refused, each with what to do instead: the canonical slot at the feature root (`specs/<feature>/plan.md`,
 `research.md`, `data-model.md`, `quickstart.md`, `tasks.md` — links into `slices/<id>/`, never committed;
@@ -350,7 +353,19 @@ class Scope:
             )
         return None
 
+    def ledger_violation(self, path: str) -> str | None:
+        """A slice branch carries its own dispatch ledger file and nothing else under `.slipwai/dispatch/`."""
+        parts = path.split("/")
+        if len(parts) == 4 and parts[3] == f"{self.slice_id}.jsonl":
+            return None
+        return (
+            f"{path}: a dispatch ledger line that is not `{self.slice_id}`'s. A slice branch commits "
+            f"`.slipwai/dispatch/<feature>/{self.slice_id}.jsonl` and no other; the rest are the host's."
+        )
+
     def violation(self, path: str, status: str) -> str | None:
+        if path.startswith(".slipwai/dispatch/"):
+            return self.ledger_violation(path)
         if path.startswith("specs/"):
             return self.spec_violation(path)
         if path == MODEL.as_posix():

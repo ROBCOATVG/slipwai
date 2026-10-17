@@ -2,6 +2,7 @@
 """What was started, where, and by what — written at the moment of dispatch and committed.
 
     python3 scripts/agents/dispatch.py --feature <feature>   # write the ledger for what starts now
+    python3 scripts/agents/dispatch.py --feature <feature> --slice SB3,SB4   # only these, as `/sail SB3` asks
     python3 scripts/agents/dispatch.py --feature <feature> --json
 
 **The decision to run one slice at a time was free and left no trace.** `commands/sail.md` says to fan out
@@ -17,10 +18,20 @@ indistinguishable from one that simply did not try.
 
 **Committed, unlike the deck logs.** The logs are a machine's running record and travel as refs; this is
 evidence about a commit, and the gate that reads it runs on a checkout that has only what git carries.
-`.slipwai/dispatch/<feature>.jsonl`, append-only, one JSON object per line: with the run's other committed
-records rather than in `specs/`, which is the feature's specification and not evidence about how it was
-worked. A ledger at the old `specs/<feature>/dispatch-ledger.jsonl` is still read until `slipwai migrate`
-moves it, and never written.
+One file per slice, `.slipwai/dispatch/<feature>/<slice>.jsonl`, append-only, one JSON object per line:
+with the run's other committed records rather than in `specs/`, which is the feature's specification and
+not evidence about how it was worked. **The slice branch commits its own file**, and where the slice's
+worktree already exists the line is written there as well as here, so the evidence rides in the pull
+request that lands the work. One file the whole run appended to had to reach trunk before any slice that
+named it could pass `check-dispatch`, which on a trunk that only moves through pull requests was a records
+pull request and a full CI run per line; and five slice branches appending to one file conflict at its
+last line. A line about the run rather than a slice (`baselined`) still goes to
+`.slipwai/dispatch/<feature>.jsonl`, and both that file and the old `specs/<feature>/dispatch-ledger.jsonl`
+are read wherever a ledger is; the old one is never written.
+
+**It records the claim, too.** A slice it dispatches or takes here gets a `claimed` line in its fairway's
+deck log at the same moment, because clearance counts a slice as running from that line and a host that
+started five slices and wrote none of them showed `0 running` and offered their slots to other work.
 
 **It will not write a line on an answer it does not have.** `preflight.py --record` leaves this checkout's
 own answer under `.slipwai/`, and without a current one there is nothing here saying whether this session
@@ -169,8 +180,63 @@ def lines(found: dict, able: bool, why: str, machine: str, key: str) -> list[dic
     return written
 
 
-def ledger_of(feature: str) -> Path:
-    return LEDGERS / f"{feature}.jsonl"
+def ledger_of(feature: str, slice_id: str = "") -> Path:
+    """The run's ledger for a feature, or with a slice, that slice's own — the file its branch commits."""
+    return LEDGERS / feature / f"{slice_id}.jsonl" if slice_id else LEDGERS / f"{feature}.jsonl"
+
+
+def worktree_of(row: dict) -> Path | None:
+    """The slice's worktree where it already exists, so the line can be written where its branch commits."""
+    named = str(row.get("worktree") or "")
+    if not named:
+        return None
+    place = (ROOT / named).resolve()
+    return place if place != ROOT and (place / ".git").exists() else None
+
+
+def narrowed(found: dict, wanted: list[str]) -> tuple[dict, list[str]]:
+    """Clearance's answer with only the named slices left to start, and a sentence for each that may not.
+
+    `/sail <slice-id>` asks for one slice, and a dispatch that followed the whole start set wrote lines for
+    slices nobody had asked to start — so a narrowed run wrote its lines by hand instead, copying the shape,
+    and drifted from it. A named slice that clearance does not start is said, with clearance's own reason.
+    """
+    if not wanted:
+        return found, []
+    schedule = dict(found.get("schedule") or {})
+    starting = [row for row in schedule.get("start") or [] if str(row.get("slice")) in wanted]
+    named = {str(row.get("slice")) for row in starting}
+    states = found.get("states") or {}
+    said = []
+    for slice_id in wanted:
+        if slice_id in named:
+            continue
+        row = states.get(slice_id)
+        queued = next((one for one in schedule.get("queued") or [] if str(one.get("slice")) == slice_id), None)
+        why = (queued or {}).get("why") or (row or {}).get("why") or "it is not on the chart"
+        said.append(f"{slice_id} does not start now: {(row or {}).get('state', 'unknown')} — {why}")
+    return {**found, "schedule": {**schedule, "start": starting}}, said
+
+
+def claim(found: dict, written: list[dict]) -> list[str]:
+    """A `claimed` line in each started slice's deck log, so clearance counts it as running."""
+    feature = str(found.get("feature", ""))
+    states = found.get("states") or {}
+    said = []
+    for row in written:
+        if row["outcome"] not in ("dispatched", "taken-here") or not row["slice"]:
+            continue
+        fairway = str((states.get(row["slice"]) or {}).get("fairway") or "")
+        if not fairway:
+            said.append(f"{row['slice']}: clearance named no fairway, so no `claimed` line was written")
+            continue
+        line = logs.entry("claimed", fairway=fairway, slice=row["slice"], band=row["band"],
+                          by="dispatch", machine=row["machine"])
+        path = ROOT / logs.deck_path(feature, fairway)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as file:
+            file.write(line.line())
+    return said
 
 
 def append(path: Path, written: list[dict]) -> None:
@@ -199,7 +265,8 @@ def read(path: Path) -> list[dict]:
 
 def dispatched_slices(feature: str) -> set[str]:
     """Every slice this feature's ledger accounts for, however it accounts for it — the old home included."""
-    rows = read(ledger_of(feature)) + read(SPECS / feature / OLD_LEDGER)
+    own = sorted((LEDGERS / feature).glob("*.jsonl")) if (LEDGERS / feature).is_dir() else []
+    rows = read(ledger_of(feature)) + read(SPECS / feature / OLD_LEDGER) + [row for path in own for row in read(path)]
     return {str(row.get("slice", "")) for row in rows if row.get("slice")}
 
 
@@ -208,6 +275,14 @@ def main(argv: list[str]) -> int:
     if "--feature" in argv:
         index = argv.index("--feature") + 1
         feature = argv[index] if index < len(argv) and not argv[index].startswith("--") else ""
+    wanted: list[str] = []
+    if "--slice" in argv:
+        index = argv.index("--slice") + 1
+        if index >= len(argv) or argv[index].startswith("--"):
+            print("dispatch: give the slice or slices to start. Run "
+                  "`python3 scripts/agents/dispatch.py --feature <feature> --slice <id>[,<id>]`", file=sys.stderr)
+            return 1
+        wanted = [one.strip() for one in argv[index].split(",") if one.strip()]
     flown, refused = preflight()
     if refused:
         print(f"dispatch: {refused}", file=sys.stderr)
@@ -232,6 +307,9 @@ def main(argv: list[str]) -> int:
             # ledger: a line per dispatch saying the same thing is a line nobody reads by the third one.
             print(f"dispatch: {len(owed)} slice(s) wait on a shipped mark and no baseline was taken — "
                   f"{said}", file=sys.stderr)
+    found, not_started = narrowed(found, wanted)
+    for sentence in not_started:
+        print(f"dispatch: {sentence}", file=sys.stderr)
     able = bool(flown.get("delegates") is True)
     why = str(flown.get("why") or "no reason was recorded")
     written = lines(found, able, why, logs.machine(), harness.current_key())
@@ -243,16 +321,28 @@ def main(argv: list[str]) -> int:
                            "harness": harness.current_key(), "machine": logs.machine(), "worktree": ""})
     if not written:
         print("dispatch: clearance names nothing that may start now, so there is nothing to dispatch")
-        return 0
-    path = ledger_of(str(found.get("feature", "")))
-    append(path, written)
+        return 1 if wanted else 0
+    named = str(found.get("feature", ""))
+    paths: list[Path] = []
+    for row in written:
+        path = ledger_of(named, row["slice"])
+        append(path, [row])
+        paths.append(path)
+        if (place := worktree_of(row)) is not None:
+            append(place / path.relative_to(ROOT), [row])
+    unclaimed = claim(found, written)
+    for sentence in unclaimed:
+        print(f"dispatch: {sentence}", file=sys.stderr)
+    shown = sorted({path.relative_to(ROOT).as_posix() for path in paths})
     if "--json" in argv:
-        print(json.dumps({"v": 1, "ledger": path.relative_to(ROOT).as_posix(), "lines": written}))
+        print(json.dumps({"v": 1, "ledger": shown[0] if shown else "", "ledgers": shown, "lines": written}))
         return 0
-    print(f"dispatch: {len(written)} line(s) written to {path.relative_to(ROOT).as_posix()}")
+    print(f"dispatch: {len(written)} line(s) written to {', '.join(shown)}")
     for row in written:
         tail = f" -> {row['worktree']}" if row["worktree"] else ""
         print(f"  {row['outcome']:<11} {row['slice']:<8} {row['band']:<9} {row['why']}{tail}")
+    print("dispatch: commit each slice's own file on its `slice/<id>` branch, so the line rides in the pull "
+          "request that lands the slice")
     if not able:
         print("dispatch: this session cannot delegate, and the ledger says so. That is a recorded reason "
               "for running one slice at a time, not a judgement about it")

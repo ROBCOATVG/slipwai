@@ -38,10 +38,26 @@ unreachable from everything that needed it.
     python3 scripts/agents/clearance.py BIL-01             # one slice: its state and what it waits on
     python3 scripts/agents/clearance.py --json             # the same, for a board; reaches no network
     python3 scripts/agents/clearance.py --baseline-marks   # once, after a crossing: record shipped marks
+
+**Two pieces of evidence besides the logs, because a run showed what reading the logs alone cost.** Five
+slices were being built and clearance said `0 running`, because the host had started them by hand and
+written no `claimed` line; and a slice merged that morning still held a slot, because nothing wrote its
+`merged` line. Both facts were already in places a reader can trust. A slice with a `dispatched` or
+`taken-here` line in a committed dispatch ledger was started, and reads as running until it is done. A slice
+whose `slice/<id>` branch trunk merged — a first-parent merge on trunk whose subject names that branch — is
+done, whether or not anybody wrote it down. Neither is a status field: one is a line written at the
+moment of dispatch, the other is git's own history. A claim made for the `prepare` band is spent once the
+slice's own marks are set, so a prepared slice waiting for its implementation slot does not hold one.
+
+**A free-disk floor.** `disk_floor_gb` in `harbour.json` holds every slot while the disk this checkout is on
+has less free than that: each slice worktree is most of a gigabyte before its dependencies, and a run that
+filled the disk twice lost the work in flight both times.
 """
 from __future__ import annotations
 
 import json
+import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -84,6 +100,13 @@ STATES = ("blocked", "migration-evidence-required", "awaiting-decision", "prepar
 BANDS = {"preparation-ready": "prepare", "implementation-ready": "implement"}
 #: What a baselined `mark-set` line says about itself, so no reader mistakes it for one a stage earned.
 BASELINE = "baseline"
+#: A dispatch ledger outcome that means a slice was started: into a worktree, or here.
+STARTED = ("dispatched", "taken-here")
+#: The band whose claim ends at the slice's own `mark-set` lines rather than at its merge.
+PREPARE = "prepare"
+#: How many of trunk's first-parent merges are read for a slice branch. Enough for any run's history and
+#: bounded, because this is asked at every boundary.
+MERGES_READ = 5000
 
 
 def load_yaml(text: str) -> object:
@@ -183,7 +206,13 @@ class Folded:
         #: The `mark-set` line that set each mark, so a baselined one can be told from an earned one.
         self.set_by: dict[str, dict] = {}
         self.claimed: dict[str, str] = {}  # slice -> when
+        #: The band each claim was for, where its line says. A `prepare` claim is spent at the slice's marks.
+        self.claimed_band: dict[str, str] = {}
+        #: Slices whose claim is read off a dispatch ledger line rather than a `claimed` one.
+        self.ledgered: set[str] = set()
         self.merged: dict[str, str] = {}  # slice -> commit
+        #: Slices whose merge is read off git rather than a `merged` line.
+        self.merged_in_git: set[str] = set()
         self.verdict: dict[str, str] = {}  # slice -> the hand's last verdict
         #: Capabilities a person's demo is owed for and has not accepted: `demo-due` without a later `accepted`.
         self.demo_due: set[str] = set()
@@ -211,6 +240,7 @@ def folded(found: list[dict]) -> Folded:
                 state.baselined.add(slice_id)
         elif kind == "claimed" and slice_id:
             state.claimed[slice_id] = str(line.get("t", ""))
+            state.claimed_band[slice_id] = str(line.get("band") or "")
             state.parked.pop(str(line.get("fairway", "")), None)
         elif kind == "merged" and slice_id:
             state.merged[slice_id] = str(line.get("commit", ""))
@@ -228,6 +258,86 @@ def folded(found: list[dict]) -> Folded:
                 asked[:] = [(ident, what) for ident, what in asked if ident != answered]
         elif kind == "parked":
             state.parked[str(line.get("fairway", ""))] = str(line.get("why", ""))
+    return state
+
+
+def git(*argv: str) -> str:
+    """One git query against this checkout, or nothing where there is no git or no answer."""
+    try:
+        done = subprocess.run(["git", *argv], cwd=ROOT, capture_output=True, text=True, timeout=60, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return done.stdout if done.returncode == 0 else ""
+
+
+def trunk() -> str:
+    for candidate in ("origin/main", "origin/master", "main", "master"):
+        if git("rev-parse", "--verify", "--quiet", candidate).strip():
+            return candidate
+    return ""
+
+
+def dispatch_starts() -> dict[str, dict]:
+    """The latest line per slice saying it was started, from every committed dispatch ledger.
+
+    Every feature's ledger and not only the charted one, because a ledger is named for the feature the run
+    was dispatched under and a slice id means one thing on the chart that holds it. A line that cannot be
+    read is skipped here rather than stopping the answer: `check-dispatch` is the gate on the ledger's
+    shape, and this only asks it whether something was started.
+    """
+    paths = sorted((ROOT / ".slipwai/dispatch").rglob("*.jsonl")) if (ROOT / ".slipwai/dispatch").is_dir() else []
+    paths += sorted(SPECS.glob("*/dispatch-ledger.jsonl")) if SPECS.is_dir() else []
+    rows: list[dict] = []
+    for path in paths:
+        for text in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                row = json.loads(text)
+            except ValueError:
+                continue
+            if isinstance(row, dict) and row.get("slice") and row.get("outcome") in STARTED:
+                rows.append(row)
+    found: dict[str, dict] = {}
+    for row in sorted(rows, key=lambda one: str(one.get("t", ""))):
+        found[str(row["slice"])] = row
+    return found
+
+
+def merged_branches(slice_ids: list[str]) -> dict[str, str]:
+    """The slices whose `slice/<id>` branch trunk merged, each with the merge commit. Read from git alone.
+
+    A first-parent merge on trunk whose subject names the branch — `Merge pull request #39 from
+    owner/slice/SB10B`, `Merge branch 'slice/SB10B'` — which still holds after the forge deletes the branch.
+    First-parent only, so a merge of trunk *into* a slice branch, which trunk's history also holds once the
+    slice lands, is never read as the slice landing. **The subject and not the branch tip**: a slice branch
+    cut from another one and not yet worked on has that one's tip, and reading tips marked it merged with
+    its parent the first time this ran against a real run.
+    """
+    base = trunk()
+    if not base or not slice_ids:
+        return {}
+    patterns = {slice_id: re.compile(rf"(?<![\w-])slice/{re.escape(slice_id)}(?![\w-])") for slice_id in slice_ids}
+    found: dict[str, str] = {}
+    for line in git("log", "--first-parent", "--merges", f"-n{MERGES_READ}", "--format=%H%x1f%s",
+                    base).splitlines():
+        commit, _, subject = line.partition("\x1f")
+        for slice_id, pattern in patterns.items():
+            if slice_id not in found and pattern.search(subject):
+                found[slice_id] = commit.strip()
+    return found
+
+
+def with_evidence(charted: dict, state: Folded) -> Folded:
+    """The fold with what git and the dispatch ledgers say added, where no log line already says it."""
+    slices = [str(slice_id) for slice_id in (charted.get("slices") or {})]
+    for slice_id, commit in merged_branches([one for one in slices if one not in state.merged]).items():
+        state.merged[slice_id] = commit
+        state.merged_in_git.add(slice_id)
+    for slice_id, row in dispatch_starts().items():
+        if slice_id not in slices or slice_id in state.merged or slice_id in state.claimed:
+            continue
+        state.claimed[slice_id] = str(row.get("t", ""))
+        state.claimed_band[slice_id] = str(row.get("band") or "")
+        state.ledgered.add(slice_id)
     return state
 
 
@@ -444,7 +554,8 @@ def position(charted: dict, folded_logs: Folded, slice_id: str,
     if not isinstance(entry, dict):
         return "blocked", f"{slice_id} is not on the chart, so nothing says what it steers by"
     if slice_id in folded_logs.merged:
-        return "done", f"merged at {folded_logs.merged[slice_id][:8] or 'an unrecorded commit'}"
+        source = " (read from git: trunk merged its slice branch)" if slice_id in folded_logs.merged_in_git else ""
+        return "done", f"merged at {folded_logs.merged[slice_id][:8] or 'an unrecorded commit'}{source}"
     if slice_id in folded_logs.baselined:
         return "done", "shipped before the mark log; its marks were recorded by --baseline-marks, not earned by a stage"
     if slice_id in done and slice_id not in folded_logs.mentioned:
@@ -480,7 +591,8 @@ def position(charted: dict, folded_logs: Folded, slice_id: str,
         return "blocked", answer
     own = sets_of(charted, slice_id)
     unset = [mark for mark in own if mark not in settled]
-    if slice_id in folded_logs.claimed:
+    spent = folded_logs.claimed_band.get(slice_id) == PREPARE and not unset
+    if slice_id in folded_logs.claimed and not spent:
         capability = str(entry.get("capability", ""))
         if capability and capability in folded_logs.demo_due:
             return "awaiting-demo", f"its capability {capability} is due a person's demo; nothing else of it waits"
@@ -488,7 +600,8 @@ def position(charted: dict, folded_logs: Folded, slice_id: str,
         if verdict and verdict != "accepted":
             return "running", f"sent back at the hand's demo ({verdict}); its delegate is retrying"
         band = f"preparing — its own {', '.join(unset)} not set yet" if unset else "implementing — its own marks set"
-        return "running", f"claimed at {folded_logs.claimed[slice_id] or 'an unrecorded instant'}; {band}"
+        source = " by its dispatch ledger line" if slice_id in folded_logs.ledgered else ""
+        return "running", f"claimed{source} at {folded_logs.claimed[slice_id] or 'an unrecorded instant'}; {band}"
     if unset:
         return ("preparation-ready",
                 f"cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits "
@@ -522,7 +635,7 @@ def positions(charted: dict, folded_logs: Folded,
 
 
 def schedule(found: dict[str, tuple[str, str]], slots: int | None,
-             claims: set[str] | None) -> dict[str, list[dict[str, str]]]:
+             claims: set[str] | None, held: str = "") -> dict[str, list[dict[str, str]]]:
     """Which slices start now, in which band, and — for every eligible slice that does not — why.
 
     `slots` is how many more delegates may be in flight; None is unbounded, which is a harness that said
@@ -552,6 +665,8 @@ def schedule(found: dict[str, tuple[str, str]], slots: int | None,
             queued.append({**row, "why": "claims could not be read — nothing is started on the strength of it"})
         elif slice_id in claims:
             queued.append({**row, "why": "claimed on the forge by another session"})
+        elif held:
+            queued.append({**row, "why": held})
         elif slots is not None and len(start) >= slots:
             queued.append({**row, "why": f"no slot: {slots} may start this turn and {len(start)} already have"})
         else:
@@ -635,9 +750,21 @@ def numbers_from(config: Path, running: int) -> dict[str, int | None]:
     held = held if isinstance(held, dict) else {}
     boilers = held.get("boilers") if isinstance(held.get("boilers"), int) else None
     fanout = held.get("fanout") if isinstance(held.get("fanout"), int) else None
-    return {"boilers": boilers, "fanout": fanout, "running": running,
-            "slots": max(0, boilers - running) if boilers is not None else None,
-            "tree": boilers * (1 + fanout) if boilers is not None and fanout is not None else None}
+    found: dict = {"boilers": boilers, "fanout": fanout, "running": running,
+                   "slots": max(0, boilers - running) if boilers is not None else None,
+                   "tree": boilers * (1 + fanout) if boilers is not None and fanout is not None else None}
+    floor = held.get("disk_floor_gb")
+    if isinstance(floor, (int, float)) and not isinstance(floor, bool) and floor > 0:
+        try:
+            free = shutil.disk_usage(config.parent).free / 1e9
+        except OSError:
+            free = None
+        if free is not None and free < floor:
+            found["slots"] = 0
+            found["held"] = (f"no slot: {free:.1f} GB free is under harbour.json's disk_floor_gb {floor:g}. "
+                             f"Remove a merged slice's worktree (`git worktree remove ../<project>-<id>`) "
+                             f"or its dependencies, then ask again")
+    return found
 
 
 def slots_from(config: Path, running: int) -> int | None:
@@ -723,10 +850,12 @@ def main(argv: list[str]) -> int:
             print(f"  {row.fields['slice']} sets {row.fields['mark']} — recorded, provenance {BASELINE}")
         print(f"clearance: {said}")
         return 0 if written or "nothing to baseline" in said else 1
-    folded_logs = folded(found)
+    folded_logs = with_evidence(charted, folded(found))
     order = fairway_order(charted, preferred_fairways(ROOT / "harbour.json"))
     states = positions(charted, folded_logs, done, order)
-    claims: set[str] | None = set(folded_logs.claimed)
+    # A spent claim — a `prepare` band whose marks are set — reads as ready, and is no claim on the slice.
+    claims: set[str] | None = {slice_id for slice_id in folded_logs.claimed
+                               if (states.get(slice_id) or ("",))[0] not in BANDS}
     if "--claims-unreadable" in argv:
         claims = None
     elif "--claims" in argv:
@@ -734,12 +863,13 @@ def main(argv: list[str]) -> int:
         claims = {name for name in (argv[index] if index < len(argv) else "").split(",") if name}
     in_flight = sum(1 for state, _ in states.values() if state in ("running", "awaiting-demo"))
     numbers = numbers_from(ROOT / "harbour.json", in_flight)
+    held = str(numbers.pop("held", "") or "")
     slots = numbers["slots"]
     if "--slots" in argv:
         index = argv.index("--slots") + 1
         slots = int(argv[index]) if index < len(argv) and argv[index].lstrip("-").isdigit() else slots
         numbers = {**numbers, "slots": slots}
-    planned = schedule(states, slots, claims)
+    planned = schedule(states, slots, claims, held)
     if "--json" in argv:
         settled = folded_logs.marks | already_set(charted)
         # Keyed in the fairway priority, so a reader takes the first key and has the stream that is
@@ -751,9 +881,10 @@ def main(argv: list[str]) -> int:
                                if of_fairway.get(one, "") in order else len(order)):
             ready.setdefault(of_fairway.get(slice_id, ""), []).append(slice_id)
         print(json.dumps({"v": QUERY_VERSION, "feature": feature, "ready": ready, "fairways": order,
-                          "states": {slice_id: {"state": state, "why": why, "band": BANDS.get(state)}
+                          "states": {slice_id: {"state": state, "why": why, "band": BANDS.get(state),
+                                                "fairway": of_fairway.get(slice_id, "")}
                                      for slice_id, (state, why) in states.items()},
-                          "slots": slots, "numbers": numbers,
+                          "slots": slots, "numbers": numbers, "held": held,
                           "claims": "unreadable" if claims is None else sorted(claims),
                           "schedule": planned}))
         return 0
@@ -771,6 +902,8 @@ def main(argv: list[str]) -> int:
               f"{'has' if len(elsewhere) == 1 else 'have'} no chart and nothing here is about "
               f"{'it' if len(elsewhere) == 1 else 'them'}")
     print(f"  {numbers_line(numbers)}")
+    if held:
+        print(f"  {held}")
     for row in planned["start"]:
         print(f"  start  {row['slice']}  {row['band']}  — {row['why']}")
     for row in planned["queued"]:

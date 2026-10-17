@@ -196,6 +196,9 @@ def main() -> int:
     directories = projection_directories()
     # Per absent projection directory: the integration whose manifest lists files there, and how many.
     unprojected: dict[Path, tuple[str, int]] = {}
+    # The integrations a finding is about, so the repair line names them rather than a placeholder: a new
+    # worktree failed here on one integration's files, and `<integration>` sent its reader to find out which.
+    involved: set[str] = set()
     for manifest_path in manifests:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         integration = manifest.get("integration", manifest_path.stem)
@@ -212,14 +215,20 @@ def main() -> int:
                 continue
             if not path.is_file():
                 findings.append(f"{relative}: missing (managed by {integration})")
+                involved.add(str(integration))
                 continue
             actual = hashlib.sha256(path.read_bytes()).hexdigest()
             if actual != expected:
                 findings.append(f"{relative}: edited in place (managed by {integration})")
+                involved.add(str(integration))
     if findings:
         print("Spec Kit drift, preset or profile contract violation:", file=sys.stderr)
         print("\n".join(f"  - {finding}" for finding in findings), file=sys.stderr)
-        print("Repair with: specify integration upgrade <integration>", file=sys.stderr)
+        for integration in sorted(involved) or ["<integration>"]:
+            print(f"Repair with: specify integration upgrade {integration}", file=sys.stderr)
+        if involved:
+            print("In a new worktree, run `make agents` first: the projections are ignored by Git, so a "
+                  "worktree starts with none of them", file=sys.stderr)
         return 1
     for directory, (integration, count) in unprojected.items():
         print(

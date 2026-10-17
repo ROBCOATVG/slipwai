@@ -73,6 +73,17 @@ class OwnedPathsTest(unittest.TestCase):
     def test_a_slice_may_touch_what_its_own_fairway_owns(self) -> None:
         self.assertIsNone(self.scope("ORD-01").fairway_violation("apps/orders/src/place.ts"))
 
+    def test_a_slice_branch_carries_its_own_dispatch_line_so_it_rides_in_the_slices_pull_request(self) -> None:
+        """Where trunk only moves through pull requests, a line that had to reach trunk first was a records
+        pull request and a full CI run per line, ahead of every slice it named."""
+        self.assertIsNone(self.scope("ORD-01").violation(".slipwai/dispatch/ordering/ORD-01.jsonl", "A"))
+
+    def test_another_slices_dispatch_line_and_the_runs_own_are_the_hosts(self) -> None:
+        for path in (".slipwai/dispatch/ordering/BIL-01.jsonl", ".slipwai/dispatch/ordering.jsonl"):
+            found = self.scope("ORD-01").violation(path, "M")
+            assert found is not None, path
+            self.assertIn("ORD-01", found)
+
     def test_a_slice_may_not_touch_what_another_fairway_owns(self) -> None:
         found = self.scope("ORD-01").fairway_violation("apps/billing/src/invoice.ts")
         assert found is not None

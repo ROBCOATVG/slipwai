@@ -15,7 +15,10 @@ there, so read them and do not redo them. `whole` is both, in order. Whichever
 band, **strictly sequential inside the slice**: its backend and its frontend are not two agents, and a
 RED-GREEN-REFACTOR increment starts from a green, committed suite. *Who runs each stage* in
 `commands/sail.md` still applies inside you — read the line before each stage, delegate the ones that have a
-type of their own, and say which ran what. Before a browser-driven check, take a `browsers` slot
+type of their own, and say which ran what. Where this harness gives a delegate no way to start one of its
+own — Claude Code gives it none — run such a stage yourself, except the fresh-context review of the slice's
+diff, which cannot be the author's context: return with it named as owed, and the host runs it. Do not look
+for a tool you have not got. Before a browser-driven check, take a `browsers` slot
 (`harbour.json`) and say so in your lines: several worktrees are one machine. The stages you run yourself have skills: the example map is
 `skills/event-modeling`'s conversation and the block of the model it settles is `skills/global-event-model`'s,
 both where shipped; the gaps pass before planning reads `skills/find-gaps` and `skills/acceptance-review`, as

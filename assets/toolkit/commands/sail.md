@@ -332,14 +332,20 @@ Preflight also answers whether this checkout can delegate **at all**: the delega
 delegates with nothing to call. That answer is a reading, not a judgement — `scripts/agents/harness.py
 --can-delegate` is the whole of it.
 
-**Then `{{make}} dispatch`, before any delegate is called.** It writes one line per slice to
-`.slipwai/dispatch/<feature>.jsonl` — the slot, the worktree and the delegate, or *this session could
+**Then `{{make}} dispatch`, before any delegate is called.** It writes one line per slice to the
+dispatch ledger under `.slipwai/dispatch/` — the slot, the worktree and the delegate, or *this session could
 not delegate and here is the reason* — and it is committed, because a run that fanned out and a run that
 took the ready set one slice at a time were otherwise indistinguishable afterwards except by reading a
-transcript by hand. The ledger is this session's, never a slice branch's — `.slipwai/` is the host's, and
-`check-slice-scope` says so — and it rides to trunk with the work it accounts for: staged into the merge
-that lands the first slice it names, never pushed as a commit of its own, since a push to `main` may be a
-deploy and a line of evidence is not a change. `{{make}} verify` refuses a commit naming a slice no line
+transcript by hand. **Each slice's line is its own file, `.slipwai/dispatch/<feature>/<id>.jsonl`, and the
+slice branch commits it** — written into the slice's worktree where one exists, and allowed there by
+`check-slice-scope`, which holds a branch to its own file and no other — so the evidence rides to trunk in
+the pull request that lands the slice. A line that had to reach trunk first, on a trunk that only moves
+through pull requests, was a records pull request and a full CI run per line ahead of every slice it named,
+and one file five branches appended to conflicted at its last line. `dispatch` also writes each started
+slice's `claimed` line, so clearance counts it as running; `--slice <id>[,<id>]` narrows it to the slices
+`/sail <slice-id>` names. Clearance reads the ledgers and git too: a slice with a `dispatched` line is running
+until trunk merges its `slice/<id>` branch, and is done from that merge whether or not a `merged` line was
+written. `{{make}} verify` refuses a commit naming a slice no line
 accounts for, and so does the `pre-push` hook `{{make}} hooks` installs. Then
 delegate the band its state admits to one fresh
 `sail-slice-watch` delegate (`agents/sail-slice-watch.md`, the standing brief) with a manifest naming the

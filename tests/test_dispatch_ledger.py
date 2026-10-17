@@ -62,11 +62,26 @@ class LedgerTest(unittest.TestCase):
                                *flags], cwd=self.root, capture_output=True, text=True, timeout=120,
                               env=environment)
 
-    def ledger(self) -> list[dict]:
-        path = self.root / ".slipwai/dispatch/036-shared.jsonl"
-        if not path.is_file():
-            return []
-        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    def ledger(self, slice_id: str = "") -> list[dict]:
+        """The run's file and every slice's own, in the order the lines were written — or one slice's."""
+        place = self.root / ".slipwai/dispatch"
+        paths = ([place / "036-shared" / f"{slice_id}.jsonl"] if slice_id else
+                 [place / "036-shared.jsonl", *sorted((place / "036-shared").glob("*.jsonl"))])
+        rows = [json.loads(line) for path in paths if path.is_file()
+                for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        return rows if slice_id else sorted(rows, key=lambda row: (row["t"], row["slot"]))
+
+    def deck(self) -> list[dict]:
+        place = self.root / ".slipwai/logs/036-shared"
+        return [json.loads(line) for path in sorted(place.glob("*.jsonl"))
+                for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    def prepared_chart(self) -> None:
+        """SB1 sets a mark, so it is handed `prepare` first and `implement` once the mark is set."""
+        (self.feature / "chart.yaml").write_text(
+            "v: 1\nfeature: 036-shared\nfairways:\n  f:\n    owns: []\nmarks:\n  Placed: {}\n"
+            "slices:\n  SB1:\n    fairway: f\n    capability: c\n    sets: [Placed]\n    steers_by: []\n",
+            encoding="utf-8")
 
     def test_it_refuses_to_write_a_line_without_a_preflight_answer(self) -> None:
         """Skipping the check is not refused. It just leaves nothing here to dispatch with."""
@@ -117,14 +132,73 @@ class LedgerTest(unittest.TestCase):
         self.assertFalse((self.feature / "dispatch-ledger.jsonl").exists())
 
     def test_the_ledger_is_appended_to_and_never_rewritten(self) -> None:
-        """Its earlier lines are the whole evidence; a file that was ever rewritten has none."""
+        """Its earlier lines are the whole evidence; a file that was ever rewritten has none. A slice
+        handed `prepare` and then `implement` is two lines in its own file, the first untouched."""
+        self.prepared_chart()
+        self.flown(True)
+        self.assertEqual(self.run_it().returncode, 0)
+        first = self.ledger("SB1")
+        self.assertEqual([row["band"] for row in first], ["prepare"])
+        deck = self.root / ".slipwai/logs/036-shared/f.jsonl"
+        with deck.open("a", encoding="utf-8") as file:
+            file.write(json.dumps({"v": 1, "t": "2026-10-17T09:00:00Z", "kind": "mark-set", "fairway": "f",
+                                   "slice": "SB1", "mark": "Placed"}) + "\n")
+        self.assertEqual(self.run_it().returncode, 0)
+        self.assertEqual(self.ledger("SB1")[:1], first)
+        self.assertEqual([row["band"] for row in self.ledger("SB1")], ["prepare", "implement"])
+
+    def test_each_slice_has_its_own_file_so_slice_branches_never_meet_on_one(self) -> None:
+        """Five slice branches appending to one shared file conflict at its last line; a file each never does."""
         self.chart()
         self.flown(True)
         self.run_it()
-        first = self.ledger()
+        for slice_id in ("SB1", "SB2"):
+            self.assertEqual([row["slice"] for row in self.ledger(slice_id)], [slice_id])
+        self.assertFalse((self.root / ".slipwai/dispatch/036-shared.jsonl").exists())
+
+    def test_a_started_slice_is_claimed_so_the_next_dispatch_does_not_start_it_again(self) -> None:
+        """Five slices built by hand with no `claimed` line read as `0 running`, and their slots were offered
+        to other work."""
+        self.chart()
+        self.flown(True)
         self.run_it()
-        self.assertEqual(self.ledger()[:len(first)], first)
-        self.assertGreater(len(self.ledger()), len(first))
+        claims = [row for row in self.deck() if row["kind"] == "claimed"]
+        self.assertEqual(sorted(row["slice"] for row in claims), ["SB1", "SB2"])
+        self.assertTrue(all(row["fairway"] == "f" for row in claims), claims)
+        again = self.run_it()
+        self.assertIn("nothing to dispatch", again.stdout)
+        self.assertEqual(len(self.ledger()), 2)
+
+    def test_a_named_slice_is_the_only_one_started(self) -> None:
+        """`/sail SB2` asks for SB2, and a dispatch that followed the whole start set wrote lines for slices
+        nobody had asked for — so the run wrote its own by hand and drifted from the shape."""
+        self.chart()
+        self.flown(True)
+        done = self.run_it("--slice", "SB2")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual([row["slice"] for row in self.ledger()], ["SB2"])
+
+    def test_a_named_slice_that_may_not_start_is_said_with_clearances_reason(self) -> None:
+        self.chart()
+        self.flown(True)
+        self.run_it("--slice", "SB2")
+        done = self.run_it("--slice", "SB2,SB9")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("SB2 does not start now: running", done.stderr)
+        self.assertIn("SB9 does not start now", done.stderr)
+
+    def test_the_line_is_written_into_the_slices_worktree_where_one_exists(self) -> None:
+        """So the slice branch commits it, and it rides in the pull request that lands the slice."""
+        self.chart()
+        self.flown(True)
+        worktree = self.root.parent / "project-SB1"
+        worktree.mkdir()
+        (worktree / ".git").write_text("gitdir: elsewhere\n", encoding="utf-8")
+        self.assertEqual(self.run_it().returncode, 0)
+        copied = worktree / ".slipwai/dispatch/036-shared/SB1.jsonl"
+        self.assertTrue(copied.is_file(), "the worktree has no line")
+        self.assertEqual(json.loads(copied.read_text(encoding="utf-8")), self.ledger("SB1")[0])
+        self.assertFalse((self.root.parent / "project-SB2/.slipwai").exists())
 
     def test_every_line_says_which_machine_and_which_harness_wrote_it(self) -> None:
         self.chart()

@@ -23,6 +23,13 @@ because this harness cannot delegate. The ledger is written by `dispatch.py` at 
 committed, so a checkout that has the commit has the evidence about it. A ledger still at its old home,
 `specs/<feature>/dispatch-ledger.jsonl`, counts the same until `slipwai migrate` moves it.
 
+**A slice's line travels with the slice.** `dispatch.py` writes each slice its own file,
+`.slipwai/dispatch/<feature>/<slice>.jsonl`, and the slice branch commits it, so the pull request that lands
+the work carries the evidence for it. Where trunk only moves through pull requests, a line that had to
+reach trunk first was a records pull request of its own and a full CI run per line, ahead of every slice it
+named; and one shared file appended to by five slice branches is five branches that conflict at its last
+line. A file per slice is added once and touched by nobody else.
+
 **Where it looks, and why so narrowly.** The subject line, up to its first colon, and nowhere else. Every
 commit in the run this came from names its work there — `036 UI9: …`, `SB2V: …`, `036 SB4-SB7 browser: …`
 — and a gate that read whole messages would refuse a commit for saying `HTTP2` in a sentence. A refusal
@@ -120,7 +127,7 @@ def ledgered(commit: str = "") -> set[str]:
         wanted = [path for path in listed if (path.startswith(".slipwai/dispatch/") and path.endswith(".jsonl"))
                   or path.endswith(f"/{OLD_LEDGER}")]
         return rows([git("show", f"{commit}:{path}") for path in wanted])
-    paths = sorted(LEDGERS.glob("*.jsonl")) if LEDGERS.is_dir() else []
+    paths = sorted(LEDGERS.rglob("*.jsonl")) if LEDGERS.is_dir() else []
     paths += sorted(SPECS.glob(f"*/{OLD_LEDGER}")) if SPECS.is_dir() else []
     return rows([path.read_text(encoding="utf-8", errors="replace") for path in paths])
 

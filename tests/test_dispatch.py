@@ -101,9 +101,10 @@ class Fixture(unittest.TestCase):
             f"  {one}:\n    fairway: f\n" for one in slices)
         (self.root / "specs/036-shared/chart.yaml").write_text(body, encoding="utf-8")
 
-    def ledger(self, slices: list[str]) -> None:
+    def ledger(self, slices: list[str], at: str = ".slipwai/dispatch/036-shared.jsonl") -> None:
         text = "".join(json.dumps({"v": 1, "slice": one, "outcome": "dispatched"}) + "\n" for one in slices)
-        (self.root / "specs/036-shared/dispatch-ledger.jsonl").write_text(text, encoding="utf-8")
+        (self.root / at).parent.mkdir(parents=True, exist_ok=True)
+        (self.root / at).write_text(text, encoding="utf-8")
 
     def commit(self, subject: str) -> None:
         (self.root / "work.txt").write_text(subject, encoding="utf-8")
@@ -141,9 +142,18 @@ class Fixture(unittest.TestCase):
         """Running one at a time is not the failure. Running one at a time with no reason written is."""
         text = json.dumps({"v": 1, "slice": "SB4", "outcome": "taken-here",
                            "why": "harness cannot delegate: .claude/agents/ holds none"}) + "\n"
-        (self.root / "specs/036-shared/dispatch-ledger.jsonl").write_text(text, encoding="utf-8")
+        (self.root / ".slipwai/dispatch").mkdir(parents=True)
+        (self.root / ".slipwai/dispatch/036-shared.jsonl").write_text(text, encoding="utf-8")
         self.commit("036 SB4: bounded losses")
         self.assertEqual(self.run_gate().returncode, 0)
+
+    def test_a_ledger_still_at_its_old_home_counts_until_migrate_moves_it(self) -> None:
+        """A checkout that has not migrated yet is never refused for where its ledger sits."""
+        self.ledger(["SB1"])
+        self.ledger(["SB4"], at="specs/036-shared/dispatch-ledger.jsonl")
+        self.commit("036 SB4: bounded losses, recording handover")
+        done = self.run_gate()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     def test_decisions_and_prose_commits_pass_untouched(self) -> None:
         self.ledger([])

@@ -18,9 +18,10 @@ and no `slices/` directory, invented mid-run from a plan file nothing reads. A r
 the answer: a token shaped like an id that no plan knows is refused by that fact alone.
 
 **Work no dispatch accounts for.** A slice the plan does know, pushed with no line in
-`specs/<feature>/dispatch-ledger.jsonl` saying it was started — dispatched into a worktree, or taken here
+`.slipwai/dispatch/<feature>.jsonl` saying it was started — dispatched into a worktree, or taken here
 because this harness cannot delegate. The ledger is written by `dispatch.py` at the moment of dispatch and
-committed, so a checkout that has the commit has the evidence about it.
+committed, so a checkout that has the commit has the evidence about it. A ledger still at its old home,
+`specs/<feature>/dispatch-ledger.jsonl`, counts the same until `slipwai migrate` moves it.
 
 **Where it looks, and why so narrowly.** The subject line, up to its first colon, and nowhere else. Every
 commit in the run this came from names its work there — `036 UI9: …`, `SB2V: …`, `036 SB4-SB7 browser: …`
@@ -51,7 +52,10 @@ def project_root(script: Path) -> Path:
 ROOT = project_root(Path(__file__))
 SPECS = ROOT / "specs"
 MODEL = ROOT / "docs/event-model/model.yaml"
-LEDGER = "dispatch-ledger.jsonl"
+#: Where the ledgers are, one per feature, and where they were until 2.0.0 — both read, so a checkout is
+#: never refused for where a file sits before or after `slipwai migrate` moves it.
+LEDGERS = ROOT / ".slipwai/dispatch"
+OLD_LEDGER = "dispatch-ledger.jsonl"
 #: What a slice id looks like: letters then digits, optionally one more letter — `SB1`, `SB7V`, `OB7I`,
 #: `TN16V`, `GV5`, `UI9`. Anchored whole, so `HTTP2XX` inside a word is not one.
 SHAPE = re.compile(r"^[A-Z]{1,5}\d{1,3}[A-Z]{0,2}$")
@@ -91,7 +95,9 @@ def charted() -> set[str]:
 def ledgered() -> set[str]:
     """Every slice any feature's dispatch ledger accounts for, however it accounts for it."""
     found: set[str] = set()
-    for path in sorted(SPECS.glob(f"*/{LEDGER}")) if SPECS.is_dir() else []:
+    paths = sorted(LEDGERS.glob("*.jsonl")) if LEDGERS.is_dir() else []
+    paths += sorted(SPECS.glob(f"*/{OLD_LEDGER}")) if SPECS.is_dir() else []
+    for path in paths:
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
             if not line.strip():
                 continue

@@ -18,7 +18,8 @@ copies exists on the keel's side of the merge. Re-derive them here, extension fi
 receive its current block. The committed `.slipwai/extensions.json` records the election; a legacy project
 with no record is inferred once from markers. Setup and the interactive menu never run during migration.
 """
-# budget: 360 — a clean merge also leaves the intake proposal beside the catch-up notes.
+# budget: 375 — a clean merge also leaves the intake proposal beside the catch-up notes, and moves the records
+# a newer keel keeps elsewhere (`relocate`) in the commit after it.
 from __future__ import annotations
 
 import subprocess
@@ -33,6 +34,7 @@ from .errors import GenerationError
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
 from .migration_result import Migration
+from .relocate import relocate
 from .replay import Replay, git, replay
 from .scaffold import NO_MAINTENANCE
 from .unlabel import Refresh, read_page, unlabel
@@ -149,7 +151,10 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
     A projector that cannot run is reported, not raised: the merge is done and good either way, and losing
     it to a failure in a follow-up step would be the worse outcome by far.
     """
+    # Records the project wrote that this keel keeps elsewhere: staged by `git mv`, committed below with the rest.
+    relocated, left = relocate(root)
     respelled, skipped = unlabel(root, layout)
+    skipped += left
     # Per-checkout config and not a file, so no merge carried it and a project predating the hook has it
     # set nowhere. It writes nothing into the tree, so it cannot fail the commit below.
     hooked = githooks.install(root, layout)
@@ -190,12 +195,13 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
         git(root, "reset", "--quiet", "--", NOTES)
     elif respelled:
         git(root, "add", "--", *respelled)
-    else:
-        # Nothing to project and nothing respelled: nothing of this command's is in the tree to stage.
+    elif not relocated:
+        # Nothing to project, respell or move: nothing of this command's is in the tree to stage.
         return Refresh(skipped=skipped, hooked=hooked.set, hooks=hooked.why)
     staged = tuple(git(root, "diff", "--cached", "--name-only").splitlines())
     respelled = tuple(path for path in respelled if path in staged)
-    changed = tuple(path for path in staged if path not in respelled)
+    ends = {end for move in relocated for end in move.split(" -> ")}
+    changed = tuple(path for path in staged if path not in respelled and path not in ends)
     if not staged:
         return Refresh(written=bool(commands), skipped=skipped, hooked=hooked.set, hooks=hooked.why)
     before = git(root, "rev-parse", "HEAD")
@@ -204,8 +210,12 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
                    f"projections for slipwai {VERSION}")
     elif respelled:
         subject = f"Take the adoption label off {', '.join(respelled)} for slipwai {VERSION}"
-    else:
+    elif changed:
         subject = f"Re-derive {name}'s factory projections for slipwai {VERSION}"
+    else:
+        subject = f"Move {name}'s records to where slipwai {VERSION} keeps them"
+    if relocated and (respelled or changed):
+        subject += ", and move its records to where that version keeps them"
     committed = subprocess.run(
         ["git", *NO_MAINTENANCE, "commit", "--quiet", "-m", subject],
         cwd=root, text=True, capture_output=True, check=False,
@@ -213,18 +223,19 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
     if committed.returncode != 0:
         reason = committed.stderr.strip() or committed.stdout.strip() or "the commit was refused"
         return Refresh(written=True, refused=reason, uncommitted=staged, skipped=skipped,
-                       hooked=hooked.set, hooks=hooked.why)
+                       hooked=hooked.set, hooks=hooked.why, relocated=relocated)
     if set_undo:
         # No merge populated ORIG_HEAD. Set it only once the commit exists: a refused commit moved nothing, and a
         # no-op migration must not overwrite the undo point left by the previous real migration.
         git(root, "update-ref", "ORIG_HEAD", before)
-    return Refresh(changed, respelled, True, skipped=skipped, hooked=hooked.set, hooks=hooked.why)
+    return Refresh(changed, respelled, True, skipped=skipped, hooked=hooked.set, hooks=hooked.why,
+                   relocated=relocated)
 
 
 def commit_says(refresh: Refresh, *, merge: bool = False) -> str:
     """What the commit after the merge, or on its own, changed: the label off the named files, projections as
     projections, or both — never one described as the other."""
-    said = []
+    said = [f"moved {', '.join(refresh.relocated)}"] if refresh.relocated else []
     if refresh.respelled:
         said.append(f"took the adoption label off {', '.join(refresh.respelled)}")
     if refresh.changed:
@@ -256,7 +267,7 @@ def report_of(done: Migration) -> str:
                 f"nothing generated to migrate, but the commit was refused: {done.refresh.refused}."
                 + not_committed(done.refresh)
             )
-        if done.refresh.changed or done.refresh.respelled:
+        if done.refresh.changed or done.refresh.respelled or done.refresh.relocated:
             return (
                 f"nothing generated to migrate: {name} already has everything slipwai {VERSION} generates "
                 f"for its answers; one commit {commit_says(done.refresh)}. "
@@ -289,7 +300,9 @@ def report_of(done: Migration) -> str:
         "factory now generates for its answers."
     )
     lines = [f"migrated {name} {was}to slipwai {VERSION}: {done.changed}", how]
-    if not (done.refresh.failed or done.refresh.refused) and (done.refresh.changed or done.refresh.respelled):
+    if not (done.refresh.failed or done.refresh.refused) and (
+        done.refresh.changed or done.refresh.respelled or done.refresh.relocated
+    ):
         lines.append(f"A second commit {commit_says(done.refresh, merge=True)}.")
     elif not (done.refresh.failed or done.refresh.refused) and done.refresh.written:
         lines.append(

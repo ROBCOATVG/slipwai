@@ -23,7 +23,7 @@ thirty-six rows cannot delegate, so that answer is recorded and never failed; a 
 failed, and names `make agents`.
 
 **What was dispatched is written down at the moment of dispatch.** `make dispatch` records one line
-per slice in `specs/<feature>/dispatch-ledger.jsonl` — the slot, the worktree and the delegate, or
+per slice in `.slipwai/dispatch/<feature>.jsonl` — the slot, the worktree and the delegate, or
 *taken-here* and *left-named* with the recorded reason this session could not delegate. Committed, unlike
 the deck logs, because it is evidence about a commit and the gate that reads it runs on a checkout holding
 only what git carries. It will not write a line without a current `preflight --record`, so a run that

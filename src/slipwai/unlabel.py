@@ -60,6 +60,8 @@ class Refresh:
     # a path somebody else owns is reported and never taken. Empty where there was nothing to say.
     hooked: bool = False
     hooks: str = ""
+    # Records the project wrote that this keel keeps elsewhere, each `old -> new`, moved by `git mv` in that commit.
+    relocated: tuple[str, ...] = ()
 
 
 def read_page(page: Path) -> str | None:

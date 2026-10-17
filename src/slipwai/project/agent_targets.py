@@ -18,9 +18,11 @@ def agent_targets() -> str:
 check-python: ## Fail, first, when python3 is older than the 3.10 every gate script is written for
 \t@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 'check-python: ' + sys.executable + ' is Python ' + sys.version.split()[0] + ', and the gate scripts need 3.10 or newer; put a newer python3 first on PATH (a non-interactive macOS shell finds /usr/bin/python3, which is 3.9, before Homebrew)')"
 preflight: ## Check once, in a fresh worktree, that an increment can run here: toolchains, caches, a socket, the index
+	python3 scripts/agents/project.py --running
 	python3 scripts/agents/preflight.py
 arrive: ## Land what other machines wrote: every deck log and in-flight branch pushed since this checkout last looked
 \tpython3 scripts/agents/travel.py --arrive
+\tpython3 scripts/agents/project.py --running
 depart: ## Push what this machine wrote, so the next machine — or the cloud — reads the same loop state
 \tpython3 scripts/agents/travel.py --depart
 dispatch: hooks ## Record what starts now and with what — or that this session could not delegate, and why
@@ -30,7 +32,7 @@ hooks: ## Point this checkout at .githooks, so a push naming unplanned or undisp
 \tpython3 scripts/check-crossing.py --fix-hooks
 crossing: ## What a migration could not carry: charts, marks, statuses, log refs, hooks. CROSSING_FLAGS="--strict" to fail
 \tpython3 scripts/check-crossing.py $(CROSSING_FLAGS)
-agents: ## Refresh elected extensions, then skills, commands and agent types in every installed agent harness
+agents: ## Refresh elected extensions, then skills, commands and agent types in every installed agent harness and the one this session runs in
 \tpython3 scripts/extensions/project.py
 \tpython3 scripts/agents/project.py
 agents-list: ## Show every supported harness and which integrations are installed

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 
+from ..assets import TOOLKIT_ROOT
 from ..catalog import CATALOG
 from ..layout import AT_ROOT, Layout
 from ..npm_workspace import npm
@@ -191,3 +192,24 @@ def claude_settings(apps: list[App], target: str = "none", layout: Layout = AT_R
     return json.dumps({"permissions": {"allow": [f"Bash({command})" for command in allowed],
                                        "deny": [f"Bash({command})" for command in DENIED_PERMISSIONS]},
                        "hooks": harness_hooks(layout)}, indent=2) + "\n"
+
+
+# The region `scripts/agents/project.py` owns in an `import` harness's context file, byte for byte: the
+# projector keeps it and this writes it first, so a clone has it before anything has run.
+# `tests/test_harness_switch.py` holds the two to one spelling.
+IMPORT_REGION = """\
+<!-- slipwai:agents-import:begin -->
+<!-- Maintained by scripts/agents/project.py. Write repository guidance in AGENTS.md, not here. -->
+@AGENTS.md
+<!-- slipwai:agents-import:end -->
+"""
+
+
+def context_imports() -> dict[str, str]:
+    """Every `import` harness's context file, committed with its `@AGENTS.md` include whatever harness `./init`
+    chose: a harness reads nothing of a repository until a file it recognises is there, so a project set up
+    under one and opened in another would otherwise start with no rules — and the line that says how to set it
+    up is in the file it has not read. Read from the registry, so the keel names no harness here."""
+    harnesses = json.loads((TOOLKIT_ROOT / "scripts/agents/registry.json").read_text(encoding="utf-8"))["harnesses"]
+    return {str(row["contextFile"]): IMPORT_REGION for row in harnesses
+            if row.get("contextMode") == "import" and isinstance(row.get("contextFile"), str)}

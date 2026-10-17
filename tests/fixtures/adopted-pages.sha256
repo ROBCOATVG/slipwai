@@ -21,39 +21,42 @@
 #
 # `<digest>  <repository>  <path>`. A `#` in a path marks a block appended to a file of the repository's
 # own rather than a file the keel writes whole.
+#
+# Re-taken for a project that sets itself up in whichever harness opens it (`changelog.d/harness-switch-sets-itself-up.md`).
+# Only the rows named there moved: `AGENTS.md#delivery`. Every other row is still its earlier reading.
 0c734450650a9af5411094fde5773d6099cc4a7b677d35162260eedd398968d3  github-pipeline  .gitignore#delivery
 9b2ae63db4f4264c460f8cde22d11cdeffc499d697fa4425c92a3d47cc77e589  github-pipeline  .specify/cruise.json
 848c8efe6bc2f93410264f156a5bc0f1f552c95f88a25330dc191dea63a8da7e  github-pipeline  .specify/extensions.yml
-3e2b686953e35cc519361c575f2810d05b4ca21d98ca2322d3fc6616085bb474  github-pipeline  AGENTS.md#delivery
+72d14dab263ea2618fc13ae4ed9c19fb95c81019a733c03682a0518b7a5077b0  github-pipeline  AGENTS.md#delivery
 7d83afdf561900a12de47f9d25f933c6e4f30d16cbe2dc1d13d321d157a46584  github-pipeline  Makefile#delivery
 eda72e1cb9d6fbe4f2f27797f583b7d31e3ac40a860b2c53d9cc05c9200a8640  github-pipeline  docs/adoption.md
 96f23e7f26a2bbda55de98aa9c9fff343b053a2169ef04da31782707fcb0d99a  gitlab-scripted  .gitignore#delivery
 9b2ae63db4f4264c460f8cde22d11cdeffc499d697fa4425c92a3d47cc77e589  gitlab-scripted  .specify/cruise.json
 18d07560c12399ad4e3dc9d911809b3002e42a6a703b5dfd781840ba651f9b8f  gitlab-scripted  .specify/extensions.yml
-7b67e4d408085b97417c3cd5a87a30bfb043ca8fc956a09d1df85df0fa3aa994  gitlab-scripted  AGENTS.md#delivery
+9493f96481ed5684861b4b3addf1951dff0ccfaf156484903cb453b36284198f  gitlab-scripted  AGENTS.md#delivery
 41a26ed95da5a3c73ee73adeed46b9ace411f6d834dfe51d062b03474991ec1f  gitlab-scripted  Makefile#delivery
 a7fb9873e26366a4bee72d7544d488312408070adecd778bbd300e817bda1f79  gitlab-scripted  docs/adoption.md
 0c734450650a9af5411094fde5773d6099cc4a7b677d35162260eedd398968d3  gitea-manual  .gitignore#delivery
 9b2ae63db4f4264c460f8cde22d11cdeffc499d697fa4425c92a3d47cc77e589  gitea-manual  .specify/cruise.json
 93e1d9d859038f99e537220590b39d7160fd15ca5d3ac00aa23b4a1b39c6d257  gitea-manual  .specify/extensions.yml
-3e2b686953e35cc519361c575f2810d05b4ca21d98ca2322d3fc6616085bb474  gitea-manual  AGENTS.md#delivery
+72d14dab263ea2618fc13ae4ed9c19fb95c81019a733c03682a0518b7a5077b0  gitea-manual  AGENTS.md#delivery
 7d83afdf561900a12de47f9d25f933c6e4f30d16cbe2dc1d13d321d157a46584  gitea-manual  Makefile#delivery
 4c03ba9254f02617fbf080eb8bc6e921140a1a60c81dff5bd28e2cb8d8b79f54  gitea-manual  docs/adoption.md
 96f23e7f26a2bbda55de98aa9c9fff343b053a2169ef04da31782707fcb0d99a  other-forge-unknown  .gitignore#delivery
 9b2ae63db4f4264c460f8cde22d11cdeffc499d697fa4425c92a3d47cc77e589  other-forge-unknown  .specify/cruise.json
 53fa535d5e959fba44d4de4592ea7dd473f0d674e3951695f2f56c79967dd197  other-forge-unknown  .specify/extensions.yml
-7b67e4d408085b97417c3cd5a87a30bfb043ca8fc956a09d1df85df0fa3aa994  other-forge-unknown  AGENTS.md#delivery
+9493f96481ed5684861b4b3addf1951dff0ccfaf156484903cb453b36284198f  other-forge-unknown  AGENTS.md#delivery
 41a26ed95da5a3c73ee73adeed46b9ace411f6d834dfe51d062b03474991ec1f  other-forge-unknown  Makefile#delivery
 77eca77790751bfa46cc83d94f0dd4b98622763f0d8d3c757d62656ab999b913  other-forge-unknown  docs/adoption.md
 96f23e7f26a2bbda55de98aa9c9fff343b053a2169ef04da31782707fcb0d99a  no-ci-nothing-wrapped  .gitignore#delivery
 9b2ae63db4f4264c460f8cde22d11cdeffc499d697fa4425c92a3d47cc77e589  no-ci-nothing-wrapped  .specify/cruise.json
 13acf9548ff0ab8d48563ffa367ae84a282fc748dee848c80bf1ac5c9737efb4  no-ci-nothing-wrapped  .specify/extensions.yml
-7b67e4d408085b97417c3cd5a87a30bfb043ca8fc956a09d1df85df0fa3aa994  no-ci-nothing-wrapped  AGENTS.md#delivery
+9493f96481ed5684861b4b3addf1951dff0ccfaf156484903cb453b36284198f  no-ci-nothing-wrapped  AGENTS.md#delivery
 41a26ed95da5a3c73ee73adeed46b9ace411f6d834dfe51d062b03474991ec1f  no-ci-nothing-wrapped  Makefile#delivery
 33be1f47ccefe054c1f96e9f985f3b11414e39dce1999a11d398ee51fc8e56cd  no-ci-nothing-wrapped  docs/adoption.md
 96f23e7f26a2bbda55de98aa9c9fff343b053a2169ef04da31782707fcb0d99a  converged  .gitignore#delivery
 9b2ae63db4f4264c460f8cde22d11cdeffc499d697fa4425c92a3d47cc77e589  converged  .specify/cruise.json
 4bb0527db76562af1e7dc787ca4adef542c81ba95fec32efadbcc54ac059161f  converged  .specify/extensions.yml
-7b67e4d408085b97417c3cd5a87a30bfb043ca8fc956a09d1df85df0fa3aa994  converged  AGENTS.md#delivery
+9493f96481ed5684861b4b3addf1951dff0ccfaf156484903cb453b36284198f  converged  AGENTS.md#delivery
 41a26ed95da5a3c73ee73adeed46b9ace411f6d834dfe51d062b03474991ec1f  converged  Makefile#delivery
 d3577b203bb783e3f3c82ac47673882859391e051ddcec79c0fe52ad3b768e16  converged  docs/adoption.md

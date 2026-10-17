@@ -1,5 +1,11 @@
 # Repository guidance
 
+**First, check that the harness you are running in is set up here.** Run `python3 scripts/agents/harness.py
+--can-delegate`. If it says this harness has none of the project's delegate types, or is missing some, run
+`make agents` and start a new session. A project set up under one coding agent and opened in another has
+this page, but none of its commands, skills or delegate types until then: they are generated per harness, and
+git ignores them.
+
 Keep domain logic independent of adapters and make changes as small end-to-end slices.
 
 ## Two gates, not one

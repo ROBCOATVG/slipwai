@@ -1,5 +1,9 @@
 ## Delivery method (installed by slipwai {{version}})
 
+**First, check that the harness you are running in is set up here:** run `python3
+{{where}}scripts/agents/harness.py --can-delegate`. If it says this harness has none of the delegate types,
+or is missing some, run `{{make}} agents` and start a new session.
+
 This repository adopted the factory's delivery method: its material lives under `{{where}}`, beside
 the code, and `project.json` records what was here and what was confirmed about it. Read
 `{{where}}docs/adoption.md` first, then `{{where}}docs/convergence.md` — where this repository

@@ -19,7 +19,7 @@ from .layout import AT_ROOT, Layout
 from .loaded_targets import answer
 from .origin import Adoption
 from .project.adopted import adopted_files, adoption_page
-from .project.agent_settings import claude_settings
+from .project.agent_settings import claude_settings, context_imports
 from .project.agents import agent_files
 from .project.backing_services import backing_service_files
 from .project.biome import biome_files
@@ -116,6 +116,7 @@ def project_files(
         "Makefile": makefile(project_name, profile, apps, target, layout, shape or "liner"),
         "AGENTS.md": agent_guidance(profile, apps, target, shape or "liner"),
         ".claude/settings.json": claude_settings(apps, target, layout),
+        **context_imports(),
         ".specify/models.json": stage_models(),
         ".specify/sail.json": sail_config(),
         "harbour.json": harbour_config(),

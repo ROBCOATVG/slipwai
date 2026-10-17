@@ -56,6 +56,11 @@ names them, and one **Settings** box with a tab each for speed, fine tune, who a
 delegation and models. Every button is a `make` target you could type instead, and every setting is
 written by the project's own scripts, never by the board.
 
+By default the specification, the storyboard and the model each stop for you. On the **Who answers** tab,
+the row *The specification, storyboard and model* can be set to **advance on their own**. The board then
+starts each of those steps when the one before it ends well. [The board](the-board.md) describes every
+control and the file it writes. [The workflow](the-workflow.md) lists every step on one page.
+
 ---
 
 ## What it is doing underneath
@@ -271,4 +276,5 @@ version 2 is built on, and the next page is what it looks like with more than on
 → **[A second person joins](a-second-person.md)** — fairways, berths, and the board that shows both.
 
 Other pages: [start here](start-here.md) · [let it cruise](let-it-cruise.md) ·
-[bring an existing codebase](adopt.md) · [the vocabulary](../../GLOSSARY.md)
+[bring an existing codebase](adopt.md) · [the workflow](the-workflow.md) · [the board](the-board.md) ·
+[the vocabulary](../../GLOSSARY.md)

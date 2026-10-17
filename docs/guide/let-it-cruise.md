@@ -28,9 +28,17 @@ One captain per fairway. Each turn it fetches trunk and both logs, works out its
 `claimed` and `merged` lines, picks the next slice that clearance allows, writes `claimed`, dispatches
 `/sail` in that fairway's berth, and watches the log while it runs.
 
-**It believes the log, not the agent.** A stage that has written nothing for its wall budget is ended and
-parked with a reason — not because the agent said it was stuck, which a stuck agent cannot say, but because
-the log stopped. That inversion is the whole reason a captain is trustworthy enough to leave alone.
+**It believes the log, not the agent.** A captain ends a stage that shows no progress for the stage bound,
+and parks it with a reason. The stage bound is the longest stage budget in `harbour.json`. Two things count
+as progress: a new line in the fairway's deck log, and a new commit on the slice's branch, `slice/<id>`.
+Both are evidence on disk. Neither is the agent's own account of itself, and a stuck agent cannot say that
+it is stuck. This is the reason a captain is safe to leave alone.
+
+The commit counts because the implement rung commits one example at a time and writes no deck line until
+its mark. Before this rule, a captain ended a slice that had committed fourteen times in ninety minutes.
+
+When the agent parks its own stage, the captain keeps that park and its reason. It does not add a second
+park on top.
 
 A captain holds no credential and never merges. It asks:
 
@@ -105,6 +113,14 @@ is what makes it a receipt rather than an assertion that somebody looked.
 
 `--now` ends the iteration in flight so the message goes immediately, at the cost of the stage's work.
 
+**A message to a parked fairway clears the park.** The message is a `told` line in the fairway's deck log.
+The board's answer box writes the same line. On its next pass, the harbourmaster writes a `cleared` receipt
+in the harbour log for each open park that the message came after, and keeps the message as the answer. On
+the pass after that, it lights the captain again.
+
+**The harbourmaster does not light a captain for a parked fairway.** That captain would read the park and
+exit at once. The fairway waits until a person clears the park.
+
 ## What still stops for a person
 
 1. **Mock-up approval.** Before the work is typed, every surface state is approved, parked with the question
@@ -119,6 +135,10 @@ is what makes it a receipt rather than an assertion that somebody looked.
 
 Everything else — stage order, budgets, which slice is next, scope, the gates — is enforced rather than
 asked about.
+
+The steps above the chart — the specification, the storyboard and the event model — also stop for a person
+by default. The `upstream` setting makes them advance on their own instead. [The workflow](the-workflow.md#the-upstream-setting)
+describes it.
 
 ## Careen and stow
 
@@ -142,4 +162,5 @@ time. You answer the top block and leave the rest alone.
 → **[Bring an existing codebase](adopt.md)** — if what you want to do this to already exists.
 
 Other pages: [start here](start-here.md) · [your first feature](first-feature.md) ·
-[a second person joins](a-second-person.md) · [the vocabulary](../../GLOSSARY.md)
+[a second person joins](a-second-person.md) · [the workflow](the-workflow.md) · [the board](the-board.md) ·
+[the vocabulary](../../GLOSSARY.md)

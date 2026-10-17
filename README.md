@@ -77,6 +77,10 @@ that said `planned` for eight slices that had shipped.
 
 Each one ends where the next begins. Stop when you have what you came for.
 
+Two more pages are maps rather than steps. [The workflow](docs/guide/the-workflow.md) lists every step on
+one page: who does it, what it writes, and where it stops. [The board](docs/guide/the-board.md) describes
+every screen and control, and the file each control writes.
+
 ## What it looks like running
 
 ```
@@ -111,7 +115,8 @@ repository, the packages this machine can install, the fleet, and the **Voyage**
   own scripts, never by the board
 
 Every button is a `make` target you could type instead. `slipwai bridge install` keeps the board running
-whenever you log in. [Your first feature](docs/guide/first-feature.md#from-the-board) walks the page.
+whenever you log in. [Your first feature](docs/guide/first-feature.md#from-the-board) walks the page, and
+[the board](docs/guide/the-board.md) describes every control on it.
 
 ## Languages, and everything else
 

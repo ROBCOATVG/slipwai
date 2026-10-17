@@ -52,6 +52,10 @@ a `status` field. It gives [clearance](clearance.md). It claims `slice/<id>`. It
 its budgets. It enforces an inbox read at every boundary. It writes a heartbeat. It ends a stage that has
 wedged. It appends every result to its own [deck log](the-logs.md), and to nothing else.
 
+**A wedged stage is one that shows no progress for the stage bound.** The stage bound is the longest stage
+budget in `harbour.json`. Progress is a new line in the deck log, or a new commit on `slice/<id>`. A stage
+that parks itself keeps its own park: the captain does not write a second one over it.
+
 **It runs in both modes, and the modes differ in two seats only.** Under `/sail` a person is present and the
 fleet still fans out; every product question, park and demo stop comes back to that person through the
 inbox. Under `/cruise` the same captains run with nobody at the keyboard: the skipper answers the product

@@ -8,6 +8,11 @@ names the one command that exercises it. Nothing here is a walkthrough.
 Every page is written against the code as it stands, not against the plan. Where the two disagree, the page
 says so and the code wins.
 
+Two guide pages sit between the guide and these rules. [The workflow](../guide/the-workflow.md) lists every
+step from a document to an accepted capability, with who does it and where it stops.
+[The board](../guide/the-board.md) describes every screen and control of the board, and the file each control
+writes.
+
 ## The rules
 
 | Page | The rule |

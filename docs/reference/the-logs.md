@@ -97,6 +97,19 @@ fairway's wait clock runs until that receipt arrives.
 That is why the pair exists: a park answered by a line that did not name which park it answered would let
 one answer close two waits, and the second fairway would run on an answer nobody gave it.
 
+**Two things write the receipt.** Both are the harbourmaster, because it is the only writer of the harbour
+log:
+
+- **A `told` after the park.** The board's answer box, `/cruise-tell` and `make cruise-tell` each write a
+  `told` line in the fairway's deck log. On each pass, the harbourmaster reads every deck log in full. For
+  each open park with a later `told` for the same fairway, it writes `cleared` with that park's timestamp.
+  `what` is the last such message. A second pass writes nothing, because the receipt has already closed
+  the park.
+- **`harbourmaster.py --clear <fairway>`**, typed by a person.
+
+**An open park also stops the captain from being lit.** The harbourmaster lights a captain for that
+fairway again on the pass after the receipt.
+
 ---
 
 ## Which machine this is

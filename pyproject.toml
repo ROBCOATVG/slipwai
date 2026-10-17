@@ -35,7 +35,7 @@ verify = ["sigstore>=3.6.1,<4"]
 
 [project.urls]
 Homepage = "https://github.com/ROBCOATVG/slipwai"
-Repository = "https://git.treyco.dev/ROBCOATVG/slipwai"
+Repository = "https://github.com/ROBCOATVG/slipwai"
 Issues = "https://github.com/ROBCOATVG/slipwai/issues"
 Changelog = "https://github.com/ROBCOATVG/slipwai/blob/main/CHANGELOG.md"
 

@@ -35,7 +35,7 @@ from .errors import GenerationError, refuse
 from .versions import is_prerelease, key
 
 PACKAGE = "slipwai"
-FORGE = "https://git.treyco.dev/ROBCOATVG/slipwai"
+FORGE = "https://github.com/ROBCOATVG/slipwai"
 # Where public releases are published. The name matters for an internal mirror
 # that requires credentials: uv derives that mirror's environment variables
 # from it. Both are defaults; an installed tool's receipt remains authoritative.
@@ -254,8 +254,8 @@ def guidance(kind: str) -> str:
         return (
             f"This copy is the standalone executable at {Path(sys.executable).resolve()}, which cannot "
             f"replace itself while it is running.\n"
-            f"Download the archive for this platform from {FORGE}/releases, check it against the .sha256 "
-            f"published beside it, and put the `slipwai` inside it where this one is."
+            f"Download the executable for this platform from {FORGE}/releases, check it against the .sha256 "
+            f"published beside it, and put it where this one is, named `slipwai`."
         )
     return (
         f"This copy is the checkout at {ROOT}, whose newest version arrives as a merge rather than as an "

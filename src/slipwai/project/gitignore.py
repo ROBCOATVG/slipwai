@@ -14,7 +14,10 @@ from .openapi import API_CLIENT
 from .shared_packages import PACKAGES, node_workspace
 
 #: Under `.slipwai/`, what is the run's and not the record's. Ignored, in the order a reader meets them.
-RUN_STATE = ("logs/", "run-state.json", "running/", "harbourmaster.json", "berths/", "intake-cleanup.json")
+#: `catch-up/` holds the archived catch-up pages: each migration moves the last one there rather than
+#: overwriting it, and like the page itself it is this machine's working note, not trunk's history.
+RUN_STATE = ("logs/", "run-state.json", "running/", "harbourmaster.json", "berths/", "intake-cleanup.json",
+             "catch-up/")
 
 # What each store writes beside the code, keyed by feature, for a store that keeps its data in the working
 # tree. A SQLite event store writes its log next to the code, and WAL mode writes two more files beside it.

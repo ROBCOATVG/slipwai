@@ -27,15 +27,19 @@ the version it is merging, so the two bounds are already in its hands — where 
 written by a factory before 1.6.0 has no `generator` at all, and nothing in the project says which of the
 versions before it did the scaffolding; every entry above the first is listed then, with that said first.
 """
+# budget: 370 — every page opens with the set-up section and ends naming the archive path it is moved to.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
 
 from . import changelog
 from .assets import ROOT, VERSION
 from .catalog import PACKAGES
+from .catch_up_page import set_up, stated
 from .manifest import answering, apps_from_manifest, loaded_versions, recorded_languages
 from .versions import base
 
@@ -258,11 +262,16 @@ def unlisted(was: str | None, now: str) -> tuple[str, str, list[Entry]]:
     )
 
 
-def notes(name: str, was: str | None, now: str = VERSION, languages: list[Moved] | tuple[Moved, ...] = ()) -> str:
+def notes(
+    name: str, was: str | None, now: str = VERSION, languages: list[Moved] | tuple[Moved, ...] = (),
+    conflicts: Sequence[str] = (), when: datetime | None = None,
+) -> str:
     """The page `migrate` writes into the project.
 
     Always a page: a file that says why there is nothing to list is opened once and answers the question,
     where an absent file is read as "nothing owed" — which is the one thing this must never say by accident.
+    It opens with `set_up`, which names `conflicts` where the merge stopped at any, and ends naming the archive
+    path it is moved to when done, from the versions and `when` it was written.
     """
     versions = crossed(was, now)
     reason, heading, listed = (
@@ -277,7 +286,10 @@ def notes(name: str, was: str | None, now: str = VERSION, languages: list[Moved]
         "made it. It is what a merge could not do for you.",
         "",
         "Work it with `/catch-up`, which reads this file and runs `make verify` against it. This file is "
-        "git-ignored and disposable: delete it when the work is done, and the changelog stays the record.",
+        "git-ignored and stays on this machine: archive it when the work is done, as its last step says.",
+        # After the introduction and before anything that is owed: nothing below can be worked in a project
+        # whose merge is unfinished or whose agent still reads the old pages.
+        *set_up(conflicts),
     ]
     if reason is not None:
         lines += ["", "## Why the versions crossed could not be listed as such", "", f"Because {reason}"]
@@ -295,6 +307,8 @@ def notes(name: str, was: str | None, now: str = VERSION, languages: list[Moved]
         "was written; the entry that introduced it says what it now wants instead. Never edit a gate to make "
         "it pass — it came from the factory, the next migration brings it back, and a locally softened copy "
         "is a false green until then.",
+        "",
+        stated(was, now, when or datetime.now(UTC)),
         "",
     ]
     return "\n".join(lines)

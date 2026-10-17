@@ -74,6 +74,9 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # Pointing a checkout at the hooks it carries. Version 2's: version 1 had no hook that held a push,
        # and `core.hooksPath` is per-checkout, so nothing about it could have been brought back.
        "githooks",
+       # The catch-up page's opening section and its archive, shared by the two writers of the page and the
+       # command that reads it. Version 1 deleted the page, so it had no archive to bring back.
+       "catch_up_page",
        # The board's Voyage window: where a project stands, read off the tree, and the landing beside it.
        "passage", "voyage", "voyage_page", "landing_page",
        # A window each. The experiment's board served one directory, so it had no table of who is looking

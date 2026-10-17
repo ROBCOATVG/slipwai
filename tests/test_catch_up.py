@@ -24,11 +24,14 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import UTC, datetime
 from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
 from slipwai import catch_up
+from slipwai.assets import NOTES
+from slipwai.catch_up_page import ARCHIVE, SET_UP, archive
 
 FRAGMENT = """{level}
 
@@ -183,6 +186,152 @@ class EncodingTest(unittest.TestCase):
                                 text=True, capture_output=True, env=environment)
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout.strip()
+
+
+class SetUpTest(unittest.TestCase):
+    """Every page opens with the way from a merge to a project its coding agent can work in.
+
+    A migration that stopped at conflicts once left the rest of that way — `migrate` again, `make agents`, a
+    new session — to a report that scrolled away, and a project could be merged with its agent still reading
+    the old ladder. So the page carries it, whether or not this run conflicted.
+    """
+
+    STEPS = ("git diff --name-only --diff-filter=U", "git commit", "`slipwai migrate` again", "`make agents`",
+             "`make check-agents`", "new session", "make verify")
+
+    def page(self, conflicts: tuple[str, ...] = ()) -> str:
+        return catch_up.notes("demo", "1.6.0", "2.0.0", conflicts=conflicts)
+
+    def test_every_page_carries_the_whole_path_in_order_conflicts_or_not(self) -> None:
+        for page in (self.page(), self.page(("commands/sail.md",))):
+            section = page.split(f"## {SET_UP}", 1)[1]
+            places = [section.index(step) for step in self.STEPS]
+            self.assertEqual(places, sorted(places), "the steps are out of order")
+
+    def test_it_is_the_first_section_before_anything_owed(self) -> None:
+        self.assertEqual(self.page().split("\n## ", 2)[1].splitlines()[0], SET_UP)
+
+    def test_a_conflicted_page_names_each_file_and_starts_at_the_first_step(self) -> None:
+        page = self.page(("commands/sail.md", "project.json"))
+        self.assertIn("stopped at 2 conflict(s)", page)
+        self.assertIn("- `commands/sail.md`", page)
+        self.assertIn("- `project.json`", page)
+        self.assertIn("Start at step 1.", page)
+
+    def test_a_clean_page_says_where_a_clean_run_starts(self) -> None:
+        page = self.page()
+        self.assertIn("did steps 1 to 4 itself", page)
+        self.assertNotIn("Start at step 1.", page)
+
+    def test_a_generated_command_page_is_taken_from_the_factory_and_re_edited(self) -> None:
+        """`--ours` on `commands/sail.md` keeps the old ladder: the page says which side, and why."""
+        self.assertIn("take `--theirs` and re-apply your own change", self.page(("commands/sail.md",)))
+
+
+class StopReportTest(unittest.TestCase):
+    """What `migrate` prints when it stops at conflicts: the way on is on the page, and said so."""
+
+    def stopped(self, unwritten: str | None = None) -> str:
+        from slipwai.migrate import report
+        from slipwai.migration_result import Migration
+        from slipwai.replay import Replay
+
+        offered = Replay(Path("demo"), Path("offered"), "demo", 1, "1.6.0", "abc")
+        return report(Migration(offered, "1.6.0", ("commands/sail.md",), "1 file changed", unwritten=unwritten))
+
+    def test_it_points_at_the_notes_section_that_sets_the_project_up(self) -> None:
+        said = self.stopped()
+        self.assertIn(f"`{SET_UP}`", said)
+        self.assertIn("make check-agents", said)
+
+    def test_with_no_notes_it_says_the_whole_way_itself(self) -> None:
+        """No page to point at, so the steps after the resolving commit are printed rather than lost."""
+        said = self.stopped(unwritten="disk full")
+        self.assertNotIn(f"`{SET_UP}`", said)
+        for step in ("`slipwai migrate` again", "`make agents`", "`make check-agents`", "new agent session"):
+            self.assertIn(step, said)
+
+
+class ArchiveTest(unittest.TestCase):
+    """A catch-up page is never deleted or overwritten: it is moved under the archive, once, and kept.
+
+    `warbook` has a page from its upgrade to 2.0.0.dev2, written before pages named their own archive path,
+    and the next migration must not lose it.
+    """
+
+    OLD = "# Catch up: warbook, 2.0.0.dev0 to 2.0.0.dev2\n\nWhat that upgrade asked.\n"
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        (self.root / NOTES).parent.mkdir(parents=True)
+
+    def page(self, text: str, mtime: float = 1_760_000_000) -> Path:
+        path = self.root / NOTES
+        path.write_text(text, encoding="utf-8")
+        os.utime(path, (mtime, mtime))
+        return path
+
+    def moved(self) -> Path:
+        """Where `archive` moved the page, which this suite has always just written."""
+        target = archive(self.root)
+        assert target is not None, "there was a page to archive"
+        return target
+
+    def archived(self) -> list[Path]:
+        return sorted((self.root / ARCHIVE).glob("*.md"))
+
+    def test_an_old_page_is_named_from_the_versions_it_recorded_and_when_it_was_written(self) -> None:
+        self.page(self.OLD)
+        moved = self.moved()
+        self.assertEqual(moved, self.root / ARCHIVE / "2.0.0.dev0-to-2.0.0.dev2-20251009T085320Z.md")
+        self.assertEqual(moved.read_text(encoding="utf-8"), self.OLD)
+        self.assertFalse((self.root / NOTES).exists())
+
+    def test_a_page_that_recorded_no_version_is_named_from_its_time_alone(self) -> None:
+        self.page("A page with no title.\n")
+        self.assertEqual(self.moved().name, "unrecorded-to-unrecorded-20251009T085320Z.md")
+
+    def test_a_page_that_names_its_archive_path_goes_there(self) -> None:
+        self.page(catch_up.notes("demo", "1.6.0", "2.0.0", when=datetime(2026, 10, 17, 9, 30, tzinfo=UTC)))
+        self.assertEqual(self.moved().name, "1.6.0-to-2.0.0-20261017T093000Z.md")
+
+    def test_it_never_overwrites_a_different_page_already_archived_under_that_name(self) -> None:
+        self.page(self.OLD)
+        first = self.moved()
+        self.page(self.OLD.replace("asked", "asked, edited"))
+        second = self.moved()
+        self.assertNotEqual(first, second)
+        self.assertEqual(second.name, first.name.replace(".md", "-2.md"))
+        self.assertEqual(first.read_text(encoding="utf-8"), self.OLD)
+
+    def test_the_same_page_is_never_archived_twice(self) -> None:
+        """A copy restored over an archive that already holds it is the duplicate, and goes."""
+        self.page(self.OLD)
+        archive(self.root)
+        self.page(self.OLD)
+        archive(self.root)
+        self.assertEqual(len(self.archived()), 1)
+        self.assertIsNone(archive(self.root), "with no page there is nothing to archive")
+
+    def test_a_migration_archives_the_page_it_finds_and_writes_a_fresh_one(self) -> None:
+        """From a project with the old page to one with the page archived and a new one in its place; and a
+        second migration archives that one in turn, losing neither."""
+        from slipwai.migrate import write_notes
+
+        self.page(self.OLD)
+        self.assertIsNone(write_notes(self.root, "warbook", "2.0.0.dev2"))
+        fresh = (self.root / NOTES).read_text(encoding="utf-8")
+        self.assertIn(f"## {SET_UP}", fresh)
+        self.assertEqual([path.read_text(encoding="utf-8") for path in self.archived()], [self.OLD])
+        self.assertIsNone(write_notes(self.root, "warbook", "2.0.0.dev2"))
+        self.assertEqual(len(self.archived()), 2)
+        self.assertIn(fresh, [path.read_text(encoding="utf-8") for path in self.archived()])
+
+    def test_the_archive_is_ignored_like_the_page(self) -> None:
+        from slipwai.project.gitignore import RUN_STATE
+
+        self.assertTrue(ARCHIVE.startswith(".slipwai/catch-up/"))
+        self.assertIn("catch-up/", RUN_STATE)
 
 
 if __name__ == "__main__":  # pragma: no cover

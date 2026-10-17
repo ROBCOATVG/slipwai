@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from ..assets import NOTES
 from ..catalog import CATALOG
+from ..catch_up_page import ARCHIVE, SET_UP
 from ..services import App
 from ..targets import managed
 from ..toolkit import example_of
@@ -79,6 +80,16 @@ writing it, or no migration has run in this tree. Say which of those it is to th
 else, and read the factory's `CHANGELOG.md` for the versions crossed if you can reach one. Never conclude
 from an absent file that the versions crossed asked nothing.
 
+## Set the project up before anything else
+
+The file opens with `{SET_UP}`, on every migration, conflicts or not. Work it to the end before the
+sections below: resolve and commit, `slipwai migrate` again, `make agents`, `make check-agents`, and a new
+session in your coding agent. A project whose merge is in but whose agent still reads the old commands is
+migrated and not set up, and nothing below can be trusted in it. The step to take is not a judgement:
+`git status` saying a merge is in progress, or `make check-agents` failing, means it is not done. Where this
+session is the one that ran the migration, step six is a stop: tell the user to start a new session and run
+`/catch-up` there, since this one is still reading the commands the migration replaced.
+
 ## Confirm the migrated fairways first
 
 Run `python3 scripts/check-migration.py` before declaring catch-up complete. A proposed fairway or an
@@ -99,8 +110,10 @@ exists is refused; fix the row and run it again. Do not confirm a row on the per
    a tool to re-run, a step in the account it deploys to. Those are yours to do and nothing will remind you.
 2. `make verify`. Take the target it stops at, fix that, run it again, and repeat — one gate at a time,
    because a second failure is often the first one's consequence and disappears with it.
-3. Delete `{NOTES}` when the work is done. It is git-ignored and disposable; the factory's changelog is the
-   record that lasts.
+3. Archive `{NOTES}` when the work is done: move it, a plain `mv`, to the path its last line names under
+   `{ARCHIVE}/`, making the directory if it is not there. Never delete it, and never move it onto a file
+   already there. It is git-ignored and stays on this machine, and it is the one record of what this upgrade
+   asked of the project. The next migration archives whatever it finds there anyway, before it writes its own.
 
 ## Work each failure back to the rule that caused it
 

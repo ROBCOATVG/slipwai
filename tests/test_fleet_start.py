@@ -159,6 +159,33 @@ class CastOffTest(Fixture):
         self.run_it("start")
         self.assertEqual([one for one in self.pids() if one.startswith("captain-")], ["captain-FUL"])
 
+    def park(self, fairway: str, t: str) -> None:
+        from slipwai import logs
+        path = self.root / logs.deck_path("ordering", fairway)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(logs.entry("parked", fairway=fairway, why="trunk is red", t=t).line())
+
+    def test_a_parked_fairway_is_not_lit_and_does_not_take_a_berth(self) -> None:
+        """Its captain would read the park, say so and exit, and the next pass would light it again: three
+        parked streams were relit every fifteen seconds for three and a half hours."""
+        self.telegraph(boilers=1)
+        self.park("FUL", "2026-10-12T09:00:00Z")
+        done = self.run_it("relight")
+        self.assertEqual([one for one in self.running() if one.startswith("captain-")], ["captain-ORD"])
+        self.assertIn("FUL: parked, so not lit — trunk is red", done.stdout)
+
+    def test_a_cleared_park_is_lit_again(self) -> None:
+        from slipwai import logs
+        at = "2026-10-12T09:00:00Z"
+        self.park("FUL", at)
+        path = self.root / logs.HARBOUR
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(logs.entry("cleared", harbour=True, fairway="FUL", parked=at, what="go").line(),
+                        encoding="utf-8")
+        self.run_it("relight")
+        self.assertIn("captain-FUL", self.running())
+
     def test_starting_twice_does_not_start_a_second_of_anything(self) -> None:
         self.run_it("start")
         before = self.pids()

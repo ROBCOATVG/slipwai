@@ -34,6 +34,35 @@ class ClearParkTest(Fixture):
         self.assertIn("Run `slipwai fleet ORD`", wrong.stdout)
 
 
+class ToldAfterParkTest(Fixture):
+    """A person answers a park by telling the stream something, from the board or `/cruise-tell`."""
+
+    def test_a_message_after_a_park_clears_it_with_the_message_as_the_answer(self) -> None:
+        parked, told = "2026-10-12T09:00:00Z", "2026-10-12T10:00:00Z"
+        self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", why="decide", t=parked),
+                  logs.entry("told", fairway="ORD", message="go", t=told))
+        for _ in range(2):
+            done = self.run_once()
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        receipts = [entry for entry in self.harbour() if entry.kind == "cleared"]
+        self.assertEqual([receipt.fields for receipt in receipts], [{"fairway": "ORD", "parked": parked, "what": "go"}])
+
+    def test_every_park_the_message_came_after_is_cleared_and_none_it_came_before(self) -> None:
+        self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", why="first", t="2026-10-12T09:00:00Z"),
+                  logs.entry("parked", fairway="ORD", why="second", t="2026-10-12T09:01:00Z"),
+                  logs.entry("told", fairway="ORD", message="fixed trunk", t="2026-10-12T10:00:00Z"),
+                  logs.entry("parked", fairway="ORD", why="third", t="2026-10-12T11:00:00Z"))
+        self.run_once()
+        cleared = sorted(str(entry.fields["parked"]) for entry in self.harbour() if entry.kind == "cleared")
+        self.assertEqual(cleared, ["2026-10-12T09:00:00Z", "2026-10-12T09:01:00Z"])
+
+    def test_a_message_from_before_the_park_answers_nothing(self) -> None:
+        self.deck("ordering", "ORD", logs.entry("told", fairway="ORD", message="go", t="2026-10-12T08:00:00Z"),
+                  logs.entry("parked", fairway="ORD", why="decide", t="2026-10-12T09:00:00Z"))
+        self.run_once()
+        self.assertEqual([entry for entry in self.harbour() if entry.kind == "cleared"], [])
+
+
 class PerMachineTest(Fixture):
     """One harbourmaster per machine: it writes its own file and reads everybody's.
 

@@ -356,22 +356,38 @@ def sail_model() -> str | None:
     return named if isinstance(named, str) and named else None
 
 
+def head(branch: str) -> str:
+    """The commit that branch is at, or `""` where it does not exist yet."""
+    found = subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
+                           cwd=ROOT, capture_output=True, text=True)
+    return found.stdout.strip() if found.returncode == 0 else ""
+
+
 def watched(process: subprocess.Popen, feature: str, fairway: str, bound: float,
-            started: int) -> tuple[bool, str]:
+            started: int, branch: str = "") -> tuple[bool, str]:
     """Wait for `/sail`, writing a heartbeat and ending it if the log stops. (finished, why it was ended).
 
     What is watched is the log and not the process: a process that is alive and writing nothing is exactly
     the failure that cost the first attempt seventeen iterations, and it looks identical from the outside to
     one that is working hard.
+
+    **A commit on the slice's branch is progress too.** It is evidence in git, not the agent's account of
+    itself, and the implement rung writes one per example and no deck line until its mark: an S1 that
+    committed fourteen times in ninety minutes was ended fifty-one seconds after the last of them, as a
+    stage that "made no progress".
     """
     last_line, last_beat = time.monotonic(), time.monotonic()
     seen = started
+    at = head(branch) if branch else ""
     while process.poll() is None:
         time.sleep(POLL)
         now = time.monotonic()
         count = len(entries(feature, fairway))
         if count > seen:
             seen, last_line = count, now
+        moved = head(branch) if branch else ""
+        if moved != at:
+            at, last_line = moved, now
         if now - last_beat >= HEARTBEAT:
             write(feature, fairway, logs.entry("heartbeat", fairway=fairway))
             last_beat, seen = now, len(entries(feature, fairway))
@@ -480,7 +496,7 @@ def dispatch(slice_id: str, feature: str, fairway: str) -> tuple[bool, str, list
     fire("before-stage", stage="drive", slice=slice_id, fairway=fairway)
     started = len(entries(feature, fairway))
     process = subprocess.Popen(argv, cwd=ROOT, env=environment)
-    finished, why = watched(process, feature, fairway, stage_bound(), started)
+    finished, why = watched(process, feature, fairway, stage_bound(), started, BRANCH.format(slice=slice_id))
     fire("after-stage", stage="drive", slice=slice_id, fairway=fairway)
     return finished, why, entries(feature, fairway)[started:]
 
@@ -715,6 +731,13 @@ def turn(fairway: str) -> str:
     done, fault = work(slice_id, feature, fairway)
     if done:
         return f"captain: {slice_id} is through its gate and merged"
+    # The session parked itself, with the reason it met: a second park on top of it would say what the gate
+    # missed (no `demo`, a mark not set), which is true of every stage that stops early and hides the reason
+    # it stopped behind the newest line a person reads.
+    own = [e for e in entries(feature, fairway)[len(found):]
+           if e.kind == "parked" and str(e.fields.get("fairway", "")) == fairway]
+    if own:
+        return f"captain: {fairway} parked at {slice_id} — {own[-1].fields.get('why', '')}"
     write(feature, fairway, logs.entry("parked", fairway=fairway, why=f"{slice_id}: {fault}"))
     return f"captain: {fairway} parked at {slice_id} — {fault}"
 

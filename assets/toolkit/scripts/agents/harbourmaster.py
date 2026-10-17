@@ -770,11 +770,41 @@ def once() -> int:
     # one at a time, each gated on a trunk that already holds the one before it.
     written: list[logs.Entry] = trunk_said + carried(sorted(fresh, key=lambda one: one.t), taken, trunk_state)
     written += bank() or rung()
+    written += told_after_parks()
     if written:
         append(written)
     write_cursors(cursors)
     fill_free_berths()
     return len(written)
+
+
+def told_after_parks() -> list[logs.Entry]:
+    """A `cleared` receipt for every open park that a person has since told the stream something.
+
+    A park is a person's to clear, and the board's answer box and `/cruise-tell` both write a `told` line,
+    which is how a person answers one. Nothing turned that line into the receipt a park is cleared by, so
+    the captain read the park, exited, and the `told` waited for a session the park stopped from ever
+    starting: a stream told `go` stayed parked. Told after the park is the answer to it, and the message is
+    what the receipt keeps, which `answer_questions` then records as the decision.
+
+    Every deck log whole, not the lines new this pass: a park can be older than the cursor, and a receipt
+    already written drops that park from `open_parks`, so a second pass writes nothing.
+    """
+    harbour = harbour_entries()
+    found: list[logs.Entry] = []
+    for path in deck_logs():
+        fairway = path.stem
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        told = [e for e in deck if e.kind == "told" and str(e.fields.get("fairway", "")) == fairway]
+        for park in logs.open_parks(deck, harbour, fairway):
+            after = [e for e in told if e.t > park.t]
+            if after:
+                found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
+                                        what=str(after[-1].fields.get("message", "")).strip() or "told"))
+    return found
 
 
 def fill_free_berths() -> None:

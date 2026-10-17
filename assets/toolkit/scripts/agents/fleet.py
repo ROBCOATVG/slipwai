@@ -154,6 +154,11 @@ def relight(limit: int | None, say: bool = False) -> int:
     reorder it. Idempotent by construction: a captain already running is left alone, and `fairways()` is
     re-read every time, so the order it lights in is the order as it stands now and not as it was at
     cast-off.
+
+    **A parked fairway is not lit.** Its captain would read the park, say so and exit, and the berth it left
+    would be lit again on the next pass: three parked streams were relit every fifteen seconds for three
+    and a half hours, each turn a process and a line in its log saying what the line before it said. A park
+    is a person's to clear, and the pass after it is cleared lights the captain.
     """
     standing = {name: pid for name, pid in recorded().items() if alive(pid)}
     started = 0
@@ -164,6 +169,11 @@ def relight(limit: int | None, say: bool = False) -> int:
             if say:
                 print(f"{fairway}: captain already running, pid {standing[name]}")
             continue
+        why = parked(fairway)
+        if why:
+            if say:
+                print(f"{fairway}: parked, so not lit — {why}")
+            continue
         if limit is not None and lit >= limit:
             if say:
                 print(f"{fairway}: waiting for a berth — the telegraph lights {limit} at once")
@@ -173,6 +183,23 @@ def relight(limit: int | None, say: bool = False) -> int:
             print(f"{fairway}: captain started, pid {pid}")
         started, lit = started + 1, lit + 1
     return started
+
+
+def parked(fairway: str) -> str:
+    """Why that fairway is parked, from the latest park no `cleared` receipt answers. `""` where none is open.
+
+    A log that cannot be read is not a park: lighting the captain is what gets that said, by the one process
+    whose job is to read the log.
+    """
+    where = deck_of(fairway)
+    if where is None:
+        return ""
+    try:
+        deck = logs.fold(where.read_text(encoding="utf-8").splitlines())
+        parks = logs.open_parks(deck, logs.harbour_fold(ROOT), fairway)
+    except (logs.Unreadable, OSError, UnicodeDecodeError):
+        return ""
+    return (str(parks[-1].fields.get("why", "")) or "parked") if parks else ""
 
 
 def stop_all() -> int:

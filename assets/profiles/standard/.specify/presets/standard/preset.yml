@@ -22,7 +22,7 @@ preset:
   author: "Slipwai"
   # Where the template originates. Ported rather than tracked — a generated repository has no update
   # relationship with either.
-  repository: "https://git.treyco.dev/ROBCOATVG/slipwai"
+  repository: "https://github.com/ROBCOATVG/slipwai"
   license: "MIT"
 
 requires:

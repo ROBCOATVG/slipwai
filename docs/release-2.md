@@ -52,9 +52,9 @@ Keep all of these reviewable before cutting the release:
 - The final 1.x upgrade notice is prepared on its own branch and tested against an available 2.x result;
   it must not claim an unpublished release is available.
 
-GitHub is already the canonical-forge decision recorded in the plan; Gitea becomes the mirror. Keep
-publication separate from artifact preparation. A passing artifact build is evidence about its recorded
-revision, not permission to publish an arbitrary later commit.
+GitHub (`ROBCOATVG/slipwai`) is the canonical repository; the Gitea copy is retired. Keep publication
+separate from artifact preparation. A passing artifact build is evidence about its recorded revision, not
+permission to publish an arbitrary later commit.
 
 ## The final cut
 
@@ -63,3 +63,25 @@ rebased tree and inspect the release dry-run. Cut through `make release`, retain
 changelog and tag as one release, and publish only the exact tagged tree that passed the platform and
 published-package gates. The PyPI and executable publication route must be ready before spending the tag;
 a tag with no working publication path is not a completed release.
+
+## How a tag is published
+
+`make release` writes `VERSION`, the changelog entry and the tag on one commit; `git push --follow-tags`
+sends both to GitHub. The tag's own `verify` run then does three things in order, each only if the one
+before passed:
+
+1. **The gate** on the tagged commit, on Linux, macOS and Windows, and the docs job.
+2. **`distributions`**: on each platform, the tag is checked against `VERSION`, and the wheel and the
+   executable are built and smoked. The executable is named `slipwai-<version>-<platform>` with a
+   `.sha256` beside it.
+3. **`publish`**: the wheel and source distribution go to PyPI, and a GitHub release for the tag carries
+   the three executables, their checksums and the Python distributions. A version with `dev`, `a`, `b` or
+   `rc` in it is marked a pre-release.
+
+PyPI takes the upload by **trusted publishing**: it accepts this repository's `verify.yml` running in the
+`pypi` environment, and no token is stored anywhere. Set that up once on PyPI, under the `slipwai`
+project's *Publishing* settings, with owner `ROBCOATVG`, repository `slipwai`, workflow `verify.yml` and
+environment `pypi`. Until it is set up, `publish` fails at the upload, after the gate, so a tag pushed
+before then spends its number without a release.
+
+A fork's tag builds nothing: both jobs are limited to `ROBCOATVG/slipwai`.

@@ -12,6 +12,9 @@ on:
   push:
     branches:
       - main
+    # A release tag, which `make release` makes and `git push --follow-tags` sends. Its run is the gate on
+    # the tagged commit and then the publication, in that order: see `publish` at the bottom.
+    tags: ['v*']
   pull_request:
 
 # A second push while the first is still running supersedes it: the older run is testing a commit nobody is
@@ -119,3 +122,105 @@ jobs:
       - run: make test-docs
         env:
           MERMAID_PUPPETEER_CONFIG: /tmp/mermaid-puppeteer.json
+
+  # A release, built on each platform it ships for and smoked there, from the tagged commit. Only on a tag,
+  # and only in this repository: a fork's tag builds nothing, because a fork has no PyPI project to send it to.
+  distributions:
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'ROBCOATVG/slipwai'
+    needs: [gate, docs]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x64
+          - os: macos-latest
+            name: macos-arm64
+          - os: windows-latest
+            name: windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: The tag is the version the tree carries
+        shell: bash
+        run: |
+          set -eu
+          test "v$(cat VERSION)" = "$GITHUB_REF_NAME" || {
+            echo "::error::$GITHUB_REF_NAME tags a tree whose VERSION is $(cat VERSION); make release writes both"
+            exit 1
+          }
+      # The wheel and source distribution are the same bytes on every platform, so one platform builds the
+      # ones that are published; every platform still builds and smokes its own, which is what proves them.
+      - name: Build and smoke the wheel
+        shell: bash
+        run: |
+          set -eu
+          ./scripts/build-wheel
+          for wheel in dist/slipwai-*.whl; do
+            python scripts/smoke-wheel.py "$wheel"
+          done
+      - name: Build and smoke the executable
+        shell: bash
+        run: |
+          set -eu
+          ./scripts/build-executable
+          suffix=''
+          if [ "$RUNNER_OS" = Windows ]; then suffix='.exe'; fi
+          python scripts/smoke-executable.py "dist/slipwai$suffix"
+          mkdir -p release
+          cp "dist/slipwai$suffix" "release/slipwai-$(cat VERSION)-${{ matrix.name }}$suffix"
+          cd release && for file in slipwai-*; do python -c "import hashlib,sys; p=sys.argv[1]; print(hashlib.sha256(open(p,'rb').read()).hexdigest() + '  ' + p)" "$file" > "$file.sha256"; done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: executable-${{ matrix.name }}
+          path: release/*
+          if-no-files-found: error
+      - if: matrix.name == 'linux-x64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-distributions
+          path: |
+            dist/slipwai-*.whl
+            dist/slipwai-*.tar.gz
+          if-no-files-found: error
+
+  # The publication: PyPI by trusted publishing, so no token is stored anywhere — PyPI accepts this job of
+  # this workflow in this repository, under the `pypi` environment, and nothing else. Then the GitHub release
+  # for the tag, carrying the executables and their checksums. A version is spent the moment PyPI has it, so
+  # this runs last, behind every platform's gate and every platform's smoke.
+  publish:
+    needs: [distributions]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/slipwai/
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-distributions
+          path: dist
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: executable-*
+          path: release
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: The release, with the executables
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          prerelease=''
+          case "$GITHUB_REF_NAME" in *dev*|*a*|*b*|*rc*) prerelease='--prerelease' ;; esac
+          gh release create "$GITHUB_REF_NAME" release/* dist/* --repo "$GITHUB_REPOSITORY" \
+            --title "slipwai ${GITHUB_REF_NAME#v}" --verify-tag $prerelease \
+            --notes "Install with \`pip install slipwai==${GITHUB_REF_NAME#v}\` or download the executable for your platform below. Each has a .sha256 beside it. CHANGELOG.md has what changed."

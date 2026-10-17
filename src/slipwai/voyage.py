@@ -239,10 +239,15 @@ def mockups(root: Path, seat: str = "") -> list[dict[str, str]]:
 
 
 def mockup_href(feature: str, name: str, seat: str = "") -> str:
-    """Where the board serves one mock-up. The seat is a path segment, so the page's own files stay on it."""
+    """Where the board serves one mock-up. The seat is a path segment, so the page's own files stay on it.
+
+    Under the seat the address is the file's own path in the project, so a link the stage wrote for the file
+    where it lies — `../spec.md`, `../../../docs/design/styles.css` — reaches the same file served.
+    """
+    where = f"specs/{feature}/{MOCKUPS}/{name}"
     if seat and _SEAT.fullmatch(seat):
-        return f"{MOCK_ROUTE}{SEAT_PATH}/{quote(seat, safe='')}/{feature}/{name}"
-    return f"{MOCK_ROUTE}{feature}/{name}"
+        return f"{MOCK_ROUTE}{SEAT_PATH}/{quote(seat, safe='')}/{where}"
+    return f"{MOCK_ROUTE}{where}"
 
 
 def mockup_where(where: str) -> tuple[str, str]:
@@ -261,7 +266,12 @@ def mockup_file(root: Path, where: str) -> Path | None:
     """The file a `/mockups/<feature>/<name>` request names, or nothing where it names anything outside a
     feature's mockups directory — a path with `..` in it, a symlink out of the checkout, a sibling that is
     not a mock-up. The route serves a mock-up's own stylesheet and images too, which is why this is a
-    directory and not one file."""
+    directory and not one file.
+
+    A remainder that starts `specs/` or `docs/` is a path in the project, which is the form `mockup_href`
+    writes; see `design_file` for what that form may reach."""
+    if where.partition("/")[0] in ("specs", "docs"):
+        return design_file(root, where)
     feature, _, name = where.partition("/")
     if not feature or not name or not name.strip("/"):
         return None
@@ -273,6 +283,29 @@ def mockup_file(root: Path, where: str) -> Path | None:
     if not path.is_relative_to(home) or not path.is_file() or not home.is_relative_to(root.resolve()):
         return None
     return path
+
+
+def design_file(root: Path, where: str) -> Path | None:
+    """The file a project-relative `/mockups/` remainder names, where it is one a storyboard may point at: a
+    feature's mock-ups, that feature's specification, or what the project was handed under `docs/design/`.
+
+    The mock-up stage reads `docs/design/` and is told to follow it, so a storyboard links the stylesheet and
+    the drawings there rather than copying them; refusing them is a storyboard with no styles and empty
+    frames. Anything else in the project — its configuration, a slice's plan, the logs — stays refused, and
+    the test is on the resolved path, so neither `..` nor a symlink reaches past it.
+    """
+    home = root.resolve()
+    try:
+        path = (home / unquote(where)).resolve()
+    except OSError:
+        return None
+    if not path.is_file() or not path.is_relative_to(home):
+        return None
+    parts = path.relative_to(home).parts
+    handed = len(parts) > 2 and parts[:2] == ("docs", "design")
+    drawn = len(parts) > 3 and parts[0] == "specs" and parts[2] == MOCKUPS
+    specified = len(parts) == 3 and parts[0] == "specs" and parts[2] == SPEC
+    return path if handed or drawn or specified else None
 
 
 def spec_file(root: Path, feature: str) -> Path | None:

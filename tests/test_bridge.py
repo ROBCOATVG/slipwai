@@ -12,6 +12,7 @@ import threading
 import time
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -342,15 +343,15 @@ class LandingTest(BoardTest):
         self.land()
         said = self.get("/voyage")[1]
         self.assertIn("<h2>Mockups · 1</h2>", said)
-        self.assertIn(f'src="/mockups/by/{self.seat}/001-demo/catalog.html"', said,
+        self.assertIn(f'src="/mockups/by/{self.seat}/specs/001-demo/mockups/catalog.html"', said,
                       "a frame carries its window's seat on the path: a query would not reach the stylesheet")
         # With a storyboard, that is the door and the mock-ups are reached from it.
         (home / "storyboard.html").write_text("<html><head><title>Storyboard: 001 — review</title></head></html>",
                                               encoding="utf-8")
         said = self.get("/voyage")[1]
         self.assertIn("<h2>Storyboard</h2>", said)
-        self.assertIn(f'src="/mockups/by/{self.seat}/001-demo/storyboard.html"', said)
-        self.assertNotIn('src="/mockups/001-demo/catalog.html"', said)
+        self.assertIn(f'src="/mockups/by/{self.seat}/specs/001-demo/mockups/storyboard.html"', said)
+        self.assertNotIn(f'src="/mockups/by/{self.seat}/specs/001-demo/mockups/catalog.html"', said)
         self.assertIn("1 mock-ups, from the storyboard", said)
         self.assertEqual(self.get("/mockups/001-demo/catalog.html"), (200, (home / "catalog.html").read_text()))
         self.assertIn("Approve storyboard", said)
@@ -372,8 +373,8 @@ class LandingTest(BoardTest):
             encoding="utf-8")
         self.land()
         said = self.get("/voyage")[1]
-        self.assertIn(f'src="/mockups/by/{self.seat}/001-demo/storyboard.html"', said)
-        self.assertEqual(self.get(f"/mockups/by/{self.seat}/001-demo/styles.css", seat=""),
+        self.assertIn(f'src="/mockups/by/{self.seat}/specs/001-demo/mockups/storyboard.html"', said)
+        self.assertEqual(self.get(f"/mockups/by/{self.seat}/specs/001-demo/mockups/styles.css", seat=""),
                          (200, "body{color:red}"))
         with self.assertRaises(urllib.error.HTTPError) as refused:
             self.get("/mockups/001-demo/styles.css", seat="")
@@ -388,6 +389,38 @@ class LandingTest(BoardTest):
             self.get("/mockups/001-demo/../../project.json")
         refused.exception.close()
         self.assertEqual(refused.exception.code, 404)
+
+    def test_a_storyboard_s_links_to_what_the_project_was_handed_are_served(self) -> None:
+        """The storyboard links `docs/design/` and the specification by their place on disk, as written."""
+        home = self.made / "specs/001-demo/mockups"
+        home.mkdir(parents=True)
+        handed = self.made / "docs/design/mockups"
+        handed.mkdir(parents=True)
+        (handed / "styles.css").write_text("body{color:blue}", encoding="utf-8")
+        (handed / "01-discover.html").write_text("<html><body>discover</body></html>", encoding="utf-8")
+        (self.made / "specs/001-demo/spec.md").write_text("# Spec\n", encoding="utf-8")
+        (home / "storyboard.html").write_text(
+            '<html><head><title>Storyboard</title>'
+            '<link rel="stylesheet" href="../../../docs/design/mockups/styles.css"></head>'
+            '<body><iframe src="../../../docs/design/mockups/01-discover.html"></iframe>'
+            '<a href="../spec.md">spec</a></body></html>', encoding="utf-8")
+        self.land()
+        page = f"/mockups/by/{self.seat}/specs/001-demo/mockups/storyboard.html"
+        self.assertIn(f'src="{page}"', self.get("/voyage")[1])
+        base = f"http://127.0.0.1{page}"
+        for link, body in (("../../../docs/design/mockups/styles.css", "body{color:blue}"),
+                           ("../../../docs/design/mockups/01-discover.html", "<html><body>discover</body></html>"),
+                           ("../spec.md", "# Spec\n")):
+            with self.subTest(link=link):
+                self.assertEqual(self.get(urllib.parse.urlsplit(urllib.parse.urljoin(base, link)).path, seat=""),
+                                 (200, body))
+        for refused_at in (f"/mockups/by/{self.seat}/project.json", f"/mockups/by/{self.seat}/docs/prd.md",
+                           f"/mockups/by/{self.seat}/specs/001-demo/notes.md",
+                           f"/mockups/by/{self.seat}/docs/design/../../project.json"):
+            with self.subTest(refused_at=refused_at), self.assertRaises(urllib.error.HTTPError) as refused:
+                self.get(refused_at, seat="")
+            refused.exception.close()
+            self.assertEqual(refused.exception.code, 404, refused_at)
 
     def _storyboard(self, profile: str) -> None:
         self.land()

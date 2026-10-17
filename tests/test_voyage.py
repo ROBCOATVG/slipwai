@@ -109,25 +109,41 @@ class MockupsTest(unittest.TestCase):
     def test_every_wireframe_is_listed_by_its_own_title(self) -> None:
         found = mockups(self.root)
         self.assertEqual([(row["feature"], row["name"], row["title"], row["href"]) for row in found],
-                         [("001-demo", "catalog.html", "catalog — Demo", "/mockups/001-demo/catalog.html")])
+                         [("001-demo", "catalog.html", "catalog — Demo", "/mockups/specs/001-demo/mockups/catalog.html")])
         self.assertEqual(mockups(Path(tempfile.mkdtemp())), [])
 
     def test_a_seat_stays_on_the_path_a_mock_up_s_own_files_are_loaded_from(self) -> None:
         """A query is dropped by the stylesheet, the script and the next frame. A path segment is not."""
         from slipwai.voyage import mockup_href, mockup_where
         href = mockup_href("001-demo", "storyboard.html", "window-one")
-        self.assertEqual(href, "/mockups/by/window-one/001-demo/storyboard.html")
+        self.assertEqual(href, "/mockups/by/window-one/specs/001-demo/mockups/storyboard.html")
         self.assertEqual(mockup_where("by/window-one/001-demo/storyboard.html"),
                          ("window-one", "001-demo/storyboard.html"))
         self.assertEqual(mockup_where("001-demo/styles.css"), ("", "001-demo/styles.css"))
         self.assertEqual(mockups(self.root, "window-one")[0]["href"],
-                         "/mockups/by/window-one/001-demo/catalog.html")
+                         "/mockups/by/window-one/specs/001-demo/mockups/catalog.html")
 
     def test_the_route_serves_a_mock_up_and_its_stylesheet_and_nothing_outside_them(self) -> None:
         self.assertEqual(mockup_file(self.root, "001-demo/catalog.html"), (self.home / "catalog.html").resolve())
         self.assertEqual(mockup_file(self.root, "001-demo/mock.css"), (self.home / "mock.css").resolve())
         for outside in ("001-demo/../../secret.txt", "001-demo/../spec.md", "../secret.txt", "001-demo/", "",
                         "nope/x.html"):
+            self.assertIsNone(mockup_file(self.root, outside), outside)
+
+
+    def test_a_project_path_reaches_the_design_a_storyboard_links_and_nothing_else(self) -> None:
+        handed = self.root / "docs/design"
+        handed.mkdir(parents=True)
+        (handed / "styles.css").write_text("body{}", encoding="utf-8")
+        (self.root / "docs/prd.md").write_text("# prd\n", encoding="utf-8")
+        (self.root / "specs/001-demo/spec.md").write_text("# spec\n", encoding="utf-8")
+        self.assertEqual(mockup_file(self.root, "docs/design/styles.css"), (handed / "styles.css").resolve())
+        self.assertEqual(mockup_file(self.root, "specs/001-demo/spec.md"),
+                         (self.root / "specs/001-demo/spec.md").resolve())
+        self.assertEqual(mockup_file(self.root, "specs/001-demo/mockups/catalog.html"),
+                         (self.home / "catalog.html").resolve())
+        for outside in ("docs/prd.md", "docs/design/../prd.md", "specs/../secret.txt", "secret.txt",
+                        "specs/001-demo/notes.md", "docs/design", "specs/001-demo/mockups/../../../secret.txt"):
             self.assertIsNone(mockup_file(self.root, outside), outside)
 
 

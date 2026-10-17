@@ -1,9 +1,9 @@
 # Runsheet: adopt an existing repository
 
-**The whole life of an adopted repository as one list of steps, in order** — from `slipwai adopt` to a
-fleet cruising, and on through every slipwai release after it. This is *adopt the method*, not *generate
-the skeleton*: nothing about strangler-versus-rewrite has to be decided first.
-[Bring an existing codebase](adopt.md) has the reasoning; this page is the sequence.
+**This page lists every step in the life of an adopted repository, in order.** It starts at
+`slipwai adopt`, goes to a fleet that cruises, and continues through every slipwai release after that. This
+is *adopt the method*, not *generate the skeleton*. You do not have to decide between a strangler and a
+rewrite first. This page gives the sequence. [Bring an existing codebase](adopt.md) gives the reasons.
 
 Where you type each command:
 
@@ -11,9 +11,9 @@ Where you type each command:
 - **agent** — a session of your coding agent opened at the repository root
 - **board** — the page `slipwai` opens, served from this machine only
 
-**Lost your place?** `slipwai adopt --next` works out where the repository is in this sequence from the
-files on disk, and says which step is done, which is now, and which come next. Run it whenever you come
-back to a repository.
+**Lost your place?** `slipwai adopt --next` works out where the repository is in this sequence, from the
+files on disk. It says which steps are done, which step is now, and which steps come next. Run it each time
+that you come back to a repository.
 
 ---
 
@@ -22,10 +22,10 @@ back to a repository.
 | # | Where | Command | Done when |
 |---|---|---|---|
 | 0.1 | terminal | `uv tool install slipwai` | `slipwai --version` prints a version |
-| 0.2 | terminal | `git --version`, `python3 --version` | Git is installed, and Python is 3.10 or newer |
+| 0.2 | terminal | `git --version`, `python3 --version` | Git is installed, and Python is 3.11 or newer |
 
-Your repository's own toolchain has to be installed as well — its Node, JDK or whatever its build runs.
-The gate runs the commands your build already has, so it needs what they need.
+You must also install your repository's own toolchain: its Node, its JDK, or whatever its build uses. The
+gate runs the commands that your build already has, so the gate needs what those commands need.
 
 ---
 
@@ -37,16 +37,17 @@ The gate runs the commands your build already has, so it needs what they need.
 | 1.2 | terminal *or* board | `slipwai adopt --integration claude` — or `slipwai`, then *Adopt a repository* | it lists the directories that build, asks where your CI runs, commits, and runs `./delivery/init` |
 | 1.3 | terminal | `git add -A && git commit -m "Install Spec Kit"` | `git status` is clean |
 
-- **1.2: the one question.** Where CI runs is a fact about your forge, not your code, so it is the only
-  thing asked. Every directory that builds is recorded as a **candidate**, not an application: which of
-  them the gate should hold is a question the code answers, in Phase 2.
+- **1.2: the one question.** Where CI runs is a fact about your forge, not about your code. So it is the
+  only question. Each directory that builds is recorded as a **candidate**, not as an application. Which
+  candidates the gate should hold is a question that the code answers, in Phase 2.
 - **1.2: the flags.** `--integration <agent>` names your coding agent. `--delivery <dir>` puts the method
-  somewhere other than `delivery/`. `--yes` asks nothing and confirms every candidate unlooked-at, each
-  fact recorded `detected`. `--no-init` leaves `./delivery/init` for you.
-- **1.2: what it writes.** One commit, beside your code: the method under `delivery/`, one marked block
-  each in your `AGENTS.md` and `.gitignore`, and a `project.json` holding the record. Your code and your
-  `README.md` are never touched. `git reset --hard HEAD^` undoes exactly that commit.
-- **1.3.** `./delivery/init` writes Spec Kit and the agent's commands and skills, and does not commit them.
+  somewhere other than `delivery/`. `--yes` asks nothing, confirms every candidate without looking at it,
+  and records each fact as `detected`. `--no-init` leaves `./delivery/init` for you to run.
+- **1.2: what it writes.** One commit, beside your code: the method under `delivery/`, one marked block in
+  each of your `AGENTS.md` and `.gitignore`, and a `project.json` that holds the record. It never touches
+  your code or your `README.md`. `git reset --hard HEAD^` undoes exactly that commit.
+- **1.3.** `./delivery/init` writes Spec Kit and the agent's commands and skills, but does not commit
+  them.
 
 ---
 
@@ -57,10 +58,15 @@ The gate runs the commands your build already has, so it needs what they need.
 | 2.1 | agent | `/ground` | every candidate is confirmed, declined or deliberately left open, and every row of the map has been asked about |
 | 2.2 | terminal | `git add -A && git commit -m "Ground: what the code could not say"` | `git status` is clean |
 
-`/ground` reads the code before each question, says what it thinks and why, and records your answer with
-its **provenance** — `confirmed` or `overridden` are a person's word; `detected` is only the tree's reading.
-It asks which directories are applications (a directory whose build the gate holds), then the rows of the
-convergence map one at a time, then `smoke` for each application. Commit once, at 2.2.
+Before each question, `/ground` reads the code and says what it thinks and why. It records your answer
+with its **provenance**: `confirmed` or `overridden` mean that a person answered, and `detected` means only
+that the tree was read. `/ground` asks these questions, in this order:
+
+1. which directories are applications (an application is a directory whose build the gate holds)
+2. the rows of the convergence map, one at a time
+3. `smoke`, for each application
+
+Commit once, at 2.2.
 
 The same answers from the terminal:
 
@@ -82,19 +88,20 @@ slipwai adopt --as admin=admin-ui
 | 3.3 | terminal | add `-include delivery/Makefile` to your root `Makefile` | `make verify` works as one word. Skip it if `adopt` wrote the root `Makefile` itself |
 | 3.4 | agent | accept the strategy ADR: set its `Status` to `Accepted` and commit it | `slipwai adopt --next` shows the strategy as decided |
 
-- **3.1: the first run** records the lint and typecheck findings already in the code as the baseline; only
-  new ones fail after that. **A red test suite stops the run and says so** — fix it, or quarantine it on
-  purpose with `make ratchet-tighten`. Until 3.3 is done the gate is `make -f delivery/Makefile verify`.
-- **3.4: the strategy.** `/ground` writes the ADR at `Proposed`, recommending one of `leave-it`,
-  `in-place`, `modular-monolith`, `strangler-fig` or `rewrite`. `leave-it` is as real an answer as the
-  others. You accept it; an agent never does.
+- **3.1: the first run** records the lint and typecheck findings that are already in the code as the
+  baseline. After that, only new findings fail. **A red test suite stops the run, and the run says so.**
+  Fix the suite, or put it in quarantine on purpose with `make ratchet-tighten`. Until you do 3.3, the gate
+  is `make -f delivery/Makefile verify`.
+- **3.4: the strategy.** `/ground` writes the ADR (architecture decision record) at `Proposed`. It
+  recommends one of `leave-it`, `in-place`, `modular-monolith`, `strangler-fig` or `rewrite`. `leave-it` is
+  as valid an answer as the others. You accept the ADR. An agent never accepts it.
 
 ---
 
 ## Phase 4: the first feature
 
-An adopted repository runs the **standard profile**: the chart is written by `/chart` with you rather than
-rendered from a model, and everything downstream of it is the same as a generated project's.
+An adopted repository uses the **standard profile**. `/chart` writes the chart with you. The chart is not
+rendered from a model. Everything after the chart is the same as in a generated project.
 
 | # | Where | Command | Done when |
 |---|---|---|---|
@@ -103,21 +110,23 @@ rendered from a model, and everything downstream of it is the same as a generate
 | 4.3 | agent | `/sail` | the specification is clarified and its gaps answered, the mock-ups approved, and `/chart` has written the chart with you |
 | 4.4 | agent | `/sail` | the first slice reaches its demo and asks you to accept it |
 
-- **4.1.** A principle the map says is not reachable yet is written as a *journey* target, not a rule the
-  code already breaks.
-- **4.4: what adoption adds to the ladder.** **Ground** before everything — an open row the slice touches
-  is asked about first. **Pin** before implementation — `/characterise` records what the existing code
-  does at the seam the slice will change, as tests, so the change is measured against what the code did.
-  **Demo** after it — once the slice's examples are proven the map is re-checked, and a row moves up a rung
-  when the slice reached it.
+- **4.1.** If the map says that a principle cannot be reached yet, the principle is written as a
+  *journey* target. It is not written as a rule that the code already breaks.
+- **4.4: what adoption adds to the ladder.**
+  - **Ground**, before everything: if the slice touches an open row, `/sail` asks about that row first.
+  - **Pin**, before implementation: `/characterise` records, as tests, what the existing code does at the
+    seam that the slice will change. The change is then measured against what the code did before.
+  - **Demo**, after implementation: when the slice's examples are proven, the map is checked again. A row
+    moves up a rung when the slice reached that rung.
 
-From here the rest is the generated project's: a further feature, a second person, and cruising are
-[Phases 3 to 5 of the generate runsheet](runsheet-generate.md#phase-3-a-further-feature). On an adopted
-repository a cruising run proceeds on stated assumptions and `Proposed` records where a person's word is
-missing, and you confirm or overturn them afterwards.
+After this, the steps are the same as for a generated project. A further feature, a second person and
+cruising are [Phases 3 to 5 of the generate runsheet](runsheet-generate.md#phase-3-a-further-feature). On
+an adopted repository, where a person's answer is missing, a cruising run continues on stated assumptions
+and writes `Proposed` records. You confirm or reverse them afterwards.
 
-**Fairways are only worth drawing where your code has seams.** One directory holding everything is one
-fairway — a well-gated single-worker loop. `skills/finding-seams/SKILL.md` is how to get from there to two.
+**Fairways are useful only where your code has seams.** If one directory holds everything, you have one
+fairway: a well-gated loop for a single worker. `skills/finding-seams/SKILL.md` describes how to get from
+one fairway to two.
 
 ---
 
@@ -133,7 +142,7 @@ fairway — a well-gated single-worker loop. `skills/finding-seams/SKILL.md` is 
 | 5.6 | terminal | `slipwai adopt --next` | nothing new is `now` — a release can add a step, and this is where it shows up |
 | 5.7 | terminal | `git push` | the gate in CI is green |
 
-`--refresh` never overwrites a person's answer with a fresh guess; it says where the two now disagree.
+`--refresh` never writes over a person's answer with a new guess. It says where the two now disagree.
 
 ---
 

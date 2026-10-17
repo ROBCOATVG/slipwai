@@ -26,62 +26,72 @@ $ cd bookings && make verify   # ./init ran where the project was made
 verify: all gates passed
 ```
 
-That is ten minutes. The other five are one feature — specified, modelled, charted, split, built and
-demoed in front of you — and they are on the next page.
+These steps take about ten minutes. The next page takes about five more. In those five minutes, one
+feature is specified, modelled, charted, split, built and demoed to you.
 
-**Or do all of it on a page.** `slipwai` on its own opens **the board**, served from this machine only:
-start a project from the same questions, or hand over a requirements document or the folder it sits in,
-and the first specification is drafted for you and waits for you to read it. Its **Voyage** tab then says
-which stage the project is on, read off the tree, with a button at every stop that waits for a person.
+**You can also do all of this on a web page.** Run `slipwai` with no arguments to open **the board**. This
+machine serves the board, and only this machine can open it. On the board, you can start a project from the
+same questions. You can also give the board a requirements document, or the folder that contains it. The
+board then drafts the first specification for you and waits for you to read it. After that, the
+**Voyage** tab shows which stage the project is at. The board reads the stage from the files in the
+project. Each stop that waits for a person has a button.
 
 ## New to this — start here
 
 | | |
 | --- | --- |
-| **[Runsheet: generate a new project](docs/guide/runsheet-generate.md)** | You want a fresh repository. Every step in order, from installing the command to a fleet cruising and every release after |
+| **[Runsheet: generate a new project](docs/guide/runsheet-generate.md)** | You want a new repository. Every step in order, from installing the command to a fleet that cruises, and every release after that |
 | **[Runsheet: adopt an existing repository](docs/guide/runsheet-adopt.md)** | You already have a codebase. Every step in order, from `slipwai adopt` through `/ground` to the first slice |
 
-The runsheets are the sequence; the five guide pages below are the reasoning, a page each.
+The runsheets give the sequence of steps. The five guide pages below give the reasons, one page for each
+subject.
 
-Coming from version 1? → **[What is new since version 1](docs/whats-new.md)** — every change that affects
-you, what each is for, and the one command that moves your project across.
+Do you use version 1? Read **[What is new since version 1](docs/whats-new.md)**. It lists every change
+that affects you, the purpose of each change, and the one command that moves your project to version 2.
 
 ---
 
 ## What it is for
 
-Coding agents are fast at writing code and bad at everything around it: knowing what to build next, not
-treading on each other, and being honest about what they did. Slipwai is the repository around them that
-fixes those three.
+Coding agents write code quickly. They are bad at three things around the code:
 
-**One claim holds the rest up.** Two workers, each delivering a slice, and neither waiting on the other's
-branch. That works because a **chart** types the contracts between fairways and insists each one has
-exactly one owner — so a slice is cleared to start the moment the contract it needs is *set*, which happens
-at the setting slice's first stage, in its own worktree, before anything merges anywhere.
+- knowing what to build next
+- not interfering with each other's work
+- reporting honestly what they did
 
-**Nothing is believed because something said it.** Status is folded from append-only logs every time it is
-drawn, and is stored nowhere. A stage that wrote no line made no progress — including a stage that reports
-cheerfully that it is nearly done. That rule is the correction of two specific failures: a runner that was
-the single source of status and died at iteration two while twenty slices went on merging, and a model file
-that said `planned` for eight slices that had shipped.
+Slipwai is the repository around the agents. It fixes those three problems.
+
+**One rule makes the rest possible.** Two workers each deliver a slice, and neither waits for the other's
+branch. This works because a **chart** gives each contract between fairways a type and exactly one owner.
+A slice can start when the contract that it needs is *set*. The slice that owns the contract sets it at
+its first stage, in its own worktree, before anything merges.
+
+**Slipwai does not believe a status because something reported it.** Slipwai calculates status from
+append-only logs each time it shows the status. It stores the status nowhere. A stage that writes no log
+line and makes no commit has made no progress. This is true even if the stage reports that it is nearly
+done. This rule corrects two specific failures:
+
+- In the first attempt, a runner was the only source of status. It stopped at iteration two, and twenty
+  slices continued to merge without it.
+- A model file said `planned` for eight slices that had already shipped.
 
 ## The five pages
 
 | | |
 | --- | --- |
-| **[Start here](docs/guide/start-here.md)** | Install it, answer its questions, watch the gate go green |
-| **[Your first feature](docs/guide/first-feature.md)** | A spec, a model, a chart, a slice, and a demo you accept |
-| **[A second person joins](docs/guide/a-second-person.md)** | Fairways, berths, and why neither of you is waiting |
-| **[Let it cruise](docs/guide/let-it-cruise.md)** | Captains, the telegraph, and what a person still decides |
-| **[Bring an existing codebase](docs/guide/adopt.md)** | The other door: survey, then wrap |
+| **[Start here](docs/guide/start-here.md)** | Install the command, answer its questions, and see the gate pass |
+| **[Your first feature](docs/guide/first-feature.md)** | A specification, a model, a chart, a slice, and a demo that you accept |
+| **[A second person joins](docs/guide/a-second-person.md)** | Fairways, berths, and why neither of you waits |
+| **[Let it cruise](docs/guide/let-it-cruise.md)** | Captains, the telegraph, and the decisions that a person still makes |
+| **[Bring an existing codebase](docs/guide/adopt.md)** | The other way in: survey the repository, then wrap it |
 
-Each one ends where the next begins. Stop when you have what you came for.
+Each page ends where the next page starts. Stop when you have what you need.
 
-Two more pages are maps rather than steps. [The workflow](docs/guide/the-workflow.md) lists every step on
-one page: who does it, what it writes, and where it stops. [The board](docs/guide/the-board.md) describes
-every screen and control, and the file each control writes.
+Two more pages are maps, not steps. [The workflow](docs/guide/the-workflow.md) lists every step on one
+page: who does the step, what the step writes, and where the step stops. [The board](docs/guide/the-board.md)
+describes every screen and control, and the file that each control writes.
 
-## What it looks like running
+## What it looks like when it runs
 
 ```
 waiting on you: 2
@@ -96,32 +106,44 @@ berths: 2, 2 working
 telegraph: half-ahead  boilers 3  fanout 2  bunker 126/10000k today
 ```
 
-`slipwai fleet` for that, `slipwai fleet <fairway>` for one fairway's own log said a line at a time, and
-`slipwai bridge` for the same thing as a page you can answer from. More in
-[docs/captures](docs/captures/), which are from real runs rather than drawn.
+- `slipwai fleet` prints the view above.
+- `slipwai fleet <fairway>` prints the log of one fairway, one line at a time.
+- `slipwai bridge` shows the same information as a page, and you can answer questions from that page.
+
+[docs/captures](docs/captures/) has more examples. They come from real runs. Nobody drew them by hand.
 
 ## The board
 
-`slipwai` with nothing after it opens one page with a tab each for starting a project, adopting a
-repository, the packages this machine can install, the fleet, and the **Voyage**:
+Run `slipwai` with no arguments to open one page. The page has a tab for each of these:
 
-- **The stages**, from PRD to accepted, each *done*, *working*, *waiting on you* or *to do*, with the file
-  that proves it — read off the tree, never typed
-- **The stops**, each a button: open the specification, draw and approve the storyboard, continue the
-  build, cast off or stop the fleet, continue the next feature
-- **The work**: the event model in draw.io's viewer coloured by slice, the mock-ups and the screens each
-  slice has rendered, the slices by state, and the questions waiting on you with a box to answer each
-- **One Settings box** — speed, fine tune, who answers, delegation and models — written by the project's
-  own scripts, never by the board
+- starting a project
+- adopting a repository
+- the packages that this machine can install
+- the fleet
+- the **Voyage**
 
-Every button is a `make` target you could type instead. `slipwai bridge install` keeps the board running
-whenever you log in. [Your first feature](docs/guide/first-feature.md#from-the-board) walks the page, and
-[the board](docs/guide/the-board.md) describes every control on it.
+The **Voyage** tab shows:
+
+- **The stages**, from PRD (product requirements document) to accepted. Each stage is *done*, *working*,
+  *waiting on you* or *to do*, and shows the file that proves it. The board reads each stage from the
+  files. Nobody types a status.
+- **The stops**, each as a button: open the specification, draw and approve the storyboard, continue the
+  build, cast off or stop the fleet, and continue to the next feature.
+- **The work**: the event model in the draw.io viewer, coloured by slice; the mock-ups and the screens that
+  each slice has rendered; the slices by state; and the questions that wait for you, each with a box for
+  your answer.
+- **One Settings box**, with tabs for speed, fine tune, who answers, delegation and models. The project's
+  own scripts write these settings. The board never writes them itself.
+
+Each button runs a `make` target that you could type instead. `slipwai bridge install` starts the board
+each time you log in. [Your first feature](docs/guide/first-feature.md#from-the-board) goes through the
+page, and [the board](docs/guide/the-board.md) describes every control on it.
 
 ## Languages, and everything else
 
-The command knows how to build a repository. It does not know any languages — those come from the
-**chandlery**, an index of packages with a version, a compatibility range, a checksum and a publisher each.
+The command knows how to build a repository. It does not know any languages. Languages come from the
+**chandlery**. The chandlery is an index of packages. Each package has a version, a compatibility range, a
+checksum and a publisher.
 
 ```sh
 slipwai search postgres        # by what a package answers, not by its name
@@ -129,13 +151,15 @@ slipwai show python
 slipwai install python
 ```
 
-Six languages are published at `https://robcoatvg.github.io/slipwai-index/`. A publisher you have not met is
-confirmed once; the checksum is checked every time, whoever published it. Publishing your own is four verbs
-— `slipwai package new`, `check`, `version`, `release` — and a pull request. Clouds (`slipwai target
-install aws`) and dev tooling (`slipwai extension`) are packages the same way.
+Six languages are published at `https://robcoatvg.github.io/slipwai-index/`. When you install from a
+publisher for the first time, slipwai asks you to confirm that publisher once. Slipwai checks the checksum
+every time, for every publisher. To publish your own package, use four verbs — `slipwai package new`,
+`check`, `version` and `release` — and then open a pull request. Clouds (`slipwai target install aws`) and
+developer tooling (`slipwai extension`) are packages in the same way.
 
-**Six quickstarts are carried with the command** — a set of answers somebody already settled, offered by
-what the product is like: `slipwai quickstart list`, then `slipwai generate <name> --quickstart <name>`.
+**The command includes six quickstarts.** A quickstart is a set of answers that somebody has already
+decided. Each quickstart is described by what the product is like. Run `slipwai quickstart list` to see
+them, then `slipwai generate <name> --quickstart <name>` to use one.
 
 ## Reference
 
@@ -147,8 +171,9 @@ what the product is like: `slipwai quickstart list`, then `slipwai generate <nam
 
 ### Status
 
-This is slipwai 2, in a fork, under construction. The tree was cleared on 2026-10-06 and is being brought
-back in version 2 shape one module at a time; `docs/slipwai-2-plan.md` has the order of work and what is
-left. The 1.x working contract came back with phase 8: `slipwai migrate` crosses a version 1 project, and
-[what is new since version 1](docs/whats-new.md) says what that costs. The fork merges back to
-[ROBCOATVG/slipwai](https://github.com/ROBCOATVG/slipwai) as version 2 once, when complete.
+This is slipwai 2, and it is still under construction. On 2026-10-06 the tree was cleared. Since then,
+version 2 has been brought back one module at a time. `docs/slipwai-2-plan.md` gives the order of the work
+and what is left to do. The 1.x working contract came back with phase 8: `slipwai migrate` moves a version
+1 project to version 2, and [what is new since version 1](docs/whats-new.md) says what that costs. Version
+2 is developed in [ROBCOATVG/slipwai](https://github.com/ROBCOATVG/slipwai) on GitHub, which is the
+canonical repository.

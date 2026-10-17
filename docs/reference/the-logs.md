@@ -1,9 +1,10 @@
 # The deck log and the harbour log
 
-Status is folded from lines and stored nowhere. **A slice that wrote no line made no progress.**
+Status is folded from log lines, and it is stored nowhere. **A slice that wrote no line made no progress.**
 
-There are two logs, and the split between them is about writers, not about contents. One writer per file is
-the whole mechanism: no two processes ever append to one file, so neither log can conflict.
+There are two logs. The split between them is about who writes them, not about what they contain. Each file
+has one writer, and that is all of the mechanism. No two processes ever append to the same file, so neither
+log can have a conflict.
 
 | | Deck log | Harbour log |
 |---|---|---|
@@ -13,33 +14,36 @@ the whole mechanism: no two processes ever append to one file, so neither log ca
 | Read by | Everybody | Everybody |
 | Synced through | `refs/slipwai/logs/<fairway>` | `refs/slipwai/logs/harbour/<machine>` |
 
-Neither is committed. `.gitignore` lists `.slipwai/logs/`, because heartbeat and token lines arrive every
-few seconds and have no place in trunk's history. The harbourmaster pushes and fetches them through their
-own refs, so a captain on another machine reads the same lines with no commit on `main`. A push that is not
-an append is refused: a local log that is not a continuation of what the ref holds is one whose push would
-drop every line the ref has, and nobody could tell.
+Neither log is committed. `.gitignore` lists `.slipwai/logs/`, because heartbeat and token lines arrive
+every few seconds and do not belong in trunk's history. The harbourmaster pushes and fetches the logs
+through their own refs. So a captain on another machine reads the same lines without a commit on `main`.
 
-A project written before there were three writers has one `.slipwai/logs/harbour.jsonl`. It is still read
-and folded in with the rest, and nothing moves it — a migration that relocates somebody's log is one that
-can lose a line, and these lines are the only record there is.
+A push that is not an append is refused. If a local log does not continue what the ref holds, its push would
+drop every line that the ref has, and nobody could tell.
+
+A project that was written before there were three writers has one `.slipwai/logs/harbour.jsonl`. The fold
+still reads that file with the rest, and nothing moves it. A migration that moves somebody's log can lose a
+line, and these lines are the only record.
 
 ---
 
 ## Every line carries `v`
 
-A reader that meets a version it does not know refuses the line and names `slipwai upgrade` rather than
-guessing which fields moved. A line that cannot be read stops the fold rather than being skipped: a log
-missing the events it could not parse reads exactly like a log of a run that did not have them, and a board
-folded from a log with holes in it is confidently wrong.
+`v` is the format version of the line. When a reader meets a version that it does not know, it refuses the
+line and names `slipwai upgrade`. It does not guess which fields moved.
 
-Fields are checked on the way in as well as on the way out. A line written short is a line some reader
-weeks later cannot use, and by then nobody knows what the missing value was.
+A line that the reader cannot read stops the fold. The reader does not skip it. A log that is missing the
+events it could not parse looks exactly like the log of a run that did not have those events. A board that
+is folded from a log with gaps is wrong, and it looks certain.
+
+Fields are checked when a line is written, as well as when it is read. If a line is written with a field
+missing, a reader weeks later cannot use it, and by then nobody knows what the missing value was.
 
 ---
 
 ## The deck log's kinds
 
-Beyond `v`, `t` and `kind`, each carries the fields named here.
+Every line has `v`, `t` and `kind`. Each kind also has the fields named here.
 
 | Kind | Carries | What it records |
 |---|---|---|
@@ -64,8 +68,8 @@ Beyond `v`, `t` and `kind`, each carries the fields named here.
 
 ## The harbour log's kinds
 
-A captain never appends here. The harbourmaster carries across what other fairways need, and records the
-answers it owes.
+A captain never appends to the harbour log. The harbourmaster copies across what other fairways need, and
+records the answers that it owes.
 
 | Kind | Carries | What it records |
 |---|---|---|
@@ -83,43 +87,51 @@ answers it owes.
 | `trunk-green` | `commit` | And once per change back |
 | `fix-trunk` | `fairway`, `slice`, `commit`, `job` | Sent to the captain whose `merged` line names the commit that went red |
 
-Trunk can go red from a check `make verify` never ran, which is why these four exist at harbour level rather
-than in one fairway's log. A red nothing accounts for is a `park` for a person.
+Trunk can go red because of a check that `make verify` never ran. For this reason, the last four kinds are
+in the harbour log and not in one fairway's log. If nothing explains a red trunk, the harbourmaster writes a
+`park` for a person.
 
 ---
 
 ## What a `parked` owes
 
-A `parked` line owes a `cleared` receipt in the harbour log, and the receipt's identity is the **fairway
-plus the original park's timestamp** — never a later heartbeat, and never another fairway's park. The
-fairway's wait clock runs until that receipt arrives.
+Each `parked` line needs a `cleared` receipt in the harbour log. The receipt names two things: the
+**fairway, and the timestamp of the original park**. A later heartbeat does not count, and another
+fairway's park does not count. The fairway's wait clock runs until that receipt arrives.
 
-That is why the pair exists: a park answered by a line that did not name which park it answered would let
-one answer close two waits, and the second fairway would run on an answer nobody gave it.
+The receipt names the park for this reason: if an answer did not name which park it answered, one answer
+could close two waits. The second fairway would then continue on an answer that nobody gave it.
 
-**Two things write the receipt.** Both are the harbourmaster, because it is the only writer of the harbour
-log:
+**Two things cause the receipt to be written.** The harbourmaster writes it in both cases, because the
+harbourmaster is the only writer of the harbour log:
 
-- **A `told` after the park.** The board's answer box, `/cruise-tell` and `make cruise-tell` each write a
-  `told` line in the fairway's deck log. On each pass, the harbourmaster reads every deck log in full. For
-  each open park with a later `told` for the same fairway, it writes `cleared` with that park's timestamp.
-  `what` is the last such message. A second pass writes nothing, because the receipt has already closed
-  the park.
-- **`harbourmaster.py --clear <fairway>`**, typed by a person.
+- **A `told` line after the park.** The board's answer box, `/cruise-tell` and `make cruise-tell` each write
+  a `told` line in the fairway's deck log. On each pass, the harbourmaster reads every deck log in full. For
+  each open park that has a later `told` for the same fairway, it writes `cleared` with that park's
+  timestamp. `what` is the last such message. A second pass writes nothing, because the receipt has already
+  closed the park.
+- **`harbourmaster.py --clear <fairway>`**, which a person types.
 
-**An open park also stops the captain from being lit.** The harbourmaster lights a captain for that
-fairway again on the pass after the receipt.
+**While a park is open, the harbourmaster does not light a captain for that fairway.** It lights a captain
+for the fairway again on the pass after the receipt.
 
 ---
 
 ## Which machine this is
 
-One identity, derived and not chosen: the hostname's first label, lowercased, with everything outside the
-three alphabets it has to survive — a git ref component, a path component, an unquoted SQL identifier —
-folded to `_`, and capped at sixteen characters. It names the claim ref a captain takes, the harbour log
-this machine writes, and the database a berth allocates. `SLIPWAI_MACHINE` is the one place a name is
-typed, and it is typed once: two containers off one image share a hostname, and a shared database is where
-that is found out rather than said.
+Each machine has one identity. Slipwai works it out; nobody chooses it. The identity is the first label of
+the hostname, in lower case. Every character that is not safe in all three of these places becomes `_`:
+
+- a git ref component;
+- a path component;
+- an unquoted SQL identifier.
+
+The identity is at most sixteen characters long. It names three things: the claim ref that a captain takes,
+the harbour log that this machine writes, and the database that a berth allocates.
+
+`SLIPWAI_MACHINE` is the one place where a person types a name, and they type it once. Two containers made
+from one image share a hostname. Without `SLIPWAI_MACHINE`, the first sign of this would be a shared
+database, not a message.
 
 ---
 

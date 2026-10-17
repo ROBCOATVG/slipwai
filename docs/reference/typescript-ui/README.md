@@ -1,13 +1,13 @@
 # typescript-ui
 
-A quickstart: TypeScript, `codegraph`, `uipro` and `ux-gates`, with Event Modeling as the delivery
-foundation, a React browser app and Postgres behind the service. It is the kit one person assembles by hand
-every time they start a repository, written down once.
+This is a quickstart. It gives TypeScript, `codegraph`, `uipro` and `ux-gates`, with Event Modeling as the
+delivery foundation, a React browser app, and Postgres behind the service. It is the kit that one person
+puts together by hand each time they start a repository, written down once.
 
-**It is an example and it is not a default.** Nothing installs it, nothing offers it until you do, and no
-generation anywhere reaches for it. A default quickstart would be a default set of third-party extensions,
-and nobody asked this keel to choose those — `codegraph`, `uipro` and `ux-gates` are packages published by
-people who are not it. What this directory is for is to be read, copied and changed.
+**It is an example, and it is not a default.** The keel carries it, so the interview lists it. But the
+interview never selects it, and no generation uses it unless you ask. A default quickstart would be a
+default set of third-party extensions, and nobody asked this keel to choose those. `codegraph`, `uipro` and
+`ux-gates` are packages that other people publish. This directory is here for you to read, copy and change.
 
 ## Using it
 
@@ -17,12 +17,13 @@ slipwai quickstart show typescript-ui                 # what it would do, before
 slipwai generate bookings --quickstart typescript-ui
 ```
 
-`show` first, always. It prints every answer this quickstart would give and every extension it would elect,
-including that `codegraph` would be allowed to **refuse a search** — a guard the person who wrote this
-quickstart agreed to, which is carried so that nobody is asked the same question in every repository
-(13.4). If you would not have agreed to that, copy this file, take the `guards` line out, and use yours.
+Always run `show` first. It prints every answer that this quickstart would give, and every extension that
+it would elect. This includes the fact that `codegraph` would be allowed to **refuse a search**. That is a
+guard. The person who wrote this quickstart agreed to the guard. The quickstart carries the guard so that
+nobody is asked the same question in every repository (13.4). If you would not agree to the guard, copy
+this file, remove the `guards` line, and use your copy.
 
-Every answer it gives is a flag you could have typed, and a flag you do type wins:
+Every answer that the quickstart gives is a flag that you could have typed. A flag that you do type wins:
 
 ```sh
 slipwai generate bookings --quickstart typescript-ui --profile standard
@@ -30,14 +31,15 @@ slipwai generate bookings --quickstart typescript-ui --profile standard
 
 ## Changing it
 
-Copy the directory, edit `quickstart.json`, and keep it beside your own repository — `--quickstart
-<a path>` reads one where it lies, so a team's own never has to be installed anywhere. The rule the keel
-holds it to is that packages are named by **range**: a quickstart that pinned `==1.4.2` would hold
-everyone who used it to the afternoon it was written.
+Copy the directory and edit `quickstart.json`. Keep it beside your own repository. `--quickstart <a path>`
+reads a quickstart where it is, so a team's own quickstart never needs to be installed anywhere.
+
+The keel holds a quickstart to one rule: it names packages by version **range**. A quickstart that pinned
+`==1.4.2` would hold everybody who used it to the afternoon that it was written.
 
 ## Publishing it
 
-It is a package, so the publisher's verbs are the ones you already know:
+A quickstart is a package, so you publish it with the same verbs as any package:
 
 ```sh
 slipwai package check docs/reference/typescript-ui
@@ -45,5 +47,5 @@ slipwai package release docs/reference/typescript-ui
 slipwai package register docs/reference/typescript-ui --channel <a channel checkout>
 ```
 
-Registered in a channel, `slipwai search --kind quickstart` lists it beside the languages, and
+After it is registered in a channel, `slipwai search --kind quickstart` lists it beside the languages, and
 `slipwai quickstart install typescript-ui` fetches it.

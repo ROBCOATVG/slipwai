@@ -1,18 +1,21 @@
 # A second person joins
 
-One person driving one slice at a time needs none of this page. Two do, and so does one person running two
-agents — the problem is the same either way: **two workers in one repository, and nobody waiting on
-anybody's branch.**
+If one person drives one slice at a time, that person does not need this page. Two people do need it. One
+person who runs two agents also needs it. The problem is the same in both cases: **two workers in one
+repository, and nobody waits for anybody's branch.**
 
 ---
 
 ## The fairway, not the branch
 
-A **fairway** is one bounded context's slices. It owns a set of paths, one worker at a time, and it is the unit everything
-on this page is about — the board has a row per fairway, the logs have a file per fairway, and the scope
-gate is enforced per fairway.
+A **fairway** is the slices of one bounded context. A fairway owns a set of paths, and one worker holds it
+at a time. Everything on this page is about the fairway:
 
-The chart said what each one owns:
+- the board has one row for each fairway
+- the logs have one file for each fairway
+- the scope gate checks each fairway separately
+
+The chart says what each fairway owns:
 
 ```yaml
 fairways:
@@ -27,18 +30,20 @@ $ make check-slice-scope
 check-slice-scope: slice/BOK-01 touches only what one slice may
 ```
 
-A branch that writes outside its fairway is refused by the gate, by name, with the fairway that owns the
-path it touched. Not as etiquette — as a gate, because the first attempt relied on etiquette and two agents
-rewrote each other's adapter inside an hour.
+If a branch writes outside its fairway, the gate refuses it. The refusal names the path and the fairway
+that owns that path. This is a gate, not a convention. The first attempt relied on a convention, and two
+agents rewrote each other's adapter within an hour.
 
 ## Why neither of you is waiting
 
-This is the part worth slowing down for, because it is the thing version 2 changed.
+Read this part slowly. It is the thing that version 2 changed.
 
-`BOK-01` is in the `booking` fairway and sets `BookingHeld`. `AVA-01` is in `availability` and steers by it.
-The old answer was: `AVA-01` waits for `BOK-01` to merge. The new answer is that **`AVA-01` is cleared the
-moment the mark is set**, which happens at `BOK-01`'s first stage, in its own worktree, before anything has
-merged anywhere:
+`BOK-01` is in the `booking` fairway and sets `BookingHeld`. `AVA-01` is in `availability` and steers by
+`BookingHeld`.
+
+- The old rule: `AVA-01` waits for `BOK-01` to merge.
+- The new rule: **`AVA-01` is cleared as soon as the mark is set.** `BOK-01` sets the mark at its first
+  stage, in its own worktree, before anything has merged anywhere:
 
 ```console
 $ slipwai fleet booking
@@ -57,19 +62,19 @@ clearance: 2 of 3 slices start now in booking (slots: 3)
   done   BOK-01  — merged at a1b2c3d4
 ```
 
-**Read the second line, and then the last one.** The mark was set one second after the slice was claimed.
-Nothing reached trunk until ten seconds later, and `AVA-01` was cleared by line two — eight seconds and four
-rungs before the thing it steers by existed anywhere but in one worktree.
+**Read the second line, and then the last line.** The mark was set one second after the slice was claimed.
+Nothing reached trunk until ten seconds later. `AVA-01` was cleared by line two. That was eight seconds and
+four rungs before `BookingHeld` existed anywhere except in one worktree.
 
-It is safe because of the rule the chart enforces: **one setter per mark**. `BookingHeld` has exactly one
-owner and one typed definition, so a second fairway building against it cannot be building against a
-different one. If two slices both claimed to set it, `make check-chart` would have refused the chart before
-either started.
+This is safe because of the rule that the chart enforces: **each mark has one setter**. `BookingHeld` has
+exactly one owner and one typed definition. So a second fairway that builds against it cannot build against
+a different definition. If two slices both claimed to set it, `make check-chart` would have refused the
+chart before either slice started.
 
 ## Berths: how a worker is given a place to work
 
-A **berth** is a worktree with a branch and a name. The second person does not clone anything or negotiate
-anything:
+A **berth** is a worktree with a branch and a name. The second person does not clone anything and does not
+negotiate anything:
 
 ```console
 $ slipwai fleet
@@ -80,35 +85,39 @@ berths: 2
   booking       booking  BOK-02  working  0        12s ago    84      1       1
 ```
 
-Each berth is a separate working directory on the same repository, so two gates can run at once without
-one `node_modules` or one database file being fought over.
+Each berth is a separate working directory on the same repository. So two gates can run at the same time,
+and they do not compete for one `node_modules` or one database file.
 
 ## Taking a fairway
 
-Neither of you picks a slice. `/sail` bare already takes every ready slice of every fairway nobody holds,
-so two people running it take different work without agreeing anything — the claim is the `slice/<id>`
-branch, and a slice somebody has claimed is one the other leaves.
+Neither of you picks a slice. `/sail` with no arguments already takes every ready slice of every fairway
+that nobody holds. So two people who both run it take different work, and they do not need to agree
+anything. The claim is the `slice/<id>` branch. When somebody has claimed a slice, the other person leaves
+it.
 
-Where you do want to divide the fairways, name one:
+If you do want to divide the fairways between you, name one:
 
 ```
 /sail fairway=booking
 ```
 
-That confines the ready set to `booking`; the other fairways' ready slices are named as another fairway's
-and left. To say it durably, take the fairway:
+This limits the ready set to `booking`. `/sail` names the ready slices of the other fairways as another
+fairway's, and leaves them. To make the division last, take the fairway:
 
 ```sh
 python3 scripts/agents/claims.py --take booking    # and --release when you are done with it
 ```
 
-That is a push of `refs/slipwai/claims/booking` which a second taker cannot win, so the second machine to
-try is told who holds it and since when rather than both of you appending to one deck log. A captain does
-exactly this before it claims a slice, and the split's `held_by` column is **rendered** from those refs —
-you never type a name into it, and `make check-rendered` refuses a split where somebody has. It is still
-**routing rather than a lock**: the claim on the work itself is the `slice/<id>` branch, so two sessions on
-one fairway are two claims and the second finds the first. A harbour with no `origin` shows `—` in the
-column and says the claim is local to that machine, because a claim nobody else can see routes nobody.
+This pushes `refs/slipwai/claims/booking`. A second person cannot win that push. So the second machine that
+tries is told who holds the fairway and since when. Without this, both of you would append to one deck log.
+
+- A captain does exactly this before it claims a slice.
+- The split's `held_by` column is **rendered** from those refs. You never type a name into it, and
+  `make check-rendered` refuses a split where somebody has.
+- The claim is still **routing, not a lock**. The claim on the work itself is the `slice/<id>` branch. So
+  two sessions on one fairway make two claims, and the second session finds the first.
+- A harbour with no `origin` shows `—` in the column, and says that the claim is local to that machine. A
+  claim that nobody else can see does not route anybody.
 
 ## The board
 
@@ -138,23 +147,27 @@ last lines
   2026-10-07T16:11:55Z  harbour    mark-set
 ```
 
-**Read the first block first.** "Waiting on you" is the only part of the board that is about you; everything
-under it is the run reporting on itself.
+**Read the first block first.** "Waiting on you" is the only part of the board that is about you.
+Everything below it is the run reporting on itself.
 
-**The board keeps no state.** Every column is computed from the logs each time it is drawn. Nothing writes
-a status field anywhere, which is deliberate and is the correction of two specific failures: a runner that
-was the single source of status and died at iteration two while twenty slices went on merging, and a model
-file that said `planned` for eight slices that had shipped, because the field was written at plan time and
-never reconciled. **A stage that wrote no line made no progress** — that sentence is the whole design, and
-it is only true if nothing but the logs is ever consulted.
+**The board keeps no state.** The board calculates every column from the logs each time it draws them.
+Nothing writes a status field anywhere. This is deliberate. It corrects two specific failures:
 
-`stalled` above is that rule being honest: those two captains had written nothing for sixteen hours, so the
-board says so rather than guessing.
+- In the first attempt, a runner was the only source of status. It stopped at iteration two, and twenty
+  slices continued to merge.
+- A model file said `planned` for eight slices that had shipped. The field was written at plan time and
+  never corrected.
+
+**A stage that wrote no log line and made no commit made no progress.** This rule is the whole design. It
+is only true if the board reads nothing except the logs and git.
+
+`stalled` above is the rule at work. Those two captains had written nothing for sixteen hours, so the board
+says so. It does not guess.
 
 ## One stream's log
 
-The board always provokes the same question — *what is `billing` actually doing?* — and cannot answer it,
-because the answer is forty lines of one file. So:
+The board always makes people ask the same question: *what is `billing` actually doing?* The board cannot
+answer it, because the answer is forty lines of one file. So use this:
 
 ```console
 $ slipwai fleet ordering
@@ -170,13 +183,13 @@ ordering: the last 9 line(s) its captain wrote
   2026-10-07T16:11:55Z  asked to merge: merge slice/ORD-02 into trunk after the full gate
 ```
 
-Its own log, said a line at a time, in English. Each fairway writes only its own file and nothing else
-writes it, which is why two workers never conflict on a log and why the board can be folded from all of
-them without a lock.
+This is the fairway's own log, told one line at a time, in English. Each fairway writes only its own file,
+and nothing else writes that file. This is why two workers never conflict on a log, and why the board can
+combine all the logs without a lock.
 
 ## Answering from one seat
 
-When a run is going, you do not want two terminals and a board you have to re-run:
+While a run is going, you do not want two terminals and a board that you must run again:
 
 ```console
 $ slipwai bridge
@@ -185,14 +198,16 @@ bridge: http://127.0.0.1:8099  — ctrl-c to stop
 
 ![The bridge: what is waiting on a person, the streams, the speed](../captures/bridge.png)
 
-What is waiting on a person is at the top, and an answer typed there becomes a line in that stream's own
-log — the same line the agent would have got in a terminal. It binds the loopback address only, because the
-page changes what a run does and a default that put that on a shared network would be wrong once and then
-permanently.
+The items that wait for a person are at the top. When you type an answer there, the answer becomes a line
+in that stream's own log. It is the same line that the agent would get in a terminal.
+
+The page binds only to the loopback address. The page changes what a run does, so it must not be on a
+shared network by default.
 
 ## Next
 
-→ **[Let it cruise](let-it-cruise.md)** — captains, the telegraph, and what a person still decides.
+→ **[Let it cruise](let-it-cruise.md)**: captains, the telegraph, and the decisions that a person still
+makes.
 
 Other pages: [start here](start-here.md) · [your first feature](first-feature.md) ·
 [bring an existing codebase](adopt.md) · [the vocabulary](../../GLOSSARY.md)

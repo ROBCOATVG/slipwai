@@ -1,40 +1,61 @@
 # Bring an existing codebase
 
-Everything so far started from `slipwai generate`. Most code does not. This page is the other door: you
-have a repository with history, tests of uneven quality and a deploy somebody understands, and you want the
-method around it without a rewrite.
+The pages before this one started from `slipwai generate`. Most code does not start that way. This page is
+the other way in. You have a repository with history, tests of uneven quality, and a deploy that somebody
+understands. You want the method around it, without a rewrite.
 
 ```sh
 cd your-repository
 slipwai adopt
 ```
 
-It adds the method **beside** your code. Nothing of yours is written over. The one thing it will not do is
-start: a directory that is not a Git repository is refused — `git init` is day zero, not a workaround — as
-is an unclean tree, and a repository that already has a `project.json` (that one is `slipwai migrate`).
+`slipwai adopt` adds the method **beside** your code. It writes over nothing of yours. It refuses to start in
+these cases:
+
+- The directory is not a Git repository. `git init` is the first step, not a workaround.
+- The tree is not clean.
+- The repository already has a `project.json`. For that repository, use `slipwai migrate`.
 
 ---
 
 ## It is two halves: survey, then wrap
 
-**The survey reads your repository and writes down what it found**, not what it would have chosen: which
-directories are buildable, what language each is in, how it is tested, where the database lives, which
-forge you use, how a release happens today. Every row of that record carries its **provenance** —
-`detected` is the tree's reading, `confirmed` and `overridden` are a person's word, and only the last two
-count as answered.
+**The survey reads your repository and writes down what it found.** It does not write down what it would
+have chosen. It records:
 
-That distinction is the whole design. A tool that silently treats its own guess as your decision is a tool
-that has adopted a repository nobody agreed to.
+- which directories can be built
+- the language of each directory
+- how each directory is tested
+- where the database is
+- which forge you use
+- how a release happens today
 
-**The wrap** then installs the gate, CI for it, the skills and commands, the agent projections, the
-documentation and a `project.json` holding the record — as one commit by the keel, which is how `replay`
-finds its base next time.
+Every row of that record has a **provenance**, which says where the answer came from:
+
+- `detected` means the survey read it from the tree.
+- `confirmed` and `overridden` mean that a person gave the answer.
+
+Only `confirmed` and `overridden` count as answered.
+
+That difference is the whole design. If a tool silently treats its own guess as your decision, it has
+adopted a repository in a way that nobody agreed to.
+
+**The wrap** then installs these things:
+
+- the gate, and CI for the gate
+- the skills and commands
+- the agent projections
+- the documentation
+- a `project.json` that holds the record
+
+The keel makes all of this as one commit. This is how `replay` finds its starting point next time.
 
 ## Where am I?
 
-The report at the end of an adoption names a sequence that spans days and four tools, and it is printed
-once, into a terminal, at the end of the longest output the command produces. It scrolls away. So the
-sequence is not remembered — it is **derived**, every time, from marks in the tree:
+At the end of an adoption, the report names a sequence of steps. The sequence takes days and uses four
+tools. The report prints once, into a terminal, at the end of the longest output that the command makes. It
+scrolls away. So slipwai does not remember the sequence. It **works out** the sequence each time, from marks
+in the tree:
 
 ```console
 $ slipwai adopt --next
@@ -55,9 +76,15 @@ $ slipwai adopt --next
         baseline; commit baseline.json
 ```
 
-Every step is read off the tree: Spec Kit writes `.specify/integration.json`, the first gate run writes the
-ratchet baseline, `/ground` moves a row's provenance off `detected`, a strategy is an accepted ADR. So the
-answer to "where was I" is a command rather than a scrollback search, and it is as right as the tree is.
+Each step is read from the tree:
+
+- Spec Kit writes `.specify/integration.json`.
+- The first gate run writes the ratchet baseline.
+- `/ground` moves a row's provenance off `detected`.
+- A strategy is an accepted ADR (architecture decision record).
+
+So "where was I?" is answered by a command, not by a search of your scrollback. The answer is as correct as
+the tree is.
 
 ## Confirming what is an application
 
@@ -68,14 +95,15 @@ slipwai adopt --decline tools        # a buildable directory that is not an appl
 slipwai adopt --as admin=admin-ui    # confirm it under a name of your own
 ```
 
-`/ground`, in the agent, is the same thing with the code in front of it and one question at a time. The
-gate refuses until at least one candidate is confirmed, because a delivery method wrapped around nothing is
-a set of files nobody runs.
+`/ground`, in the agent, does the same thing with the code in front of it, one question at a time. The gate
+refuses to run until you confirm at least one candidate. A delivery method around nothing is a set of files
+that nobody runs.
 
 ## The baseline, and the ratchet
 
-Your repository has lint findings and type errors in it today. The gate does not demand you fix them before
-you can use it — its first run records what is there as the **baseline** and then refuses anything *new*:
+Your repository has lint findings and type errors in it today. The gate does not make you fix them before
+you can use it. Its first run records what is there as the **baseline**. After that, it refuses anything
+*new*:
 
 ```console
 $ make verify
@@ -83,24 +111,24 @@ verify: baseline.json written — 412 lint findings and 86 type errors recorded 
 verify: all gates passed
 ```
 
-Commit it. From then on the number may fall and may not rise, and `make ratchet-tighten` is how you
-deliberately quarantine a red test suite rather than discovering it is being ignored.
+Commit the baseline. After that, the numbers can go down but cannot go up. To put a red test suite in
+quarantine on purpose, use `make ratchet-tighten`. Then the suite is not ignored without anybody knowing.
 
-**A red test suite stops the run and says so.** It is not baselined away silently, because tests that were
-already failing when you arrived are the single most common thing a brownfield adoption quietly inherits
-and then builds on.
+**A red test suite stops the run, and the run says so.** The baseline does not hide it. Tests that already
+fail when you arrive are the thing that a brownfield adoption most often inherits without noticing, and
+then builds on.
 
 ## Where the work goes
 
-An adopted repository has no event model and often no clean bounded contexts. That is fine, and it is why
-the **standard profile** exists — the chart is written by `/chart` with a person present rather than
-rendered from a model, and everything downstream of it is identical. Fairways, marks, clearance, berths,
-captains, the telegraph, the demo stop: all the same.
+An adopted repository has no event model, and often has no clean bounded contexts. That is acceptable. It
+is the reason for the **standard profile**. On the standard profile, `/chart` writes the chart with a person
+present. The chart is not rendered from a model. Everything after the chart is identical: fairways, marks,
+clearance, berths, captains, the telegraph and the demo stop.
 
-The honest limit: fairways are only worth drawing where your code has seams. If one directory holds
-everything, you have one fairway, and this becomes a well-gated single-worker loop — which is still worth
-having, but it is not two people not waiting on each other. `skills/finding-seams/SKILL.md` is about
-getting from the first state to the second, a slice at a time.
+There is a limit. Fairways are useful only where your code has seams. If one directory holds everything, you
+have one fairway. You then get a well-gated loop for a single worker. That is still useful, but it does not
+let two people work without waiting for each other. `skills/finding-seams/SKILL.md` describes how to get
+from one fairway to more, one slice at a time.
 
 ## Keeping the record honest
 
@@ -108,16 +136,17 @@ getting from the first state to the second, a slice at a time.
 slipwai adopt --refresh
 ```
 
-Surveys again, refreshes what was only detected, and **reports what now disagrees with what a person
-decided** — rather than overwriting their answer with a fresh guess. That is the same rule as the gate and
-the board: a derived reading never silently replaces somebody's word.
+This surveys the repository again and refreshes the answers that were only detected. It then **reports
+where the tree now disagrees with what a person decided**. It does not write over the person's answer with a
+new guess. The gate and the board follow the same rule: a calculated reading never silently replaces a
+person's answer.
 
 ## Next
 
-You are now where [your first feature](first-feature.md) begins. Everything from `/chart` onwards is the
-same on both doors.
+You are now at the point where [your first feature](first-feature.md) starts. From `/chart` onwards,
+everything is the same for both ways in.
 
-[The adopt runsheet](runsheet-adopt.md) is this page as a checklist, every step in order.
+[The adopt runsheet](runsheet-adopt.md) is this page as a checklist, with every step in order.
 
 Other pages: [start here](start-here.md) · [a second person joins](a-second-person.md) ·
 [let it cruise](let-it-cruise.md) · [the vocabulary](../../GLOSSARY.md)

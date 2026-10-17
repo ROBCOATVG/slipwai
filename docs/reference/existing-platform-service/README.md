@@ -1,12 +1,13 @@
 # existing-platform-service
 
-A quickstart: Go, Postgres, Keycloak, and a target that provisions nothing. It is the kit somebody assembles
-by hand for the second, fifth or fortieth service on a platform that was there before this repository was —
-somebody else owns the cluster, somebody else owns the database, somebody else owns the login, and the only
-job here is to fit in.
+This is a quickstart. It gives Go, Postgres, Keycloak, and a target that provisions nothing. It is the kit
+that somebody puts together by hand for the second, fifth or fortieth service on a platform that existed
+before this repository. Somebody else owns the cluster. Somebody else owns the database. Somebody else owns
+the login. The only job here is to fit in.
 
-**It is an example and it is not a default.** Nothing installs it, nothing offers it until you do, and no
-generation anywhere reaches for it. What this directory is for is to be read, copied and changed.
+**It is an example, and it is not a default.** The keel carries it, so the interview lists it. But the
+interview never selects it, and no generation uses it unless you ask. This directory is here for you to
+read, copy and change.
 
 ## Using it
 
@@ -16,52 +17,57 @@ slipwai quickstart show existing-platform-service                 # what it woul
 slipwai generate payments --quickstart existing-platform-service
 ```
 
-`show` first, always. Unlike the two cloud quickstarts beside it, this one needs no target installed: nothing
-has to be fetched before it can be carried out.
+Always run `show` first. This quickstart is different from the two cloud quickstarts beside it: it needs no
+target installed. Nothing has to be fetched before you can use it.
 
 ## What it answers, and why
 
 | Answer | Why this one |
 |---|---|
-| `profile event-modelling` | A service joining a platform is a service other teams will integrate with, and the log is the contract they can read without asking this one. That is what keeps a slice a slice when the people writing the next one do not sit here |
-| `target existing` | **The point of this quickstart.** This project deploys to infrastructure it does not own: whatever runs it is described in `docs/deployment.md` and provisioned by nobody here. `make verify` is the gate and the factory deploys nothing. The alternative — naming a cloud and generating OpenTofu for a cluster that already exists and is already owned — would produce a repository that fights the platform team on its first pull request |
-| `language go` | One static binary in a container, which is the shape a platform that already exists almost always wants put into it |
-| `frontend none` | The screens, if there are any, belong to something already on the platform. This service answers HTTP |
-| `write-model events` | The log is the truth. See below — it is the one answer here that cannot be walked back |
-| `persistence postgres` | The database the platform already runs. Under `existing` nothing is provisioned, so this is a connection string the platform team hands over, not a server anybody stands up |
-| `auth keycloak` | The login the platform already has. Self-hosted OIDC, with the container and the group mapping scaffolded so `make verify` has an issuer of its own to run against — the real one is wherever the platform keeps it. `cognito` and `entra` are not offered under `existing`, because they are provisioned by a target that is provisioning nothing here |
-| `users none` | The public, if this product has one, signs up somewhere that already exists. A service joining a platform does not bring its own sign-up |
+| `profile event-modelling` | Other teams will integrate with a service that joins a platform. The log is the contract that they can read without asking this service. That keeps a slice a slice when the people who write the next slice do not sit here |
+| `target existing` | **This is the point of the quickstart.** The project deploys to infrastructure that it does not own. `docs/deployment.md` describes what runs the service, and nobody here provisions it. `make verify` is the gate, and the factory deploys nothing. The alternative is to name a cloud and generate OpenTofu for a cluster that already exists and has an owner. That repository would fight the platform team on its first pull request |
+| `language go` | One static binary in a container. An existing platform almost always wants this shape |
+| `frontend none` | If there are screens, they belong to something that is already on the platform. This service answers HTTP |
+| `write-model events` | The log is the truth. See below: this is the one answer here that you cannot change back |
+| `persistence postgres` | The database that the platform already runs. Under `existing`, nothing is provisioned. So this is a connection string that the platform team gives you, not a server that anybody starts |
+| `auth keycloak` | The login that the platform already has: self-hosted OIDC. The container and the group mapping are scaffolded, so `make verify` has its own issuer to run against. The real issuer is wherever the platform keeps it. `cognito` and `entra` are not offered under `existing`, because a target provisions them, and this target provisions nothing |
+| `users none` | If this product has a public, the public signs up somewhere that already exists. A service that joins a platform does not bring its own sign-up |
 
-**`write-model` is the one `./init` can never change afterwards.** The other axes are prunable — a project
-can drop Postgres for the in-memory adapter, and pruning only ever subtracts — but the rung cannot be walked
-back. `state` on a service that has been keeping a log does not take an adapter away, it declares the history
-on disk is no longer the truth, which is a migration somebody writes rather than a flag. On a platform where
-other teams will come to read this service's log, that is a decision worth having made correctly once.
+**`write-model` is the one answer that `./init` can never change later.** You can prune the other axes. For
+example, a project can drop Postgres for the in-memory adapter, and pruning only removes things. But you
+cannot change the rung back. On a service that has kept a log, changing to `state` does not only remove an
+adapter. It declares that the history on disk is no longer the truth. That needs a migration that somebody
+writes. It is not a flag. On a platform where other teams will read this service's log, it is important to
+make this decision correctly once.
 
 ## What it does not decide
 
-- **The project's name and the service's name.** The two answers nobody else can give.
+- **The project's name and the service's name.** Nobody else can give these two answers.
 - **Anything about the platform itself.** There is no deployment size question here, because `existing`
-  provisions nothing to size. What the service needs from whoever owns the runtime goes in
-  `docs/deployment.md`, which is generated for somebody to fill in rather than for this quickstart to guess.
-- **Any extension.** An extension is a third-party package; a platform team's own tooling is theirs to
-  elect, and this quickstart elects none.
+  provisions nothing to size. Write what the service needs from the owner of the runtime in
+  `docs/deployment.md`. The keel generates that file for somebody to fill in. This quickstart does not guess
+  its contents.
+- **Any extension.** An extension is a third-party package. A platform team elects its own tooling, and
+  this quickstart elects none.
 
 ## It is a default, never an override
 
-Every answer above is a flag you could have typed, and a flag you do type wins:
+Every answer above is a flag that you could have typed. A flag that you do type wins:
 
 ```sh
 slipwai generate payments --quickstart existing-platform-service --auth none
 ```
 
-The transcript prints every answer the quickstart gave and marks the ones that were yours.
+The transcript prints every answer that the quickstart gave, and marks the answers that were yours.
 
 ## Changing it
 
-This is the one most likely to become a team's own: a platform has one login, one database and one shape of
-service, and those are three answers worth settling once for everybody who joins it. Copy the directory, edit
-`quickstart.json`, and keep it beside the platform's own repository — `--quickstart <a path>` reads one where
-it lies, so it never has to be installed anywhere. Packages are named by **range**, never by pin: one that
-named `==1.4.2` would hold everyone who used it to the afternoon it was written. It is a package like any
-other, and [`typescript-ui/`](../typescript-ui/README.md) states the publisher's verbs once.
+This is the quickstart that is most likely to become a team's own. A platform has one login, one database
+and one shape of service. It is worth settling those three answers once, for everybody who joins the
+platform.
+
+Copy the directory and edit `quickstart.json`. Keep it beside the platform's own repository.
+`--quickstart <a path>` reads a quickstart where it is, so it never needs to be installed anywhere. Packages
+are named by version **range**, never by an exact pin. A quickstart that named `==1.4.2` would hold
+everybody who used it to the afternoon that it was written. A quickstart is a package like any other, and
+[`typescript-ui/`](../typescript-ui/README.md) lists the publisher's verbs.

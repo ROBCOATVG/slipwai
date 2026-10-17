@@ -1,8 +1,9 @@
 # Runsheet: generate a new project
 
-**The whole life of a generated repository as one list of steps, in order** — from an empty machine to a
-fleet cruising, and on through every slipwai release after it. Each step says where you type it and how
-you know it worked. The reasoning is on the guide pages each phase links to; this page is the sequence.
+**This page lists every step in the life of a generated repository, in order.** It starts from an empty
+machine, goes to a fleet that cruises, and continues through every slipwai release after that. Each step
+says where you type it and how you know that it worked. This page gives the sequence. The guide pages that
+each phase links to give the reasons.
 
 Where you type each command:
 
@@ -10,8 +11,8 @@ Where you type each command:
 - **agent** — a session of your coding agent (Claude Code, Codex, Cursor, …) opened at the repository root
 - **board** — the page `slipwai` opens, served from this machine only
 
-Slash commands are written the way Claude Code spells them. Codex takes them as skills, so `/sail` is
-`$sail` there.
+Slash commands are written as Claude Code spells them. Codex takes them as skills, so in Codex `/sail` is
+`$sail`.
 
 ---
 
@@ -20,17 +21,17 @@ Slash commands are written the way Claude Code spells them. Codex takes them as 
 | # | Where | Command | Done when |
 |---|---|---|---|
 | 0.1 | terminal | `uv tool install slipwai` | `slipwai --version` prints a version |
-| 0.2 | terminal | `git --version`, `python3 --version` | Git is installed, and Python is 3.10 or newer |
+| 0.2 | terminal | `git --version`, `python3 --version` | Git is installed, and Python is 3.11 or newer |
 | 0.3 | terminal | `slipwai install typescript` (or `python`, `go`, `java-spring`, …) | it names the package, its version and its publisher; `slipwai search` lists it as `installed` |
 | 0.4 | terminal | `slipwai bridge install` — optional | the board is up whenever you log in, and your browser offers to put it in the dock |
 
-- **0.1.** `pipx install slipwai` and `pip install --user slipwai` work too, and the releases page has a
+- **0.1.** `pipx install slipwai` and `pip install --user slipwai` also work. The releases page also has a
   standalone executable that needs only Git.
-- **0.3.** The keel knows no languages; the chandlery has them. The first install from a publisher you have
-  not met asks once. `slipwai search postgres` searches what packages *answer*, not their names.
-  [Start here](start-here.md#2-get-a-language).
-- **0.4.** A login service for your own account — launchd, systemd user unit, or the Startup folder — and
-  no root. `slipwai bridge uninstall` removes it.
+- **0.3.** The keel knows no languages. The chandlery has them. The first time that you install from a new
+  publisher, the command asks you to confirm that publisher, once. `slipwai search postgres` searches what
+  packages *answer*, not their names. See [start here](start-here.md#2-get-a-language).
+- **0.4.** This installs a login service for your own account: launchd, a systemd user unit, or the Startup
+  folder. It does not need root. `slipwai bridge uninstall` removes it.
 
 ---
 
@@ -44,20 +45,22 @@ Slash commands are written the way Claude Code spells them. Codex takes them as 
 | 1.4 | terminal | `make verify` | it ends with `verify: all gates passed` |
 | 1.5 | terminal | `git add -A && git commit -m "Install Spec Kit"` | `git status` is clean |
 
-- **1.1: the questions.** A quickstart first — six are carried, `slipwai quickstart list` names them —
-  then Event Modeling, the production target, the language, the service and its contexts, the browser
-  app, the write model, persistence, who signs in, and where the project goes. Enter takes every default.
-  [Start here](start-here.md#3-generate-the-repository) has the whole transcript and what each answer
-  costs to change later; **the write model is the one that cannot be walked back**.
-- **1.1: from a document.** The last two questions take a requirements document, or the folder it sits in
-  (`--prd <file>`, `--brief <dir>`). It is copied in as `docs/prd.md`, and on the board the first
-  specification is drafted from it for you — Phase 2 then starts at 2.3.
-- **1.1: for scripts and CI.** Every answer is a flag: `slipwai generate bookings --quickstart
-  laptop-trial`, or the axes one by one. `slipwai generate --help` lists them. The flag form does not run
-  `./init` unless given `--init`.
-- **1.3: extensions.** `./init` offers the extensions installed on this machine; the board asks the same
-  thing as *Dev tooling* checkboxes. `./init --extension <key>` adds one later. [Extensions](../extensions.md).
-- **1.5.** `./init` writes its files and does not commit them.
+- **1.1: the questions.** The questions come in this order: a quickstart (six are included, and
+  `slipwai quickstart list` names them), Event Modeling, the production target, the language, the service
+  and its contexts, the browser app, the write model, persistence, who signs in, and where the project
+  goes. Press Enter to take every default. [Start here](start-here.md#3-generate-the-repository) has the
+  whole transcript, and says what each answer costs to change later. **You cannot reverse the write
+  model.**
+- **1.1: from a document.** The last two questions take a requirements document, or the folder that
+  contains it (`--prd <file>`, `--brief <dir>`). The command copies the document in as `docs/prd.md`. On
+  the board, the first specification is then drafted from it for you, and Phase 2 starts at 2.3.
+- **1.1: for scripts and CI.** Every answer is also a flag: for example,
+  `slipwai generate bookings --quickstart laptop-trial`, or each axis one by one.
+  `slipwai generate --help` lists the flags. The flag form does not run `./init` unless you give `--init`.
+- **1.3: extensions.** `./init` offers the extensions that are installed on this machine. The board asks the
+  same thing as *Dev tooling* checkboxes. `./init --extension <key>` adds an extension later. See
+  [extensions](../extensions.md).
+- **1.5.** `./init` writes its files, but does not commit them.
 
 ---
 
@@ -73,24 +76,29 @@ Slash commands are written the way Claude Code spells them. Codex takes them as 
 | 2.6 | terminal *or* board | `make chart && make check-chart` — or **Continue the build** | `check-chart` passes: every mark typed, one setter each |
 | 2.7 | agent | `/sail` | the first slice reaches its demo and asks you to accept it |
 
-- **2.1: why it starts here.** `/sail` works out the stage from what is on disk, and an unratified
-  constitution is the first thing missing. Everything later is judged against it.
-- **2.3: what `/sail` runs.** `/speckit-clarify`, then `/speckit-checklist` beside the find-gaps survey,
-  then `/gaps` with you. Each question answered now costs a sentence; later it costs a slice.
-- **2.6: standard profile.** There is no model to render from, so `/chart` writes the chart with you.
-- **2.7: per slice.** Clearance, the claim, the example map, plan and tasks, `/speckit-analyze`, then
-  RED-GREEN-REFACTOR one increment at a time, the examples proven by tests, a review of the slice's own
-  diff, its trigger record, and the merge. Once a capability's last slice has merged, its gates — converge,
-  gaps, design review, adversary where a slice widened a trigger, mutation, the hand's walk — run once, then
-  its demo.
-  [Your first feature](first-feature.md) walks every stage, and
-  [from the board](first-feature.md#from-the-board) is the same ladder from the Voyage tab.
+- **2.1: why it starts here.** `/sail` finds the stage from the files on disk. An unratified constitution
+  is the first thing that is missing. Every later stage is judged against the constitution.
+- **2.3: what `/sail` runs.** First `/speckit-clarify`. Then `/speckit-checklist` and the find-gaps survey,
+  side by side. Then `/gaps`, with you. A question that you answer now costs a sentence. Later, it costs a
+  slice.
+- **2.4 to 2.6: on the board.** By default, the specification, the storyboard and the model each stop for
+  you. On the **Who answers** settings tab, set *The specification, storyboard and model* to **advance on
+  their own** to let the board start each next step itself. See [the board](the-board.md).
+- **2.6: standard profile.** There is no model to render the chart from, so `/chart` writes the chart with
+  you.
+- **2.7: per slice.** Each slice goes through clearance, the claim, the example map, plan and tasks, and
+  `/speckit-analyze`. Then it goes through RED-GREEN-REFACTOR one increment at a time, with the examples
+  proven by tests, a review of the slice's own diff, its trigger record, and the merge. When a capability's
+  last slice has merged, the capability's gates run once: converge, gaps, design review, adversary (where a
+  slice widened a trigger), mutation, and the hand's walk. Then its demo runs.
+  [Your first feature](first-feature.md) goes through every stage.
+  [From the board](first-feature.md#from-the-board) shows the same ladder from the Voyage tab.
 
-**Where am I?** None of these changes anything:
+**Where am I?** None of these commands changes anything:
 
-- `/where-are-we` in the agent, or the board's **Voyage** tab — which stage, and what proves it
-- `python3 scripts/agents/clearance.py` — which slices may start now, and what each blocked one waits on
-- `slipwai fleet` — every fairway's state, folded from the logs
+- `/where-are-we` in the agent, or the board's **Voyage** tab: which stage you are at, and what proves it
+- `python3 scripts/agents/clearance.py`: which slices can start now, and what each blocked slice waits for
+- `slipwai fleet`: the state of every fairway, calculated from the logs
 
 ---
 
@@ -102,7 +110,7 @@ Slash commands are written the way Claude Code spells them. Codex takes them as 
 | 3.2 | agent | answer yes, then go | Spec Kit's assessment has run and the next `specs/<feature>/spec.md` exists |
 | 3.3 | agent *or* board | `/sail` — or **Continue the next feature** | the new feature is on the ladder at Phase 2's step 2.3 |
 
-A further feature stays on the profile the project already has.
+A further feature uses the profile that the project already has.
 
 ---
 
@@ -114,8 +122,9 @@ A further feature stays on the profile the project already has.
 | 4.2 | agent | `/sail fairway=<name>` | you hold one fairway, and the others' ready slices are named and left |
 | 4.3 | terminal | `slipwai fleet` | both fairways are listed, each with its own slice |
 
-A slice is cleared the moment the mark it steers by is **set** — at the setting slice's first stage, in
-its own worktree — not when it merges. [A second person joins](a-second-person.md).
+A slice is cleared as soon as the mark that it steers by is **set**, not when that mark merges. The slice
+that owns the mark sets it at its first stage, in its own worktree. See
+[a second person joins](a-second-person.md).
 
 ---
 
@@ -127,12 +136,12 @@ its own worktree — not when it merges. [A second person joins](a-second-person
 | 5.2 | terminal | `slipwai telegraph slow-ahead` | `slipwai telegraph` shows the position; start slow |
 | 5.3 | terminal *or* board | `make cruise` — or **Cast off the fleet** | a harbourmaster and a captain per fairway are running, and the command has exited |
 | 5.4 | terminal *or* board | `slipwai fleet`, `make cruise-watch` — or the Voyage tab | lines arrive in the deck logs |
-| 5.5 | terminal *or* board | `make cruise-tell MSG="…"` — or the answer box on the waiting line | the captain writes a `read` line at its next boundary |
+| 5.5 | terminal *or* board | `make cruise-tell STREAM=<fairway> MSG="…"` — or the answer box on the waiting line | the captain writes a `read` line at its next boundary. A message to a parked fairway also clears the park |
 | 5.6 | terminal *or* board | `make cruise-stop` — or **Stop the fleet** | every captain parks at the end of the stage it is in |
 
-Three things still stop for a person: mock-up approval, the demo, and the decision ceiling. Speed, fine
-tune, who answers at each stop, delegation and models are the tabs of the board's **Settings** box, each
-written by the project's own scripts. [Let it cruise](let-it-cruise.md).
+Three things still stop for a person: mock-up approval, the demo, and the decision ceiling. The board's
+**Settings** box has a tab each for speed, fine tune, who answers at each stop, delegation and models. The
+project's own scripts write each setting. See [let it cruise](let-it-cruise.md).
 
 ---
 
@@ -147,13 +156,14 @@ written by the project's own scripts. [Let it cruise](let-it-cruise.md).
 | 6.5 | agent | `/catch-up` | it has worked through the catch-up and `make verify` passes |
 | 6.6 | terminal | `git push` | the gate in CI is green |
 
-- **6.4.** Every file slipwai wrote becomes what the new version writes for your answers; a file you
-  edited too meets the change in a three-way merge. `slipwai migrate --check` says what would happen, and
-  `slipwai replay` writes the new version beside the project instead of merging it.
-- **6.5: the upgrade is not done without it.** A merge moves files. `/catch-up` does what a merge cannot:
-  a gate that now judges older code, or a question the project still has to answer.
-- **From version 1.** The same steps. [What is new since version 1](../whats-new.md#crossing-a-project-slipwai-migrate)
-  says what the crossing costs.
+- **6.4.** Each file that slipwai wrote becomes what the new version writes for your answers. If you also
+  edited a file, your edit meets the change in a three-way merge. `slipwai migrate --check` says what would
+  happen. `slipwai replay` writes the new version beside the project, and does not merge it.
+- **6.5: the upgrade is not complete without this step.** A merge moves files. `/catch-up` does what a merge
+  cannot do. For example, a gate now judges older code, or the project still has a question to answer.
+- **From version 1.** Use the same steps.
+  [What is new since version 1](../whats-new.md#crossing-a-project-slipwai-migrate) says what the move
+  costs.
 
 ---
 

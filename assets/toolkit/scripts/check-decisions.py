@@ -27,7 +27,8 @@ an unwritten row is a pass that has to be run again, and until now nothing notic
   **Evidence**, **Feedback**; every **Evidence** path exists, beside the log or from the root, or is `none`;
 - every slice the ladder calls done — a row in `specs/<feature>/slices/README.md`, or `status: implemented` in
   `docs/event-model/model.yaml` — has a `## <slice-id> · …` row in `specs/<feature>/adversary-log.md`: the attack,
-  or the recorded skip, that `/adversary` writes after every acceptance. The model is the whole project's, so a
+  the recorded skip, or the deferral to its capability's pass (`… · deferred to capability <name>`), that
+  `/adversary` writes for every slice. The model is the whole project's, so a
   slice in it counts for the feature its `spec` or `gwt` path is under, or, naming none, the one holding
   `slices/<id>/`; an implemented slice no feature holds is noted, not charged to every feature.
 
@@ -235,8 +236,8 @@ def check_adversary_rows() -> list[str]:
         rows = set(re.findall(r"^## (\S+) · ", log.read_text(encoding="utf-8"), re.M)) if log.is_file() else set()
         for ident in sorted(done - rows):
             findings.append(f"{log.relative_to(ROOT).as_posix()}: no row for {ident}, which is done — `/adversary` runs "
-                            "after every acceptance and records the attack or the skip; an unwritten row is a pass "
-                            "that has to be run again")
+                            "for every slice and records the attack, the skip or the deferral to its capability; an "
+                            "unwritten row is a pass that has to be run again")
     return findings
 
 

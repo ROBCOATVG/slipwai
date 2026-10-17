@@ -516,6 +516,40 @@ and is scoped to a fairway.
     capability's demo is due. Where a flag exists it covers the same unit, which leaves theme E's rule
     unchanged: the demo follows the unit, and the flag follows the business.
 
+**Amended 2026-10-17: four readings move from the slice to the capability (items 2, 3, 8 and 10).** The
+warbook's feedback was that the design review from screenshots, the gaps check after code, the hand's walk,
+the adversary pass, converge and the review "should happen per stream PR point, not per slice". Version 2 has
+no stream pull request — the experiment's lesson was *no integration branches*, and a slice merges to trunk
+on its own — so the point those readings move to is the **capability whole**: its last slice merged, and the
+person's demo not yet run, which is where mutation already moved on 2026-10-14. What moves and what stays:
+
+- *Item 2.* The gaps trace after code runs once per capability, over its whole diff, not per slice after
+  converge. The pass before planning stays per slice. This is the completion audit the item names, scoped to
+  the capability rather than the fairway, because a fairway's capabilities are demoed one at a time.
+- *Item 3.* The adversary pass runs once per capability, in every release mode, over what the slices widened
+  together. A slice is attacked at its own rung only where it widened identity, authority or money, or is
+  given `--full`; any other slice records a row deferring to its capability. The careen's pass before the flag
+  is hoisted is unchanged.
+- *Item 8.* Review and refactor stay per slice, once over the slice's diff — a few hours of work read whole is
+  the cheapest reading the loop has, and over a capability's diff it would be diluted. It now follows the
+  slice's examples proven by tests rather than the hand's verdict.
+- *Item 10.* The hand no longer walks each slice. A slice's examples are proven by its own tests, recorded
+  against each example, and that record gates the push. The hand walks every example of the capability once,
+  in the running app, after the gaps trace, the design review from screenshots, the adversary pass and
+  mutation, and the person's demo follows the hand.
+- *Convergence* (not one of the items) stays per slice, two passes, and runs once more, first, over the whole
+  capability: against the specification and every slice's tasks under it, with the same bound, re-open rules
+  and level list, because slices that each converged alone can still disagree between them.
+
+Findings at or above the bar are fixed in a follow-up slice in the same fairway before the person's demo;
+below it they go to the careen; a `CRITICAL` is the next slice. The gates run in this order: converge, gaps,
+design review, adversary, mutation, the hand's walk. **Under the `open` release mode** — where a merge
+reaches the actor at once — the gaps trace, the design review and the walk stay per slice, every slice the
+adversary table owes is attacked and nothing defers, and the capability's converge, adversary pass and
+mutation still run. Under `keystone` the
+gates run on the capability's last slice before its merge, because that merge lights the entry point.
+`capability_gates.py` holds the rung; `specs/<feature>/capabilities/<capability>/gates.md` holds the record.
+
 **Done when.** Wall time and tokens per merged slice are half of the experiment's median. No slice merges with
 carried gaps. A person's demo stops per feature are the number of capabilities, not the number of slices.
 

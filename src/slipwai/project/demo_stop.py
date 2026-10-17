@@ -52,20 +52,23 @@ project's own styles — `docs/design.md`, or the design notes in the constituti
 the slice needs something those do not cover, the baseline stylesheet and design tokens in {baseline} extended
 rather than bypassed. A screen still on browser defaults is a reason not to demo yet: the actor is being asked
 whether the thing works, and an unstyled page answers a different question first. `tasks.md`'s
-`## Design review` is where that was checked: a `Designed:` and a `Reviewed:` line for every screen, the
-review read from screenshots against `skills/web-interface-guidelines` and every finding fixed or given its
-reason. A screen missing either line goes back to the rung that writes it rather than to the actor. Record both
-checks with the others, naming the screens, where their styles came from, and what the review found.
+`## Design review` in each slice's `tasks.md` holds a `Designed:` line for every screen it changed, and the
+capability's `gates.md` a `Reviewed:` line for each — under the `open` release mode the slice's own
+`## Design review` holds both — the review read from screenshots against `skills/web-interface-guidelines` and
+every finding fixed or given its reason. A screen missing either line goes back to the rung that writes it
+rather than to the actor. Record both checks with the others, naming the screens, where their styles came
+from, and what the review found.
 
 """
 DEMO_STOP = """### What the demo stop has to contain
 
 **The stop is per capability, not per slice.** A capability is the chunk of work a person's demo is of —
 usually several slices, named on the chart — and it is the smallest thing that means anything on its own to
-whoever is being shown it. At the end of each slice the hand walks that slice's examples and records a
-verdict in three words, because a test that passes and a path that works are different claims and only one
-of them is machine-checked; **nobody is stopped for that**. This stop runs when a capability's last slice
-has merged, and it walks the whole capability as one flow. Ask what is owed:
+whoever is being shown it. At the end of each slice its examples are proven by its own tests; once the
+capability is whole the hand walks every one of them in the running app and records a verdict in three
+words, because a test that passes and a path that works are different claims and only one of them is
+machine-checked; **nobody is stopped for that**. This stop runs when a capability's last slice has merged
+and its gates have cleared, and it walks the whole capability as one flow. Ask what is owed:
 
 ```sh
 python3 scripts/agents/capabilities.py --due
@@ -74,14 +77,16 @@ python3 scripts/agents/capabilities.py --due
 In version 1 every slice carried a stop, and what the person was shown was a fraction of a capability they
 had to assemble in their head.
 
-**Before the stop, one mutation run over the capability.** `/mutation` runs once here, not once per slice:
-over every production file the capability's slices changed since the first of them branched
-(`make mutation SINCE=<that commit>`, and the browser half where there is one), delegated to
-`sail-mutation-shipworm` under its `harbour.json` budget. A run that reaches the budget is killed — its own
-process tree, nothing else — and leaves a qualified receipt naming what it covered and what it did not,
-never a score; a run that finishes leaves its score, and survivors are closed before the person is shown
-the capability. Per slice this took hours apiece and was taken out of one loop by hand; per capability it
-is one run over the thing a person is about to accept, which is the only thing a score is evidence about.
+**Before the stop, the capability gates.** The ladder's *Capability gates* rung runs once here, not once per
+slice: converge over the capability's whole diff, gaps over it, the design review from screenshots, one
+adversary pass, one mutation run over every production file the capability's slices changed since the first of them branched
+(`make mutation SINCE=<that commit>`, and the browser half where there is one, delegated to
+`sail-mutation-shipworm` under its `harbour.json` budget — a run that reaches it is killed, its own process
+tree and nothing else, and leaves a qualified receipt rather than a score), and the hand's walk of every
+example. They are recorded in `specs/<feature>/capabilities/<capability>/gates.md`, and its `Cleared:` line is
+what makes this stop due. Findings above the bar are fixed in a follow-up slice before the person is shown
+the capability; per capability each reading is one pass over the thing a person is about to accept, which
+is the only thing it is evidence about.
 
 **Accepting it is not a release decision.** Acceptance says the capability is right. Hoisting a flag says
 the business wants it live, which may be another quarter or never, and stays a person's act on their own

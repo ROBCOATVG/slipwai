@@ -37,10 +37,14 @@ def screen_design_stage(baseline: str) -> str:
 
 
 def design_review_stage(baseline: str) -> str:
-    """The `**Design review**` rung, after implementation and before convergence: the screens looked at."""
-    return f"""**Design review** — the `## Design review` section has a `Reviewed:` line for every screen the
-   slice adds or changes, or says `No screen in this slice`. Otherwise review what the actor will see, not the
-   source: render each screen in {baseline} — the running app, reached the way `skills/run-the-app` records —
+    """The `**Design review**` rung, after implementation and before convergence: the screens looked at here
+    under the `open` release mode, and a pointer to the capability's reading under every other."""
+    return f"""**Design review** — the `## Design review` section says `Reviewed with capability <name>`, or
+   `No screen in this slice`. The screens are read once the capability is whole, at *Capability gates*, over
+   every screen its slices changed: a screen a later slice finishes, read now, is a finding the next slice
+   was always going to close. **Under the `open` release mode** the section has a `Reviewed:` line for every
+   screen the slice adds or changes instead, and this rung reviews what the actor will see, not the source:
+   render each screen in {baseline} — the running app, reached the way `skills/run-the-app` records —
    take a screenshot of each state it can be in, and read the screenshots against
    `skills/web-interface-guidelines`, doing what an extension block in `AGENTS.md` adds to this rung as well.
    A passing gate is evidence for this stage, never the stage: screens with every automated check green have
@@ -58,11 +62,11 @@ def tasks_brief() -> str:
     """What the tasks delegate writes into `tasks.md` for a slice with a screen, inside its styling task."""
     return """The styling task names the design steps inside it, so a brief built from it
 carries them — where shipped, since a project with no browser app receives neither — `skills/frontend-design`'s
-second pass over the plan before any code, and the review of the rendered screens against
-`skills/web-interface-guidelines` before the demo — each with whatever an extension
-block in `AGENTS.md` adds to `/sail`'s *Screen design* or *Design review* rung. Leave a `## Design review`
-heading for the `Designed:` and `Reviewed:` lines those rungs write, or `No screen in this slice` under it
-where the slice has none."""
+second pass over the plan before any code — with whatever an extension block in `AGENTS.md` adds to
+`/sail`'s *Screen design* rung. The review of the rendered screens is the capability's, at *Capability gates*,
+and not a task here, except under the `open` release mode, where the styling task names it too. Leave a
+`## Design review` heading for the `Designed:` lines, or `No screen in this slice` under it where the slice
+has none."""
 
 
 def with_design_rungs(stages: list[str], baseline: str) -> list[str]:

@@ -79,7 +79,10 @@ Slash commands are written the way Claude Code spells them. Codex takes them as 
   then `/gaps` with you. Each question answered now costs a sentence; later it costs a slice.
 - **2.6: standard profile.** There is no model to render from, so `/chart` writes the chart with you.
 - **2.7: per slice.** Clearance, the claim, the example map, plan and tasks, `/speckit-analyze`, then
-  RED-GREEN-REFACTOR one increment at a time, convergence, the demo, review, the adversary and the merge.
+  RED-GREEN-REFACTOR one increment at a time, convergence, the examples proven by tests, review, the
+  adversary where identity, authority or money widened, and the merge. Once a capability's last slice has
+  merged, its gates — converge, gaps, design review, adversary, mutation, the hand's walk — run once, then its
+  demo.
   [Your first feature](first-feature.md) walks every stage, and
   [from the board](first-feature.md#from-the-board) is the same ladder from the Voyage tab.
 

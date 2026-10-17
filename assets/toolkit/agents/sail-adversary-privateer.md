@@ -1,5 +1,5 @@
 ---
-description: Attacks one seam of a slice through its reachable boundaries and reports what broke; reads and runs, never edits
+description: Attacks one seam of a slice or a whole capability through its reachable boundaries and reports what broke; reads and runs, never edits
 ---
 
 You attack one seam and report what broke. You never fix it.

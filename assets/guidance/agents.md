@@ -69,11 +69,14 @@ type: a brief adds only its task-specific contract and file manifest, and restat
 Use `/sail` to resume from the first missing artifact or unchecked task, whether that artifact is the
 constitution, the product specification, the split, or the slice's own tasks. Work through specification,
 `/gaps` over the slice's acceptance criteria, plan, tasks, RED-GREEN-REFACTOR implementation, the installed
-Spec Kit converge command until it reports converged or reaches its bound, `/gaps` over the slice diff, and an actor-visible
-demo. Pause at the demo for feedback; after acceptance run `/adversary` when the slice changed attack
-surface or closed the split — `commands/adversary.md` makes and records that decision — then `make verify`;
-`/mutation` is the capability's, run once before the person is shown it. Stop earlier only for a product
-decision or unavailable external input.
+Spec Kit converge command until it reports converged or reaches its bound, every example proven by a test,
+and one review of the slice's diff; then `/adversary`, which attacks the slice only where it widened
+identity, authority or money and otherwise defers to its capability — `commands/adversary.md` makes and
+records that decision — then `make verify`. Once a capability's last slice has merged, its gates run once:
+converge over its diff, `/gaps`, the design review, one adversary pass, `/mutation`, and the hand's walk, then
+the person's demo. Under the `open` release mode the gaps trace, design review and walk run per slice instead,
+every slice the adversary table owes is attacked, and the capability's converge, adversary pass and mutation
+still run. Stop earlier only for a product decision or unavailable external input.
 <!-- end section -->
 <!-- section: continuation-cruise -->
 
@@ -85,10 +88,12 @@ stage's own done condition is stage completion, not permission to end the delive
 extension hook is not a gate.
 
 Continue until the actor-visible path is ready for a demo, a product decision or unavailable external input
-blocks progress, or the ordered split is exhausted. Before the demo, run the installed Spec Kit converge
-command until it reports converged or reaches its bound, and `/gaps` over the slice diff. At the demo, pause for feedback. On
-acceptance, harden and finish the slice — `/adversary` when the slice changed attack surface or closed the
-split, then `make verify`; `/mutation` runs once per capability before its demo stop — then continue to the ready slices (not done, every `depends_on` done): every unclaimed one runs concurrently in the band its state admits — preparation needs clearance alone, implementation needs the slice's own marks set and no open question — one delegate per slice on a `slice/<id>` branch, refilled at every boundary, merged in split order (`commands/sail.md`, *Running ready slices concurrently*); where the harness cannot delegate, the earliest in split order, naming the rest.
+blocks progress, or the ordered split is exhausted. Before the push, run the installed Spec Kit converge
+command until it reports converged or reaches its bound, and prove every example with a test. Then harden and
+finish the slice — `/adversary`, which attacks it where it widened identity, authority or money and
+otherwise defers, then `make verify`; once a capability is whole its gates run once — converge and `/gaps`
+over its diff, the design review, one adversary pass, `/mutation`, the hand's walk — and its demo follows
+(the gaps trace, design review and walk per slice under the `open` release mode) — then continue to the ready slices (not done, every `depends_on` done): every unclaimed one runs concurrently in the band its state admits — preparation needs clearance alone, implementation needs the slice's own marks set and no open question — one delegate per slice on a `slice/<id>` branch, refilled at every boundary, merged in split order (`commands/sail.md`, *Running ready slices concurrently*); where the harness cannot delegate, the earliest in split order, naming the rest.
 
 Under `/cruise` the same contract holds with nobody at the wheel: the two stops that were a person's — a
 product decision and the demo — are answered by `sail-decide-skipper` and `sail-demo-hand`, every answer is written where

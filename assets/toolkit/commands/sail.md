@@ -92,8 +92,9 @@ and each is a **named agent type** this project carries in `agents/`, projected 
 
 Every stage in that table is named for its purpose and then for the crew member who runs it, and every
 stage that is not in it is named for the work alone — so the key says whether a stage has a delegate at all.
-The gaps rung runs twice and only the pass after implementation is delegated: the pre-planning one may have
-to ask a product question, which is the whole reason a stage stays here. Any other conversational stage stays
+The gaps rung runs twice and only the pass after implementation is delegated — once per capability, at
+*Capability gates* — while the pre-planning one, per slice, may have to ask a product question, which is the
+whole reason a stage stays here. Any other conversational stage stays
 here too, and has no type for that reason. There is one more type, `sail-slice-watch`, for a whole slice
 rather than a stage: *Running ready slices concurrently* is where it is delegated, and it reads this section
 from inside its own worktree to choose a model for each stage it then runs. The last three rows,
@@ -187,34 +188,40 @@ Start the slice from a green `make verify`. During implementation, take one RED-
 task — one rule of the example map with its examples, where the map numbers its rules — run only the quickest
 relevant tests in the same file or area, commit that increment locally, and keep
 task checkboxes truthful. A local commit is not a push: it does not run the full gate and it does not start
-CI. Do not push increment commits until the hand's verdict on this slice's examples is green. Before an increment that changes a
+CI. Do not push increment commits until every example in this slice's `examples.md` is proven by a passing
+test (the *Demo* rung's `## Examples proven`). Before an increment that changes a
 shared function, ask this project's code index what calls it and what the change reaches — by the route its
 block in `AGENTS.md` names, loaded by name where the harness defers a tool — and name those callers in the
 delegate's manifest; a project that has adopted none answers with a text search and says so.
 
-When the tasks are done, converge, then have the hand walk this slice's examples from the unpushed slice
-branch and record its verdict. **Nobody is stopped here.** A person's demo is per capability and runs when
-the capability's last slice has merged, which is usually several slices later; this rung proves the path
-works, and the person is shown the whole thing rather than its instalments. After a green verdict — and only
-then — a project that has adopted a code index brings it up to the tree, then the full
-`make verify`, then the first push of those increment commits (and the merge that lands them on trunk).
-That push is the integration boundary. A claim of `slice/<id>` at the start of the slice may still push a
+When the tasks are done, converge, then record each of this slice's examples against the test that proves
+it, from the unpushed slice branch. **Nobody is stopped here, and no browser is opened.** The hand's walk,
+the design review and the gaps trace are the capability's — *Capability gates*, once its last slice has
+merged, where converge and an adversary pass also run again over the whole — and the person's demo follows
+them, usually several slices later: the
+person, and the hand before them, are shown the whole thing rather than its instalments. Under the `open`
+release mode, where a merge reaches the actor at once, the hand walks this slice's examples here as well
+and the push waits for its verdict; the capability's converge, adversary pass and mutation still run. With every example proven — and only then — a project that has adopted a
+code index brings it up to the tree, then the full `make verify`, then the first push of those increment
+commits (and the merge that lands them on trunk). That push is the integration boundary. A claim of `slice/<id>` at the start of the slice may still push a
 lock ref from `main`; that is not the implementation.
 
 {{demo-stop}}
 
-### After the hand's verdict, and after Phase 4 clears
+### After the examples are proven, and after Phase 4 clears
 
-After a green verdict, run `/adversary`, which decides whether the slice changed attack surface or closed the
-split and records the attack or the skip — `make check-decisions` holds every done slice to that row. Close the
+With the examples proven and the review closed, run `/adversary`, which decides whether the slice widened
+identity, authority or money and records the attack, the skip, or the deferral to its capability's pass —
+`make check-decisions` holds every done slice to that row. Close the
 adversary benchmark entry after its findings are triaged; implement confirmed defects through failing tests,
 each in an `implement` entry. Then run `make verify`. `commands/adversary.md` owns the
 trigger table; do not spawn before it is in the log. It records that decision in
-`specs/<feature>/adversary-log.md` either way, so do not make it here. **`/mutation` is not run here**: it
-runs once per capability, when the capability's last slice has merged and before the person's demo stop
-walks it (*What the demo stop has to contain*), bounded by the shipworm's budget — the *Mutation gate* rung
-says what this slice records meanwhile. The order still holds when it runs: the adversary pass adds tests,
-and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
+`specs/<feature>/adversary-log.md` either way, so do not make it here. **The capability gates are not run
+here**: converge over the capability's diff, gaps over it, the design review, the capability's adversary
+pass, `/mutation` and the hand's walk run once per capability, when its last slice has merged and before the person's demo
+stop walks it (*What the demo stop has to contain*) — the *Capability gates* rung says what this slice
+records meanwhile, and what the last slice of a capability starts. The order holds when they run: the
+adversary pass adds tests, and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
 unavailable input.
 
 Once that evidence is clean, **continue on the same run**: mark the finished slice done —
@@ -290,7 +297,7 @@ the sentence clearance prints says so.
 **Two bands, and clearance admits a slice to one of them.** *Preparation* is the example map, the contract
 files its marks name, and the gaps pass before planning — the stages that end with the slice's own
 `mark-set` lines. It needs clearance and nothing else. *Implementation* is the plan onward: tasks,
-increments, converge, the hand's verdict. It needs the slice's own marks set and no open question, which
+increments, converge, the examples proven. It needs the slice's own marks set and no open question, which
 is what *implementation-ready* means. This page used to say *run every ready slice whose contract is
 settled*, and a slice settles its contract by preparing, so a host reading that waited on the one thing the
 wait was stopping: two cleared slices with HTTP contracts still to decide sat idle for an afternoon while
@@ -402,19 +409,20 @@ several — the context's events module *additively*, **new** migration files na
 is a slice's to write: a delegate that needs one of them hands the need back here, and it lands on `main`
 before the fan-out or between merges. The canonical slot at the feature root is a link, never committed.
 
-**Demo on the slice branch, then verify, then push.** As delegates report converged, demo each slice from
-its unpushed worktree in split order — never from `main`, never by pushing increment commits first. A
-claim may already have pushed a lock ref from `main`; leave the increment commits local until the actor
-accepts. After acceptance: bring the code index up to the tree if the project has adopted one, `{{make}} verify`
-green, then push the slice's commits and merge into `main` in split order — never in finishing order.
-That is the first implementation push, and it is what starts CI. A slice converged and not yet accepted is
-*awaiting-demo*; its siblings are not. The composition root and the cumulative
+**Prove on the slice branch, then verify, then push.** As delegates report converged, check each slice's
+`## Examples proven` from its unpushed worktree in split order — never from `main`, never by pushing increment
+commits first (and, under the `open` release mode, have the hand walk it there). A claim may already have
+pushed a lock ref from `main`; leave the increment commits local until every example is proven. Then: bring
+the code index up to the tree if the project has adopted one, `{{make}} verify` green, then push the slice's
+commits and merge into `main` in split order — never in finishing order. That is the first implementation
+push, and it is what starts CI. A slice whose capability is whole runs that capability's gates next, and the
+capability is *awaiting-demo* once they clear; its siblings are not. The composition root and the cumulative
 artifacts are where two merges meet, and split order is what makes those resolutions predictable;
 regenerate the Mermaid diagrams (`{{make}} model`) after a merge, never in a branch, and the canvas
-(`{{make}} model-drawio`) after each merge as well, taking both sides' blocks. No slice's Phase 4 runs until its demo is
-accepted, and a sibling's demo never waits on another's Phase 4. Phase 4 itself — adversary,
-`{{make}} verify`, marking the slice done — runs here, on `main`, one slice at a time; mutation is the
-capability's, once, before its demo stop. Delete the
+(`{{make}} model-drawio`) after each merge as well, taking both sides' blocks. No slice's Phase 4 runs until its
+examples are proven, and a sibling never waits on another's Phase 4. Phase 4 itself — adversary or its
+deferral, `{{make}} verify`, marking the slice done — runs here, on `main`, one slice at a time; the gates are
+the capability's, once, before its demo stop. Delete the
 `slice/<id>` branch once its Phase 4 clears: the claim is spent.
 
 **Where the harness cannot delegate**, run one slice at a time here — claim the earliest in split order,

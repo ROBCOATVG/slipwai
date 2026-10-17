@@ -29,9 +29,13 @@ def convergence_stage() -> str:
     return f"""**Convergence** — `tasks.md` records a converged verdict for the current commit and has no
    unchecked convergence task. Otherwise run the installed Spec Kit converge command, implement whatever it
    appends, and repeat — until it reports converged, or until the loop reaches its bound, whichever is first.
-   Record that verdict under a `## Convergence` heading so this stage is not re-run, then `/gaps` over the
-   slice diff. The verdict names each constitution principle the diff touches — a MUST about money, time,
-   identity, a boundary — with the file and line that satisfies it; "no constitution obligation unmet" as one
+   Record that verdict under a `## Convergence` heading so this stage is not re-run. Converge runs once more
+   over the whole capability at *Capability gates*, in every release mode, because slices that each
+   converged alone can still disagree between them. The trace of what was
+   built against what was promised is the capability's, once, at *Capability gates* — under the `open` release
+   mode `/gaps` runs over the slice diff here instead, as it used to. The verdict names each constitution
+   principle the diff touches — a MUST about money, time, identity, a boundary — with the file and line that
+   satisfies it; "no constitution obligation unmet" as one
    sentence is not a verdict, and a slice has shipped a float in a monetary column under exactly that
    sentence. Converge is append-only — its one write is new tasks — so repeating it is safe. A Spec Kit
    install with no converge command is a skip with a stated reason, not a stop.

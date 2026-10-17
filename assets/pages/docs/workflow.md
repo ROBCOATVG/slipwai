@@ -105,10 +105,15 @@ For one small vertical slice:
    to the plan or the tasks; a clean reading is what lets implementation start.
 5. Implement each task RED-GREEN-REFACTOR, keeping `make verify` green.
 6. Run the installed Spec Kit converge command, implement whatever it appends, and repeat until it reports
-   converged or reaches its bound; then `/gaps` over the slice diff.
-7. Demonstrate the actor-visible path and pause for feedback.
-8. After acceptance, run `make verify` — and `/adversary` first, when the slice changed attack surface or
-   closed the split. `/mutation` runs once per capability, before the person's demo of it.
+   converged or reaches its bound.
+7. Prove every example in the slice's `examples.md` with a passing test, and review the slice's diff once.
+8. Run `/adversary` — it attacks the slice where it widened identity, authority or money and otherwise
+   defers to the capability — then `make verify`, and merge.
+9. Once a capability's last slice has merged, run its gates once: converge over its diff, `/gaps`, the design
+   review from screenshots, one adversary pass, `/mutation`, and the hand's walk of every example. Then the
+   person's demo. Under the `open` release mode the gaps trace, the design review and the walk run per slice,
+   at steps 6 to 8, instead, and every slice the adversary table owes is attacked; the capability's converge,
+   adversary pass and mutation still run.
 
 The principles stage has a gate of its own. `.specify/memory/constitution.md` is what every stage after it
 treats as the authority, so `make check-constitution` fails the build when that file stops carrying minimum
@@ -122,15 +127,16 @@ feature under `specs/` whether or not the constitution was touched.
 
 **Analyze** is the read between tasks and implementation. It compares `spec.md`, `plan.md` and `tasks.md`
 and writes nothing, so a plan that has drifted is caught before any code. It is not either `/gaps` pass:
-the one before planning tightens a single artifact, and the one after converge traces a promise to a test
-and a path.
+the one before planning tightens a single artifact, and the capability's one after converge traces a promise
+to a test and a path.
 
 Three stages in the loop are deliberately not the shape they look like. **Converge** is append-only — its
 only write is new tasks — so it is safe to repeat until it reports converged or reaches its bound, and it is what makes the demo
-worth showing. The **second `/gaps`** runs after that verdict rather than before it, because ahead of
-converge every unbuilt task reads as a gap and buries the findings that need judgement. **`/adversary`** is
-an end-of-phase pass rather than a per-slice one: `commands/adversary.md` runs it when the diff changed
-attack surface and at the close of the split regardless, and records the decision either way in
+worth showing. The **second `/gaps`** runs once per capability, after every slice under it converged,
+because ahead of converge every unbuilt task reads as a gap, and slice by slice a promise two slices keep
+between them reads as one neither kept. **`/adversary`** is an end-of-phase pass rather than a
+per-increment one: per slice `commands/adversary.md` attacks only a widened identity, authority or money
+surface and defers the rest to the capability's one pass, and records the decision either way in
 `specs/<feature>/adversary-log.md` — which is what lets a later slice decline on evidence instead of
 judgement. The trigger table is in that row before any spawn. **`/mutation`** runs once per capability — when its last
 slice has merged, before the person is shown it, bounded by its budget and leaving a qualified receipt rather
@@ -143,6 +149,6 @@ Demo feedback returns to the stage that owns the change before the path is demon
 not.
 
 `/cruise` runs this same diagram with nobody at the wheel. A product decision is answered by `sail-decide-skipper`
-and written in `specs/<feature>/decisions.md`; the demo is run by `sail-demo-hand` and written in the slice's
-`demo-log.md`; the run ends only when the specification is satisfied, or when a person stops it. What each
+and written in `specs/<feature>/decisions.md`; the hand's walk is run by `sail-demo-hand` and written in the
+capability's `demo-log.md`; the run ends only when the specification is satisfied, or when a person stops it. What each
 stage produces does not change. `commands/cruise.md` is exact.

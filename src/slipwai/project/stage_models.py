@@ -116,13 +116,18 @@ STAGES: tuple[Stage, ...] = (
     Stage("plan", "strong", title="Plan and tasks"),
     Stage("tasks-quartermaster", "fast", writes=TASKS, commands=TASK_COMMAND, title="Plan and tasks"),
     Stage("implement-shipwright", "fast", writes=MANIFEST, commands=ANY, title="Implementation"),
-    Stage("converge-navigator", "strong", writes=MANIFEST, commands=ANY, title="Convergence"),
+    # Convergence is the capability's first gate since 2026-10-17, and per slice only under `open`.
+    Stage("converge-navigator", "strong", writes=MANIFEST, commands=ANY, title="Capability gates"),
     Stage("demo", "strong", title="Demo"),
     # `writes=NONE` is the whole of it: a reviewer that can write is one that edits, and then nobody has
     # read this diff with fresh eyes after all.
     Stage("review-mate", REVIEW, writes=NONE, commands=READ_ONLY, title="Review and reshape"),
-    Stage("adversary-privateer", "strong", writes=NONE, commands=READ_ONLY, title="Adversary"),
-    Stage("mutation-shipworm", "fast", writes=REPORT, commands=ANY, title="Mutation gate"),
+    # The rung records a slice's attack surface; the attack itself is the capability's (since 2026-10-17).
+    Stage("adversary-privateer", "strong", writes=NONE, commands=READ_ONLY, title="Attack surface"),
+    # The rung is the capability's gates since 2026-10-17 (`capability_gates.py`). Mutation is the one of them
+    # with no stage of its own elsewhere, so it carries the rung; the gaps, adversary and hand delegates the
+    # rung also runs take their own rows' models.
+    Stage("mutation-shipworm", "fast", writes=REPORT, commands=ANY, title="Capability gates"),
     # The rung that ends a slice. It is nobody's delegate: rule 10 of the plan holds the merge to a person
     # until a captain enforces the boundaries, and a fresh context has no business deciding how dark a
     # merge is. Slice 5.12 gives it the release mode to read, 5.7 the one full gate it runs.

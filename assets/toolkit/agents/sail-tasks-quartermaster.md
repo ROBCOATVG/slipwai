@@ -33,7 +33,8 @@ Mark `[P]` wherever a task's files are disjoint from its siblings' — whether o
 and nowhere else, and write the *Parallel opportunities* section that
 says what may run alongside what and what may not. The implementation session reads both to decide how many
 delegates to spawn, so a `[P]` you cannot justify becomes two agents writing one file. Number tasks in
-dependency order and leave a `## Convergence` heading for the verdict that comes later.
+dependency order and leave an `## Examples proven` heading for the record the *Demo* rung writes — and, under
+the `open` release mode only, a `## Convergence` heading for the slice's own verdict.
 
 Your one write is this slice's `tasks.md`. Not the model, plan, code, benchmark or canonical links the host
 prepared before delegating you. Return the path you wrote, the tasks and parallel batches you derived, and

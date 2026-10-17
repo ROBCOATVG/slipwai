@@ -94,7 +94,8 @@ has a target of its own. {{ci}}
    where change happens — which says what moves the Structure row and where `/strangle` would cut. Then
    `{{where}}docs/getting-started.md` and `{{where}}docs/architecture.md`, then `/sail`,
    whose ladder here begins at *Ground* (no map, no principles), pins wrapped code before *Implementation*,
-   and holds the map to each slice at *Convergence* before offering the next row as a method slice.
+   and holds the map to each slice at *Demo*, where its examples are proven, before offering the next row as
+   a method slice.
    Three more commands are this adoption's own: `/characterise` pins the current behaviour of the code a slice is about
    to change, at the seam where it can be observed (`{{where}}survey/pinned.md` is the ledger) — with
    fakes written in the test tree, never a mocking framework it would have to add — and

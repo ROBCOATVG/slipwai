@@ -1,9 +1,9 @@
 """The capability: what a person's demo is of, and what says one is owed.
 
 Version 1 stopped a person at the end of every slice and showed them a fraction of a capability to assemble
-in their head. The hand still walks a slice's examples and records a verdict — a test that passes and a path
-that works are different claims, and only one of them is machine-checked — and nobody is stopped for it. The
-stop a person attends runs when a capability's last slice has merged.
+in their head. A whole capability is owed its gates first — gaps, design review, adversary, mutation and the
+hand's walk, since 2026-10-17 — and nobody is stopped for them. The stop a person attends runs once its last
+slice has merged and its gate record says `Cleared:`.
 
 The other thing held here is that acceptance and hoisting never touch. Acceptance says the capability is
 right; hoisting says the business wants it live, which may be another quarter or never. A capability the
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -67,9 +68,18 @@ class DueTest(unittest.TestCase):
         rows = CAPS.state(CHART, [merged("ORD-01")])
         self.assertEqual(CAPS.due(rows), [])
 
-    def test_a_capability_is_due_when_its_last_slice_merges(self) -> None:
+    def test_a_capability_owes_its_gates_when_its_last_slice_merges(self) -> None:
         rows = CAPS.state(CHART, [merged("ORD-01"), merged("ORD-02")])
+        self.assertEqual([row["capability"] for row in CAPS.gates_due(rows)], ["place-an-order"])
+        self.assertEqual(CAPS.due(rows), [], "a demo before the gates clear shows the person what nobody read")
+
+    def test_a_capability_is_due_a_demo_once_its_gates_clear(self) -> None:
+        rows = CAPS.state(CHART, [merged("ORD-01"), merged("ORD-02")], {"place-an-order"})
         self.assertEqual([row["capability"] for row in CAPS.due(rows)], ["place-an-order"])
+        self.assertEqual(CAPS.gates_due(rows), [])
+
+    def test_gates_are_not_owed_before_the_last_slice_merges(self) -> None:
+        self.assertEqual(CAPS.gates_due(CAPS.state(CHART, [merged("ORD-01")])), [])
 
     def test_a_part_merged_capability_says_what_it_waits_on(self) -> None:
         rows = CAPS.state(CHART, [merged("ORD-01")])
@@ -103,8 +113,78 @@ class ReleaseTest(unittest.TestCase):
 
     def test_the_trigger_mentions_no_flag_at_all(self) -> None:
         """Under the open release mode there is no flag, and the demo still happens."""
-        rows = CAPS.state(CHART, [merged("BIL-01")])
+        rows = CAPS.state(CHART, [merged("BIL-01")], {"bill-an-order"})
         self.assertEqual([row["capability"] for row in CAPS.due(rows)], ["bill-an-order"])
+
+
+class GateRecordTest(unittest.TestCase):
+    """`Cleared:` in the capability's `gates.md` is what the reader takes as the gates having run."""
+
+    def setUp(self) -> None:
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.saved = CAPS.SPECS
+        CAPS.SPECS = Path(self.directory.name)
+        self.addCleanup(setattr, CAPS, "SPECS", self.saved)
+
+    def record(self, capability: str, text: str) -> None:
+        path = CAPS.SPECS / "001-orders" / "capabilities" / capability / "gates.md"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+
+    def test_a_record_ending_cleared_counts(self) -> None:
+        self.record("place-an-order", "## Gaps\nnone\n\nCleared: 2026-10-17 · abc123\n")
+        self.assertEqual(CAPS.cleared("001-orders", ["place-an-order", "bill-an-order"]), {"place-an-order"})
+
+    def test_a_record_with_no_cleared_line_does_not(self) -> None:
+        """Four gates run and the fifth not yet is a capability still owed its gates."""
+        self.record("place-an-order", "## Gaps\nnone\n\nCleared:\n")
+        self.assertEqual(CAPS.cleared("001-orders", ["place-an-order"]), set())
+
+
+def decisions_gate():
+    path = ROOT / "assets/toolkit/scripts/check-decisions.py"
+    spec = importlib.util.spec_from_file_location("check_decisions_script", path)
+    assert spec is not None and spec.loader is not None
+    loaded = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loaded)
+    return loaded
+
+
+class TriggerRecordRowTest(unittest.TestCase):
+    """A slice attacks nothing since 2026-10-17: it records its trigger table, and its capability is attacked.
+
+    The trigger record is the slice's row in the adversary log, so `check-decisions` must read it as one, and
+    a capability's skip row — nothing widened, nothing attacked — must not trip it either.
+    """
+
+    def setUp(self) -> None:
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.gate = decisions_gate()
+        self.gate.ROOT = Path(self.directory.name)
+        self.gate.SPECS = self.gate.ROOT / "specs"
+        self.feature = self.gate.SPECS / "001-orders"
+        (self.feature / "slices").mkdir(parents=True)
+        (self.feature / "slices/README.md").write_text("| Slice | Accepted |\n|---|---|\n| S01 | today |\n",
+                                                        encoding="utf-8")
+
+    def test_a_trigger_record_is_the_slice_s_row(self) -> None:
+        (self.feature / "adversary-log.md").write_text(
+            "## S01 · abc123 · 2026-10-17 · trigger record\n\n| Trigger | Status | Evidence |\n",
+            encoding="utf-8")
+        self.assertEqual(self.gate.check_adversary_rows(), [])
+
+    def test_a_capability_skip_row_beside_it_is_accepted(self) -> None:
+        (self.feature / "adversary-log.md").write_text(
+            "## S01 · abc123 · 2026-10-17 · trigger record\n\n"
+            "## place-an-order · abc124 · 2026-10-18 · skipped: no slice widened a trigger\n\nSpawned:\n",
+            encoding="utf-8")
+        self.assertEqual(self.gate.check_adversary_rows(), [])
+
+    def test_no_row_at_all_is_still_refused(self) -> None:
+        (self.feature / "adversary-log.md").write_text("", encoding="utf-8")
+        self.assertEqual(len(self.gate.check_adversary_rows()), 1)
 
 
 class DemoStopTest(unittest.TestCase):
@@ -114,10 +194,15 @@ class DemoStopTest(unittest.TestCase):
     def test_the_stop_says_it_is_per_capability(self) -> None:
         self.assertIn("per capability, not per slice", self.section())
 
-    def test_the_per_slice_walk_stops_nobody(self) -> None:
+    def test_the_walk_stops_nobody(self) -> None:
         section = self.section()
         self.assertIn("records a verdict in three words", section)
         self.assertIn("nobody is stopped for that", section.lower())
+
+    def test_the_stop_waits_for_the_capability_gates(self) -> None:
+        section = self.section()
+        self.assertIn("**Before the stop, the capability gates.**", section)
+        self.assertIn("specs/<feature>/capabilities/<capability>/gates.md", section)
 
     def test_it_names_the_command_that_says_what_is_owed(self) -> None:
         self.assertIn("capabilities.py --due", self.section())

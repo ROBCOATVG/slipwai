@@ -16,7 +16,8 @@ from __future__ import annotations
 from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
 from ..services import App, web_apps
-from .converge_stage import convergence_stage
+from .capability_gates import capability_gates_stage, open_mode_note
+from .converge_stage import OPEN_SLICE
 from .design_stage import PLAN_STYLING, with_design_rungs
 from .existing import release_stage
 from .sail_adoption import adoption_ladder
@@ -195,8 +196,8 @@ def sail_ladder(
    It reads this slice's `spec.md`, `plan.md` and `tasks.md` and writes nothing. A requirement no task
    covers, a task the spec never asked for, or a plan that contradicts the spec goes back to the plan or
    the tasks; a clean reading is what lets implementation start. This is not `/gaps`. The pass before
-   planning already tightened one artifact, and the pass after converge traces a promise to a test and a
-   path. The task list stays in `tasks.md`. Then run the installed Spec Kit implement command.
+   planning already tightened one artifact, and the capability's pass after converge traces a promise to a
+   test and a path. The task list stays in `tasks.md`. Then run the installed Spec Kit implement command.
    This rung is RED-GREEN-REFACTOR and nothing else: a failing test observed failing for its own stated
    reason, the smallest code that passes it, then the code tidied before the next one. The green step's
    gate is the fast checks — `make unit`, lint and types — and never the full gate, which belongs to the
@@ -214,43 +215,53 @@ def sail_ladder(
             f""" A screen this slice
    adds or changes is styled as part of it: apply the project's own styles — `docs/design.md`, or the design
    notes in the constitution or under `specs/` — and where they do not cover what this slice needs, extend
-   the baseline stylesheet and design tokens in {baseline} rather than leaving browser defaults behind."""
+   the baseline stylesheet and design tokens in {baseline} rather than leaving browser defaults behind —
+   in the screens and elements this slice touches, and nowhere else."""
             if web
             else ""
-        ),
-        convergence_stage(),
-        """**Demo** — the hand walks this slice's examples against the running thing and records a verdict
-   in three words. The verdict is evidence, not permission: a test that passes and a path that works are
-   different claims, and only one of them is machine-checked. **No person is stopped at this rung.** A
-   person's demo is per capability and runs when the capability's last slice has merged; *After the hand's
-   verdict, and after Phase 4 clears* is what happens here instead.""",
+        )
+        + """ When the tasks are done the slice goes straight on to its examples: convergence is the
+   capability's first gate, once its slices are all built. """ + open_mode_note(OPEN_SLICE),
+        """**Demo** — every example in this slice's `examples.md` is proven by an automated test in the
+   slice's own suite that drives it through the slice's outermost boundary — the route, the screen's component
+   or browser test, the CLI — and `tasks.md` records it under `## Examples proven`: each example against the
+   test that proves it, and the command and commit of the run that passed. That record is what lets the
+   slice's commits be pushed; it stands where the hand's verdict stood. An example no test can reach through a
+   boundary is recorded as such, with why, and is the first thing the hand looks at when it walks the
+   capability. **No person is stopped at this rung, and no browser is opened**: the hand walks the whole
+   capability once, at *Capability gates*, and the person's demo follows that. """
+   + open_mode_note("the hand also walks this slice's examples against the running thing here and records "
+                    "a verdict in three words, and the push waits for that verdict as well"),
         """**Review and reshape** — `specs/<feature>/slices/<id>/` records a review of this slice's whole
    diff with every finding closed. Otherwise run `/review`, which gives a fresh context the diff and the
    examples it was built from and returns findings in the shape the gaps stage uses, so one triage reads
-   both. The reviewer never edits: a reviewer that can write is one that edits, and then nobody has read
-   the diff with fresh eyes. This slice's own delegate closes the findings and then reshapes — the diff as
-   a whole, not one cycle's code, with the fast checks green after each step. This is the big refactor the
+   both. **The review is scoped to what the slice added or changed**: the reviewer is handed the slice's diff
+   against its merge base (`git diff <merge-base>...HEAD`) and only as much surrounding code as it takes to
+   read it, and every finding points at an added or changed line. A finding about code the slice did not
+   touch is not this slice's: it is noted for the capability gates or stowed to the careen, and never fixed
+   here — that is how a slice stays small. The reviewer never edits: a reviewer that can write is one that
+   edits, and then nobody has read the diff with fresh eyes. This slice's own delegate closes the findings and
+   then reshapes — the diff as a whole, not one cycle's code, and only code the slice added or changed, never
+   a neighbour "while we're here" — with the fast checks green after each step. This is the big refactor the
    small one inside each cycle is there to make unnecessary; they are not the same pass, and collapsing
-   them loses the small one. A slice does not reach the adversary rung with a review finding open.
+   them loses the small one. A slice does not reach the attack-surface rung with a review finding open.
    **Once per slice, over the whole diff** — a delegate's return is verified by the session that sent it,
    by spot-checking its RED evidence against the tree, and is never sent to a reviewer of its own: a run
    that reviewed every return paid eight reviews and eight fix rounds for nine pieces of coding and delivered
    no more for it. The one earlier reading this rung allows is a single read-only review of one story's
    pinned commit, for a story that touches identity, authority or money, said in that slice's brief; so a
    slice records at most two `review` brackets, and `make check-benchmark` says so about a third.""",
-        """**Adversary** — `specs/<feature>/adversary-log.md` carries this slice's row: the attack that was
-   run, or the recorded decision not to. Otherwise run `/adversary`. One round, and findings below the
-   severity bar are stowed rather than argued: *After the hand's verdict, and after Phase 4 clears* says how.""",
-        """**Mutation gate** — the slice's capability has its mutation evidence, or this slice says which
-   capability's run it waits for. The run is **once per capability, not per slice**: when a capability's
-   last slice has merged and before the person's demo stop walks it, `/mutation` runs over every production
-   file the capability's slices changed, bounded by the `mutation-shipworm` budget in `harbour.json` — a
-   run that reaches the budget is killed, its process tree and nothing else, and records a qualified receipt
-   naming the scope it covered and the scope it did not, never a score. A score at or above the project's
-   threshold is the capability's gate; under it, the survivors are closed before the demo, and nothing is
-   carried: a gap left here is a gap the next capability inherits and the one after that pays for. Per
-   slice it took hours apiece and was taken out of one loop by hand; per capability it is one run over the
-   thing a person is about to accept.""",
+        """**Attack surface** — `specs/<feature>/adversary-log.md` carries this slice's trigger record: the
+   trigger table `/adversary` asks for, each trigger `widened`, `already covered` or `not present` with the
+   diff path or prior row that is the evidence, under a heading ending `trigger record`. **Nothing is
+   attacked here**, `--full` included: the attack is the capability's, at *Capability gates*, and it runs only
+   where at least one of its slices recorded a trigger `widened` — which is what this record is for. Writing
+   it is a read of the diff, not a pass, and spawns nothing. """
+   + open_mode_note("a slice whose record has the authorisation, identity or money trigger `widened` is "
+                    "attacked here as well, before its push, because the merge is live; nothing else is. "
+                    "Everywhere else a merge is held back by a flag or a keystone, so what the capability's "
+                    "pass has not yet covered is dark until it has"),
+        capability_gates_stage(bool(web)),
         """**Merge to main** — the slice is on trunk. Rebase first, run the full `make verify` on the
    rebased branch, and merge. This is the only rung that runs the full gate, and the only one a person
    holds: until a captain enforces the stage boundaries, nothing here merges itself.""",

@@ -108,7 +108,8 @@ rendered from a model, and everything downstream of it is the same as a generate
 - **4.4: what adoption adds to the ladder.** **Ground** before everything — an open row the slice touches
   is asked about first. **Pin** before implementation — `/characterise` records what the existing code
   does at the seam the slice will change, as tests, so the change is measured against what the code did.
-  **Convergence** after it — the map is re-checked, and a row moves up a rung when the slice reached it.
+  **Demo** after it — once the slice's examples are proven the map is re-checked, and a row moves up a rung
+  when the slice reached it.
 
 From here the rest is the generated project's: a further feature, a second person, and cruising are
 [Phases 3 to 5 of the generate runsheet](runsheet-generate.md#phase-3-a-further-feature). On an adopted

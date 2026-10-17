@@ -5,9 +5,11 @@ A **capability** is the chunk of work a person's demo is of: usually several sli
 the smallest thing that means anything on its own to whoever is being shown it. Version 1 stopped a person
 at the end of every slice and showed them a fraction of a capability to assemble in their head.
 
-So the hand still walks a slice's examples at the end of it and records a verdict — a test that passes and a
-path that works are different claims, and only one of them is machine-checked — and **nobody is stopped for
-it**. The stop a person attends runs when a capability's last slice has merged.
+So a whole capability is first owed its **gates** — converge over its diff, gaps over it, the design review
+from screenshots, one adversary pass, mutation, and the hand's walk of every example, because a test that passes and a path
+that works are different claims and only one of them is machine-checked — and **nobody is stopped for
+them**. They are recorded in `specs/<feature>/capabilities/<capability>/gates.md`, whose `Cleared:` line says
+they are done. The stop a person attends runs after that.
 
 **This is not a release gate.** Accepting a demo says the capability is right. Hoisting a flag says the
 business wants it live, which may be another quarter or never, and stays a person's act on their own timing.
@@ -16,11 +18,13 @@ separate columns and neither is ever derived from the other. A capability under 
 no flag at all and still has a demo.
 
     python3 scripts/agents/capabilities.py          # every capability, with what it is waiting for
+    python3 scripts/agents/capabilities.py --gates  # only the ones owed their gates now
     python3 scripts/agents/capabilities.py --due    # only the ones owed a demo now
 """
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -37,6 +41,8 @@ ROOT = project_root(Path(__file__).resolve())
 SPECS = ROOT / "specs"
 LOGS = ROOT / ".slipwai/logs"
 V = 1
+#: What a gate record's last word says once every gate has run with nothing above the bar left open.
+CLEARED = re.compile(r"^Cleared:\s*\S", re.MULTILINE)
 
 
 def load_yaml(text: str) -> object:
@@ -86,8 +92,18 @@ def slices_by_capability(charted: dict) -> dict[str, list[str]]:
     return grouped
 
 
-def state(charted: dict, written: list[dict]) -> list[dict]:
-    """One row per capability: its slices, how many have merged, and whether it is whole, due or accepted.
+def cleared(feature: str, capabilities: list[str]) -> set[str]:
+    """The capabilities whose gate record carries its `Cleared:` line."""
+    found = set()
+    for capability in capabilities:
+        record = SPECS / feature / "capabilities" / capability / "gates.md"
+        if record.is_file() and CLEARED.search(record.read_text(encoding="utf-8")):
+            found.add(capability)
+    return found
+
+
+def state(charted: dict, written: list[dict], gated: set[str] | frozenset[str] = frozenset()) -> list[dict]:
+    """One row per capability: its slices, how many have merged, and whether it is whole, gated or accepted.
 
     `accepted` and `hoisted` are kept apart on purpose. A capability the business is deliberately holding
     back is not a late one, and a board that derived one from the other could not tell them apart.
@@ -104,6 +120,7 @@ def state(charted: dict, written: list[dict]) -> list[dict]:
             "slices": members,
             "merged": len(done),
             "whole": len(done) == len(members),
+            "gated": capability in gated,
             "accepted": capability in accepted,
             "hoisted": capability in hoisted,
             "waiting": [slice_id for slice_id in members if slice_id not in merged],
@@ -111,9 +128,14 @@ def state(charted: dict, written: list[dict]) -> list[dict]:
     return rows
 
 
+def gates_due(rows: list[dict]) -> list[dict]:
+    """Whole and its gates not yet cleared: converge, gaps, design review, adversary, mutation and the walk."""
+    return [row for row in rows if row["whole"] and not row["gated"] and not row["accepted"]]
+
+
 def due(rows: list[dict]) -> list[dict]:
-    """Whole and not yet accepted. That is the whole trigger, and nothing about a flag is in it."""
-    return [row for row in rows if row["whole"] and not row["accepted"]]
+    """Whole, gated and not yet accepted. That is the whole trigger, and nothing about a flag is in it."""
+    return [row for row in rows if row["whole"] and row["gated"] and not row["accepted"]]
 
 
 def main(argv: list[str]) -> int:
@@ -121,7 +143,13 @@ def main(argv: list[str]) -> int:
     if not charted:
         print("capabilities: no chart yet, so no capability is owed a demo")
         return 0
-    rows = state(charted, lines(feature))
+    rows = state(charted, lines(feature), cleared(feature, list(slices_by_capability(charted))))
+    if "--gates" in argv:
+        owed = gates_due(rows)
+        print(f"capabilities: {len(owed)} owed their gates")
+        for row in owed:
+            print(f"  {row['capability']} — {', '.join(row['slices'])}")
+        return 0
     if "--due" in argv:
         owed = due(rows)
         print(f"capabilities: {len(owed)} owed a demo")
@@ -132,8 +160,10 @@ def main(argv: list[str]) -> int:
     for row in rows:
         if row["accepted"]:
             where = "accepted" + (", hoisted" if row["hoisted"] else ", not hoisted")
+        elif row["whole"] and row["gated"]:
+            where = "whole and gated — a demo is due"
         elif row["whole"]:
-            where = "whole — a demo is due"
+            where = "whole — gates due"
         else:
             where = f"{row['merged']} of {len(row['slices'])} merged, waiting on {', '.join(row['waiting'])}"
         print(f"  {row['capability']}: {where}")

@@ -1,8 +1,16 @@
 ---
-description: Judges whether a slice converged against the constitution and appends what it still owes; edits only what the verdict requires
+description: Judges whether a whole capability converged against the specification and the constitution and appends what it still owes; edits only what the verdict requires
 ---
 
-You judge whether one slice converged, and append what it still owes.
+You judge whether one capability converged, and append what it still owes.
+
+The brief hands you a capability: every slice under it, merged, and the diff since the first of them branched,
+at the ladder's *Capability gates* rung. Read every slice's plan, tasks and examples together and judge the
+whole diff against the specification's requirements: what each slice built alone can still disagree between
+them. The verdict goes in the capability's `gates.md` under `## Convergence`, and what it still owes goes
+there as tasks for the capability's follow-up slice. Under the `open` release mode the brief may hand you one
+slice instead, with its own `tasks.md` and diff, and then the verdict and the tasks are that slice's.
+Everything below holds for both; "the slice" below means whichever you were handed.
 
 Read the slice's plan, tasks, examples and diff, and the constitution at `.specify/memory/constitution.md`.
 The verdict names each principle the diff touches — a MUST about money, time, identity, a boundary — with the

@@ -8,8 +8,10 @@ The brief names the slice, its `slice/<id>` branch — already claimed for you �
 the model, and its **band**. `prepare` is the example map, the contract files the slice's marks name, and
 the gaps pass before planning: run them in order, write the slice's `mark-set` lines as the stage that
 settles each contract produces them, and return at the last of them — the plan is not yours. `implement`
-enters at the plan and runs tasks, implementation and converge to the converged verdict; the example map
-and the marks are already there, so read them and do not redo them. `whole` is both, in order. Whichever
+enters at the plan and runs tasks and implementation to the examples proven — each example in `examples.md`
+recorded against the test that proves it (under the `open` release mode, converge first, as *Implementation*
+says); convergence is otherwise the capability's, not yours. The example map and the marks are already
+there, so read them and do not redo them. `whole` is both, in order. Whichever
 band, **strictly sequential inside the slice**: its backend and its frontend are not two agents, and a
 RED-GREEN-REFACTOR increment starts from a green, committed suite. *Who runs each stage* in
 `commands/sail.md` still applies inside you — read the line before each stage, delegate the ones that have a
@@ -26,7 +28,7 @@ rule in `commands/sail.md` is exact and `{{make}} check-slice-scope` holds it on
 `project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/` and the other docs are not a
 slice's to write, and needing one is a stop rather than a small exception.
 
-Return what the band ends at — the `mark-set` lines written, or the converged verdict — what you built, and
+Return what the band ends at — the `mark-set` lines written, or the examples proven — what you built, and
 anything you left. A product question, an ambiguity the artifacts do not settle, or a need outside that scope
 goes back to the session that delegated you: write a `question` line to the deck log (`fairway`, `slice`,
 `id`, `what`), record it in the slice's `plan.md`, and return. The slice reads *awaiting-decision* from that

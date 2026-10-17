@@ -47,7 +47,7 @@ def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
         ("A delegate hands back a product question in `plan.md`",
          "Answer it, un-block the slice, re-dispatch with the entry as a pointer, never as a conclusion",
          "`plan.md`, a decision entry"),
-        ("Converge appended Phase 4 tasks; the after-converge `/gaps` says stop",
+        ("Converge appended Phase 4 tasks; the capability's `/gaps` says stop",
          "Already bounded by the ladder: continue to the demo as `commands/sail.md` says", "—"),
         ("The demo stop",
          f"Delegate to `{HAND}` with exactly what the stop hands a person, plus the acceptance script; take its "

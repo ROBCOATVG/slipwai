@@ -111,9 +111,10 @@ asked rather than skipped.
   `approved` here.
 - **The example map.** One example per approved state, so the state a person approved is the state a test is
   named after.
-- **The demo.** The hand walks those states when it walks the slice's examples, and the person's demo of the
-  capability walks them again as one flow.
-- **`web-interface-guidelines`.** Before the demo of any slice that builds one of these surfaces.
+- **The demo.** The hand walks those states when it walks the capability's examples, and the person's demo of
+  the capability walks them again as one flow.
+- **`web-interface-guidelines`.** In the design review of any capability that builds one of these surfaces —
+  of each slice that does, under the `open` release mode.
 
 ## When to run it again
 

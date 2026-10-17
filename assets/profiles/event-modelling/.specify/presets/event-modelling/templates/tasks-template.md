@@ -182,22 +182,31 @@ folds into the task that produces the behaviour it guards.
 
 **Checkpoint**: this slice is independently shippable. State its release constraint explicitly.
 
-**Demo checkpoint — stop here before Phase 4.** As soon as the actor-visible path and its focused tests are
-green, give the user the shortest exact demo: command, URL or interaction, required seed data, expected
-result, and every deliberate stub or release constraint. Do not treat an internal test or a backend behind
-an unbuilt modelled white box as a demo. Ask what using it revealed. Feed defects and small adjustments
-within agreed scenarios back through RED-GREEN-REFACTOR; changed rules back to `/example-map`; newly exposed
-boundaries within the specified product to `/story-splitting`; new product scope to `/speckit-specify` and
-its downstream stages; and new event names, fields or stream identity to event modelling. Demonstrate the
-revised path again. Resume Phase 4 only when the demo is accepted with no unresolved feedback; evidence must
-not delay feedback on working behaviour.
+**Examples checkpoint — stop here before Phase 4.** As soon as the actor-visible path and its focused tests are
+green, every example in `examples.md` is named under `## Examples proven` against the test that drives it
+through the slice's outermost boundary, with the command and commit of the run that passed. Do not count an
+internal test or a backend behind an unbuilt modelled white box as proving an example. The hand walks the
+whole capability once its last slice has merged, and the person's demo follows; under the `open` release
+mode the hand walks this slice here as well. Feed defects and small adjustments within agreed scenarios back
+through RED-GREEN-REFACTOR; changed rules back to `/example-map`; newly exposed boundaries within the
+specified product to `/story-splitting`; new product scope to `/speckit-specify` and its downstream stages;
+and new event names, fields or stream identity to event modelling. Resume Phase 4 only when every example is
+proven or recorded as one no test can reach, with why.
+
+---
+
+## Examples proven
+
+*Written by `/sail`, not by hand: one line per example in `examples.md` — the example, the test that proves it,
+the command and commit of the passing run — or the example and why no test can reach it.*
 
 ---
 
 ## Design review
 
-*Written by `/sail`, not by hand: a `Designed:` line per screen before its first RED, a `Reviewed:` line per
-screen before the demo — or `No screen in this slice`. A screen missing either line is not ready to show.*
+*Written by `/sail`, not by hand: a `Designed:` line per screen before its first RED, then `Reviewed with
+capability <name>` — the screens are reviewed once the capability is whole, in its `gates.md` — or `No screen in
+this slice`. Under the `open` release mode a `Reviewed:` line per screen goes here instead, before the push.*
 
 ---
 

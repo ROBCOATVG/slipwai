@@ -140,7 +140,8 @@ constitution that mandates event sourcing in this profile.
 
 `/sail` enters at the first incomplete stage proven by durable artifacts, and its ladder starts above the
 slice loop: principles, product specification, the event model, the split, then example map, a `/gaps` pass
-over it, the installed Spec Kit plan and tasks, implementation, convergence, and the actor-visible demo. Invoking it before the model exists is
+over it, the installed Spec Kit plan and tasks, implementation, the examples proven by tests, and — once a
+capability is whole — convergence, its other gates and the actor-visible demo. Invoking it before the model exists is
 a valid start rather than an error — it steps back to the stage that owes an artifact and says so. It never
 reruns a completed stage merely to check. It pauses at the demo before hardening so feedback can return to the stage that owns it. Once the
 demo is accepted, it runs the mutation pass — plus the adversarial pass when the slice changed attack

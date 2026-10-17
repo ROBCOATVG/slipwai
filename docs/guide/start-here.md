@@ -267,5 +267,8 @@ watch happen.
 Other pages: [a second person joins](a-second-person.md) · [let it cruise](let-it-cruise.md) ·
 [bring an existing codebase](adopt.md) · [the vocabulary](../../GLOSSARY.md)
 
+Two pages are maps rather than steps: [the workflow](the-workflow.md) lists every step from a document to
+an accepted capability, and [the board](the-board.md) describes every screen and control.
+
 Want every step on one page? [The generate runsheet](runsheet-generate.md) is this guide as a checklist,
 from installing the command to every release after.

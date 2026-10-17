@@ -72,14 +72,15 @@ class Fixture(unittest.TestCase):
     def running(self) -> list[str]:
         """What is actually alive, which is not the same as what has a pid file: a process that exited
         leaves its file behind deliberately, so that `list` can say it is gone rather than tidy it away."""
-        import os
+        from slipwai.process_alive import alive  # signal 0 is CTRL_C_EVENT on Windows, so never `os.kill`
         found = []
         for path in sorted((self.root / ".slipwai/running").glob("*.pid")):
             try:
-                os.kill(int(path.read_text(encoding="utf-8").strip()), 0)
+                pid = int(path.read_text(encoding="utf-8").strip())
             except (OSError, ValueError):
                 continue
-            found.append(path.stem)
+            if alive(pid):
+                found.append(path.stem)
         return found
 
 

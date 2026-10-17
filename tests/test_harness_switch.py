@@ -48,7 +48,7 @@ state = json.loads(record.read_text(encoding="utf-8"))
 state["installed_integrations"] = [*state["installed_integrations"], sys.argv[3]]
 record.write_text(json.dumps(state), encoding="utf-8")
 """
-SLIPWAI = "#!/bin/sh\necho \"slipwai $INSTALLED\"\n"
+SLIPWAI = "#!/usr/bin/env python3\nimport os\nprint(f\"slipwai {os.environ['INSTALLED']}\")\n"
 
 
 def projector() -> Any:
@@ -81,6 +81,9 @@ class Switch(unittest.TestCase):
         for name, text in {"specify": SPECIFY, "slipwai": SLIPWAI}.items():
             (self.bin / name).write_text(text, encoding="utf-8")
             (self.bin / name).chmod(0o755)
+            # Windows runs nothing without an extension it knows, so each stand-in also gets the wrapper a
+            # command shell would find first, handing itself to this interpreter.
+            (self.bin / f"{name}.cmd").write_text(f'@"{sys.executable}" "%~dp0{name}" %*\r\n', encoding="utf-8")
         self.calls = self.root / ".calls"
 
     def run_projector(self, *flags: str, session: str | None = "claude",

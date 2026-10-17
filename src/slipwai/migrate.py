@@ -139,7 +139,7 @@ def write_notes(
         destination = root / NOTES
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(notes(name, was, languages=moved_languages(document) if document else (),
-                                     conflicts=conflicts))
+                                     conflicts=conflicts), encoding="utf-8")
     except Exception as error:  # the merge is committed: whatever a recorded value did, say so and never raise
         return str(error) or type(error).__name__
     return None

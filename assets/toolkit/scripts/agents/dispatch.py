@@ -251,7 +251,7 @@ def main(argv: list[str]) -> int:
         return 0
     print(f"dispatch: {len(written)} line(s) written to {path.relative_to(ROOT).as_posix()}")
     for row in written:
-        tail = f" → {row['worktree']}" if row["worktree"] else ""
+        tail = f" -> {row['worktree']}" if row["worktree"] else ""
         print(f"  {row['outcome']:<11} {row['slice']:<8} {row['band']:<9} {row['why']}{tail}")
     if not able:
         print("dispatch: this session cannot delegate, and the ledger says so. That is a recorded reason "

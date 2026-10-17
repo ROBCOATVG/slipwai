@@ -25,6 +25,8 @@ from pathlib import Path
 
 import checkout_packages
 
+from slipwai.process_alive import alive
+
 # budget: 400 — one generation, driven, and every link of the chain read back off it. Splitting it splits
 # the fixture: `setUpClass` generates a whole project because that is the slow part, and two modules would
 # be two generations of it — which the class docstring already refuses for the same reason five subclasses
@@ -179,11 +181,8 @@ class LoopTest(unittest.TestCase):
                 os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))  # Windows: TerminateProcess
         bound = time.monotonic() + 5.0
         for pid in pids:
-            while time.monotonic() < bound:
-                try:
-                    os.kill(pid, 0)
-                except OSError:
-                    break
+            # `alive`, not `os.kill(pid, 0)`: signal 0 is CTRL_C_EVENT on Windows (`process_alive`).
+            while time.monotonic() < bound and alive(pid):
                 time.sleep(0.02)
 
     def run_in(self, *argv: str, sail: bool = False) -> subprocess.CompletedProcess:

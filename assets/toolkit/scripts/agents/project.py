@@ -626,7 +626,7 @@ def remove_orphans(harness: dict[str, object]) -> None:
     for path in orphans(harness):
         relative = path.relative_to(ROOT)
         if CHECK:
-            FINDINGS.append(f"{relative}: projected from a canonical file that no longer exists; `make agents` "
+            FINDINGS.append(f"{relative.as_posix()}: projected from a canonical file that no longer exists; `make agents` "
                             "removes it")
             continue
         path.unlink()

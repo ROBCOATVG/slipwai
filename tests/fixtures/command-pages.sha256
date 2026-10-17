@@ -88,13 +88,17 @@
 # Every other row is still its earlier reading.
 # Re-taken for the dispatch ledger's new home (`changelog.d/dispatch-ledger-moves-under-slipwai.md`).
 # Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the catch-up notes opening with the way to a set-up project, conflicts or not
+# (`changelog.d/catch-up-sets-the-project-up.md`). Only the rows named there moved: `commands/catch-up.md`.
+# Every other row is still its earlier reading.
 0cef2fd0ce2492fd8e97ce83fb424d12995945ff7b319bf9084aa23960552a85  standard  commands/add-frontend.md
 62b5c15263c6eebbd9960b9eb17ffc0b2641c8658905af8d3c271742bf84704a  standard  commands/add-service.md
 96ec953ef0b6f038bcce0252f73b6a1d5e1742810d4b0b384b5002ac73a327db  standard  commands/adversary.md
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  standard  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  standard  commands/benchmark.md
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  standard  commands/careen.md
-64b22e97f197965d64671cae27b74cb223edc427fbf39518c2a16bbd8d6d4d09  standard  commands/catch-up.md
+5b84268a2e166a413a2c9eb06247f98da6d08af02a006c6b65798090a9c1225b  standard  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  standard  commands/characterise.md
 226dfe9253940ca7659fb2420c602086f0e65b92793279cc45dde5f1a2ae75ad  standard  commands/constitution-coverage.md
 4f8fa84288143e1b02322033456017a7ea154460b5b7df92d66ef75715eeb17e  standard  commands/cruise-settings.md
@@ -120,7 +124,7 @@ c5e9245e13a20c2c785c8a939d65084bfa315c56f05d0afd964c5d241eb05999  standard  comm
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  event  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  event  commands/benchmark.md
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  event  commands/careen.md
-64b22e97f197965d64671cae27b74cb223edc427fbf39518c2a16bbd8d6d4d09  event  commands/catch-up.md
+5b84268a2e166a413a2c9eb06247f98da6d08af02a006c6b65798090a9c1225b  event  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  event  commands/characterise.md
 8c33fd55d3cdd0ac3cb4983356b3eddb8f48aa7237db756d29bbe2992b03c9eb  event  commands/constitution-coverage.md
 4f8fa84288143e1b02322033456017a7ea154460b5b7df92d66ef75715eeb17e  event  commands/cruise-settings.md
@@ -147,7 +151,7 @@ c8927247a29da2376f634ae77f49f4bee8659414e33026971bf3afacea014ea3  event-state  c
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  event-state  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  event-state  commands/benchmark.md
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  event-state  commands/careen.md
-64b22e97f197965d64671cae27b74cb223edc427fbf39518c2a16bbd8d6d4d09  event-state  commands/catch-up.md
+5b84268a2e166a413a2c9eb06247f98da6d08af02a006c6b65798090a9c1225b  event-state  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  event-state  commands/characterise.md
 f28b890748c27e6c0a3b566661d1a584f5a94c00d8bcdbd078ab39e0771be247  event-state  commands/constitution-coverage.md
 4f8fa84288143e1b02322033456017a7ea154460b5b7df92d66ef75715eeb17e  event-state  commands/cruise-settings.md
@@ -174,7 +178,7 @@ fd7477f3a46db98f5fc06bd50d7b9cff28bd47992bf97b300d40e1dcdb1640da  event-state  c
 feeb81564a22b7000bd370769244df72ed0f661b2d7c34347509ac8e937b828a  event-two-services  commands/assess.md
 466ddb0c6315dedb85b595d840210ed8fd1dee6216b2d74d25c53794aca6c8f6  event-two-services  commands/benchmark.md
 6bb3905e7811dd0f37937916d1f5341aa43e7bf5726e9c5df2834a82ffe66b22  event-two-services  commands/careen.md
-d2e1685e579b06f41c02072af17aaf3bf3b3e0a44f10034a253d1e75bbd099eb  event-two-services  commands/catch-up.md
+7d59ab6dfb64801bfa6adc63217e856ef8bbb3cdbd93074cb6059062c3f5bdde  event-two-services  commands/catch-up.md
 fc0fa59b6d6c3450b89d5e5f30056cf10b3225489660f793344bf40d54fd5620  event-two-services  commands/characterise.md
 8c33fd55d3cdd0ac3cb4983356b3eddb8f48aa7237db756d29bbe2992b03c9eb  event-two-services  commands/constitution-coverage.md
 d1fd78e204edc764aaf81ac5934106a6f915fd02da30c07f8507de5fb8e99087  event-two-services  commands/cruise-settings.md
@@ -201,7 +205,7 @@ d197a22ca61016540773cdd92acb63323db80d37ef8438abeab2a0a790eee311  standard-manag
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  standard-managed  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  standard-managed  commands/benchmark.md
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  standard-managed  commands/careen.md
-d2e1685e579b06f41c02072af17aaf3bf3b3e0a44f10034a253d1e75bbd099eb  standard-managed  commands/catch-up.md
+7d59ab6dfb64801bfa6adc63217e856ef8bbb3cdbd93074cb6059062c3f5bdde  standard-managed  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  standard-managed  commands/characterise.md
 226dfe9253940ca7659fb2420c602086f0e65b92793279cc45dde5f1a2ae75ad  standard-managed  commands/constitution-coverage.md
 4f8fa84288143e1b02322033456017a7ea154460b5b7df92d66ef75715eeb17e  standard-managed  commands/cruise-settings.md
@@ -227,7 +231,7 @@ cf9431cb8cd6a9f7d6fc1fcd3ca27fb81870882b59295ed055cdc9fb2745304b  no-application
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  no-applications  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  no-applications  commands/benchmark.md
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  no-applications  commands/careen.md
-30facc7c1cc06ae0eb8374ec20035a196a66ec512729f9e3af9f78e2e002d4ff  no-applications  commands/catch-up.md
+d3353192f405324625f93580aa1449835fefcb5139b68df1208549bb0a37a8fc  no-applications  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  no-applications  commands/characterise.md
 226dfe9253940ca7659fb2420c602086f0e65b92793279cc45dde5f1a2ae75ad  no-applications  commands/constitution-coverage.md
 4f8fa84288143e1b02322033456017a7ea154460b5b7df92d66ef75715eeb17e  no-applications  commands/cruise-settings.md
@@ -253,7 +257,7 @@ c5e9245e13a20c2c785c8a939d65084bfa315c56f05d0afd964c5d241eb05999  no-application
 feeb81564a22b7000bd370769244df72ed0f661b2d7c34347509ac8e937b828a  adopted  commands/assess.md
 466ddb0c6315dedb85b595d840210ed8fd1dee6216b2d74d25c53794aca6c8f6  adopted  commands/benchmark.md
 6bb3905e7811dd0f37937916d1f5341aa43e7bf5726e9c5df2834a82ffe66b22  adopted  commands/careen.md
-16b76bb2cb60b69d6298d828ecce134935d8587ad9c518bf89b3965a6260a086  adopted  commands/catch-up.md
+69fa0f6cf8dbe7a2bc1e159bc3bbb2e710ed0d2f87e980ebfab42d3fdee4decb  adopted  commands/catch-up.md
 e5456ddbf70fc7563b6919253f6926707ce2eefc53dcd8fa8dc9725689265329  adopted  commands/characterise.md
 f28b890748c27e6c0a3b566661d1a584f5a94c00d8bcdbd078ab39e0771be247  adopted  commands/constitution-coverage.md
 d1fd78e204edc764aaf81ac5934106a6f915fd02da30c07f8507de5fb8e99087  adopted  commands/cruise-settings.md
@@ -281,7 +285,7 @@ fd7477f3a46db98f5fc06bd50d7b9cff28bd47992bf97b300d40e1dcdb1640da  adopted  comma
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  adopted-settled  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  adopted-settled  commands/benchmark.md
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  adopted-settled  commands/careen.md
-16b76bb2cb60b69d6298d828ecce134935d8587ad9c518bf89b3965a6260a086  adopted-settled  commands/catch-up.md
+69fa0f6cf8dbe7a2bc1e159bc3bbb2e710ed0d2f87e980ebfab42d3fdee4decb  adopted-settled  commands/catch-up.md
 50544b12663013372f52f52f05381b25739b55c7c48cb1704bbd442e047902b4  adopted-settled  commands/characterise.md
 226dfe9253940ca7659fb2420c602086f0e65b92793279cc45dde5f1a2ae75ad  adopted-settled  commands/constitution-coverage.md
 4f8fa84288143e1b02322033456017a7ea154460b5b7df92d66ef75715eeb17e  adopted-settled  commands/cruise-settings.md

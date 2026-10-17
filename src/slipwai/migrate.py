@@ -30,6 +30,7 @@ from pathlib import Path
 from . import githooks
 from .assets import NOTES, VERSION
 from .catch_up import moved_languages, notes
+from .catch_up_page import ARCHIVE, after_conflicts, archive
 from .errors import GenerationError
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
@@ -86,7 +87,7 @@ def migrate(root: Path, *, with_claims: bool = False) -> Migration:
     # Written either way, and before the projections: the notes are what the *versions* asked for, which a
     # conflict does not change, and a merge left in progress is exactly when somebody wants to know what
     # they are resolving towards.
-    unwritten = write_notes(root, name, was, document)
+    unwritten = write_notes(root, name, was, document, conflicts)
     if conflicts:
         # Nothing is re-derived over a merge still in progress: the command files are half the project's
         # and half the keel's until somebody decides, and projecting a conflicted file would write the
@@ -114,7 +115,9 @@ def merge_offered(root: Path, offered: Replay, message: str) -> tuple[str | None
     return stat[-1].strip(), conflicts, git(root, "rev-parse", "HEAD") == git(root, "rev-parse", "FETCH_HEAD")
 
 
-def write_notes(root: Path, name: str, was: str | None, document: dict | None = None) -> str | None:
+def write_notes(
+    root: Path, name: str, was: str | None, document: dict | None = None, conflicts: tuple[str, ...] = (),
+) -> str | None:
     """Leave the catch-up notes in the project; None when they were left, else why they could not be.
 
     The one thing a merge cannot carry: what each version crossed asks of a repository that already exists is
@@ -126,12 +129,17 @@ def write_notes(root: Path, name: str, was: str | None, document: dict | None = 
     migration must never say by accident. Never a reason to fail either: the merge is the valuable thing and
     it is already committed by this point. A project whose notes could not be written is told so, with the
     reason, and reads them in the keel's changelog instead. `document` is `project.json` as it was before the
-    merge: each language it needs whose version moved gets a section of its own.
+    merge: each language it needs whose version moved gets a section of its own. `conflicts` are named in the
+    page's opening section, which walks from them to a project whose coding agent is set up again.
     """
     try:
+        # The page an earlier migration left is moved aside, never overwritten: it is the only record of
+        # what that upgrade asked.
+        archive(root)
         destination = root / NOTES
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(notes(name, was, languages=moved_languages(document) if document else ()))
+        destination.write_text(notes(name, was, languages=moved_languages(document) if document else (),
+                                     conflicts=conflicts))
     except Exception as error:  # the merge is committed: whatever a recorded value did, say so and never raise
         return str(error) or type(error).__name__
     return None
@@ -287,10 +295,7 @@ def report_of(done: Migration) -> str:
             "Every other file is merged and staged. For each file above, edit it and `git add` it — or take a "
             "side whole: `git checkout --ours -- <file>` keeps this project's version, `--theirs` takes the "
             "factory's — then `git commit`. Or `git merge --abort` to walk away from all of it.",
-            "Then: make agents, to re-derive the harness projections from the command and agent files this "
-            "migration moved — the factory never writes those, so the merge cannot, and `check-agents` fails "
-            "until they are re-derived. And run `slipwai migrate` again once the conflict is committed: nothing is "
-            "respelled over a merge in progress, so that run takes the adoption label off the files no merge reaches.",
+            *after_conflicts(written=done.unwritten is None),
             *(catch_up(done)),
         ])
     how = (
@@ -314,7 +319,8 @@ def report_of(done: Migration) -> str:
     if done.unwritten is None:
         lines.append(
             f"What the versions crossed ask of code already here — which no merge can do — is written to "
-            f"{NOTES}, git-ignored and disposable. `.slipwai/intake-cleanup.json` proposes where loose "
+            f"{NOTES}, git-ignored, with any earlier page moved to {ARCHIVE}/. `.slipwai/intake-cleanup.json` "
+            "proposes where loose "
             f"requirements could be recorded; nothing in it is moved until `/catch-up` confirms a row."
         )
     if done.refresh.failed:

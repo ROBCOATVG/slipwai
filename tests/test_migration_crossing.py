@@ -106,6 +106,15 @@ class InfraTest(unittest.TestCase):
         self.assertIn("infra/service/sign_in_external.tf", said)
         self.assertIn("tofu plan", said)
 
+    def test_a_crossing_that_conflicted_opens_by_setting_the_project_up(self) -> None:
+        """The page a person reads after resolving opens with the steps that leave the project set up, and
+        names the files it stopped at — before the fairways, which cannot be confirmed over a merge."""
+        said = catch_up("demo", "1.3.0", "1.3.0", flight(), layout_of({}), {}, [],
+                        conflicts=("commands/sail.md",))
+        self.assertLess(said.index("First: set the project up"), said.index("Then: confirm the fairways"))
+        self.assertIn("- `commands/sail.md`", said)
+        self.assertIn("make check-agents", said)
+
     def test_a_crossing_that_would_not_have_touched_infra_has_no_such_section(self) -> None:
         self.assertNotIn("Infrastructure, left alone",
                          catch_up("demo", "1.3.0", "1.3.0", flight(), layout_of({}), {}, []))

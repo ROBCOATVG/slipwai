@@ -13,10 +13,12 @@ import tempfile
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .adopt_report import survey_page
 from .assets import NOTES, VERSION
+from .catch_up_page import archive, set_up, stated
 from .infra_check import check as infra_check
 from .layout import layout_of
 from .logs import Entry, deck_path
@@ -139,11 +141,14 @@ def answers(files: Tree) -> Tree:
 
 
 def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branches: dict[str, str],
-             notes: list[str], infra: Sequence[str] = (), twice: Sequence[str] = ()) -> str:
+             notes: list[str], infra: Sequence[str] = (), twice: Sequence[str] = (),
+             conflicts: Sequence[str] = ()) -> str:
     proposed, unplaced = flight.counts
     command = f"python3 {layout.place('scripts/check-migration.py')}"
-    return (f"# {name}: crossing from slipwai {recorded} to {VERSION}\n\n"
-            "## First: confirm the fairways\n\n"
+    # The same opening section an ordinary migration's page has: a crossing that conflicts leaves the same
+    # three steps after the resolving commit, and this is the page the person reads once it is finished.
+    return (f"# {name}: crossing from slipwai {recorded} to {VERSION}\n" + "\n".join(set_up(conflicts)) + "\n\n"
+            "## Then: confirm the fairways\n\n"
             f"{proposed} fairways proposed, {unplaced} slices in `unplaced`. "
             "Nothing can be claimed in those fairways until you confirm.\n\n"
             f"Run `{command}`. Place every `unplaced` slice in a named context on its chart; "
@@ -293,7 +298,7 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         left = settings(root, document, result.files, conflicts=result.conflicts)
         validate(root, result.files)
         message = catch_up(document["name"], recorded, legacy.used, flight, layout_of(document),
-                           branches, left, untouched, twice)
+                           branches, left, untouched, twice, tuple(sorted(result.conflicts)))
         if check:
             conflict_names = ", ".join(sorted(result.conflicts)) or "none"
             stopping = "".join(f"\n`slipwai migrate` would refuse: {note}" for note in blocking)
@@ -311,9 +316,10 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         # a crossing is the one moment between a tree being rewritten and a runner finding out.
         for finding in infra_check(root):
             print(f"infra: {finding}")
+        archive(root)
         notes = root / NOTES
         notes.parent.mkdir(parents=True, exist_ok=True)
-        notes.write_text(message, encoding="utf-8")
+        notes.write_text(f"{message}\n{stated(recorded, VERSION, datetime.now(UTC))}\n", encoding="utf-8")
         if not result.conflicts:
             from .project.intake_cleanup import write_proposal
             write_proposal(root)

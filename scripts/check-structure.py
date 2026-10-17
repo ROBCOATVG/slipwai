@@ -61,7 +61,10 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # SHA-512 and no opinion about packages — which is what makes it testable against the RFC's vectors
     # alone (slice 6.5b).
     ("foundation", ("assets", "errors", "versions", "changelog", "whats_new", "naming", "logs", "shell_environment",
-                    "process_alive", "brand", "ed25519")),
+                    "process_alive", "brand", "ed25519",
+                    # What every catch-up page shares — its opening section and where a finished one is
+                    # archived — here so the command page in `parts` and the writers in `assembly` both reach it.
+                    "catch_up_page")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.

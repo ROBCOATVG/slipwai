@@ -7,6 +7,15 @@ ten of them: install the command, answer its questions, and watch the gate go gr
 You need Python 3.10 or newer, Git, and — for a TypeScript or JavaScript project — Node. Nothing else has
 to be set up first.
 
+There are two ways through step 3, and they end in the same repository — pick whichever you prefer:
+
+- **In the terminal** — `slipwai generate` asks the questions one at a time:
+  [generate the repository](#3-generate-the-repository).
+- **In the browser** — `slipwai` opens the board, where the same questions are a form:
+  [the same interview, on the board](#the-same-interview-on-the-board).
+
+Steps 1 and 2 are the same for both.
+
 ---
 
 ## 1. Install the command

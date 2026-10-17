@@ -39,9 +39,8 @@ from .target_templates import BOOTSTRAP_STACK, SCRIPT, SERVICE_STACK, SETUP_SCRI
 
 #: Where the reusable workflow a package's CI calls actually lives. Version 1's repository has a
 #: `package.yml` too, with different inputs — a package pointed at it would fail on the first push with
-#: inputs that workflow has never heard of. This becomes `ROBCOATVG/slipwai` when version 2 merges back
-#: there (slice 8.5), and that row says so.
-KEEL_REPO = "ROBCOATVG/slipwai_v2_Fork"
+#: inputs that workflow has never heard of. Version 2 merged back there (slice 8.5), so the two are one now.
+KEEL_REPO = "ROBCOATVG/slipwai"
 KINDS = ("extension", "language", "quickstart", "target")
 #: The release a package that has cut none is a snapshot of, which is what `conformance.version_rule` asks
 #: of one. Language, extension and target scaffolds open this release rather than claiming it was cut.

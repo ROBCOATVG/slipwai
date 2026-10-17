@@ -1,5 +1,8 @@
 # Slipwai
 
+[![PyPI](https://img.shields.io/pypi/v/slipwai)](https://pypi.org/project/slipwai/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Slipwai creates product repositories and runs a delivery loop in them with coding agents.** Say the name
 as "slipway".
 

@@ -174,6 +174,8 @@ class OwnProseTest(unittest.TestCase):
         # 1's words as version 1's — "version 1 called this a value stream, or a workstream" — and ends on
         # a table of them. The same case as the glossary's third column.
         "docs/whats-new.md": {"workstation", "workstream", "lane", "runner"},
+        # Version 1's released entries, kept as they shipped: a published release note is not reworded.
+        "CHANGELOG.md": {"lane", "runner"},
         # Version 1's loop, named as version 1's — which `AGENTS.md` permits in as many words.
         "README.md": {"runner"},
         "docs/guide/let-it-cruise.md": {"runner"},

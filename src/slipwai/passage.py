@@ -122,18 +122,19 @@ def drawn_states(root: Path, feature: str) -> list[tuple[str, list[str]]]:
     return found
 
 
-def record_verdict(root: Path, feature: str, verdict: str, reason: str = "") -> str:
+def record_verdict(root: Path, feature: str, verdict: str, reason: str = "", by: str = "") -> str:
     """Write `mock-states.md` from the drawings a person has just approved or disapproved.
 
     Approving marks every drawn state approved. Disapproving parks them, and a park with no reason is a
-    blank, which is the one mark this file refuses.
+    blank, which is the one mark this file refuses. `by` is a first line saying who gave the verdict, where
+    it was not a person.
     """
     if verdict not in ("approved", "parked"):
         raise ValueError("approve or disapprove the storyboard")
     why = re.sub(r"\s+", " ", reason).strip()
     if verdict == "parked" and not why:
         raise ValueError("say why you disapprove, so the next drawing knows what to change")
-    lines: list[str] = []
+    lines: list[str] = [by, ""] if by else []
     for name, states in drawn_states(root, feature):
         lines.append(f"## Surface: {name}")
         mark = "approved" if verdict == "approved" else f"parked: {why}"

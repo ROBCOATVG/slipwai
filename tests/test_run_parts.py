@@ -43,7 +43,8 @@ class CruiseTest(unittest.TestCase):
 
     def test_the_settings_the_stops_need_are_all_still_here(self) -> None:
         declared = {key for key, _, _, _ in cruise.SETTINGS}
-        self.assertEqual(declared, {"enabled", "decide", "release", "constitution", "hand", "unblock", "model"})
+        self.assertEqual(declared, {"enabled", "decide", "release", "constitution", "hand", "unblock",
+                                    "upstream", "model"})
 
     def test_the_command_names_no_part_of_the_runner(self) -> None:
         """Prose is where a deletion rots: a command file that still tells somebody to run `cruise.py watch`

@@ -61,6 +61,9 @@ SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
     ("unblock", ("bosun", "park"), "bosun",
      "what a block becomes: work for `sail-unblock-bosun` first — a stub, a narrower reading, a repair — parking only "
      "at the catastrophic or when it fails; or a park at once"),
+    ("upstream", ("park", "advance"), "park",
+     "the steps above the chart — the drafted specification, the storyboard and the event model: stop at "
+     "each for a person, or have the board start the next one, and approve the storyboard, as each ends well"),
     # `stuck_after`, `max_iterations`, `max_hours` and `poll_minutes` were here until 7.7d and are not any
     # more: each was a budget on a loop that no longer exists. What bounds a run is the telegraph
     # (`harbour.json`), which is one lever rather than four numbers nobody set.

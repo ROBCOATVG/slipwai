@@ -65,6 +65,7 @@ CHOICES: dict[str, tuple[str, ...]] = {
     "constitution": ("ratify", "park"),
     "hand": ("browser", "http", "cli"),
     "unblock": ("bosun", "park"),
+    "upstream": ("park", "advance"),
 }
 # Free text, or null: the model the ladder itself runs on, passed through the harness row's own `modelFlag`.
 TEXTS = ("model",)
@@ -76,8 +77,11 @@ TEXTS = ("model",)
 # takes them out, because a setting nothing reads is worse than one that was never there.
 DEFAULTS: dict[str, Any] = {
     "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
-    "hand": "browser", "unblock": "bosun", "model": None,
+    "hand": "browser", "unblock": "bosun", "upstream": "park", "model": None,
 }
+# Settings that arrived after projects already had this file. Absent is the default rather than a finding, so
+# a project written before one existed still passes `make check-agents`; `--set` writes it in.
+LATER = ("upstream",)
 CONTROLS = {
     "enabled": "whether `/cruise` runs at all; `false` is a refusal that says so",
     "decide": "who answers a product question: the host where the stage recommends an answer or a standing "
@@ -89,6 +93,9 @@ CONTROLS = {
     "hand": "the top of the hand's ladder for a demo; each falls through to the next where it cannot run",
     "unblock": "what a block becomes: work for `sail-unblock-bosun` first — a stub, a narrower reading, a repair — parking "
                "only at the catastrophic or when it fails; or a park at once",
+    "upstream": "the steps above the chart — the drafted specification, the storyboard and the event model: "
+                "stop at each for a person, or have the board start the next one, and approve the storyboard, "
+                "as each ends well",
     "model": "the model the iteration itself runs on — the driver, and every stage `.specify/models.json` maps to "
              "`host`; null is the harness's default, which nobody at the wheel chooses",
 }
@@ -108,7 +115,7 @@ def check(table: object) -> list[str]:
         return ["the file is not a JSON object"]
     findings = []
     for key, values in CHOICES.items():
-        value = table.get(key)
+        value = table.get(key, DEFAULTS[key] if key in LATER else None)
         if key == "enabled":
             if not isinstance(value, bool):
                 findings.append(f"`enabled` must be true or false, not {value!r}")
@@ -138,7 +145,7 @@ def assign(table: dict[str, Any], assignment: str) -> str:
 
 
 def describe(table: dict[str, Any]) -> str:
-    return "\n".join(f"{key}: {json.dumps(table[key])} — {CONTROLS[key]}" for key in DEFAULTS)
+    return "\n".join(f"{key}: {json.dumps(table.get(key, DEFAULTS[key]))} — {CONTROLS[key]}" for key in DEFAULTS)
 
 
 def load() -> dict[str, Any]:

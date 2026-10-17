@@ -47,6 +47,10 @@ STOPS: tuple[tuple[str, str, dict[str, str]], ...] = (
      {"bosun": "the bosun works around it", "park": "park and ask me"}),
     ("release", "A release",
      {"flagged": "continue behind a flag, so every merge is dark", "park": "park and ask me"}),
+    # Met first, but last here: it is the board's stop rather than the fleet's, and the four above are what
+    # this card has always been read for.
+    ("upstream", "The specification, storyboard and model",
+     {"park": "stop for me at each", "advance": "advance on their own"}),
 )
 #: The value that means a person is asked. A stop sitting on this is `/sail`'s answer to it.
 ASKS = "park"
@@ -71,7 +75,13 @@ def orders(root: Path) -> dict[str, str]:
         held = json.loads((root / CONFIG).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
-    return {str(a): str(b) for a, b in held.items() if isinstance(held, dict) and not str(a).startswith("_")}
+    if not isinstance(held, dict):
+        return {}
+    # A stop added after the file was written reads as its default, which is what the project's own script
+    # takes it to be: the card then shows where it stands rather than a dial with nothing on.
+    later = {key: str(default) for key, _, default, _ in SETTINGS
+             if key not in held and any(key == name for name, _, _ in STOPS)}
+    return later | {str(a): str(b) for a, b in held.items() if not str(a).startswith("_")}
 
 
 def asking(root: Path) -> list[str]:

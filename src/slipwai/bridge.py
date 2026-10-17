@@ -82,6 +82,7 @@ from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .spec_page import page as spec
 from .telegraph import Refused
+from .upstream import advance
 from .voyage import (
     MOCK_ROUTE,
     SCREEN_ROUTE,
@@ -251,6 +252,8 @@ class Bridge(BaseHTTPRequestHandler):
         if where in SEATED and self.controls and not self.named_seat():
             self.sent_to(self.minted(where, query))
             return
+        if where in ("/init.json", "/voyage.json") and self.controls:
+            advance(self)  # the poll is the board's clock: `upstream.py` says why, and what it presses
         if where == "/init.json" and self.controls:
             self.send(200, json.dumps(self.receipt(since(query))), "application/json; charset=utf-8")
             return

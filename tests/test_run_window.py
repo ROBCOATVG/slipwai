@@ -252,7 +252,7 @@ class WheelRouteTest(BoardTest):
             encoding="utf-8")
         said = self.get("/voyage")[1]
         self.assertIn('data-dial="cruise" data-key="unblock"', said)
-        self.assertIn("Nothing here stops for you", said)
+        self.assertIn("This run stops for you at: the specification, storyboard and model.", said)
         self.assertIn('for="tab-answers"', said, "a tab of the settings box, beside Speed")
         self.assertEqual(self.post("/wheel", {"stop": "unblock", "value": "park"}),
                          (200, "unblock = park"))

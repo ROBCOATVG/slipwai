@@ -58,13 +58,16 @@ class WheelTest(unittest.TestCase):
             with self.subTest(stop=name):
                 self.assertEqual(set(says), set(known(name)), "every value the setting takes, and no other")
 
-    def test_a_generated_project_answers_every_stop_itself(self) -> None:
-        """Which is what `/cruise` is. A fresh project stops for nobody, and the card says so."""
+    def test_a_generated_project_answers_every_stop_of_the_fleet_itself(self) -> None:
+        """Which is what `/cruise` is. A fresh project's fleet stops for nobody; the steps above the chart
+        stop for a person until the project says they advance on their own, and the card says that too."""
+        self.assertEqual(asking(self.root), ["The specification, storyboard and model"])
+        self.answer(upstream="advance")
         self.assertEqual(asking(self.root), [])
         self.assertIn("Nothing here stops for you", tab(orders(self.root)))
 
     def test_a_stop_set_to_park_is_this_run_asking_a_person(self) -> None:
-        self.answer(unblock=ASKS, release=ASKS)
+        self.answer(unblock=ASKS, release=ASKS, upstream="advance")
         self.assertEqual(asking(self.root), ["A block", "A release"])
         said = tab(orders(self.root))
         self.assertIn("This run stops for you at: a block, a release.", said)

@@ -196,6 +196,29 @@ class Fixture(unittest.TestCase):
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         self.assertIn("UI9", done.stderr)
 
+    def test_a_push_is_judged_by_the_ledger_it_carries_not_the_one_left_uncommitted(self) -> None:
+        """The hook read the working tree, so a ledger nobody committed passed it and failed CI."""
+        self.ledger(["SB1"])
+        self.commit("the ledger as it was")
+        base = self.git("rev-parse", "HEAD").stdout.strip()
+        (self.root / "work.txt").write_text("SB4", encoding="utf-8")
+        self.git("add", "work.txt")
+        self.git("commit", "-m", "036 SB4: bounded losses, recording handover")
+        head = self.git("rev-parse", "HEAD").stdout.strip()
+        self.ledger(["SB1", "SB4"])
+        push = f"refs/heads/main {head} refs/heads/main {base}\n"
+        done = subprocess.run([sys.executable, "scripts/check-dispatch.py", "--stdin"], cwd=self.root,
+                              input=push, capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("SB4", done.stderr)
+        self.git("add", "-A")
+        self.git("commit", "--amend", "--no-edit")
+        head = self.git("rev-parse", "HEAD").stdout.strip()
+        done = subprocess.run([sys.executable, "scripts/check-dispatch.py", "--stdin"], cwd=self.root,
+                              input=f"refs/heads/main {head} refs/heads/main {base}\n",
+                              capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
     def test_a_branch_being_deleted_carries_nothing_to_judge(self) -> None:
         done = subprocess.run([sys.executable, "scripts/check-dispatch.py", "--stdin"], cwd=self.root,
                               input=f"(delete) {'0' * 40} refs/heads/gone "

@@ -92,13 +92,11 @@ def charted() -> set[str]:
     return {one for one in found if one}
 
 
-def ledgered() -> set[str]:
-    """Every slice any feature's dispatch ledger accounts for, however it accounts for it."""
+def rows(texts: list[str]) -> set[str]:
+    """Every slice the ledger texts account for, however each line accounts for it."""
     found: set[str] = set()
-    paths = sorted(LEDGERS.glob("*.jsonl")) if LEDGERS.is_dir() else []
-    paths += sorted(SPECS.glob(f"*/{OLD_LEDGER}")) if SPECS.is_dir() else []
-    for path in paths:
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    for text in texts:
+        for line in text.splitlines():
             if not line.strip():
                 continue
             try:
@@ -108,6 +106,23 @@ def ledgered() -> set[str]:
             if isinstance(row, dict) and row.get("slice"):
                 found.add(str(row["slice"]))
     return found
+
+
+def ledgered(commit: str = "") -> set[str]:
+    """Every slice any feature's dispatch ledger accounts for — in the working tree, or in one commit's tree.
+
+    A push is judged against the commit being pushed, because that is what arrives: a ledger written and
+    never committed is in this checkout and nowhere else, and reading the working tree let exactly that
+    through the `pre-push` hook while CI, on a clean checkout, refused it.
+    """
+    if commit:
+        listed = git("ls-tree", "-r", "--name-only", commit, "--", ".slipwai/dispatch", "specs").splitlines()
+        wanted = [path for path in listed if (path.startswith(".slipwai/dispatch/") and path.endswith(".jsonl"))
+                  or path.endswith(f"/{OLD_LEDGER}")]
+        return rows([git("show", f"{commit}:{path}") for path in wanted])
+    paths = sorted(LEDGERS.glob("*.jsonl")) if LEDGERS.is_dir() else []
+    paths += sorted(SPECS.glob(f"*/{OLD_LEDGER}")) if SPECS.is_dir() else []
+    return rows([path.read_text(encoding="utf-8", errors="replace") for path in paths])
 
 
 def named(subject: str) -> list[str]:
@@ -189,12 +204,16 @@ def main(argv: list[str]) -> int:
     if not spans:
         print("check-dispatch: no range to judge and no trunk to compare with — nothing to hold")
         return 0
-    plans, accounted = charted(), ledgered()
+    plans = charted()
     if not plans:
         print("check-dispatch: no chart, no event model and no slice folders, so no plan says what the "
               "ids in a commit mean — nothing to hold")
         return 0
-    found = [fault for span in spans for fault in faults(span, plans, accounted)]
+    # What a push or an explicit range carries is judged by its own tree; this branch against trunk, which
+    # `make verify` runs before the commit exists, by the working tree.
+    pushed = "--stdin" in argv or "--range" in argv
+    found = [fault for span in spans
+             for fault in faults(span, plans, ledgered(span.split("..")[-1] if pushed else ""))]
     if found:
         print("check-dispatch: a commit names work no plan knows, or work no dispatch accounts for\n",
               file=sys.stderr)

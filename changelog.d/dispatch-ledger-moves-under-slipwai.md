@@ -8,6 +8,8 @@ now also says how the ledger reaches trunk: in the merge that lands the first sl
 commit of its own, because a push to `main` may be a deploy and one line of evidence is not a change.
 `check-dispatch` and the `pre-push` hook read both homes, so nothing goes red between upgrading and
 migrating.
+The `pre-push` hook now judges the ledger in the commit being pushed rather than the working tree, so a
+ledger written and never committed is refused before the push rather than by CI on a clean checkout.
 
 **Catch-up:** `slipwai migrate` moves every committed `specs/<feature>/dispatch-ledger.jsonl` to
 `.slipwai/dispatch/<feature>.jsonl` with `git mv`, in the commit it makes after the merge. Where a file is

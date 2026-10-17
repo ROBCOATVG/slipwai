@@ -63,7 +63,7 @@ class LedgerTest(unittest.TestCase):
                               env=environment)
 
     def ledger(self) -> list[dict]:
-        path = self.feature / "dispatch-ledger.jsonl"
+        path = self.root / ".slipwai/dispatch/036-shared.jsonl"
         if not path.is_file():
             return []
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -113,6 +113,8 @@ class LedgerTest(unittest.TestCase):
         self.assertTrue(all(row["outcome"] == "dispatched" for row in written), written)
         self.assertTrue(all(row["delegate"] == "sail-slice-watch" for row in written), written)
         self.assertTrue(all(row["worktree"].endswith(row["slice"]) for row in written), written)
+        # With the run's other committed records, and never in the feature's specification any more.
+        self.assertFalse((self.feature / "dispatch-ledger.jsonl").exists())
 
     def test_the_ledger_is_appended_to_and_never_rewritten(self) -> None:
         """Its earlier lines are the whole evidence; a file that was ever rewritten has none."""

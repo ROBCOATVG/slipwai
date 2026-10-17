@@ -325,11 +325,14 @@ delegates with nothing to call. That answer is a reading, not a judgement — `s
 --can-delegate` is the whole of it.
 
 **Then `{{make}} dispatch`, before any delegate is called.** It writes one line per slice to
-`specs/<feature>/dispatch-ledger.jsonl` — the slot, the worktree and the delegate, or *this session could
-not delegate and here is the reason* — and it is committed with the work, because a run that fanned out
-and a run that took the ready set one slice at a time were otherwise indistinguishable afterwards except
-by reading a transcript by hand. `{{make}} verify` refuses a commit naming a slice no line accounts for,
-and so does the `pre-push` hook `{{make}} hooks` installs. Then
+`.slipwai/dispatch/<feature>.jsonl` — the slot, the worktree and the delegate, or *this session could
+not delegate and here is the reason* — and it is committed, because a run that fanned out and a run that
+took the ready set one slice at a time were otherwise indistinguishable afterwards except by reading a
+transcript by hand. The ledger is this session's, never a slice branch's — `.slipwai/` is the host's, and
+`check-slice-scope` says so — and it rides to trunk with the work it accounts for: staged into the merge
+that lands the first slice it names, never pushed as a commit of its own, since a push to `main` may be a
+deploy and a line of evidence is not a change. `{{make}} verify` refuses a commit naming a slice no line
+accounts for, and so does the `pre-push` hook `{{make}} hooks` installs. Then
 delegate the band its state admits to one fresh
 `sail-slice-watch` delegate (`agents/sail-slice-watch.md`, the standing brief) with a manifest naming the
 **band** — `prepare`, `implement`, or `whole` — the worktree, the slice's block of the model, its

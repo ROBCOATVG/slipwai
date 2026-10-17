@@ -17,7 +17,10 @@ indistinguishable from one that simply did not try.
 
 **Committed, unlike the deck logs.** The logs are a machine's running record and travel as refs; this is
 evidence about a commit, and the gate that reads it runs on a checkout that has only what git carries.
-`specs/<feature>/dispatch-ledger.jsonl`, append-only, one JSON object per line.
+`.slipwai/dispatch/<feature>.jsonl`, append-only, one JSON object per line: with the run's other committed
+records rather than in `specs/`, which is the feature's specification and not evidence about how it was
+worked. A ledger at the old `specs/<feature>/dispatch-ledger.jsonl` is still read until `slipwai migrate`
+moves it, and never written.
 
 **It will not write a line on an answer it does not have.** `preflight.py --record` leaves this checkout's
 own answer under `.slipwai/`, and without a current one there is nothing here saying whether this session
@@ -49,9 +52,11 @@ RECORD = ROOT / ".slipwai/preflight.json"
 #: a branch moves, `make agents` is run, a worktree is made — and an answer from this morning is about a
 #: different tree. One hour is long enough not to be ceremony and short enough to still be evidence.
 STALE_AFTER = 3600.0
-#: The one file this writes, per feature. Append-only: a ledger that was ever rewritten would be a ledger
+#: Where this writes, one file per feature. Append-only: a ledger that was ever rewritten would be a ledger
 #: whose earlier lines nobody can trust, and the earlier lines are the whole evidence.
-LEDGER = "dispatch-ledger.jsonl"
+LEDGERS = ROOT / ".slipwai/dispatch"
+#: Where the ledger was until 2.0.0, under each feature. Read, never written; `slipwai migrate` moves it.
+OLD_LEDGER = "dispatch-ledger.jsonl"
 #: Which delegate type takes a band. One type for all three, because *Running ready slices concurrently*
 #: hands a band to one fresh `sail-slice-watch` and that delegate chooses stage by stage inside itself.
 DELEGATE = "sail-slice-watch"
@@ -165,7 +170,7 @@ def lines(found: dict, able: bool, why: str, machine: str, key: str) -> list[dic
 
 
 def ledger_of(feature: str) -> Path:
-    return SPECS / feature / LEDGER
+    return LEDGERS / f"{feature}.jsonl"
 
 
 def append(path: Path, written: list[dict]) -> None:
@@ -193,8 +198,9 @@ def read(path: Path) -> list[dict]:
 
 
 def dispatched_slices(feature: str) -> set[str]:
-    """Every slice this feature's ledger accounts for, however it accounts for it."""
-    return {str(row.get("slice", "")) for row in read(ledger_of(feature)) if row.get("slice")}
+    """Every slice this feature's ledger accounts for, however it accounts for it — the old home included."""
+    rows = read(ledger_of(feature)) + read(SPECS / feature / OLD_LEDGER)
+    return {str(row.get("slice", "")) for row in rows if row.get("slice")}
 
 
 def main(argv: list[str]) -> int:

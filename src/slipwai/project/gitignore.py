@@ -126,10 +126,12 @@ def build_artifacts(event: bool, apps: list[App], target: str = "none") -> str:
         # a fold of the logs and `berths/` is worktree paths and port numbers. None of it belongs in
         # trunk's history, and `logs.py` has said so since 5.13 while nothing ignored them.
         #
-        # Three things under `.slipwai/` stay committed, and each for a reason: `extensions.json` is the
+        # Four things under `.slipwai/` stay committed, and each for a reason: `extensions.json` is the
         # election record `migrate` re-projects from without asking the menu again; `hooks.json` is a
         # controlled file, so an iteration that edits it is refused like one that edits a gate — which
-        # needs it diffable; and `packages/` is a project's own pinned packages where it has any.
+        # needs it diffable; `packages/` is a project's own pinned packages where it has any; and
+        # `dispatch/` is the dispatch ledger, one file per feature, which `check-dispatch` and the
+        # `pre-push` hook read on a checkout that has only what git carries.
         + "".join(f".slipwai/{name}\n" for name in RUN_STATE)
         + ".specify-tools/\n.delivery-tools/\n"
         # The canonical slot the installed Spec Kit plan and tasks commands resolve to, one per feature. Since

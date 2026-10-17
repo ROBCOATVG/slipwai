@@ -74,6 +74,9 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # Pointing a checkout at the hooks it carries. Version 2's: version 1 had no hook that held a push,
        # and `core.hooksPath` is per-checkout, so nothing about it could have been brought back.
        "githooks",
+       # A record the project wrote that a newer keel keeps elsewhere, moved by `migrate` after the merge.
+       # Version 1 never moved one: its ledgers stayed wherever they were first written.
+       "relocate",
        # The board's Voyage window: where a project stands, read off the tree, and the landing beside it.
        "passage", "voyage", "voyage_page", "landing_page",
        # A window each. The experiment's board served one directory, so it had no table of who is looking

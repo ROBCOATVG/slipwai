@@ -28,10 +28,11 @@ from slipwai.fleet import board
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 560 — every route the board answers, driven against `board_fixture`: the fleet pages, the
+# budget: 575 — every route the board answers, driven against `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
 # hold; the fixture moved out with it rather than being copied, which is what the one-suite rule was for.
+# Fifteen more for the storyboard's design files, served at the path they have in the project.
 
 
 class TellTest(Fixture):

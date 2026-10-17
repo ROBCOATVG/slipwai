@@ -4,7 +4,8 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 390 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to
+# budget: 410 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# and the design files a storyboard links that the board serves beside it
 from __future__ import annotations
 
 import json
@@ -109,7 +110,8 @@ class MockupsTest(unittest.TestCase):
     def test_every_wireframe_is_listed_by_its_own_title(self) -> None:
         found = mockups(self.root)
         self.assertEqual([(row["feature"], row["name"], row["title"], row["href"]) for row in found],
-                         [("001-demo", "catalog.html", "catalog — Demo", "/mockups/specs/001-demo/mockups/catalog.html")])
+                         [("001-demo", "catalog.html", "catalog — Demo",
+                           "/mockups/specs/001-demo/mockups/catalog.html")])
         self.assertEqual(mockups(Path(tempfile.mkdtemp())), [])
 
     def test_a_seat_stays_on_the_path_a_mock_up_s_own_files_are_loaded_from(self) -> None:

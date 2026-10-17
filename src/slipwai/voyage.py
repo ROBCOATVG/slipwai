@@ -14,7 +14,8 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 450 — the fold, the model, the mock-ups and the screenshots one voyage is read from
+# budget: 480 — the fold, the model, the mock-ups and the screenshots one voyage is read from, and the
+# design files under `docs/design/` a storyboard links, served at the path they have in the project
 from __future__ import annotations
 
 import json

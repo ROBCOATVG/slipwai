@@ -35,13 +35,21 @@ optional tool an extension brought, it checks whether that tool is available in 
 
 | `contextMode` | Harnesses | What the projector does |
 |---|---|---|
-| `canonical` | 18 — Codex, Zed, Grok, Droid and the rest | Nothing. The harness reads `AGENTS.md` under its own name. |
+| `canonical` | 19 — Codex, Cursor, Zed, Grok, Droid and the rest | Nothing. The harness reads `AGENTS.md` under its own name. |
 | `import` | 1 — Claude Code, `CLAUDE.md` | Writes a region holding `@AGENTS.md`, which that harness reads as an include, so the real file arrives. |
-| `copy` | 17 — Gemini, Copilot, Cursor and the rest | Synchronises marker-fenced extension blocks into the context Spec Kit already wrote, replacing stale regions without touching its baseline. |
+| `copy` | 16 — Gemini, Copilot and the rest | Synchronises marker-fenced extension blocks into the context Spec Kit already wrote, replacing stale regions without touching its baseline. |
 
 An `import` harness gets the whole file by reference, which never goes stale. Its import region is the only
 part of `CLAUDE.md` the projector claims: everything outside the markers is yours and is never rewritten.
-Delete the region and `make agents` puts it back around what you wrote.
+Delete the region and `make agents` puts it back around what you wrote. **The import region is kept whichever
+harness was installed**: a generated project commits `CLAUDE.md` with it from the start, and `make agents` keeps
+it in step for every `import` harness, installed or not — because a harness reads nothing of a repository until
+a file it recognises is there, and the instruction that sets it up is in `AGENTS.md`.
+
+Cursor was a `copy` harness until 2026-10-17, when its own documentation was read again: the editor reads
+`AGENTS.md` in the project root and in subdirectories, and the CLI reads `AGENTS.md` and `CLAUDE.md` at the
+root (`registry.json`, `contextSource`). Spec Kit still writes `.cursor/rules/specify-rules.mdc`, and Cursor
+reads both.
 
 A `copy` harness already has Spec Kit's baseline project context. Copying `AGENTS.md` whole would duplicate
 that context and charge every session for it twice, so the later pass carries only optional, marker-fenced
@@ -51,6 +59,33 @@ index should be used when available in its own session. `make agents` refreshes 
 A `copy` harness whose context file does not exist is left alone rather than reported: `specify init` owns
 that file's format, frontmatter and all, and inventing one would mean guessing at a shape this repository
 does not own. An `import` harness's file is created if absent, because nothing else creates it.
+
+## Opening the project in another harness
+
+A project is set up for the harness `./init` was asked for, and a team does not stay on one. Opened in another,
+it has `AGENTS.md` (every harness reaches it, by its own name or through the committed `CLAUDE.md`) and nothing
+else: the commands, skills, delegate types and hooks are generated per harness and ignored by Git. So the
+first instruction in `AGENTS.md` is to ask `python3 scripts/agents/harness.py --can-delegate`, and to run
+`make agents` and start a new session when it says this harness is not set up.
+
+`make agents` then adds the harness this session runs in, where it is not installed: `specify integration
+install <key>`, which records it beside the others in `.specify/integration.json` and keeps the default, so its
+`speckit-*` commands arrive with this project's. Spec Kit adds a second integration on its own only where both
+declare themselves safe to install together; where it refuses, the line says so, and whether to `--force` it or
+`specify integration switch` is a person's choice. Either way this project's own material is projected into the
+running harness. `make arrive` and `make preflight` ask the same question with `--running`, and set the harness
+up only where it is missing or unprojected, as in a fresh clone.
+
+**Which harness is running is read, never guessed.** Only a harness that sets a session variable says so
+(`usage.env` in the registry: Claude Code and Codex). Under any other, `make agents` projects what is installed
+and says it could not tell; `python3 scripts/agents/project.py <key>` projects into a named one.
+
+**What `make agents` does not bring.** It projects what the project holds. A newer ladder, command or agent type
+is in a newer slipwai, and arrives only through `slipwai migrate`; `make agents` says so when the installed
+slipwai is newer than `project.json`'s `generator.updatedWith`. And it removes a projected file whose canonical
+source has gone — a command renamed, a type deleted — but only a file carrying its stamp, never one a person
+or Spec Kit wrote. A non-Markdown file inside a skill carries no stamp, so one left behind by a deleted skill
+stays until it is removed by hand. `check-agents` names every such stale projection as drift.
 
 ## The agent types
 

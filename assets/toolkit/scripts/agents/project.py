@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from command_text import command_as_skill, parse_text  # noqa: E402
 
+import harness as running  # noqa: E402 — which harness this session is in, read from its own variable
 import models  # noqa: E402 — after the path that makes this script's sibling importable
 
 
@@ -49,7 +52,15 @@ LIST = "--list" in sys.argv[1:]
 # have run: the skills and commands are already in place by then and copying them again would be work with
 # no change in it.
 CONTEXT_ONLY = "--context" in sys.argv[1:]
-FLAGS = {"--check", "--list", "--context"}
+# `--running` is what `make arrive` and `make preflight` ask: project only where the harness this session runs
+# in is not set up here — not installed, or installed with nothing projected, as in a fresh clone — and say
+# nothing otherwise. A project initialised under one harness and opened in another sets itself up there.
+RUNNING_ONLY = "--running" in sys.argv[1:]
+FLAGS = {"--check", "--list", "--context", "--running"}
+# The stamp, as a pattern: what marks a file this script wrote, and the canonical source it was written from.
+# A file without it is a person's or another tool's — Spec Kit's own `speckit-*` skills share these
+# directories — and is never removed.
+STAMPED = re.compile(r"Generated from (\S+)\. Edit the canonical file and rerun \./init\.")
 # What an extension appends to AGENTS.md to point the agent at itself (docs/extensions.md).
 EXTENSION_BLOCK = re.compile(
     r"<!-- extension:([a-z0-9][a-z0-9-]*):begin -->.*?<!-- extension:\1:end -->", re.DOTALL
@@ -578,6 +589,166 @@ def project(harness: dict[str, object]) -> None:
     sync_context(harness)
 
 
+def projection_directories(harness: dict[str, object]) -> list[Path]:
+    """Where this harness's skills, commands and agent types land, inside the repository."""
+    file_row = harness.get("agentFile")
+    named = [harness.get("skillsDir"), harness.get("commandsDir"),
+             file_row.get("dir") if isinstance(file_row, dict) else None]
+    return [ROOT / value for value in dict.fromkeys(named) if isinstance(value, str) and not value.startswith(("~", "/"))]
+
+
+def orphans(harness: dict[str, object]) -> list[Path]:
+    """Every stamped file in this harness's directories whose canonical source is no longer in the project.
+
+    A command renamed or a type deleted leaves its projection behind otherwise, and a harness keeps offering
+    it — a stale `/sail` beside the new one is worse than none, because it is read as current. Only a file
+    carrying the stamp is ever a candidate, so a person's own file and Spec Kit's `speckit-*` skills stay.
+    """
+    found: list[Path] = []
+    for directory in projection_directories(harness):
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.rglob("*")):
+            if not path.is_file() or path in EXPECTED:
+                continue
+            try:
+                stamp = STAMPED.search(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError):
+                continue
+            if stamp is not None and not (ROOT / stamp.group(1)).exists():
+                found.append(path)
+    return found
+
+
+def remove_orphans(harness: dict[str, object]) -> None:
+    """Delete them, and any directory they leave empty up to the projection directory; under `--check`, name them."""
+    tops = projection_directories(harness)
+    for path in orphans(harness):
+        relative = path.relative_to(ROOT)
+        if CHECK:
+            FINDINGS.append(f"{relative}: projected from a canonical file that no longer exists; `make agents` "
+                            "removes it")
+            continue
+        path.unlink()
+        print(f"Removed {relative}: its canonical source is gone.")
+        parent = path.parent
+        while parent not in tops and parent != ROOT and not any(parent.iterdir()):
+            parent.rmdir()
+            parent = parent.parent
+
+
+def sync_import_contexts(registry: list[dict[str, object]], selected: list[str]) -> None:
+    """Keep every `import` harness's context file pointing at AGENTS.md, whichever harnesses are installed.
+
+    A harness reads nothing of a repository until a file it recognises is there, so a project initialised under
+    one harness and opened in another starts that session with no rules at all — and the instruction that
+    would set it up is in AGENTS.md, which it has not read. The include is one owned region and never goes
+    stale, so it is kept for every harness that reads one, not only the ones `./init` was asked for.
+    """
+    for row in registry:
+        if row.get("contextMode") == "import" and row["key"] not in selected:
+            sync_context(row)
+
+
+def installed_now() -> list[str]:
+    """What Spec Kit records as installed here, or nothing where it records nothing yet."""
+    try:
+        return selected_integrations([])
+    except RuntimeError:
+        return []
+
+
+def add_running_harness(by_key: dict[str, dict[str, object]], selected: list[str]) -> list[str]:
+    """The harnesses to project into: those installed, plus the one this session runs in where it is not.
+
+    The running harness is read from its own session variable (`harness.py`, `current_key`) and never guessed:
+    where no variable names one, what is installed is projected and the line says it could not tell. A harness
+    that is named and missing is added through Spec Kit first — `specify integration install <key>`, which
+    records it beside the others and keeps the default — so its `speckit-*` commands arrive with this
+    project's. Where Spec Kit refuses or is absent, this project's own material is projected anyway, because
+    the rules and `/sail` are worth having without Spec Kit's commands, and the line says what is missing.
+    """
+    key = running.current_key()
+    if not key:
+        print("Could not tell which harness this session runs in: only a harness that sets a session variable "
+              f"says so. Projected what is installed ({', '.join(selected) or 'nothing'}); "
+              "`python3 scripts/agents/project.py <harness>` projects into another.")
+        return selected
+    if key in selected or key not in by_key:
+        return selected
+    name = by_key[key].get("name") or key
+    if by_key[key].get("projectable") is False:
+        print(f"This session runs in {name}, which cannot be projected into a repository: "
+              f"{by_key[key].get('unprojectableReason') or 'the registry says why not'}.")
+        return selected
+    specify = shutil.which("specify")
+    if specify is None:
+        print(f"This session runs in {name}, which is not installed here, and `specify` is not on PATH, so its "
+              f"Spec Kit commands were not added: `./init --integration {key}` adds them. Projecting this "
+              "project's own material into it now.")
+        return [*selected, key]
+    done = subprocess.run([specify, "integration", "install", key], cwd=ROOT, capture_output=True, text=True)
+    if done.returncode == 0:
+        print(f"This session runs in {name}, which was not installed here: Spec Kit added it beside "
+              f"{', '.join(selected) or 'nothing'}.")
+        return list(dict.fromkeys([*installed_now(), key]))
+    said = (done.stdout + done.stderr).strip().splitlines()
+    print(f"This session runs in {name}, and Spec Kit would not add it beside {', '.join(selected)}"
+          f"{': ' + said[-1].strip() if said else ''}. Whether to install it anyway "
+          f"(`specify integration install {key} --force`) or replace the default "
+          f"(`specify integration switch {key}`) is a person's choice. Projecting this project's own "
+          "material into it now.")
+    return [*selected, key]
+
+
+def running_needs_setup(by_key: dict[str, dict[str, object]]) -> bool:
+    """For `--running`: whether the harness this session runs in is missing here, or installed and unprojected."""
+    key = running.current_key()
+    if not key or key not in by_key or by_key[key].get("projectable") is False:
+        return False
+    if key not in installed_now():
+        return True
+    return any(not directory.exists() for directory in projection_directories(by_key[key]))
+
+
+def version_of(text: str) -> tuple[int, ...] | None:
+    """`2.0.0.dev2` as a tuple that orders a development build below its release, or None where it is not one."""
+    match = re.fullmatch(r"(\d+(?:\.\d+)*)(?:\.?dev(\d+))?", text.strip())
+    if match is None:
+        return None
+    release = tuple(int(part) for part in match.group(1).split("."))
+    return (*release, *([0] * (4 - len(release))), 0 if match.group(2) is not None else 1, int(match.group(2) or 0))
+
+
+def warn_if_behind() -> None:
+    """Say, without failing, when the slipwai installed here is newer than the one that last wrote this project.
+
+    `make agents` projects what the project holds. A newer ladder, command or agent type is in the newer
+    slipwai, and reaches the project only through `slipwai migrate` — which a person who only ever runs this
+    would otherwise never hear about. The project's version is `project.json`'s `generator.updatedWith`, the
+    newest slipwai to have written a file here; nothing else records it.
+    """
+    try:
+        generator = json.loads((ROOT / "project.json").read_text(encoding="utf-8")).get("generator") or {}
+    except (OSError, ValueError, AttributeError):
+        return
+    recorded = generator.get("updatedWith") or generator.get("generatedWith") if isinstance(generator, dict) else None
+    slipwai = shutil.which("slipwai")
+    if not isinstance(recorded, str) or slipwai is None:
+        return
+    try:
+        done = subprocess.run([slipwai, "--version"], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return
+    words = done.stdout.split()
+    installed = words[-1] if done.returncode == 0 and words else ""
+    ours, theirs = version_of(recorded), version_of(installed)
+    if ours is not None and theirs is not None and theirs > ours:
+        print(f"This project was last written by slipwai {recorded}, and slipwai {installed} is installed. "
+              "`make agents` projects what the project holds; the newer ladder, commands and agent types "
+              "arrive only through `slipwai migrate`.")
+
+
 def project_capabilities() -> set[str]:
     """What this project can do: the union of what every deployable in `project.json` declares.
 
@@ -752,7 +923,14 @@ def main() -> None:
     if CHECK and not arguments and not (ROOT / ".specify/integration.json").is_file():
         print("check-agents: not initialized; no projections expected yet")
         return
-    selected = selected_integrations(arguments)
+    if RUNNING_ONLY and not running_needs_setup(by_key):
+        return
+    # Only a plain run takes the running harness into account: a `--check` holds what is installed, a
+    # `--context` pass is `./init`'s, and a run naming harnesses has said which.
+    adding = not CHECK and not CONTEXT_ONLY and not arguments
+    if adding and not (ROOT / ".specify/integration.json").is_file() and not running.current_key():
+        raise RuntimeError("cannot determine the selected integration; rerun ./init --integration <agent>")
+    selected = add_running_harness(by_key, installed_now()) if adding else selected_integrations(arguments)
     for key in selected:
         harness = by_key.get(key)
         if harness is None:
@@ -764,6 +942,8 @@ def main() -> None:
             reason = harness.get("unprojectableReason") or "it cannot be projected into a repository"
             raise RuntimeError(f'{harness["name"]} cannot be projected: {reason}')
         project(harness)
+        if not CONTEXT_ONLY:
+            remove_orphans(harness)
         if not CHECK:
             done = ("Extension pointers projected" if CONTEXT_ONLY
                     else "Project skills, commands and agent types installed"
@@ -773,6 +953,9 @@ def main() -> None:
             if isinstance(harness.get("agentFile"), dict) and not CONTEXT_ONLY:
                 print("A harness reads its agent types once, at session start: restart the session before "
                       "delegating, or the first delegation cannot use the types just projected.")
+    sync_import_contexts(registry, selected)
+    if adding:
+        warn_if_behind()
     if CHECK:
         if FINDINGS:
             raise RuntimeError("agent projection drift:\n  - " + "\n  - ".join(FINDINGS))

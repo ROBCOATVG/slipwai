@@ -24,8 +24,10 @@ from .shared_packages import PACKAGES
 # previous one out of the commit it sits on, so what an older factory wrote and a newer one no longer does is
 # removed rather than left behind.
 WRITTEN = ".written"
-# The repository's own files, which an adoption never writes over. The first three take a marked block instead;
-# `.claude/settings.json` is written only where the repository has none.
+# The repository's own files, which an adoption never writes over. `README.md`, `AGENTS.md` and `.gitignore` take
+# a marked block instead; `.claude/settings.json` is written only where the repository has none; and `CLAUDE.md`,
+# which a repository may already hold in its own words, gets its `@AGENTS.md` region from `make agents`, which
+# writes that region into whatever is there rather than over it.
 #
 # The rest are the root files a repository that already exists has already answered for itself, and answered
 # for its own reasons: which Node it is pinned to, how it indents, who it is licensed to, how a vulnerability
@@ -33,7 +35,7 @@ WRITTEN = ".written"
 # dependencies. Every one of them would be wrong if the keel wrote it — a placeholder licence over a real
 # one is the worst of them — and none is something the method needs in order to work.
 OWN = (
-    "README.md", "AGENTS.md", ".gitignore", ".claude/settings.json", f"{PACKAGES}/.gitkeep",
+    "README.md", "AGENTS.md", "CLAUDE.md", ".gitignore", ".claude/settings.json", f"{PACKAGES}/.gitkeep",
     ".editorconfig", ".nvmrc", ".python-version", "LICENSE", "SECURITY.md", "renovate.json",
     ".github/PULL_REQUEST_TEMPLATE.md",
 )

@@ -129,8 +129,9 @@ def set_up(conflicts: Sequence[str] = ()) -> list[str]:
         "files no merge reaches and re-derives the projections, neither of which runs over a merge in progress.",
         "4. **Run `make agents`.** It re-derives the skills, commands and agent types of every coding agent this "
         "project has installed from `commands/`, `skills/` and `agents/` as they now stand — the step that "
-        "carries a changed ladder into the agent. A coding agent this project has moved to since `./init` is "
-        "not installed, and `./init --integration <agent>` is what installs it.",
+        "carries a changed ladder into the agent. Run from inside a coding agent this project has moved to "
+        "since `./init`, it installs that one too, where the agent says which it is in its environment; where "
+        "it could not tell, it says so, and `./init --integration <agent>` installs it by name.",
         "5. **Run `make check-agents`.** It passes, or it names the projection that is still out of step.",
         "6. **Start a new session in your coding agent.** A harness reads its commands and agent types once, "
         "when a session starts, so the session that ran this migration still has the old ones.",

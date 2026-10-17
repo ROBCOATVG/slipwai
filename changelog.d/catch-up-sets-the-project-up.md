@@ -24,3 +24,7 @@ archive stays on the machine and is git-ignored, like the page.
 **Catch-up:** `slipwai migrate` brings the new `/catch-up` page and the `.gitignore` line for
 `.slipwai/catch-up/`. A `.slipwai/catch-up.md` left by an earlier upgrade is moved into the archive by that
 same migration, so there is nothing to do by hand.
+
+Step 4 of that section says `make agents` installs a coding agent the project has moved to since `./init`,
+where that agent names itself in its environment, and that `./init --integration <agent>` is for the case it
+could not tell — rather than sending everyone to `./init`.

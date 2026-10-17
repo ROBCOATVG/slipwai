@@ -35,7 +35,8 @@ ADVANCE = "advance"
 #: One advance at a time across the board's windows, which all poll: two at once would be two drawings.
 PRESSING = threading.Lock()
 APPROVED_BY = ("<!-- Approved by the board, not a person: `upstream` is `advance` in .specify/cruise.json. "
-               "Approve or disapprove it again to give your own verdict. -->")
+               "To judge it yourself, set that back to `park`, delete this file, and approve or disapprove "
+               "the storyboard on the board. -->")
 
 
 def advancing(root: Path) -> bool:

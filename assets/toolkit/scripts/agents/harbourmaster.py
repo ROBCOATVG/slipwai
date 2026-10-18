@@ -320,30 +320,48 @@ def conflicting() -> list[str]:
     return sorted({line.strip() for line in found.stdout.splitlines() if line.strip()})
 
 
-def advance(name: str, commit: str) -> str:
-    """Move trunk to this commit, and say what went wrong, or nothing.
+def advance(name: str, commit: str) -> tuple[str, str]:
+    """Move trunk to this commit. (what went wrong, what was done to the person's checkout to get there).
 
     Pushed where there is a remote, because then nobody's working tree is touched and every checkout catches
     up on its own next fetch. With no remote there is only the local ref — and if the person's own checkout
     is sitting on trunk, moving the ref under it would leave their working tree looking like a mass
-    deletion, so that case is a fast-forward in their checkout when it is clean and a refusal when it is not.
+    deletion, so that case is a fast-forward in their checkout.
+
+    **A person's uncommitted changes never stop the run.** For a long while they did: any edit on trunk
+    refused the merge, the refusal was not one a berth could fix, and the fairway parked behind a slice that
+    had already passed its gate — a whole voyage stopped by an `AGENTS.md` nobody had committed. Git's own
+    fast-forward already refuses only where the merge would overwrite a changed file, so it is asked first.
+    Where it does refuse, the checkout is detached exactly where it stands — working tree and index
+    untouched — and the ref moves on without it: the person's work is all still there, and switching back
+    to trunk is theirs to do when they have committed or stashed it.
     """
     if git("rev-parse", "--verify", "--quiet", "origin/" + name).returncode == 0:
         pushed = git("push", "origin", f"{commit}:refs/heads/{name}")
-        return "" if pushed.returncode == 0 else (pushed.stderr or pushed.stdout).strip().splitlines()[-1]
+        return ("" if pushed.returncode == 0 else last_line(pushed)), ""
     head = git("symbolic-ref", "--quiet", "--short", "HEAD")
     if head.returncode == 0 and head.stdout.strip() == name:
-        # Tracked changes only. An untracked file does not stop a fast-forward unless the merge wants to
-        # create that same path, and `--ff-only` refuses that case itself with a better sentence than a
-        # blanket check would — while a blanket check would refuse every harbour, since a run's own
-        # `.slipwai/` is untracked in anything but a generated project.
-        if git("status", "--porcelain", "--untracked-files=no").stdout.strip():
-            return (f"this checkout is on {name} with uncommitted changes, so trunk cannot be moved under "
-                    f"it. Commit or stash them and ask again")
         moved = git("merge", "--ff-only", commit)
-        return "" if moved.returncode == 0 else (moved.stderr or moved.stdout).strip().splitlines()[-1]
+        if moved.returncode == 0:
+            return "", ""
+        if not git("status", "--porcelain", "--untracked-files=no").stdout.strip():
+            return last_line(moved), ""  # clean, so the refusal is about the history and is git's to say
+        detached = git("checkout", "--quiet", "--detach")
+        if detached.returncode != 0:
+            return last_line(detached), ""
+        note = (f"this checkout was on {name} with uncommitted changes the merge would overwrite, so it was "
+                f"detached where it stood with those changes untouched, and {name} moved on without it. "
+                f"Commit or stash them, then `git switch {name}`")
+    else:
+        note = ""
     moved = git("update-ref", f"refs/heads/{name}", commit)
-    return "" if moved.returncode == 0 else (moved.stderr or moved.stdout).strip().splitlines()[-1]
+    return ("" if moved.returncode == 0 else last_line(moved)), note
+
+
+def last_line(done: subprocess.CompletedProcess[str]) -> str:
+    """The sentence git ended on, which is the one that says what it refused."""
+    said = (done.stderr or done.stdout).strip().splitlines()
+    return said[-1] if said else f"git exited {done.returncode}"
 
 
 HOOKS = ROOT / "scripts/extensions/hooks.py"
@@ -405,10 +423,11 @@ def take_the_merge() -> tuple[bool, str]:
         time.sleep(MERGE_POLL)
 
 
-def merge(slice_id: str) -> tuple[str, str, bool]:
+def merge(slice_id: str) -> tuple[str, str, bool, str]:
     """Rebase this slice onto trunk, gate it there, and advance trunk.
 
-    `(commit, "", False)` where it landed, or `("", why not, whether a berth can fix it)`. That last flag is
+    `(commit, "", False, note)` where it landed — the note saying what was done to the person's checkout to
+    land it, if anything — or `("", why not, whether a berth can fix it, "")`. That flag is
     what tells a captain whether to go back into its berth and try again or to stop and park: a conflict and
     a failed gate are work on code, and a missing branch or an unmovable trunk are not.
 
@@ -417,18 +436,18 @@ def merge(slice_id: str) -> tuple[str, str, bool]:
     """
     branch = BRANCH.format(slice=slice_id)
     if git("rev-parse", "--verify", "--quiet", branch).returncode != 0:
-        return "", f"there is no branch {branch} to merge", False
+        return "", f"there is no branch {branch} to merge", False, ""
     # A rebase that replays a commit writes one, and writing one needs a committer. Asked before the
     # worktree is made rather than read out of a failed rebase: git's own answer there is nine lines of
     # advice about `--global`, inside a refusal that has already said something else went wrong.
     if git("var", "GIT_COMMITTER_IDENT").returncode != 0:
         return "", ("this repository has no `user.name` and `user.email`, and a rebase writes commits. "
-                    "`git config user.email you@example.com` here, or set one globally"), False
+                    "`git config user.email you@example.com` here, or set one globally"), False, ""
     # Taken before the fetch, because `base()` is read after it and the whole point is that trunk does not
     # move between the gate and the advance. Released in the `finally` below, whichever way this ends.
     held, why = take_the_merge()
     if not held:
-        return "", why, False
+        return "", why, False, ""
     git("fetch", "--quiet", "origin", trunk())
     onto = base()
     git("worktree", "remove", "--force", str(SCRATCH))  # a worktree left by a run that was killed
@@ -436,7 +455,7 @@ def merge(slice_id: str) -> tuple[str, str, bool]:
     made = git("worktree", "add", "--quiet", "--detach", str(SCRATCH), branch)
     if made.returncode != 0:
         claims.release(ROOT, claims.MERGE, logs.machine())
-        return "", f"a worktree for {branch} could not be made ({(made.stderr or made.stdout).strip()})", False
+        return "", f"a worktree for {branch} could not be made ({(made.stderr or made.stdout).strip()})", False, ""
     try:
         rebased = git("rebase", onto, where=SCRATCH)
         if rebased.returncode != 0:
@@ -444,17 +463,17 @@ def merge(slice_id: str) -> tuple[str, str, bool]:
             git("rebase", "--abort", where=SCRATCH)
             return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or 'files git did not name'}. "
                         f"The rebase was aborted, so nothing is half-done; resolve it in your own berth and "
-                        f"ask again"), True
+                        f"ask again"), True, ""
         done = subprocess.run(gate(), cwd=SCRATCH, capture_output=True, text=True, check=False)
         if done.returncode != 0:
             said = [line for line in (done.stdout + done.stderr).splitlines() if line.strip()]
             return "", (f"the full gate failed on {branch} rebased onto {onto}: "
-                        f"{said[-1] if said else 'no output'}"), True
+                        f"{said[-1] if said else 'no output'}"), True, ""
         commit = git("rev-parse", "HEAD", where=SCRATCH).stdout.strip()
-        fault = advance(trunk(), commit)
+        fault, note = advance(trunk(), commit)
         if fault:
-            return "", f"{branch} passed the gate and trunk could not be moved: {fault}", False
-        return commit, "", False
+            return "", f"{branch} passed the gate and trunk could not be moved: {fault}", False, ""
+        return commit, "", False, note
     finally:
         git("worktree", "remove", "--force", str(SCRATCH))
         # Given back the moment this merge is over, or the first merge of a run would be the last one any
@@ -638,7 +657,7 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
                            why="a merge request says which slice, in `slice` or in an id of `merge-<slice>`; "
                                "this one says neither, and guessing which branch to merge is not a thing to "
                                "guess at")]
-    commit, fault, resolvable = merge(slice_id)
+    commit, fault, resolvable, note = merge(slice_id)
     if fault:
         # `resolve` says whether going back into the berth could change the answer. A captain reads it to
         # decide between another turn and a park, which is the difference between a conflict it can fix and
@@ -652,8 +671,13 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
     fire("after-merge", slice=slice_id, fairway=fairway, commit=commit)
     # `ci` says what was known about trunk when this was granted. `unverified` is not `green`: a harbour
     # with no forge keeps working, and nobody reads the line later as a run that was checked.
+    # `note` only where the person's checkout was touched to land it, so a reader who finds their branch
+    # detached has the line that says why, and where their changes are.
+    said = {"note": note} if note else {}
+    if note:
+        print(f"harbourmaster: {note}", flush=True)
     return [logs.entry("granted", harbour=True, fairway=fairway, request=request, what=what,
-                       slice=slice_id, commit=commit, ci=trunk_state)]
+                       slice=slice_id, commit=commit, ci=trunk_state, **said)]
 
 
 def allocation(fairway: str, taken: list[str]) -> logs.Entry:

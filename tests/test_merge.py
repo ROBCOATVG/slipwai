@@ -114,19 +114,36 @@ class MergeTest(MergeFixture):
         self.assertEqual(answer.kind, "refused")
         self.assertIn("which slice", str(answer.fields["why"]))
 
-    def test_trunk_is_not_moved_under_a_checkout_that_has_uncommitted_changes(self) -> None:
-        """With no remote there is only the local ref, and moving it under somebody's working tree would
-        leave it looking like a mass deletion."""
+    def test_uncommitted_changes_the_merge_does_not_touch_are_fast_forwarded_around(self) -> None:
+        """A person's edit on trunk is not a reason to stop a run: the voyage that parked behind an
+        uncommitted `AGENTS.md` had a slice that touched nothing of it."""
         self.slice_branch("ORD-01", "ordering.txt", "ordering\n")
         self.git("checkout", "--quiet", "main")
         (self.root / "service.txt").write_text("edited and not committed\n", encoding="utf-8")
         self.ask("ORD-01")
         self.run_once()
         answer = self.answer()
-        self.assertEqual(answer.kind, "refused")
-        self.assertIn("uncommitted changes", str(answer.fields["why"]))
-        self.assertEqual(self.head("main"), self.trunk_was)
-        self.assertFalse(answer.fields["resolve"])
+        self.assertEqual(answer.kind, "granted")
+        self.assertEqual(self.head("main"), answer.fields["commit"])
+        self.assertNotIn("note", answer.fields)
+        self.assertTrue((self.root / "ordering.txt").is_file())
+        self.assertEqual((self.root / "service.txt").read_text(encoding="utf-8"), "edited and not committed\n")
+        self.assertEqual(self.git("symbolic-ref", "--short", "HEAD").stdout.strip(), "main")
+
+    def test_uncommitted_changes_the_merge_would_overwrite_are_left_where_they_are(self) -> None:
+        """Where the fast-forward would overwrite them, the checkout is detached with them untouched and
+        trunk moves on regardless; the granted line says so, because that is where a person looks."""
+        self.slice_branch("ORD-01", "service.txt", "the slice's version\n")
+        self.git("checkout", "--quiet", "main")
+        (self.root / "service.txt").write_text("edited and not committed\n", encoding="utf-8")
+        self.ask("ORD-01")
+        self.run_once()
+        answer = self.answer()
+        self.assertEqual(answer.kind, "granted")
+        self.assertEqual(self.head("main"), answer.fields["commit"])
+        self.assertIn("detached", str(answer.fields["note"]))
+        self.assertEqual((self.root / "service.txt").read_text(encoding="utf-8"), "edited and not committed\n")
+        self.assertEqual(self.head(), self.trunk_was)
 
     def test_a_clean_checkout_sitting_on_trunk_is_fast_forwarded_with_its_working_tree(self) -> None:
         self.slice_branch("ORD-01", "ordering.txt", "ordering\n")

@@ -50,6 +50,22 @@ class Fixture(unittest.TestCase):
         return fleet.board(self.root, json.loads((self.root / "harbour.json").read_text()), now=NOW)
 
 
+class AbreastTest(Fixture):
+    """A stream runs several slices at once now, and the board names them all."""
+
+    def test_every_slice_in_flight_is_in_the_slice_column(self) -> None:
+        self.deck("LVR", *(logs.entry("claimed", fairway="LVR", slice=one, t=when(1)) for one in ("L02", "L03")))
+        row = self.board()["berths"][0]
+        self.assertEqual((row["slice"], row["state"]), ("L02, L03", "working"))
+
+    def test_a_slice_parked_on_its_own_leaves_the_stream_working(self) -> None:
+        self.deck("LVR", *(logs.entry("claimed", fairway="LVR", slice=one, t=when(1)) for one in ("L02", "L03")),
+                  logs.entry("parked", fairway="LVR", slice="L03", why="which notice lengths?", t=when(1)))
+        row = self.board()["berths"][0]
+        self.assertEqual((row["slice"], row["state"]), ("L02", "working"))
+        self.assertEqual([one["kind"] for one in self.board()["inbox"]], ["parked"])
+
+
 class StateTest(Fixture):
     def test_a_fairway_with_a_log_and_no_lines_is_not_started(self) -> None:
         """Not `0%` and not `working`: a fairway nobody has begun is a fact, and the board says it."""

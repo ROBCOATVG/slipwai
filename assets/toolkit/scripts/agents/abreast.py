@@ -110,6 +110,26 @@ def pending(deck: list[logs.Entry], harbour: list[logs.Entry]) -> list[str]:
             and str(e.fields.get("id", "")) not in answered]
 
 
+def fix_owed(fairway: str, deck: list[logs.Entry], harbour: list[logs.Entry]) -> logs.Entry | None:
+    """A `fix-trunk` for this fairway that it has not answered, or None.
+
+    Answered means a `merged` line of this fairway's, no older than the order, naming a commit that is not
+    the one that went red. By commit and not by the clock alone: a timestamp is to the second, so the merge
+    that answers an order can carry the same instant as the order itself, and the merge that *broke* trunk
+    is the one line that carries the broken commit. Here because two readers need it — the captain, which
+    takes the fix ahead of anything new, and the plan, for which a fix owed is work even when nothing is
+    ready, so the fairway that reddened trunk is lit to mend it.
+    """
+    orders = [e for e in harbour if e.kind == "fix-trunk" and str(e.fields.get("fairway", "")) == fairway]
+    if not orders:
+        return None
+    last = orders[-1]
+    broke = str(last.fields.get("commit", ""))
+    answered_by = [e for e in deck if e.kind == "merged" and e.t >= last.t
+                   and not str(e.fields.get("commit", "")).startswith(broke[:8])]
+    return None if answered_by else last
+
+
 def ready(charted: dict, folded_logs: clearance.Folded, done: set[str], fairway: str,
           beside: list[str]) -> list[str]:
     """The fairway's slices that may start now beside `beside`, in split order.
@@ -236,7 +256,8 @@ def harbour_plan(lit: set[str], config: Path) -> dict[str, tuple[int, int, str]]
             continue
         stopped = [one for one in logs.unmerged(deck) if one not in on and one not in logs.held_slices(parks)]
         offered = ready(charted, folded_logs, done, fairway, on + stopped)
-        wants[fairway] = len(stopped) + len(offered)
+        owed = 1 if fix_owed(fairway, deck, harbour) is not None and not on else 0
+        wants[fairway] = len(stopped) + len(offered) + owed
         weight[fairway] = max([critical(charted, one) for one in offered + stopped] or [0])
         if pending(deck, harbour):
             backed.add(fairway)

@@ -217,27 +217,13 @@ def harbour_entries() -> list[logs.Entry]:
 
 
 def fix_owed(fairway: str, found: list[logs.Entry]) -> logs.Entry | None:
-    """A `fix-trunk` for this fairway that it has not answered, or None.
-
-    Answered means a `merged` line of this fairway's, no older than the order, naming a commit that is not
-    the one that went red. By commit and not by the clock alone: a timestamp is to the second, so the merge
-    that answers an order can carry the same instant as the order itself, and the merge that *broke* trunk
-    is the one line that carries the broken commit. The fix reaches trunk the way everything else does, so
-    the line that says any slice is done is the line that says this one is.
+    """A `fix-trunk` for this fairway that it has not answered, or None — `abreast.fix_owed` is the rule.
 
     The harbourmaster sends the order because it wrote the `merged` line for the commit that went red, so it
     knows whose it was. A captain takes it at its next turn, ahead of any new slice, because a trunk this
     fairway reddened is worth more than anything else it could start.
     """
-    orders = [e for e in harbour_entries()
-              if e.kind == "fix-trunk" and str(e.fields.get("fairway", "")) == fairway]
-    if not orders:
-        return None
-    last = orders[-1]
-    broke = str(last.fields.get("commit", ""))
-    answered_by = [e for e in found if e.kind == "merged" and e.t >= last.t
-                   and not str(e.fields.get("commit", "")).startswith(broke[:8])]
-    return None if answered_by else last
+    return abreast.fix_owed(fairway, found, harbour_entries())
 
 
 def answered(request: str) -> logs.Entry | None:

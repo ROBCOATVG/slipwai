@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import itertools
+import json
 import shutil
 import sys
 import tempfile
@@ -148,6 +149,56 @@ class SliceGraphTest(Fixture):
 
     def test_a_split_with_no_graph_is_no_dependency_and_no_restriction(self) -> None:
         self.assertEqual(self.abreast.clearance.slice_graph(self.chart()), ({}, {}))
+
+
+class PlanTest(Fixture):
+    """The harbourmaster's pass, from the files it reads: the chart, the deck logs and `harbour.json`."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        chart = self.root / "specs/f/chart.yaml"
+        chart.parent.mkdir(parents=True)
+        chart.write_text("feature: f\nfairways: {ORD: {}, BIL: {}}\nslices:\n"
+                         + "".join(f"  {name}: {{fairway: {name[:3]}, sets: [], steers_by: []}}\n"
+                                   for name in ("ORD-01", "ORD-02", "ORD-03", "BIL-01", "BIL-02")),
+                         encoding="utf-8")
+        self.config = self.root / "harbour.json"
+
+    def plan(self, lit: set[str], **held: object) -> dict[str, tuple[int, int, str]]:
+        self.config.write_text(json.dumps(held), encoding="utf-8")
+        return self.abreast.harbour_plan(lit, self.config)
+
+    def deck(self, fairway: str, *entries: object) -> None:
+        path = self.root / ".slipwai/logs/f" / f"{fairway}.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as handle:
+            for entry in entries:
+                handle.write(entry.line())  # type: ignore[attr-defined]
+
+    def test_breadth_then_depth_in_the_chart_s_order(self) -> None:
+        self.assertEqual(self.plan(set(), boilers=3), {"ORD": (2, 0, ""), "BIL": (1, 0, "")})
+
+    def test_what_a_live_captain_is_running_holds_its_slots(self) -> None:
+        logs = self.abreast.logs
+        self.deck("BIL", logs.entry("claimed", fairway="BIL", slice="BIL-01"),
+                  logs.entry("claimed", fairway="BIL", slice="BIL-02"))
+        self.assertEqual(self.plan({"BIL"}, boilers=3), {"ORD": (1, 0, ""), "BIL": (2, 2, "")})
+
+    def test_a_pending_merge_holds_its_fairway_back(self) -> None:
+        logs = self.abreast.logs
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),
+                  logs.entry("request", fairway="ORD", id="merge-ORD-01", what="merge", slice="ORD-01", detail="d"))
+        self.assertEqual(self.plan({"ORD"}, boilers=5)["ORD"], (1, 1, ""))
+
+    def test_a_fix_owed_to_trunk_is_work_with_nothing_ready(self) -> None:
+        logs = self.abreast.logs
+        self.deck("BIL", *(logs.entry(kind, fairway="BIL", slice=one, **({"commit": "bad00001"} if kind == "merged"
+                                                                          else {}))
+                           for one in ("BIL-01", "BIL-02") for kind in ("claimed", "merged")))
+        harbour = self.root / ".slipwai/logs/harbour.jsonl"
+        harbour.write_text(logs.entry("fix-trunk", harbour=True, fairway="BIL", slice="BIL-02", commit="bad00001",
+                                      job="ci").line(), encoding="utf-8")
+        self.assertEqual(self.plan(set(), boilers=2)["BIL"][0], 1)
 
 
 if __name__ == "__main__":

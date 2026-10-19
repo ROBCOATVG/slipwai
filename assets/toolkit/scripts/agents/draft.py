@@ -13,7 +13,6 @@ session, because the page it reads has two faces and the environment is how it t
 from __future__ import annotations
 
 import shlex
-import subprocess
 import sys
 from pathlib import Path
 
@@ -53,11 +52,11 @@ def main(argv: list[str]) -> int:
     print(f"{said}; {why}", flush=True)
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "draft"}
-    done = subprocess.run(shlex.split(line), cwd=ROOT, env=environment, check=False)
-    if done.returncode:
-        print(f"draft: the session exited {done.returncode}; whatever it wrote is on the current branch, "
+    exited = harness.run_session(shlex.split(line), ROOT, environment)
+    if exited:
+        print(f"draft: the session exited {exited}; whatever it wrote is on the current branch, "
               f"uncommitted or committed as it said", file=sys.stderr)
-        return done.returncode
+        return exited
     written = [path for path in specifications() if path not in before]
     if not written:
         print("draft: the session ended without writing a specs/<feature>/spec.md, so there is nothing to "

@@ -21,7 +21,6 @@ from __future__ import annotations
 import os
 import re
 import shlex
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -108,14 +107,14 @@ def main(argv: list[str]) -> int:
     PID.parent.mkdir(parents=True, exist_ok=True)
     PID.write_text(f"{os.getpid()}\n", encoding="utf-8")
     try:
-        done = subprocess.run(shlex.split(line), cwd=ROOT, env=environment, check=False)
+        exited = harness.run_session(shlex.split(line), ROOT, environment)
     finally:
         if PID.is_file() and PID.read_text(encoding="utf-8").strip() == str(os.getpid()):
             PID.unlink()
-    if done.returncode:
-        print(f"surfaces: the session exited {done.returncode}; whatever it drew is under "
+    if exited:
+        print(f"surfaces: the session exited {exited}; whatever it drew is under "
               f"specs/{feature}/{MOCKUPS}/, uncommitted or committed as it said", file=sys.stderr)
-        return done.returncode
+        return exited
     written = [path for path in drawn(feature) if path not in before]
     if not written and not drawn(feature):
         print(f"surfaces: the session ended with nothing under specs/{feature}/{MOCKUPS}/, so there is no "

@@ -495,7 +495,7 @@ def dispatch(slice_id: str, feature: str, fairway: str) -> tuple[bool, str, list
         return False, f"{refused}. Or set SLIPWAI_SAIL to a command taking <slice> <fairway>", []
     fire("before-stage", stage="drive", slice=slice_id, fairway=fairway)
     started = len(entries(feature, fairway))
-    process = subprocess.Popen(argv, cwd=ROOT, env=environment)
+    process = harness.Session(argv, ROOT, environment)
     finished, why = watched(process, feature, fairway, stage_bound(), started, BRANCH.format(slice=slice_id))
     fire("after-stage", stage="drive", slice=slice_id, fairway=fairway)
     return finished, why, entries(feature, fairway)[started:]

@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import os
 import shlex
-import subprocess
 import sys
 from pathlib import Path
 
@@ -87,14 +86,14 @@ def main(argv: list[str]) -> int:
     PID.parent.mkdir(parents=True, exist_ok=True)
     PID.write_text(f"{os.getpid()}\n", encoding="utf-8")
     try:
-        done = subprocess.run(shlex.split(line), cwd=ROOT, env=environment, check=False)
+        exited = harness.run_session(shlex.split(line), ROOT, environment)
     finally:
         if PID.is_file() and PID.read_text(encoding="utf-8").strip() == str(os.getpid()):
             PID.unlink()
-    if done.returncode:
-        print(f"model: the session exited {done.returncode}; whatever it wrote is under docs/event-model/, "
+    if exited:
+        print(f"model: the session exited {exited}; whatever it wrote is under docs/event-model/, "
               f"uncommitted or committed as it said", file=sys.stderr)
-        return done.returncode
+        return exited
     if not MODEL.is_file() or not slices_named(MODEL.read_text(encoding="utf-8", errors="replace")):
         print("model: the session ended without a slice in docs/event-model/model.yaml; read its last lines "
               "above", file=sys.stderr)

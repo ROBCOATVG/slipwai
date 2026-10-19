@@ -10,7 +10,6 @@ import hashlib
 import json
 import re
 import shlex
-import subprocess
 import sys
 from pathlib import Path
 
@@ -66,11 +65,11 @@ def main(argv: list[str]) -> int:
     print(f"{said}; {why}", flush=True)
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "assess"}
-    done = subprocess.run(shlex.split(line), cwd=ROOT, env=environment, check=False)
-    if done.returncode:
-        print(f"assess: the session exited {done.returncode}; whatever it wrote is on the current branch",
+    exited = harness.run_session(shlex.split(line), ROOT, environment)
+    if exited:
+        print(f"assess: the session exited {exited}; whatever it wrote is on the current branch",
               file=sys.stderr)
-        return done.returncode
+        return exited
     decision = ROOT / ".specify/assessments" / slug / "decision.md"
     if not decision.is_file():
         print(f"assess: the session ended without .specify/assessments/{slug}/decision.md; read its last "

@@ -54,7 +54,7 @@ from .errors import GenerationError
 from .fleet import board
 from .folder_choice import chosen
 from .harbour import config
-from .init_run import Fitting, begin_model, model_session
+from .init_run import Fitting, begin_model, outside_session
 from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
 from .init_run import draw as draw_surfaces
@@ -77,7 +77,7 @@ from .page_shell import (
     manifest,
     not_running,
 )
-from .passage import EVENT_PROFILE, drawn, modelled, profile_of, record_verdict, specifications, stages
+from .passage import EVENT_PROFILE, disapproved, drawn, modelled, profile_of, record_verdict, specifications, stages
 from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .spec_page import page as spec
@@ -393,14 +393,14 @@ class Bridge(BaseHTTPRequestHandler):
             return False
         if self.fitting and (not self.fitting.said()["done"] or self.fitting.said()["code"]):
             return False
-        if model_session(self.root):
+        if outside_session(self.root):
             return False
         return profile_of(self.root) != EVENT_PROFILE or modelled(self.root)
 
     def receipt(self, since: int = 0) -> dict:
         """What the board's child has said after the `since`th line, and whether the build can be continued."""
         if not self.fitting:
-            held = model_session(self.root)
+            held = outside_session(self.root)
             if held is not None:
                 if since >= int(held["at"]):
                     held = {**held, "lines": []}
@@ -418,7 +418,7 @@ class Bridge(BaseHTTPRequestHandler):
         rows, fault = folded(self.root)
         held = config(self.root)
         fleet = {**board(self.root, held), "running": fleet_running(self.root)}
-        found = stages(self.root, self.receipt() if self.fitting or model_session(self.root) else None,
+        found = stages(self.root, self.receipt() if self.fitting or outside_session(self.root) else None,
                        fleet, counts(rows))
         return found, rows, fault, fleet, held
 
@@ -431,10 +431,19 @@ class Bridge(BaseHTTPRequestHandler):
     def after_storyboard(self, said: str) -> str:
         """Approving starts the next step. A standard project charts; an event-modelling one models.
 
-        Disapproving starts nothing: the storyboard stays here until it is drawn again. A board already
-        running something keeps the verdict and leaves that child alone.
+        Disapproving draws it again, with the reason as the brief: it used to start nothing, with no button
+        left to, and a run stopped at a person's no. A board already running something keeps the verdict.
         """
-        if said != "approved" or (self.fitting and not self.fitting.said()["done"]) or model_session(self.root):
+        if (self.fitting and not self.fitting.said()["done"]) or outside_session(self.root):
+            return said
+        if said == "disapproved":
+            feature = disapproved(self.root)
+            if not feature:
+                return said
+            self.fitting = draw_surfaces(self.root, self.fitting.said()["lines"] if self.fitting else None,
+                                         feature)
+            return "disapproved; drawing it again"
+        if said != "approved":
             return said
         if profile_of(self.root) == EVENT_PROFILE and not modelled(self.root):
             if not specifications(self.root):
@@ -449,14 +458,13 @@ class Bridge(BaseHTTPRequestHandler):
 
     def drawable(self) -> bool:
         """Whether the surfaces can be drawn from here: a specification to draw them from, nothing drawn
-        yet, and no child of this board already on its way.
+        yet or a storyboard a person turned down, and no child of this board already on its way.
 
-        Gone the moment there are drawings, and that is the point of it rather than a limit on it. What a
-        storyboard nobody has looked at is waiting for is a person's verdict on each state, and there is no
-        button that gives one: pressing this again would redraw the thing already waiting to be read.
+        Gone while drawings wait on a verdict, since pressing it would redraw the thing being read; back once
+        they are disapproved, so a redraw that failed or never started has a button to retry it.
         """
-        idle = not self.fitting or self.fitting.said()["done"]
-        return bool(specifications(self.root)) and not drawn(self.root) and idle
+        idle = (not self.fitting or self.fitting.said()["done"]) and not outside_session(self.root)
+        return bool(specifications(self.root)) and (not drawn(self.root) or bool(disapproved(self.root))) and idle
 
     def castable(self, rows: list[dict[str, str]], fleet: dict) -> bool:
         """Whether the fleet can be cast off from here: a split to work, nothing of it running, and no child
@@ -506,7 +514,7 @@ class Bridge(BaseHTTPRequestHandler):
 
     def made(self) -> dict | None:
         """What this board last made, for the card that says so — nothing, on a board that has made nothing."""
-        if self.fitting or model_session(self.root):
+        if self.fitting or outside_session(self.root):
             return self.receipt()
         return None
 
@@ -622,7 +630,8 @@ class Bridge(BaseHTTPRequestHandler):
                     raise ValueError("nothing to draw: the surfaces are drawn from a specification under "
                                      "specs/, and once they are drawn what they wait on is your verdict, "
                                      "which Approve and Disapprove on this page record")
-                self.fitting = draw_surfaces(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                self.fitting = draw_surfaces(self.root, self.fitting.said()["lines"] if self.fitting else None,
+                                             disapproved(self.root))
                 said = "drawing the surfaces"
             elif where == "/launch":
                 if not self.launchable():

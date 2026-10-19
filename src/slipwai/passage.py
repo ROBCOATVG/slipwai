@@ -17,6 +17,8 @@ stage that stops for a person *by design* is indistinguishable, from the outside
 `Stage.expect` is that sentence: roughly how long, and whether it will stop for you. It is written here
 beside the state rather than in the page, because the stage is what knows it.
 """
+# budget: 380 — the stages, and the storyboard read both ways: states waiting on a person, and a drawing
+# turned down whole that waits on being drawn again
 from __future__ import annotations
 
 import json
@@ -153,6 +155,26 @@ def storyboards(root: Path) -> list[Path]:
     """Every feature that has run the mock-up stage, by the file the stage leaves behind."""
     specs = root / "specs"
     return sorted(specs.glob("*/mockups/mock-states.md")) if specs.is_dir() else []
+
+
+def disapproved(root: Path) -> str:
+    """The feature whose storyboard a person turned down whole, or `""` where there is none.
+
+    Every drawn state parked is what Disapprove writes, and it is a no to the drawing rather than a state
+    waiting on a question — so what it waits on is the drawing again, from the reason it gives. A storyboard
+    with some states approved is a person part-way through `/mockups`, and is theirs to finish.
+    """
+    for path in storyboards(root):
+        try:
+            said = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if NO_SURFACES in said:
+            continue
+        verdicts = [found.group("verdict") for found in VERDICT.finditer(said)]
+        if verdicts and all(verdict == "parked" for verdict in verdicts):
+            return path.parent.parent.name
+    return ""
 
 
 def drawn(root: Path) -> bool:

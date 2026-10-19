@@ -24,7 +24,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from .init_run import draw, launch, model_session
+from .init_run import draw, launch, outside_session
 from .passage import record_verdict, specifications, storyboards, surfaces
 from .wheel import orders
 
@@ -83,7 +83,7 @@ def advance(board: Any) -> None:
     try:
         running = board.fitting
         done = not running or (running.said()["done"] and not running.said()["code"])
-        step = next_step(board.root, done and not model_session(board.root), board.drawable(), board.launchable())
+        step = next_step(board.root, done and not outside_session(board.root), board.drawable(), board.launchable())
         lines = running.said()["lines"] if running else None
         if step == "draw":
             board.fitting = draw(board.root, lines)

@@ -27,6 +27,14 @@ mock-ups and the storyboard, say what you drew and which surfaces the specificat
 questions from section 1 in the inbox as usual. The person runs `/mockups <feature>` afterwards, in a
 session they are in, and that run picks up at section 2's stop with the drawings already there.
 
+**When `SLIPWAI_REDRAW=1` is set as well, a person disapproved the storyboard and this is the redraw.** The
+drawings in the directory are this stage's own drafts, turned down — not mock-ups a person handed over — so
+do not review them: draw them again. `specs/<feature>/mockups/mock-states.md` has every state parked with
+the person's reason, and that reason is the brief. Redraw every surface and `storyboard.html` in place, under
+the same file names, answering it; and add a `## Redrawn` section to `research.md` saying what changed and
+which part of the reason each change answers. Leave `mock-states.md` alone: `surfaces.py` retires it to
+`disapproved.md` once the redraw lands, so the new storyboard waits on a verdict of its own.
+
 ## 1. The researcher
 
 Delegate this half to a fresh context that may write under `specs/<feature>/mockups/` and nowhere else. Give

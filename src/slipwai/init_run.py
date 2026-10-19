@@ -425,9 +425,14 @@ def assess(where: Path, slug: str, said: list[str] | None = None) -> Fitting:
     return fitting
 
 
-def draw(where: Path, said: list[str] | None = None) -> Fitting:
-    """The surfaces drawn, in the background: what the board's Draw the surfaces button starts."""
-    fitting = Fitting(where, [Step(SURFACES, DRAWING, drew, "surfaces")], said)
+def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitting:
+    """The surfaces drawn, in the background: what the board's Draw the surfaces button starts.
+
+    `feature` names the one to draw, which a redraw after a disapproval needs: `make surfaces` on its own
+    draws the first specification, and the storyboard turned down may not be that one.
+    """
+    argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
+    fitting = Fitting(where, [Step(argv, DRAWING, drew, "surfaces")], said)
     fitting.thread.start()
     return fitting
 
@@ -441,22 +446,29 @@ def began_model(code: int) -> str:
             f"carries the target in.")
 
 
-def model_session(root: Path) -> dict | None:
-    """A model step still alive in this project, read from the pid file `make model-next` writes.
+#: The steps a project runs on its own and says it is running, by the pid file each writes: which step, and
+#: what a window that did not start it can say about it.
+OUTSIDE = (("model-next.pid", "model", "Modelling is running in this project. This window has not got its log."),
+           ("surfaces.pid", "surfaces", "Drawing the surfaces is running in this project. This window has not got "
+                                        "its log."))
 
-    The board that started it may have gone. The lines it already printed went with that board, so what
-    this returns is that the session is running and that this window has not got its log.
+
+def outside_session(root: Path) -> dict | None:
+    """A model or drawing step still alive in this project, read from the pid file its script writes.
+
+    The board that started it may have gone, or a person or another session ran `make model-next` or `make
+    surfaces` without one. The lines it printed are not this window's, so what this returns is that the step
+    is running — which is what keeps a page from reading a storyboard being redrawn as one that is stuck.
     """
-    path = root / ".slipwai" / "model-next.pid"
-    try:
-        pid = int(path.read_text(encoding="utf-8").strip())
-    except (OSError, ValueError):
-        return None
-    if not alive(pid):
-        return None
-    return {"where": str(root),
-            "lines": ["Modelling is running in this project. This window has not got its log."],
-            "step": "model", "at": 1, "seconds": 0, "done": False, "code": None}
+    for name, step, said in OUTSIDE:
+        try:
+            pid = int((root / ".slipwai" / name).read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            continue
+        if alive(pid):
+            return {"where": str(root), "lines": [said], "step": step, "at": 1, "seconds": 0, "done": False,
+                    "code": None}
+    return None
 
 
 def begin_model(where: Path, said: list[str] | None = None) -> Fitting:

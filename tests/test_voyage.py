@@ -4,8 +4,8 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 410 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
-# and the design files a storyboard links that the board serves beside it
+# budget: 425 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# the design files a storyboard links that the board serves beside it, and a step it did not start
 from __future__ import annotations
 
 import json
@@ -328,14 +328,14 @@ class BuiltScreensPageTest(unittest.TestCase):
 
     def test_a_model_still_running_is_the_voyage_not_a_prompt_to_start_one(self) -> None:
         """A model step this board did not start still says where the project is, and that the log is not here."""
-        from slipwai.init_run import model_session
+        from slipwai.init_run import outside_session
         from slipwai.passage import stages
         from slipwai.voyage_page import page
         root = Path(tempfile.mkdtemp())
         (root / "project.json").write_text('{"profile": "event-modelling"}\n', encoding="utf-8")
         (root / ".slipwai").mkdir()
         (root / ".slipwai/model-next.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
-        held = model_session(root)
+        held = outside_session(root)
         self.assertIsNotNone(held)
         assert held is not None
         self.assertEqual(held["step"], "model")
@@ -347,7 +347,22 @@ class BuiltScreensPageTest(unittest.TestCase):
         self.assertIn("has not got its log", html)
         self.assertNotIn("Model it next", html)
         (root / ".slipwai/model-next.pid").write_text("999999999\n", encoding="utf-8")
-        self.assertIsNone(model_session(root))
+        self.assertIsNone(outside_session(root))
+
+    def test_a_storyboard_being_drawn_by_another_session_reads_as_working_not_stuck(self) -> None:
+        """`make surfaces` run without this board — a redraw after a disapproval, or a board restarted mid-draw
+        — showed a storyboard waiting on a verdict whose buttons were locked, which reads as a run stopped."""
+        from slipwai.init_run import outside_session
+        from slipwai.passage import stages
+        root = Path(tempfile.mkdtemp())
+        (root / "project.json").write_text('{"profile": "standard"}\n', encoding="utf-8")
+        (root / ".slipwai").mkdir()
+        (root / ".slipwai/surfaces.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+        held = outside_session(root)
+        assert held is not None
+        self.assertEqual(held["step"], "surfaces")
+        self.assertIn("Drawing the surfaces is running", held["lines"][0])
+        self.assertEqual(next(one.state for one in stages(root, held) if one.key == "storyboard"), "working")
 
 
 class FoldTest(unittest.TestCase):

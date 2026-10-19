@@ -16,6 +16,7 @@ import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from typing import Any
 
 import checkout_packages  # noqa: F401
 
@@ -142,6 +143,51 @@ class SurfaceGateTest(unittest.TestCase):
     def test_every_refusal_ends_on_the_command_that_fixes_it(self) -> None:
         self.write(split=SPLIT.replace("Order confirmation · empty cart", "Order confirmation · partial refund"))
         self.assertIn("Run: python3 scripts/check-surfaces.py", self.run_gate().stderr)
+
+
+class RedrawTest(unittest.TestCase):
+    """`make surfaces` after a disapproval draws again, rather than reviewing the drafts it was told no to."""
+
+    def setUp(self) -> None:
+        self.tree = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tree, True)
+        sys.path.insert(0, str(ROOT / "assets/toolkit/scripts/agents"))
+        self.addCleanup(sys.path.remove, str(ROOT / "assets/toolkit/scripts/agents"))
+        spec = importlib.util.spec_from_file_location(
+            "surfaces_stage", ROOT / "assets/toolkit/scripts/agents/surfaces.py")
+        assert spec is not None and spec.loader is not None
+        module: Any = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.SPECS = self.tree / "specs"
+        self.module = module
+        self.home = self.tree / "specs/001-orders/mockups"
+        self.home.mkdir(parents=True)
+
+    def states(self, body: str) -> None:
+        (self.home / "mock-states.md").write_text(body, encoding="utf-8")
+
+    def test_a_first_drawing_is_not_a_redraw(self) -> None:
+        self.assertEqual(self.module.turned_down("001-orders"), "")
+
+    def test_every_state_parked_is_a_storyboard_turned_down(self) -> None:
+        self.states("## Surface: Basket\n- Empty \u2014 parked: no styling\n- Full \u2014 parked: no styling\n")
+        self.assertIn("no styling", self.module.turned_down("001-orders"))
+
+    def test_a_storyboard_part_way_through_its_verdicts_is_not_redrawn(self) -> None:
+        """Some approved is a person in the middle of `/mockups`, and a redraw would throw that away."""
+        self.states("## Surface: Basket\n- Empty \u2014 approved\n- Full \u2014 parked: is a total shown?\n")
+        self.assertEqual(self.module.turned_down("001-orders"), "")
+
+    def test_the_old_verdicts_are_kept_and_the_new_drawing_waits_on_its_own(self) -> None:
+        said = "## Surface: Basket\n- Empty \u2014 parked: no styling\n"
+        self.states(said)
+        self.module.retire("001-orders", said)
+        self.states(said.replace("no styling", "still none"))
+        self.module.retire("001-orders", said.replace("no styling", "still none"))
+        self.assertFalse((self.home / "mock-states.md").exists())
+        kept = (self.home / "disapproved.md").read_text(encoding="utf-8")
+        self.assertEqual(kept.count("## Redrawn"), 2)
+        self.assertLess(kept.index("no styling"), kept.index("still none"))
 
 
 if __name__ == "__main__":  # pragma: no cover

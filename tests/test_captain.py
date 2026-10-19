@@ -48,11 +48,15 @@ class ChoosingTest(Fixture):
         self.assertIn("BIL-01", done.stdout)
         self.assertIn("merged", done.stdout)
 
-    def test_a_claimed_slice_is_not_claimed_twice(self) -> None:
+    def test_a_slice_another_captain_here_is_working_is_not_claimed_twice(self) -> None:
+        """The claim names a machine; the `.working` record names the process on it."""
+        standing = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(600)"])
+        self.addCleanup(standing.kill)
+        (self.root / ".slipwai/running").mkdir(parents=True)
+        (self.root / ".slipwai/running/captain-ORD.working").write_text(f"{standing.pid}\n")
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
-        self.grant("ORD-02")
         done = self.captain("ORD", self.sail(WORKS))
-        self.assertIn("ORD-02", done.stdout)
+        self.assertIn("ORD-02 waits on", done.stdout)
 
     def test_a_parked_fairway_stays_parked_and_says_why(self) -> None:
         """A captain that quietly carried on past a park would be the status field all over again."""

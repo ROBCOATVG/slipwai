@@ -114,6 +114,10 @@ def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | Non
     if fairway.parked:
         return "parked"
     last = fairway.entries[-1]
+    if last.kind == "stopped":
+        # Asked to stop and said so. Not `stalled`, which is a captain that went quiet without a word, and
+        # not `parked`, which waits on a person: lighting the fleet again carries the slice on.
+        return "stopped"
     if last.kind == "merged" and not fairway.slice_now:
         if waiting is None:
             return "unknown"

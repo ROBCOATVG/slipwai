@@ -51,7 +51,8 @@ class GateTest(Fixture):
     def test_a_slice_that_sets_no_mark_passes_on_its_demo_alone(self) -> None:
         """One rule, not a special case: every mark in `sets`, which is vacuous when that is empty."""
         self.deck("BIL", logs.entry("mark-set", fairway="BIL", slice="BIL-01", mark="Charged"),
-                  logs.entry("claimed", fairway="BIL", slice="BIL-01"))
+                  logs.entry("claimed", fairway="BIL", slice="BIL-01"),
+                  logs.entry("merged", fairway="BIL", slice="BIL-01", commit="a1b2c3d"))
         self.grant("BIL-02")
         done = self.captain("BIL", self.sail(WORKS))
         self.assertIn("BIL-02", done.stdout)
@@ -123,7 +124,7 @@ exec({fake_drive("behaviour")!r} if first else {fake_drive()!r})
         self.assertEqual(len([e for e in self.read("ORD") if e.kind == "demo"]), 2, done.stdout)
         parked = [str(e.fields["why"]) for e in self.read("ORD") if e.kind == "parked"]
         self.assertIn("implementation", parked[0])
-        self.assertIn("2 time(s)", parked[0])
+        self.assertIn("last of 2 run(s)", parked[0])
 
     def test_attempts_of_zero_is_one_run_and_no_retry(self) -> None:
         self.attempts(0)

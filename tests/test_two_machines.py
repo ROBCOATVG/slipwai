@@ -45,7 +45,13 @@ class TwoMachinesTest(TravelFixture):
         for name in CARRIED:
             (self.root / "scripts/agents" / name).write_text(
                 (AGENTS / name).read_text(encoding="utf-8"), encoding="utf-8")
-        chart = self.root / "specs/ordering/chart.yaml"
+        # The captain imports `fleet.py`, so it is carried; but every captain here is one this case runs,
+        # and a harbourmaster relighting detached captains beside them — with no `SLIPWAI_SAIL`, writing
+        # into the very logs whose silence a lease is judged on — would be a different exercise.
+        (self.root / "scripts/agents/fleet.py").write_text(
+            (AGENTS / "fleet.py").read_text(encoding="utf-8")
+            + "\n\ndef relight(limit: object, say: bool = False) -> int:\n    return 0\n", encoding="utf-8")
+        chart =self.root / "specs/ordering/chart.yaml"
         chart.parent.mkdir(parents=True)
         chart.write_text(CHART, encoding="utf-8")
         (self.root / "harbour.json").write_text(json.dumps({

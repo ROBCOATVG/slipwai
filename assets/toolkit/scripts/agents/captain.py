@@ -40,6 +40,13 @@ names the question, `/cruise-tell` with the answer clears it, and the captain wr
 carrying the question's `id` before it re-dispatches — so the resumed `/sail` finds the question answered
 in the log rather than in somebody's memory, and clearance stops saying *awaiting decision*.
 
+**A stop is a line, and the slice it interrupted is carried on.** `fleet.py stop` is a SIGTERM, and a captain
+with no handler for it died where it stood: the `/sail` it had dispatched ran on with nothing watching it,
+the claim stayed taken, and the log said nothing — so the next captain lit on the same machine took its own
+claim back, found no park to resume from, stepped past the claimed slice and said *nothing to start* for
+ever. Now the signal ends the running stage, `stopped` names the slice, the claim is given back once that
+line has travelled, and a slice claimed and not merged is resumed whatever interrupted it.
+
 **A hook never costs the rung.** The extension hook points fire around each rung, at each boundary and before
 a merge; `hooks.py` always exits 0 for them, and the captain does not read their output. A hook is a second
 belt, and a second belt that can stop the run is the thing it was meant to be instead of.
@@ -52,6 +59,7 @@ import argparse
 import json
 import os
 import shlex
+import signal
 import subprocess
 import sys
 import time
@@ -62,6 +70,7 @@ sys.path.insert(0, str(HERE))
 
 import claims  # noqa: E402
 import clearance  # noqa: E402
+import fleet  # noqa: E402
 import harness  # noqa: E402
 import inbox  # noqa: E402
 import logs  # noqa: E402
@@ -106,6 +115,29 @@ DEFAULT_WAIT_MINUTES = 60
 #: rebases. A taken-over stream's branch arrives under this name, because that is the name `/sail` expects
 #: to find its own work on.
 BRANCH = "slice/{slice}"
+#: The slice this captain is on, and the feature its log is under, for the `stopped` line a signal writes.
+#: Empty between slices: a captain that has written no `claimed` has nothing to name and, until its claim
+#: is taken, no right to write to the log at all.
+ON: dict[str, str] = {}
+
+
+class Stopped(Exception):
+    """The captain was asked to stop. Raised by the SIGTERM handler wherever the captain is, so that every
+    `finally` between there and `main` runs — the one in `dispatch` that ends the stage, and the one in
+    `main` that gives the claim back."""
+
+
+def on_term(signum: int, _frame: object) -> None:
+    """The first SIGTERM is a stop; a second, while the first is being honoured, is *now*.
+
+    The second matters because honouring the first waits for the final line to travel, up to the wait
+    bound, and a person who asks twice has said they will not wait for it. The claim is then kept, which is
+    what the lease is for.
+    """
+    if ON.get("stopping"):
+        raise SystemExit(128 + signum)
+    ON["stopping"] = "yes"
+    raise Stopped()
 
 
 def harbour() -> dict:
@@ -198,6 +230,9 @@ def await_answer(request: str, bound: float) -> logs.Entry | None:
     seen = len(harbour_entries())
     until = time.monotonic() + bound
     while True:
+        # Every poll, because the answer can only come from a harbourmaster that is running, and one that
+        # died while this waited would otherwise cost the slice its gate at the end of the bound.
+        keep_harbourmaster()
         found = answered(request)
         if found is not None:
             return found
@@ -207,6 +242,20 @@ def await_answer(request: str, bound: float) -> logs.Entry | None:
         if time.monotonic() >= until:
             return None
         time.sleep(ANSWER_POLL)
+
+
+def keep_harbourmaster() -> None:
+    """Start the harbourmaster again where it has died, and say so.
+
+    Every captain checks, because nothing else would: `fleet.py relight` never starts one, and the
+    harbourmaster is the only thing that fills free berths and answers a merge. `fleet.relight_harbourmaster`
+    holds the one-harbourmaster rule — it restarts only what a pid file says was started and is now gone,
+    and only one of two captains that both noticed does it.
+    """
+    pid = fleet.relight_harbourmaster()
+    if pid is not None:
+        print(f"captain: the harbourmaster had stopped, so it was started again, pid {pid}. Its output is "
+              f"in .slipwai/running/harbourmaster.out", flush=True)
 
 
 def deck(feature: str, fairway: str) -> Path:
@@ -297,7 +346,7 @@ def fire(point: str, **given: str) -> None:
     subprocess.run(argv, cwd=ROOT, capture_output=True, text=True)
 
 
-def sail_command(slice_id: str, fairway: str) -> tuple[list[str], dict[str, str], str]:
+def sail_command(slice_id: str, fairway: str, retry: str = "") -> tuple[list[str], dict[str, str], str]:
     """What runs the ladder for one slice: (argv, the environment it runs under, what was chosen).
 
     A headless session of the installed harness, asked for `/sail <slice> fairway=<name>`. The one slice is
@@ -309,19 +358,26 @@ def sail_command(slice_id: str, fairway: str) -> tuple[list[str], dict[str, str]
     drives a fake and how a harness the registry does not know is pointed at. It used to fall back to
     `scripts/agents/sail.py` — the *settings reader* for `/sail`, which prints its table and exits 0 — and
     that stood in for the ladder in the first real run this loop ever did.
+
+    `retry` is why the run before this one did not close the gate, where there was one. It is said to the
+    session in its prompt and in `SLIPWAI_RETRY`, as a demo sent back says its notes in the slice: a retry
+    told nothing re-runs the ladder blind and meets the same wall the same way.
     """
     named = os.environ.get("SLIPWAI_SAIL")
     if named:
-        return [*named.split(), slice_id, fairway], {**os.environ, **naming(slice_id, fairway)}, \
+        return [*named.split(), slice_id, fairway], {**os.environ, **naming(slice_id, fairway, retry)}, \
             f"SLIPWAI_SAIL: {named}"
     chosen, said = harness.choose()
     template, _ = harness.template(chosen)
     prompt = harness.prompt_for(chosen, "drive", DRIVE_COMMAND, f"{slice_id} fairway={fairway}")
+    if retry:
+        prompt += (f"\n\nThe last run of this slice did not close its gate: {retry}. Re-enter at the first "
+                   f"incomplete stage and close what it left.")
     line = template.replace("{prompt}", shlex.quote(prompt)) + harness.model_flags(chosen, sail_model())
-    return shlex.split(line), {**harness.child_environment(chosen), **naming(slice_id, fairway)}, said
+    return shlex.split(line), {**harness.child_environment(chosen), **naming(slice_id, fairway, retry)}, said
 
 
-def naming(slice_id: str, fairway: str) -> dict[str, str]:
+def naming(slice_id: str, fairway: str, retry: str = "") -> dict[str, str]:
     """What the session is told about itself, for `scripts/agents/session.py` to read at the harness's own
     moments — the guards it may be refused at and the hooks it fires.
 
@@ -334,8 +390,9 @@ def naming(slice_id: str, fairway: str) -> dict[str, str]:
     log line, and "no line" has to mean *none since this session began*: a fairway with a hundred lines
     behind it would otherwise satisfy the test for ever.
     """
+    told = {"SLIPWAI_RETRY": retry} if retry else {}
     return {"SLIPWAI_FAIRWAY": fairway, "SLIPWAI_SLICE": slice_id, "SLIPWAI_STAGE": "drive",
-            "SLIPWAI_SINCE": logs.now()}
+            "SLIPWAI_SINCE": logs.now(), **told}
 
 
 def sail_model() -> str | None:
@@ -361,6 +418,33 @@ def head(branch: str) -> str:
     found = subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
                            cwd=ROOT, capture_output=True, text=True)
     return found.stdout.strip() if found.returncode == 0 else ""
+
+
+def end(process: subprocess.Popen) -> None:
+    """End a dispatched stage, and everything it started.
+
+    The session is started in a process group of its own so that this can reach its delegates as well: a
+    harness that is told to stop and leaves a delegate running leaves an agent writing into a berth nobody
+    is watching, which is the untracked work a stop exists to prevent. Windows has no process groups to
+    signal, so there it is the session itself.
+    """
+    if process.poll() is not None:
+        return
+    group = getattr(os, "killpg", None)
+    try:
+        if group is not None:
+            group(process.pid, signal.SIGTERM)
+        else:  # pragma: no cover - the other platform's branch
+            process.terminate()
+        process.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        if group is not None:
+            group(process.pid, getattr(signal, "SIGKILL", signal.SIGTERM))
+        else:  # pragma: no cover - the other platform's branch
+            process.kill()
+        process.wait()
+    except ProcessLookupError:
+        pass
 
 
 def watched(process: subprocess.Popen, feature: str, fairway: str, bound: float,
@@ -392,11 +476,7 @@ def watched(process: subprocess.Popen, feature: str, fairway: str, bound: float,
             write(feature, fairway, logs.entry("heartbeat", fairway=fairway))
             last_beat, seen = now, len(entries(feature, fairway))
         if now - last_line >= bound:
-            process.terminate()
-            try:
-                process.wait(timeout=30)
-            except subprocess.TimeoutExpired:
-                process.kill()
+            end(process)
             return False, (f"nothing was written to the deck log for {bound / 60:.0f} minutes, so the stage "
                            f"was ended. A stage that wrote no line made no progress")
     return process.returncode == 0, ("" if process.returncode == 0
@@ -485,18 +565,29 @@ def answer_questions(feature: str, fairway: str, slice_id: str, found: list[logs
     return closed
 
 
-def dispatch(slice_id: str, feature: str, fairway: str) -> tuple[bool, str, list[logs.Entry]]:
+class NeverRan(Exception):
+    """No session could be started at all. Not a run that failed, so not one a retry is spent on."""
+
+
+def dispatch(slice_id: str, feature: str, fairway: str,
+             retry: str = "") -> tuple[bool, str, list[logs.Entry]]:
     """One run of `/sail`, and the lines it wrote. (finished, why not, the lines written during it)."""
     try:
-        argv, environment, _said = sail_command(slice_id, fairway)
+        argv, environment, _said = sail_command(slice_id, fairway, retry)
     except harness.NoHarness as refused:
         # Not a park with a mark missing: the ladder never ran, and saying "no `mark-set` was written" about
         # a session nobody could start would send somebody to read a slice that is fine.
-        return False, f"{refused}. Or set SLIPWAI_SAIL to a command taking <slice> <fairway>", []
+        raise NeverRan(f"{refused}. Or set SLIPWAI_SAIL to a command taking <slice> <fairway>") from refused
     fire("before-stage", stage="drive", slice=slice_id, fairway=fairway)
     started = len(entries(feature, fairway))
-    process = subprocess.Popen(argv, cwd=ROOT, env=environment)
-    finished, why = watched(process, feature, fairway, stage_bound(), started, BRANCH.format(slice=slice_id))
+    # A session of its own, so that `end` reaches the delegates it starts as well as the session.
+    process = subprocess.Popen(argv, cwd=ROOT, env=environment, start_new_session=True)
+    try:
+        finished, why = watched(process, feature, fairway, stage_bound(), started,
+                                BRANCH.format(slice=slice_id))
+    finally:
+        # A stop, a Ctrl-C, anything that leaves mid-stage: the stage ends with the captain, never after it.
+        end(process)
     fire("after-stage", stage="drive", slice=slice_id, fairway=fairway)
     return finished, why, entries(feature, fairway)[started:]
 
@@ -505,39 +596,58 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
     """Drive the slice until its gate is satisfied, or say why it will not be. (satisfied, why not).
 
     The gate is every mark the chart says this slice `sets`, plus a `demo`, written during the turn that
-    just ran. A demo that came back is driven again, up to `attempts`; anything else stops here, because a
-    turn that wrote none of what closes a slice has given no evidence that anything was built.
+    just ran. **Every run that misses it is a retry, up to `attempts`** — a demo sent back, a mark not set,
+    no demo, a stage ended for silence, `/sail` exiting non-zero. Only the sent-back demo used to be one,
+    and the rest parked on the first run, so a session that fell over once cost a person a visit to a slice
+    a second run would have finished. Each retry is told why the last did not close, and the park, when
+    `attempts` is spent, carries the last reason and the count.
+
+    Two things are not retried, because a second run cannot change them: an open question, which only a
+    person answers, and a session that parked itself, whose reason is already the newest line.
     """
-    sent_back = 0
+    tried, retry = 0, ""
     promised = sets_of(slice_id)
     while True:
-        finished, why, fresh = dispatch(slice_id, feature, fairway)
-        if not finished:
-            return False, why
-        missing, verdict = owed(fresh, slice_id, promised)
-        if not missing and verdict == ACCEPTED:
-            return True, ""
-        asked = open_questions(fresh, slice_id)
-        if asked:
-            # Before the mark check: a stage that stopped to ask is not a stage that wrote nothing, and the
-            # park has to carry the question, because the person reading it is the one who answers it.
-            said = "; ".join(f"{e.fields.get('id')}: {e.fields.get('what')}" for e in asked)
-            return False, (f"{slice_id} is awaiting a decision — {said}. A person answers with "
-                           f"`/cruise-tell {fairway} <answer>`; the captain records the decision and "
-                           f"resumes {slice_id}")
-        if verdict and verdict != ACCEPTED:
-            sent_back += 1
-            if sent_back <= bound:
-                continue
-            return False, (f"the demo came back {verdict!r} {sent_back} time(s), which is what `attempts` "
-                           f"allows. The notes are in the slice; a person decides what happens next")
-        if missing:
-            return False, (f"the chart says {slice_id} sets {', '.join(promised)}, and this turn wrote no "
-                           f"`mark-set` for {', '.join(missing)}. A stage that wrote no line made no "
-                           f"progress, so nothing here is evidence the slice was built")
-        return False, (f"this turn wrote no `demo` line for {slice_id}, so nothing says a person watched it "
-                       f"work. `/sail` exiting 0 is the agent's account of itself, which is the one thing "
-                       f"this loop does not read")
+        try:
+            finished, why, fresh = dispatch(slice_id, feature, fairway, retry)
+        except NeverRan as refused:
+            return False, str(refused)
+        tried += 1
+        own = [e for e in fresh if e.kind == "parked" and str(e.fields.get("fairway", "")) == fairway]
+        if own:
+            return False, str(own[-1].fields.get("why", ""))
+        if finished:
+            missing, verdict = owed(fresh, slice_id, promised)
+            if not missing and verdict == ACCEPTED:
+                return True, ""
+            asked = open_questions(fresh, slice_id)
+            if asked:
+                # Before the mark check: a stage that stopped to ask is not a stage that wrote nothing, and
+                # the park has to carry the question, because the person reading it answers it.
+                said = "; ".join(f"{e.fields.get('id')}: {e.fields.get('what')}" for e in asked)
+                return False, (f"{slice_id} is awaiting a decision — {said}. A person answers with "
+                               f"`/cruise-tell {fairway} <answer>`; the captain records the decision and "
+                               f"resumes {slice_id}")
+            why = gate_missed(slice_id, promised, missing, verdict)
+        if tried <= bound:
+            retry = why
+            print(f"captain: {slice_id} run {tried} did not close its gate — {why}. Running it again",
+                  flush=True)
+            continue
+        return False, f"{why}. That was the last of {tried} run(s), which is what `attempts` allows"
+
+
+def gate_missed(slice_id: str, promised: list[str], missing: list[str], verdict: str) -> str:
+    """Why a run that finished did not close the gate, in the words the park and the retry carry."""
+    if verdict and verdict != ACCEPTED:
+        return f"the demo came back {verdict!r}. The notes are in the slice; a person decides what happens next"
+    if missing:
+        return (f"the chart says {slice_id} sets {', '.join(promised)}, and this turn wrote no `mark-set` "
+                f"for {', '.join(missing)}. A stage that wrote no line made no progress, so nothing here is "
+                f"evidence the slice was built")
+    return (f"this turn wrote no `demo` line for {slice_id}, so nothing says a person watched it work. "
+            f"`/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not "
+            f"read")
 
 
 def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool, str]:
@@ -556,24 +666,56 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
             return False, why
         if asked == bound:
             return False, f"{why}. That is {asked + 1} attempt(s), which is what `attempts` allows"
-        finished, fault, _ = dispatch(slice_id, feature, fairway)
+        try:
+            finished, fault, _ = dispatch(slice_id, feature, fairway, why)
+        except NeverRan as refused:
+            return False, str(refused)
         if not finished:
             return False, fault
     return False, "unreachable"
 
 
+def working(fairway: str) -> Path:
+    """Where this machine records which captain process is working the fairway's slice right now."""
+    return fleet.RUNNING / f"captain-{fairway}.working"
+
+
+def worked_here(fairway: str) -> int | None:
+    """Another live captain process on this machine that is on this fairway's slice, or None.
+
+    The claim names a machine, not a process, so a captain a person runs by hand beside one the fleet lit
+    takes the same claim and reads the same log. Before every claimed slice was resumed that cost nothing:
+    the second skipped what the first had claimed. Now it would resume a slice that is being worked, so a
+    claimed slice is carried on only when the process recorded as working it has gone — which is every
+    case a resume is for, since a stop, a kill and a reboot all leave a dead pid behind or none at all.
+    """
+    try:
+        pid = int(working(fairway).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    return pid if pid != os.getpid() and fleet.alive(pid) else None
+
+
 def work(slice_id: str, feature: str, fairway: str) -> tuple[bool, str]:
     """One slice, start to finish. (did it finish, why it did not)."""
-    write(feature, fairway, logs.entry("claimed", fairway=fairway, slice=slice_id))
-    bound = attempts()
-    ok, why = through_its_gate(slice_id, feature, fairway, bound)
-    if not ok:
-        return False, why
-    held = boundary(feature, fairway)
-    if held:
-        return False, held
-    fire("before-merge", slice=slice_id, fairway=fairway)
-    return merged(slice_id, feature, fairway, bound)
+    # Recorded before the `claimed` line, so a captain that reads the line also finds whose it is.
+    working(fairway).parent.mkdir(parents=True, exist_ok=True)
+    working(fairway).write_text(f"{os.getpid()}\n", encoding="utf-8")
+    try:
+        write(feature, fairway, logs.entry("claimed", fairway=fairway, slice=slice_id))
+        ON.update(slice=slice_id, feature=feature, fairway=fairway)
+        bound = attempts()
+        ok, why = through_its_gate(slice_id, feature, fairway, bound)
+        if not ok:
+            return False, why
+        held = boundary(feature, fairway)
+        if held:
+            return False, held
+        fire("before-merge", slice=slice_id, fairway=fairway)
+        return merged(slice_id, feature, fairway, bound)
+    finally:
+        if worked_here(fairway) is None:
+            working(fairway).unlink(missing_ok=True)
 
 
 def ask_to_merge(slice_id: str, feature: str, fairway: str,
@@ -639,7 +781,14 @@ def heard(feature: str, fairway: str) -> str:
 
 
 def resuming(found: list[logs.Entry]) -> str:
-    """The slice a taken-over stream was in the middle of: claimed, and not merged. `""` where none was."""
+    """The slice this stream was in the middle of: claimed, and not merged. `""` where none was.
+
+    Whatever stopped it — a lapsed lease, a park since cleared, a `stopped` line, or a machine that went
+    down mid-stage and wrote nothing at all. The last is why this asks only the claim: a captain relit on
+    the same machine takes its own claim back, so nothing says *taken over*, and with no park either the
+    slice used to be stepped past as claimed — *nothing to start* for ever, with four rungs of work on it.
+    A slice is let go only by merging; nothing else in a fairway's log hands one back.
+    """
     done = {str(e.fields.get("slice", "")) for e in found if e.kind == "merged"}
     for entry in reversed(found):
         if entry.kind == "claimed" and str(entry.fields.get("slice", "")) not in done:
@@ -678,6 +827,7 @@ def turn(fairway: str) -> str:
     So the claim ref is taken here, before the first line of the turn, and a captain that cannot take it
     writes nothing at all — not even its reason, which would be the damage done while explaining it.
     """
+    keep_harbourmaster()
     fetch()
     # The chart before the claim, because working out whether the holder is still alive means reading this
     # fairway's log, and reading it means knowing which feature it is under. Nothing is written by either.
@@ -699,8 +849,10 @@ def turn(fairway: str) -> str:
     claimed, merged, parked = state(found, fairway)
     if parked:
         return f"captain: {fairway} is parked — {parked}"
-    if not resume and any(e.kind == "parked" for e in found):
-        # A cleared decision hands the in-flight slice back, rather than skipping its claimed work.
+    if not resume and worked_here(fairway) is None:
+        # Claimed and not merged is this stream's own work, whatever left it there: a cleared park, a stop,
+        # a reboot. An open park has already returned above, so a slice is resumed only once it is cleared;
+        # and one another captain on this machine is working is left to it.
         resume = resuming(found)
     if stranded:
         write(feature, fairway, logs.entry("parked", fairway=fairway, why=stranded))
@@ -711,7 +863,7 @@ def turn(fairway: str) -> str:
         print(f"captain: trunk is red at {str(fix.fields['commit'])[:8]} ({fix.fields['job']}) and "
               f"{fairway} merged it; fixing {slice_id} before anything new", flush=True)
     elif resume:
-        # The stream was mid-slice when its machine stopped, and `next_slice` would step past a slice that
+        # The stream was mid-slice when it stopped, and `next_slice` would step past a slice that
         # is claimed — which is exactly the four rungs of work this slice exists to carry over.
         slice_id, why = resume, ""
         for ident in answer_questions(feature, fairway, slice_id, found):
@@ -773,6 +925,22 @@ def release_after_publication(fairway: str) -> None:
     claims.release(ROOT, fairway, machine)
 
 
+def stopped(fairway: str) -> None:
+    """Say the stop in the log, naming the slice it interrupted, before the claim is given back.
+
+    Only on a slice: between slices this captain has written nothing this turn and may not hold the claim
+    at all, and a line written without it is the second writer the claim exists to refuse. The stage has
+    already been ended by `dispatch`'s `finally` on the way here.
+    """
+    slice_id = ON.get("slice", "")
+    if slice_id and ON.get("fairway") == fairway:
+        write(ON["feature"], fairway, logs.entry("stopped", fairway=fairway, slice=slice_id))
+        print(f"captain: {fairway} stopped mid-way through {slice_id}; it is carried on when the fairway is "
+              f"lit again", flush=True)
+    else:
+        print(f"captain: {fairway} stopped between slices", flush=True)
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="captain", description="Run one fairway: claim, dispatch, watch the log, ask for the merge")
@@ -780,13 +948,19 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--once", action="store_true", help="one slice, rather than the loop")
     parser.add_argument("--interval", type=float, default=30.0, help="seconds between turns")
     parsed = parser.parse_args(argv)
+    signal.signal(signal.SIGTERM, on_term)
     try:
         while True:
             said = turn(parsed.fairway)
+            # The turn's slice is merged or parked by now, so a stop while sleeping interrupts nothing.
+            ON.pop("slice", None)
             print(said, flush=True)
             if parsed.once or any(mark in said for mark in STOPS):
                 return 0
             time.sleep(parsed.interval)
+    except Stopped:
+        stopped(parsed.fairway)
+        return 0
     finally:
         # The final line must travel while this captain still holds the pen. A captain killed outright
         # still leaves its claim behind, which is what 11.2's lease is for.

@@ -20,7 +20,9 @@ an unwritten row is a pass that has to be run again, and until now nothing notic
   one thing, and the only way to tell from the record is to make the record say;
 - entries are numbered contiguously from `D1`, in order;
 - **Decided by** is `host (stage recommendation)`, `host (standing decision D<m>)`, `sail-decide-skipper (<model>)`,
-  `sail-unblock-bosun` — with or without its `(<model>)` — or `human`; **Status** is `standing`, `overridden by D<m>` or `overridden by human <date>`;
+  `sail-unblock-bosun` — with or without its `(<model>)` — or `human`; **Status** is `standing`, `awaiting human
+  confirmation` (a stop for a person answered with nobody there), `confirmed by human <date>`, `overridden by D<m>`
+  or `overridden by human <date>`;
 - every **Written to** path exists in the repository, and a path still carrying `<placeholders>` is a finding;
 - a demo entry is `## <instant> — <verdict> · iteration <n> · sail-demo-hand (<model>)`, its verdict one of
   `accepted`, `behaviour`, `implementation`, followed by **Started with**, **Driven through**, **Examples**,
@@ -79,7 +81,11 @@ DEMO_HEADING = re.compile(r"^## (\S+) — (\w+) · iteration (\d+) · sail-demo-
 # and the skipper's habit of naming its model is one it may share.
 DECIDED_BY = re.compile(r"^(host \(stage recommendation\)|host \(standing decision D\d+\)|sail-decide-skipper \(.+\)|"
                         r"sail-unblock-bosun( \(.+\))?|human)$")
-STATUS = re.compile(r"^(standing|overridden by D\d+|overridden by human \S+)$")
+# `awaiting human confirmation` is a decision a stage that asks for a person took without one — a headless
+# `/launch` proceeding on its own best-evidenced proposal — which stands until somebody reads it, and says so
+# rather than looking like an answer anybody gave. `confirmed by human <date>` is that somebody having read it.
+STATUS = re.compile(r"^(standing|awaiting human confirmation|confirmed by human \S+|overridden by D\d+|"
+                    r"overridden by human \S+)$")
 FIELD = re.compile(r"^- \*\*([^*]+):\*\* ?(.*)$")
 PLACEHOLDER = re.compile(r"<[^>]*>")
 
@@ -156,8 +162,9 @@ def check_decisions(path: Path) -> list[str]:
                             "recommendation), host (standing decision D<m>), sail-decide-skipper (<model>), sail-unblock-bosun "
                             "or human")
         if not STATUS.match(fields["Status"]):
-            findings.append(f"{where}: D{number} `Status` is {fields['Status']!r}; it is standing, overridden by "
-                            "D<m> or overridden by human <date>")
+            findings.append(f"{where}: D{number} `Status` is {fields['Status']!r}; it is standing, awaiting "
+                            "human confirmation, confirmed by human <date>, overridden by D<m> or overridden by "
+                            "human <date>")
         findings += path_findings(where, f"D{number} `Written to`", fields["Written to"], ROOT)
     return findings
 

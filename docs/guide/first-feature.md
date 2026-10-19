@@ -207,6 +207,10 @@ profiles, `make check-chart` checks the chart after that. It refuses the two mis
 - a mark that nobody gave a type
 - a mark that two slices both set
 
+It also refuses fairways that no recorded decision explains. The model step writes that decision to
+`specs/booking/decisions.md`: which bounded contexts the feature touches, and the seam table it was read
+from.
+
 **Each mark has one setter.** This rule is the reason that the rest works. If exactly one fairway sets
 `BookingHeld`, every other fairway can be told as soon as it exists, and can start. They do not wait for a
 branch to merge, and no second definition of the mark can appear anywhere.

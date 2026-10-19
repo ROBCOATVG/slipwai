@@ -43,6 +43,23 @@ ROOT = Path(__file__).resolve().parents[1]
 GUIDE = ROOT / "docs/guide"
 CAPTURES = ROOT / "docs/captures"
 FIXTURE = ROOT / "tests/fixtures/docs/model.yaml"
+CONTEXT_DECISION = """# Decisions — booking
+
+## D1 — Which bounded contexts does booking touch?
+- **Stage:** event model · **Slice:** — · **When:** 2026-10-19T09:00:00Z · **Stream:** booking
+- **Question:** Which bounded contexts does booking touch, and is each one fairway?
+- **Options:** one context; booking and availability (recommended)
+  | Candidate | Streams | Language · Change · Flow | What crosses | Confidence |
+  |---|---|---|---|---|
+  | booking | booking | a hold is a party's · hold rules change with policy · the guest | BookingHeld | high |
+  | availability | table | a table is covers · floor plans change with the room · the host | — | high |
+- **Decision:** two contexts, two fairways
+- **Why:** the change and flow tests fail across the seam · **Read against:** the specification
+- **Decided by:** host (stage recommendation)
+- **Confidence:** high · **Would reverse if:** a hold had to read the floor plan to decide
+- **Written to:** `docs/event-model/model.yaml`
+- **Status:** awaiting human confirmation
+"""
 #: Slice 9.4 holds the first three pages. The last two describe a run that cannot be stood up offline and
 #: are held by their captures and by the link check.
 PAGES = ("start-here.md", "first-feature.md", "a-second-person.md")
@@ -218,6 +235,8 @@ def model_it(project: Path) -> None:
     """
     (project / "docs/event-model/model.yaml").write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
     (project / "specs/booking/slices").mkdir(parents=True, exist_ok=True)
+    # The context answer Step 9 records beside the model, which `make check-chart` asks the fairways for.
+    (project / "specs/booking/decisions.md").write_text(CONTEXT_DECISION, encoding="utf-8")
 
 
 def sail_bok01(project: Path) -> None:

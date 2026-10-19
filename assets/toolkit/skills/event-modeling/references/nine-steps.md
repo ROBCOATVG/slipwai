@@ -273,6 +273,36 @@ Slice 2: "Project Dashboard" → projects from ProjectInitialized event
   the projection shows this state)
 - Neither slice needs the other to be implemented or running
 
+### Interrogate every stream before naming it
+
+A stream is one expected-version check: every command appended to it is refused if anything else on it
+moved, so everything on one stream is serialised for ever, and the seam tests below take each stream as a
+candidate they may never split. That makes naming a stream the first context decision, taken one level
+down, and the noun-first mistake this method warns about for contexts is easiest to make here. "One record
+per leaver (FR-003), so one stream `leaver-{leaverId}`" is the wrong reason whatever the answer turns out
+to be: the noun says nothing about which decisions have to see each other's state.
+
+So before a slice gets its `stream`, for each stream proposed:
+
+1. **List the invariants it protects** — each decision that must see the current state to be safe, with
+   the requirement it comes from. "It is all about one leaver" is not an invariant.
+2. **Look first for invariants that span groups of slices.** A decision that reads several groups'
+   current state at once — clearance closes only when the final day has passed, every item is back and the
+   interview was held, in one transaction (an FR like that) — or a lifecycle state one group sets and every
+   group must check — once the case is closed, by whichever group closes it, every later command is
+   refused. Either is the reason to keep those groups on one stream: splitting them needs a process manager
+   and opens a window in which the invariant can be breached. Name it, by FR.
+3. **Where no invariant spans two groups, they are separate streams** correlated by id —
+   `exit-interview-{leaverId}`, `clearance-{leaverId}` — and the seam tests then run between them. A
+   different actor, trigger or reason to change is evidence for separating, but it does not outweigh an
+   invariant that spans them.
+4. **"One record per X" describes uniqueness, or a view** — what a person sees, folded from every stream
+   with that id — and is not by itself a boundary. The boundary comes from the invariants.
+
+What survives is written once per stream in the model's `streams` block, as `streams: {leaver: {because:
+<the spanning invariant, with its FR>}}`. `make check-model` refuses a placed state-change slice whose
+stream states none (`skills/global-event-model/SKILL.md`, *What the append is guarded by*).
+
 ### Apply Conway's Law: Which Lanes Are Which Context
 
 Event Modeling ends by grouping the lanes into units that can change on their own — historically the
@@ -283,7 +313,8 @@ bounded contexts, and it runs over the model rather than over an org chart.
 
 **Start from the streams, not the nouns.** Run `make seams`: it groups the slices by the stream they
 write, attaches each view to the stream it folds, and lists the views that fold several. Those groups are
-the candidates. A stream is one consistency boundary and is never split across contexts — publishing a
+the candidates — once each stream has been interrogated above. A stream is one consistency boundary and is
+never split across contexts — publishing a
 listing and filling its chairs are one stream and stay together whatever else is decided. That rule is
 what keeps this from becoming a process-stage split, which is the commonest wrong cut.
 
@@ -308,8 +339,9 @@ for their own reasons, in which case it is a context with no writes, and still o
 
 **A shared noun is evidence for neither side.** Two candidates that share every word and change for one
 reason, under one actor, are one context. Two that share every word and fail the change test or the flow
-test are two. One vocabulary with one reason to change is still one context, and the seams output saying
-*one stream, one candidate* is the whole of that decision.
+test are two. One vocabulary with one reason to change is still one context. The seams output saying *one stream,
+one candidate* is the end of the seam tests, not of the decision: it is only as good as the stream
+interrogation that produced it, and it is recorded like any other answer.
 
 Write the proposal as a table — candidate, streams it writes, the three tests' evidence, what crosses,
 confidence — then say which seams you are unsure about and why, and leave the genuinely undecidable ones as
@@ -320,6 +352,17 @@ context reaching into another except through its `public` module. A context is n
 two does not mean adding a deployable (`docs/architecture.md`, *Bounded contexts*, has when it does). This
 is a decision to take with the user: the model shows the seams, the people who own the words confirm them,
 and the decision entry carries all three tests in its *Why* and its *Would reverse if*.
+
+**It is always recorded, one context included**, as the next entry of `specs/<feature>/decisions.md`,
+headed `## D<n> — Which bounded contexts does <feature> touch?`, with the table above under its `Options`
+line. Where one context would hold more than twelve slices, the entry adds a `- **Why not split:**` line
+citing, by FR, the invariant that spans its groups and keeps them together. Twelve is not a limit and
+nothing here implies a split: it is where one serial fairway costs enough of a run that its reason has to
+be written down. `make check-chart` refuses the chart without the entry, or without that line.
+With nobody present — a session a script dispatched, `SLIPWAI_STAGE` in its environment — proceed on
+the best-evidenced proposal, record it `Decided by: host (stage recommendation)` at `Status: awaiting human
+confirmation`, and post the question to the board as `commands/chart.md`, *Record the context answer,
+every time*, says: a `question` line with the entry's `D<n>` as its `id`.
 
 ## Output Structure
 

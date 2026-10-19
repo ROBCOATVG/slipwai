@@ -64,6 +64,9 @@ render:
   # embedding segments. Omit it and the README embeds segments, which needs no site.
   page: https://your-org.github.io/your-repo/
 
+streams:                         # why each stream is one expected-version check, once per stream
+  order: { because: an order is cancelled at most once, and never after it ships }
+
 slices:
   - id: S1
     name: Place an order
@@ -140,7 +143,10 @@ the boundary per decision out of tags, for the constraint one stream cannot expr
 member's own count, checked together, where either can change under you — and the append is refused if
 anything matching the query arrived since. Never both (`one-guard-not-two`): a conflict has to mean one
 thing. `guard.because` is required for the same reason `liveBudget.because` is — a boundary with no stated
-invariant is a query somebody widened until the tests passed. The factory's decision behind all of this is
+invariant is a query somebody widened until the tests passed — and a `stream` states its invariant once,
+in the top-level `streams` block, for the same reason (`stream-states-its-invariant`): a stream named from
+the spec's noun serialises everything on it without anybody having said what needs that. The factory's
+decision behind all of this is
 `docs/adr/0002-the-guard-a-slice-declares.md`.
 
 **`data` is a worked example, not a schema.** Concrete values (`£48.00`) beat type names (`Money`); that

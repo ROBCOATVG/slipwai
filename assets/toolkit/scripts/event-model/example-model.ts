@@ -30,6 +30,7 @@ export function exampleModel(): Model {
   return parseModel({
     version: 1,
     render: { lanes: { ui: 'actor', data: 'none', events: 'stream' } },
+    streams: { order: { because: 'an order is cancelled at most once, and never after it ships' } },
     slices: [
       {
         id: 'S1',

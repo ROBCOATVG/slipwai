@@ -499,6 +499,17 @@ export const modelSchema = z.strictObject({
       page: z.url().optional(),
     })
     .default({ framesPerSegment: 6 }),
+  /**
+   * Why each stream is one stream, keyed by its name without the identity — `leaver-{leaverId}` is the
+   * `leaver` stream. A stream is one expected-version check, so everything on it is serialised for ever;
+   * `because` names the decision that needs that one check, with the requirement it comes from. Owed from
+   * `modelled` by every stream a state-change slice appends to (`stream-states-its-invariant`), for the
+   * reason `guard.because` is: a boundary with no stated invariant is the nearest noun, not a decision.
+   *
+   *     streams:
+   *       clearance: { because: an asset is returned once, and clearance closes only when all are (FR-011) }
+   */
+  streams: z.record(z.string().min(1), z.strictObject({ because: z.string().min(1) })).optional(),
   slices: z.array(sliceSchema),
 });
 

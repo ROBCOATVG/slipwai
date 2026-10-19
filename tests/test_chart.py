@@ -23,6 +23,7 @@ import unittest
 from pathlib import Path
 
 import checkout_packages  # noqa: F401
+from test_chart_contexts import decided
 
 from slipwai import toolkit
 
@@ -43,7 +44,6 @@ slices:
   BIL-01: {fairway: BIL, capability: bill-an-order, sets: [InvoiceRaised], steers_by: [OrderPlaced]}
 """
 
-
 class ChartGateTest(unittest.TestCase):
     """Each case writes a whole project tree, because the gate reads files the chart names."""
 
@@ -56,6 +56,7 @@ class ChartGateTest(unittest.TestCase):
         (self.tree / "contracts/events").mkdir(parents=True)
         for event in ("OrderPlaced", "InvoiceRaised"):
             (self.tree / f"contracts/events/{event}.json").write_text("{}", encoding="utf-8")
+        decided(self.tree)
 
     def run_gate(self, chart: str | None = WHOLE) -> subprocess.CompletedProcess[str]:
         if chart is not None:
@@ -133,6 +134,7 @@ class WholenessTest(unittest.TestCase):
         (self.tree / "contracts/events").mkdir(parents=True)
         for event in ("OrderPlaced", "InvoiceRaised"):
             (self.tree / f"contracts/events/{event}.json").write_text("{}", encoding="utf-8")
+        decided(self.tree)
 
     def run_gate(self, chart: str) -> subprocess.CompletedProcess[str]:
         (self.tree / "specs/ordering/chart.yaml").write_text(textwrap.dedent(chart).lstrip(), encoding="utf-8")
@@ -236,6 +238,7 @@ class FrozenChartTest(unittest.TestCase):
         (tree / "contracts/events").mkdir(parents=True)
         for event in ("OrderPlaced", "InvoiceRaised"):
             (tree / f"contracts/events/{event}.json").write_text("{}", encoding="utf-8")
+        decided(tree)
         chart = tree / "specs/ordering/chart.yaml"
         chart.write_text(textwrap.dedent(WHOLE).lstrip(), encoding="utf-8")
 

@@ -103,7 +103,9 @@ by the stream they write, and each seam between two groups is tested three ways 
 meaning two things, or shaped differently on each side), change (rules that change for different business
 reasons) and flow (a different actor deciding, with an event as the handoff) — before any of them is called
 a context (`skills/event-modeling/references/nine-steps.md`, *Apply Conway's Law*). A shared noun is
-evidence for neither side, and a stream is never split across two. Record what survives on the service's
+evidence for neither side, and a stream is never split across two — which is why each stream is
+interrogated before it is named (nine-steps.md, *Interrogate every stream before naming it*): a stream
+named from the spec's noun has already decided the seam tests' answer. Record what survives on the service's
 manifest entry before the slices go to `modelled`, then place each slice with `context:`. A list nobody has
 written is not a project with one context; it is a decision not yet taken.
 
@@ -120,6 +122,21 @@ A state-change slice declares one of two, and `planned` is where it is owed:
       by: [seat, hold]
       because: a seat may be claimed once, and a hold may not exceed its cap
 ```
+
+**A stream states its invariant, once.** Whatever shares a stream shares one expected-version check, so
+it is serialised for ever. The model's `streams` block says, per stream name (the `stream` without its
+identity), which decision needs that one check, with the requirement it comes from:
+
+```yaml
+streams:
+  order: { because: an order is cancelled at most once, and never after it ships (FR-007) }
+```
+
+`check-model` refuses a state-change slice at `modelled` or later whose stream has none
+(`stream-states-its-invariant`), for the reason it refuses a `guard` without `because`. The reason worth
+writing is usually one that spans groups of slices: a decision that reads several groups' state at once,
+or a closure one group sets and every group must check. "It is all about one order" is not one — that
+describes uniqueness or a view; groups no invariant spans are separate streams correlated by id.
 
 `stream` is what nearly every slice wants: the append carries the version the decision was made at, and the
 store refuses it if the stream moved. `guard` is for the constraint one stream cannot express — a capacity
@@ -259,6 +276,7 @@ fold cannot be spawned standalone to recover what a dead request abandoned.
 | `model-matches-code` | an implemented slice's event or command appears nowhere in the source. Something was renamed in one place only |
 | `guard-before-planning` | a state-change slice reached `planned` naming neither `stream` nor `guard`. One of them is what its append is checked against |
 | `one-guard-not-two` | it names both. A conflict has to mean one thing |
+| `stream-states-its-invariant` | a placed state-change slice appends to a stream the `streams` block gives no `because`. Name the decision that needs one version check, by FR; where none spans the stream's groups, they were several streams |
 | `folds-match-the-guard` | a slice with a tag `guard` folds an event none of its kinds can reach, so the decision is guarded against something it never read |
 | `materialisation-before-planning` | a state-view or automation slice reached `planned` without saying where its read model lives. Answer it — `live`, `inline` or `async` — rather than shipping the per-query fold nobody chose |
 | `todo-list-is-persisted` | an automation declared `materialisation: live`. A todo list is not a view: losing it loses work, and a fold that only knows this request's streams cannot sweep up an abandoned one |
@@ -329,6 +347,7 @@ slice lists it, which `code` requires anyway.
 - [ ] Every slice touched by this change has the right `status` for where it actually is
 - [ ] No event name in the model is absent from the code of an implemented slice, and none was invented
 - [ ] Every state-change slice at `planned` or beyond names what its append is guarded by — `stream` or `guard` — and folds only what that guard covers
+- [ ] Every stream a state-change slice at `modelled` or beyond appends to states its invariant in `streams`, by FR, and groups of slices share a stream only where an invariant spans them
 - [ ] With more than one service, every slice at `modelled` or beyond names its `service`, and the choice followed a recorded purpose rather than the first directory
 - [ ] `make check-model` passes, and the regenerated diagram is in the same commit
 - [ ] The commit message says what changed about the *model*, not just that the diagram was regenerated

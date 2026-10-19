@@ -24,6 +24,7 @@ import unittest
 from pathlib import Path
 
 import checkout_packages
+from test_chart_contexts import decided
 
 from slipwai.process_alive import alive
 
@@ -128,6 +129,7 @@ class LoopTest(unittest.TestCase):
         assert "slices: []" in held, "the seeded model no longer ends on an empty slice list"
         model.write_text(held.replace("slices: []\n", SLICES), encoding="utf-8")
         (cls.project / "sail-stand-in.py").write_text(SAIL, encoding="utf-8")
+        decided(cls.project, feature="model")  # the context decision `check-chart` asks the fairways for
         # A captain waits for the harbourmaster's answer to its merge request, bounded by `wait_bound` —
         # which is a bound on the harbour log going *silent*, not on elapsed time. Most of these cases run a
         # captain with no harbourmaster behind it at all, so the harbour is silent from the first instant

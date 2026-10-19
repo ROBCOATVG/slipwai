@@ -4,8 +4,9 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 425 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
-# the design files a storyboard links that the board serves beside it, and a step it did not start
+# budget: 450 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# the design files a storyboard links that the board serves beside it, a step it did not start,
+# and how far into its budget a drawing is
 from __future__ import annotations
 
 import json
@@ -363,6 +364,31 @@ class BuiltScreensPageTest(unittest.TestCase):
         self.assertEqual(held["step"], "surfaces")
         self.assertIn("Drawing the surfaces is running", held["lines"][0])
         self.assertEqual(next(one.state for one in stages(root, held) if one.key == "storyboard"), "working")
+
+    def test_a_drawing_under_way_says_how_far_into_its_budget_it_is(self) -> None:
+        """The question at the ten-minute mark is whether ten minutes is normal, and the pid file the drawing
+        writes carries its start and its budget so the strip can say — without a second reading of
+        `harbour.json` on the board."""
+        from slipwai.init_run import outside_session
+        from slipwai.passage import drawing_clock, stages
+        root = Path(tempfile.mkdtemp())
+        (root / "project.json").write_text('{"profile": "standard"}\n', encoding="utf-8")
+        (root / ".slipwai").mkdir()
+        began = time.time() - 6 * 60 - 5
+        (root / ".slipwai/surfaces.pid").write_text(f"{os.getpid()}\n{began:.0f}\n900\n", encoding="utf-8")
+        self.assertEqual(drawing_clock(root), "6 of about 15 min")
+        held = outside_session(root)
+        assert held is not None
+        self.assertGreaterEqual(held["seconds"], 360)
+        storyboard = next(one for one in stages(root, held) if one.key == "storyboard")
+        self.assertEqual(storyboard.detail, "drawing: 6 of about 15 min")
+
+    def test_a_drawing_from_before_the_budget_says_nothing_about_one(self) -> None:
+        from slipwai.passage import drawing_clock
+        root = Path(tempfile.mkdtemp())
+        (root / ".slipwai").mkdir()
+        (root / ".slipwai/surfaces.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+        self.assertEqual(drawing_clock(root), "")
 
 
 class FoldTest(unittest.TestCase):

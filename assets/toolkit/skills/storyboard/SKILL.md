@@ -9,6 +9,27 @@ A **storyboard** is a single reviewable HTML page that stitches every UX surface
 
 **Purpose:** move the design audit from "open a dozen tabs and try to hold the flow in your head" to "open one page and scroll". Gives you a reviewable artifact that pairs with whatever textual decision record you keep (a plan doc, an audit note, a PR description).
 
+## In the mock-up stage: a sketch, not the product
+
+When this skill runs inside slipwai's mock-up stage (`commands/mockups.md`, section 2), the storyboard is a
+sketch a person reviews for flow, content, states and feel. It does not need the rigour the end product
+needs — production-grade visual review happens later, before a slice that builds the surface is
+demonstrated. So in that stage, and only there:
+
+- **Embed or link the surfaces themselves; generate no thumbnails or screenshots.** An `<iframe>` per
+  surface, or a link where embedding is unsafe (see *Embedding safety*). The static-image fallback below is
+  for an authoritative mock that exists only as an image — never for a surface whose HTML is sitting next
+  to the storyboard.
+- **Check the page once, in one theme,** for a broken layout — overflow, overlap, unreadable text — and
+  stop there. No render-and-tweak loop, no light and dark pair, no phone-width sweep unless the
+  specification makes mobile primary.
+- **Reuse the surfaces' own stylesheet** (`mockups.css` beside them) for the storyboard's chrome, which is
+  what *Style conventions* below asks for anyway.
+- **List in the audit checklists only what will run.** In that stage that is the questions a person
+  answers about flow, content and states, not the impeccable pipeline, which is not part of it.
+
+`commands/mockups.md` says the same in *How much rigour a mock-up gets*, and wins where the two differ.
+
 ## When to produce one
 
 - **When a flow has enough related surfaces or states that reviewing them separately hides transitions, inconsistencies, or gaps.** Examples: signup → verification → onboarding, or a settings flow with destructive and recovery states.

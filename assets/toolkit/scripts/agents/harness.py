@@ -415,9 +415,37 @@ def run_session(argv: list[str], cwd: Path | str, env: dict[str, str]) -> int:
     """
     if not streams_events(argv):
         return subprocess.run(argv, cwd=cwd, env=env, check=False).returncode
+    return run_bounded(argv, cwd, env, None)[0]
+
+
+def run_bounded(argv: list[str], cwd: Path | str, env: dict[str, str],
+                seconds: float | None) -> tuple[int, bool]:
+    """`run_session` with a wall-clock budget: the exit status, and whether the budget is what ended it.
+
+    Any harness runs as a `Session` here, stream-json or not, because a budget has to be able to end the
+    session *and everything it started* — the delegates a drawing fans out to are in its process group, and
+    a budget that ended the parent alone would leave them drawing into a directory nobody is waiting on.
+    At the budget the group is sent SIGTERM, then SIGKILL `STOP_GRACE` seconds later, which is the same
+    pair the session's own end uses. Nothing it wrote is touched: what a session left is the caller's to
+    count, and a stage that was ended at its budget usually left most of what it was asked for.
+
+    `None` is no budget, and is `run_session` for a stream-json harness exactly.
+    """
     session = Session(argv, cwd, env)
     try:
-        return session.wait()
+        try:
+            return session.wait(seconds), False
+        except subprocess.TimeoutExpired:
+            pass
+        session.terminate()
+        try:
+            session.wait(STOP_GRACE)
+        except subprocess.TimeoutExpired:
+            session.kill()
+            session.wait()
+        # Killed whether or not the session went: a delegate that ignored SIGTERM outlives its parent.
+        session.group(hard=True)
+        return session.raw if session.raw is not None else 1, True
     except BaseException:
         session.kill()
         session.wait()

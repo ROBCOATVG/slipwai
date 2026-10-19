@@ -27,12 +27,26 @@ mock-ups and the storyboard, say what you drew and which surfaces the specificat
 questions from section 1 in the inbox as usual. The person runs `/mockups <feature>` afterwards, in a
 session they are in, and that run picks up at section 2's stop with the drawings already there.
 
+**That session has a budget, and it is ended at it.** `SLIPWAI_BUDGET_MINUTES` is how many minutes you have
+and `SLIPWAI_BUDGET_ENDS` the clock time they run out — fifteen for a first drawing and ten for a redraw,
+scaled by the telegraph like every stage budget in `harbour.json`. Plan to it: the research note and the
+shared stylesheet first, then every surface roughly drawn before any is refined, then the storyboard, so that
+whatever the clock finds is a storyboard with every surface on it rather than three perfect screens and no
+flow. At the budget `surfaces.py` ends the session and every delegate it started, and keeps what is on disk. A
+run measured without one spent seventy minutes on a redraw, most of it rendering and re-rendering screenshots,
+while the person who asked for it waited.
+
 **When `SLIPWAI_REDRAW=1` is set as well, a person disapproved the storyboard and this is the redraw.** The
 drawings in the directory are this stage's own drafts, turned down — not mock-ups a person handed over — so
-do not review them: draw them again. `specs/<feature>/mockups/mock-states.md` has every state parked with
-the person's reason, and that reason is the brief. Redraw every surface and `storyboard.html` in place, under
-the same file names, answering it; and add a `## Redrawn` section to `research.md` saying what changed and
-which part of the reason each change answers. Leave `mock-states.md` alone: `surfaces.py` retires it to
+do not review them as a hand-over: draw again. `specs/<feature>/mockups/mock-states.md` has every state
+parked with the person's reason, and that reason is the brief. Answer it, and **only** it, in place and
+under the same file names: change what the reason concerns and leave the rest as it was. A reason about the
+look is a change to the shared stylesheet, not nine surfaces drawn from nothing; a reason about one surface
+is that surface. Where a design direction and a stylesheet already exist under `specs/<feature>/mockups/`
+(or `docs/design/`), reuse and amend them — a turned-down drawing is not a reason to start a design system.
+The budget above and the capped checking in section 1 hold for a redraw exactly as for a first drawing. Add
+a `## Redrawn` section to `research.md` saying what changed and which part of the reason each change
+answers. Leave `mock-states.md` alone: `surfaces.py` retires it to
 `disapproved.md` once the redraw lands, so the new storyboard waits on a verdict of its own.
 
 ## 1. The researcher
@@ -46,7 +60,9 @@ wireframes somebody drew, a competitor teardown — carried in beside `docs/prd.
 holds a direction, **follow it rather than invent one**, and say in the research note which file each
 decision came from. A drawing that ignores the direction a person already settled is the stage doing the
 one thing it exists to prevent. Where the directory is empty or absent, there is nothing to follow and the
-note says so. It answers four questions **per surface the spec implies**, and a
+note says so — and the draughtsman sets a short direction of its own before drawing (below), because a
+first drawing with no look at all was turned down for exactly that, twice, and the redraw it bought cost ten
+times the drawing. It answers four questions **per surface the spec implies**, and a
 surface is any place a person or another system meets this feature: a screen, a command line, an email, a
 webhook, a report.
 
@@ -67,17 +83,54 @@ Then one of two things, depending on what was in the directory.
   shape the `/gaps` stage uses, so one triage reads both. Do not redraw them.
 - **The directory was empty.** Draft them: one static HTML file per surface, from the note. No framework and
   no build step, because the point is a file a person opens in a browser and points at. Load
-  `skills/frontend-design/SKILL.md` for this. Do **not** load `web-interface-guidelines`: it reviews
-  browser UI *code* against a standard, and these are not code yet — it runs later, before the demo of any
-  slice that builds one of these.
+  `skills/frontend-design/SKILL.md` for this, read through *How much rigour a mock-up gets* below, which
+  overrides it for this stage. Do **not** load `web-interface-guidelines`: it reviews browser UI *code*
+  against a standard, and these are not code yet — it runs later, before the demo of any slice that builds
+  one of these.
+
+  **The first drawing is styled.** Where `docs/design/` held a direction, follow it, as above. Where it was
+  empty, set a short one before the first surface: a handful of tokens (a type scale, four to six colours, a
+  spacing step), one shared stylesheet every surface links — `specs/<feature>/mockups/mockups.css` — and
+  only the few components these surfaces actually use. That is minutes of work, not a design system: no
+  component sheet, no token documentation, no dark theme. Write it into `research.md` under `## Proposed
+  look`, and say there that it is **a proposed look for reviewing the flow, not a brand** — a person who
+  has a brand hands it over in `docs/design/`, and the next drawing follows that instead. Plain unstyled
+  boxes are not the neutral choice they look like: a reviewer cannot judge feel, hierarchy or whether a
+  state reads as an error from grey rectangles, so they turn the drawing down and the stage runs twice.
+
+  **Where the drawing fans out to delegates** — one per surface, or a few surfaces each — the direction and
+  the stylesheet come first, written once by you before any delegate starts, because every delegate links
+  the same file and a direction written three times is three looks. It is a prerequisite, so it has to stay
+  short: everything is waiting on it. Give each delegate the stylesheet's path and the section below, and a
+  share of the budget that leaves time for the storyboard.
 
 There is always something to review. A feature whose mock-ups nobody drew is the case this stage exists for,
 not a case it skips.
 
+### How much rigour a mock-up gets
+
+**The storyboard does not need the rigour the end product needs.** It is a sketch a person reviews for flow,
+content, states and feel. Production-grade visual quality is checked later, and properly: by
+`web-interface-guidelines` and the design review before a slice that builds the surface is demonstrated. So
+in the mock-up stage, and only here, these override what `frontend-design` and `storyboard` say about
+checking your own work visually:
+
+- **At most one render per surface per pass**, in one theme, to catch a broken layout — overflow, overlap,
+  text that cannot be read. Fix what it shows and move on. It is a check, not a polish: no render, look,
+  tweak, render loop.
+- **No light and dark pairs, and no phone-width sweeps**, unless the specification makes mobile the primary
+  surface — then the one render is at phone width instead.
+- **No screenshots or thumbnails for the storyboard.** It embeds or links the surfaces themselves; a
+  rendered picture of a page that is sitting right there is a second copy to keep in step.
+
+A run without this read its own screenshots back 183 times across one redraw. Not one of those looks was a
+question about flow, content or states, which are the only questions a person is asked here.
+
 ## 2. The storyboard, which is the review
 
 Run `skills/storyboard/SKILL.md` over the directory: one page, the flow between the surfaces, a gap card for
-every surface the spec names and no file shows, and an audit checklist per mock-up. Then run
+every surface the spec names and no file shows, and an audit checklist per mock-up. It embeds the surfaces
+(an `<iframe>` each) or links them; it does not render them to images, per the rules above. Then run
 `skills/find-gaps/SKILL.md` over that page in its design-mock mode, writing each answer back as a state the
 mock-up has to show.
 

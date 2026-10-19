@@ -17,12 +17,13 @@ stage that stops for a person *by design* is indistinguishable, from the outside
 `Stage.expect` is that sentence: roughly how long, and whether it will stop for you. It is written here
 beside the state rather than in the page, because the stage is what knows it.
 """
-# budget: 380 — the stages, and the storyboard read both ways: states waiting on a person, and a drawing
+# budget: 400 — the stages, and the storyboard read both ways: states waiting on a person, and a drawing
 # turned down whole that waits on being drawn again
 from __future__ import annotations
 
 import json
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -190,6 +191,23 @@ def drawn(root: Path) -> bool:
     return bool(specs.is_dir() and next(specs.glob("*/mockups/*.html"), None))
 
 
+def drawing_clock(root: Path, now: float | None = None) -> str:
+    """How far into its budget a running drawing is — "6 of about 15 min" — or `""` where nothing says.
+
+    Read from `.slipwai/surfaces.pid`, which `scripts/agents/surfaces.py` writes as its pid, when it started
+    and its budget in seconds. Read there rather than worked out here because the budget comes from
+    `harbour.json` through the telegraph, and a second reading of it on the board is a second place for it to
+    be wrong. A pid file with one line is a drawing from before the budget, and says nothing.
+    """
+    try:
+        lines = (root / ".slipwai/surfaces.pid").read_text(encoding="utf-8").split()
+        began, allowed = float(lines[1]), float(lines[2])
+    except (OSError, ValueError, IndexError):
+        return ""
+    taken = max(0, int(((time.time() if now is None else now) - began) // 60))
+    return f"{taken} of about {allowed / 60:g} min"
+
+
 def surfaces(root: Path) -> tuple[int, int, int]:
     """Across every feature that has run the stage: states seen, states approved, and states parked.
 
@@ -303,13 +321,18 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                        written[0].relative_to(root).as_posix() if written
                        else "specs/<feature>/mockups/mock-states.md",
                        "approve or disapprove the storyboard on this page",
-                       (f"{approved} of {seen} states approved" + (f", {parked} parked" if parked else ""))
+                       # While it draws, how long it has had against how long it may have, because the
+                       # question at the ten-minute mark is whether ten minutes is normal.
+                       f"drawing: {drawing_clock(root)}" if drawing == "working" and drawing_clock(root)
+                       else (f"{approved} of {seen} states approved" + (f", {parked} parked" if parked else ""))
                        if seen else "no surfaces on this feature" if written
                        else "drawn: nobody has approved a state yet" if sketched
                        else "nobody has seen a surface yet",
                        expect="The surfaces are researched, drawn and storyboarded, then shown to you one "
                               "state at a time. **It stops for you at every surface** \u2014 that is the "
-                              "stage, not a fault. Minutes to draft; as long as you take to approve."))
+                              "stage, not a fault. The drawing has a budget \u2014 fifteen minutes, ten for a "
+                              "redraw, scaled by the telegraph \u2014 and is ended at it with what it drew kept; "
+                              "approving takes as long as you take."))
 
     if event:
         has_model = modelled(root)

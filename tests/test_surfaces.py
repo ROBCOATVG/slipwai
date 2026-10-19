@@ -8,15 +8,22 @@ asked for, with no error and no gap in the tests to find it by.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
+import json
+import os
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -188,6 +195,124 @@ class RedrawTest(unittest.TestCase):
         kept = (self.home / "disapproved.md").read_text(encoding="utf-8")
         self.assertEqual(kept.count("## Redrawn"), 2)
         self.assertLess(kept.index("no styling"), kept.index("still none"))
+
+
+#: A stand-in for a drawing session: it draws one surface, says so, and then keeps polishing forever —
+#: the shape of the run that took seventy minutes. `{home}` is filled in per test.
+DAWDLER = (
+    "import pathlib, sys, time; home = pathlib.Path(sys.argv[1]); home.mkdir(parents=True, exist_ok=True); "
+    "(home / 'basket.html').write_text('<title>Basket</title>'); print('drew the basket', flush=True); "
+    "time.sleep(60)"
+)
+
+
+class BudgetTest(unittest.TestCase):
+    """`make surfaces` ends a drawing at its budget and keeps what it drew."""
+
+    def setUp(self) -> None:
+        self.tree = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tree, True)
+        sys.path.insert(0, str(ROOT / "assets/toolkit/scripts/agents"))
+        self.addCleanup(sys.path.remove, str(ROOT / "assets/toolkit/scripts/agents"))
+        spec = importlib.util.spec_from_file_location(
+            "surfaces_budget", ROOT / "assets/toolkit/scripts/agents/surfaces.py")
+        assert spec is not None and spec.loader is not None
+        module: Any = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.ROOT = self.tree
+        module.SPECS = self.tree / "specs"
+        module.PID = self.tree / ".slipwai/surfaces.pid"
+        module.HARBOUR = self.tree / "harbour.json"
+        self.module = module
+        (self.tree / "specs/001-orders").mkdir(parents=True)
+        (self.tree / "specs/001-orders/spec.md").write_text("# Orders\n", encoding="utf-8")
+
+    def harbour(self, held: dict[str, Any]) -> None:
+        (self.tree / "harbour.json").write_text(json.dumps(held), encoding="utf-8")
+
+    def test_a_session_past_its_budget_is_ended_and_what_it_drew_is_kept(self) -> None:
+        home = self.tree / "specs/001-orders/mockups"
+        command = f"{shlex.quote(sys.executable)} -c {shlex.quote(DAWDLER)} {shlex.quote(str(home))} {{prompt}}"
+        harness = self.module.harness
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(harness, "choose", return_value=({}, "drawing with a stand-in")), \
+                mock.patch.object(harness, "template", return_value=(command, "a test")), \
+                mock.patch.object(harness, "STOP_GRACE", 1.0), \
+                mock.patch.object(self.module, "budget", return_value=1.5), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            started = time.monotonic()
+            code = self.module.main(["001-orders"])
+            took = time.monotonic() - started
+        self.assertLess(took, 20, "the session was waited out rather than ended at its budget")
+        self.assertTrue((home / "basket.html").is_file(), "what the session drew was not kept")
+        said = out.getvalue()
+        self.assertIn("ended at its budget", said)
+        self.assertIn("kept 1 drawing(s) under specs/001-orders/mockups/", said)
+        self.assertIn("no storyboard.html was written yet", said)
+        # A budget reached is the stage working as designed, and a drawing is there to review: 0, the same
+        # as any session that ended having drawn something.
+        self.assertEqual(code, 0, err.getvalue())
+        self.assertFalse(self.module.PID.exists(), "the pid file outlived the drawing")
+
+    def test_a_session_past_its_budget_with_nothing_drawn_is_still_nothing_to_approve(self) -> None:
+        command = f"{shlex.quote(sys.executable)} -c 'import time; time.sleep(60)' {{prompt}}"
+        harness = self.module.harness
+        err = io.StringIO()
+        with mock.patch.object(harness, "choose", return_value=({}, "drawing with a stand-in")), \
+                mock.patch.object(harness, "template", return_value=(command, "a test")), \
+                mock.patch.object(harness, "STOP_GRACE", 1.0), \
+                mock.patch.object(self.module, "budget", return_value=1.0), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            code = self.module.main(["001-orders"])
+        self.assertEqual(code, 1)
+        self.assertIn("nothing under specs/001-orders/mockups/", err.getvalue())
+
+    def test_the_session_is_told_its_budget(self) -> None:
+        """It plans to the clock only if it knows the clock."""
+        captured: dict[str, Any] = {}
+
+        def bounded(argv: list[str], cwd: Path, env: dict[str, str], seconds: float) -> tuple[int, bool]:
+            captured.update(env=env, seconds=seconds)
+            return 0, False
+
+        harness = self.module.harness
+        with mock.patch.object(harness, "choose", return_value=({}, "s")), \
+                mock.patch.object(harness, "template", return_value=("true {prompt}", "w")), \
+                mock.patch.object(harness, "run_bounded", side_effect=bounded), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.module.main(["001-orders"])
+        self.assertEqual(captured["seconds"], 15 * 60)
+        self.assertEqual(captured["env"]["SLIPWAI_BUDGET_MINUTES"], "15")
+        self.assertRegex(captured["env"]["SLIPWAI_BUDGET_ENDS"], r"^\d\d:\d\d$")
+
+    def test_the_budget_is_harbour_json_s_row_as_it_stands(self) -> None:
+        """Ringing the telegraph has already scaled the row, so it is not scaled twice."""
+        self.harbour({"stage_scale": 0.5, "stages": {"surfaces": {"minutes": 12},
+                                                     "surfaces-redraw": {"minutes": 4}}})
+        self.assertEqual(self.module.budget(False), 12 * 60)
+        self.assertEqual(self.module.budget(True), 4 * 60)
+
+    def test_without_a_row_the_default_is_scaled_by_the_telegraph(self) -> None:
+        self.assertEqual(self.module.budget(False), 15 * 60)
+        self.assertEqual(self.module.budget(True), 10 * 60)
+        self.harbour({"stage_scale": 0.5, "stages": {"default": {"minutes": 30}}})
+        self.assertEqual(self.module.budget(False), 7.5 * 60)
+
+    def test_a_budget_is_never_under_a_minute(self) -> None:
+        """`stop` scales to nothing, and a budget of nothing reads as a drawing that failed."""
+        self.harbour({"stage_scale": 0.0})
+        self.assertEqual(self.module.budget(False), 60)
+
+    def test_a_redraw_that_only_restyles_has_redrawn(self) -> None:
+        """A reason about the look is answered in the shared stylesheet, and that counts as a redraw."""
+        home = self.tree / "specs/001-orders/mockups"
+        home.mkdir(parents=True)
+        (home / "basket.html").write_text("<title>Basket</title>", encoding="utf-8")
+        since = time.time() + 1
+        self.assertFalse(self.module.touched("001-orders", since))
+        (home / "mockups.css").write_text("body{}", encoding="utf-8")
+        os.utime(home / "mockups.css", (since + 1, since + 1))
+        self.assertTrue(self.module.touched("001-orders", since))
 
 
 if __name__ == "__main__":  # pragma: no cover

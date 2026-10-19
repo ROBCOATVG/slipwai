@@ -430,13 +430,19 @@ def outside_session(root: Path) -> dict | None:
     is running — which is what keeps a page from reading a storyboard being redrawn as one that is stuck.
     """
     for name, step, said in OUTSIDE:
+        # The first line is the pid; the drawing writes when it started on the next, so its seconds are real.
         try:
-            pid = int((root / ".slipwai" / name).read_text(encoding="utf-8").strip())
-        except (OSError, ValueError):
+            lines = (root / ".slipwai" / name).read_text(encoding="utf-8").split()
+            pid = int(lines[0])
+        except (OSError, ValueError, IndexError):
             continue
+        try:
+            seconds = round(max(0.0, time.time() - float(lines[1])), 1)
+        except (ValueError, IndexError):
+            seconds = 0
         if alive(pid):
-            return {"where": str(root), "lines": [said], "step": step, "at": 1, "seconds": 0, "done": False,
-                    "code": None}
+            return {"where": str(root), "lines": [said], "step": step, "at": 1, "seconds": seconds,
+                    "done": False, "code": None}
     return None
 
 

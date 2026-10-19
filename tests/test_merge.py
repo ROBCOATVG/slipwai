@@ -106,6 +106,38 @@ class MergeTest(MergeFixture):
         self.assertEqual(self.git("show", "main:ordering.txt").stdout, "ordering\n")
         self.assertEqual(self.git("show", "main:billing.txt").stdout, "billing\n")
 
+    def test_a_merge_answer_says_where_its_time_went(self) -> None:
+        """Integration looked slow and nothing could say whether it was the queue, the merge ref or the gate.
+        Each answer now carries the three, in whole seconds, and which attempt it was."""
+        self.slice_branch("ORD-01", "ordering.txt", "ordering\n")
+        self.ask("ORD-01", t="2026-10-08T09:00:00Z")
+        self.run_once()
+        answer = self.answer()
+        self.assertEqual(answer.kind, "granted", answer.fields)
+        self.assertGreater(answer.fields["waited_s"], 0, "asked well before this pass took it up")
+        for spent in ("lock_s", "gate_s"):
+            self.assertIsInstance(answer.fields[spent], int)
+            self.assertGreaterEqual(answer.fields[spent], 0)
+        self.assertEqual(answer.fields["attempt"], 1)
+
+    def test_asking_again_under_a_new_id_is_counted_as_the_next_attempt(self) -> None:
+        """A captain asks again as `merge-<slice>-<n>`, so the attempt is counted from the answers the slice
+        has had, not from the id — and a refusal that never reached the gate has no `gate_s` to report."""
+        self.ask("ORD-01")
+        self.run_once()
+        refused = self.answer()
+        self.assertEqual(refused.kind, "refused")
+        self.assertEqual(refused.fields["attempt"], 1)
+        self.assertNotIn("gate_s", refused.fields)
+        self.slice_branch("ORD-01", "ordering.txt", "ordering\n")
+        self.deck("ordering", "ORD", logs.entry(
+            "request", fairway="ORD", id="merge-ORD-01-1", what="merge", slice="ORD-01",
+            detail="merge slice/ORD-01 into trunk after the full gate"))
+        self.run_once()
+        granted = [e for e in self.harbour() if e.kind == "granted"]
+        self.assertEqual(len(granted), 1, [e.fields for e in self.harbour()])
+        self.assertEqual(granted[0].fields["attempt"], 2)
+
     def test_a_merge_request_that_names_no_slice_is_refused_rather_than_guessed_at(self) -> None:
         self.deck("ordering", "ORD", logs.entry(
             "request", fairway="ORD", id="please", what="merge", detail="merge it"))

@@ -80,7 +80,7 @@ records the answers that it owes.
 | `fires-banked` | `step`, `why` | The [telegraph](the-telegraph.md) stepped down because the bunker ran out |
 | `park` | `fairway`, `why` | A park carried across, so other fairways and the inbox see it |
 | `telegraph` | `position` | The lever was rung |
-| `granted` | `fairway`, `request`, `what` | A `request` was done |
+| `granted` | `fairway`, `request`, `what` | A `request` was done. A merge's answer, granted or refused, also says where its time went, in whole seconds: `waited_s` queued for the harbourmaster, `lock_s` waiting on `refs/slipwai/merge`, `gate_s` running the gate, each as far as the merge got. `attempt` says which attempt at that slice it was |
 | `refused` | `fairway`, `request`, `why` | A `request` was not. Both outcomes are written: a refusal that left no line is one the captain waits on for ever and nobody can explain afterwards |
 | `cleared` | `fairway`, `parked`, `what` | The receipt a `parked` owes — see below |
 | `trunk-red` | `commit`, `job`, `why` | Trunk's own CI went red. Written once per change of state, because a log saying `trunk-red` every fifteen seconds is one nobody reads |

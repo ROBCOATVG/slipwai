@@ -54,7 +54,8 @@ REFS = "refs/slipwai/claims"
 #: The harbour log became one file per machine so the single writer could be removed rather than elected —
 #: and the merge is what that costs: two harbourmasters rebasing onto one trunk at once is two gates each
 #: measured against a trunk the other is about to move. Section 14 settled that merges are one at a time in
-#: request order, so the same mechanism serialises them across machines as within one.
+#: request order, so the same mechanism serialises them across machines as within one. Its holder renews it
+#: (`renew`) while a gate runs, so the harbourmaster can take it on a lease as a captain takes a fairway.
 MERGE = "refs/slipwai/merge"
 #: The two things a claim's tip can say. Nothing else is written, and a tip saying anything else is read as
 #: held, because an unreadable claim must never read as free.
@@ -309,6 +310,27 @@ def release(root: Path, fairway: str, machine: str) -> bool:
         return False
     try:
         commit = mint(root, fairway, machine, RELEASED, parent=found.commit)
+    except RuntimeError:
+        return False
+    return swap(root, fairway, commit, found.commit)
+
+
+def renew(root: Path, fairway: str, machine: str) -> bool:
+    """Say again that this machine holds it, so a lease measured from *since* keeps running from now.
+
+    A `held` child of a `held` tip, by the same machine — the same compare-and-swap as taking it, so a
+    machine that was taken over while it was busy finds out here rather than carrying on as if it still
+    held the thing. False where it was not this machine's to renew, or where the forge refused the push.
+
+    For a holder whose own log is not what proves it alive. A captain is heard through the deck log it
+    pushes; the merge is held by a harbourmaster that writes nothing while a gate runs, so the ref itself
+    is the only place another machine can see that it is still working.
+    """
+    found = held_by(root, fairway)
+    if found is None or found.machine != machine:
+        return False
+    try:
+        commit = mint(root, fairway, machine, HELD, parent=found.commit)
     except RuntimeError:
         return False
     return swap(root, fairway, commit, found.commit)

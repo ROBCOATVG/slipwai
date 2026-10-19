@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import unittest
+from datetime import UTC, datetime, timedelta
 
 import checkout_packages  # noqa: F401
 from harbourmaster_fixture import Fixture, MergeFixture  # noqa: F401
@@ -172,14 +173,23 @@ class SerialisedTest(MergeFixture):
         (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", "wait_bound": 0.02}),
                                                 encoding="utf-8")
 
-    def hold_the_merge(self, machine: str) -> None:
+    def hold_the_merge(self, machine: str, since: str = "") -> None:
+        """Take the merge ref as another machine would, renewed at `since` where one is given.
+
+        The ref has a lease of half the wait, so a hold taken now would lapse inside this suite's wait of
+        a second and be taken over — which is right for a dead holder and wrong for this case, which is
+        about a live one. A `since` ahead of now is a holder that has only just renewed, as a live one
+        keeps doing while its gate runs.
+        """
+        dated = {"GIT_AUTHOR_DATE": since} if since else {}
         done = subprocess.run([sys.executable, str(self.root / "scripts/agents/claims.py"),
                                "--take", "refs/slipwai/merge"], cwd=self.root, capture_output=True,
-                              text=True, env={**os.environ, "SLIPWAI_MACHINE": machine})
+                              text=True, env={**os.environ, "SLIPWAI_MACHINE": machine, **dated})
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     def test_a_machine_that_loses_the_race_waits_and_then_says_who_has_it(self) -> None:
-        self.hold_the_merge("harbour_two")
+        ahead = (datetime.now(UTC) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.hold_the_merge("harbour_two", since=ahead)
         self.slice_branch("ORD-01", "service.txt", "one\ntwo\n")
         self.ask("ORD-01")
         self.run_once()

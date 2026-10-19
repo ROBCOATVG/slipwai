@@ -226,6 +226,15 @@ class LeaseTest(Fixture):
         shown = git("log", "--format=%an", claims.ref("ordering"), where=self.two)
         self.assertEqual(shown.stdout.split(), [TWO, ONE])
 
+    def test_a_renewal_runs_the_lease_from_now_and_only_the_holder_can_renew(self) -> None:
+        """The merge ref's holder writes nothing while its gate runs, so the ref is the only place it can
+        say it is alive: an hour-old hold, renewed, is a hold nobody can take on a minute's lease."""
+        self.held_since(claims.MERGE, 3600)
+        self.assertFalse(claims.renew(self.two, claims.MERGE, TWO))
+        self.assertTrue(claims.renew(self.one, claims.MERGE, ONE))
+        second = claims.take(self.two, claims.MERGE, TWO, lease=60.0)
+        self.assertFalse(second.ours, second.why)
+
     def test_a_claim_with_no_lease_at_all_is_never_taken_however_old(self) -> None:
         """`0` is off, and off is the default: a lease is a thing the captain works out from the harbour's
         own numbers, and a caller that did not is not one that meant *take it from them*."""

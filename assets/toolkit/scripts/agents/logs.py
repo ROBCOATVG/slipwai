@@ -142,6 +142,10 @@ HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
     # Sent to the captain whose `merged` line names the commit that went red. The harbourmaster wrote that
     # line, which is how it knows where to send it; a red nothing accounts for is a `park` for a person.
     "fix-trunk": ("fairway", "slice", "commit", "job"),
+    # The merge ref taken off a machine past its lease: `from` held it, `since` is the last time it said it
+    # was still merging. Harbour-wide, because the merge is — and the one line that explains a trunk two
+    # machines' gates both touched, should the one that went quiet turn out not to have been dead.
+    "merge-taken-over": ("from", "since"),
 }
 
 

@@ -57,9 +57,12 @@ onto it. A red trunk is harbour-wide rather than one fairway's fault, which is w
 not just a refusal.
 
 Red refuses every merge and writes `trunk-red` naming the commit and the job; the queue drains the moment
-trunk is green again, which is written once as `trunk-green`. A forge this cannot reach reads *could not
-verify*, never *green*: the merge still goes ahead — a harbour with no forge has to keep working — and the
-`granted` line says the CI was unverified, so nobody reads it later as a run that was checked.
+trunk is green again, which is written once as `trunk-green`. Drains, and not just reopens: each fairway
+that parked on that refusal gets a `cleared` receipt from this process, because a captain that was told
+*no* parks, and a park nobody here clears is a stop no person caused and none should have to undo. A forge
+this cannot reach reads *could not verify*, never *green*: the merge still goes ahead — a harbour with no
+forge has to keep working — and the `granted` line says the CI was unverified, so nobody reads it later as
+a run that was checked.
 
 **The fix goes to the captain that broke it, not to a person.** This process wrote the `merged` line for the
 commit that went red, so it knows the fairway and the slice: `fix-trunk` names them, and that captain takes
@@ -141,6 +144,19 @@ SCRATCH = ROOT / ".slipwai/merge"
 BRANCH = travel.BRANCH
 #: Used where nothing says otherwise. `origin/HEAD` answers it on a repository with a remote.
 DEFAULT_TRUNK = "main"
+#: How a push refused because trunk moved on the forge reads in git's own words: `[rejected] ...
+#: (non-fast-forward)` where the local copy is behind, `(fetch first)` where the forge has commits it has
+#: never seen. Read off stderr because the exit code is `1` for every refusal alike.
+MOVED_UNDER = re.compile(r"\[rejected\][^\n]*\((non-fast-forward|fetch first)\)")
+#: How many times a merge whose push lost the race to trunk is fetched, rebased and gated again before it
+#: is refused. Each time is a whole `make verify`, and the slice already passed one, so this is not a
+#: question about the slice: it is whether trunk is quiet long enough to land on. Three covers the busy
+#: case — a few people pushing by hand while a fleet merges — and a trunk that moves under four gates in a
+#: row is one that something pushes to faster than this can gate, which the refusal then says.
+PUSH_RACES = 3
+#: What a merge refused only because trunk was red carries, so that the park it causes can be told apart
+#: from every other park when trunk comes back: a field and not the refusal's prose, which gets reworded.
+GREEN_TRUNK = "green-trunk"
 
 
 def read_cursors() -> dict[str, int]:
@@ -320,8 +336,12 @@ def conflicting() -> list[str]:
     return sorted({line.strip() for line in found.stdout.splitlines() if line.strip()})
 
 
-def advance(name: str, commit: str) -> tuple[str, str]:
-    """Move trunk to this commit. (what went wrong, what was done to the person's checkout to get there).
+def advance(name: str, commit: str) -> tuple[str, str, bool]:
+    """Move trunk to this commit. (what went wrong, what was done to the person's checkout, trunk moved).
+
+    The third says the forge refused the push because trunk is no longer where the fetch found it — some
+    other machine or person pushed in between. That is not a fault in the slice or in anything a person
+    must decide, so `merge` reads it as *gate it again on the new trunk* rather than as a refusal.
 
     Pushed where there is a remote, because then nobody's working tree is touched and every checkout catches
     up on its own next fetch. With no remote there is only the local ref — and if the person's own checkout
@@ -338,24 +358,26 @@ def advance(name: str, commit: str) -> tuple[str, str]:
     """
     if git("rev-parse", "--verify", "--quiet", "origin/" + name).returncode == 0:
         pushed = git("push", "origin", f"{commit}:refs/heads/{name}")
-        return ("" if pushed.returncode == 0 else last_line(pushed)), ""
+        if pushed.returncode == 0:
+            return "", "", False
+        return last_line(pushed), "", bool(MOVED_UNDER.search(pushed.stderr or ""))
     head = git("symbolic-ref", "--quiet", "--short", "HEAD")
     if head.returncode == 0 and head.stdout.strip() == name:
         moved = git("merge", "--ff-only", commit)
         if moved.returncode == 0:
-            return "", ""
+            return "", "", False
         if not git("status", "--porcelain", "--untracked-files=no").stdout.strip():
-            return last_line(moved), ""  # clean, so the refusal is about the history and is git's to say
+            return last_line(moved), "", False  # clean, so the refusal is about the history and is git's
         detached = git("checkout", "--quiet", "--detach")
         if detached.returncode != 0:
-            return last_line(detached), ""
+            return last_line(detached), "", False
         note = (f"this checkout was on {name} with uncommitted changes the merge would overwrite, so it was "
                 f"detached where it stood with those changes untouched, and {name} moved on without it. "
                 f"Commit or stash them, then `git switch {name}`")
     else:
         note = ""
     moved = git("update-ref", f"refs/heads/{name}", commit)
-    return ("" if moved.returncode == 0 else last_line(moved)), note
+    return ("" if moved.returncode == 0 else last_line(moved)), note, False
 
 
 def last_line(done: subprocess.CompletedProcess[str]) -> str:
@@ -399,18 +421,59 @@ def merge_wait() -> float:
     return (held if isinstance(held, int | float) and held > 0 else DEFAULT_MERGE_WAIT) * 60.0
 
 
+def merge_lease() -> float:
+    """Seconds the merge ref's holder may go without renewing it before another machine takes it over.
+
+    **Half the wait, and derived rather than chosen**, for two reasons that pull opposite ways. Under the
+    wait, because a waiting machine has to be able to take a dead holder's ref *before* its own wait runs
+    out — a dead holder last renewed no later than the moment the waiter started, so a lease shorter than
+    the wait always lapses inside it, and the waiter merges instead of refusing and parking a fairway for a
+    person. And not much under it, because the holder's `since` is the holder's clock read by another
+    machine's, and half an hour of slack makes any skew two machines plausibly have irrelevant.
+
+    The length of a merge does not enter into it: `make verify` can outlast any lease worth having, so the
+    holder renews while the gate runs (`gated`) and a live merge never lapses however long it takes.
+    """
+    return merge_wait() / 2
+
+
+def renew_every() -> float:
+    """How often the holder renews the merge ref while its gate runs: four times a lease, so one renewal
+    lost to a forge that did not answer still leaves three before anybody could call it gone."""
+    return merge_lease() / 4
+
+
+def taken_over(found: claims.Claim) -> None:
+    """Write that the merge ref was taken off another machine, straight into this machine's harbour log.
+
+    Written now rather than with the pass's other lines, because what follows is a rebase and a whole gate,
+    and a harbourmaster killed during it would otherwise have taken the ref and left nothing saying from
+    whom. The line is this process's own — the one writer of this file is still the one writing it.
+    """
+    print(f"harbourmaster: took {claims.MERGE} over from {found.machine}, which last renewed it at "
+          f"{found.since} and is past its lease", flush=True)
+    append([logs.entry("merge-taken-over", harbour=True, **{"from": found.machine, "since": found.since})])
+
+
 def take_the_merge() -> tuple[bool, str]:
     """Take `refs/slipwai/merge`, waiting while another machine has it. (taken, why not).
 
     Waiting *is* queueing: the loser of the race sits on the ref rather than refusing at once, because a
-    merge is a rebase and a whole gate and the machine ahead will be some minutes. What the bound catches
-    is not a busy harbour but a dead one — a machine that took the ref and was killed before it could give
-    it back — and that is a line a person has to read, so it is said rather than waited on for ever.
+    merge is a rebase and a whole gate and the machine ahead will be some minutes.
+
+    **A holder that has not renewed within `merge_lease` is taken over**, exactly as a fairway's claim is,
+    and the harbour log says from whom. Until it was, a machine that took the ref and was killed before it
+    could give it back stopped every other machine's merges for the wait bound and then parked the fairway
+    that asked — a stop that needed a person on the dead machine to run `--release`, for a lock whose
+    holder was provably gone. The bound is still there for the one case a lease cannot settle: a holder
+    that keeps renewing and never finishes, which is a line a person has to read.
     """
     until = time.monotonic() + merge_wait()
     while True:
-        taken = claims.take(ROOT, claims.MERGE, logs.machine())
+        taken = claims.take(ROOT, claims.MERGE, logs.machine(), lease=merge_lease())
         if taken.ours:
+            if taken.took_over and taken.holder is not None:
+                taken_over(taken.holder)
             return True, ""
         if time.monotonic() >= until:
             holder = taken.holder
@@ -418,9 +481,81 @@ def take_the_merge() -> tuple[bool, str]:
             since = f" since {holder.since}" if holder is not None else ""
             return False, (f"{who} has been merging{since} and still holds {claims.MERGE}, which is taken "
                            f"for one merge at a time so that two machines never rebase onto one trunk at "
-                           f"once. If that machine is gone, free it there with "
-                           f"`python3 scripts/agents/claims.py --release {claims.MERGE}`")
+                           f"once. It is still renewing the ref, so it is alive; if it is stuck, free it "
+                           f"there with `python3 scripts/agents/claims.py --release {claims.MERGE}`")
         time.sleep(MERGE_POLL)
+
+
+def gated(where: Path) -> subprocess.CompletedProcess[str]:
+    """The project's gate in the scratch worktree, renewing the merge ref while it runs.
+
+    The gate is the one part of a merge that can be long — a whole `make verify` — and while it runs this
+    process writes nothing anywhere, so without a renewal a slow suite would look exactly like a dead
+    machine and another harbourmaster would take the ref over mid-gate. `communicate` with a timeout is
+    asked again after each renewal, which is what the standard library says to do with one that expired.
+    """
+    argv = gate()
+    with subprocess.Popen(argv, cwd=where, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          text=True) as running:
+        while True:
+            try:
+                out, err = running.communicate(timeout=renew_every())
+                break
+            except subprocess.TimeoutExpired:
+                claims.renew(ROOT, claims.MERGE, logs.machine())
+    return subprocess.CompletedProcess(argv, running.returncode, out, err)
+
+
+def still_ours() -> bool:
+    """Whether this machine still holds the merge ref, asked once the gate is over and before trunk moves.
+
+    A renewal the forge never took, or a machine with a clock far enough out to think this one gone, can
+    leave another harbourmaster holding the ref while this one finishes its gate. Moving trunk then would
+    be the two-rebases-onto-one-trunk the ref exists to prevent, so this is asked rather than assumed.
+    """
+    found = claims.held_by(ROOT, claims.MERGE)
+    return found is not None and found.machine == logs.machine()
+
+
+def land(branch: str) -> tuple[str, str, bool, str, bool]:
+    """One fetch, rebase, gate and advance of this branch. `merge`'s answer, plus whether trunk moved.
+
+    The last says the push lost a race to trunk and nothing else went wrong, which is the one outcome
+    `merge` answers by doing this again. Its own scratch worktree each time, removed whichever way it ends.
+    """
+    git("fetch", "--quiet", "origin", trunk())
+    onto = base()
+    git("worktree", "remove", "--force", str(SCRATCH))  # a worktree left by a run that was killed
+    SCRATCH.parent.mkdir(parents=True, exist_ok=True)
+    made = git("worktree", "add", "--quiet", "--detach", str(SCRATCH), branch)
+    if made.returncode != 0:
+        return "", f"a worktree for {branch} could not be made ({(made.stderr or made.stdout).strip()})", \
+            False, "", False
+    try:
+        rebased = git("rebase", onto, where=SCRATCH)
+        if rebased.returncode != 0:
+            paths = conflicting()
+            git("rebase", "--abort", where=SCRATCH)
+            return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or 'files git did not name'}. "
+                        f"The rebase was aborted, so nothing is half-done; resolve it in your own berth and "
+                        f"ask again"), True, "", False
+        done = gated(SCRATCH)
+        if done.returncode != 0:
+            said = [line for line in (done.stdout + done.stderr).splitlines() if line.strip()]
+            return "", (f"the full gate failed on {branch} rebased onto {onto}: "
+                        f"{said[-1] if said else 'no output'}"), True, "", False
+        if not still_ours():
+            # `resolve` true, because nothing is wrong with the slice and nothing needs a person: the next
+            # ask queues behind whoever has the ref now and gates again on the trunk they leave.
+            return "", (f"{branch} passed the gate and {claims.MERGE} was taken over by another machine "
+                        f"before trunk was moved, so trunk was left alone; ask again"), True, "", False
+        commit = git("rev-parse", "HEAD", where=SCRATCH).stdout.strip()
+        fault, note, raced = advance(trunk(), commit)
+        if fault:
+            return "", f"{branch} passed the gate and trunk could not be moved: {fault}", False, "", raced
+        return commit, "", False, note, False
+    finally:
+        git("worktree", "remove", "--force", str(SCRATCH))
 
 
 def merge(slice_id: str) -> tuple[str, str, bool, str]:
@@ -433,6 +568,13 @@ def merge(slice_id: str) -> tuple[str, str, bool, str]:
 
     Everything happens in a scratch worktree made for this merge and removed afterwards either way, so a
     failure leaves no half-rebased branch anywhere a captain or a person is working.
+
+    **A push that lost the race to trunk is done again, not refused.** Between the fetch and the push some
+    other machine or person can push to trunk, and the forge then refuses ours as not a fast-forward. For a
+    long while that came back as a refusal no berth could fix, and the fairway parked behind a slice that
+    had passed its gate. Now it is fetched, rebased and gated again on the trunk that won, `PUSH_RACES`
+    times, all under the one hold of the merge ref — and a trunk that outruns every one of them is refused
+    as something asking again can fix, because it is.
     """
     branch = BRANCH.format(slice=slice_id)
     if git("rev-parse", "--verify", "--quiet", branch).returncode != 0:
@@ -448,34 +590,17 @@ def merge(slice_id: str) -> tuple[str, str, bool, str]:
     held, why = take_the_merge()
     if not held:
         return "", why, False, ""
-    git("fetch", "--quiet", "origin", trunk())
-    onto = base()
-    git("worktree", "remove", "--force", str(SCRATCH))  # a worktree left by a run that was killed
-    SCRATCH.parent.mkdir(parents=True, exist_ok=True)
-    made = git("worktree", "add", "--quiet", "--detach", str(SCRATCH), branch)
-    if made.returncode != 0:
-        claims.release(ROOT, claims.MERGE, logs.machine())
-        return "", f"a worktree for {branch} could not be made ({(made.stderr or made.stdout).strip()})", False, ""
     try:
-        rebased = git("rebase", onto, where=SCRATCH)
-        if rebased.returncode != 0:
-            paths = conflicting()
-            git("rebase", "--abort", where=SCRATCH)
-            return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or 'files git did not name'}. "
-                        f"The rebase was aborted, so nothing is half-done; resolve it in your own berth and "
-                        f"ask again"), True, ""
-        done = subprocess.run(gate(), cwd=SCRATCH, capture_output=True, text=True, check=False)
-        if done.returncode != 0:
-            said = [line for line in (done.stdout + done.stderr).splitlines() if line.strip()]
-            return "", (f"the full gate failed on {branch} rebased onto {onto}: "
-                        f"{said[-1] if said else 'no output'}"), True, ""
-        commit = git("rev-parse", "HEAD", where=SCRATCH).stdout.strip()
-        fault, note = advance(trunk(), commit)
-        if fault:
-            return "", f"{branch} passed the gate and trunk could not be moved: {fault}", False, ""
-        return commit, "", False, note
+        for race in range(PUSH_RACES + 1):
+            commit, fault, resolvable, note, raced = land(branch)
+            if not raced:
+                return commit, fault, resolvable, note
+            print(f"harbourmaster: trunk moved on the forge while {branch} was gated "
+                  f"({race + 1} of {PUSH_RACES + 1}); gating it again on the new trunk", flush=True)
+        return "", (f"{branch} passed the gate {PUSH_RACES + 1} times and each time trunk moved on the forge "
+                    f"before it could be pushed. Nothing is wrong with the slice; ask again once trunk is "
+                    f"quieter"), True, ""
     finally:
-        git("worktree", "remove", "--force", str(SCRATCH))
         # Given back the moment this merge is over, or the first merge of a run would be the last one any
         # machine ever did.
         claims.release(ROOT, claims.MERGE, logs.machine())
@@ -646,11 +771,14 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
     if what != "merge":
         return [logs.entry("granted", harbour=True, fairway=fairway, request=request, what=what)]
     if trunk_state == "red":
+        # `resolve` false, because no berth can turn trunk green, so the captain parks rather than driving
+        # the slice again to be told the same thing. `waiting` is what clears that park when trunk is no
+        # longer red (`cleared_for_green`), which is the queue draining rather than a person undoing it.
         return [logs.entry("refused", harbour=True, fairway=fairway, request=request,
                            why="trunk is red, and nothing merges onto a red trunk. The harbour log says "
                                "which commit and which job; no fairway is granted a merge until it is "
                                "green, and the queue drains the moment it is",
-                           resolve=False)]
+                           resolve=False, waiting=GREEN_TRUNK)]
     slice_id = slice_asked(entry)
     if not slice_id:
         return [logs.entry("refused", harbour=True, fairway=fairway, request=request,
@@ -795,6 +923,7 @@ def once() -> int:
     written: list[logs.Entry] = trunk_said + carried(sorted(fresh, key=lambda one: one.t), taken, trunk_state)
     written += bank() or rung()
     written += told_after_parks()
+    written += cleared_for_green(trunk_state, written)
     if written:
         append(written)
     write_cursors(cursors)
@@ -828,6 +957,55 @@ def told_after_parks() -> list[logs.Entry]:
             if after:
                 found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                         what=str(after[-1].fields.get("message", "")).strip() or "told"))
+    return found
+
+
+def cleared_for_green(trunk_state: str, already: list[logs.Entry]) -> list[logs.Entry]:
+    """A `cleared` receipt for every open park caused by a merge refused only because trunk was red.
+
+    That refusal said the queue drains the moment trunk is green, and nothing drained it: the captain read
+    `resolve: false`, parked, and `fleet.relight` skips a parked fairway — so a red trunk anybody had since
+    fixed left every fairway that asked during it parked for a person, behind slices that had passed their
+    gates. Nothing about such a park needs a person. Trunk was the only reason, and trunk is the one thing
+    this process watches.
+
+    **Which parks.** The ones whose fairway's last answer at or before the park was a refusal carrying
+    `waiting: green-trunk`. Read off this process's own answer rather than the captain's wording, because
+    the captain writes its park as `<slice>: the merge was refused: <why>` and a reason matched as prose is
+    one a later rewording silently stops matching. At-or-before, because the two lines are written in the
+    same second as often as not.
+
+    **When.** Every pass on which trunk is not red — green, or *unverified*, on which a merge goes ahead
+    anyway — rather than only on the pass that wrote `trunk-green`: a captain can read the refusal and park
+    after trunk has already turned, and a receipt only on the turn would miss it. A receipt already written
+    drops the park from `open_parks`, so a second pass writes nothing, as in `told_after_parks`; `already`
+    is this pass's lines, so a park that a `told` has just cleared is not cleared twice.
+    """
+    if trunk_state == "red":
+        return []
+    harbour = harbour_entries()
+    answers: dict[str, list[logs.Entry]] = {}
+    for entry in harbour:
+        if entry.kind in ("granted", "refused"):
+            answers.setdefault(str(entry.fields.get("fairway", "")), []).append(entry)
+    done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
+            for e in already if e.kind == "cleared"}
+    found: list[logs.Entry] = []
+    for path in deck_logs():
+        fairway = path.stem
+        if fairway not in answers:
+            continue
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        for park in logs.open_parks(deck, harbour, fairway):
+            before = [e for e in answers[fairway] if e.t <= park.t]
+            if (not before or before[-1].kind != "refused" or before[-1].fields.get("waiting") != GREEN_TRUNK
+                    or (fairway, park.t) in done):
+                continue
+            found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
+                                    what="trunk is no longer red, so the merge it refused is asked for again"))
     return found
 
 

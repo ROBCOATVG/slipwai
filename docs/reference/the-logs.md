@@ -86,8 +86,9 @@ records the answers that it owes.
 | `trunk-red` | `commit`, `job`, `why` | Trunk's own CI went red. Written once per change of state, because a log saying `trunk-red` every fifteen seconds is one nobody reads |
 | `trunk-green` | `commit` | And once per change back |
 | `fix-trunk` | `fairway`, `slice`, `commit`, `job` | Sent to the captain whose `merged` line names the commit that went red |
+| `merge-taken-over` | `from`, `since` | The merge ref was taken from a machine that had not renewed it within its lease. `since` is the last time that machine said it was still merging |
 
-Trunk can go red because of a check that `make verify` never ran. For this reason, the last four kinds are
+Trunk can go red because of a check that `make verify` never ran. For this reason, the four trunk kinds are
 in the harbour log and not in one fairway's log. If nothing explains a red trunk, the harbourmaster writes a
 `park` for a person.
 
@@ -111,6 +112,10 @@ harbourmaster is the only writer of the harbour log:
   timestamp. `what` is the last such message. A second pass writes nothing, because the receipt has already
   closed the park.
 - **`harbourmaster.py --clear <fairway>`**, which a person types.
+
+A third needs nobody. A merge refused only because trunk was red carries `waiting: "green-trunk"`. When
+trunk is no longer red, the harbourmaster writes `cleared` for each open park whose last answer was that
+refusal, and the fairway asks for its merge again.
 
 **While a park is open, the harbourmaster does not light a captain for that fairway.** It lights a captain
 for the fairway again on the pass after the receipt.

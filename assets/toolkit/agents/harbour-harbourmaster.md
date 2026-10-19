@@ -15,8 +15,8 @@ grants one.
 legacy `.slipwai/logs/harbour.jsonl` where present. Each file retains its own writer; copy across the
 handful of lines other fairways need — a mark set, a park, a flag change, a telegraph position — rather than having each captain
 write there. Your kinds are `mark-set`, `flag-hoisted`, `flag-struck`, `berth-allocated`, `fires-banked`,
-`park`, `telegraph`, `granted`, `refused`, `cleared`, `trunk-red`, `trunk-green` and `fix-trunk`, and you write no
-others.
+`park`, `telegraph`, `granted`, `refused`, `cleared`, `trunk-red`, `trunk-green`, `fix-trunk` and
+`merge-taken-over`, and you write no others.
 
 **The board.** The fleet board and the bridge are drawn from the logs each time they are asked for, and they
 store nothing. Every column is a fold. A board that can be wrong about what happened is worse than no board,
@@ -44,7 +44,8 @@ until this receipt arrives; an overrun remains visible rather than silently clea
 
 When trunk goes red on a commit a captain's `merged` line names, send `fix-trunk` to that captain. Write
 `trunk-red` and `trunk-green` once per change of state; a board that said `trunk-red` every fifteen seconds
-is a board nobody reads.
+is a board nobody reads. A merge refused because trunk was red is not a park for a person: once trunk is no
+longer red, write `cleared` for each park that refusal caused, so the fairway asks again.
 
 ## What you may not do
 

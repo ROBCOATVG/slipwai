@@ -50,10 +50,10 @@ def chart_and_split() -> int:
     print(f"{said}; {why}", flush=True)
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "launch"}
-    done = subprocess.run(shlex.split(line), cwd=ROOT, env=environment, check=False)
-    if done.returncode:
-        print(f"launch: the session exited {done.returncode}; nothing was cast off", file=sys.stderr)
-        return done.returncode
+    exited = harness.run_session(shlex.split(line), ROOT, environment)
+    if exited:
+        print(f"launch: the session exited {exited}; nothing was cast off", file=sys.stderr)
+        return exited
     if not split():
         print("launch: the session ended without a split, so there is nothing to light a captain for; read its "
               "last lines above — a park there names what a person has to decide", file=sys.stderr)

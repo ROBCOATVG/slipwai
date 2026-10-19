@@ -23,18 +23,29 @@ which needs nothing of a harness beyond reading a file and is the same words wha
 identity out of the environment and either takes the parent's transcript for its own or refuses to start as
 a nested copy. Every harness's session variable comes out, and the row's own `env` goes in.
 
+**When it is finished.** A Claude Code print session can write its last `result` line, with every background
+task it started reported back, and then not exit: the MCP servers it started (`npm exec chrome-devtools-mcp`,
+`codegraph serve --mcp`) stay attached, and the script waiting on it waits for ever. `run_session` and
+`Session` read the stream as it passes through and end a session that has said it is finished and is still
+there a grace period later — it and everything it started — and report what the session itself said.
+
 Nothing here decides anything about a run. It answers *how to start a session*, and the caller says what the
 session is for. Standalone and dependency-free, like everything under `scripts/`.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shlex
 import shutil
+import signal
+import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 HERE = Path(__file__).resolve().parent
 REGISTRY = HERE / "registry.json"
@@ -208,6 +219,206 @@ def child_environment(harness: dict[str, Any] | None) -> dict[str, str]:
     if headless is not None and isinstance(headless.get("env"), dict):
         environment.update({str(key): str(value) for key, value in headless["env"].items()})
     return environment
+
+
+#: How long a session that has said it is finished is given to exit by itself before it is ended. Long
+#: enough for a harness to flush its transcript and shut its own servers down, which takes a second or two
+#: when it works at all; short against the failure this exists for, which was a `result` line followed by
+#: seven minutes of nothing and a person reaching for `kill`.
+END_GRACE = 30.0
+#: How long a session asked to stop is given before it, and whatever it started, is killed outright.
+STOP_GRACE = 5.0
+#: How long the last of a session's output is waited for once it has exited. A server it started can hold
+#: the pipe open after it has gone, and its output is over either way.
+DRAIN = 2.0
+#: A `task_updated` status that means the task is over even where its `task_notification` never comes.
+TASK_OVER = frozenset({"completed", "failed", "killed", "stopped", "cancelled"})
+
+
+def streams_events(argv: list[str]) -> bool:
+    """Whether a session writes one JSON event per line (`--output-format stream-json`), which is the only
+    shape whose end can be read. Every other harness's output is prose, and is left exactly as it was."""
+    return any(arg == "stream-json" or arg.endswith("=stream-json") for arg in argv)
+
+
+class Ending:
+    """What a stream-json session has said so far about whether it is finished.
+
+    Finished is two facts together, and the transcript that cost seven minutes had both: a `result` line,
+    and no background task outstanding — every `task_started` answered by its `task_notification` (or a
+    `task_updated` whose status says it is over), and the last `background_tasks_changed` naming nothing
+    still open. A `result` alone is not the end: a session woken by a delegate's notification starts another
+    turn after it, and an `init`, `assistant` or `user` line is that turn starting, so the `result` before it
+    stops counting. What the session reported is the last `result`'s, because that is the turn it ended on.
+    """
+
+    def __init__(self) -> None:
+        self.outcome: str | None = None
+        self.erred = False
+        self.started: set[str] = set()
+        self.background: set[str] = set()
+        self.over: set[str] = set()
+
+    def read(self, line: bytes | str) -> None:
+        try:
+            event = json.loads(line)
+        except ValueError:
+            return
+        if not isinstance(event, dict):
+            return
+        kind, subtype = event.get("type"), event.get("subtype")
+        if kind == "result":
+            self.outcome, self.erred = str(subtype), bool(event.get("is_error"))
+        elif kind in ("assistant", "user") or (kind == "system" and subtype == "init"):
+            self.outcome = None
+        elif kind == "system" and subtype == "task_started":
+            self.started.add(str(event.get("task_id")))
+        elif kind == "system" and subtype == "task_notification":
+            self.over.add(str(event.get("task_id")))
+        elif kind == "system" and subtype == "task_updated":
+            patch = event.get("patch")
+            if isinstance(patch, dict) and patch.get("status") in TASK_OVER:
+                self.over.add(str(event.get("task_id")))
+        elif kind == "system" and subtype == "background_tasks_changed":
+            tasks = event.get("tasks")
+            tasks = tasks if isinstance(tasks, list) else []
+            self.background = {str(task.get("task_id")) for task in tasks if isinstance(task, dict)}
+
+    @property
+    def outstanding(self) -> set[str]:
+        return (self.started | self.background) - self.over
+
+    @property
+    def ended(self) -> bool:
+        return self.outcome is not None and not self.outstanding
+
+    @property
+    def succeeded(self) -> bool:
+        return self.outcome == "success" and not self.erred
+
+
+class Session(subprocess.Popen[bytes]):
+    """A headless session, started so that one which has said it is finished cannot keep its caller waiting.
+
+    A `Popen`, so that the captain's watch on its deck log — which polls, terminates and kills — needs no
+    change to drive one. For a stream-json session three things differ from a plain `Popen`:
+
+    **Its output passes through here.** Line by line and flushed, unchanged, so a person watching sees what
+    they saw before; each line is also read by an `Ending`.
+
+    **It runs in a process group of its own,** so that ending it ends the servers it started too. Those are
+    what kept the observed session alive, and signalling the session alone leaves them behind. `terminate`
+    and `kill` signal the whole group for the same reason.
+
+    **It is ended once finished.** When the `Ending` says so and the session is still there `END_GRACE`
+    seconds after its last line, its group is sent SIGTERM, then SIGKILL after `STOP_GRACE`. The return code
+    is then what the session *said*, 0 for a `success` result and 1 for anything else, rather than the 143 of
+    a signal: a person killing it by hand is what used to turn finished work into a failed stage.
+
+    Any other harness gets a plain `Popen` with nothing piped and nothing watched.
+    """
+
+    def __init__(self, argv: list[str], cwd: Path | str, env: dict[str, str]) -> None:
+        # Set before `Popen.__init__`, which assigns `returncode` and so reaches the property below.
+        self.streamed = streams_events(argv)
+        self.ending = Ending()
+        self.closed = False
+        self.raw: int | None = None
+        self.quiet_since: float | None = None
+        self.lock = threading.Lock()
+        super().__init__(argv, cwd=cwd, env=env, stdout=subprocess.PIPE if self.streamed else None,
+                         start_new_session=self.streamed)
+        self.relay = threading.Thread(target=self.pass_through, daemon=True)
+        if self.streamed:
+            self.relay.start()
+            threading.Thread(target=self.watch, daemon=True).start()
+
+    @property
+    def returncode(self) -> int | None:
+        if self.raw is None or not self.closed:
+            return self.raw
+        return 0 if self.ending.succeeded else 1
+
+    @returncode.setter
+    def returncode(self, value: int | None) -> None:
+        self.raw = value
+
+    def pass_through(self) -> None:
+        stdout: IO[bytes] | None = self.stdout
+        assert stdout is not None
+        sink = getattr(sys.stdout, "buffer", None)
+        for line in iter(stdout.readline, b""):
+            if sink is not None:
+                sink.write(line)
+            else:
+                sys.stdout.write(line.decode("utf-8", errors="replace"))
+            sys.stdout.flush()
+            with self.lock:
+                self.ending.read(line)
+                self.quiet_since = time.monotonic() if self.ending.ended else None
+
+    def watch(self) -> None:
+        while subprocess.Popen.poll(self) is None:
+            time.sleep(0.25)
+            with self.lock:
+                since = self.quiet_since
+            if since is None or time.monotonic() - since < END_GRACE:
+                continue
+            self.closed = True
+            print(f"session: it said it was finished ({self.ending.outcome}) and was still running "
+                  f"{END_GRACE:.0f}s later, so it and the servers it started were stopped", file=sys.stderr,
+                  flush=True)
+            self.group(hard=False)
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                subprocess.Popen.wait(self, timeout=STOP_GRACE)
+            # Killed whether or not the session went: a server that ignored SIGTERM outlives its parent.
+            self.group(hard=True)
+            return
+
+    def group(self, hard: bool) -> None:
+        """SIGKILL (hard) or SIGTERM to the session's whole process group. Windows has neither process
+        groups to signal nor SIGKILL, so there the session itself is what is ended."""
+        if not hasattr(os, "killpg"):
+            (subprocess.Popen.kill if hard else subprocess.Popen.terminate)(self)
+            return
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(self.pid, signal.SIGKILL if hard else signal.SIGTERM)
+
+    def terminate(self) -> None:
+        if self.streamed:
+            self.group(hard=False)
+        else:
+            super().terminate()
+
+    def kill(self) -> None:
+        if self.streamed:
+            self.group(hard=True)
+        else:
+            super().kill()
+
+    def wait(self, timeout: float | None = None) -> int:
+        code = super().wait(timeout)
+        if self.streamed:
+            self.relay.join(DRAIN)
+        return code
+
+
+def run_session(argv: list[str], cwd: Path | str, env: dict[str, str]) -> int:
+    """Run one headless session to its end and return its exit status, or what it said where it was ended.
+
+    A harness whose output is not stream-json runs exactly as `subprocess.run` ran it. A stream-json one
+    runs as a `Session`, in a process group of its own — which a terminal's Ctrl-C does not reach, so an
+    interrupt here ends the group itself before it is passed on.
+    """
+    if not streams_events(argv):
+        return subprocess.run(argv, cwd=cwd, env=env, check=False).returncode
+    session = Session(argv, cwd, env)
+    try:
+        return session.wait()
+    except BaseException:
+        session.kill()
+        session.wait()
+        raise
 
 
 #: Where the project declares its delegate types, which every harness's own directory is projected from.

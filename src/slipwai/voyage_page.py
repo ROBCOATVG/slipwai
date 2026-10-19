@@ -129,6 +129,8 @@ SCRIPT = BOARD_SCRIPT + """
     if (stop) { stop.hidden = !found.stoppable; stop.disabled = false; }
     const draw = document.getElementById('draw');
     if (draw) { draw.hidden = !found.drawable; draw.disabled = false; }
+    const model = document.getElementById('model');
+    if (model) { model.hidden = !found.modelable; model.disabled = false; }
   };
   // Two things change on this page and only one of them is the strip. The cards — the storyboard, the
   // model, the work, the button that opens the specification — are rendered once, out of files that may
@@ -152,6 +154,7 @@ SCRIPT = BOARD_SCRIPT + """
   document.addEventListener('click', event => {
     if (event.target.id === 'cast-off') { event.target.disabled = true; send('/cast-off', {}); }
     if (event.target.id === 'draw') { event.target.disabled = true; send('/draw', {}); }
+    if (event.target.id === 'model') { event.target.disabled = true; send('/model', {}); }
     if (event.target.id === 'intake-go') { event.target.disabled = true; send('/intake', {}); }
     const story = event.target.dataset && event.target.dataset.storyboard;
     if (story) {
@@ -310,7 +313,8 @@ def expect_card(found: list[Stage]) -> str:
 
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
-                 stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "") -> str:
+                 stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
+                 modelable: bool = False) -> str:
     strip = "".join(stage_html(one, index) for index, one in enumerate(found))
     wide = f"--stages:{max(1, len(found))}"
     said = now_said(found)
@@ -329,6 +333,9 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     # a command in the agent — on the page a person had just run two headless sessions from. This runs the
     # half of it nobody has to be present for; the half they do is the storyboard, below.
     button += (f'<button class="go" id="draw"{"" if drawable else " hidden"}>Draw the surfaces</button>')
+    # Approving starts the model once and locks the verdict, so a model step that failed had no way back but
+    # the agent. Always in the page and shown by the poll, as Draw is, so the page's shape does not move.
+    button += (f'<button class="go" id="model"{"" if modelable else " hidden"}>Model again</button>')
     # And the thing to do *before* pressing the primary one. Continue the build is a person's word that the
     # specification is good to build from, and a page that asks for that word while giving no way to read
     # the file is asking somebody to agree to something they have not opened. Quiet, beside it, and in its
@@ -509,7 +516,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          viewer_fault: str, made: dict | None, launchable: bool, fleet: dict | None = None,
          config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
          stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
-         ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "") -> str:
+         ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
+         modelable: bool = False) -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
@@ -518,7 +526,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     # says what the work is.
     live = live_cards(fleet, config or {}, True, project_tabs(root, True)) if fleet else ""
     where = passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable, feature,
-                         drawable, shape)
+                         drawable, shape, modelable)
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]
@@ -550,7 +558,7 @@ def now_said(found: list[Stage]) -> str:
 
 
 def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False,
-            stoppable: bool = False, drawable: bool = False, shape: str = "") -> str:
+            stoppable: bool = False, drawable: bool = False, shape: str = "", modelable: bool = False) -> str:
     return json.dumps({"stages": stage_payload(found), "launchable": launchable, "moving": moving,
-                       "castable": castable, "stoppable": stoppable, "drawable": drawable,
+                       "castable": castable, "stoppable": stoppable, "drawable": drawable, "modelable": modelable,
                        "shape": shape, "now": now_said(found)})

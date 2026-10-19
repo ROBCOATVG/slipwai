@@ -26,14 +26,16 @@ from slipwai.bridge_page import PLAIN, page, read_only
 from slipwai.cli_fleet import config
 from slipwai.deck import tell
 from slipwai.fleet import board
+from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 610 — every route the board answers, driven against `board_fixture`: the fleet pages, the
+# budget: 660 — every route the board answers, driven against `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
 # hold; the fixture moved out with it rather than being copied, which is what the one-suite rule was for.
-# The storyboard's verdicts, a disapproval's redraw among them, are routes too.
+# The storyboard's verdicts, a disapproval's redraw among them, are routes too, and so are the retries
+# of a launch or a model that failed.
 # Fifteen more for the storyboard's design files, served at the path they have in the project.
 
 
@@ -498,6 +500,59 @@ class LandingTest(BoardTest):
         (self.made / ".slipwai/surfaces.pid").unlink()
         self.assertEqual(self.post("/draw", {}), (200, "drawing the surfaces"))
         self.assertIn("drawing 001-demo again", self._until("surfaces")["lines"])
+
+    def test_a_launch_that_failed_can_be_continued_again(self) -> None:
+        """A `make launch` that exited non-zero cast nothing off. It used to leave the button gone for the life
+        of the board, and a press was told there was no specification — the one thing that was there."""
+        self._storyboard("standard")
+        (self.made / "Makefile").write_text("launch:\n\t@echo 'no chart this time'; exit 1\n", encoding="utf-8")
+        self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "approved"})[0], 200)
+        self.assertTrue(self._until("launch")["code"])
+        self.assertTrue(json.loads(self.get("/voyage.json")[1])["launchable"])
+        (self.made / "Makefile").write_text("launch:\n\t@echo 'chart and split'\n", encoding="utf-8")
+        self.assertEqual(self.post("/launch", {}), (200, "continuing the build"))
+        self.assertIn("chart and split", self._until("launch")["lines"])
+        # Once it has gone through, `launched` is what it always was: the reason there is no second fleet.
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["launchable"])
+        code, said = self.post("/launch", {})
+        self.assertEqual(code, 400)
+        self.assertIn("continued from this board already", said)
+
+    def test_a_model_that_failed_offers_a_button_to_model_again(self) -> None:
+        """Approving starts the model once and locks the verdict, so a failed `make model-next` left nothing to
+        press. Model again is that button, and only while there is nothing modelled and nothing running."""
+        self._storyboard("event-modelling")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["modelable"], "nothing approved yet")
+        (self.made / "Makefile").write_text("model-next:\n\t@echo 'no model'; exit 1\n", encoding="utf-8")
+        self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "approved"})[0], 200)
+        self.assertTrue(self._until("model")["code"])
+        found = json.loads(self.get("/voyage.json")[1])
+        self.assertTrue(found["modelable"])
+        self.assertFalse(found["launchable"])
+        self.assertIn('id="model">Model again', self.get("/voyage")[1])
+        code, said = self.post("/launch", {})
+        self.assertEqual(code, 400)
+        self.assertIn("nothing is modelled yet", said, "the refusal says what is missing, not a specification")
+        # Not while a model this board did not start is running: that would be two sessions on one model.
+        (self.made / ".slipwai").mkdir(exist_ok=True)
+        (self.made / ".slipwai/model-next.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["modelable"])
+        (self.made / ".slipwai/model-next.pid").unlink()
+        (self.made / "Makefile").write_text(
+            "model-next:\n\t@mkdir -p docs/event-model && echo 'slices: [one]' > docs/event-model/model.yaml\n"
+            "\t@echo 'modelled'\n", encoding="utf-8")
+        self.assertEqual(self.post("/model", {}), (200, "modelling"))
+        self.assertIn("modelled", self._until("model")["lines"])
+        found = json.loads(self.get("/voyage.json")[1])
+        self.assertFalse(found["modelable"], "gone once there is a model")
+        self.assertTrue(found["launchable"])
+        self.assertEqual(self.post("/model", {})[0], 400)
+
+    def test_model_again_is_never_offered_on_a_standard_project(self) -> None:
+        self._storyboard("standard")
+        record_verdict(self.made, "001-demo", "approved")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["modelable"])
+        self.assertEqual(self.post("/model", {})[0], 400)
 
     def test_a_split_with_no_fleet_running_offers_to_cast_off_and_the_button_runs_make_cruise(self) -> None:
         import slipwai.bridge as module

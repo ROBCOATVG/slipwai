@@ -77,7 +77,17 @@ from .page_shell import (
     manifest,
     not_running,
 )
-from .passage import EVENT_PROFILE, disapproved, drawn, modelled, profile_of, record_verdict, specifications, stages
+from .passage import (
+    EVENT_PROFILE,
+    disapproved,
+    drawn,
+    modelled,
+    profile_of,
+    record_verdict,
+    specifications,
+    stages,
+    surfaces,
+)
 from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .spec_page import page as spec
@@ -107,8 +117,9 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 680 — one server and every route the board answers, each a few lines handing off to a page
+# budget: 745 — one server and every route the board answers, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail.
+# Continue the build says which of its reasons holds it back, and a model that failed has a route back.
 # The number is the route count rather than any one route's length: a control a person can press is ten
 # lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
 # board has gained the surfaces, the settings dials and the rendered specification since this was 560.
@@ -385,17 +396,46 @@ class Bridge(BaseHTTPRequestHandler):
         return specs[0].parent if len(specs) == 1 else None
 
     def launchable(self) -> bool:
-        """Whether the build can be continued from here: the active feature has a specification and no chart
-        yet — on the event profile, a model too — nothing running or failed on this board, and not launched
-        already."""
+        """Whether the build can be continued from here — which is whether there is no reason it cannot."""
+        return not self.held_back()
+
+    def held_back(self) -> str:
+        """Why the build cannot be continued from here, or `""` where it can: what Continue the build is shown
+        by, and what pressing it while it is hidden is told.
+
+        `launched` is not the last word on it. It was, and a `make launch` that failed left it set for the
+        life of the board: the button was gone, there was no chart for Cast off to be offered from, and a
+        press was told there was no specification. A launch that exited non-zero cast nothing off, so it is
+        no reason against a second — unless a fleet is running here anyway, which `fleet.py` would refuse.
+        One refusal per reason, because the one sentence that fitted them all was true of none but the first.
+        """
         feature = self.active_feature()
-        if self.launched or feature is None or (feature / "chart.yaml").is_file():
-            return False
-        if self.fitting and (not self.fitting.said()["done"] or self.fitting.said()["code"]):
-            return False
-        if outside_session(self.root):
-            return False
-        return profile_of(self.root) != EVENT_PROFILE or modelled(self.root)
+        if feature is None:
+            return ("nothing to continue from here: a specification under specs/, written by `make draft` or "
+                    "with the agent, is what the build continues from")
+        if (feature / "chart.yaml").is_file():
+            return f"specs/{feature.name} is charted already: what moves it on now is casting off the fleet"
+        running = self.fitting.said() if self.fitting else None
+        failed = bool(running and running["done"] and running["code"])
+        retry = failed and running is not None and running["step"] == "launch"
+        if running and not running["done"]:
+            if running["step"] == "launch":
+                return "the build is being continued already: `make launch` is running, and its lines are here"
+            return f"this board is running `{running['step']}` already; wait for it to finish"
+        if self.launched and not retry:
+            return "the build was continued from this board already, and a second launch is a second fleet"
+        outside = outside_session(self.root)
+        if outside:
+            return f"{outside['lines'][0]} Continue the build waits for it to finish."
+        if profile_of(self.root) == EVENT_PROFILE and not modelled(self.root):
+            return ("nothing is modelled yet: on the event-modelling profile the chart is drawn from the model, "
+                    "which approving the storyboard starts and Model again starts again")
+        if failed and not retry and running is not None:
+            return (f"`{running['step']}` exited {running['code']} on this board, and what it made is nothing "
+                    f"to build on; its last lines say why")
+        if retry and fleet_running(self.root):
+            return "a fleet is running in this project although `make launch` failed; stop it before launching again"
+        return ""
 
     def receipt(self, since: int = 0) -> dict:
         """What the board's child has said after the `since`th line, and whether the build can be continued."""
@@ -466,6 +506,20 @@ class Bridge(BaseHTTPRequestHandler):
         idle = (not self.fitting or self.fitting.said()["done"]) and not outside_session(self.root)
         return bool(specifications(self.root)) and (not drawn(self.root) or bool(disapproved(self.root))) and idle
 
+    def modelable(self) -> bool:
+        """Whether the model can be started from here: an event-modelling project, a storyboard a person has
+        approved, nothing modelled, and nothing running — this board's child or a step it did not start.
+
+        Approving is what starts `make model-next`, once, and the verdict locks with it. A model step that
+        failed, or an approval given while the board was busy, left nothing to press but a chip that said to
+        go to the agent; this is the button back, and it is gone again the moment there is a model.
+        """
+        if profile_of(self.root) != EVENT_PROFILE or modelled(self.root) or not specifications(self.root):
+            return False
+        _, approved, parked = surfaces(self.root)
+        idle = (not self.fitting or self.fitting.said()["done"]) and not outside_session(self.root)
+        return bool(approved) and not parked and idle
+
     def castable(self, rows: list[dict[str, str]], fleet: dict) -> bool:
         """Whether the fleet can be cast off from here: a split to work, nothing of it running, and no child
         of this board on the way."""
@@ -490,13 +544,13 @@ class Bridge(BaseHTTPRequestHandler):
         return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
                       feature, self.drawable(), made_of, intake_ideas(self.root),
-                      screens(self.root, rows, self.named_seat()), running_app(self.root))
+                      screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable())
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
         return voyage_payload(found, self.launchable(), any(one.state == "working" for one in found),
                               self.castable(rows, fleet), self.stoppable(fleet), self.drawable(),
-                              self.made_of(rows, fleet)[1])
+                              self.made_of(rows, fleet)[1], self.modelable())
 
     def attach(self, named: str) -> str:
         """Point this board at another directory, or say why it cannot be.
@@ -633,10 +687,17 @@ class Bridge(BaseHTTPRequestHandler):
                 self.fitting = draw_surfaces(self.root, self.fitting.said()["lines"] if self.fitting else None,
                                              disapproved(self.root))
                 said = "drawing the surfaces"
+            elif where == "/model":
+                if not self.modelable():
+                    raise ValueError("nothing to model from here: the model is made from a storyboard a person "
+                                     "has approved, on the event-modelling profile, once nothing else is running "
+                                     "and before a model exists")
+                self.fitting = begin_model(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                said = "modelling"
             elif where == "/launch":
-                if not self.launchable():
-                    raise ValueError("nothing to continue from here: a specification under specs/, written by "
-                                     "`make draft` or with the agent, is what the build continues from")
+                refused = self.held_back()
+                if refused:
+                    raise ValueError(refused)
                 self.launched = True
                 self.fitting = continue_build(self.root, self.fitting.said()["lines"] if self.fitting else None)
                 said = "continuing the build"

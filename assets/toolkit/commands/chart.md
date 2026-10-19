@@ -5,7 +5,8 @@ argument-hint: [feature]
 
 # Chart
 
-Run this once per feature, after the mock-up review and **before** the split. A person is present.
+Run this once per feature, after the mock-up review and **before** the split. A person is present — and
+where none is, *Record the context answer, every time* says what stands in for them.
 
 This is the standard profile's answer to what the event model is on the other one. The event profile has a
 single artefact that names each slice's context and service, types its events, and says what it reads, so
@@ -76,6 +77,14 @@ put it to the person.
    so with the evidence is the whole decision. Propose the contexts as a table — candidate, entities it
    owns, the three tests' evidence, what crosses, confidence — with the seams you are unsure about named
    first.
+
+   **Before any seam test, interrogate the streams** — the ones the model names, or the ones each
+   candidate's state would be written to. For each, list the invariants it protects, by requirement, and
+   look first for those that span groups of slices: a decision that reads several groups' current state in
+   one transaction, or a lifecycle state like closure that one group sets and every group must check. Such
+   an invariant keeps those groups together — splitting them needs a process manager and opens a window to
+   breach it. Groups no invariant spans are separate streams correlated by id, and the seam tests run
+   between them. "One record per leaver" describes uniqueness or a view, not by itself a boundary.
 2. **Which service holds each one?** Read `project.json`'s `deployables`, each service's recorded `purpose`
    and its existing `contexts`. Where one service plainly covers a context, propose it. Where none does, or
    two could, that is a question and not a proposal. Record the confirmed answer on the service with
@@ -83,6 +92,31 @@ put it to the person.
 3. **What does each fairway own?** The paths no other fairway writes. Propose them from the layout that is
    already there: a service holding one context owns all of it; a service holding several gives each
    context its own directory. Say which directories exist today and which the proposal would create.
+
+## Record the context answer, every time
+
+**Pass one always writes its context answer as the next entry of `specs/<feature>/decisions.md`**, whether
+it found several contexts or one — the shape `commands/cruise.md` shows and `make check-decisions` holds
+(Question, Options, Decision, Why with Read against, Decided by, Confidence with Would reverse if, Written
+to, Status). Head it `## D<n> — Which bounded contexts does <feature> touch?`, and put the seam table
+under its `Options` line, indented two spaces so it stays inside the entry: candidate, entities it owns,
+the Language · Change · Flow evidence with file and line, what crosses, confidence. One context is an
+answer and the one that most needs its table: one fairway is one captain taking every slice in turn.
+Where one fairway would hold more than twelve slices, add a `- **Why not split:**` line citing, by
+requirement, the invariant that spans its groups. Twelve is not a limit and implies no split; it is where a
+serial fairway costs enough of a run that its reason has to be written. `make check-chart` refuses a chart
+whose fairways no such entry explains, and a crowded one whose entry records no `Why not split`.
+
+**With nobody present** — any session a script dispatched, which says so with `SLIPWAI_STAGE` in its
+environment (`launch`, `model`, a captain's `drive`) — do not decide silently and do not stop. Proceed on the best-evidenced proposal, and record it as `Decided by: host (stage
+recommendation)` with `Status: awaiting human confirmation`. Then post the question for a person: append
+one `question` line to the deck log of the first fairway the chart names,
+`.slipwai/logs/<feature>/<fairway>.jsonl` — `{"v": 1, "t": "<ISO instant>", "kind": "question", "fairway":
+"<fairway>", "slice": "chart", "id": "D<n>", "what": "<the contexts proposed, and the seam you are least
+sure of>"}`. The board's *Waiting on you* shows it; `slice: chart` names no slice, so nothing waits on it.
+A person confirms by setting the entry's `Status` to `confirmed by human <date>`, or overturns it with an
+entry of their own; whoever records that answer writes the `decision` line carrying `D<n>`, which is what
+closes the question.
 
 ## Pass one, here: the marks
 
@@ -148,4 +182,5 @@ vocabulary to answer a question about their own product.
 ## When it is done
 
 `make check-chart` passes. That means every mark is typed and its file is in the tree, every mark steered by
-has a setter, no mark has two, nothing has been withdrawn, and every slice names its capability.
+has a setter, no mark has two, nothing has been withdrawn, every slice names its capability, and the
+fairways are explained by a recorded context decision.

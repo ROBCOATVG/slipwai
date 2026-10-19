@@ -246,6 +246,33 @@ function namingViolations(slice: Slice): Violation[] {
   return violations;
 }
 
+/**
+ * Every stream a placed state-change slice appends to states, once, the decision that needs it to be one
+ * stream — `streams.<name>.because`. Mirrors `check.py`'s `streams_state_their_invariant`, which is what
+ * `make check-model` runs: a stream is one expected-version check, so whatever shares one is serialised for
+ * ever, and naming it after the spec's noun decided a feature's whole shape before any seam test could ask.
+ */
+function streamInvariants(model: Model): Violation[] {
+  const violations: Violation[] = [];
+  const reported = new Set<string>();
+  for (const slice of model.slices) {
+    if (slice.pattern !== 'state-change' || slice.stream === undefined) continue;
+    if (!['modelled', 'planned', 'implemented'].includes(slice.status)) continue;
+    const name = slice.stream.split('{', 1)[0]!.replace(/[-_: ]+$/, '') || slice.stream;
+    if (reported.has(name) || (model.streams?.[name]?.because ?? '').trim() !== '') continue;
+    reported.add(name);
+    violations.push({
+      slice: slice.id,
+      rule: 'stream-states-its-invariant',
+      message:
+        `appends to the \`${name}\` stream, which states no invariant. Add \`streams: {${name}: {because: ...}}\` ` +
+        'naming, by requirement, the decision that needs this one expected-version check — usually one that ' +
+        'spans groups of its slices. Where no invariant spans two groups, they are separate streams correlated by id',
+    });
+  }
+  return violations;
+}
+
 export function validate(model: Model, workspace: Workspace): Violation[] {
   const violations: Violation[] = [];
   const frames = numberFrames(model);
@@ -1059,6 +1086,7 @@ export function validate(model: Model, workspace: Workspace): Violation[] {
     visited.add(node);
   };
   for (const id of graph.keys()) walk(id, []);
+  violations.push(...streamInvariants(model));
 
   return violations;
 }

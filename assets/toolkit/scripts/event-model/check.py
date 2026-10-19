@@ -541,6 +541,56 @@ def validate(
     findings += depends_on_findings(slices)
     findings += folds_match_their_guard(slices)
     findings += one_stream_one_context(slices)
+    findings += streams_state_their_invariant(model, slices)
+    return findings
+
+
+def stream_name(stream: str) -> str:
+    """A stream's name without its identity: `leaver-{leaverId}` is the `leaver` stream, whoever's it is."""
+    return stream.split("{", 1)[0].rstrip("-_: ") or stream
+
+
+#: The statuses a stream's invariant is owed from. `modelled` because that is where the stream is named and
+#: the seam tests start from it; `observed` is left out because that stream was designed somewhere else, and
+#: the model records it rather than decides it.
+INVARIANT_OWED = {"modelled", "planned", "implemented"}
+
+
+def streams_state_their_invariant(model: dict, slices: list) -> list[str]:
+    """Every stream a placed state-change slice appends to says, once, which decision needs it to be one stream.
+
+    A stream is one expected-version check: every command on it is refused if anything else on it moved, so
+    whatever shares a stream is serialised for ever, and it is what the seam tests take as their unsplittable
+    candidates. `guard.because` has been required since the guard was; a stream needed no reason at all, so
+    the cheapest name to hand — the spec's noun, "one record per leaver, so one stream" — decided a feature's
+    whole shape before anything asked whether exit interview and clearance ever decide together. (They did:
+    clearance reads both in one transaction, and a closure either sets must refuse every later command — the
+    right stream for the wrong reason, and nothing wrote the right one down.) Held once per stream, in the
+    model's `streams` block: `leaver: {because: <the decision that needs one version check, with its FR>}`.
+    It asks for the reason, never for a split.
+    """
+    stated = model.get("streams")
+    findings: list[str] = []
+    if stated is not None and not isinstance(stated, dict):
+        return ["`streams` is a mapping of stream name to `{because: ...}`"]
+    stated = stated or {}
+    owed: dict[str, str] = {}
+    for item in slices:
+        if (isinstance(item, dict) and item.get("pattern") == "state-change"
+                and item.get("status") in INVARIANT_OWED and isinstance(item.get("stream"), str) and item["stream"]):
+            owed.setdefault(stream_name(item["stream"]), str(item.get("id")))
+    for name, first in owed.items():
+        body = stated.get(name)
+        because = body.get("because") if isinstance(body, dict) else None
+        if not isinstance(because, str) or not because.strip():
+            findings.append(
+                f"stream {name} (first appended to by {first}) states no invariant: add `streams: {{{name}: "
+                "{because: ...}}` naming, by requirement, the decision that needs this one expected-version "
+                "check — usually one that spans groups of its slices: a decision reading several groups' state "
+                "at once, or a closure one group sets and all must check. Where no invariant spans two groups, "
+                "they are separate streams correlated by id — nine-steps.md, *Interrogate every stream before "
+                "naming it*"
+            )
     return findings
 
 
@@ -555,7 +605,7 @@ def one_stream_one_context(slices: list) -> list[str]:
         context = item.get("context")
         if not isinstance(stream, str) or not stream or not isinstance(context, str) or not context:
             continue
-        name = stream.split("{", 1)[0].rstrip("-_: ") or stream
+        name = stream_name(stream)
         writers.setdefault(name, {}).setdefault(context, []).append(item["id"])
     findings: list[str] = []
     for name, by_context in writers.items():

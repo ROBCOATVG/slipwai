@@ -93,5 +93,28 @@ class GateTest(unittest.TestCase):
         self.assertIn("**Why** carries `Read against:`", self.source)
 
 
+class AwaitingConfirmationTest(unittest.TestCase):
+    """A stop meant for a person, answered with nobody there, stands as a proposal and says so.
+
+    A headless `/launch` once took the chart's context question "as confirmed" and recorded nothing; the
+    shape now has a status for what that decision really is, and one for a person having read it.
+    """
+
+    def setUp(self) -> None:
+        source = GATE.read_text(encoding="utf-8")
+        found = re.search(r'STATUS = re\.compile\((.*?)\)\n', source, re.S)
+        self.assertIsNotNone(found)
+        self.status = re.compile("".join(re.findall(r'r"([^"]*)"', found.group(1))))  # type: ignore[union-attr]
+
+    def test_the_gate_accepts_both_new_statuses_and_still_the_old_ones(self) -> None:
+        for said in ("standing", "awaiting human confirmation", "confirmed by human 2026-10-19", "overridden by D3",
+                     "overridden by human 2026-10-19"):
+            self.assertRegex(said, self.status)
+        self.assertNotRegex("pending", self.status)
+
+    def test_the_entry_shape_shows_them(self) -> None:
+        self.assertIn("awaiting human confirmation | confirmed by human <date>", DECISION_ENTRY)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

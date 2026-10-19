@@ -23,11 +23,22 @@ ROOT = harness.ROOT
 SPECS = ROOT / "specs"
 MODEL = ROOT / "docs/event-model/model.yaml"
 PID = ROOT / ".slipwai" / "model-next.pid"
+#: The streams and contexts are named here, and the chart is only rendered from them afterwards — so this is
+#: where the feature's shape is decided, by a session with nobody to ask. It was once told only to write the
+#: model, named one stream from the spec's noun ("one record per leaver"), ran no seam test, and the chart
+#: rendered one fairway of thirty-one serial slices. So it is told Step 9 by name, and how to stand in for
+#: the person the context question is for.
 PROMPT = (
     "The storyboard is approved. Model this product and stop before the chart. Read "
     "skills/event-modeling/SKILL.md, each specs/<feature>/spec.md, and the approved states in "
     "specs/<feature>/mockups/mock-states.md. Write docs/event-model/model.yaml from those drawings. "
-    "Do not chart, split or implement."
+    "Run Step 9 of skills/event-modeling/references/nine-steps.md in full: interrogate every stream before "
+    "naming it, give each its invariant under `streams`, then `make seams` and the three seam tests. Record "
+    "the context answer, one context included, as the next entry of specs/<feature>/decisions.md with the "
+    "seam table (and a Why not split line for a context over twelve slices), Decided by: host (stage "
+    "recommendation), Status: awaiting human confirmation, and post its question to the board as a "
+    "`question` line, as commands/chart.md 'Record the context answer, every time' says. Proceed on your "
+    "best-evidenced proposal; nobody is here to ask. Do not chart, split or implement."
 )
 
 

@@ -41,7 +41,8 @@ DECISION_ENTRY = f"""## D<n> — <the question, in one line>
 - **Decided by:** host (stage recommendation) | host (standing decision D<m>) | {SKIPPER} (<model>) | {BOSUN} | human
 - **Confidence:** high | medium | low · **Would reverse if:** <the one condition>
 - **Written to:** <the artifact paths the answer went into>
-- **Status:** standing | overridden by D<m> | overridden by human <date>"""
+- **Status:** standing | awaiting human confirmation | confirmed by human <date> | overridden by D<m> |
+  overridden by human <date>"""
 DEMO_ENTRY = f"""## <ISO instant> — <accepted | behaviour | implementation> · <slice id> · {HAND} (<model>)
 - **Started with:** <the literal command or URL> · **Seeded:** <what, or none>
 - **Driven through:** {BROWSER} | <harness browser tool> | HTTP | CLI — <why, where not the first>

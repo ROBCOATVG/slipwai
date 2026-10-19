@@ -13,6 +13,14 @@ render:
     ui: actor
     data: none
     events: stream
+# Added after the run, and the one thing that was: `check-model` now asks every placed stream to state the
+# invariant that makes it one, and a characterisation fixture that failed its own model gate would prove
+# nothing about the seams script. Each is the reason the run's own decisions gave for the stream.
+streams:
+  account: {because: an account is opened once and forgotten once, and nothing is written to it after}
+  listing: {because: a listing's accepted seats never exceed its chairs, and chairs shrink only while empty}
+  community: {because: a member joins once and is removed once, under the community's house rules}
+  feedback: {because: feedback is left once per seat per night, inside the night's feedback window}
 slices:
 - id: S1
   name: Open an account

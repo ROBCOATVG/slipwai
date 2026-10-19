@@ -57,7 +57,7 @@ fragment under `fairways/<name>/chart.d/`. The harbourmaster folds the fragments
 
 ---
 
-## The other three rules the gate holds
+## The other rules the gate holds
 
 - **Some slice sets every mark that a slice steers by.** If no slice sets the mark, a slice waits on a mark
   that nobody is building. [Clearance](clearance.md) never comes, and the fairway looks blocked, with
@@ -67,8 +67,14 @@ fragment under `fairways/<name>/chart.d/`. The harbourmaster folds the fragments
 - **After the split has run, every slice states `sets` and `steers_by`.** An empty list is an answer. A
   missing key is refused. Before this rule, a slice that forgot the key got a demo-only gate without anybody
   choosing it. That is the quietest way to pass a gate.
+- **The fairways come from a recorded context decision.** `specs/<feature>/decisions.md` must hold an
+  entry asking which bounded contexts the feature touches, with the seam table that the answer was read
+  from. This holds for one fairway too. One fairway means one captain takes every slice in turn, so that
+  answer needs its reason most. A fairway with more than twelve slices also needs a `Why not split:` line
+  that cites the invariant keeping them together. The count asks for the reason. It does not ask for a
+  split.
 
-If the chart is malformed, the gate reports a shape fault and does not run the five rules on it. If it ran
+If the chart is malformed, the gate reports a shape fault and does not run the rules on it. If it ran
 them, each rule would report the same damage again in its own words. If a project has no feature in
 progress, the gate has nothing to hold. It says so and exits 0.
 
@@ -87,7 +93,7 @@ On that profile, `check-chart` also holds a sixth rule: the committed chart must
 text. So a different YAML writer or a reordered model is not drift. A fairway, a mark or a slice that says
 something different is drift.
 
-On the **standard profile**, a `/chart` stage writes the file, and the same five rules hold it.
+On the **standard profile**, a `/chart` stage writes the file, and the same rules hold it.
 
 ---
 

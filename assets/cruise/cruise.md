@@ -46,7 +46,9 @@ session closes.
 the bridge. Read the inbox at every stage boundary (`python3 {{inbox}} <stream>`) and act on what is
 there before the next stage: a steer takes precedence over what the artifacts alone would make this stage do,
 a fact the run lacked is the answer to a block, and a scope or a preference is written down — into the owner
-brief (`{{owner-brief}}`) or a decision entry with `Decided by: human` — so it outlives this session. Answer
+brief (`{{owner-brief}}`) or a decision entry with `Decided by: human` — so it outlives this session. A `told` that answers an open
+`question` — the chart's context question among them — is also the `decision` line carrying that
+question's `id`, with the entry's `Status` set to `confirmed by human <date>` or overturned. Answer
 each with a `read` line carrying that `told`'s own timestamp: the receipt is what makes it evidence somebody
 was told rather than an assertion that somebody looked. A message never changes a setting; say so and point
 at `/cruise-settings` where one asks for that.

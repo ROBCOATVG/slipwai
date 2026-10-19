@@ -16,6 +16,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 import yaml  # type: ignore[import-untyped]
+from test_chart_contexts import decided
 
 from slipwai.layout import Layout
 from slipwai.origin import Adoption
@@ -129,6 +130,7 @@ class ObservedCapabilityProof(unittest.TestCase):
         self.write("apps/orders/test_pinned.py", PINNED)
         self.write("specs/ordering/slices/ORD-OBS/examples.md", EXAMPLES)
         self.write("specs/ordering/slices/ORD-VIEW/examples.md", EXAMPLES)
+        decided(self.root)  # the context decision `check-chart` asks the fairways for
         self.write("delivery/docs/event-model/mockups/order.txt",
                    "+ Order O-1 +\n| Status: draft / confirmed |\n| [Confirm order] |\n")
         self.write("delivery/survey/pinned.md",

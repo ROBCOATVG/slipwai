@@ -38,8 +38,11 @@ def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
         ("Which service or bounded context owns a slice",
          "Decide against each service's recorded `purpose`; where none covers it, record the purpose the spec "
          "implies with `slipwai describe-service <name> --purpose` and decide. Contexts by the three seam "
-         "tests — language, change, flow — never by a shared noun alone, recorded the same way with `--context`",
-         "the model or plan, `project.json`, a decision entry"),
+         "tests — language, change, flow — never by a shared noun alone, recorded the same way with `--context`. "
+         "The context answer is always an entry with its seam table, one context included; it stands as `host "
+         "(stage recommendation)` at `awaiting human confirmation`, and its `question` line goes to the board "
+         "(`commands/chart.md`, *Record the context answer, every time*)",
+         "the model or plan, `project.json`, a decision entry, a `question` line"),
         (f"Slice gaps: a question at a time over {criteria}",
          "The conversational loop runs with the owner as the other party: each gap is answered — host or "
          "skipper by `decide` — and written back as the criterion or state. `gaps=N` still counts",

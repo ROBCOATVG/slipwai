@@ -111,14 +111,22 @@ in `project.json`; *Bounded contexts* in `docs/architecture.md`). A slice no
 purpose covers is a decision for the user, not the first service by default;
 a service with no purpose recorded is the first thing to ask about. Someone
 added that service for a reason, and the model is where the reason shows.
-Before the slices go to `modelled`, apply Conway's law to the model
-(`references/nine-steps.md`, end of Step 9): `make seams` groups the slices
-by the stream they write, and every seam between two groups is tested three
-ways — language, change and flow — with the evidence written down. A shared
-noun is evidence for neither side; a stream is never split. Record what
-survives as `contexts` on the service in `project.json` and give each slice
-its `context`. One stream with one reason to change is one context, and the
-seams output is the evidence for saying so.
+Before the slices go to `modelled`, interrogate every stream and then apply
+Conway's law to the model (`references/nine-steps.md`, end of Step 9). A
+stream is one expected-version check, so name none from the spec's noun: list
+the invariants it protects, looking first for those that span groups of
+slices — a decision reading several groups' state at once, or a closure one
+group sets and all must check — which keep the groups on one stream; groups
+no invariant spans are separate streams correlated by id. "One record per X"
+describes uniqueness or a view, not by itself a boundary. Each stream states
+its invariant once, by FR, in the model's `streams` block.
+Then `make seams` groups the slices by the stream they write, and every seam
+between two groups is tested three ways — language, change and flow — with
+the evidence written down. A shared noun is evidence for neither side; a
+stream is never split. Record what survives as `contexts` on the service in
+`project.json`, give each slice its `context`, and write the answer — one
+context included — as a decision entry with its seam table in
+`specs/<feature>/decisions.md`, which `make check-chart` asks for.
 
 ### The Prime Directive: Not Losing Information
 
@@ -348,6 +356,12 @@ After completing event modeling work, verify:
       what it does and what it **cannot** do
 - [ ] Each designed workflow's slices are in that same model at `status: modelled`
       with all 9 steps completed
+- [ ] Every stream a state-change slice appends to states its invariant in
+      `streams`, by FR, and groups of slices share a stream only where an
+      invariant spans them
+- [ ] The context answer is a decision entry with its seam table, one context
+      included, and a context of more than twelve slices records why not split,
+      citing the spanning invariant by FR
 - [ ] All events are past tense, business language, immutable facts
 - [ ] Every read model field traces to a source event
 - [ ] Every event has a trigger (command, automation, or translation)

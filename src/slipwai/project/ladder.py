@@ -115,11 +115,15 @@ def sail_ladder(
    the one it belongs to in `context` as well. `make check-model` refuses a slice that leaves either
    unsaid. A slice no purpose covers, or a service with no purpose recorded, is a product decision — ask,
    never default to the first service or the first context. Which contexts there are is found here, not
-   declared up front: before slices go to `modelled`, run `make seams` and apply the seam tests to what
-   it prints (`skills/event-modeling/references/nine-steps.md`, *Apply Conway's Law*) — a shared noun
-   is evidence for neither side, and a stream is never split. Record what survives on the service, with
-   the user, as `slipwai describe-service <name> --context <context>` (once per context; `--purpose`
-   records what the service owns the same way), and place each slice with `context:`."""
+   declared up front: before slices go to `modelled`, interrogate each stream — its invariants, and
+   whether any command needs two groups of its slices in one transaction — and give it its `streams`
+   `because`; then run `make seams` and apply the seam tests to what it prints
+   (`skills/event-modeling/references/nine-steps.md`, *Interrogate every stream* and *Apply Conway's
+   Law*) — a shared noun is evidence for neither side, and a stream is never split. Record what survives
+   on the service, with the user, as `slipwai describe-service <name> --context <context>` (once per
+   context; `--purpose` records what the service owns the same way), place each slice with `context:`,
+   and write the answer, one context included, as a decision entry with its seam table — `make
+   check-chart` refuses a chart without one."""
             + rung_of_the_slice(apps)
         )
     if not event:

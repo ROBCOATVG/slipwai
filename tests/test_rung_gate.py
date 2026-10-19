@@ -80,7 +80,11 @@ def findings(
     rungs: dict[str, bool] | None = None,
     publishes: dict[str, str] | None = None,
 ) -> list[str]:
-    model = {"version": 1, "slices": list(slices)}
+    # Every stream these fixtures name states its invariant, which `stream-states-its-invariant` owes; the
+    # rule itself is held in `StreamInvariantTest` below.
+    stated = {str(item["stream"]).split("{", 1)[0].rstrip("-_: "): {"because": "one decision per order"}
+              for item in slices if item.get("stream")}
+    model = {"version": 1, "streams": stated, "slices": list(slices)}
     return CHECK.validate(model, SERVICES, MIXED if rungs is None else rungs, publishes or {})
 
 
@@ -283,3 +287,36 @@ class ChartTest(unittest.TestCase):
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+class StreamInvariantTest(unittest.TestCase):
+    """A stream states, once, the decision that needs it to be one expected-version check.
+
+    `guard.because` was always owed; a stream needed no reason, so one was named from the spec's noun —
+    "one record per leaver" — and decided a feature's shape before any seam test could ask what decides
+    together. The rule asks for the reason, never for a split.
+    """
+
+    def validate(self, streams: object, *slices: dict) -> list[str]:
+        model = {"version": 1, "slices": list(slices)} | ({} if streams is None else {"streams": streams})
+        return [f for f in CHECK.validate(model, SERVICES, MIXED, {}) if "invariant" in f or "`streams`" in f]
+
+    def test_a_stream_with_no_stated_invariant_is_refused_once_with_the_fix(self) -> None:
+        said = self.validate(None, slice_of("orders"), slice_of("orders", id="S-orders-2"))
+        self.assertEqual(len(said), 1, said)
+        self.assertIn("stream orders (first appended to by S-orders) states no invariant", said[0])
+        self.assertIn("streams: {orders: {because: ...}}", said[0])
+
+    def test_a_stated_invariant_passes(self) -> None:
+        self.assertEqual(self.validate({"orders": {"because": "closure refuses every later command (FR-33)"}},
+                                       slice_of("orders")), [])
+
+    def test_a_blank_because_is_no_invariant(self) -> None:
+        self.assertEqual(len(self.validate({"orders": {"because": " "}}, slice_of("orders"))), 1)
+
+    def test_a_proposed_slice_owes_nothing_yet(self) -> None:
+        self.assertEqual(self.validate(None, slice_of("orders", status="proposed")), [])
+
+    def test_streams_must_be_a_mapping(self) -> None:
+        self.assertEqual(self.validate(["orders"], slice_of("orders")),
+                         ["`streams` is a mapping of stream name to `{because: ...}`"])

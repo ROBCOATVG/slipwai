@@ -87,6 +87,13 @@ class Fairway:
         return int(sum(found)) if found else None
 
     @property
+    def asked(self) -> list[Entry]:
+        """Every `question` no `decision` has answered by `id`. A headless `/launch` posts the chart's context
+        question for a person and proceeds; a board showing only `told` and `parked` drew that as nothing."""
+        answered = {str(e.fields.get("id", "")) for e in self.entries if e.kind == "decision"}
+        return [e for e in self.entries if e.kind == "question" and str(e.fields.get("id", "")) not in answered]
+
+    @property
     def unanswered(self) -> list[Entry]:
         """Every `told` from a person with no `read` receipt against it."""
         receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read"}
@@ -221,11 +228,14 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
 
 
 def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | None = None) -> list[dict[str, str]]:
-    """Every open message and every park: the things waiting on a person, which is what a board is read for."""
+    """Every open message, question and park: the things waiting on a person, which is what a board is for."""
     waiting: list[dict[str, str]] = []
     for one in found:
         waiting += [{"fairway": one.name, "kind": "told", "what": str(e.fields.get("message", "")), "t": e.t}
                     for e in one.unanswered]
+        waiting += [{"fairway": one.name, "kind": "question",
+                     "what": f"{e.fields.get('id')} ({e.fields.get('slice')}): {e.fields.get('what')}", "t": e.t}
+                    for e in one.asked]
         for park in one.parks:
             waited = minutes_since(park.t, now)
             waiting.append({"fairway": one.name, "kind": "parked", "what": str(park.fields["why"]),

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import checkout_packages  # noqa: F401
+from test_chart_contexts import decided
 
 ROOT = Path(__file__).resolve().parents[1]
 GATE = ROOT / "assets/toolkit/scripts/check-chart.py"
@@ -77,6 +78,7 @@ class RenderedChartTest(unittest.TestCase):
         shutil.copy(GATE, self.tree / "scripts/check-chart.py")
         (self.tree / "docs/event-model/model.yaml").write_text(textwrap.dedent(MODEL).lstrip(), encoding="utf-8")
         (self.tree / "project.json").write_text(textwrap.dedent(MANIFEST).lstrip(), encoding="utf-8")
+        decided(self.tree)  # the context decision `check-chart` asks the fairways for
 
     def render(self) -> subprocess.CompletedProcess[str]:
         return subprocess.run([sys.executable, "scripts/event-model/chart.py"], cwd=self.tree,

@@ -125,6 +125,21 @@ class InboxTest(Fixture):
         self.deck("ORD", logs.entry("parked", fairway="ORD", why="the gate stayed red", t=when(2)))
         self.assertEqual(self.board()["inbox"][0]["kind"], "parked")
 
+    def test_an_open_question_is_waiting_on_a_person(self) -> None:
+        """The chart's context question, posted by a headless `/launch` that proceeded on its proposal.
+        The board drew only `told` and `parked`, so a question nobody had to answer before the run went on
+        was a question nobody saw."""
+        self.deck("leaver", logs.entry("question", fairway="leaver", slice="chart", id="D25",
+                                       what="one context, leaver?", t=when(3)))
+        waiting = self.board()["inbox"]
+        self.assertEqual([row["kind"] for row in waiting], ["question"])
+        self.assertEqual(waiting[0]["what"], "D25 (chart): one context, leaver?")
+
+    def test_a_question_a_decision_answered_is_not(self) -> None:
+        self.deck("leaver", logs.entry("question", fairway="leaver", slice="chart", id="D25", what="?", t=when(3)),
+                  logs.entry("decision", fairway="leaver", id="D25", what="confirmed", t=when(1)))
+        self.assertEqual(self.board()["inbox"], [])
+
 
 class ParkReceiptTest(Fixture):
     def test_a_park_clock_is_the_original_park_and_later_life_never_resets_it(self) -> None:

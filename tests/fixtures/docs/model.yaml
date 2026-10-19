@@ -14,6 +14,11 @@ render:
     events: stream
   framesPerSegment: 6
 
+# Why each stream is one expected-version check, which `check-model` asks of every placed stream.
+streams:
+  booking: {because: a table is held for one party at a time, and a hold is confirmed or released once}
+  table: {because: a table's covers never exceed its seats, whichever hold took them}
+
 slices:
   - id: BOK-01
     name: Hold a table

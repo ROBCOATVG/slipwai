@@ -92,6 +92,9 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "spec_page",
        # Whether a pid file's process is running, asked without the signal Windows reads as Ctrl-C.
        "process_alive",
+       # What a headless session did, read off its event stream for the board's card. The experiment's board
+       # printed a tool's name, so there was no reading of its input to bring back.
+       "session_log",
        # Phase 13: a named set of answers, the verb over it, and the interview that offers one first —
        # which the experiment had no equivalent of, because it asked every question every time.
        "quickstart", "cli_quickstart", "cli_generate", "quickstart_install", "cli_migrate",

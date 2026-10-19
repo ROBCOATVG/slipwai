@@ -18,7 +18,6 @@ is the rule `adopt` already has for the same step (`cli_init.run_init`), and it 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import subprocess
@@ -30,6 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .process_alive import alive
+from .session_log import Folder
 from .shell_environment import login_environment
 
 # budget: 510 — one runner for every child the board starts, including assessment of a feature handed to /sail
@@ -125,40 +125,6 @@ def init_step(where: Path, harness: str, repository: str | None,
               extensions: tuple[str, ...] = ()) -> Step:
     return Step(command(harness, repository, extensions), announced(where, harness, repository, extensions),
                 lambda code: ended(code, harness, repository), "init")
-
-
-def folded_line(line: str) -> list[str]:
-    """Claude Code's print mode writes one JSON event per line, and a person watching the card wants the
-    words: an assistant event's text, one line per tool it reaches for, the result's first line with what it
-    cost. System events and tool results are the harness talking to itself and are dropped. A line that is
-    not JSON is said as it came."""
-    if not line.startswith("{"):
-        return [line]
-    try:
-        event = json.loads(line)
-    except ValueError:
-        return [line]
-    if not isinstance(event, dict):
-        return [line]
-    kind = event.get("type")
-    if kind == "assistant":
-        said: list[str] = []
-        message = event.get("message")
-        for block in (message.get("content") if isinstance(message, dict) else None) or []:
-            if not isinstance(block, dict):
-                continue
-            if block.get("type") == "text":
-                said += [f"• {part}" for part in str(block.get("text", "")).splitlines() if part.strip()]
-            elif block.get("type") == "tool_use":
-                said.append(f"→ {block.get('name', 'tool')}")
-        return said
-    if kind == "result":
-        text = str(event.get("result") or "").strip().splitlines()
-        usage = event.get("usage")
-        tokens = usage.get("output_tokens") if isinstance(usage, dict) else None
-        cost = f" — {tokens:,} output tokens" if isinstance(tokens, int) else ""
-        return [f"result: {text[0] if text else event.get('subtype', 'ended')}{cost}"]
-    return []
 
 
 #: The step after `./init` where a PRD came with the answers: the constitution and the first specification,
@@ -307,6 +273,9 @@ class Fitting:
         be the tail showing nothing until it finished.
         """
         held = ""
+        # One per child, rooted at the project, so a path reads as it sits there and a run of writes lists
+        # under one name: `session_log` says what the card is told and why.
+        folder = Folder(self.where)
         while True:
             try:
                 chunk = os.read(reading, 4096)
@@ -316,10 +285,10 @@ class Fitting:
                 break
             *lines, held = re.split(r"\r\n|\r|\n", held + chunk.decode("utf-8", "replace"))
             for line in lines:
-                for said in folded_line(ANSI.sub("", line).rstrip()):
+                for said in folder.fold(ANSI.sub("", line).rstrip()):
                     self.say(said)
         if held.strip():
-            for said in folded_line(ANSI.sub("", held).rstrip()):
+            for said in folder.fold(ANSI.sub("", held).rstrip()):
                 self.say(said)
 
     def run(self) -> None:

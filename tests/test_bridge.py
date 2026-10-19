@@ -7,6 +7,7 @@ stream's own log, which is the file the captain reads at its next boundary.
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import threading
 import time
@@ -28,10 +29,11 @@ from slipwai.fleet import board
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 575 — every route the board answers, driven against `board_fixture`: the fleet pages, the
+# budget: 610 — every route the board answers, driven against `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
 # hold; the fixture moved out with it rather than being copied, which is what the one-suite rule was for.
+# The storyboard's verdicts, a disapproval's redraw among them, are routes too.
 # Fifteen more for the storyboard's design files, served at the path they have in the project.
 
 
@@ -438,7 +440,8 @@ class LandingTest(BoardTest):
             '<body><article class="state"><h2>Populated</h2></article></body></html>',
             encoding="utf-8")
         (self.made / "Makefile").write_text(
-            "launch:\n\t@echo 'chart and split'\nmodel-next:\n\t@echo 'modelling'\n", encoding="utf-8")
+            "launch:\n\t@echo 'chart and split'\nmodel-next:\n\t@echo 'modelling'\n"
+            "surfaces:\n\t@echo 'drawing $(FEATURE) again'\n", encoding="utf-8")
 
     def _until(self, step: str) -> dict:
         receipt: dict = {}
@@ -463,11 +466,38 @@ class LandingTest(BoardTest):
         self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "parked",
                                                    "reason": "the map is the street"})[0], 200)
         self.assertNotEqual(json.loads(self.get("/init.json")[1])["step"], "model")
+        self._until("surfaces")
         self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "approved"})[0], 200)
         receipt = self._until("model")
         self.assertEqual(receipt["step"], "model")
         self.assertIn("modelling", receipt["lines"])
         self.assertNotIn("chart and split", receipt["lines"])
+
+    def test_disapproving_a_storyboard_draws_it_again(self) -> None:
+        """A person's no waits on a drawing they have not seen. It used to start nothing while the Draw button
+        had gone with the first drawing, so a run stopped there for good."""
+        self._storyboard("standard")
+        self.assertEqual(self.post("/storyboard", {"feature": "001-demo", "verdict": "parked",
+                                                   "reason": "no styling at all"}),
+                         (200, "disapproved; drawing it again"))
+        receipt = self._until("surfaces")
+        self.assertIn("drawing 001-demo again", receipt["lines"])
+        self.assertNotIn("chart and split", receipt["lines"])
+
+    def test_a_disapproved_storyboard_offers_the_draw_button_again(self) -> None:
+        """Where the redraw failed, or the verdict was given while the board was busy, the button retries."""
+        self._storyboard("standard")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["drawable"])
+        (self.made / "specs/001-demo/mockups/mock-states.md").write_text(
+            "## Surface: Discover\n- Populated \u2014 parked: no styling at all\n", encoding="utf-8")
+        self.assertTrue(json.loads(self.get("/voyage.json")[1])["drawable"])
+        # Not while a redraw this board did not start is running: that offered a second drawing over the first.
+        (self.made / ".slipwai").mkdir(exist_ok=True)
+        (self.made / ".slipwai/surfaces.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["drawable"])
+        (self.made / ".slipwai/surfaces.pid").unlink()
+        self.assertEqual(self.post("/draw", {}), (200, "drawing the surfaces"))
+        self.assertIn("drawing 001-demo again", self._until("surfaces")["lines"])
 
     def test_a_split_with_no_fleet_running_offers_to_cast_off_and_the_button_runs_make_cruise(self) -> None:
         import slipwai.bridge as module

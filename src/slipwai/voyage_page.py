@@ -435,13 +435,14 @@ def verdict_form(root: Path, feature: str) -> str:
     parked = next((line.split("parked:", 1)[1].strip()
                    for line in text.splitlines() if "\u2014 parked:" in line), "")
     if parked:
-        note = f"Disapproved: {parked}"
+        note = (f"Disapproved: {parked}. It is being drawn again from that, and the new drawing waits on a "
+                f"verdict of its own.")
     elif "\u2014 approved" in text:
         note = "Approved."
     # Either verdict locks both. A refusal (a disapproval with no reason) turns them back on in the page.
     held = " disabled" if parked or "\u2014 approved" in text else ""
     return (f'<form class="verdict" onsubmit="return false"><p class="empty">{esc(note)} '
-            f"Approving marks every drawn state approved. Disapproving keeps the storyboard here.</p>"
+            f"Approving marks every drawn state approved. Disapproving draws it again from your reason.</p>"
             f'<div class="ask"><input id="why-{esc(feature)}" type="text" maxlength="240" '
             f'placeholder="Why, if you disapprove"{held}>'
             f'<button type="button" class="go" data-storyboard="{esc(feature)}" data-verdict="approved"{held}>'

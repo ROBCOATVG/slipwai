@@ -327,6 +327,18 @@ class BuiltScreensPageTest(unittest.TestCase):
         self.assertIn("button.go:disabled", STYLE)
         self.assertIn("cursor:not-allowed", STYLE)
 
+    def test_a_berth_at_work_is_the_slices_step_working(self) -> None:
+        """`fleet.state_of` calls a live berth `working`; the step compared against `running`, which it never
+        returns, so a fleet at work read as `todo` once nothing waited on a person."""
+        from slipwai.passage import stages
+        root = Path(tempfile.mkdtemp())
+        (root / "project.json").write_text('{"profile": "standard"}\n', encoding="utf-8")
+        fleet = {"berths": [{"state": "working"}], "inbox": [], "running": True}
+        found = stages(root, None, fleet, {"todo": 20, "working": 0})
+        slices = next(one for one in found if one.key == "slices")
+        self.assertEqual(slices.state, "working")
+        self.assertIn("the fleet is running", slices.next)
+
     def test_a_model_still_running_is_the_voyage_not_a_prompt_to_start_one(self) -> None:
         """A model step this board did not start still says where the project is, and that the log is not here."""
         from slipwai.init_run import outside_session

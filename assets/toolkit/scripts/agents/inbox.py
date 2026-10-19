@@ -101,9 +101,28 @@ def minutes_since(instant: str, now: datetime | None = None) -> float:
 
 
 def unread(written: list[dict]) -> list[dict]:
-    """Every `told` with no `read` carrying its timestamp. The receipt is the timestamp, not the count."""
+    """Every `told` nothing has answered. The receipt is the timestamp, not the count; a later `decision`, or
+    a captain claiming work again after a `told` sent while the fairway was parked, answers it too — the
+    board's `Fairway.unanswered` reads it the same way, because nothing wrote the receipt and every `go` a
+    person sent stayed owed for ever."""
     receipts = {str(line.get("told")) for line in written if line.get("kind") == "read"}
-    return [line for line in written if line.get("kind") == "told" and str(line.get("t")) not in receipts]
+    found: list[dict] = []
+    parked = False
+    for index, line in enumerate(written):
+        kind = line.get("kind")
+        if kind == "parked":
+            parked = True
+        elif kind == "claimed":
+            parked = False
+        if kind != "told" or str(line.get("t")) in receipts:
+            continue
+        later = written[index + 1:]
+        if any(one.get("kind") == "decision" for one in later):
+            continue
+        if parked and any(one.get("kind") == "claimed" for one in later):
+            continue
+        found.append(line)
+    return found
 
 
 def unreviewed(written: list[dict]) -> list[dict]:

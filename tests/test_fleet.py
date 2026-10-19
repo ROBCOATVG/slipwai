@@ -137,6 +137,26 @@ class InboxTest(Fixture):
                   logs.entry("read", fairway="ORD", told=when(5), t=when(4)))
         self.assertEqual(self.board()["inbox"], [])
 
+    def test_an_answer_to_a_park_the_captain_took_up_is_not_waiting(self) -> None:
+        """Nothing wrote the `read`, so every `go` a person sent stayed under *Waiting on you* for ever and
+        turned the Slices step red while the fleet ran and nothing was parked."""
+        self.deck("ORD", logs.entry("parked", fairway="ORD", why="open questions", t=when(9)),
+                  logs.entry("told", fairway="ORD", message="go", t=when(8)),
+                  logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(7)))
+        self.assertEqual([one for one in self.board()["inbox"] if one["kind"] == "told"], [])
+
+    def test_a_message_a_decision_followed_is_not_waiting(self) -> None:
+        self.deck("ORD", logs.entry("told", fairway="ORD", message="decide for me", t=when(8)),
+                  logs.entry("decision", fairway="ORD", id="ORD-Q1", what="D3", t=when(7)))
+        self.assertEqual(self.board()["inbox"], [])
+
+    def test_a_note_written_while_the_fairway_worked_is_still_waiting(self) -> None:
+        """A session's note for the host is a task for a person, and the next claim does not answer it."""
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(9)),
+                  logs.entry("told", fairway="ORD", message="For the host: ignore preflight.json", t=when(8)),
+                  logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(7)))
+        self.assertEqual([one["what"] for one in self.board()["inbox"]], ["For the host: ignore preflight.json"])
+
     def test_a_park_is_waiting_on_a_person_too(self) -> None:
         self.deck("ORD", logs.entry("parked", fairway="ORD", why="the gate stayed red", t=when(2)))
         self.assertEqual(self.board()["inbox"][0]["kind"], "parked")

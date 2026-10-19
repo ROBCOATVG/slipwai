@@ -364,6 +364,11 @@ def copy_skills(destination: Path) -> None:
         if not source.is_file():
             continue
         relative = source.relative_to(DELIVERY / "skills")
+        # A skill's own script, once run, leaves Python's bytecode beside it: a cache, not part of the skill,
+        # and not text — reading it stopped the whole projection, and `make verify` with it, the first time a
+        # drawing session ran the ui-ux-pro-max design-system script.
+        if "__pycache__" in relative.parts or source.suffix in (".pyc", ".pyo"):
+            continue
         target = destination / relative
         content = source.read_text(encoding="utf-8")
         materialize(

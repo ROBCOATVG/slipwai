@@ -16,8 +16,11 @@ from .shared_packages import PACKAGES, node_workspace
 #: Under `.slipwai/`, what is the run's and not the record's. Ignored, in the order a reader meets them.
 #: `catch-up/` holds the archived catch-up pages: each migration moves the last one there rather than
 #: overwriting it, and like the page itself it is this machine's working note, not trunk's history.
+#: `preflight.json` is what preflight writes before a stage, and `logs.unread-*/` is where a slice's berth
+#: keeps lines a session wrote before the berth was linked to the shared deck log; left out, both are
+#: untracked files in every berth, and `check-slice-scope` failed every slice run abreast on them.
 RUN_STATE = ("logs/", "run-state.json", "running/", "harbourmaster.json", "berths/", "intake-cleanup.json",
-             "catch-up/")
+             "catch-up/", "preflight.json", "logs.unread-*/")
 
 # What each store writes beside the code, keyed by feature, for a store that keeps its data in the working
 # tree. A SQLite event store writes its log next to the code, and WAL mode writes two more files beside it.

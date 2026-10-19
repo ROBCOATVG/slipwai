@@ -361,14 +361,17 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     berths = fleet.get("berths") or []
     inbox = fleet.get("inbox") or []
     cruising = step_state(receipt, "cruise")
-    working = any(row.get("state") == "running" for row in berths) or counts.get("working", 0) > 0
+    # `working` is what `fleet.state_of` calls a live berth; this compared against `running`, which it never
+    # returns, so a fleet at work read as `todo` whenever nothing waited on a person.
+    working = any(row.get("state") == "working" for row in berths) or counts.get("working", 0) > 0
     waiting = bool(inbox) or counts.get("waiting", 0) > 0
     all_done = split and counts.get("done", 0) == sum(counts.values())
     # Split, not done, nothing running: the one silence the tree cannot explain, said as a wait on a person.
     becalmed = split and not all_done and not working and not fleet.get("running") and not cruising
     found.append(Stage("slices", "Slices", cruising or ("waiting" if waiting or becalmed else "working" if working
                        else "done" if all_done else "todo"), "deck logs",
-                       "make cruise; make cruise-tell answers a park",
+                       ("the fleet is running; Stop the fleet ends it, and a park appears under Waiting on you"
+                        if fleet.get("running") else "make cruise; make cruise-tell answers a park"),
                        "the fleet is not running: cast off" if becalmed and not waiting else
                        f"{counts.get('done', 0)} of {sum(counts.values())} merged" if split
                        else "the fleet, under /cruise",

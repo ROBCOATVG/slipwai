@@ -120,6 +120,18 @@ class GeneratedProjectTest(unittest.TestCase):
             path = f".agents/skills/{name}/SKILL.md"
             self.assertEqual((self.project / path).read_text(encoding="utf-8"), standalone[path], path)
 
+    def test_a_skill_script_s_bytecode_does_not_stop_the_projection(self) -> None:
+        """A skill's script, once run, leaves `__pycache__/` beside it; reading that as text stopped the whole
+        projection, and `make verify` with it, the first time a drawing session ran one."""
+        cache = self.project / "skills/sail/__pycache__"
+        cache.mkdir(parents=True, exist_ok=True)
+        (cache / "helper.cpython-314.pyc").write_bytes(b"\xe6\x00\xff not text")
+        self.addCleanup(lambda: (cache / "helper.cpython-314.pyc").unlink(missing_ok=True))
+        done = subprocess.run([sys.executable, "scripts/agents/project.py", "codex"],
+                              cwd=self.project, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertFalse((self.project / ".agents/skills/sail/__pycache__").exists())
+
     def test_every_file_written_is_utf_8(self) -> None:
         """Generation wrote in the platform's locale codec until slice 4.1 — cp1252 on Windows, which
         cannot encode the first em dash in the toolkit and failed the generation outright. An asset is

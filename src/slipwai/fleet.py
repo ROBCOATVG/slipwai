@@ -111,9 +111,30 @@ class Fairway:
 
     @property
     def unanswered(self) -> list[Entry]:
-        """Every `told` from a person with no `read` receipt against it."""
+        """Every `told` nothing has answered: no `read` names it, no `decision` came after it, and it was not
+        a person's answer to a park the captain has since taken up by claiming work again.
+
+        A `read` receipt was the only way off this list and nothing wrote one, so every `go` and `decide for
+        me` a person ever sent stayed under *Waiting on you* — and turned the Slices step red with "make
+        cruise-tell answers a park" while the fleet ran and nothing was parked.
+        """
         receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read"}
-        return [e for e in self.entries if e.kind == "told" and e.t not in receipts]
+        found: list[Entry] = []
+        parked = False
+        for index, entry in enumerate(self.entries):
+            if entry.kind == "parked":
+                parked = True
+            elif entry.kind == "claimed":
+                parked = False
+            if entry.kind != "told" or entry.t in receipts:
+                continue
+            later = self.entries[index + 1:]
+            if any(e.kind == "decision" for e in later):
+                continue
+            if parked and any(e.kind == "claimed" for e in later):
+                continue
+            found.append(entry)
+        return found
 
 
 def minutes_since(stamp: str, now: datetime | None = None) -> float | None:

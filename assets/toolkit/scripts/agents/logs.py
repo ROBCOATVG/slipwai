@@ -25,6 +25,8 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
+# budget: 380 — the whole vocabulary of both logs, each kind beside the reason it exists, and the few folds
+# every reader needs, among them which slices a fairway holds in flight now that it holds several at once
 from __future__ import annotations
 
 import json
@@ -112,6 +114,9 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     # being asked anything, and a stop is undone by lighting the fleet again, not by an answer. Before this
     # line a stopped captain wrote nothing at all, and its log read as working until the board said stalled.
     "stopped": ("fairway", "slice"),
+    # A park with a `slice` holds that slice and not its siblings: with several of a fairway's slices in
+    # flight at once, one that meets a question it may not guess past must not stop the ones that did not.
+    # A park with no `slice` is the fairway's, as every park was before, and holds everything in it.
     "parked": ("fairway", "why"),
 }
 
@@ -152,6 +157,13 @@ HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
     # was still merging. Harbour-wide, because the merge is — and the one line that explains a trunk two
     # machines' gates both touched, should the one that went quiet turn out not to have been dead.
     "merge-taken-over": ("from", "since"),
+    # How many slice sessions this fairway may run at once, decided once for every fairway because
+    # `boilers` is one budget across all of them: breadth first, then depth by the harbour's priority, each
+    # fairway capped at `abreast` — `abreast.py` in the toolkit is the rule. Written when a fairway's number
+    # changes and read by its captain before it starts a slice beyond its first; a captain that finds no
+    # line at all runs one slice, which is what every captain did before the number existed. `to`, where the
+    # number is 0, names the fairway the slot went to, for the `yielded` line that captain then writes.
+    "slots": ("fairway", "slots"),
 }
 
 
@@ -333,3 +345,31 @@ def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[En
                 for e in harbour if e.kind == "cleared"}
     return [e for e in deck if e.kind == "parked" and str(e.fields["fairway"]) == fairway
             and (fairway, e.t) not in receipts]
+
+
+def fairway_parks(parks: list[Entry]) -> list[Entry]:
+    """The parks that hold a whole fairway: those naming no `slice`, which is every park written before a
+    fairway ran several slices at once, and every park that is about the fairway rather than one slice."""
+    return [e for e in parks if not e.fields.get("slice")]
+
+
+def held_slices(parks: list[Entry]) -> dict[str, str]:
+    """Each slice an open park holds on its own, with the latest reason. Its siblings are not held by it."""
+    return {str(e.fields["slice"]): str(e.fields.get("why", "")) for e in parks if e.fields.get("slice")}
+
+
+def unmerged(deck: list[Entry]) -> list[str]:
+    """Every slice this fairway claimed and has not merged, in the order it claimed them.
+
+    A slice is let go only by merging: a stop, a park since cleared, a machine that went down mid-stage —
+    none of them hands a slice back, so all of them leave it here to be carried on. With one slice at a time
+    this was the last claimed; with several in flight it is all of them, and a reader that took the last
+    would resume one and step past the rest as claimed.
+    """
+    merged = {str(e.fields.get("slice", "")) for e in deck if e.kind == "merged"}
+    found: list[str] = []
+    for e in deck:
+        named = str(e.fields.get("slice", ""))
+        if e.kind == "claimed" and named not in merged and named not in found:
+            found.append(named)
+    return found

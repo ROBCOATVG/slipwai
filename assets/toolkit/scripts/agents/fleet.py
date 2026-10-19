@@ -9,8 +9,10 @@ and the thing you type starts processes and exits.
 That is the whole of this file, and the shortness is the point. Nothing here is in the loop, so nothing here
 can be the thing that died.
 
-**One captain per fairway the chart names**, under the telegraph's position — `boilers` is how many may be
-lit at once, so the rest wait for a berth rather than all starting and competing for one machine.
+**One captain per fairway the chart names**, under the telegraph's position — `boilers` is how many slice
+sessions may run at once across them all, and a captain is at least one, so the rest wait for a berth rather
+than all starting and competing for one machine. How the sessions are shared once they are lit is the
+harbourmaster's, by `abreast.py`.
 
 **Started detached, and recorded by their pid files.** `--stop` reads them back. A process this started that
 is no longer running is said rather than cleaned up quietly: a captain that exited is a fact, and `stop`
@@ -193,7 +195,7 @@ def cast_off(limit: int | None) -> int:
     return started + relight(limit, say=True)
 
 
-def relight(limit: int | None, say: bool = False) -> int:
+def relight(limit: int | None, say: bool = False, wanted: list[str] | None = None) -> int:
     """Light the captains that should be lit and are not, up to `limit`. Returns how many were started.
 
     **Captains only, never the harbourmaster** — which is what separates this from `cast_off`, and the
@@ -213,11 +215,18 @@ def relight(limit: int | None, say: bool = False) -> int:
     would be lit again on the next pass: three parked streams were relit every fifteen seconds for three
     and a half hours, each turn a process and a line in its log saying what the line before it said. A park
     is a person's to clear, and the pass after it is cleared lights the captain.
+
+    `wanted` is the harbourmaster's plan: the fairways given a session this pass, which is every fairway
+    with work before any is given a second (`abreast.py`). Given, only those are lit — a fairway with
+    nothing ready is not lit to say so and exit — and in the priority order all the same. None is every
+    fairway, as before there was a plan.
     """
     standing = {name: pid for name, pid in recorded().items() if alive(pid)}
     started = 0
     lit = len([name for name in standing if name != "harbourmaster"])
     for fairway in fairways():
+        if wanted is not None and fairway not in wanted:
+            continue
         name = f"captain-{fairway}"
         if name in standing:
             if say:
@@ -250,9 +259,10 @@ def parked(fairway: str) -> str:
         return ""
     try:
         deck = logs.fold(where.read_text(encoding="utf-8").splitlines())
-        parks = logs.open_parks(deck, logs.harbour_fold(ROOT), fairway)
+        parks = logs.fairway_parks(logs.open_parks(deck, logs.harbour_fold(ROOT), fairway))
     except (logs.Unreadable, OSError, UnicodeDecodeError):
         return ""
+    # A park naming one slice holds that slice, not the stream: its siblings are still work to light for.
     return (str(parks[-1].fields.get("why", "")) or "parked") if parks else ""
 
 

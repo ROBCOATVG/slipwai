@@ -219,6 +219,8 @@ class Folded:
         #: Open questions per slice: a `question` whose `id` no `decision` has carried since.
         self.questions: dict[str, list[tuple[str, str]]] = {}
         self.parked: dict[str, str] = {}  # fairway -> why
+        #: Slices held by a park of their own — a `parked` line naming a `slice` — which hold no sibling.
+        self.slice_parked: dict[str, str] = {}
         #: Every slice any line names at all. A done slice with none is one that shipped before marks were logged.
         self.mentioned: set[str] = set()
         #: Slices whose marks `--baseline-marks` recorded: shipped before the mark log, and never work again.
@@ -241,6 +243,7 @@ def folded(found: list[dict]) -> Folded:
         elif kind == "claimed" and slice_id:
             state.claimed[slice_id] = str(line.get("t", ""))
             state.claimed_band[slice_id] = str(line.get("band") or "")
+            state.slice_parked.pop(slice_id, None)
             state.parked.pop(str(line.get("fairway", "")), None)
         elif kind == "merged" and slice_id:
             state.merged[slice_id] = str(line.get("commit", ""))
@@ -256,6 +259,8 @@ def folded(found: list[dict]) -> Folded:
             answered = str(line["id"])
             for asked in state.questions.values():
                 asked[:] = [(ident, what) for ident, what in asked if ident != answered]
+        elif kind == "parked" and slice_id:
+            state.slice_parked[slice_id] = str(line.get("why", ""))
         elif kind == "parked":
             state.parked[str(line.get("fairway", ""))] = str(line.get("why", ""))
     return state
@@ -400,6 +405,126 @@ def migration_hold(charted: dict, slice_id: str) -> str | None:
     except (OSError, ValueError, TypeError, AttributeError):
         return "migration state is unreadable; restore .slipwai/migration.json then run `python3 scripts/check-migration.py`"
     return None
+
+
+#: Where the slice graph is read from, cached against each file's mtime: `position` asks once per slice,
+#: and a chart of twenty-three slices re-parsing the model twenty-three times is a board that is slow for
+#: nothing. Keyed by path and mtime, so a model edited mid-run is read again at the next question.
+GRAPHS: dict[tuple[str, float, float], tuple[dict[str, list[str]], dict[str, set[str] | None]]] = {}
+#: How a row of the split's slice graph names a run of slices — `L02–L23` — and how it names the rest.
+#: An en dash or the word `to` and never a hyphen, because a hyphen is inside ids like `ORD-01`.
+RUN = re.compile(r"([A-Za-z][\w.-]*?)(\d+)\s*(?:–|—|\bto\b)\s*\1?(\d+)")
+NONE_CELLS = ("", "—", "-", "–", "none", "n/a")
+
+
+def feature_of(charted: dict) -> str:
+    """The feature this chart is for: its own `feature` key, which `make chart` writes, else the first
+    charted feature — the one `chart()` would have read, which is the one every caller here was handed."""
+    named = str(charted.get("feature") or "")
+    return named or chart()[1]
+
+
+def ids_in(cell: str, known: list[str], rest: list[str]) -> list[str]:
+    """The slice ids one cell of the slice graph names, in chart order: each id written, each run written
+    as `A–B`, and `all others` as every slice no other row's first cell named."""
+    found: set[str] = set()
+    for slice_id in known:
+        if re.search(rf"(?<![\w-]){re.escape(slice_id)}(?![\w-])", cell):
+            found.add(slice_id)
+    for prefix, low, high in RUN.findall(cell):
+        for slice_id in known:
+            tail = slice_id[len(prefix):] if slice_id.startswith(prefix) else ""
+            if tail.isdigit() and int(low) <= int(tail) <= int(high):
+                found.add(slice_id)
+    if "all others" in cell.lower() or "all other" in cell.lower():
+        found.update(rest)
+    return [slice_id for slice_id in known if slice_id in found]
+
+
+def slice_graph(charted: dict) -> tuple[dict[str, list[str]], dict[str, set[str] | None]]:
+    """(each slice's `depends_on`, each slice's `parallel_ok_with` or None where nothing declares one).
+
+    Read where `commands/sail.md`'s *Ready-set selection* says the graph is — each slice's `depends_on` in
+    `docs/event-model/model.yaml` on the event profile, or `## Slice graph` in the split — and from nowhere
+    else, so the rule a person reads and the rule the fleet runs are one rule. The model wins for a slice it
+    lists, being structured and checked by `check-model`; the split's table answers for the rest, and is the
+    only place `parallel_ok_with` is written at all. A table row may name one slice, several, a run of them
+    (`L02–L23`) or `all others`; its `parallel_ok_with` may name ids, `each other` (the row's own slices),
+    or `—`, which declares none.
+
+    **Absent is not a refusal.** A slice no row names has no dependencies here and declares no
+    `parallel_ok_with`, so the page's own rule answers for it — slices that share only a contract are
+    independent — which is what this file did before it read the graph at all.
+    """
+    feature = feature_of(charted)
+    known = [str(slice_id) for slice_id in (charted.get("slices") or {})]
+    model, split = ROOT / "docs/event-model/model.yaml", SPECS / feature / "story-split.md"
+
+    def stamp(path: Path) -> float:
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    key = (f"{split}|{','.join(known)}", stamp(model), stamp(split))
+    if key in GRAPHS:
+        return GRAPHS[key]
+    depends: dict[str, list[str]] = {}
+    parallel: dict[str, set[str] | None] = {}
+    if split.is_file():
+        rows: list[list[str]] = []
+        inside = False
+        for text in split.read_text(encoding="utf-8", errors="replace").splitlines():
+            if text.startswith("#"):
+                inside = text.strip().lstrip("#").strip().lower() == "slice graph"
+                continue
+            if inside and text.strip().startswith("|"):
+                cells = [cell.strip() for cell in text.strip().strip("|").split("|")]
+                if len(cells) >= 2 and cells[0].lower() != "slice" and not set(cells[0]) <= set("-: "):
+                    rows.append(cells)
+        named = {slice_id for cells in rows if "all other" not in cells[0].lower()
+                 for slice_id in ids_in(cells[0], known, [])}
+        rest = [slice_id for slice_id in known if slice_id not in named]
+        for cells in rows:
+            mine = ids_in(cells[0], known, rest)
+            deps = [] if cells[1].lower() in NONE_CELLS else ids_in(cells[1], known, [])
+            ok: set[str] | None = None
+            if len(cells) > 2:
+                said = cells[2].lower()
+                ok = (set() if said in NONE_CELLS else set(mine) if "each other" in said
+                      else set(ids_in(cells[2], known, rest)))
+            for slice_id in mine:
+                depends[slice_id] = [dep for dep in deps if dep != slice_id]
+                parallel[slice_id] = None if ok is None else ok - {slice_id}
+    if model.is_file():
+        try:
+            loaded = load_yaml(model.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 - a model that will not parse is `check-model`'s to refuse
+            loaded = None
+        for item in (loaded.get("slices") if isinstance(loaded, dict) else None) or []:
+            if isinstance(item, dict) and str(item.get("id", "")) in known and "depends_on" in item:
+                listed = item.get("depends_on")
+                depends[str(item["id"])] = [str(dep) for dep in listed] if isinstance(listed, list) else []
+    GRAPHS[key] = (depends, parallel)
+    return depends, parallel
+
+
+def is_done(folded_logs: Folded, done: frozenset[str] | set[str], slice_id: str) -> bool:
+    """Whether a slice is done by the same evidence `position` reads: merged, baselined, or shipped
+    before the mark log. What a `depends_on` waits for."""
+    return (slice_id in folded_logs.merged or slice_id in folded_logs.baselined
+            or (slice_id in done and slice_id not in folded_logs.mentioned))
+
+
+def independent(parallel: dict[str, set[str] | None], one: str, other: str) -> bool:
+    """Whether two ready slices may run at once: neither's `parallel_ok_with` leaves the other out.
+
+    Undeclared is independent, which is the page's rule — slices that share only a contract need not wait
+    for each other. A declaration narrows that and never widens it: a slice whose row says `—` runs beside
+    nothing, and one that names its siblings runs beside those alone.
+    """
+    mine, theirs = parallel.get(one), parallel.get(other)
+    return (mine is None or other in mine) and (theirs is None or one in theirs)
 
 
 def cleared(charted: dict, settled: set[str], slice_id: str) -> bool | str:
@@ -564,6 +689,17 @@ def position(charted: dict, folded_logs: Folded, slice_id: str,
     fairway = str(entry.get("fairway", ""))
     if fairway in folded_logs.parked:
         return "awaiting-decision", f"its fairway {fairway} is parked — {folded_logs.parked[fairway]}"
+    if slice_id in folded_logs.slice_parked:
+        return "awaiting-decision", f"it is parked on its own — {folded_logs.slice_parked[slice_id]}"
+    depends, _ = slice_graph(charted)
+    waiting_for = [dep for dep in depends.get(slice_id, []) if dep not in observed(charted)
+                   and not is_done(folded_logs, done, dep)]
+    if waiting_for:
+        # Rule 3 of *Ready-set selection*: ready is every `depends_on` done. Before this the fleet read
+        # marks alone, and a split whose slices steer by nothing but depend on a walking skeleton offered
+        # all twenty-two of them while the skeleton was still being planned.
+        return "blocked", (f"{slice_id} depends on {', '.join(waiting_for)} in the slice graph, and "
+                           f"{'that is' if len(waiting_for) == 1 else 'those are'} not merged yet")
     asked = folded_logs.questions.get(slice_id) or []
     if asked:
         held = ", ".join(f"{ident}: {what}" for ident, what in asked)

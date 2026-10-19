@@ -23,7 +23,11 @@ arguments narrows that and nothing else:
 | `/sail <slice-id>` | that slice, and nothing else |
 
 A `fairway=` may be written with any of the others. Nothing here chooses a slice for you where several are
-ready: rule 6 says run them concurrently, and that holds in every form but the last.
+ready: rule 6 says run them concurrently, and that holds in every form but the last. **The fleet honours it
+too.** A captain dispatches the last form, one session per slice, but it dispatches one for every slice the
+ready set and the slice graph let run together — each in a worktree of its own, up to the number the
+harbourmaster gives the fairway out of `boilers` (`abreast` in `harbour.json` caps it, three by default) —
+so a fairway worked by the fleet fans out exactly as one worked by `/sail fairway=<name>` does.
 
 **Words that name no slice, fairway, or existing feature are a new idea, handed here.** Capture them, and
 any document this session can read, under `docs/intake/<slug>/` as `docs/intake/README.md` describes. State
@@ -323,7 +327,8 @@ claimed on the strength of it.
 
 **Each slice has its own worktree and one delegate.** For every unclaimed slice the schedule starts, in
 the same turn: claim it, give it a worktree (`git worktree add ../<project>-<id> slice/<id>`; on Claude Code
-the Agent tool's `isolation: worktree` makes one), run `{{make}} preflight` in it — toolchains on PATH, build
+the Agent tool's `isolation: worktree` makes one — and a session a captain dispatched, with `SLIPWAI_BERTH`
+set, is already standing in it, its `.slipwai/logs` the project's own, and makes no other), run `{{make}} preflight` in it — toolchains on PATH, build
 caches writable, a localhost socket a test may bind, dependencies installed, the code index present where one
 is elected — and fix what it reports here, once, before anything is dispatched: one run's delegates found
 each of those in series, a dispatch and a host repair apiece, and none of it was about the product.
@@ -486,7 +491,11 @@ refuses it. A person takes a fairway the way a captain does: `python3 scripts/ag
 <fairway>`, which is a push a second taker cannot win, and `--release` gives it back.
 
 **Merges are ordered within a fairway and not across.** Inside one, merge in split order as *Running ready
-slices concurrently* says. Across fairways, merge as each is accepted, whichever finished first. The
+slices concurrently* says. Across fairways, merge as each is accepted, whichever finished first. **The
+fleet's captain is the one exception inside a fairway**, and only for slices it ran abreast: each merges as it
+passes its gate, one at a time through the harbourmaster's queue, which rebases it onto the trunk the last
+one left and gates it there — so the predictability split order bought is bought instead by the queue, and
+a sibling waiting for a slower one's merge would be a sibling parked for nothing. The
 composition root and the cumulative artifacts are where two merges meet and the second takes both sides; the
 events module grows additively for exactly that reason, because the merge of two additions is a union. A
 real conflict in a mark is a contract change: stop both fairways for the host, never resolve it in a branch.

@@ -75,7 +75,7 @@ class DeclarationTest(unittest.TestCase):
                          {"mark-set", "flag-hoisted", "flag-struck", "berth-allocated",
                           "fires-banked", "park", "telegraph", "granted", "refused",
                           "trunk-red", "trunk-green", "fix-trunk", "cleared",
-                          "merge-taken-over"})
+                          "merge-taken-over", "slots"})
 
     def test_a_request_is_a_deck_line_and_both_its_answers_are_harbour_lines(self) -> None:
         """A captain holds no credential, so it asks; and a request that was refused and left no line is

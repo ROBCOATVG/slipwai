@@ -50,7 +50,8 @@ class TwoMachinesTest(TravelFixture):
         # into the very logs whose silence a lease is judged on — would be a different exercise.
         (self.root / "scripts/agents/fleet.py").write_text(
             (AGENTS / "fleet.py").read_text(encoding="utf-8")
-            + "\n\ndef relight(limit: object, say: bool = False) -> int:\n    return 0\n", encoding="utf-8")
+            + "\n\ndef relight(limit: object, say: bool = False, wanted: object = None) -> int:\n"
+              "    return 0\n", encoding="utf-8")
         chart =self.root / "specs/ordering/chart.yaml"
         chart.parent.mkdir(parents=True)
         chart.write_text(CHART, encoding="utf-8")
@@ -154,7 +155,7 @@ class TwoMachinesTest(TravelFixture):
     def test_greenfield_two_captains_finish_both_fairways_through_the_forge(self) -> None:
         stage = """import pathlib, subprocess, sys
 subprocess.run(["git", "fetch", "--quiet", "origin", "main"], check=True)
-subprocess.run(["git", "checkout", "--quiet", "-b", "slice/" + sys.argv[1], "origin/main"], check=True)
+subprocess.run(["git", "checkout", "--quiet", "-B", "slice/" + sys.argv[1], "origin/main"], check=True)
 path = pathlib.Path("work-" + sys.argv[1] + ".txt")
 path.write_text("implemented " + sys.argv[1] + "\\n", encoding="utf-8")
 subprocess.run(["git", "add", str(path)], check=True)
@@ -174,13 +175,17 @@ subprocess.run(["git", "commit", "--quiet", "-m", "implement " + sys.argv[1]], c
                     [sys.executable, "scripts/agents/harbourmaster.py", "--interval", "1"],
                     cwd=clone, env=environment, stdout=output, stderr=output) as keeper:
                 try:
-                    for _ in range(2):
+                    # Two turns at most: the second slice steers by the first's mark, so it may already have
+                    # run abreast of the first in the first turn — a sibling unblocks by planning.
+                    for turn in range(2):
                         done = subprocess.run(
                             [sys.executable, "scripts/agents/captain.py", fairway, "--once"],
                             cwd=clone, capture_output=True, text=True, timeout=90, env=environment)
                         output.seek(0)
                         diagnostic = done.stdout + done.stderr + output.read()
                         self.assertEqual(done.returncode, 0, diagnostic)
+                        if turn and "every slice of" in done.stdout:
+                            break
                         self.assertIn("is through its gate and merged", done.stdout, diagnostic)
                 finally:
                     keeper.terminate()
@@ -211,6 +216,15 @@ subprocess.run(["git", "commit", "--quiet", "-m", "implement " + sys.argv[1]], c
                              f"implemented {slice_id}")
 
     def test_takeover_merges_the_resumed_work_and_the_first_board_discovers_it(self) -> None:
+        # One slice at a time, because the question is the one slice carried across machines: abreast, ORD-02
+        # would start beside it the moment ORD-01 sets `Placed`, and this stand-in only knows ORD-01's rungs.
+        # On trunk before the slice is cut, so the branch the takeover lands carries it too.
+        config = self.root / "harbour.json"
+        config.write_text(json.dumps({**json.loads(config.read_text(encoding="utf-8")), "abreast": 1}),
+                          encoding="utf-8")
+        for argv in (("commit", "--quiet", "-am", "one slice at a time"), ("push", "--quiet", "origin", "main")):
+            self.checked_git(*argv)
+        self.checked_git("pull", "--quiet", "--ff-only", where=self.two)
         made = self.stopped_mid_slice()
         with subprocess.Popen(
                 [sys.executable, "scripts/agents/harbourmaster.py", "--interval", "1"],

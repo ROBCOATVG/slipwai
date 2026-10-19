@@ -29,8 +29,10 @@ unset does not start because you are keen, it waits. A slice sets its own marks 
 in its own worktree — which is what clears the sibling waiting on you, and why you write `mark-set` then
 rather than at the merge.
 
-Claim exactly one slice at a time, and claim it **before the first edit, not after**. Then dispatch its
-ladder: *Who runs each stage* in `commands/sail.md` says which stages have a delegate type of their own.
+Claim each slice **before its first edit, not after**. The fleet's captain process runs every ready slice
+the slice graph lets run together, each in a worktree of its own and up to the `slots` the harbourmaster gives
+this fairway; a session you dispatched for one slice works that slice alone, in the berth it was started in.
+Then dispatch its ladder: *Who runs each stage* in `commands/sail.md` says which stages have a delegate type of their own.
 Send those to their type, run the rest yourself, and say which ran what. Enforce every stage boundary — read
 the inbox, check the controlled files are unchanged, hold the wait budget — and do it yourself. Your
 controls depend on no harness hook.
@@ -53,15 +55,17 @@ believed. Every line carries `fairway`.
 | `question` | a product question this slice cannot be guessed past, for a person; open until a `decision` carries its `id` | `slice`, `id`, `what` |
 | `told` | something somebody needs to know now | `message` |
 | `read` | a receipt for a `told` you have acted on | `told`, which is that line's `t` |
-| `heartbeat` | you are alive and still working | — |
+| `heartbeat` | you are alive and still working | `slice`, where you are on one |
 | `request` | something outside your berth, asked for | `id`, `what`, `detail` |
 | `berth-request` | you need a berth allocated | — |
 | `stowed` | work set aside for another slice to pick up | `slice`, `from`, `what` |
 | `taken-over` | this stream was another machine's and you have carried it on | `slice`, `from` (that machine) |
 | `yielded` | the harbour's fairway priority moved and this stream is below the lit line, so you have given the berth up | `to`, the fairway that displaced you |
 | `stopped` | you were asked to stop mid-slice, ended the stage, and gave the claim back; the slice is carried on when the fairway is lit again | `slice` |
-| `parked` | you have stopped, and this is why | `why` |
+| `parked` | you have stopped, and this is why | `why`; `slice` where the park holds that slice alone and not its siblings |
 
+Several slices of one fairway write into one log, so **every line about a slice carries `slice`**: a line
+naming none is nobody's in particular once a sibling is in flight, and counts as no slice's progress.
 Write `heartbeat` often enough that a stall is told from a finish. A last line of `merged` means
 **idle** when the chart and marks clear further unclaimed slices: report how many await a captain.
 It means **finished** when no cleared work remains. An in-flight slice whose heartbeat is old is

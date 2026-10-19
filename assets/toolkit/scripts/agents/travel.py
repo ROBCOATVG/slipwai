@@ -91,9 +91,15 @@ def harbour_ref(machine: str) -> str:
     return f"{REFS}/{HARBOUR}/{machine}"
 
 
-def wip_ref(fairway: str) -> str:
-    """Where one fairway's in-flight branch travels, pushed by the machine that holds the fairway."""
-    return f"{WIP}/{fairway}"
+def wip_ref(fairway: str, slice_id: str = "") -> str:
+    """Where one fairway's in-flight branch travels, pushed by the machine that holds the fairway.
+
+    With a slice, that slice's own ref beside the fairway's: a fairway runs several slices at once now, and
+    one ref per fairway carried one of them. `<fairway>.<slice>` and not `<fairway>/<slice>`, because git
+    cannot hold a ref and a directory of refs under one name, and the fairway's own ref is still written —
+    for the slice claimed last, which is what a machine from before reads.
+    """
+    return f"{WIP}/{fairway}.{slice_id}" if slice_id else f"{WIP}/{fairway}"
 
 
 def git(root: Path, *argv: str, machine: str = "") -> subprocess.CompletedProcess[str]:
@@ -400,6 +406,14 @@ def ours(root: Path) -> list[str]:
             if claim is not None and claim.machine == machine]
 
 
+def in_flight_all(path: Path) -> list[str]:
+    """Every slice this fairway is still working on — claimed, and not merged — in the order claimed."""
+    try:
+        return logs.unmerged(logs.fold(path.read_text(encoding="utf-8").splitlines()))
+    except (OSError, UnicodeDecodeError, logs.Unreadable):
+        return []
+
+
 def in_flight(path: Path) -> str:
     """The slice this fairway is still working on — claimed, and not merged — or `""` where there is none.
 
@@ -476,14 +490,17 @@ def depart(root: Path) -> tuple[list[str], list[str]]:
         else:
             refused.append(why)
     for path in logs.deck_logs(root):
-        slice_id = in_flight(path) if path.stem in held else ""
-        if not slice_id:
-            continue
-        ok, why = push_wip(root, BRANCH.format(slice=slice_id), wip_ref(path.stem))
-        if ok:
-            went.append(wip_ref(path.stem))
-        else:
-            refused.append(why)
+        flying = in_flight_all(path) if path.stem in held else []
+        # Each slice on its own ref, and the last claimed on the fairway's as well, for a reader from before
+        # a fairway ran several. A single slice in flight travels exactly as it always did.
+        pushes = [(flying[-1], wip_ref(path.stem))] if flying else []
+        pushes += [(one, wip_ref(path.stem, one)) for one in flying] if len(flying) > 1 else []
+        for slice_id, ref in pushes:
+            ok, why = push_wip(root, BRANCH.format(slice=slice_id), ref)
+            if ok:
+                went.append(ref)
+            else:
+                refused.append(why)
     return went, refused
 
 

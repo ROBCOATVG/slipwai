@@ -39,7 +39,7 @@ class Refused(ValueError):
 POSITIONS = ("full-ahead", "half-ahead", "slow-ahead", "dead-slow", "stop")
 #: What each number is, in a phrase, so one table says it for `--help`, the file's comment and the board.
 MEANS = {
-    "boilers": "berths lit at once",
+    "boilers": "slice sessions running at once, across every fairway",
     "fanout": "delegates one captain may have running",
     "bunker_per_slice": "thousands of work tokens (uncached input + output) one slice may spend",
     "bunker_per_day": "thousands of work tokens (uncached input + output) the harbour may spend in a day",
@@ -103,6 +103,14 @@ LISTS = {
     "fairways": "which fairway's captain is lit first when there are fewer berths than fairways, as names "
                 "separated by commas — `none` to go back to the chart's own order",
 }
+#: Numbers no position rings — so far one. `abreast` is how many of one fairway's ready slices may run at
+#: once, and it is a *shape* rather than a pace: `boilers` is the pace, and it already bounds this one,
+#: because every slice session is one of the boilers whichever fairway it is in. A position that rang it
+#: would be a second lever on the same thing, and a harbour.json written before it existed would read as
+#: `adjusted` the day the keel learned the name. Absent reads as `abreast.DEFAULT` in the toolkit.
+WIDTHS = {
+    "abreast": "slices one fairway may run at once, within `boilers` — 1 is one slice at a time",
+}
 NUMBERS = tuple(MEANS)
 
 
@@ -133,8 +141,8 @@ def parse_setting(text: str) -> tuple[str, object]:
     name, value = name.strip(), value.strip()
     if not value:
         raise Refused(f"`--set` takes `<name>=<value>`; {text!r} has no value")
-    if name not in MEANS and name not in MIRRORED and name not in LISTS:
-        known = {**MEANS, **LISTS, **{one: said for one, (said, _) in MIRRORED.items()}}
+    if name not in MEANS and name not in MIRRORED and name not in LISTS and name not in WIDTHS:
+        known = {**MEANS, **WIDTHS, **LISTS, **{one: said for one, (said, _) in MIRRORED.items()}}
         raise Refused(f"`{name}` is not a setting the telegraph has. It sets: "
                               + "; ".join(f"{one} ({said})" for one, said in known.items()))
     if name in LISTS:
@@ -153,10 +161,15 @@ def parse_setting(text: str) -> tuple[str, object]:
         return name, value
     if name == "bar":
         return name, value.upper()
+    if name in WIDTHS and not (value.isdigit() and int(value) >= 1):
+        # Zero would be a fairway that may run no slice, which is `boilers: 0` said in the wrong place.
+        raise Refused(f"`{name}` is {WIDTHS[name]}, which is a whole number of at least 1; {value!r} is not. "
+                      f"To run nothing, ring `stop`")
     try:
         return name, float(value) if name == "stage_scale" else int(value)
     except ValueError:
-        raise Refused(f"`{name}` is {MEANS[name]}, which is a number; {value!r} is not one") from None
+        raise Refused(f"`{name}` is {MEANS.get(name) or WIDTHS[name]}, which is a number; {value!r} is not "
+                      f"one") from None
 
 
 def adjusted(name: str, held: dict) -> bool:

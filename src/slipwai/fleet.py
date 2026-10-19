@@ -17,8 +17,9 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 365 — every column of the board folded from the logs, including what waits on a person: a park, a
+# budget: 385 — every column of the board folded from the logs, including what waits on a person: a park, a
 # told, and a question a headless stage posted and nobody has answered yet, beside a stream that was stopped
+# and the several slices one stream now has in flight at once
 from __future__ import annotations
 
 import ast
@@ -30,7 +31,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .deck import recent
-from .logs import Entry, Unreadable, deck_logs, fold, harbour_logs, open_parks
+from .logs import Entry, Unreadable, deck_logs, fairway_parks, fold, harbour_logs, held_slices, open_parks, unmerged
 from .shell_environment import login_environment
 
 #: Minutes since the last line after which a berth that has not finished is drawn as stalled. The default
@@ -65,8 +66,13 @@ class Fairway:
 
     @property
     def parked(self) -> str:
+        """Why the stream is parked: a park of the whole fairway, or slices parked on their own with nothing
+        else of it in flight. One slice parked while its siblings run is a stream that is working."""
         parks = self.parks
-        return str(parks[-1].fields["why"]) if parks else ""
+        whole = fairway_parks(parks)
+        if whole:
+            return str(whole[-1].fields["why"])
+        return str(parks[-1].fields["why"]) if parks and not self.slices_now else ""
 
     @property
     def parks(self) -> list[Entry]:
@@ -77,6 +83,14 @@ class Fairway:
         """The slice being worked: the last claimed that has not merged."""
         merged = set(self.merged)
         return next((one for one in reversed(self.claimed) if one not in merged), "")
+
+    @property
+    def slices_now(self) -> list[str]:
+        """Every slice in flight — claimed, not merged, and not parked on its own — in the order claimed. A
+        captain runs several of a stream's slices at once now, and a board that named the last of them
+        drew the rest as nothing."""
+        held = held_slices(self.parks)
+        return [one for one in unmerged(self.entries) if one not in held]
 
     @property
     def last(self) -> str:
@@ -127,7 +141,7 @@ def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | Non
         # Asked to stop and said so. Not `stalled`, which is a captain that went quiet without a word, and
         # not `parked`, which waits on a person: lighting the fleet again carries the slice on.
         return "stopped"
-    if last.kind == "merged" and not fairway.slice_now:
+    if last.kind == "merged" and not fairway.slices_now:
         if waiting is None:
             return "unknown"
         return "idle" if waiting else "finished"
@@ -218,7 +232,7 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
         rows.append({
             "fairway": one.name,
             "feature": one.feature,
-            "slice": one.slice_now or NOTHING,
+            "slice": ", ".join(one.slices_now) or NOTHING,
             "state": state_of(one, bound, now, count),
             "waiting": count if count is not None else NOTHING,
             "last": f"{since:.0f}m ago" if since is not None else NOTHING,

@@ -86,7 +86,7 @@ class SettingTest(unittest.TestCase):
     def test_a_value_that_is_not_a_number_says_what_the_name_means(self) -> None:
         with self.assertRaises(telegraph.Refused) as refused:
             telegraph.parse_setting("boilers=lots")
-        self.assertIn("berths lit", str(refused.exception))
+        self.assertIn("slice sessions running at once", str(refused.exception))
 
     def test_the_bar_is_a_word_and_is_taken_as_one(self) -> None:
         self.assertEqual(telegraph.parse_setting("bar=high"), ("bar", "HIGH"))

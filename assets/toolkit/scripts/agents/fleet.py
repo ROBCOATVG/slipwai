@@ -126,6 +126,60 @@ def start(name: str, argv: list[str]) -> int:
     return process.pid
 
 
+#: Held while one process starts the harbourmaster again, so two captains that both find it gone start one
+#: between them. A file made with `O_EXCL` rather than `flock`, because `flock` is not on Windows and this
+#: file already pays for one platform's quirk in `alive`.
+RESTARTING = RUNNING / "harbourmaster.restarting"
+#: Seconds after which a `RESTARTING` nobody removed is a process that died holding it, not one starting.
+#: Starting a process and writing its pid takes well under a second, so this is generous by two orders.
+RESTART_STALE = 60.0
+
+
+def relight_harbourmaster() -> int | None:
+    """Start the harbourmaster again where its pid file names a process that has gone. Its new pid, or None.
+
+    Called by every captain at the top of its turn and while it waits on a merge answer, because nothing
+    else would: `relight` deliberately never starts one, and only the harbourmaster fills free berths, so
+    a harbourmaster that died while any captain lived stayed dead — and the captain waiting on its answer
+    sat out the wait bound and parked a slice that had passed its gate, for a person to restart a process.
+
+    **Only a pid file naming a dead process is a harbourmaster to restart.** No pid file is a harbourmaster
+    a person started by hand, or none ever started, and neither is this file's to answer: starting one
+    beside a hand-started harbourmaster would be two writers to one machine's harbour log, the one rule the
+    whole design rests on. The pid is read again under `RESTARTING`, so the second of two captains that
+    both saw it gone finds the first one's harbourmaster alive and starts nothing.
+    """
+    def recorded_pid() -> int | None:
+        try:
+            return int((RUNNING / "harbourmaster.pid").read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            return None
+
+    pid = recorded_pid()
+    if pid is None or alive(pid):
+        return None
+    try:
+        held = os.open(RESTARTING, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        # Another captain is starting it. Unless it died doing so, in which case the next turn tries again.
+        try:
+            if time.time() - RESTARTING.stat().st_mtime > RESTART_STALE:
+                RESTARTING.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return None
+    except OSError:
+        return None
+    try:
+        pid = recorded_pid()
+        if pid is not None and alive(pid):
+            return None
+        return start("harbourmaster", [sys.executable, str(HERE / "harbourmaster.py")])
+    finally:
+        os.close(held)
+        RESTARTING.unlink(missing_ok=True)
+
+
 def cast_off(limit: int | None) -> int:
     """Start the harbourmaster and up to `limit` captains. Returns how many processes were started."""
     standing = {name: pid for name, pid in recorded().items() if alive(pid)}
@@ -211,7 +265,10 @@ def stop_all() -> int:
             (RUNNING / f"{name}.pid").unlink(missing_ok=True)
             continue
         os.kill(pid, signal.SIGTERM)
-        print(f"{name}: asked to stop (pid {pid}). A captain stops at its next boundary")
+        # True because the captain makes it so: its SIGTERM handler ends the running stage, writes
+        # `stopped` naming the slice, and gives the claim back once that line has travelled.
+        print(f"{name}: asked to stop (pid {pid}). A captain ends the stage it is on, writes `stopped` "
+              f"naming its slice, and carries that slice on when it is lit again")
         stopped += 1
     return stopped
 

@@ -106,6 +106,12 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     # whose streams swap under it with nothing written down is the state this method exists to not have.
     # Not a `parked`: nothing is wrong and nobody is being asked anything, and a park waits for an answer.
     "yielded": ("fairway", "to"),
+    # A captain asked to stop — `fleet.py stop`, a reboot, a person's Ctrl-C — while it was on a slice. It
+    # ended the stage that was running and wrote this before giving its claim back, so the slice is one the
+    # next captain lit for this fairway carries on rather than one it steps past. Not a `parked`: nobody is
+    # being asked anything, and a stop is undone by lighting the fleet again, not by an answer. Before this
+    # line a stopped captain wrote nothing at all, and its log read as working until the board said stalled.
+    "stopped": ("fairway", "slice"),
     "parked": ("fairway", "why"),
 }
 

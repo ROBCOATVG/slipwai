@@ -54,7 +54,7 @@ Each stop for a person has its button on the stage that it belongs to:
 | A specification is written | **Open spec**, which shows the specification rendered, not as markup. **Draw the surfaces**, which runs `make surfaces` to draw a wireframe for each screen and make a storyboard from them |
 | The surfaces are drawn | **Approve storyboard**, or **Disapprove** with a reason. On the event-modelling profile, approval starts the model. On the standard profile, approval starts the chart |
 | The model is in | **Continue the build**, which runs `make launch`: the chart, the split, and then the fleet casts off |
-| The split is written and nothing is running | **Cast off the fleet**, which is `make cruise`. **Stop the fleet** asks every captain to stop at its next boundary |
+| The split is written and nothing is running | **Cast off the fleet**, which is `make cruise`. **Stop the fleet** ends each captain's running stage; the slice it was on is carried on when the fleet is cast off again |
 | A further feature waits in `docs/intake/` | **Continue the next feature** |
 
 Below the strip, the page shows:

@@ -105,7 +105,7 @@ buttons for the next step. Each button appears only when it can be pressed.
 | **Draw the surfaces** | `make surfaces` | There is a specification, nothing is drawn yet, and the board is not running anything |
 | **Continue the build** | `make launch` | The active feature has a specification and no chart. On the event-modelling profile it needs a model too. Nothing on the board is running or failed |
 | **Cast off the fleet** | `make cruise` | There are slices to work, the fleet is not running, and the board is not running anything |
-| **Stop the fleet** | `make cruise-stop` | Part of the fleet is running. It asks each captain to stop at its next boundary. It does not kill anything |
+| **Stop the fleet** | `make cruise-stop` | Part of the fleet is running. It asks each captain to stop. The captain ends the stage it is running, writes a `stopped` line naming its slice, and gives its claim back. The slice is carried on when the fleet is cast off again |
 | **Open specs/&lt;feature&gt;/spec.md** | Nothing. It opens the specification, rendered, in a new tab | There is a specification |
 
 On the event-modelling profile, before there is a model, the chip *Model it next* replaces **Continue the

@@ -326,8 +326,11 @@ class Session(subprocess.Popen[bytes]):
         self.raw: int | None = None
         self.quiet_since: float | None = None
         self.lock = threading.Lock()
+        # A process group of its own whatever the harness, so that ending it reaches what it started: the
+        # captain's `end` signals the group by the session's pid, and a group that was never made is one
+        # that signal misses without a word, leaving the session running.
         super().__init__(argv, cwd=cwd, env=env, stdout=subprocess.PIPE if self.streamed else None,
-                         start_new_session=self.streamed)
+                         start_new_session=True)
         self.relay = threading.Thread(target=self.pass_through, daemon=True)
         if self.streamed:
             self.relay.start()
@@ -385,15 +388,15 @@ class Session(subprocess.Popen[bytes]):
             os.killpg(self.pid, signal.SIGKILL if hard else signal.SIGTERM)
 
     def terminate(self) -> None:
-        if self.streamed:
+        if hasattr(os, "killpg"):
             self.group(hard=False)
-        else:
+        else:  # pragma: no cover - the other platform's branch
             super().terminate()
 
     def kill(self) -> None:
-        if self.streamed:
+        if hasattr(os, "killpg"):
             self.group(hard=True)
-        else:
+        else:  # pragma: no cover - the other platform's branch
             super().kill()
 
     def wait(self, timeout: float | None = None) -> int:

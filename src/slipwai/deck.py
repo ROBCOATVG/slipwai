@@ -51,6 +51,8 @@ def said(entry: Entry) -> str:
         return f"stowed {at.get('what')} from {at.get('from')} — {at.get('slice')}"
     if kind == "taken-over":
         return f"took {at.get('slice')} over from {at.get('from')}, mid-slice"
+    if kind == "stopped":
+        return f"asked to stop, mid-way through {at.get('slice')}, which is carried on when it is lit again"
     if kind == "parked":
         return f"parked: {at.get('why')}"
     if kind == "request":

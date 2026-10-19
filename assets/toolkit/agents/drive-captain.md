@@ -59,6 +59,7 @@ believed. Every line carries `fairway`.
 | `stowed` | work set aside for another slice to pick up | `slice`, `from`, `what` |
 | `taken-over` | this stream was another machine's and you have carried it on | `slice`, `from` (that machine) |
 | `yielded` | the harbour's fairway priority moved and this stream is below the lit line, so you have given the berth up | `to`, the fairway that displaced you |
+| `stopped` | you were asked to stop mid-slice, ended the stage, and gave the claim back; the slice is carried on when the fairway is lit again | `slice` |
 | `parked` | you have stopped, and this is why | `why` |
 
 Write `heartbeat` often enough that a stall is told from a finish. A last line of `merged` means

@@ -225,10 +225,10 @@ class AliveTest(unittest.TestCase):
 
 
 class StopTest(Fixture):
-    def test_stop_asks_everything_it_started_and_says_a_captain_waits_for_its_boundary(self) -> None:
+    def test_stop_asks_everything_it_started_and_says_what_a_captain_then_does(self) -> None:
         self.run_it("start")
         done = self.run_it("stop")
-        self.assertIn("at its next boundary", done.stdout)
+        self.assertIn("ends the stage it is on, writes `stopped`", done.stdout)
 
     def test_a_process_that_is_already_gone_is_said_and_not_quietly_tidied(self) -> None:
         """`stop` pretending it tidied something is how a person stops believing the output."""

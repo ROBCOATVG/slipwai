@@ -170,10 +170,13 @@ def template(harness: dict[str, Any], sandbox: bool = False) -> tuple[str, str]:
     # A headless session in a checkout nobody has trusted ignores the project's own MCP file on some
     # harnesses, so the row's `headlessFlags` make it honoured — passed only when the file exists, since a
     # flag naming a missing file refuses to start, and `{root}` is this checkout for a harness that trusts
-    # by path.
+    # by path. `{mcp}` is the file itself, by absolute path: a slice's session starts in its own worktree,
+    # where a relative `.mcp.json` names a file that is not there when the branch was cut before the file
+    # was committed — and the session exits 1 before its first line, every attempt.
     project = harness.get("projectMcp")
     if isinstance(project, dict) and project.get("headlessFlags") and (ROOT / str(project["file"])).is_file():
-        said = f"{said} {str(project['headlessFlags']).replace('{root}', str(ROOT))}"
+        flags = str(project["headlessFlags"]).replace("{mcp}", shlex.quote(str(ROOT / str(project["file"]))))
+        said = f"{said} {flags.replace('{root}', str(ROOT))}"
     # The ladder's concurrent slices work in worktrees beside the checkout, which a print session under
     # `acceptEdits` is refused every edit in; the row's `worktreeFlags` name the directory the checkout sits
     # in as a second working directory, so a delegate's first edit is not its last.

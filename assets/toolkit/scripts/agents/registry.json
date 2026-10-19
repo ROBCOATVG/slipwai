@@ -233,7 +233,7 @@
       "projectMcp": {
         "file": ".mcp.json",
         "format": "json-mcpServers",
-        "headlessFlags": "--mcp-config .mcp.json",
+        "headlessFlags": "--mcp-config {mcp}",
         "serverFields": {
           "alwaysLoad": true
         },

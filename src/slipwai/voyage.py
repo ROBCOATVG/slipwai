@@ -113,8 +113,8 @@ def folded(root: Path, feature: str = "") -> tuple[list[dict[str, str]], str]:
             row["fairway"] = owner.name
             if slice_id in owner.merged:
                 row["state"] = "done"
-            elif owner.slice_now == slice_id:
-                row["state"] = "waiting" if owner.parks else "working"
+            elif slice_id in owner.claimed:  # in flight, one of several: waiting where a park holds it
+                row["state"] = "working" if slice_id in owner.slices_now and not owner.parked else "waiting"
         rows.append(row)
     return sorted(rows, key=lambda row: (COLUMNS.index(row["state"]), row["slice"])), ""
 

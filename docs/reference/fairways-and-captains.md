@@ -67,6 +67,27 @@ A captain does these things, in this order:
 8. It ends a stage that is wedged.
 9. It appends every result to its own [deck log](the-logs.md). It writes to no other log.
 
+**A captain runs its fairway's ready slices abreast.** Rule 6 of `/sail`'s *Ready-set selection* says that
+several ready slices run at once, and a captain now honours it inside its fairway as a person's `/sail`
+does. A slice is ready when every `depends_on` in the slice graph has merged, every mark it steers by is
+set, and no question or park holds it — [clearance](clearance.md) answers that, and nothing else does. Two
+ready slices may run together unless the split's `parallel_ok_with` leaves one of them out. Each slice
+then gets:
+
+- **its own berth**: a worktree at `../<project>-<id>` on `slice/<id>`, the same name `/sail` gives one, with
+  `.slipwai/logs` linked to the project's so that every line lands in the one deck log;
+- its own headless session, stage bound, retries, `.working` marker
+  (`.slipwai/running/captain-<fairway>--<slice>.working`) and gate, read from the lines that carry its
+  `slice`;
+- its own merge request. Merges still go one at a time through the harbourmaster. A rebase conflict with a
+  sibling's merge sends that slice back to its berth to resolve, and it asks again.
+
+As each slice merges or parks, the captain starts the next ready one into the space it left, without
+waiting for the rest. A park that names a `slice` holds that slice alone, and its siblings carry on. A stop
+ends every slice in flight and writes a `stopped` line for each. The next captain lit resumes every slice
+that was claimed and not merged. With `abreast: 1`, a captain works one slice at a time in the project's
+own checkout, exactly as it did before.
+
 **A wedged stage is a stage that shows no progress for the stage bound.** The stage bound is the longest
 stage budget in `harbour.json`. Progress is a new line in the deck log, or a new commit on `slice/<id>`.
 When a stage parks itself, the stage keeps its own park. The captain does not write a second park over it.
@@ -116,6 +137,30 @@ There is one harbourmaster for each machine. It is the only writer of that machi
 
 Under `/sail`, the harbourmaster runs inside the person's session. So it uses the person's own credentials,
 and it never copies them into a berth. Under `/cruise`, the harbourmaster is a separate process.
+
+### How the boilers are shared
+
+`boilers` is the number of slice sessions that run at once in the harbour, in every fairway together. It
+used to count captains, and a captain ran one slice. A captain can now run several, so a second budget for
+slices would be two levers on one machine. Instead the harbourmaster shares `boilers` out on each pass and
+writes a `slots` line for each fairway whose number has changed. It already lights the captains, and it is
+the one writer of its harbour log, so it is the one decider. The rule, in order:
+
+1. **Breadth first.** Every fairway with work gets one session before any fairway gets a second.
+2. **Then depth, by priority.** Spare sessions go to the fairways that can use them. The order is the
+   person's own (`fairways` in `harbour.json`), then the critical path — a ready slice whose merge unblocks
+   the most slices, or sets a mark that another fairway steers by — then the most ready slices left.
+3. **`abreast` caps depth.** It is three where `harbour.json` does not say, and never more than `boilers`.
+4. **Back-pressure.** A fairway with a slice waiting on a merge answer starts nothing new. Merges run one at
+   a time with a full gate each, so starting more only makes more rebase conflicts.
+5. **Nothing is preempted.** A running session keeps its slot until its slice merges, parks or stops. The
+   slot it frees is offered again by the same rules, the way `yielded` hands a berth from one captain to
+   another.
+
+A captain's first slice is its own, because it was lit. It starts any slice beyond that only on a `slots`
+line written since its fairway's last slice ended. A captain that finds no `slots` line runs one slice.
+With `abreast: 1`, or with `boilers` equal to the number of fairways that have work, every fairway runs one
+slice, which is what the fleet always did.
 
 ---
 

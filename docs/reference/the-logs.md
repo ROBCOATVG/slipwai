@@ -63,7 +63,7 @@ Every line has `v`, `t` and `kind`. Each kind also has the fields named here.
 | `stowed` | `fairway`, `slice`, `from`, `what` | Work moved into the careen when a stage ran out of budget |
 | `taken-over` | `fairway`, `slice`, `from` | Another machine went past its lease and this captain took the claim, the log and the in-flight branch over mid-slice. The one thing in a fairway's history a later reader cannot work out from any other line |
 | `stopped` | `fairway`, `slice` | The captain was asked to stop — `fleet stop`, a reboot, a Ctrl-C — while on this slice. It ended the running stage and gave its claim back; the next captain lit for the fairway carries the slice on. Not a park: nobody is asked anything |
-| `parked` | `fairway`, `why` | This fairway has stopped and says why |
+| `parked` | `fairway`, `why` | This fairway has stopped and says why. With `slice` as well, only that slice has stopped, and its siblings carry on |
 
 ---
 
@@ -88,6 +88,7 @@ records the answers that it owes.
 | `trunk-green` | `commit` | And once per change back |
 | `fix-trunk` | `fairway`, `slice`, `commit`, `job` | Sent to the captain whose `merged` line names the commit that went red |
 | `merge-taken-over` | `from`, `since` | The merge ref was taken from a machine that had not renewed it within its lease. `since` is the last time that machine said it was still merging |
+| `slots` | `fairway`, `slots` | How many slice sessions this fairway may run at once, out of `boilers` — breadth first, then depth by priority, capped by `abreast`. Written when the number changes; a captain reads it before it starts a slice beyond its first. `running` says what the fairway was running when it was written, and `to`, where `slots` is 0, names the fairway the slot went to |
 
 Trunk can go red because of a check that `make verify` never ran. For this reason, the four trunk kinds are
 in the harbour log and not in one fairway's log. If nothing explains a red trunk, the harbourmaster writes a

@@ -93,7 +93,7 @@ still waiting when `wait_bound` runs out, it says which machine has the ref and 
 ```console
 $ slipwai telegraph
 telegraph: half-ahead
-  boilers           3         berths lit at once
+  boilers           3         slice sessions running at once, across every fairway
   fanout            2         delegates one captain may have running
   bunker_per_slice  1000      thousands of work tokens (uncached input + output) one slice may spend
   bunker_per_day    10000     thousands of work tokens (uncached input + output) the harbour may spend in a day
@@ -101,6 +101,7 @@ telegraph: half-ahead
   bar               MEDIUM    the severity at or above which an adversary finding must close before a merge
   decision_ceiling  10        decisions that may stand unread before a fairway parks
   wait_bound        60        minutes a wait may go with the harbour log silent before it is a parked line
+  abreast           unset     slices one fairway may run at once, within `boilers` — 1 is one slice at a time
 ```
 
 There are five positions. The fastest is first:

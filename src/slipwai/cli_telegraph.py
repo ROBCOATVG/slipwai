@@ -18,7 +18,7 @@ from pathlib import Path
 from .assets import this_command
 from .errors import GenerationError, refuse
 from .project.harbour import CONFIG
-from .telegraph import LISTS, MEANS, MIRRORED, POSITIONS, Refused, applied, described, parse_setting, scaled
+from .telegraph import LISTS, MEANS, MIRRORED, POSITIONS, WIDTHS, Refused, applied, described, parse_setting, scaled
 
 SAIL = ".specify/sail.json"
 
@@ -46,8 +46,8 @@ def shown(held: dict) -> list[str]:
     """Where the telegraph is, and every number under it."""
     at = str(held.get("position", "full-ahead"))
     lines = [f"telegraph: {described(at, held)}"]
-    width = max(len(name) for name in MEANS)
-    for name, said in MEANS.items():
+    width = max(len(name) for name in {**MEANS, **WIDTHS})
+    for name, said in {**MEANS, **WIDTHS}.items():
         lines.append(f"  {name:<{width}}  {held.get(name, 'unset')!s:<8}  {said}")
     return lines
 

@@ -33,7 +33,7 @@ order.
 
 | Number | What it is |
 |---|---|
-| `boilers` | Berths lit at once |
+| `boilers` | Slice sessions running at once, across every fairway |
 | `fanout` | Delegates one captain may have running |
 | `bunker_per_slice` | Thousands of input tokens one slice may spend |
 | `bunker_per_day` | Thousands of input tokens the harbour may spend in a day |
@@ -43,6 +43,23 @@ order.
 | `wait_bound` | Minutes a wait may go with the harbour log silent before it is a `parked` line |
 | `attempts` | Times one slice may be re-dispatched before the fairway parks |
 | `browsers` | Browser-driven test runs at once on this machine |
+
+**`boilers` counts slice sessions, not captains.** A captain runs every ready slice of its fairway that
+the slice graph lets run together, so a number that counted captains would let three fairways run nine
+slices on a machine somebody set to three. One budget, shared by the harbourmaster — see
+[how the boilers are shared](fairways-and-captains.md#how-the-boilers-are-shared).
+
+**`abreast` is the one number no position rings.** It is how many of one fairway's slices may run at once,
+`3` where `harbour.json` does not say, and never more than `boilers`:
+
+```
+slipwai telegraph --set abreast=1      # one slice at a time in every fairway: the fleet as it was
+slipwai telegraph --set abreast=5      # wider, still within boilers
+```
+
+It is a shape and not a pace. `boilers` is the pace and already bounds it, so ringing `slow-ahead` narrows
+every fairway without a second lever, and a `harbour.json` written before the number existed does not read
+as `adjusted`. Zero is refused: a fairway that may run nothing is `stop`, said in the wrong place.
 
 **A new harbour starts at `half-ahead`.** It does not start at `full-ahead`. Nobody has watched a first run
 yet, so the position that spends the most is a strange place to start. The `half-ahead` row is exactly the

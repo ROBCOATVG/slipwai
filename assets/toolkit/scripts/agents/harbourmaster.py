@@ -1010,14 +1010,21 @@ def cleared_for_green(trunk_state: str, already: list[logs.Entry]) -> list[logs.
 
 
 def fill_free_berths() -> None:
-    """Light a captain for a fairway that has come above the lit line — slice 18.2.
+    """Share the boilers out between the fairways, and light a captain for each one given a session.
 
     A berth is a machine-local resource and allocating them is already this process's job; this is the same
-    job from the other end. `boilers` bounds how many are lit and the harbour's fairway priority is which
-    streams get them, so a person moving a stream up pushes another below the line, and that captain writes
-    `yielded` at its next slice boundary and exits. Something then has to fill the berth it gave up, or
-    reordering the streams would *stop* a run rather than reorder it — and `fleet.py` cannot, by design: it
-    starts processes and gets out of the way.
+    job from the other end. `boilers` bounds how many slice sessions run in this harbour at once and the
+    harbour's fairway priority is which streams get them, so a person moving a stream up pushes another
+    below the line, and that captain writes `yielded` at its next slice boundary and exits. Something then
+    has to fill the berth it gave up, or reordering the streams would *stop* a run rather than reorder it —
+    and `fleet.py` cannot, by design: it starts processes and gets out of the way.
+
+    **One decider for every fairway's number**, because the number is a share of one budget: `abreast.py`
+    says the rule — breadth first, depth by priority, `abreast` the cap, a pending merge holding its fairway,
+    nothing preempted — and this writes each fairway's `slots` line when its number, or what it is running,
+    has changed. A captain reads that line before it starts any slice beyond its first. Where the plan cannot
+    be made — no chart yet, or a module this harbour does not carry — captains are lit as they were, one per
+    fairway in priority order, and none is given more than one slice.
 
     `relight` and never `cast_off`: it lights captains only. A harbourmaster started by hand has no pid
     file, so `cast_off` would read it as not running and start a second one, which is the one-writer rule
@@ -1034,9 +1041,47 @@ def fill_free_berths() -> None:
         limit = held.get("boilers") if isinstance(held, dict) else None
         if isinstance(limit, int) and not isinstance(limit, bool) and limit <= 0:
             return  # The telegraph is at `stop`, which lights nothing by its own rule.
-        fleet.relight(limit if isinstance(limit, int) and not isinstance(limit, bool) else None)
+        bounded = limit if isinstance(limit, int) and not isinstance(limit, bool) else None
+        planned = plan_slots(fleet)
+        if planned is None:
+            fleet.relight(bounded)
+            return
+        fleet.relight(bounded, wanted=[fairway for fairway, (count, _, _) in planned.items() if count > 0])
+        written = slots_lines(planned, harbour_entries())
+        if written:
+            append(written)
     except Exception as fault:  # pragma: no cover - never at the cost of the pass
         print(f"harbourmaster: the fleet could not be relit ({fault})", flush=True)
+
+
+def plan_slots(fleet: object) -> dict[str, tuple[int, int, str]] | None:
+    """Every fairway's (sessions, running, the fairway a slot went to), or None where no plan can be made."""
+    try:
+        import abreast
+    except ImportError:
+        return None
+    standing = {name for name, pid in fleet.recorded().items() if fleet.alive(pid)}  # type: ignore[attr-defined]
+    lit = {name.removeprefix("captain-") for name in standing if name.startswith("captain-")}
+    planned = abreast.harbour_plan(lit, HARBOUR_CONFIG)
+    return planned or None
+
+
+def slots_lines(planned: dict[str, tuple[int, int, str]], harbour: list[logs.Entry]) -> list[logs.Entry]:
+    """A `slots` line for each fairway whose number, running count or yield target has changed since its
+    last one — and none for a fairway that has never had a number and is given none now, so a chart's idle
+    streams do not fill the log with zeros."""
+    found: list[logs.Entry] = []
+    for fairway, (count, running, to) in planned.items():
+        last = next((e for e in reversed(harbour) if e.kind == "slots"
+                     and str(e.fields.get("fairway", "")) == fairway), None)
+        said = {"running": running, **({"to": to} if to else {})}
+        if last is None and count == 0 and not to:
+            continue
+        if last is not None and (last.fields.get("slots"), last.fields.get("running"),
+                                 last.fields.get("to", "")) == (count, running, to):
+            continue
+        found.append(logs.entry("slots", harbour=True, fairway=fairway, slots=count, **said))
+    return found
 
 
 def ours() -> list[str]:

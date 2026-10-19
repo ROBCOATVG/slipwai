@@ -4,9 +4,9 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 450 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# budget: 465 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
 # the design files a storyboard links that the board serves beside it, a step it did not start,
-# and how far into its budget a drawing is
+# and how far into its budget a drawing is, and a fleet at work read as working
 from __future__ import annotations
 
 import json

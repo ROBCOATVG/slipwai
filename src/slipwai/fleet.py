@@ -17,9 +17,10 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 385 — every column of the board folded from the logs, including what waits on a person: a park, a
+# budget: 395 — every column of the board folded from the logs, including what waits on a person: a park, a
 # told, and a question a headless stage posted and nobody has answered yet, beside a stream that was stopped
-# and the several slices one stream now has in flight at once
+# and the several slices one stream now has in flight at once, and which `told` an answer or a claim
+# has already taken up
 from __future__ import annotations
 
 import ast

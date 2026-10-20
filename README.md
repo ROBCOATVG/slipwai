@@ -34,9 +34,9 @@ verify: all gates passed
 These steps take about ten minutes. [Your first feature](docs/guide/first-feature.md) takes about five more.
 In those five minutes, one feature is specified, modelled, charted, split, built and demoed to you.
 
-The picture above is the board's **Voyage** tab for one project, part way through. 152 of its 226 slices
-have merged, and the storyboard for one feature waits for a person's verdict. Each tick on the strip comes
-from a file in the repository. Nobody typed a status. Run `slipwai` with no arguments to open the board.
+The picture above is the board's **Voyage** tab for one project, part way through. Its feature is
+specified, storyboarded, modelled and charted into 21 slices, and the fleet is building them. Each tick on
+the strip comes from a file in the repository. Nobody typed a status. Run `slipwai` with no arguments to open the board.
 Only this machine can open it.
 
 ## The development loop

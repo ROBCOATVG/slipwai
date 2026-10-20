@@ -1208,6 +1208,36 @@ def resuming(found: list[logs.Entry]) -> list[str]:
     return logs.unmerged(found)
 
 
+#: How far along a slice is, by what its own log says it reached. A merge asked for is past every gate; a demo
+#: is past the build; a finding stowed is a review that ran.
+LOG_RUNGS = {"request": 8, "demo": 7, "stowed": 5}
+#: The same, by what the slice's branch has under `specs/<feature>/slices/<id>/` — the ladder's artifacts,
+#: which say a stage ran where the log does not: hr-test-2's L11 had its review recorded and no line said so.
+FILE_RUNGS = {"review.md": 6, "tasks.md": 4, "plan.md": 3, "examples.md": 2}
+
+
+def progress(feature: str, slice_id: str, found: list[logs.Entry]) -> int:
+    """How far along one claimed slice is: the furthest rung its log or its branch shows, 0 for none."""
+    logged = [LOG_RUNGS.get(e.kind, 0) for e in found if str(e.fields.get("slice", "")) == slice_id
+              and (e.kind != "request" or e.fields.get("what") == "merge")]
+    listed = subprocess.run(["git", "ls-tree", "--name-only", f"refs/heads/{BRANCH.format(slice=slice_id)}",
+                             f"specs/{feature}/slices/{slice_id}/"], cwd=ROOT, capture_output=True, text=True)
+    filed = [FILE_RUNGS.get(Path(line).name, 0) for line in listed.stdout.splitlines()]
+    return max([0, *logged, *filed])
+
+
+def furthest_first(feature: str, slices: list[str], found: list[logs.Entry]) -> list[str]:
+    """The slices to carry on, the one nearest its merge first, then in the order they were claimed.
+
+    Every claimed slice is carried on, but only as many at once as the harbour gives this fairway, so the
+    order is who waits. It was claim order, and hr-test-2's L11 — reviewed, one step from its merge request —
+    sat idle behind three slices still planning. The furthest along frees its slot soonest and moves trunk
+    for everything behind it.
+    """
+    rank = {one: progress(feature, one, found) for one in slices}
+    return sorted(slices, key=lambda one: -rank[one])
+
+
 def take_over(feature: str, fairway: str, from_machine: str) -> tuple[list[str], str]:
     """Bring a lapsed stream's work over before anything is dispatched. (the slices to resume, why not).
 
@@ -1401,8 +1431,8 @@ def turn(fairway: str) -> str:
     for slice_id in decide_parked(feature, fairway, held):
         held.pop(slice_id, None)
     found = entries(feature, fairway)
-    resume = [one for one in (resume or resuming(found))
-              if one not in held and worked_here(fairway, one) is None]
+    resume = furthest_first(feature, [one for one in (resume or resuming(found))
+                                      if one not in held and worked_here(fairway, one) is None], found)
     fix = fix_owed(fairway, found)
     if fix is not None:
         slice_id = str(fix.fields["slice"])

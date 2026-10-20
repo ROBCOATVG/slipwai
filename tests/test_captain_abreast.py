@@ -247,3 +247,21 @@ class StopTest(Abreast):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OrderTest(Abreast):
+    def test_the_claimed_slice_furthest_along_is_carried_on_first(self) -> None:
+        """hr-test-2's L11 had its review done and sat idle while slots went to slices still planning: the
+        claimed slices were carried on in claim order. With one slot, the one nearest its merge goes first."""
+        self.settings(attempts=0)
+        self.skeleton_merged()
+        for slice_id in ("L02", "L03", "L04"):
+            self.deck("LVR", logs.entry("claimed", fairway="LVR", slice=slice_id, t=OLD),
+                      logs.entry("stopped", fairway="LVR", slice=slice_id, t=OLD))
+        review: dict = {"from": "review"}
+        self.deck("LVR", logs.entry("stowed", fairway="LVR", slice="L04", what="2 LOW", t=OLD, **review))
+        self.granted("L02", "L03", "L04")
+        done = self.turn("--once")
+        ran = self.windows()
+        self.assertEqual(sorted(ran), ["L04"], done.stdout + done.stderr)
+        self.assertIn("L04 is through its gate and merged", done.stdout)

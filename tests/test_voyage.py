@@ -4,10 +4,11 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 495 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# budget: 510 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
 # the design files a storyboard links that the board serves beside it, a step it did not start,
 # and how far into its budget a drawing is, and a fleet at work read as working
 # and a waiting slice's card, opened on its park and its questions with a box aimed at it
+# and the Queued column a slice waiting for a slot stands in
 from __future__ import annotations
 
 import json
@@ -488,3 +489,17 @@ class AnswerCardTest(unittest.TestCase):
         row = {"slice": "L03", "title": "", "state": "working", "fairway": "leaver", "clearance": "running",
                "why": "implementing"}
         self.assertTrue(slice_html(row).startswith('<div class="slice working">'))
+
+
+class QueuedColumnTest(unittest.TestCase):
+    def test_a_slice_waiting_for_a_slot_has_a_column_of_its_own(self) -> None:
+        from slipwai.voyage_page import slice_html, work_card
+
+        rows = [{"slice": "L11", "title": "", "state": "queued", "fairway": "leaver", "clearance": "running",
+                 "why": "claimed, waiting for a slot: carried on when a session frees"},
+                {"slice": "L02", "title": "", "state": "working", "fairway": "leaver", "clearance": "running",
+                 "why": "implementing"}]
+        card = work_card(rows, "")
+        self.assertIn("Queued · 1", card)
+        self.assertIn("Working · 1", card)
+        self.assertTrue(slice_html(rows[0]).startswith('<div class="slice queued">'))

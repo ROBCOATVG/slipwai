@@ -14,9 +14,10 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 500 — the fold, the model, the mock-ups and the screenshots one voyage is read from, and the
+# budget: 510 — the fold, the model, the mock-ups and the screenshots one voyage is read from, and the
 # design files under `docs/design/` a storyboard links, served at the path they have in the project
 # and what a slice waiting on a person is held on: its park, its open questions, and where an answer goes
+# and a slice claimed and waiting for a slot, queued apart from the ones at work
 from __future__ import annotations
 
 import json
@@ -24,6 +25,7 @@ import re
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote, unquote
 
@@ -33,13 +35,14 @@ from .logs import held_slices
 from .process_alive import alive
 
 #: Where the board shows a slice: the four columns, in the order a person reads them.
-COLUMNS = ("todo", "working", "waiting", "done")
+COLUMNS = ("todo", "queued", "working", "waiting", "done")
 #: The clearance script's states, folded to the board's four.
 CLEARANCE = {"done": "done", "running": "working", "awaiting-demo": "working"}
 #: The stroke each state puts on a slice's caption in the drawio — draw.io's own colour space, not the
 #: board's tokens, because the picture keeps draw.io's colours in both themes.
 STROKES = {"done": ("#0f6b6b", "3", ""), "working": ("#8a6d24", "3", ""),
-           "waiting": ("#b4432f", "3", "dashed=1;dashPattern=6 4;"), "todo": ("", "", "")}
+           "waiting": ("#b4432f", "3", "dashed=1;dashPattern=6 4;"),
+           "queued": ("#8a6d24", "2", "dashed=1;dashPattern=2 3;"), "todo": ("", "", "")}
 MODEL = "docs/event-model/model.yaml"
 DRAWIO = "docs/event-model/model.drawio"
 #: draw.io's read-only viewer, and where a copy of it is kept once fetched.
@@ -110,9 +113,12 @@ def held_on(owner: Fairway, slice_id: str) -> dict[str, str]:
     return {"park": own or owner.parked, "asked": "\n".join(asked), "aim": slice_id if own else ""}
 
 
-def folded(root: Path, feature: str = "") -> tuple[list[dict[str, str]], str]:
+def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[list[dict[str, str]], str]:
     """Every charted slice with its state, fairway, why, and marks — and a fault where the chart could not be
-    read. Empty, and no fault, where there is no chart yet."""
+    read. Empty, and no fault, where there is no chart yet.
+
+    A slice in flight is `working` only while a session is on it — a line naming it inside the stall bound —
+    and `queued` while it waits for a slot: claimed, carried on when one frees, and writing nothing meanwhile."""
     feature, result, fault = clearance_query(root, feature)
     states = result.get("states") if isinstance(result.get("states"), dict) else {}
     if fault or not states:
@@ -130,7 +136,10 @@ def folded(root: Path, feature: str = "") -> tuple[list[dict[str, str]], str]:
             if slice_id in owner.merged:
                 row["state"] = "done"
             elif slice_id in owner.claimed:  # in flight, one of several: waiting where a park holds it
-                row["state"] = "working" if slice_id in owner.slices_now and not owner.parked else "waiting"
+                row["state"] = ("waiting" if slice_id not in owner.slices_now or owner.parked
+                                else "working" if slice_id in owner.at_work(now=now) else "queued")
+                if row["state"] == "queued":
+                    row["why"] = "claimed, waiting for a slot: carried on when a session frees"
             if row["state"] == "waiting":
                 row.update(held_on(owner, str(slice_id)))
         rows.append(row)

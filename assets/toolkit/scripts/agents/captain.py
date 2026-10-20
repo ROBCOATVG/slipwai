@@ -108,6 +108,13 @@ HOOKS = ROOT / "scripts/extensions/hooks.py"
 #: The ladder itself. A harness whose print mode resolves this project's slash commands is asked `/sail`;
 #: every other is asked to read this file and follow it.
 DRIVE_COMMAND = ROOT / "commands/sail.md"
+#: Whether this run is under `/cruise`, and who answers its product questions — `commands/cruise.md`.
+CRUISE = ROOT / ".specify/cruise.json"
+#: The `decide` values under which a product question is decided here rather than parked for a person.
+DECIDES = ("recommended-first", "skipper-always")
+#: The owner a cruising run puts an open question to, and the brief it decides by.
+SKIPPER = "sail-decide-skipper"
+SKIPPER_BRIEF = ROOT / f"agents/{SKIPPER}.md"
 #: How often a heartbeat is written while a slice is being worked. Short enough that a fleet board can tell a
 #: wedged berth from a slow one, long enough that it is not most of the log.
 HEARTBEAT = 60.0
@@ -151,6 +158,8 @@ LOCK = threading.RLock()
 #: Set by a stop, and read by every slice's thread at each poll, so each one ends its own session and
 #: leaves without writing anything after the stop: the `stopped` lines are the main thread's to write.
 STOP = threading.Event()
+#: What a slice's next run is told before it starts: the questions the skipper decided while it was parked.
+TOLD: dict[str, str] = {}
 #: What wakes the turn between polls: a slice's thread finishing, or one leaving its merge wait, which is
 #: when a fairway held back by its pending merge may start its next slice.
 BOUNDARY: queue.Queue[str] = queue.Queue()
@@ -182,6 +191,38 @@ def harbour() -> dict:
     except (OSError, ValueError, UnicodeDecodeError):
         return {}
     return held if isinstance(held, dict) else {}
+
+
+def cruising() -> str:
+    """The `decide` a cruising run answers product questions by, or `""` where nobody decides them here.
+
+    The captain dispatches `/sail` — the ladder a person drives — and `/sail` hands an open question back to
+    whoever is at the wheel. Under `/cruise` nobody is: `.specify/cruise.json` says the skipper is the owner,
+    and hr-test-2 parked three slices on thirteen questions for a person with `enabled: true` and
+    `decide: recommended-first` in that file, because nothing told the session which run it was in.
+    """
+    try:
+        held = json.loads(CRUISE.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return ""
+    if not isinstance(held, dict) or held.get("enabled") is not True:
+        return ""
+    decide = str(held.get("decide") or "recommended-first")
+    return decide if decide in DECIDES else ""
+
+
+def cruise_note(decide: str) -> str:
+    """What a cruising session is told about the questions it meets, in the words `commands/cruise.md` uses."""
+    return (f"\n\nThis run is under /cruise, with `decide: {decide}`: nobody is at the wheel, so a product "
+            f"question the artifacts do not settle is not parked for a person. Decide it as "
+            f"`commands/cruise.md` *Decisions* says — "
+            + ("the host where the stage recommends an answer or a standing decision covers it, otherwise "
+               if decide == "recommended-first" else "")
+            + f"a fresh `{SKIPPER}` delegate — append the entry to the feature's decisions.md under a number "
+              f"from `python3 scripts/agents/ids.py reserve decision`, write the decision into the artifact "
+              f"the stage owns, write the `decision` line carrying the question's `id` with `decided_by` "
+              f"naming who decided, and carry on. Park only on a question the skipper answers `unavailable` "
+              f"— a fact nobody here has — or one a constitution MUST rules out.")
 
 
 def stage_bound() -> float:
@@ -420,6 +461,8 @@ def sail_command(slice_id: str, fairway: str, retry: str = "",
         prompt += (f"\n\nYou are already in this slice's berth: the worktree at {berth}, on branch "
                    f"{BRANCH.format(slice=slice_id)}. Work there, and make no other worktree for it; its "
                    f"`.slipwai/logs` is the project's own.")
+    if (decide := cruising()):
+        prompt += cruise_note(decide)
     if retry:
         prompt += (f"\n\nThe last run of this slice did not close its gate: {retry}. Re-enter at the first "
                    f"incomplete stage and close what it left.")
@@ -444,6 +487,8 @@ def naming(slice_id: str, fairway: str, retry: str = "", berth: Path | None = No
     told = {"SLIPWAI_RETRY": retry} if retry else {}
     if berth is not None:
         told["SLIPWAI_BERTH"] = str(berth)
+    if (decide := cruising()):
+        told["SLIPWAI_CRUISE"] = decide
     return {"SLIPWAI_FAIRWAY": fairway, "SLIPWAI_SLICE": slice_id, "SLIPWAI_STAGE": "drive",
             "SLIPWAI_SINCE": logs.now(), **told}
 
@@ -573,6 +618,10 @@ def boundary(feature: str, fairway: str) -> tuple[str, str]:
         said = str(late[0].get("message", ""))[:120]
         return (f"{len(late)} message(s) from a person have gone past the wait bound unanswered, the "
                 f"oldest being {said!r}. `/told` reads them, and a read line is the receipt"), ""
+    if not owed.get("over_ceiling"):
+        parks = owed.get("overdue_parks") or []
+        said = str((parks[0] if parks else {}).get("why", ""))[:120]
+        return f"a park has gone past the wait bound unanswered: {said!r}", ""
     return (f"{len(owed.get('unreviewed') or [])} decisions stand unread, over the ceiling of "
             f"{owed.get('ceiling')}. A backlog of judgement nobody has looked at is not judgement. Read "
             f"them under *Waiting on you* on the board and press Mark read, which writes each receipt, or "
@@ -713,6 +762,134 @@ def landed_already(slice_id: str, feature: str, fairway: str) -> bool:
     return True
 
 
+def skipper_command(slice_id: str, feature: str, fairway: str, asked: list[logs.Entry],
+                    berth: Path | None) -> tuple[list[str], dict[str, str]]:
+    """What decides a slice's open questions under `/cruise`: (argv, the environment it runs under).
+
+    `SLIPWAI_SKIPPER` replaces the whole thing and takes `<slice> <fairway> <ids>` after it, as `SLIPWAI_SAIL`
+    does for the ladder — which is how the suite drives a fake owner.
+    """
+    ids = [str(e.fields.get("id", "")) for e in asked]
+    told = {**naming(slice_id, fairway, "", berth), "SLIPWAI_STAGE": "decide"}
+    named = os.environ.get("SLIPWAI_SKIPPER")
+    if named:
+        return [*named.split(), slice_id, fairway, ",".join(ids)], {**os.environ, **told}
+    chosen, _said = harness.choose()
+    template, _ = harness.template(chosen)
+    listed = "\n".join(f"- {e.fields.get('id')}: {e.fields.get('what')}" for e in asked)
+    where = deck(feature, fairway).relative_to(ROOT).as_posix()
+    prompt = (f"This run is under /cruise, with `decide: {cruising()}`. Slice {slice_id} on fairway {fairway} "
+              f"stopped on these open product questions:\n{listed}\n\nDecide each one as "
+              f"`commands/cruise.md` *Decisions* says: put it to a fresh `{SKIPPER}` delegate "
+              f"(`agents/{SKIPPER}.md` is its brief; where this harness cannot delegate, read the brief and "
+              f"decide exactly as it says), under a number from `python3 scripts/agents/ids.py reserve "
+              f"decision <count> {slice_id}`. Append each entry to `specs/{feature}/decisions.md`, write the "
+              f"decision into the artifact the stage owns, and append one JSON line per decided question to "
+              f"`{where}`: {{\"v\": 1, \"t\": <now, UTC, ...Z>, \"kind\": \"decision\", \"fairway\": "
+              f"\"{fairway}\", \"slice\": \"{slice_id}\", \"id\": <the question's id>, \"what\": \"D<n>: <the "
+              f"decision>\", \"decided_by\": \"{SKIPPER}\"}}. A question the brief answers `unavailable` is not "
+              f"decided: write nothing for it. Decide only these, build nothing, and end.")
+    if berth is not None:
+        prompt += f"\n\nYou are in this slice's berth, the worktree at {berth}; work there."
+    line = template.replace("{prompt}", shlex.quote(prompt)) + harness.model_flags(chosen, sail_model())
+    return shlex.split(line), {**harness.child_environment(chosen), **told}
+
+
+def skipper_round(slice_id: str, feature: str, fairway: str, asked: list[logs.Entry]) -> list[str]:
+    """Put a cruising slice's open questions to the skipper. The ids still open after it, every one where it
+    could not run.
+
+    The session's own prompt says to decide under `/cruise`, and a session can still stop to ask — the rule
+    is prose. This is the same rule as a step the captain takes: one owner's round, in the slice's berth,
+    before anything is parked for a person. Only what the owner cannot decide reaches the board.
+    """
+    ids = [str(e.fields.get("id", "")) for e in asked]
+    flying = FLIGHT.setdefault(slice_id, {})
+    held = flying.get("berth")
+    berth = held if isinstance(held, Path) and held.resolve() != ROOT.resolve() else None
+    try:
+        argv, environment = skipper_command(slice_id, feature, fairway, asked, berth)
+    except harness.NoHarness as refused:
+        print(f"captain: {slice_id}'s questions were not put to the skipper: {refused}", flush=True)
+        return ids
+    if STOP.is_set():
+        raise Stopped()
+    print(f"captain: {slice_id} stopped on {', '.join(ids)}; putting them to {SKIPPER}", flush=True)
+    fire("before-stage", stage="decide", slice=slice_id, fairway=fairway)
+    started = len(entries(feature, fairway))
+    process = harness.Session(argv, berth or ROOT, environment)
+    flying["process"] = process
+    try:
+        watched(process, feature, fairway, slice_id, stage_bound(), started)
+    finally:
+        end(process)
+        flying.pop("process", None)
+    fire("after-stage", stage="decide", slice=slice_id, fairway=fairway)
+    decided = {str(e.fields.get("id", "")) for e in entries(feature, fairway) if e.kind == "decision"}
+    return [one for one in ids if one not in decided]
+
+
+def put_already(fairway: str, slice_id: str) -> Path:
+    """Where this machine records which of a parked slice's questions were put to the skipper, so a question
+    it left open — `unavailable`, a fact nobody here has — is not put to it again on every turn."""
+    return fleet.RUNNING / f"skipper-{fairway}--{slice_id}.put"
+
+
+def settled(found: list[logs.Entry], slice_id: str) -> bool:
+    """Whether a slice parked on questions has had every one of them answered by a `decision` line."""
+    return any(e.kind == "question" and str(e.fields.get("slice", "")) == slice_id for e in found) \
+        and not open_questions(found, slice_id)
+
+
+def decide_parked(feature: str, fairway: str, held: dict[str, str]) -> list[str]:
+    """Put the open questions of every slice parked on its own to the skipper, once each, under `/cruise`.
+    The slices whose every question is now decided.
+
+    A restart found L07, L09, L13 and L21 parked on questions for a person that a cruising run should never
+    have asked one, and the fix to the session's prompt reaches only slices dispatched after it. So a turn
+    starts with the parks already standing: each one's questions go to the skipper in its berth, the rounds
+    side by side, and a slice whose questions are all decided is resumed, told the decisions. The park
+    itself is the harbourmaster's to clear, which it does on the same evidence — the `decision` lines.
+    """
+    if not cruising():
+        return []
+    found = entries(feature, fairway)
+    rounds: dict[str, list[logs.Entry]] = {}
+    for slice_id in held:
+        mark = put_already(fairway, slice_id)
+        done = set(mark.read_text(encoding="utf-8").split()) if mark.is_file() else set()
+        asked = [e for e in open_questions(found, slice_id) if str(e.fields.get("id", "")) not in done]
+        if asked:
+            rounds[slice_id] = asked
+
+    def one(slice_id: str, asked: list[logs.Entry]) -> None:
+        berth, _why = moored(slice_id)
+        FLIGHT[slice_id] = {"berth": berth} if berth is not None else {}
+        try:
+            skipper_round(slice_id, feature, fairway, asked)
+        finally:
+            FLIGHT.pop(slice_id, None)
+        mark = put_already(fairway, slice_id)
+        mark.parent.mkdir(parents=True, exist_ok=True)
+        with mark.open("a", encoding="utf-8") as handle:
+            handle.write("".join(f"{e.fields.get('id')}\n" for e in asked))
+
+    threads = [threading.Thread(target=one, args=(slice_id, asked), name=f"decide-{slice_id}", daemon=True)
+               for slice_id, asked in rounds.items()]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    found = entries(feature, fairway)
+    answered = [slice_id for slice_id in held if settled(found, slice_id)]
+    for slice_id in answered:
+        ids = sorted({str(e.fields.get("id", "")) for e in found
+                      if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id})
+        TOLD[slice_id] = (f"it was parked on {', '.join(ids)}, and those are now decided: the `decision` lines "
+                          f"and the decisions.md entries carry the answers. Carry on from them")
+    return answered
+
+
 def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool, str]:
     """Drive the slice until its gate is satisfied, or say why it will not be. (satisfied, why not).
 
@@ -724,9 +901,12 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
     `attempts` is spent, carries the last reason and the count.
 
     Two things are not retried, because a second run cannot change them: an open question, which only a
-    person answers, and a session that parked itself, whose reason is already the newest line.
+    person answers, and a session that parked itself, whose reason is already the newest line. **Under
+    `/cruise` an open question is the skipper's first**: one round of it, and the slice is run again on its
+    decisions as a retry; only a question it leaves open is parked for a person.
     """
-    tried, retry = 0, ""
+    tried, retry = 0, TOLD.pop(slice_id, "")
+    put: set[str] = set()  # the questions already put to the skipper, so a round is never repeated
     promised = sets_of(slice_id)
     while True:
         try:
@@ -735,6 +915,19 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             return False, str(refused)
         tried += 1
         own = own_parks(fresh, fairway, slice_id)
+        asked = open_questions(entries(feature, fairway), slice_id) if own or finished else []
+        fresh_asks = [e for e in asked if str(e.fields.get("id", "")) not in put]
+        if fresh_asks and cruising():
+            put |= {str(e.fields.get("id", "")) for e in asked}
+            left = skipper_round(slice_id, feature, fairway, asked)
+            if not left and tried <= bound:
+                retry = (f"the questions it stopped on ({', '.join(sorted(put))}) were decided by {SKIPPER}; "
+                         f"the `decision` lines and the decisions.md entries carry the answers. Carry on from "
+                         f"them")
+                print(f"captain: {slice_id}'s questions are decided; running it again", flush=True)
+                continue
+            if left:
+                asked = [e for e in asked if str(e.fields.get("id", "")) in left]
         if own:
             return False, str(own[-1].fields.get("why", ""))
         if landed_already(slice_id, feature, fairway):
@@ -743,7 +936,7 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             missing, verdict = owed(fresh, slice_id, promised)
             if not missing and verdict == ACCEPTED:
                 return True, ""
-            asked = open_questions(fresh, slice_id)
+            asked = open_questions(fresh, slice_id) if not asked else asked
             if asked:
                 # Before the mark check: a stage that stopped to ask is not a stage that wrote nothing, and
                 # the park has to carry the question, because the person reading it answers it.
@@ -1203,7 +1396,11 @@ def turn(fairway: str) -> str:
         return f"captain: {fairway} parked — {stranded}"
     # Claimed and not merged is this stream's own work, whatever left it there: a cleared park, a stop, a
     # reboot. A slice still parked on its own is left until it is cleared, and one another captain on this
-    # machine is working is left to it.
+    # machine is working is left to it — except, under `/cruise`, one whose questions the skipper has now
+    # decided: its park is answered by the decisions, and the harbourmaster's receipt only says so.
+    for slice_id in decide_parked(feature, fairway, held):
+        held.pop(slice_id, None)
+    found = entries(feature, fairway)
     resume = [one for one in (resume or resuming(found))
               if one not in held and worked_here(fairway, one) is None]
     fix = fix_owed(fairway, found)

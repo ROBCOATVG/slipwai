@@ -171,7 +171,11 @@ def owed(fairway: str, now: datetime | None = None) -> dict:
         "over_ceiling": len(backlog) > ceiling,
         # A boundary is forced by a message nobody answered in time, or by a backlog of judgement nobody
         # has looked at. Either way the next thing to happen is a person, not another stage.
-        "forced": bool(late or overdue_parks) or len(backlog) > ceiling,
+        # A park of one slice holds that slice alone — its siblings were never waiting on it — so only a
+        # park of the whole fairway forces their boundary: hr-test-2's three question parks, past the bound,
+        # would otherwise have stopped every sibling at its next boundary with a reason about something else.
+        "forced": bool(late or [line for line in overdue_parks if not line.get("slice")])
+        or len(backlog) > ceiling,
     }
 
 

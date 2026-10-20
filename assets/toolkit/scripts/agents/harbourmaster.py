@@ -929,6 +929,7 @@ def once() -> int:
     written += bank() or rung()
     written += told_after_parks()
     written += cleared_for_review()
+    written += cleared_by_decisions(written)
     written += cleared_for_green(trunk_state, written)
     if written:
         append(written)
@@ -1011,6 +1012,42 @@ def cleared_for_review() -> list[logs.Entry]:
         found += [logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                              what="the decisions it waited on have been read, or the ceiling was raised")
                   for park in parks]
+    return found
+
+
+def cleared_by_decisions(already: list[logs.Entry]) -> list[logs.Entry]:
+    """A `cleared` receipt for every park of one slice that stopped on questions, once each is decided.
+
+    Under `/cruise` the skipper answers a slice's open questions — at the captain's turn, for a slice that
+    parked on them before the session was told it was cruising — and a `decision` line carrying each
+    question's `id` is the answer, in the same log the park is in. The park asked for exactly those answers,
+    so nothing is left for a person to say. **Only a slice's own park**, only where the slice asked at least
+    one question at or before it, and only once no question of that slice is open: a park on anything else
+    is still a person's, and so is one whose skipper left a question `unavailable`. Not a message — a
+    person's `told` still clears a park in `told_after_parks`, unchanged; this reads decisions alone.
+    """
+    harbour = harbour_entries()
+    done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
+            for e in already if e.kind == "cleared"}
+    found: list[logs.Entry] = []
+    for path in deck_logs():
+        fairway = path.stem
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        decided = {str(e.fields.get("id", "")) for e in deck if e.kind == "decision"}
+        for park in logs.open_parks(deck, harbour, fairway):
+            slice_id = str(park.fields.get("slice") or "")
+            if not slice_id or park.fields.get("waiting") == REVIEW or (fairway, park.t) in done:
+                continue
+            asked = [str(e.fields.get("id", "")) for e in deck
+                     if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id]
+            if not any(e.kind == "question" and str(e.fields.get("slice", "")) == slice_id and e.t <= park.t
+                       for e in deck) or any(one not in decided for one in asked):
+                continue
+            found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
+                                    what=f"answered by decisions {', '.join(dict.fromkeys(asked))}"))
     return found
 
 

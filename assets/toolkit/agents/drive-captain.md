@@ -93,7 +93,8 @@ run the full gate on the rebased branch, you write the `request`, and you stop t
 writer per file, always.
 
 **You do not decide a product question.** A question the artifacts do not settle goes back to the person,
-through the inbox under `/sail` or to the skipper under `/cruise`. Under no circumstances do you guess past
+through the inbox under `/sail` or to the skipper under `/cruise` — the captain's prompt says which,
+and `SLIPWAI_CRUISE` carries the `decide` a cruising run answers by. Under no circumstances do you guess past
 one: a sibling is building against the same contract and your guess becomes their rework.
 
 **A `fix-trunk` is diagnosed before it is touched.** `skills/ci-debugging` is the method — a hypothesis,

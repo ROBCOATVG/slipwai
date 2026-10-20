@@ -48,7 +48,7 @@ from .bridge_page import page, payload
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
-from .deck import tell
+from .deck import dismiss, tell
 from .dials import set_dial
 from .errors import GenerationError
 from .fleet import board
@@ -703,6 +703,8 @@ class Bridge(BaseHTTPRequestHandler):
                 said = "continuing the build"
             elif where == "/tell":
                 said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")))
+            elif where == "/dismiss":
+                said = dismiss(self.root, str(held.get("fairway", "")), str(held.get("told", "")))
             elif where == "/ring":
                 ring(self.root, str(held.get("position", "")))
                 said = f"rung to {held.get('position')}"

@@ -30,13 +30,14 @@ from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 660 — every route the board answers, driven against `board_fixture`: the fleet pages, the
+# budget: 680 — every route the board answers, driven against `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
 # hold; the fixture moved out with it rather than being copied, which is what the one-suite rule was for.
 # The storyboard's verdicts, a disapproval's redraw among them, are routes too, and so are the retries
 # of a launch or a model that failed.
 # Fifteen more for the storyboard's design files, served at the path they have in the project.
+# Twenty for Done on a note for the host, which is a `read` receipt written from the page.
 
 
 class TellTest(Fixture):
@@ -74,6 +75,8 @@ class PageTest(Fixture):
         # Clicking it opens the stream's own lines and a box to answer from, which becomes a `told`.
         self.assertIn("<details", said[said.index("Waiting on you"):said.index("Streams")])
         self.assertIn('data-tell="ORD" data-box="tell-wait-0"', said)
+        # And a note, which needs no answer, can be put away with Done.
+        self.assertIn('data-dismiss="ORD"', said)
 
     def test_a_message_from_a_person_is_escaped_and_never_rendered_as_markup(self) -> None:
         self.deck("ORD", logs.entry("told", fairway="ORD", message="<script>alert(1)</script>"))
@@ -123,6 +126,20 @@ class ServerTest(BoardTest):
         self.assertEqual(code, 200)
         self.assertEqual([e.fields["message"] for e in self.read("ORD") if e.kind == "told"],
                          ["from the page"])
+
+    def test_a_note_for_the_host_is_dismissed_from_the_page(self) -> None:
+        """A session's note needs no answer, and nothing but a `read` receipt takes it off Waiting on you."""
+        self.post("/tell", {"fairway": "ORD", "message": "For the host: ignore preflight.json"})
+        told = next(e for e in self.read("ORD") if e.kind == "told")
+        code, said = self.post("/dismiss", {"fairway": "ORD", "told": told.t})
+        self.assertEqual(code, 200, said)
+        self.assertEqual([e.fields["told"] for e in self.read("ORD") if e.kind == "read"], [told.t])
+
+    def test_a_dismissal_of_a_message_the_log_does_not_hold_is_refused(self) -> None:
+        code, said = self.post("/dismiss", {"fairway": "ORD", "told": "2001-01-01T00:00:00Z"})
+        self.assertEqual(code, 400)
+        self.assertIn("no message", said)
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "read"], [])
 
     def test_ringing_from_the_page_writes_the_same_file_the_verb_does(self) -> None:
         """A second path that wrote harbour.json its own way would be the first one to drift."""

@@ -1,14 +1,14 @@
 # Slipwai
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ROBCOATVG/slipwai/main/docs/images/voyage-dark.png">
-  <img alt="The Voyage window: the stages of one project from requirements to accepted, with a tick for each stage that a file proves done, and the buttons for the next step" src="https://raw.githubusercontent.com/ROBCOATVG/slipwai/main/docs/images/voyage-light.png">
-</picture>
-
 [![verify](https://github.com/ROBCOATVG/slipwai/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/ROBCOATVG/slipwai/actions/workflows/verify.yml)
 [![PyPI](https://img.shields.io/pypi/v/slipwai)](https://pypi.org/project/slipwai/)
 [![Python](https://img.shields.io/pypi/pyversions/slipwai)](https://pypi.org/project/slipwai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ROBCOATVG/slipwai/main/docs/images/voyage-dark.png">
+  <img alt="The Voyage window: the stages of one project from requirements to accepted, with a tick for each stage that a file proves done, and the buttons for the next step" src="https://raw.githubusercontent.com/ROBCOATVG/slipwai/main/docs/images/voyage-light.png">
+</picture>
 
 **Slipwai creates product repositories and runs a delivery loop in them with coding agents.** Say the name
 as "slipway".
@@ -34,9 +34,9 @@ verify: all gates passed
 These steps take about ten minutes. [Your first feature](docs/guide/first-feature.md) takes about five more.
 In those five minutes, one feature is specified, modelled, charted, split, built and demoed to you.
 
-The picture above is the board's **Voyage** tab for one project, part way through. 152 of its 226 slices
-have merged, and the storyboard for one feature waits for a person's verdict. Each tick on the strip comes
-from a file in the repository. Nobody typed a status. Run `slipwai` with no arguments to open the board.
+The picture above is the board's **Voyage** tab for one project, part way through. Its feature is
+specified, storyboarded, modelled and charted into 21 slices, and the fleet is building them. Each tick on
+the strip comes from a file in the repository. Nobody typed a status. Run `slipwai` with no arguments to open the board.
 Only this machine can open it.
 
 ## The development loop

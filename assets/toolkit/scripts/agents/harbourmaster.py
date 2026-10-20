@@ -90,6 +90,7 @@ sys.path.insert(0, str(HERE))
 
 import berths  # noqa: E402
 import claims  # noqa: E402
+import inbox  # noqa: E402
 import logs  # noqa: E402
 import telegraph  # noqa: E402
 import travel  # noqa: E402
@@ -113,6 +114,10 @@ HARBOUR_CONFIG = ROOT / "harbour.json"
 #: because the harbour log is what every captain reads on every turn and a line nobody needs is a line
 #: everybody pays for.
 CARRIED = {"mark-set": "mark-set", "parked": "park"}
+#: Who wrote a `told`, where it says. Only a person's answers a park: the board and `/cruise-tell` write it.
+PERSON = "person"
+#: What a captain's park at the decision ceiling waits on. Cleared by reading, never by a message.
+REVIEW = "decision-review"
 #: What a request may ask for at all. A closed set: an action nobody wrote down is one nobody reviewed.
 ACTIONS = ("push", "merge", "deploy", "flag", "publish")
 #: What is never done, whoever asks and whatever the reason. Matched against the request's own text, because
@@ -923,12 +928,21 @@ def once() -> int:
     written: list[logs.Entry] = trunk_said + carried(sorted(fresh, key=lambda one: one.t), taken, trunk_state)
     written += bank() or rung()
     written += told_after_parks()
+    written += cleared_for_review()
     written += cleared_for_green(trunk_state, written)
     if written:
         append(written)
     write_cursors(cursors)
     fill_free_berths()
     return len(written)
+
+
+def over_ceiling(fairway: str) -> bool | None:
+    """Whether more decisions stand unread than `decision_ceiling` allows. None where it cannot be said."""
+    try:
+        return bool(inbox.owed(fairway).get("over_ceiling"))
+    except (SystemExit, OSError, ValueError):
+        return None
 
 
 def told_after_parks() -> list[logs.Entry]:
@@ -939,6 +953,18 @@ def told_after_parks() -> list[logs.Entry]:
     the captain read the park, exited, and the `told` waited for a session the park stopped from ever
     starting: a stream told `go` stayed parked. Told after the park is the answer to it, and the message is
     what the receipt keeps, which `answer_questions` then records as the decision.
+
+    **A person's, and only a person's.** A session writes `told` lines too — *for the host: L03 is green
+    but for two gates* — and every one of them used to clear whatever park was open: hr-test-2's fairway
+    parked at the decision ceiling on nineteen unread decisions, and the next slice's note to the host
+    cleared it eleven minutes later with nobody having read one. Parks cleared each other the same way. So
+    a `told` counts only where it says `by: person`, which the board and `fleet.py tell` outside a dispatched
+    session write; an older line saying nothing of who wrote it answers nothing.
+
+    **Never past the decision ceiling.** While more decisions stand unread than `decision_ceiling` allows,
+    no message clears a park: the captain would park again at its next boundary, and *go* is not a reading.
+    The answer waits and clears the park once the backlog is read. A park the captain wrote at the ceiling
+    itself is `cleared_for_review`'s, whatever anybody says.
 
     Every deck log whole, not the lines new this pass: a park can be older than the cursor, and a receipt
     already written drops that park from `open_parks`, so a second pass writes nothing.
@@ -951,12 +977,40 @@ def told_after_parks() -> list[logs.Entry]:
             deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
         except (logs.Unreadable, OSError, UnicodeDecodeError):
             continue
-        told = [e for e in deck if e.kind == "told" and str(e.fields.get("fairway", "")) == fairway]
-        for park in logs.open_parks(deck, harbour, fairway):
+        told = [e for e in deck if e.kind == "told" and str(e.fields.get("fairway", "")) == fairway
+                and e.fields.get("by") == PERSON]
+        parks = [park for park in logs.open_parks(deck, harbour, fairway) if park.fields.get("waiting") != REVIEW]
+        if not told or not parks or over_ceiling(fairway) is not False:
+            continue
+        for park in parks:
             after = [e for e in told if e.t > park.t]
             if after:
                 found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                         what=str(after[-1].fields.get("message", "")).strip() or "told"))
+    return found
+
+
+def cleared_for_review() -> list[logs.Entry]:
+    """A `cleared` receipt for every park a captain wrote at the decision ceiling, once it is no longer over.
+
+    The ceiling is a person reading what was decided on their behalf, so what lifts it is the reading — a
+    `read` line for each decision — or a person raising `decision_ceiling` in `harbour.json`. Not a message:
+    a message is how the guardrail was walked past. Asked of the same count the captain parked on.
+    """
+    harbour = harbour_entries()
+    found: list[logs.Entry] = []
+    for path in deck_logs():
+        fairway = path.stem
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        parks = [park for park in logs.open_parks(deck, harbour, fairway) if park.fields.get("waiting") == REVIEW]
+        if not parks or over_ceiling(fairway) is not False:
+            continue
+        found += [logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
+                             what="the decisions it waited on have been read, or the ceiling was raised")
+                  for park in parks]
     return found
 
 
@@ -1002,7 +1056,7 @@ def cleared_for_green(trunk_state: str, already: list[logs.Entry]) -> list[logs.
         for park in logs.open_parks(deck, harbour, fairway):
             before = [e for e in answers[fairway] if e.t <= park.t]
             if (not before or before[-1].kind != "refused" or before[-1].fields.get("waiting") != GREEN_TRUNK
-                    or (fairway, park.t) in done):
+                    or (fairway, park.t) in done or park.fields.get("waiting") == REVIEW):
                 continue
             found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                     what="trunk is no longer red, so the merge it refused is asked for again"))

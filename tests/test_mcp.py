@@ -14,11 +14,13 @@ fields, same file, same reader at the other end.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -127,6 +129,13 @@ class TellTest(Harbour):
         self.assertEqual(last["kind"], "told")
         self.assertEqual(last["fairway"], "ordering")
         self.assertEqual(last["message"], "use the minor unit")
+        self.assertEqual(last["by"], "person", "a person's line is the only kind that answers a park")
+
+    def test_under_a_dispatched_session_the_line_is_the_session_s(self) -> None:
+        with mock.patch.dict(os.environ, {"SLIPWAI_FAIRWAY": "ordering"}):
+            self.text("tell", fairway="ordering", message="for the host: two gates are red")
+        written = (self.root / logs.deck_path("ordering", "ordering")).read_text(encoding="utf-8")
+        self.assertEqual(json.loads(written.splitlines()[-1])["by"], "session")
 
     def test_a_message_with_nothing_in_it_is_an_error_result_rather_than_a_line(self) -> None:
         found = self.call("tell", fairway="ordering", message="   ")

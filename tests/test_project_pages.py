@@ -31,6 +31,7 @@ from pathlib import Path
 
 import checkout_packages
 
+from slipwai.assets import VERSION
 from slipwai.layout import Layout
 from slipwai.project.docs import documentation_files
 from slipwai.project.metadata import metadata
@@ -140,7 +141,10 @@ def rendered() -> dict[tuple[str, str], str]:
     for name, profile, target, shape, delivery in combinations():
         key = f"{name}/{profile}/{target}-{shape}/{delivery}"
         for path, text in pages(sets[name](), profile, target, shape, delivery).items():
-            built[(key, path)] = text
+            # The keel's own version is in `project.json`, and it changes at every release and snapshot
+            # without the text around it changing. Read as a placeholder, so the record pins the pages and
+            # not the version number: 2.0.0rc1 broke every manifest's digest by being cut.
+            built[(key, path)] = text.replace(VERSION, "{version}")
     return built
 
 

@@ -124,6 +124,9 @@ You can declare a hook in a short form, `"hooks": {"init": "init.py"}`, or in a 
 The hook receives the given values as environment variables: `SLIPWAI_STAGE`, `SLIPWAI_SLICE` and so on.
 `SLIPWAI_POINT` names the point itself.
 
+**A hook that names no `budget` gets 30 seconds, or ten minutes at `check`.** A `check` hook is a gate in
+`make verify`, and a gate that renders or builds takes minutes. A hook over its budget is ended.
+
 **`init` and `project` have a default declaration, and the default is the entry point.** If a manifest
 names neither point, the extension is attached to both, and `init.py` fires at each. Every extension
 installs something, and every extension tells the agent that it is there. So these two points cost no

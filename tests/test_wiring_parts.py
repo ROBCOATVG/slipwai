@@ -10,6 +10,8 @@ on two machines and one that does not, and a range dressed as a pin is the shape
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -62,6 +64,16 @@ class OpenApiTest(unittest.TestCase):
     def test_the_client_package_lives_under_the_workspace_packages(self) -> None:
         self.assertTrue(openapi.API_CLIENT.endswith("/api-client"))
         self.assertTrue(openapi.API_CLIENT_NAME.startswith("@"))
+
+    def test_make_openapi_writes_by_an_absolute_path(self) -> None:
+        """`npm --workspace` runs the script inside the service, where a path from the root names nothing:
+        every berth in hr-test-2 wrote its document nowhere."""
+        service = SimpleNamespace(transport="fastify", path="apps/service")
+        with mock.patch.object(openapi, "exporting", return_value=[service]), \
+                mock.patch.object(openapi, "DOCUMENTS", {"fastify": "openapi.json"}), \
+                mock.patch.object(openapi, "export_command", return_value="npm --workspace apps/service run"):
+            recipe = openapi.openapi_targets("shop", [])
+        self.assertIn("@out=$(CURDIR)/apps/service/openapi.json; npm --workspace apps/service", recipe)
 
 
 class PermissionsTest(unittest.TestCase):

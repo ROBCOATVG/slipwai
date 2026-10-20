@@ -273,6 +273,8 @@ class FrontendTest(FactoryTestCase):
             # The document itself is committed, and `check-openapi` is what holds it to the routes.
             self.assertTrue((repo / "apps/service/openapi.json").is_file())
             self.assertIn("check-openapi", (repo / "Makefile").read_text(encoding="utf-8"))
+            # By an absolute path: `npm --workspace` runs inside the service, where a root path names nothing.
+            self.assertIn("@out=$(CURDIR)/apps/service/openapi.json;", (repo / "Makefile").read_text(encoding="utf-8"))
             # And the one route calls through the client rather than writing a path out a second time.
             route = (repo / "apps/web/src/routes/Home.tsx").read_text(encoding="utf-8")
             self.assertIn("@packages/api-client", route)

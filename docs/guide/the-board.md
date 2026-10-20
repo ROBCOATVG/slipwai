@@ -179,6 +179,9 @@ at its next boundary. A `told` that comes after a park also clears that park: th
 `cleared` receipt on its next pass and then lights the captain again. [The workflow](the-workflow.md#how-to-clear-a-park)
 says more.
 
+A message row also has **Done**. Press it for a note that needs no answer, such as a session's
+`For the host: …`. The board writes a `read` line for that message, and the row leaves the list.
+
 ### Say something to a stream
 
 One answer box for each fairway that has written a line. **Send** writes a `told` line in the same way.

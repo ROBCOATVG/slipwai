@@ -48,7 +48,7 @@ from .bridge_page import page, payload
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
-from .deck import mark_read, tell
+from .deck import dismiss, mark_read, tell
 from .dials import set_dial
 from .errors import GenerationError
 from .fleet import board
@@ -710,6 +710,8 @@ class Bridge(BaseHTTPRequestHandler):
                 if not isinstance(stamps, list):
                     raise ValueError("`decisions` is a list of the instants of the decisions read")
                 said = mark_read(self.root, str(held.get("fairway", "")), [str(one) for one in stamps])
+            elif where == "/dismiss":
+                said = dismiss(self.root, str(held.get("fairway", "")), str(held.get("told", "")))
             elif where == "/ring":
                 ring(self.root, str(held.get("position", "")))
                 said = f"rung to {held.get('position')}"

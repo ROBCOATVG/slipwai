@@ -103,6 +103,8 @@ document.addEventListener('click', event => {
   }
   const read = event.target.closest('[data-read]');
   if (read) send('/read', {fairway: read.dataset.read, decisions: read.dataset.stamps.split(',')});
+  const seen = event.target.closest('[data-dismiss]');
+  if (seen) send('/dismiss', {fairway: seen.dataset.dismiss, told: seen.dataset.told});
   if (event.target.id === 'launch') {
     event.target.disabled = true;
     send('/launch', {});
@@ -169,8 +171,11 @@ def inbox_rows(rows: list[dict], controls: bool, streams: dict | None = None) ->
         name, detail = str(row["fairway"]), inbox_detail(row)
         lines = (streams or {}).get(name) or []
         log = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines[-20:])
+        # A note needs no answer, only to be seen: Done writes its `read` receipt and it leaves the list.
+        done = (f'<button data-dismiss="{esc(name)}" data-told="{esc(row["t"])}">Done</button>'
+                if row["kind"] == "told" else "")
         box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
-               f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button></div>'
+               f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button>{done}</div>'
                if controls else "")
         said.append(f'<details class="log"><summary><b>{esc(name)}</b> · {esc(row["kind"])} · {esc(detail)} '
                     f'<span class="mono">{esc(row["t"])}</span></summary>'

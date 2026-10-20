@@ -117,6 +117,28 @@ def mark_read(root: Path, fairway: str, stamps: list[str]) -> str:
     return f"marked {len(wanted)} decision(s) read in {fairway}"
 
 
+
+def dismiss(root: Path, fairway: str, told: str) -> str:
+    """Write the `read` receipt for one `told`, named by its instant, so it leaves *Waiting on you*.
+
+    A session's note for the host — `For the host: …` — is a task for a person, and no decision or claim
+    answers it, so it sat under *Waiting on you* until somebody wrote a receipt by hand. Pressing Done on
+    it is that receipt. Only a `told` the log actually holds is dismissed: a receipt for nothing is a line
+    that would quietly answer a message written later in the same second.
+    """
+    if not fairway or not told:
+        raise ValueError("a dismissal names the stream and the instant of the message it dismisses")
+    found, fault = entries(root, fairway)
+    if fault and not found:
+        raise ValueError(fault)
+    if not any(e.kind == "told" and e.t == told for e in found):
+        raise ValueError(f"{fairway} has no message at {told} to dismiss")
+    path = root / deck_path(feature_of(root, fairway), fairway)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(entry("read", fairway=fairway, told=told).line())
+    return f"dismissed {fairway}'s message of {told}"
+
+
 def entries(root: Path, fairway: str, feature: str = "") -> tuple[list[Entry], str]:
     """One stream's entries, and the fault where its log cannot be read.
 

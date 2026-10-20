@@ -35,6 +35,15 @@ REGISTRY = ".slipwai/hooks.json"
 BLOCK = "hooks"
 #: How long one hook may take before it is ended, where its declaration does not say.
 DEFAULT_BUDGET = "30s"
+#: Where a point's work is longer than a moment. `check` is a gate in `make verify`, and an extension's gate
+#: renders, builds or runs a browser: ux-gates' 53 render gates in hr-test-2 took minutes, and 30 seconds
+#: ended them every time though every shard passed. A hook ended for time is a gate that says nothing.
+POINT_BUDGETS = {"check": "600s"}
+
+
+def budget_of(point: str) -> str:
+    """How long a hook at this point may take where its declaration does not say."""
+    return POINT_BUDGETS.get(point, DEFAULT_BUDGET)
 #: The two points whose script every extension has anyway, so the manifest need not say it.
 #:
 #: These were run by *convention* until slice 6.1e: `./init --extension` executed a file called `init.py`
@@ -120,14 +129,14 @@ def declared(manifest: dict) -> dict[str, dict]:
     for name, body in block.items():
         point(name)
         if isinstance(body, str):
-            found[name] = {"run": body, "budget": DEFAULT_BUDGET}
+            found[name] = {"run": body, "budget": budget_of(name)}
         elif isinstance(body, dict) and body.get("run"):
-            found[name] = {"budget": DEFAULT_BUDGET, **body}
+            found[name] = {"budget": budget_of(name), **body}
         else:
             raise ValueError(f"the `{name}` hook names no script to run. A hook is a path, or an object "
                              f"with `run` and optionally `stages` and `budget`")
     for name, script in DEFAULTS.items():
-        found.setdefault(name, {"run": script, "budget": DEFAULT_BUDGET})
+        found.setdefault(name, {"run": script, "budget": budget_of(name)})
     return found
 
 

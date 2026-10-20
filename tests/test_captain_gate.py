@@ -48,6 +48,35 @@ class GateTest(Fixture):
         parked = [str(e.fields["why"]) for e in self.read("ORD") if e.kind == "parked"]
         self.assertIn("no `demo` line", parked[0], done.stdout)
 
+    def test_a_slice_a_session_merged_itself_is_never_driven_again(self) -> None:
+        """hr-test-2: a session asked for its own merge, and the captain judged the run by its gate, found no
+        mark set that turn, and drove a slice already on trunk three more times before parking on it."""
+        self.harbour(logs.entry("granted", harbour=True, fairway="ORD", request="merge-ORD-01-own",
+                                what="merge", slice="ORD-01", commit="f00d123"))
+        runs = self.root / "runs.txt"
+        body = f"""import sys, json, pathlib, datetime
+runs = pathlib.Path({str(runs)!r})
+runs.write_text(runs.read_text() + "x" if runs.exists() else "x")
+path = pathlib.Path(".slipwai/logs/ordering") / (sys.argv[2] + ".jsonl")
+now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+with path.open("a", encoding="utf-8") as handle:
+    handle.write(json.dumps({{"v": 1, "t": now, "kind": "request", "fairway": sys.argv[2], "id": "merge-ORD-01-own",
+                             "what": "merge", "slice": sys.argv[1], "detail": "merge it"}}) + "\\n")
+"""
+        self.attempts(2)
+        done = self.captain("ORD", self.sail(body))
+        self.assertEqual(runs.read_text(), "x", done.stdout + done.stderr)
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "parked"], [], done.stdout)
+        merged = [e for e in self.read("ORD") if e.kind == "merged"]
+        self.assertEqual([str(e.fields["commit"]) for e in merged][:1], ["f00d123"], done.stdout)
+
+    def test_a_grant_nobody_in_the_fairway_asked_for_is_not_a_merge(self) -> None:
+        self.harbour(logs.entry("granted", harbour=True, fairway="ORD", request="merge-ORD-01-own",
+                                what="merge", slice="ORD-01", commit="f00d123"))
+        done = self.captain("ORD", self.sail("import sys\nsys.exit(0)\n"))
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "merged"], [], done.stdout)
+        self.assertEqual(len([e for e in self.read("ORD") if e.kind == "parked"]), 1)
+
     def test_a_slice_that_sets_no_mark_passes_on_its_demo_alone(self) -> None:
         """One rule, not a special case: every mark in `sets`, which is vacuous when that is empty."""
         self.deck("BIL", logs.entry("mark-set", fairway="BIL", slice="BIL-01", mark="Charged"),

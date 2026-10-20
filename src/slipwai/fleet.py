@@ -17,14 +17,16 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 415 — every column of the board folded from the logs, including what waits on a person: a park,
+# budget: 450 — every column of the board folded from the logs, including what waits on a person: a park,
 # a told, the decisions nobody has read, and a question a headless stage posted and nobody has answered
 # yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
-# which `told` an answer or a claim has already taken up
+# which `told` an answer or a claim has already taken up, which one is a session's note for another session
+# rather than for the person, and whether unread decisions hold anything up
 from __future__ import annotations
 
 import ast
 import json
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -136,7 +138,7 @@ class Fairway:
                 parked = True
             elif entry.kind == "claimed":
                 parked = False
-            if entry.kind != "told" or entry.t in receipts:
+            if entry.kind != "told" or entry.t in receipts or for_someone_else(entry):
                 continue
             later = self.entries[index + 1:]
             if any(e.kind == "decision" for e in later):
@@ -145,6 +147,27 @@ class Fairway:
                 continue
             found.append(entry)
         return found
+
+
+#: How a session addresses a note: `For the host, from L03's captain: …`, `For L02's captain, from L06's: …`.
+ADDRESSED = re.compile(r"^\s*for\s+([^:,]{1,60})[:,]", re.IGNORECASE)
+
+
+def for_someone_else(entry: Entry) -> bool:
+    """A note one session left for another — `For the captain: …`, `For L02's captain, from L06's: …`.
+
+    Sessions in berths abreast talk to each other through the deck log, because it is the one thing they
+    share, and every such line sat under *Waiting on you* and turned the Slices step red while three
+    slices ran with nothing blocked. Only a session's line is read for an address, and only one addressed
+    to somebody other than the host is left out: an unaddressed note is still shown, because a note for
+    the person that is missed costs more than one that is shown and dismissed.
+    """
+    if entry.fields.get("by") == "person":
+        return False
+    addressed = ADDRESSED.match(str(entry.fields.get("message", "")))
+    if addressed is None:
+        return False
+    return not re.match(r"the\s+(host|person|human|owner)\b", addressed.group(1).strip(), re.IGNORECASE)
 
 
 def minutes_since(stamp: str, now: datetime | None = None) -> float | None:
@@ -274,8 +297,13 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
     return rows
 
 
-def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | None = None) -> list[dict[str, Any]]:
-    """Every open message, question and park: the things waiting on a person, which is what a board is for."""
+def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | None = None,
+          ceiling: int | None = None) -> list[dict[str, Any]]:
+    """Every open message, question and park: the things waiting on a person, which is what a board is for.
+
+    Unread decisions are listed for reading, and say whether they hold anything up: `blocking` is `yes` only
+    past the decision ceiling, where the captain parks. Below it they are a thing to read, not a wait, and
+    the Slices step reads them that way."""
     waiting: list[dict[str, Any]] = []
     for one in found:
         waiting += [{"fairway": one.name, "kind": "told", "what": str(e.fields.get("message", "")), "t": e.t}
@@ -286,8 +314,11 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
         if one.unreviewed:
             # One row per stream, not one per decision: twenty decisions are one thing a person sits down
             # to read, and twenty rows would bury the park that is waiting behind them.
+            over = ceiling is not None and len(one.unreviewed) > ceiling
             waiting.append({"fairway": one.name, "kind": "decisions", "t": one.unreviewed[0].t,
-                            "what": f"{len(one.unreviewed)} decision(s) nobody has read yet",
+                            "what": f"{len(one.unreviewed)} decision(s) nobody has read yet"
+                                    + (f", over the ceiling of {ceiling}" if over else ""),
+                            "blocking": "yes" if over else "no",
                             "decisions": [{"t": e.t, "id": str(e.fields.get("id", "")),
                                            "what": str(e.fields.get("what", ""))} for e in one.unreviewed]})
         for park in one.parks:
@@ -375,6 +406,14 @@ def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:
                              f"`python3 {script} --json --feature {feature}` and repair the reported fault")
 
 
+def ceiling_of(held: dict) -> int | None:
+    """The decision ceiling the harbour runs to, or None where it says none a reader can use."""
+    try:
+        return int(held["decision_ceiling"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def board(root: Path, config: dict | None = None, now: datetime | None = None) -> dict[str, object]:
     """Everything the board shows, folded from the logs. Nothing here is stored anywhere."""
     harbour = harbour_log(root)
@@ -402,7 +441,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         "streams": {one.name: recent(root, one.name)[0] for one in found},
         "pressure": pressure(held, harbour),
         "bunker": {"spent": spent(found), "allowed": held.get("bunker_per_day", NOTHING)},
-        "inbox": inbox(found, bound, now),
+        "inbox": inbox(found, bound, now, ceiling_of(held)),
         "feed": feed(found, harbour),
         "unreadable": faults,
     }

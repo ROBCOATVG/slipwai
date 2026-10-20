@@ -158,6 +158,27 @@ class InboxTest(Fixture):
                   logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(7)))
         self.assertEqual([one["what"] for one in self.board()["inbox"]], ["For the host: ignore preflight.json"])
 
+    def test_a_note_one_session_left_another_is_not_waiting_on_you(self) -> None:
+        """Three slices abreast talk through the one log they share. hr-test-2's Slices step went red on
+        `For L02's captain, from L06's: …` while all three ran with nothing blocked."""
+        self.deck("ORD", logs.entry("told", fairway="ORD", message="For L02's captain, from L06's: L06 merges first",
+                                    t=when(8)),
+                  logs.entry("told", fairway="ORD", message="For the captain: slice/L06 is done", t=when(7)),
+                  logs.entry("told", fairway="ORD", message="For the host, from L03's captain: copy .env", t=when(6)),
+                  logs.entry("told", fairway="ORD", message="For the team: go", t=when(5), by="person"))
+        self.assertEqual([one["what"] for one in self.board()["inbox"]],
+                         ["For the host, from L03's captain: copy .env", "For the team: go"])
+
+    def test_unread_decisions_block_only_past_the_ceiling(self) -> None:
+        decided = [logs.entry("decision", fairway="ORD", id=f"ORD-Q{n}", what=f"D{n}", t=when(9 - n))
+                   for n in range(3)]
+        self.deck("ORD", *decided)
+        below: list[dict] = fleet.board(self.root, {"decision_ceiling": 5}, now=NOW)["inbox"]  # type: ignore[assignment]
+        self.assertEqual([(row["kind"], row["blocking"]) for row in below], [("decisions", "no")])
+        over: list[dict] = fleet.board(self.root, {"decision_ceiling": 2}, now=NOW)["inbox"]  # type: ignore[assignment]
+        self.assertEqual(over[0]["blocking"], "yes")
+        self.assertIn("over the ceiling of 2", over[0]["what"])
+
     def test_a_park_is_waiting_on_a_person_too(self) -> None:
         self.deck("ORD", logs.entry("parked", fairway="ORD", why="the gate stayed red", t=when(2)))
         self.assertEqual(self.board()["inbox"][0]["kind"], "parked")

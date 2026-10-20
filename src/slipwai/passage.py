@@ -364,7 +364,10 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     # `working` is what `fleet.state_of` calls a live berth; this compared against `running`, which it never
     # returns, so a fleet at work read as `todo` whenever nothing waited on a person.
     working = any(row.get("state") == "working" for row in berths) or counts.get("working", 0) > 0
-    waiting = bool(inbox) or counts.get("waiting", 0) > 0
+    # Unread decisions below the ceiling are listed for reading and hold nothing up, so they do not turn the
+    # step red; past it the captain parks, and they do.
+    waiting = any(row.get("kind") != "decisions" or row.get("blocking") == "yes" for row in inbox) \
+        or counts.get("waiting", 0) > 0
     all_done = split and counts.get("done", 0) == sum(counts.values())
     # Split, not done, nothing running: the one silence the tree cannot explain, said as a wait on a person.
     becalmed = split and not all_done and not working and not fleet.get("running") and not cruising

@@ -218,6 +218,11 @@ class ExpectationTest(unittest.TestCase):
         self.assertEqual(states(root, slices={"todo": 2, "waiting": 1})["slices"], "waiting")
         self.assertEqual(states(root, slices={"done": 2})["slices"], "done")
         self.assertEqual(states(root, slices={"done": 2}, fleet={"inbox": [{"kind": "parked"}]})["slices"], "waiting")
+        reading = {"inbox": [{"kind": "decisions", "blocking": "no"}]}
+        self.assertEqual(states(root, slices={"todo": 2, "working": 1}, fleet=reading)["slices"], "working",
+                         "decisions to read below the ceiling hold nothing up")
+        held = {"inbox": [{"kind": "decisions", "blocking": "yes"}]}
+        self.assertEqual(states(root, slices={"todo": 2, "working": 1}, fleet=held)["slices"], "waiting")
         found = states(root, slices={"done": 2}, fleet={"accepted": ["orders"]})
         self.assertEqual(found["accepted"], "done")
         self.assertEqual(states(root, slices={"done": 2}, fleet={"demo_due": ["orders"]})["accepted"], "working")

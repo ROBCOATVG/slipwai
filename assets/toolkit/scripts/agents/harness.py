@@ -382,25 +382,22 @@ class Session(subprocess.Popen[bytes]):
             return
 
     def group(self, hard: bool) -> None:
-        """SIGKILL (hard) or SIGTERM to the session's whole process group. Windows has neither process
-        groups to signal nor SIGKILL, so there the session itself is what is ended."""
-        if not hasattr(os, "killpg"):
-            (subprocess.Popen.kill if hard else subprocess.Popen.terminate)(self)
+        """SIGKILL (hard) or SIGTERM to the session's whole process group. Windows has no process groups to
+        signal, so there the tree is ended through `taskkill /T` — the session and every process it started,
+        which is the point: ending the session alone left its dev servers running on Windows."""
+        if os.name == "nt":  # pragma: no cover - the other platform's branch
+            with contextlib.suppress(OSError):
+                subprocess.run(["taskkill", "/T", *(["/F"] if hard else []), "/PID", str(self.pid)],
+                               capture_output=True, check=False)
             return
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(self.pid, signal.SIGKILL if hard else signal.SIGTERM)
 
     def terminate(self) -> None:
-        if hasattr(os, "killpg"):
-            self.group(hard=False)
-        else:  # pragma: no cover - the other platform's branch
-            super().terminate()
+        self.group(hard=False)
 
     def kill(self) -> None:
-        if hasattr(os, "killpg"):
-            self.group(hard=True)
-        else:  # pragma: no cover - the other platform's branch
-            super().kill()
+        self.group(hard=True)
 
     def wait(self, timeout: float | None = None) -> int:
         code = super().wait(timeout)

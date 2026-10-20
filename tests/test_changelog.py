@@ -147,7 +147,8 @@ class ChangelogTest(unittest.TestCase):
             )
             return
         self.assertEqual(
-            implied(released[0][0], found), written,
+            implied(released[0][0], found, next((one for one, _level in released if is_release(one)), None)),
+            written,
             f"the fragments in changelog.d/ claim a {level(found)} over {released[0][0]}, and VERSION is a "
             f"snapshot of {written}: raise the number the claim needs, or claim what the changes are",
         )

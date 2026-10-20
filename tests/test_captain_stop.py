@@ -72,6 +72,8 @@ class ResumeTest(Fixture):
         self.assertEqual(len([e for e in self.read("ORD") if e.kind == "claimed"]), 1)
 
 
+@unittest.skipIf(sys.platform == "win32", "a stop is SIGTERM handled by the captain; Windows has no signal to "
+                 "send another process but TerminateProcess, which nothing can handle")
 class StopTest(Fixture):
     def test_a_stop_ends_the_stage_writes_stopped_and_gives_the_claim_back(self) -> None:
         captain = subprocess.Popen([sys.executable, str(self.script), "ORD", "--once"], cwd=self.root,
@@ -116,7 +118,8 @@ class HarbourmasterTest(Fixture):
     def put_out(self) -> None:
         pid = self.recorded()
         if pid and alive(pid):
-            os.kill(pid, signal.SIGKILL)
+            # SIGTERM where there is no SIGKILL: on Windows `os.kill` with it is TerminateProcess.
+            os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))
 
     def recorded(self) -> int:
         path = self.running / "harbourmaster.pid"

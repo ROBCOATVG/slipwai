@@ -585,7 +585,8 @@ def streams_state_their_invariant(model: dict, slices: list) -> list[str]:
         if not isinstance(because, str) or not because.strip():
             findings.append(
                 f"stream {name} (first appended to by {first}) states no invariant: add `streams: {{{name}: "
-                "{because: ...}}` naming, by requirement, the decision that needs this one expected-version "
+                "{because: \"...\"}}` (quoted: a comma in it would otherwise split it) naming, by requirement, "
+                "the decision that needs this one expected-version "
                 "check — usually one that spans groups of its slices: a decision reading several groups' state "
                 "at once, or a closure one group sets and all must check. Where no invariant spans two groups, "
                 "they are separate streams correlated by id — nine-steps.md, *Interrogate every stream before "

@@ -79,13 +79,13 @@ negotiate anything:
 ```console
 $ slipwai fleet
 berths: 2
-  fairway       feature  slice   state    waiting  last line  tokens  merged  marks
-  ------------  -------  ------  -------  -------  ---------  ------  ------  -----
-  availability  booking  AVA-01  working  0        31s ago    42      0       0
-  booking       booking  BOK-02  working  0        12s ago    84      1       1
+  fairway       feature  slice   queued  state    waiting  last line  tokens  merged  marks
+  ------------  -------  ------  ------  -------  -------  ---------  ------  ------  -----
+  availability  booking  AVA-01  —       working  0        31s ago    42      0       0
+  booking       booking  BOK-02  —       working  0        12s ago    84      1       1
 ```
 
-Each berth is a separate working directory on the same repository. So two gates can run at the same time,
+`queued` names any slice a stream has claimed that is waiting for a free slot to run. Each berth is a separate working directory on the same repository. So two gates can run at the same time,
 and they do not compete for one `node_modules` or one database file.
 
 ## Taking a fairway

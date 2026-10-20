@@ -211,6 +211,8 @@ class LedgerTest(Abreast):
             self.assertIn("Dispatch ledger: the captain's line for this slice", subject)
 
 
+@unittest.skipIf(sys.platform == "win32", "a stop is SIGTERM handled by the captain; Windows has no signal to "
+                 "send another process but TerminateProcess, which nothing can handle")
 class StopTest(Abreast):
     def test_a_stop_ends_every_slice_in_flight_and_the_next_captain_resumes_them_all(self) -> None:
         self.settings()

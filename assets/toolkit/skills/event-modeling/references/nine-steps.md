@@ -300,7 +300,8 @@ So before a slice gets its `stream`, for each stream proposed:
    with that id — and is not by itself a boundary. The boundary comes from the invariants.
 
 What survives is written once per stream in the model's `streams` block, as `streams: {leaver: {because:
-<the spanning invariant, with its FR>}}`. `make check-model` refuses a placed state-change slice whose
+"<the spanning invariant, with its FR>"}}` — quoted, because a comma in an unquoted flow value starts a
+new key and the model no longer parses. `make check-model` refuses a placed state-change slice whose
 stream states none (`skills/global-event-model/SKILL.md`, *What the append is guarded by*).
 
 ### Apply Conway's Law: Which Lanes Are Which Context

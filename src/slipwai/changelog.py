@@ -18,7 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .assets import ROOT
-from .versions import bumped
+from .versions import base, bumped, is_prerelease, is_snapshot, key
 
 # Where a change in flight writes its paragraph. Bundled with the package and the executable, beside
 # `CHANGELOG.md` and for the same reason: an installed `slipwai` has no checkout to read either from.
@@ -76,14 +76,25 @@ def level(found: list[Fragment]) -> str | None:
     return max(claimed, key=LEVELS.index) if claimed else None
 
 
-def implied(last_release: str, found: list[Fragment]) -> str | None:
+def implied(last_release: str, found: list[Fragment], final: str | None = None) -> str | None:
     """The release the fragments justify, from the last one: `1.14.2` and a MINOR among them is `1.15.0`.
 
     `None` when there is nothing to justify a number at all, which is the state a release leaves behind —
     the snapshot `main` opens then is a claim about nothing until a change lands.
+
+    **A release candidate has not spent its number.** After `2.0.0rc1` a PATCH is still on its way to
+    `2.0.0`, not `2.0.1`: the candidate was a look at 2.0.0 before it is cut. So the claim is bumped from
+    `final`, the newest release that was not a candidate, and the answer is the candidate's number unless
+    that bump goes past it.
     """
     claimed = level(found)
-    return None if claimed is None else bumped(last_release, claimed)
+    if claimed is None:
+        return None
+    if is_prerelease(last_release) and not is_snapshot(last_release):
+        heading = base(last_release) or last_release
+        grown = bumped(final, claimed) if final else heading
+        return grown if key(grown) > key(heading) else heading
+    return bumped(last_release, claimed)
 
 
 def entry(release: str, found: list[Fragment], *, first: bool = False) -> str:

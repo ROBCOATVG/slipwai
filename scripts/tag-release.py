@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from slipwai.changelog import GUIDE, LEVELS, entry, fragments, implied, level  # noqa: E402
-from slipwai.versions import is_snapshot, parse  # noqa: E402
+from slipwai.versions import is_release, is_snapshot, parse  # noqa: E402
 
 VERSION = ROOT / "VERSION"
 CHANGELOG = ROOT / "CHANGELOG.md"
@@ -51,6 +51,15 @@ def last_released() -> str | None:
     for line in CHANGELOG.read_text(encoding="utf-8").splitlines():
         if line.startswith("## "):
             return line[3:].split(" — ")[0].strip()
+    return None
+
+
+def last_final() -> str | None:
+    """The newest release `CHANGELOG.md` holds that was not a candidate — what a candidate's successor is
+    bumped from, since the candidate did not spend its number."""
+    for line in CHANGELOG.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## ") and is_release(found := line[3:].split(" — ")[0].strip()):
+            return found
     return None
 
 
@@ -110,7 +119,8 @@ def run(argv: list[str]) -> int:
     # With no release behind it there is nothing to bump from, and the number `VERSION` is heading for is
     # the only claim there is. That is this fork's own state until 2.0.0 is cut: `2.0.0` is a decision about
     # what version 2 is, not a sum over the changes that got there.
-    release = parsed.release or (implied(last, found) if last and found else base(version) if found else None)
+    release = parsed.release or (implied(last, found, last_final()) if last and found
+                                 else base(version) if found else None)
     faults = findings(found, release, releasing=not parsed.check)
 
     if parsed.check:

@@ -40,7 +40,11 @@ class Folder:
     """Folds one session's event stream into lines, remembering what one line needs from the last."""
 
     def __init__(self, root: Path | None = None) -> None:
-        self.root = str(root).rstrip("/") + "/" if root else ""
+        # Every spelling of the project's folder: on Windows a session may name a file with backslashes or with
+        # forward slashes, and `str()` of the folder there has backslashes where `as_posix()` has none.
+        self.roots = tuple(dict.fromkeys(one.rstrip("/\\") + sep for one, sep in
+                                         ((root.as_posix(), "/"), (str(root), "\\"), (str(root), "/")))) \
+            if root else ()
         self.last = ""
         self.background: set[str] = set()
 
@@ -48,7 +52,10 @@ class Folder:
         """A path or a file URL, as it sits in the project."""
         text = str(value or "")
         text = text.removeprefix("file://")
-        return text.removeprefix(self.root) if self.root else text
+        for root in self.roots:
+            if text.startswith(root):
+                return text[len(root):].replace("\\", "/")
+        return text
 
     def detail(self, name: str, given: dict) -> str:
         """What one tool call acted on, or `""` where it says nothing more than its name."""

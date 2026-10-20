@@ -265,7 +265,8 @@ function streamInvariants(model: Model): Violation[] {
       slice: slice.id,
       rule: 'stream-states-its-invariant',
       message:
-        `appends to the \`${name}\` stream, which states no invariant. Add \`streams: {${name}: {because: ...}}\` ` +
+        `appends to the \`${name}\` stream, which states no invariant. Add \`streams: {${name}: {because: "..."}}\` ` +
+        '(quoted: a comma in it would otherwise split it) ' +
         'naming, by requirement, the decision that needs this one expected-version check — usually one that ' +
         'spans groups of its slices. Where no invariant spans two groups, they are separate streams correlated by id',
     });

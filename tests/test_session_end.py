@@ -21,6 +21,8 @@ from typing import Any
 import checkout_packages  # noqa: F401
 from test_harness import loaded
 
+from slipwai.process_alive import alive
+
 STREAMED = ["--output-format", "stream-json"]
 
 
@@ -55,13 +57,13 @@ class SessionEndTest(unittest.TestCase):
 
     def server_gone(self) -> bool:
         pid = int((self.root / "server.pid").read_text(encoding="utf-8"))
+        # Asked through `alive`, because `os.kill(pid, 0)` is not a question on Windows.
         for _ in range(30):
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
+            if not alive(pid):
                 return True
             time.sleep(0.1)
-        os.kill(pid, 9)
+        with contextlib.suppress(OSError):
+            os.kill(pid, 9)
         return False
 
     def test_a_finished_session_that_hangs_is_ended_with_what_it_said(self) -> None:

@@ -35,8 +35,8 @@ which `check-decisions.py` allows: a gap costs nothing and a duplicate costs eve
 """
 from __future__ import annotations
 
-import fcntl
 import json
+import os
 import re
 import subprocess
 import sys
@@ -139,11 +139,42 @@ def known_numbers() -> set[int]:
     return found
 
 
+def exclusive(lock) -> None:  # type: ignore[no-untyped-def]
+    """Wait for the reservation lock. `flock` where there is one; Windows has none, and `msvcrt.locking`
+    over the file's first byte is its equivalent — retried, because its blocking form gives up after ten
+    seconds where `flock` waits as long as it must. Either is dropped with the process that held it."""
+    if os.name == "nt":
+        import msvcrt
+
+        while True:
+            lock.seek(0)
+            try:
+                msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)  # type: ignore[attr-defined]
+                return
+            except OSError:
+                time.sleep(0.1)
+    import fcntl
+
+    fcntl.flock(lock, fcntl.LOCK_EX)
+
+
+def release(lock) -> None:  # type: ignore[no-untyped-def]
+    if os.name == "nt":
+        import msvcrt
+
+        lock.seek(0)
+        msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)  # type: ignore[attr-defined]
+        return
+    import fcntl
+
+    fcntl.flock(lock, fcntl.LOCK_UN)
+
+
 def reserve(count: int, held_for: str = "") -> list[str]:
     """The next `count` version-1 decision numbers, each handed out once on this machine."""
     LOGS.mkdir(parents=True, exist_ok=True)
-    with LOCK.open("a", encoding="utf-8") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    with LOCK.open("a+", encoding="utf-8") as lock:
+        exclusive(lock)
         try:
             start = max(known_numbers(), default=0) + 1
             taken = [f"D{number}" for number in range(start, start + count)]
@@ -151,7 +182,7 @@ def reserve(count: int, held_for: str = "") -> list[str]:
             with RESERVED.open("a", encoding="utf-8") as file:
                 file.writelines(f"{one} {held_for or '-'} {stamp}\n" for one in taken)
         finally:
-            fcntl.flock(lock, fcntl.LOCK_UN)
+            release(lock)
     return taken
 
 

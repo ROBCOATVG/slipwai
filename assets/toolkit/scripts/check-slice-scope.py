@@ -91,6 +91,13 @@ MIGRATION_NAME = re.compile(r"^(?:\d+_|V\d+__)")
 MIGRATION_SUFFIXES = {".sql", ".js", ".ts", ".py"}
 STAMPED_MIGRATION = re.compile(r"^(?:\d{12}_|V\d{12}__)")
 LAYERS_BY_CONTEXT = ("domain", "application")
+#: What a run writes under `.slipwai/` in any checkout, a slice's berth included: the generated `.gitignore`
+#: names each, and a project made before a name was added there does not ignore it. Untracked, none of them is
+#: anything a slice did — `make preflight` writes `preflight.json` in every berth, and a berth's
+#: `logs.unread-*` is lines kept aside when it was linked — so in hr-test-2 every slice run abreast went red
+#: here on files the run itself had put there.
+RUN_STATE = re.compile(r"^\.slipwai/(?:logs(?:/.*)?|logs\.unread-[^/]+/.*|run-state\.json|running/.*|"
+                       r"harbourmaster\.json|berths/.*|intake-cleanup\.json|catch-up/.*|preflight\.json)$")
 
 
 def git(*arguments: str) -> str | None:
@@ -142,7 +149,7 @@ def changed_files(base: str) -> dict[str, str]:
         if path:
             changes[path] = status[:1]
     for path in (git("ls-files", "--others", "--exclude-standard") or "").splitlines():
-        if path:
+        if path and not RUN_STATE.match(path):
             changes[path] = "A"
     return changes
 

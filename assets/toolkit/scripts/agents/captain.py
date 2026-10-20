@@ -679,6 +679,32 @@ def own_parks(fresh: list[logs.Entry], fairway: str, slice_id: str) -> list[logs
                  or (not e.fields.get("slice") and (len(FLIGHT) <= 1 or slice_id in str(e.fields.get("why", "")))))]
 
 
+def landed_already(slice_id: str, feature: str, fairway: str) -> bool:
+    """Whether this slice is on trunk already: a `merged` line in this fairway's log, or a `granted` merge for
+    it in the harbour log — a session may ask for its own merge, and the harbourmaster's answer is the fact.
+
+    Without this a slice merged during a run was judged by the run's gate like any other, found to have set
+    no mark *this* turn (its mark was set turns earlier), and driven again — three more sessions on a slice
+    already on trunk, then a park on it (hr-test-2). A grant found here is written as this fairway's
+    `merged` line, the one every reader closes a claim on; otherwise the slice is claimed and never merged,
+    and the next captain resumes it.
+
+    Only a grant answering a `request` in this fairway's own log counts: the answer to a question nobody
+    here asked is not evidence the slice was ever sent anywhere.
+    """
+    own = entries(feature, fairway)
+    if any(e.kind == "merged" and str(e.fields.get("slice", "")) == slice_id for e in own):
+        return True
+    asked = {str(e.fields.get("id", "")) for e in own if e.kind == "request" and e.fields.get("what") == "merge"}
+    grant = next((e for e in harbour_entries() if e.kind == "granted" and e.fields.get("what") == "merge"
+                  and str(e.fields.get("slice", "")) == slice_id and str(e.fields.get("fairway", "")) == fairway
+                  and str(e.fields.get("request", "")) in asked and e.fields.get("commit")), None)
+    if grant is None:
+        return False
+    write(feature, fairway, logs.entry("merged", fairway=fairway, slice=slice_id, commit=str(grant.fields["commit"])))
+    return True
+
+
 def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool, str]:
     """Drive the slice until its gate is satisfied, or say why it will not be. (satisfied, why not).
 
@@ -703,6 +729,8 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
         own = own_parks(fresh, fairway, slice_id)
         if own:
             return False, str(own[-1].fields.get("why", ""))
+        if landed_already(slice_id, feature, fairway):
+            return True, ""
         if finished:
             missing, verdict = owed(fresh, slice_id, promised)
             if not missing and verdict == ACCEPTED:
@@ -829,11 +857,18 @@ def work(slice_id: str, feature: str, fairway: str) -> tuple[bool, str]:
         if berth is None:
             return False, why
         FLIGHT.setdefault(slice_id, {})["berth"] = berth
+        if landed_already(slice_id, feature, fairway):
+            return True, ""
         write(feature, fairway, logs.entry("claimed", fairway=fairway, slice=slice_id))
         bound = attempts()
         ok, why = through_its_gate(slice_id, feature, fairway, bound)
         if not ok:
             return False, why
+        if landed_already(slice_id, feature, fairway):
+            kept = moorings.leave(ROOT, berth)
+            if kept:
+                print(f"captain: {slice_id} merged; {kept}", flush=True)
+            return True, ""
         # Through its gate is already on its way to the merge queue, and holds the fairway's next slice back
         # from here rather than from the request line: the inbox and the hook in between take a moment, and a
         # sibling started in it would meet the trunk this slice is about to move.

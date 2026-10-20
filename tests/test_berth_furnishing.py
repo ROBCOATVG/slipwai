@@ -48,7 +48,8 @@ class BerthTest(unittest.TestCase):
             "from pathlib import Path\n"
             "Path('.claude/commands').mkdir(parents=True, exist_ok=True)\n"
             "Path('.claude/commands/drive.md').write_text('# drive\\n')\n", encoding="utf-8")
-        (self.root / ".gitignore").write_text(".env\n.claude/commands/\n.slipwai/logs/\n", encoding="utf-8")
+        (self.root / ".gitignore").write_text(".env\n.claude/commands/\n.claude/skills/\n.slipwai/logs/\n",
+                                              encoding="utf-8")
         git(self.root, "init", "-q", "-b", "main")
         git(self.root, "add", "-A")
         git(self.root, "commit", "-q", "-m", "scaffold")
@@ -76,6 +77,21 @@ class BerthTest(unittest.TestCase):
         self.assertEqual(len(aside), 1)
         self.assertEqual((aside[0] / "feature/fairway.jsonl").read_text(encoding="utf-8"), '{"kind": "demo"}\n')
         self.assertIn("kept at", said)
+
+    def test_a_skill_the_checkout_has_is_carried_in_and_one_the_berth_has_is_left(self) -> None:
+        """Spec Kit's skills come from `specify init`, not the projection, and hr-test-2's L03, L06 and L04
+        each parked on `check-speckit` for a person to copy them in by hand."""
+        (self.root / ".claude/skills/speckit-plan").mkdir(parents=True)
+        (self.root / ".claude/skills/speckit-plan/SKILL.md").write_text("# plan\n", encoding="utf-8")
+        (self.root / ".claude/skills/drive").mkdir(parents=True)
+        (self.root / ".claude/skills/drive/SKILL.md").write_text("old\n", encoding="utf-8")
+        berth = self.root.parent / f"{self.root.name}-L05"
+        git(self.root, "worktree", "add", "-q", "-b", "slice/L05", str(berth), "main")
+        (berth / ".claude/skills/drive").mkdir(parents=True)
+        (berth / ".claude/skills/drive/SKILL.md").write_text("projected\n", encoding="utf-8")
+        self.assertEqual(self.module.furnished(self.root, berth), "")
+        self.assertEqual((berth / ".claude/skills/speckit-plan/SKILL.md").read_text(encoding="utf-8"), "# plan\n")
+        self.assertEqual((berth / ".claude/skills/drive/SKILL.md").read_text(encoding="utf-8"), "projected\n")
 
     def test_the_project_s_own_checkout_is_never_furnished(self) -> None:
         self.assertEqual(self.module.furnished(self.root, self.root), "")

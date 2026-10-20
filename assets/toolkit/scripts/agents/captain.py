@@ -713,6 +713,7 @@ def dispatch(slice_id: str, feature: str, fairway: str,
     started = len(entries(feature, fairway))
     if STOP.is_set():
         raise Stopped()
+    refurnish(slice_id, berth)
     # A session of its own, so that `end` reaches the delegates it starts as well as the session; and a
     # `Session`, so that one which said it was finished and stayed is ended rather than waited out.
     process = harness.Session(argv, berth or ROOT, environment)
@@ -726,6 +727,22 @@ def dispatch(slice_id: str, feature: str, fairway: str,
         flying.pop("process", None)
     fire("after-stage", stage="drive", slice=slice_id, fairway=fairway)
     return finished, why, entries(feature, fairway)[started:]
+
+
+def refurnish(slice_id: str, berth: Path | None) -> None:
+    """Bring the berth's projections up to its tree before a session starts in it.
+
+    A berth was furnished once, when it was made, and its slice rebases onto trunk many times after: a
+    toolkit upgrade that lands on trunk changes the canonical agent files, the berth's ignored projection
+    keeps the old ones, and `check-agents` refuses the slice — which a session may not fix, because
+    `make agents` writes a control file. hr-test-2's L04 parked on exactly that after a migration, for a
+    person to run one command. Projecting again is idempotent and takes seconds.
+    """
+    if berth is None:
+        return
+    said = moorings.furnished(ROOT, berth)
+    if said:
+        print(f"captain: {slice_id}: {said}", flush=True)
 
 
 def own_parks(fresh: list[logs.Entry], fairway: str, slice_id: str) -> list[logs.Entry]:
@@ -817,6 +834,7 @@ def skipper_round(slice_id: str, feature: str, fairway: str, asked: list[logs.En
     print(f"captain: {slice_id} stopped on {', '.join(ids)}; putting them to {SKIPPER}", flush=True)
     fire("before-stage", stage="decide", slice=slice_id, fairway=fairway)
     started = len(entries(feature, fairway))
+    refurnish(slice_id, berth)
     process = harness.Session(argv, berth or ROOT, environment)
     flying["process"] = process
     try:

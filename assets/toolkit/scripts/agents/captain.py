@@ -568,7 +568,8 @@ def boundary(feature: str, fairway: str) -> str:
         return (f"{len(late)} message(s) from a person have gone past the wait bound unanswered, the "
                 f"oldest being {said!r}. `/told` reads them, and a read line is the receipt")
     return (f"{len(owed.get('unreviewed') or [])} decisions stand unread, over the ceiling of "
-            f"{owed.get('ceiling')}. A backlog of judgement nobody has looked at is not judgement")
+            f"{owed.get('ceiling')}. A backlog of judgement nobody has looked at is not judgement. Read "
+            f"them under *Waiting on you* on the board and press Mark read, which writes each receipt")
 
 
 def sets_of(slice_id: str) -> list[str]:

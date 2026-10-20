@@ -17,10 +17,10 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 395 — every column of the board folded from the logs, including what waits on a person: a park, a
-# told, and a question a headless stage posted and nobody has answered yet, beside a stream that was stopped
-# and the several slices one stream now has in flight at once, and which `told` an answer or a claim
-# has already taken up
+# budget: 415 — every column of the board folded from the logs, including what waits on a person: a park,
+# a told, the decisions nobody has read, and a question a headless stage posted and nobody has answered
+# yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
+# which `told` an answer or a claim has already taken up
 from __future__ import annotations
 
 import ast
@@ -30,6 +30,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from .deck import recent
 from .logs import Entry, Unreadable, deck_logs, fairway_parks, fold, harbour_logs, held_slices, open_parks, unmerged
@@ -109,6 +110,14 @@ class Fairway:
         question for a person and proceeds; a board showing only `told` and `parked` drew that as nothing."""
         answered = {str(e.fields.get("id", "")) for e in self.entries if e.kind == "decision"}
         return [e for e in self.entries if e.kind == "question" and str(e.fields.get("id", "")) not in answered]
+
+    @property
+    def unreviewed(self) -> list[Entry]:
+        """Every `decision` a person has not read: no `read` names its instant, and no person took it. The
+        rule `inbox.py` holds the ceiling to, so what the board offers to mark read is what the ceiling counts."""
+        receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read"}
+        return [e for e in self.entries if e.kind == "decision" and e.fields.get("decided_by") != "human"
+                and e.t not in receipts]
 
     @property
     def unanswered(self) -> list[Entry]:
@@ -265,15 +274,22 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
     return rows
 
 
-def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | None = None) -> list[dict[str, str]]:
+def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | None = None) -> list[dict[str, Any]]:
     """Every open message, question and park: the things waiting on a person, which is what a board is for."""
-    waiting: list[dict[str, str]] = []
+    waiting: list[dict[str, Any]] = []
     for one in found:
         waiting += [{"fairway": one.name, "kind": "told", "what": str(e.fields.get("message", "")), "t": e.t}
                     for e in one.unanswered]
         waiting += [{"fairway": one.name, "kind": "question",
                      "what": f"{e.fields.get('id')} ({e.fields.get('slice')}): {e.fields.get('what')}", "t": e.t}
                     for e in one.asked]
+        if one.unreviewed:
+            # One row per stream, not one per decision: twenty decisions are one thing a person sits down
+            # to read, and twenty rows would bury the park that is waiting behind them.
+            waiting.append({"fairway": one.name, "kind": "decisions", "t": one.unreviewed[0].t,
+                            "what": f"{len(one.unreviewed)} decision(s) nobody has read yet",
+                            "decisions": [{"t": e.t, "id": str(e.fields.get("id", "")),
+                                           "what": str(e.fields.get("what", ""))} for e in one.unreviewed]})
         for park in one.parks:
             waited = minutes_since(park.t, now)
             waiting.append({"fairway": one.name, "kind": "parked", "what": str(park.fields["why"]),

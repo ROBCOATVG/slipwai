@@ -13,6 +13,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -102,6 +103,39 @@ class IdTest(unittest.TestCase):
         self.assertIn("slipwai upgrade", str(refused.exception))
 
 
+class ReserveTest(unittest.TestCase):
+    """Slices worked abreast are one fairway, so version 1's `D<n>` is reserved rather than read off the file:
+    hr-test-2's two slices both took the next after the last entry and came back as D28 to D30 apiece."""
+
+    def setUp(self) -> None:
+        self.tree = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tree, True)
+        (self.tree / "scripts/agents").mkdir(parents=True)
+        shutil.copy(ROOT / "assets/toolkit/scripts/agents/ids.py", self.tree / "scripts/agents/ids.py")
+        (self.tree / "project.json").write_text("{}", encoding="utf-8")
+        (self.tree / "specs/001-x").mkdir(parents=True)
+        (self.tree / "specs/001-x/decisions.md").write_text("## D1 — a\n\n## D27 — b\n", encoding="utf-8")
+        git = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=self.tree, check=True)
+        subprocess.run([*git, "add", "-A"], cwd=self.tree, check=True)
+        subprocess.run([*git, "commit", "-qm", "base"], cwd=self.tree, check=True)
+        # A sibling slice's branch already holds D28 to D30, not yet merged and not in this checkout.
+        subprocess.run(["git", "checkout", "-qb", "slice/L02"], cwd=self.tree, check=True)
+        with (self.tree / "specs/001-x/decisions.md").open("a", encoding="utf-8") as file:
+            file.write("\n## D28 — c\n\n## D29 — d\n\n## D30 — e\n")
+        subprocess.run([*git, "commit", "-qam", "L02 decisions"], cwd=self.tree, check=True)
+        subprocess.run(["git", "checkout", "-q", "main"], cwd=self.tree, check=True)
+        self.ids = ids_module(self.tree)
+
+    def test_a_number_on_a_sibling_s_branch_is_never_handed_out_again(self) -> None:
+        self.assertEqual(self.ids.reserve(2, "L06"), ["D31", "D32"])
+
+    def test_two_reservations_never_share_a_number(self) -> None:
+        first, second = self.ids.reserve(3, "L06"), self.ids.reserve(1, "L03")
+        self.assertEqual(first + second, ["D31", "D32", "D33", "D34"])
+        self.assertIn("D34 L03", (self.tree / ".slipwai/logs/decision-numbers").read_text(encoding="utf-8"))
+
+
 class VersionOneIdTest(unittest.TestCase):
     """A project that already has `D1` to `Dn` keeps them. Renumbering a shipped id is the cost the whole
     scheme exists to avoid, and every citation of one was correct when it was written."""
@@ -129,6 +163,28 @@ class VersionOneIdTest(unittest.TestCase):
 
     def test_a_heading_that_is_neither_is_still_refused(self) -> None:
         self.assertIsNone(self.gate().DECISION_HEADING.match("## Decision 7 — which store"))
+
+    def decisions(self, *numbers: int) -> list[str]:
+        tree = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tree, True)
+        entry = ("- **Stage:** s · **Slice:** L01 · **When:** now · **Stream:** x\n- **Question:** q\n"
+                 "- **Options:** a\n- **Decision:** a\n- **Why:** w · **Read against:** the specification\n"
+                 "- **Decided by:** human\n- **Confidence:** high · **Would reverse if:** r\n"
+                 "- **Written to:** decisions.md\n- **Status:** standing\n")
+        path = tree / "decisions.md"
+        path.write_text("".join(f"## D{n} — q{n}\n{entry}\n" for n in numbers), encoding="utf-8")
+        gate = self.gate()
+        gate.ROOT = tree
+        return gate.check_decisions(path)
+
+    def test_slices_landing_out_of_order_with_a_gap_between_them_pass(self) -> None:
+        """L06's D31 to D33 merged before L02's D28 to D30, and D34 was reserved and never used."""
+        self.assertEqual(self.decisions(1, 2, 31, 32, 33, 28, 29, 30, 35), [])
+
+    def test_two_entries_with_one_number_are_refused(self) -> None:
+        found = self.decisions(1, 28, 29, 28)
+        self.assertEqual(len(found), 1)
+        self.assertIn("D28 is already the entry", found[0])
 
 
 if __name__ == "__main__":  # pragma: no cover

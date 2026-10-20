@@ -83,8 +83,10 @@ asking an open question*), when a standing entry already covers the question, wh
 convention settles it, or when the specification or the constitution answers it outright. Anything else is an **open question**: delegate it to one fresh `{{skipper}}` delegate with the
 question, the stage, the options and the recommendation in its brief — the spec, the constitution, the owner
 brief and the log are the standing part of its own brief — and **the number its entry will carry**. `D<n>` is
-allocated here, before dispatch: the next after the last entry in `{{decisions}}`, one per delegate in dispatch
-order where several go out at once. The delegate returns the whole entry under that number and writes
+allocated here, before dispatch, by `python3 scripts/agents/ids.py reserve decision <count> <slice>` — one per
+delegate, in dispatch order where several go out at once — and never by reading the last entry in
+`{{decisions}}`: a sibling slice worked abreast is reading the same last entry, and two slices that both took
+the next one came back with the same numbers. A reserved number left unused is a gap, which the gate allows. The delegate returns the whole entry under that number and writes
 nothing; this session appends it, in number order, and writes the decision into the artifact the stage owns.
 Under `decide: skipper-always`, every question goes to the delegate. Several open questions in one turn are
 several concurrent delegates, each with its own number; a slice delegate that handed one back does not wait

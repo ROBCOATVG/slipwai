@@ -18,7 +18,10 @@ an unwritten row is a pass that has to be run again, and until now nothing notic
   question (this project's own convention, the specification, the constitution, a standing entry), or that none
   did. A run that never consults what the codebase already does is how a project ends up with two ways of doing
   one thing, and the only way to tell from the record is to make the record say;
-- entries are numbered contiguously from `D1`, in order;
+- no two entries carry one number. Not contiguous and not in order: slices worked abreast each reserve their
+  numbers with `scripts/agents/ids.py reserve` and land in whichever order their merges do, so `D31` may
+  land before `D28`, and a number a slice reserved and never used is a gap. Two `D28`s are the one thing
+  that cannot be read back, because a citation of either resolves to both;
 - **Decided by** is `host (stage recommendation)`, `host (standing decision D<m>)`, `sail-decide-skipper (<model>)`,
   `sail-unblock-bosun` — with or without its `(<model>)` — or `human`; **Status** is `standing`, `awaiting human
   confirmation` (a stop for a person answered with nobody there), `confirmed by human <date>`, `overridden by D<m>`
@@ -127,7 +130,7 @@ def path_findings(where: str, label: str, value: str, base: Path) -> list[str]:
 def check_decisions(path: Path) -> list[str]:
     relative = path.relative_to(ROOT).as_posix()
     findings: list[str] = []
-    expected = 1
+    seen: dict[tuple[str, int], int] = {}
     for line, heading, fields in entries(path.read_text(encoding="utf-8"), DECISION_HEADING):
         where = f"{relative}:{line}"
         if heading is None:
@@ -135,17 +138,15 @@ def check_decisions(path: Path) -> list[str]:
             continue
         fairway = heading.group("fairway")
         number = int(heading.group("n") or heading.group("old"))
-        if fairway is None:
-            # Version 1's contiguous numbering, held as it always was for a file that still uses it.
-            if number != expected:
-                findings.append(f"{where}: D{number} where D{expected} was expected — entries are numbered "
-                                f"contiguously")
-            expected = number + 1
-        else:
-            # Per fairway, and a feature-level file is rendered from several of them — so the numbers in it
-            # are contiguous within each fairway and interleaved across them. Holding the whole file to one
-            # run of numbers would refuse exactly the file version 2 renders.
-            expected = max(expected, 1)
+        # Unique, and nothing more: hr-test-2's slices abreast both took the next number after the last entry
+        # they could see, came back as D28 to D30 apiece, and a contiguity rule could only have been met by
+        # renumbering one of them after its citations were written. `ids.py reserve` hands each its own.
+        key = (fairway or "", number)
+        if key in seen:
+            findings.append(f"{where}: D{number} is already the entry at line {seen[key]} — every decision has "
+                            f"a number of its own; take one from `python3 scripts/agents/ids.py reserve "
+                            f"decision`")
+        seen.setdefault(key, line)
         missing = [field for field in DECISION_FIELDS if field not in fields]
         if missing:
             findings.append(f"{where}: D{number} is missing {', '.join(f'**{field}:**' for field in missing)}")

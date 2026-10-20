@@ -19,13 +19,28 @@ decision being counted.
 always did, and only new ids carry a fairway. Renumbering the old ones to a new scheme would be the exact
 cost this scheme exists to avoid, and `migrate` does not do it either.
 
+**A project still on version 1's `D<n>` reserves its numbers.** Slices worked abreast are one fairway, so
+the per-fairway counter does not separate them, and each delegating session took *the next after the last
+entry it could see* — which in hr-test-2 was D28 to D30 for two slices at once. `reserve` takes the
+highest number anything here knows — every `specs/*/decisions.md` in this checkout, on trunk and on every
+local and remote `slice/*` branch, and every number already reserved — under a lock, writes what it hands
+out to `.slipwai/logs/decision-numbers`, and prints them. The lock and the file are under `.slipwai/logs`,
+which every berth links to the project's own, so the siblings on one machine take turns at one counter; a
+sibling on another machine is seen through its pushed branch. A number reserved and never used is a gap,
+which `check-decisions.py` allows: a gap costs nothing and a duplicate costs every citation of it.
+
     python3 scripts/agents/ids.py decision ORD      # D-ORD-07
     python3 scripts/agents/ids.py adversary BIL     # A-BIL-03
+    python3 scripts/agents/ids.py reserve decision 3 L06   # D31 D32 D33, held for slice L06
 """
 from __future__ import annotations
 
+import fcntl
 import json
+import re
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -89,7 +104,66 @@ def next_id(kind: str, fairway: str, feature: str = "") -> str:
     return f"{PREFIXES[kind]}-{fairway}-{number:02d}"
 
 
+#: Where reserved version-1 numbers are written, one `D<n> <slice> <instant>` per line, and the lock that
+#: makes reading the highest and writing the next one a single step.
+RESERVED = LOGS / "decision-numbers"
+LOCK = LOGS / "decision-numbers.lock"
+HEADING = re.compile(r"^## D(\d+) — ", re.M)
+
+
+def git(*argv: str) -> str:
+    done = subprocess.run(["git", *argv], cwd=ROOT, capture_output=True, text=True, check=False)
+    return done.stdout if done.returncode == 0 else ""
+
+
+def numbers_in(text: str) -> set[int]:
+    return {int(found) for found in HEADING.findall(text)}
+
+
+def known_numbers() -> set[int]:
+    """Every version-1 decision number this checkout can see: its own files, trunk's, every slice branch's,
+    and every one already reserved."""
+    found: set[int] = set()
+    for path in sorted((ROOT / "specs").glob("*/decisions.md")):
+        found |= numbers_in(path.read_text(encoding="utf-8", errors="replace"))
+    refs = git("for-each-ref", "--format=%(refname)", "refs/heads/slice/", "refs/remotes/origin/slice/",
+               "refs/heads/main", "refs/remotes/origin/main", "refs/heads/master",
+               "refs/remotes/origin/master").split()
+    for ref in refs:
+        for path in git("ls-tree", "-r", "--name-only", ref, "--", "specs").splitlines():
+            if path.endswith("/decisions.md"):
+                found |= numbers_in(git("show", f"{ref}:{path}"))
+    if RESERVED.is_file():
+        found |= {int(line.split()[0][1:]) for line in RESERVED.read_text(encoding="utf-8").splitlines()
+                  if re.match(r"^D\d+\b", line)}
+    return found
+
+
+def reserve(count: int, held_for: str = "") -> list[str]:
+    """The next `count` version-1 decision numbers, each handed out once on this machine."""
+    LOGS.mkdir(parents=True, exist_ok=True)
+    with LOCK.open("a", encoding="utf-8") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            start = max(known_numbers(), default=0) + 1
+            taken = [f"D{number}" for number in range(start, start + count)]
+            stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            with RESERVED.open("a", encoding="utf-8") as file:
+                file.writelines(f"{one} {held_for or '-'} {stamp}\n" for one in taken)
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+    return taken
+
+
 def main(argv: list[str]) -> int:
+    if argv[:1] == ["reserve"]:
+        if argv[1:2] != ["decision"]:
+            print("ids: reserve hands out version 1's `D<n>`, as `ids.py reserve decision [count] [slice]`",
+                  file=sys.stderr)
+            return 1
+        count = int(argv[2]) if len(argv) > 2 and argv[2].isdigit() else 1
+        print(" ".join(reserve(count, argv[3] if len(argv) > 3 else "")))
+        return 0
     if len(argv) < 2:
         print(__doc__.strip().splitlines()[-2].strip(), file=sys.stderr)
         print("ids: give a kind and a fairway, as `ids.py decision ORD`", file=sys.stderr)

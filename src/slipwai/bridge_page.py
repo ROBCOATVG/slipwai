@@ -101,6 +101,8 @@ document.addEventListener('click', event => {
     const box = document.getElementById(say.dataset.box || 'tell-' + say.dataset.tell);
     if (box && box.value.trim()) send('/tell', {fairway: say.dataset.tell, message: box.value.trim()});
   }
+  const read = event.target.closest('[data-read]');
+  if (read) send('/read', {fairway: read.dataset.read, decisions: read.dataset.stamps.split(',')});
   if (event.target.id === 'launch') {
     event.target.disabled = true;
     send('/launch', {});
@@ -161,6 +163,9 @@ def inbox_rows(rows: list[dict], controls: bool, streams: dict | None = None) ->
         return '<p class="empty">Nothing is waiting on you.</p>'
     said = []
     for index, row in enumerate(rows):
+        if row["kind"] == "decisions":
+            said.append(unread_decisions(row, controls))
+            continue
         name, detail = str(row["fairway"]), inbox_detail(row)
         lines = (streams or {}).get(name) or []
         log = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines[-20:])
@@ -171,6 +176,28 @@ def inbox_rows(rows: list[dict], controls: bool, streams: dict | None = None) ->
                     f'<span class="mono">{esc(row["t"])}</span></summary>'
                     f'<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}</ol>{box}</details>')
     return "".join(said)
+
+
+def unread_decisions(row: dict, controls: bool) -> str:
+    """The decisions a stream took that nobody has read, each with Mark read, and one for all of them.
+
+    Pressing it writes the `read` receipt the decision ceiling counts — the receipt a fairway parked over the
+    ceiling is waiting for, which until this had to be written by hand. The decision is shown in full above
+    its button, so the press is a person saying they read this one rather than a way past the ceiling.
+    """
+    name = str(row["fairway"])
+    items = []
+    for one in row["decisions"]:
+        button = (f' <button class="go" data-read="{esc(name)}" data-stamps="{esc(one["t"])}">Mark read</button>'
+                  if controls else "")
+        items.append(f'<li><span class="when">{esc(one["t"])}</span> <b>{esc(one["id"])}</b> '
+                     f'{esc(one["what"])}{button}</li>')
+    every = ",".join(str(one["t"]) for one in row["decisions"])
+    all_read = (f'<div class="ask"><button class="go" data-read="{esc(name)}" data-stamps="{esc(every)}">'
+                f'I have read all {len(row["decisions"])}</button></div>' if controls else "")
+    return (f'<details class="log"><summary><b>{esc(name)}</b> · decisions · {esc(row["what"])} '
+            f'<span class="mono">{esc(row["t"])}</span></summary>'
+            f'<ol class="lines">{"".join(items)}</ol>{all_read}</details>')
 
 
 def answer_boxes(rows: list[dict]) -> str:

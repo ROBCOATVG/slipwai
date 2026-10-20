@@ -490,7 +490,27 @@ def naming(slice_id: str, fairway: str, retry: str = "", berth: Path | None = No
     if (decide := cruising()):
         told["SLIPWAI_CRUISE"] = decide
     return {"SLIPWAI_FAIRWAY": fairway, "SLIPWAI_SLICE": slice_id, "SLIPWAI_STAGE": "drive",
-            "SLIPWAI_SINCE": logs.now(), **test_workers(), **told}
+            "SLIPWAI_SINCE": logs.now(), **test_workers(), **browser_share(), **told}
+
+
+def browser_share() -> dict[str, str]:
+    """Each session's share of `browsers`, `SLIPWAI_BROWSERS`, and the trunk it merges into, `SLIPWAI_TRUNK`.
+
+    `browsers` was on the telegraph and the board and bound nothing: an extension that renders previews ran a
+    browser per core in every session, and hr-test-2's L18 had twenty Chromes open at once in one verify, at a
+    load of two hundred. The share is `browsers` over `boilers`, never below one, so a session that renders
+    renders, and it is named for no tool: an extension that drives a browser reads it as its default bound.
+    The trunk is what a slice's work is measured against, so an extension may check only what the slice
+    changed and leave the whole to trunk's own run. One a person set already is theirs and stands.
+    """
+    held = harbour()
+    told: dict[str, str] = {}
+    browsers, boilers = abreast.whole(held.get("browsers")), abreast.whole(held.get("boilers"))
+    if not os.environ.get("SLIPWAI_BROWSERS") and browsers is not None and browsers > 0:
+        told["SLIPWAI_BROWSERS"] = str(max(1, browsers // max(1, boilers or 1)))
+    if not os.environ.get("SLIPWAI_TRUNK") and (trunk := clearance.trunk()):
+        told["SLIPWAI_TRUNK"] = trunk
+    return told
 
 
 def test_workers() -> dict[str, str]:

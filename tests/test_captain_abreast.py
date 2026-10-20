@@ -241,6 +241,27 @@ class WorkersTest(Abreast):
         self.assertEqual(self.told(3, SLIPWAI_TEST_WORKERS="2"), "2")
 
 
+class BrowsersTest(Abreast):
+    """`browsers` bound nothing: hr-test-2's L18 opened twenty Chromes in one verify. Each session is told
+    its share, and the trunk its work is measured against, for whatever drives a browser to read."""
+
+    def told(self, **held: object) -> dict:
+        self.settings(attempts=0, **held)
+        drive = self.sail("import json, os, pathlib\n"
+                          "pathlib.Path(os.environ['ABREAST_RECORD']).write_text(json.dumps("
+                          "{k: os.environ.get(k) for k in ('SLIPWAI_BROWSERS', 'SLIPWAI_TRUNK')}))\n")
+        self.turn("--once", SLIPWAI_SAIL=drive)
+        return json.loads(self.record.read_text(encoding="utf-8"))
+
+    def test_each_session_is_given_its_share_of_the_browsers_never_none(self) -> None:
+        self.assertEqual(self.told(boilers=2, browsers=4)["SLIPWAI_BROWSERS"], "2")
+
+    def test_fewer_browsers_than_boilers_is_still_one_each(self) -> None:
+        found = self.told(boilers=3, browsers=1)
+        self.assertEqual(found["SLIPWAI_BROWSERS"], "1")
+        self.assertIn(found["SLIPWAI_TRUNK"], ("main", "origin/main"))
+
+
 class LedgerTest(Abreast):
     def test_a_slice_in_its_berth_carries_its_own_dispatch_line_on_its_branch(self) -> None:
         """`make dispatch` refused a slice the captain had just claimed, so its commits had no line and

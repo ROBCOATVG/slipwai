@@ -305,7 +305,7 @@ class StreamInvariantTest(unittest.TestCase):
         said = self.validate(None, slice_of("orders"), slice_of("orders", id="S-orders-2"))
         self.assertEqual(len(said), 1, said)
         self.assertIn("stream orders (first appended to by S-orders) states no invariant", said[0])
-        self.assertIn("streams: {orders: {because: ...}}", said[0])
+        self.assertIn('streams: {orders: {because: "..."}}', said[0])
 
     def test_a_stated_invariant_passes(self) -> None:
         self.assertEqual(self.validate({"orders": {"because": "closure refuses every later command (FR-33)"}},

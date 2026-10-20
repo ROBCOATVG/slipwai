@@ -174,7 +174,7 @@ def missing(documented: list[str], actual: str) -> str | None:
 
 
 #: A pre-release suffix is not drift: the page names the release, and this checkout is on its way there.
-RELEASE = re.compile(r"\.(dev|rc|a|b)\d+$")
+RELEASE = re.compile(r"(?:\.?(?:rc|a|b)\d+)?(?:\.dev\d+)?$")
 
 
 def same_release(documented: list[str], actual: str) -> str | None:

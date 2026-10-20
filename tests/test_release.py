@@ -44,6 +44,15 @@ class FragmentTest(unittest.TestCase):
         self.assertEqual(implied("1.14.2", found), "1.15.0")
 
 
+    def test_after_a_candidate_the_number_is_the_candidate_s_until_a_claim_outgrows_it(self) -> None:
+        """2.0.0rc1 did not spend 2.0.0: a fix after it is still on its way to 2.0.0, not to 2.0.1."""
+        fix: list[Fragment] = [(Path("a.md"), "PATCH", "x")]
+        self.assertEqual(implied("2.0.0rc1", fix, "1.5.1"), "2.0.0")
+        self.assertEqual(implied("1.6.0rc1", [(Path("b.md"), "MAJOR", "y")], "1.5.1"), "2.0.0",
+                         "a claim bigger than the candidate's own bump moves past it")
+        self.assertEqual(implied("2.0.0rc1", fix), "2.0.0", "with no release before it, the candidate's number")
+
+
 class GateTest(unittest.TestCase):
     """`make check-release` runs in `make verify`, so it has to pass on this tree, whatever state it is in."""
 

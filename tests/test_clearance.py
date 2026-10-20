@@ -186,6 +186,16 @@ class StateTest(unittest.TestCase):
         self.assertEqual(state, "awaiting-decision")
         self.assertIn("which currency", why)
 
+    def test_a_park_the_harbourmaster_has_receipted_holds_nothing(self) -> None:
+        """hr-test-2's board said nine slices were "parked on its own" an hour after a person cleared each one:
+        the fold read the `parked` line and never the harbour's `cleared` receipt naming it."""
+        parked = line("parked", slice="ORD-01", why="which currency", t="2026-10-20T12:39:58Z")
+        receipt = line("cleared", parked="2026-10-20T12:39:58Z", what="go")
+        self.assertEqual(state_of("ORD-01", line("claimed", slice="ORD-01"), parked)[0], "awaiting-decision")
+        self.assertEqual(state_of("ORD-01", receipt, line("claimed", slice="ORD-01"), parked)[0], "running")
+        held, _ = state_of("ORD-02", line("parked", why="which currency", t="2026-10-20T12:41:00Z"), receipt)
+        self.assertEqual(held, "awaiting-decision", "a receipt answers only the park it names")
+
     def test_every_state_the_fold_can_produce_is_on_the_scale(self) -> None:
         self.assertEqual(len(chart.STATES), len(set(chart.STATES)))
         for state in ("blocked", "preparation-ready", "implementation-ready", "running", "awaiting-demo",

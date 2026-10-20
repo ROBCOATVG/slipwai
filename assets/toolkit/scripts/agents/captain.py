@@ -1226,6 +1226,26 @@ def resuming(found: list[logs.Entry]) -> list[str]:
     return logs.unmerged(found)
 
 
+def cleared_back(feature: str, fairway: str, found: list[logs.Entry], beside: list[str]) -> list[str]:
+    """The slices this stream holds whose own park a person has cleared since, to carry on mid-turn.
+
+    `resuming` is read once, where a turn starts, and the refill reads `next_slices`, which steps past
+    anything claimed. So a slice parked during a turn stayed claimed and unstarted until every sibling had
+    ended: hr-test-2 had nine parks cleared, every unclaimed slice steering by marks three of them set, and
+    two slots of three working for an hour. Only a slice whose newest claim-or-park line is its park —
+    nothing has claimed it since — and whose park is no longer open; one in flight here or worked by
+    another captain is left where it is.
+    """
+    _, held = state(found, fairway)
+    last: dict[str, str] = {}
+    for e in found:
+        if e.kind in ("claimed", "parked", "stopped") and e.fields.get("slice"):
+            last[str(e.fields["slice"])] = e.kind
+    back = [one for one in resuming(found) if last.get(one) == "parked" and one not in held
+            and one not in beside and worked_here(fairway, one) is None]
+    return furthest_first(feature, back, found) if back else []
+
+
 #: How far along a slice is, by what its own log says it reached. A merge asked for is past every gate; a demo
 #: is past the build; a finding stowed is a review that ran.
 LOG_RUNGS = {"request": 8, "demo": 7, "stowed": 5}
@@ -1352,8 +1372,14 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
             if not merging and not parked and len(threads) < limit:
                 if fresh and len(queued) < limit - len(threads) and (woken or time.monotonic() - looked >= LOOK):
                     looked, woken = time.monotonic(), False
-                    more, _ = next_slices(fairway, [*threads, *queued])
-                    queued += more
+                    # Claimed work whose park was cleared goes ahead of anything new, as it does where a
+                    # turn starts: it is this stream's own, and nearer its merge.
+                    back = cleared_back(feature, fairway, found, [*threads, *queued])
+                    for slice_id in back:
+                        for ident in answer_questions(feature, fairway, slice_id, found):
+                            print(f"captain: {ident} on {slice_id} is decided by the answer to the park", flush=True)
+                    more, _ = next_slices(fairway, [*threads, *queued, *back])
+                    queued += [*back, *more]
                 starting = queued[:max(0, limit - len(threads))]
                 for slice_id in starting:
                     alone = not threads

@@ -189,6 +189,35 @@ class ParkTest(Abreast):
         self.assertNotIn("is parked", again.stdout)
         self.assertIn("nothing to start", again.stdout)
 
+    def test_a_park_cleared_mid_turn_takes_the_free_slot_without_waiting_for_the_turn_to_end(self) -> None:
+        """hr-test-2 ran two slots of three for an hour: nine claimed slices had their parks cleared while
+        two siblings worked, every unclaimed slice waited on marks those nine set, and the refill read only
+        unclaimed slices — so a cleared park waited for every slice in flight to end."""
+        self.settings(attempts=0)
+        self.skeleton_merged()
+        for slice_id, at in (("L02", "2026-10-01T09:01:00Z"), ("L03", "2026-10-01T09:02:00Z")):
+            self.deck("LVR", logs.entry("claimed", fairway="LVR", slice=slice_id, t=OLD),
+                      logs.entry("parked", fairway="LVR", slice=slice_id, why="logged out", t=at))
+        self.slots(2)
+        self.granted("L02", "L03", "L04")
+        captain = subprocess.Popen([sys.executable, str(self.script), "LVR", "--once"], cwd=self.root,
+                                   env=self.environment(ABREAST_SLEEP="20"), stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(captain.kill)
+        until = time.monotonic() + 60
+        while "L04" not in self.windows():
+            self.assertLess(time.monotonic(), until, "L04 never started")
+            time.sleep(0.2)
+        self.assertEqual(sorted(self.windows()), ["L04"], "a held slice started before its park was cleared")
+        for at in ("2026-10-01T09:01:00Z", "2026-10-01T09:02:00Z"):
+            self.harbour(logs.entry("cleared", harbour=True, fairway="LVR", parked=at, what="go"))
+        said, _ = captain.communicate(timeout=240)
+        ran = self.windows()
+        self.assertIn("L02", ran, said)
+        self.assertLess(ran["L02"][0], ran["L04"][1], f"L02 waited for L04 to end: {said}")
+        for slice_id in ("L02", "L04"):
+            self.assertIn(f"{slice_id} is through its gate and merged", said)
+
 
 class LedgerTest(Abreast):
     def test_a_slice_in_its_berth_carries_its_own_dispatch_line_on_its_branch(self) -> None:

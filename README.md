@@ -1,9 +1,9 @@
+# Slipwai
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ROBCOATVG/slipwai/main/docs/images/voyage-dark.png">
-  <img alt="The Voyage window: a project's stages from requirements to accepted, what it is doing now, and the buttons for the next step" src="https://raw.githubusercontent.com/ROBCOATVG/slipwai/main/docs/images/voyage-light.png">
+  <img alt="The Voyage window: the stages of one project from requirements to accepted, with a tick for each stage that a file proves done, and the buttons for the next step" src="https://raw.githubusercontent.com/ROBCOATVG/slipwai/main/docs/images/voyage-light.png">
 </picture>
-
-# Slipwai
 
 [![verify](https://github.com/ROBCOATVG/slipwai/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/ROBCOATVG/slipwai/actions/workflows/verify.yml)
 [![PyPI](https://img.shields.io/pypi/v/slipwai)](https://pypi.org/project/slipwai/)

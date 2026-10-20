@@ -62,7 +62,13 @@ class DeclarationTest(unittest.TestCase):
         short = hooks.declared({"hooks": {"check": "hooks/check.py"}})
         long = hooks.declared({"hooks": {"check": {"run": "hooks/check.py"}}})
         self.assertEqual(short["check"]["run"], long["check"]["run"])
-        self.assertEqual(short["check"]["budget"], hooks.DEFAULT_BUDGET)
+        self.assertEqual(short["check"]["budget"], hooks.budget_of("check"))
+
+    def test_a_check_hook_has_the_minutes_a_gate_takes(self) -> None:
+        """hr-test-2: ux-gates' render gates took minutes and 30 seconds ended them every time."""
+        declared = hooks.declared({"hooks": {"check": "hooks/check.py", "after-stage": "sync.py"}})
+        self.assertEqual(declared["check"]["budget"], "600s")
+        self.assertEqual(declared["after-stage"]["budget"], hooks.DEFAULT_BUDGET)
 
     def test_a_declared_budget_wins_over_the_default(self) -> None:
         declared = hooks.declared({"hooks": {"after-stage": {"run": "sync.py", "budget": "90s"}}})

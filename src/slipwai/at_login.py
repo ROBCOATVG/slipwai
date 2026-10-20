@@ -89,6 +89,10 @@ def launchd(line: Sequence[str], home: Path, root: Path | None = None) -> Servic
         # already serving. `KeepAlive: true` would have launchd start a second one every ten seconds for as
         # long as the first one was up.
         "  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>\n"
+        # The fleet the board casts off outlives it. Without this, launchd ends every process the job ever
+        # started when the board stops — detached or not — so each restart or upgrade of the board stopped
+        # every captain mid-slice, and hr-test-2's fleet went down with each install.
+        "  <key>AbandonProcessGroup</key><true/>\n"
         f"  <key>StandardOutPath</key><string>{xml_escape(str(log))}</string>\n"
         f"  <key>StandardErrorPath</key><string>{xml_escape(str(log))}</string>\n"
         "</dict></plist>\n",
@@ -113,7 +117,10 @@ def systemd(line: Sequence[str], home: Path, root: Path | None = None) -> Servic
         # on-failure, not always: ending cleanly is what it does when a board is already serving, and
         # restarting that is a second board every two seconds for as long as the first one is up.
         "Restart=on-failure\n"
-        "RestartSec=2\n\n"
+        "RestartSec=2\n"
+        # Stop the board and nothing it started: the fleet it casts off is meant to outlive it, and the
+        # default, the whole control group, ended every captain whenever the board restarted.
+        "KillMode=process\n\n"
         "[Install]\n"
         "WantedBy=default.target\n",
         load=(("systemctl", "--user", "daemon-reload"),

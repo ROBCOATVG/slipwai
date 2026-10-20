@@ -703,7 +703,8 @@ class Bridge(BaseHTTPRequestHandler):
                 self.fitting = continue_build(self.root, self.fitting.said()["lines"] if self.fitting else None)
                 said = "continuing the build"
             elif where == "/tell":
-                said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")))
+                said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")),
+                            str(held.get("slice", "")))
             # The receipt the decision ceiling counts, for the decisions a person has read on this page.
             elif where == "/read":
                 stamps = held.get("decisions")

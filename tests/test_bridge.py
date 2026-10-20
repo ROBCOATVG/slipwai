@@ -30,7 +30,7 @@ from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 680 — every route the board answers, driven against `board_fixture`: the fleet pages, the
+# budget: 690 — every route the board answers, driven against `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
 # hold; the fixture moved out with it rather than being copied, which is what the one-suite rule was for.
@@ -38,6 +38,7 @@ from slipwai.telegraph import MEANS
 # of a launch or a model that failed.
 # Fifteen more for the storyboard's design files, served at the path they have in the project.
 # Twenty for Done on a note for the host, which is a `read` receipt written from the page.
+# and an answer from a red card naming the slice it is for
 
 
 class TellTest(Fixture):
@@ -52,6 +53,14 @@ class TellTest(Fixture):
         with self.assertRaises(ValueError) as refused:
             tell(self.root, "NOPE", "hello")
         self.assertIn("no log here", str(refused.exception))
+
+    def test_an_answer_from_a_red_card_names_its_slice(self) -> None:
+        """The box on a waiting slice's card: the line says which slice it is for, so it clears that park."""
+        tell(self.root, "ORD", "use the bank by role family", "ORD-07")
+        told = [e for e in self.read("ORD") if e.kind == "told"]
+        self.assertEqual((told[0].fields["slice"], told[0].fields["by"]), ("ORD-07", "person"))
+        with self.assertRaises(ValueError):
+            tell(self.root, "ORD", "hello", "../etc")
 
     def test_an_empty_message_is_refused(self) -> None:
         with self.assertRaises(ValueError):

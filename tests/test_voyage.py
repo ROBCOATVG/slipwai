@@ -4,9 +4,10 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 465 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# budget: 495 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
 # the design files a storyboard links that the board serves beside it, a step it did not start,
 # and how far into its budget a drawing is, and a fleet at work read as working
+# and a waiting slice's card, opened on its park and its questions with a box aimed at it
 from __future__ import annotations
 
 import json
@@ -456,3 +457,34 @@ class FoldTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AnswerCardTest(unittest.TestCase):
+    def test_a_waiting_slice_opens_on_its_park_its_questions_and_a_box_aimed_at_it(self) -> None:
+        from slipwai.voyage_page import slice_html
+
+        row = {"slice": "L07", "title": "Record the agreed final day", "state": "waiting", "fairway": "leaver",
+               "clearance": "running", "why": "claimed", "park": "stops before the plan on two questions",
+               "asked": "L07-Q1: after the agreed date?\nL07-Q2: which days?", "aim": "L07"}
+        card = slice_html(row)
+        self.assertTrue(card.startswith('<details class="slice waiting">'))
+        self.assertIn("stops before the plan on two questions", card)
+        self.assertIn("<li>L07-Q2: which days?</li>", card)
+        self.assertIn('data-answer="leaver" data-slice="L07"', card)
+        self.assertIn("Send to L07", card)
+
+    def test_a_slice_held_by_its_stream_s_park_answers_the_stream(self) -> None:
+        from slipwai.voyage_page import slice_html
+
+        row = {"slice": "L02", "title": "", "state": "waiting", "fairway": "leaver", "clearance": "running",
+               "why": "", "park": "the gate stayed red", "asked": "", "aim": ""}
+        card = slice_html(row)
+        self.assertIn('data-slice=""', card)
+        self.assertIn("Send to the leaver stream", card)
+
+    def test_a_slice_at_work_is_a_plain_card(self) -> None:
+        from slipwai.voyage_page import slice_html
+
+        row = {"slice": "L03", "title": "", "state": "working", "fairway": "leaver", "clearance": "running",
+               "why": "implementing"}
+        self.assertTrue(slice_html(row).startswith('<div class="slice working">'))

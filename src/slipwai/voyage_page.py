@@ -17,11 +17,12 @@ from .passage import Stage, current
 from .settings_card import project_tabs
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 580 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# budget: 610 — the bands of one window: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
 # different files than the ones it was drawn from. Both halves have to agree on what a band is, so both are here.
+# and a red card that opens on what its slice waits for, with a box that answers that slice and no other
 
 TITLES = {"todo": "To do", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -72,6 +73,13 @@ a.quiet:hover{background:var(--teal-soft)}
   background:var(--paper)}
 .slice b{font-size:.86rem}.slice .fw{font-size:.72rem;color:var(--ink-3);font-family:ui-monospace,Menlo,monospace}
 .slice .why{font-size:.78rem;color:var(--ink-2)}
+details.slice summary{display:grid;gap:3px;cursor:pointer;list-style:none}
+details.slice summary::-webkit-details-marker{display:none}
+details.slice[open]{grid-column:1 / -1}
+details.slice .park{font-size:.8rem;color:var(--ink-2);margin:6px 0 0;white-space:pre-wrap}
+details.slice .asked{font-size:.8rem;margin:4px 0;padding-left:18px;display:grid;gap:4px}
+details.slice textarea{width:100%;box-sizing:border-box;font:inherit;font-size:.84rem;margin-top:6px}
+details.slice button{justify-self:start;margin-top:4px}
 .slice.waiting{border-color:#b4432f}.slice.working{border-color:var(--brass)}.slice.done{border-color:var(--teal-soft)}
 .mocks{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .mock{display:grid;gap:4px;text-decoration:none;color:inherit;border:1px solid var(--rule);border-radius:8px;
@@ -146,7 +154,9 @@ SCRIPT = BOARD_SCRIPT + """
     // own was running is what made this page stale in the first place.
     try { found = await (await fetch('/voyage.json')).json(); }
     catch (fault) { setTimeout(poll, 8000); return; }
-    if (found.shape !== shape) { location.reload(); return; }
+    // Not while somebody is typing an answer into a card: the reload would throw the words away.
+    const typing = [...document.querySelectorAll('details.slice textarea')].some(box => box.value.trim());
+    if (found.shape !== shape && !typing) { location.reload(); return; }
     paint(found);
     setTimeout(poll, found.moving ? 2500 : 8000);
   };
@@ -156,6 +166,14 @@ SCRIPT = BOARD_SCRIPT + """
     if (event.target.id === 'draw') { event.target.disabled = true; send('/draw', {}); }
     if (event.target.id === 'model') { event.target.disabled = true; send('/model', {}); }
     if (event.target.id === 'intake-go') { event.target.disabled = true; send('/intake', {}); }
+    const answer = event.target.dataset && event.target.dataset.answer;
+    if (answer) {
+      const box = document.getElementById(event.target.dataset.box);
+      if (box && box.value.trim()) {
+        event.target.disabled = true;
+        send('/tell', {fairway: answer, slice: event.target.dataset.slice, message: box.value.trim()});
+      }
+    }
     const story = event.target.dataset && event.target.dataset.storyboard;
     if (story) {
       const why = document.getElementById('why-' + story);
@@ -372,8 +390,33 @@ def slice_html(row: dict[str, str]) -> str:
     fairway = f'<span class="fw">{esc(row["fairway"])} · {esc(row["clearance"])}</span>' if row.get("fairway") else \
         f'<span class="fw">{esc(row["clearance"])}</span>'
     name = f'{row["slice"]} = {row["title"]}' if row.get("title") else row["slice"]
+    if row["state"] == "waiting" and row.get("fairway"):
+        return answer_html(row, name, fairway)
     return (f'<div class="slice {esc(row["state"])}"><b>{esc(name)}</b>{fairway}'
             f'<span class="why">{esc(row.get("why", ""))}</span></div>')
+
+
+def answer_html(row: dict[str, str], name: str, fairway: str) -> str:
+    """A slice waiting on a person, as a card that opens on what it waits for and a box to answer it.
+
+    A red card said *waiting* and nothing a person could do about it from where they were looking: the
+    answer box was a stream's, further down, and a stream with three slices parked on three questions got
+    one box. Opened, the card says the park and each open question, and what is typed goes to that slice —
+    a `told` naming it, which clears its park and no sibling's, and which the captain records as the
+    answer to its questions when it carries the slice on.
+    """
+    asked = "".join(f"<li>{esc(one)}</li>" for one in row.get("asked", "").splitlines() if one.strip())
+    questions = f'<ol class="asked">{asked}</ol>' if asked else ""
+    park = row.get("park") or row.get("why", "")
+    box = f'answer-{row["slice"]}'
+    target = row["slice"] if row.get("aim") else f'the {row["fairway"]} stream'
+    return (f'<details class="slice waiting"><summary><b>{esc(name)}</b>{fairway}'
+            f'<span class="why">Waiting on you — open to answer</span></summary>'
+            f'<p class="park">{esc(park)}</p>{questions}'
+            f'<textarea id="{esc(box)}" rows="4" placeholder="Your answer, or what {esc(row["slice"])} needs to '
+            f'know"></textarea>'
+            f'<button type="button" data-answer="{esc(row["fairway"])}" data-slice="{esc(row.get("aim", ""))}" '
+            f'data-box="{esc(box)}">Send to {esc(target)}</button></details>')
 
 
 def shot_html(shot: dict[str, str]) -> str:

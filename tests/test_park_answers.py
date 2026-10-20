@@ -31,6 +31,16 @@ class HarbourmasterTest(harbourmaster_fixture.Fixture):
         self.run_once()
         self.assertEqual(self.cleared(), [])
 
+    def test_an_answer_aimed_at_one_slice_clears_its_park_and_no_sibling_s(self) -> None:
+        """Three slices parked on three questions are three answers: the box on L07's card is not L09's."""
+        self.deck("ordering", "ORD",
+                  logs.entry("parked", fairway="ORD", slice="L07", why="Q1?", t="2026-10-12T09:00:00Z"),
+                  logs.entry("parked", fairway="ORD", slice="L09", why="Q2?", t="2026-10-12T09:01:00Z"),
+                  logs.entry("told", fairway="ORD", slice="L07", message="b", t="2026-10-12T10:00:00Z",
+                             by="person"))
+        self.run_once()
+        self.assertEqual(self.cleared(), ["2026-10-12T09:00:00Z"])
+
     def over_the_ceiling(self) -> None:
         (self.root / "harbour.json").write_text('{"decision_ceiling": 1}', encoding="utf-8")
         self.deck("ordering", "ORD", logs.entry("decision", fairway="ORD", id="D1", what="a", t="2026-10-12T08:00:00Z"),

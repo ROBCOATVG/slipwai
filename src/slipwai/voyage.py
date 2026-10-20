@@ -14,8 +14,9 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 480 — the fold, the model, the mock-ups and the screenshots one voyage is read from, and the
+# budget: 500 — the fold, the model, the mock-ups and the screenshots one voyage is read from, and the
 # design files under `docs/design/` a storyboard links, served at the path they have in the project
+# and what a slice waiting on a person is held on: its park, its open questions, and where an answer goes
 from __future__ import annotations
 
 import json
@@ -27,7 +28,8 @@ from pathlib import Path
 from urllib.parse import quote, unquote
 
 from .assets import SLIPWAI
-from .fleet import clearance_query, fairways, harbour_log
+from .fleet import Fairway, clearance_query, fairways, harbour_log
+from .logs import held_slices
 from .process_alive import alive
 
 #: Where the board shows a slice: the four columns, in the order a person reads them.
@@ -94,6 +96,20 @@ def fleet_running(root: Path) -> bool:
     return False
 
 
+def held_on(owner: Fairway, slice_id: str) -> dict[str, str]:
+    """What a waiting slice is held on, for its card to say and its answer box to aim at.
+
+    `park` is the reason: the slice's own park, or the stream's where the whole stream is parked. `asked` is
+    each open question of the slice, one per line, `id: what`. `aim` is the slice where the park is its own,
+    so the answer clears that park and no sibling's; empty where the stream's park holds it, so the answer
+    goes to the stream, which is the only thing that can lift a park of the stream.
+    """
+    own = held_slices(owner.parks).get(slice_id, "")
+    asked = [f'{e.fields.get("id", "")}: {e.fields.get("what", "")}' for e in owner.asked
+             if str(e.fields.get("slice", "")) == slice_id]
+    return {"park": own or owner.parked, "asked": "\n".join(asked), "aim": slice_id if own else ""}
+
+
 def folded(root: Path, feature: str = "") -> tuple[list[dict[str, str]], str]:
     """Every charted slice with its state, fairway, why, and marks — and a fault where the chart could not be
     read. Empty, and no fault, where there is no chart yet."""
@@ -115,6 +131,8 @@ def folded(root: Path, feature: str = "") -> tuple[list[dict[str, str]], str]:
                 row["state"] = "done"
             elif slice_id in owner.claimed:  # in flight, one of several: waiting where a park holds it
                 row["state"] = "working" if slice_id in owner.slices_now and not owner.parked else "waiting"
+            if row["state"] == "waiting":
+                row.update(held_on(owner, str(slice_id)))
         rows.append(row)
     return sorted(rows, key=lambda row: (COLUMNS.index(row["state"]), row["slice"])), ""
 

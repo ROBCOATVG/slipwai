@@ -15,6 +15,7 @@ there was one.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold
@@ -84,8 +85,11 @@ def teller() -> str:
     return "session" if os.environ.get("SLIPWAI_FAIRWAY") else "person"
 
 
-def tell(root: Path, fairway: str, message: str) -> str:
+def tell(root: Path, fairway: str, message: str, slice_id: str = "") -> str:
     """Write a person's message into that stream's deck log, or say why it could not be.
+
+    With `slice_id`, the message is for that one slice — the box on a red card on the voyage — and answers
+    only that slice's park, never its siblings'.
 
     Into the deck log rather than anywhere of its own: the log is what the captain reads at its next
     boundary, and a message somewhere else is a message nothing is watching. Here rather than beside the
@@ -93,14 +97,18 @@ def tell(root: Path, fairway: str, message: str) -> str:
     """
     if not fairway or not message.strip():
         raise ValueError("a message needs a stream to go to and something to say")
+    if slice_id and not re.fullmatch(r"[A-Za-z0-9_.-]{1,40}", slice_id):
+        raise ValueError(f"{slice_id!r} is not a slice id")
     feature = feature_of(root, fairway)
     if not feature:
         raise ValueError(f"{fairway} has no log here, so there is nowhere for this to go. "
                          f"A stream gets a log when its captain writes its first line")
     path = root / deck_path(feature, fairway)
     with path.open("a", encoding="utf-8") as handle:
-        handle.write(entry("told", fairway=fairway, message=message.strip(), by=teller()).line())
-    return f"told {fairway}"
+        line = (entry("told", fairway=fairway, message=message.strip(), by=teller(), slice=slice_id) if slice_id
+                else entry("told", fairway=fairway, message=message.strip(), by=teller()))
+        handle.write(line.line())
+    return f"told {slice_id or fairway}"
 
 
 def mark_read(root: Path, fairway: str, stamps: list[str]) -> str:

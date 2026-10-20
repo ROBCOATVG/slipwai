@@ -35,6 +35,12 @@ delegated you ticks the checkbox, because concurrent siblings would otherwise al
 `AGENTS.md` names the routes that answer *what calls this* and *what does a change here reach*. Ask one of them,
 and name the route in your report.
 
+**Wait on your own run, never on the machine's.** Other slices' sessions run their suites on this machine
+beside yours, so `pgrep`, `ps | grep` or `pkill -f` by a test runner's name matches their runs as well as
+yours: you wait on a sibling's suite, or end it. Run a test command in the foreground, scoped as above; one the
+harness moves to the background is waited on by the task it named for it and by nothing else. A run that is slow
+says the machine is busy, and is not a reason to widen it or to run it again beside itself.
+
 **RED is observed before the code that satisfies it exists, and the report says so.** A failure reconstructed
 afterwards — implement, undo the implementation to watch the test fail, restore — proves the test fails without
 the change and not that it was written independently of it, and the two are indistinguishable in the diff.

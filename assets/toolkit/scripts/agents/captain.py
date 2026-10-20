@@ -490,7 +490,24 @@ def naming(slice_id: str, fairway: str, retry: str = "", berth: Path | None = No
     if (decide := cruising()):
         told["SLIPWAI_CRUISE"] = decide
     return {"SLIPWAI_FAIRWAY": fairway, "SLIPWAI_SLICE": slice_id, "SLIPWAI_STAGE": "drive",
-            "SLIPWAI_SINCE": logs.now(), **told}
+            "SLIPWAI_SINCE": logs.now(), **test_workers(), **told}
+
+
+def test_workers() -> dict[str, str]:
+    """Each session's share of this machine's cores, `SLIPWAI_TEST_WORKERS`, where several sessions are lit.
+
+    A test runner that starts a worker per core whatever else is running makes `boilers` sessions testing at
+    once `boilers` times the machine: hr-test-2 at three berths on eighteen cores sat at a load of eighty, a
+    20-second `make unit-service` took 280, and a guard check outran the harness's tool timeout and was
+    polled from the background for seven minutes. `boilers` is the machine's bound on sessions, every
+    fairway's together, so a share of it is a share no other captain here is also handed. The share is
+    named for no runner: each language package's own test configuration reads it, as the runner it chose
+    takes a bound. One a person set already is theirs and stands.
+    """
+    boilers = abreast.whole(harbour().get("boilers"))
+    if os.environ.get("SLIPWAI_TEST_WORKERS") or boilers is None or boilers <= 1:
+        return {}
+    return {"SLIPWAI_TEST_WORKERS": str(max(1, (os.cpu_count() or 1) // boilers))}
 
 
 def sail_model() -> str | None:

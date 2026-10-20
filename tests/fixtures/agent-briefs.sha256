@@ -57,7 +57,7 @@ f2dab9b976f34e96095a5e8352ea2bd182e19a4cefb6dbd7a5f7749fdba916c8  .  agents/sail
 1ca270d2141ceaa0ca3b9364cd0831b40c9335a43d109feb3709903678bcbab8  .  agents/sail-decide-skipper.md
 a4b907ac150e892cf9e1a12d30d18cebcdd2b7729a6009c90fc9a442a5b5895c  .  agents/sail-demo-hand.md
 8c358374ec2265d3a4ce9b8d651346fb635899139dc8677db11fada057ec3778  .  agents/sail-gaps-lookout.md
-67df59697b77097a97aabf103ad5cf32f0adb6cb4188c1dd03645b318a66bdf7  .  agents/sail-implement-shipwright.md
+fbdece07a690a17719e9e33dbe6bfef50ffe389f3213872b9fd4d5091f10acf5  .  agents/sail-implement-shipwright.md
 74e769fca3d3571b21d32f4119a474ae6f0a03e3bbfe513ee79e02eda3a15d75  .  agents/sail-mutation-shipworm.md
 31394bc32c2e0fd3dced3b940b4987f487b0f5dc2e9e21682500d187a9665036  .  agents/sail-review-mate.md
 4006ad30f04ca901ba9b37a9edd3133b26c26f8b93f8e449e3ef62a515009e94  .  agents/sail-slice-watch.md
@@ -68,7 +68,7 @@ a4b907ac150e892cf9e1a12d30d18cebcdd2b7729a6009c90fc9a442a5b5895c  .  agents/sail
 1ca270d2141ceaa0ca3b9364cd0831b40c9335a43d109feb3709903678bcbab8  delivery  agents/sail-decide-skipper.md
 018b09ac052d918ed314b07e6c3d7f6076e7f699e6286837adccf2e5c07b4df9  delivery  agents/sail-demo-hand.md
 8c358374ec2265d3a4ce9b8d651346fb635899139dc8677db11fada057ec3778  delivery  agents/sail-gaps-lookout.md
-c3bf8e090f4bef10d5096cb50016220ca955a8e14009e02e5efcc9c7f7f1c131  delivery  agents/sail-implement-shipwright.md
+d53f9aa2ca079a227d3d45f423292e046925b1ea4e0059d2d8def4868b8b4f05  delivery  agents/sail-implement-shipwright.md
 37393cbc33c19b47a8aeab5b958022c5adc04fd45aff0611541d8afec76670f6  delivery  agents/sail-mutation-shipworm.md
 31394bc32c2e0fd3dced3b940b4987f487b0f5dc2e9e21682500d187a9665036  delivery  agents/sail-review-mate.md
 626b88e3114bc09813c4c8397ca642d17513f9c64bfaec428be6c87c1e400eec  delivery  agents/sail-slice-watch.md

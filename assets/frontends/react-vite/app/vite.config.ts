@@ -18,6 +18,11 @@ import { configDefaults, defineConfig } from 'vitest/config';
  */
 const apiOrigin = process.env.API_ORIGIN ?? 'http://localhost:3000';
 
+// A session slipwai's captain started is told its share of this machine's cores, because several slices
+// testing at once would otherwise each start a worker per core. Unset, as in a person's own run, the
+// default stands.
+const workers = Number.parseInt(process.env.SLIPWAI_TEST_WORKERS ?? '', 10);
+
 // backing-service:__TRANSPORT__:end
 export default defineConfig({
   plugins: [react()],
@@ -66,6 +71,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
+    ...(workers > 0 ? { maxWorkers: workers } : {}),
     // A mutation run copies this app into `.stryker-tmp/sandbox-*/` and runs the suite there; a `make unit`
     // that started while one was running discovered those copies as tests of their own — 1,104 files where
     // there were 514, with every copied fixture path failing on ENOENT — and the run was thrown away.

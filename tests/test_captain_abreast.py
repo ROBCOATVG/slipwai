@@ -219,6 +219,28 @@ class ParkTest(Abreast):
             self.assertIn(f"{slice_id} is through its gate and merged", said)
 
 
+class WorkersTest(Abreast):
+    """hr-test-2 at three berths on eighteen cores sat at a load of eighty: its runner starts a worker per core in
+    every session, so three sessions testing at once were three machines' worth. Each is told its share."""
+
+    def told(self, boilers: int, **env: str) -> str | None:
+        self.settings(attempts=0, boilers=boilers)
+        drive = self.sail("import json, os, pathlib\n"
+                          "pathlib.Path(os.environ['ABREAST_RECORD']).write_text("
+                          "json.dumps(os.environ.get('SLIPWAI_TEST_WORKERS')))\n")
+        self.turn("--once", SLIPWAI_SAIL=drive, **env)
+        return json.loads(self.record.read_text(encoding="utf-8"))
+
+    def test_each_session_is_given_its_share_of_the_cores(self) -> None:
+        self.assertEqual(self.told(3), str(max(1, (os.cpu_count() or 1) // 3)))
+
+    def test_one_boiler_is_the_whole_machine(self) -> None:
+        self.assertIsNone(self.told(1))
+
+    def test_a_persons_own_setting_stands(self) -> None:
+        self.assertEqual(self.told(3, SLIPWAI_TEST_WORKERS="2"), "2")
+
+
 class LedgerTest(Abreast):
     def test_a_slice_in_its_berth_carries_its_own_dispatch_line_on_its_branch(self) -> None:
         """`make dispatch` refused a slice the captain had just claimed, so its commits had no line and

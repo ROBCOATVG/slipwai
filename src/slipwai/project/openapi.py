@@ -129,8 +129,10 @@ def openapi_targets(project_name: str, apps: list[App]) -> str:
     services = exporting(project_name, apps)
     if not services:
         return ""
+    # `$(CURDIR)`, because `npm --workspace` runs the script inside the service's own directory, where a
+    # path from the repository root names nothing: every berth in hr-test-2 wrote its document nowhere.
     writes = "".join(
-        marked(service, f"\t@out={document_of(service)}; {export_command(project_name, service)}\n")
+        marked(service, f"\t@out=$(CURDIR)/{document_of(service)}; {export_command(project_name, service)}\n")
         for service in services
     )
     checks = "".join(

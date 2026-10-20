@@ -56,7 +56,8 @@ def lines(root: Path) -> list[str]:
     stalled = [row for row in berths if row["state"] == "stalled"]
     said += ["", f"berths: {len(berths)}" + (f", {len(stalled)} stalled" if stalled else "")]
     said += table(berths, [("fairway", "fairway"), ("feature", "feature"), ("slice", "slice"),
-                           ("state", "state"), ("waiting", "waiting"), ("last", "last line"), ("tokens", "tokens"),
+                           ("queued", "queued"), ("state", "state"), ("waiting", "waiting"), ("last", "last line"),
+                           ("tokens", "tokens"),
                            ("merged", "merged"), ("marks", "marks")]) or ["  no fairway has written a line"]
 
     pressure = found["pressure"]

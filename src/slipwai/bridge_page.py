@@ -136,6 +136,13 @@ def stream_log(fairway: str, lines: list) -> str:
             f'</summary><ol class="lines" data-tail>{rows}</ol></details>')
 
 
+def queued_note(row: dict) -> str:
+    """The slices a stream has claimed and no session is on, said beside the ones at work — they are waiting
+    for a slot, which is different from being worked and different from being stuck."""
+    queued = str(row.get("queued") or "")
+    return f' <small>· queued {esc(queued)}</small>' if queued and queued != "—" else ""
+
+
 def berth_rows(rows: list[dict], streams: dict) -> str:
     if not rows:
         return '<p class="empty">No stream has written a line yet.</p>'
@@ -147,7 +154,7 @@ def berth_rows(rows: list[dict], streams: dict) -> str:
         state = STATES.get(str(row["state"]), str(row["state"]))
         body += (
             f"<tr><td><b>{esc(name)}</b></td><td>{esc(row['feature'])}</td>"
-            f"<td class=\"mono\">{esc(row['slice'])}</td>"
+            f"<td class=\"mono\">{esc(row['slice'])}{queued_note(row)}</td>"
             f"<td><span class=\"chip {esc(STATES.get(str(row['state']), ''))}\" "
             f"data-state=\"{esc(state)}\">{esc(state)}</span></td>"
             f"<td>{esc(row.get('waiting', 0))}</td><td>{esc(row['last'])}</td>"

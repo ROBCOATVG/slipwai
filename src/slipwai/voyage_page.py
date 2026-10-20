@@ -25,7 +25,7 @@ from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 # and a red card that opens on what its slice waits for, with a box that answers that slice and no other
 # and the strip's amber attention beside its red stop
 
-TITLES = {"todo": "To do", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
+TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
 MODEL_CONTROLS = (("left", "←", "Nudge left"), ("right", "→", "Nudge right"), ("up", "↑", "Nudge up"),
                   ("down", "↓", "Nudge down"), ("out", "−", "Zoom out"), ("in", "+", "Zoom in"),
@@ -70,9 +70,10 @@ a.quiet:hover{background:var(--teal-soft)}
 .expect ol{margin:8px 0 0;padding:0 0 0 18px;display:grid;gap:7px;font-size:.86rem;color:var(--ink-2)}
 .expect ol b.who{color:var(--ink);font-weight:600}
 .expect ol li.gone{opacity:.45}
-.columns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.columns{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .col h3{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;
   padding-bottom:6px;border-bottom:2px solid var(--rule)}
+.col.queued h3{border-color:var(--brass-soft)}
 .col.done h3{border-color:var(--teal)}.col.working h3{border-color:var(--brass)}.col.waiting h3{border-color:#b4432f}
 .slice{border:1px solid var(--rule);border-radius:8px;padding:8px 10px;margin-bottom:8px;display:grid;gap:3px;
   background:var(--paper)}
@@ -85,6 +86,7 @@ details.slice .park{font-size:.8rem;color:var(--ink-2);margin:6px 0 0;white-spac
 details.slice .asked{font-size:.8rem;margin:4px 0;padding-left:18px;display:grid;gap:4px}
 details.slice textarea{width:100%;box-sizing:border-box;font:inherit;font-size:.84rem;margin-top:6px}
 details.slice button{justify-self:start;margin-top:4px}
+.slice.queued{border-style:dashed;border-color:var(--brass)}
 .slice.waiting{border-color:#b4432f}.slice.working{border-color:var(--brass)}.slice.done{border-color:var(--teal-soft)}
 .mocks{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .mock{display:grid;gap:4px;text-decoration:none;color:inherit;border:1px solid var(--rule);border-radius:8px;

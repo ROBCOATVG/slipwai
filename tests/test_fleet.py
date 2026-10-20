@@ -103,6 +103,22 @@ class StateTest(Fixture):
         self.assertEqual(self.board()["berths"][0]["slice"], "ORD-02")
 
 
+class QueuedTest(Fixture):
+    def test_a_claimed_slice_no_session_is_on_is_queued_not_working(self) -> None:
+        """hr-test-2 drew seven slices as working with three abreast: four were claimed and waiting for a slot,
+        writing nothing, and the board could not tell them from the three a session was on."""
+        self.deck("LVR", logs.entry("claimed", fairway="LVR", slice="L04", t=when(90)),
+                  logs.entry("stopped", fairway="LVR", slice="L04", t=when(80)),
+                  logs.entry("claimed", fairway="LVR", slice="L02", t=when(10)),
+                  logs.entry("heartbeat", fairway="LVR", slice="L02", t=when(1)))
+        stream = fleet.fairways(self.root)[0][0]
+        self.assertEqual(stream.at_work(now=NOW), ["L02"])
+        self.assertEqual(stream.queued(now=NOW), ["L04"])
+        row = self.board()["berths"][0]
+        self.assertEqual((row["slice"], row["queued"]), ("L02", "L04"))
+        self.assertIn("queued", "\n".join(lines(self.root)))
+
+
 class NumbersTest(Fixture):
     def test_a_number_nobody_wrote_is_a_dash_and_not_a_zero(self) -> None:
         self.deck("ORD", logs.entry("heartbeat", fairway="ORD", t=when(1)))

@@ -17,11 +17,12 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 450 — every column of the board folded from the logs, including what waits on a person: a park,
+# budget: 475 — every column of the board folded from the logs, including what waits on a person: a park,
 # a told, the decisions nobody has read, and a question a headless stage posted and nobody has answered
 # yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
 # which `told` an answer or a claim has already taken up, which one is a session's note for another session
 # rather than for the person, and whether unread decisions hold anything up
+# and which slices in flight a session is on now, and which are claimed and waiting for a slot
 from __future__ import annotations
 
 import ast
@@ -95,6 +96,31 @@ class Fairway:
         drew the rest as nothing."""
         held = held_slices(self.parks)
         return [one for one in unmerged(self.entries) if one not in held]
+
+    def at_work(self, bound: float = STALL_MINUTES, now: datetime | None = None) -> list[str]:
+        """The slices in flight that a session is actually on: a line naming the slice — its `claimed`, a
+        `heartbeat` the captain writes every minute while the session runs, a mark — within the stall bound.
+
+        A claimed slice is carried on until it merges, so a fairway held to three abreast with seven claimed
+        has four that are waiting for a slot and writing nothing. hr-test-2 drew all seven as working while
+        only three had a session, and the slice nearest its merge was one of the four sitting idle.
+        """
+        heard: dict[str, str] = {}
+        for entry in self.entries:
+            named = str(entry.fields.get("slice", "") or "")
+            if named:
+                heard[named] = entry.t
+        fresh = []
+        for one in self.slices_now:
+            since = minutes_since(heard.get(one, ""), now)
+            if since is not None and since <= bound:
+                fresh.append(one)
+        return fresh
+
+    def queued(self, bound: float = STALL_MINUTES, now: datetime | None = None) -> list[str]:
+        """The slices in flight no session is on now: claimed, waiting for a slot to be carried on."""
+        busy = set(self.at_work(bound, now))
+        return [one for one in self.slices_now if one not in busy]
 
     @property
     def last(self) -> str:
@@ -286,7 +312,8 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
         rows.append({
             "fairway": one.name,
             "feature": one.feature,
-            "slice": ", ".join(one.slices_now) or NOTHING,
+            "slice": ", ".join(one.at_work(bound, now)) or NOTHING,
+            "queued": ", ".join(one.queued(bound, now)) or NOTHING,
             "state": state_of(one, bound, now, count),
             "waiting": count if count is not None else NOTHING,
             "last": f"{since:.0f}m ago" if since is not None else NOTHING,

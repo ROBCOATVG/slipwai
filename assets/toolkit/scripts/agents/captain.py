@@ -139,6 +139,8 @@ DEFAULT_WAIT_MINUTES = 60
 BRANCH = "slice/{slice}"
 #: The fairway and feature this captain is on, and whether a stop is being honoured.
 ON: dict[str, str] = {}
+#: What a captain's park at the decision ceiling says it waits on — the harbourmaster's word for it.
+REVIEW = "decision-review"
 #: Every slice in flight, each with the session running it, its berth, and whether it is waiting on a merge
 #: answer — what a stop ends and names, and what back-pressure reads. Empty between slices: a captain that
 #: has written no `claimed` has nothing to name and, until its claim is taken, no right to write at all.
@@ -551,25 +553,30 @@ def watched(process: subprocess.Popen, feature: str, fairway: str, slice_id: str
                                      else f"`/sail` exited {process.returncode}")
 
 
-def boundary(feature: str, fairway: str) -> str:
+def boundary(feature: str, fairway: str) -> tuple[str, str]:
     """The inbox at a boundary, and why the fairway stops where it does.
 
     `inbox.owed` says a boundary is forced; this says what the next thing to happen is. Either way it is a
     person — a message nobody answered inside its bound, or a backlog of decisions nobody has read. The
     experiment reached 125 decisions with 105 of them never reviewed, which is not a record of judgement.
+
+    The second value is what the park waits on: `decision-review` at the ceiling, which the harbourmaster
+    clears when the decisions are read or the ceiling raised and never on a message, because a message is
+    how the guardrail was walked past.
     """
     fire("boundary", slice="", fairway=fairway)
     owed = inbox.owed(fairway)
     if not owed.get("forced"):
-        return ""
+        return "", ""
     late = owed.get("overrun") or []
     if late:
         said = str(late[0].get("message", ""))[:120]
         return (f"{len(late)} message(s) from a person have gone past the wait bound unanswered, the "
-                f"oldest being {said!r}. `/told` reads them, and a read line is the receipt")
+                f"oldest being {said!r}. `/told` reads them, and a read line is the receipt"), ""
     return (f"{len(owed.get('unreviewed') or [])} decisions stand unread, over the ceiling of "
             f"{owed.get('ceiling')}. A backlog of judgement nobody has looked at is not judgement. Read "
-            f"them under *Waiting on you* on the board and press Mark read, which writes each receipt")
+            f"them under *Waiting on you* on the board and press Mark read, which writes each receipt, or "
+            f"raise `decision_ceiling` in harbour.json"), REVIEW
 
 
 def sets_of(slice_id: str) -> list[str]:
@@ -909,8 +916,10 @@ def work(slice_id: str, feature: str, fairway: str) -> tuple[bool, str]:
         # from here rather than from the request line: the inbox and the hook in between take a moment, and a
         # sibling started in it would meet the trunk this slice is about to move.
         FLIGHT.setdefault(slice_id, {})["merging"] = True
-        held = boundary(feature, fairway)
+        held, waiting = boundary(feature, fairway)
         if held:
+            if waiting:
+                FLIGHT.setdefault(slice_id, {})["waiting"] = waiting
             return False, held
         fire("before-merge", slice=slice_id, fairway=fairway)
         landed, why = merged(slice_id, feature, fairway, bound)
@@ -1055,7 +1064,8 @@ def allowed(fairway: str, flying: int, found: list[logs.Entry]) -> int:
     return min(count if isinstance(count, int) else 1, abreast.width(harbour()))
 
 
-def finished(feature: str, fairway: str, slice_id: str, done: bool, fault: str, since: int, alone: bool) -> str:
+def finished(feature: str, fairway: str, slice_id: str, done: bool, fault: str, since: int, alone: bool,
+             waiting: str = "") -> str:
     """The line a slice's end prints, and the park it writes where it did not merge.
 
     The session parked itself, with the reason it met: a second park on top of it would say what the gate
@@ -1069,7 +1079,9 @@ def finished(feature: str, fairway: str, slice_id: str, done: bool, fault: str, 
     own = own_parks(entries(feature, fairway)[since:], fairway, slice_id)
     if own:
         return f"captain: {fairway} parked at {slice_id} — {own[-1].fields.get('why', '')}"
-    named = {} if alone else {"slice": slice_id}
+    named: dict[str, str] = {} if alone else {"slice": slice_id}
+    if waiting:
+        named["waiting"] = waiting
     write(feature, fairway, logs.entry("parked", fairway=fairway, why=f"{slice_id}: {fault}", **named))
     return f"captain: {fairway} parked at {slice_id} — {fault}"
 
@@ -1124,8 +1136,8 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
         for slice_id in [one for one, thread in threads.items() if not thread.is_alive()]:
             threads.pop(slice_id).join()
             done, fault, alone = results.pop(slice_id, (False, "the slice's thread ended without a word", True))
-            FLIGHT.pop(slice_id, None)
-            line = finished(feature, fairway, slice_id, done, fault, since, alone and not threads)
+            waiting = str((FLIGHT.pop(slice_id, None) or {}).get("waiting") or "")
+            line = finished(feature, fairway, slice_id, done, fault, since, alone and not threads, waiting)
             print(line, flush=True)
             said.append(line)
         if not threads:

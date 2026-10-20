@@ -376,6 +376,9 @@ def tell(streams: list[str], words: list[str]) -> int:
     message = " ".join(words).strip() if words else ("" if sys.stdin.isatty() else sys.stdin.read().strip())
     if not message:
         raise SystemExit("tell takes the message as its words, or on standard input")
+    # A session a captain dispatched runs this too, to say something to a person; only a person's line may
+    # answer a park, so whose it is travels with it. The captain sets `SLIPWAI_FAIRWAY` on every session.
+    by = "session" if os.environ.get("SLIPWAI_FAIRWAY") else "person"
     written: list[str] = []
     for stream in streams:
         where = deck_of(stream)
@@ -383,7 +386,7 @@ def tell(streams: list[str], words: list[str]) -> int:
             raise SystemExit(f"`{stream}` has no deck log here, so there is nowhere for this to go. A stream "
                              f"gets a log when its captain writes its first line.")
         with where.open("a", encoding="utf-8") as handle:
-            handle.write(logs.entry("told", fairway=stream, message=message).line())
+            handle.write(logs.entry("told", fairway=stream, message=message, by=by).line())
         written.append(stream)
     print(f"told {', '.join(written)}. Each reads it at its next boundary and answers with a `read` line; "
           f"`slipwai bridge` is where the answer comes back.")

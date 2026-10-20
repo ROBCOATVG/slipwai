@@ -53,7 +53,7 @@ believed. Every line carries `fairway`.
 | `merged` | the slice is on trunk | `slice`, `commit` |
 | `decision` | something another captain could contradict | `id`, `what` |
 | `question` | a product question this slice cannot be guessed past, for a person; open until a `decision` carries its `id` | `slice`, `id`, `what` |
-| `told` | something somebody needs to know now | `message` |
+| `told` | something somebody needs to know now; it never answers a park, which only a person does | `message`, `by: session` |
 | `read` | a receipt for a `told` you have acted on | `told`, which is that line's `t` |
 | `heartbeat` | you are alive and still working | `slice`, where you are on one |
 | `request` | something outside your berth, asked for | `id`, `what`, `detail` |

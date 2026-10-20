@@ -14,6 +14,7 @@ there was one.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold
@@ -73,6 +74,16 @@ def feature_of(root: Path, fairway: str) -> str:
     return next((feature for feature, name in streams(root) if name == fairway), "")
 
 
+def teller() -> str:
+    """Whose a `told` is: `person`, which may answer a park, or `session`, which may not.
+
+    The board writes a person's. So does the MCP server — except under a session the captain dispatched,
+    which starts it with `SLIPWAI_FAIRWAY` set and inherits it here: a project's `.mcp.json` reaches every
+    berth, and a session's note to the host cleared the decision-ceiling park it was meant to wait behind.
+    """
+    return "session" if os.environ.get("SLIPWAI_FAIRWAY") else "person"
+
+
 def tell(root: Path, fairway: str, message: str) -> str:
     """Write a person's message into that stream's deck log, or say why it could not be.
 
@@ -88,7 +99,7 @@ def tell(root: Path, fairway: str, message: str) -> str:
                          f"A stream gets a log when its captain writes its first line")
     path = root / deck_path(feature, fairway)
     with path.open("a", encoding="utf-8") as handle:
-        handle.write(entry("told", fairway=fairway, message=message.strip()).line())
+        handle.write(entry("told", fairway=fairway, message=message.strip(), by=teller()).line())
     return f"told {fairway}"
 
 

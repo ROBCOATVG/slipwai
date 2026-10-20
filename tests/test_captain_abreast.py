@@ -190,6 +190,27 @@ class ParkTest(Abreast):
         self.assertIn("nothing to start", again.stdout)
 
 
+class LedgerTest(Abreast):
+    def test_a_slice_in_its_berth_carries_its_own_dispatch_line_on_its_branch(self) -> None:
+        """`make dispatch` refused a slice the captain had just claimed, so its commits had no line and
+        `check-dispatch` refused them all. The captain writes the line, on the slice's branch."""
+        self.settings(attempts=0)
+        self.skeleton_merged()
+        self.slots(3)
+        self.granted("L02", "L03", "L04")
+        done = self.turn("--once")
+        self.assertIn("L02 is through its gate and merged", done.stdout, done.stdout + done.stderr)
+        for slice_id in ("L02", "L03", "L04"):
+            shown = subprocess.run(["git", "show", f"slice/{slice_id}:.slipwai/dispatch/ordering/{slice_id}.jsonl"],
+                                   cwd=self.root, capture_output=True, text=True)
+            self.assertEqual(shown.returncode, 0, shown.stderr + done.stdout)
+            row = json.loads(shown.stdout)
+            self.assertEqual((row["slice"], row["outcome"]), (slice_id, "dispatched"))
+            subject = subprocess.run(["git", "log", "--format=%s", f"main..slice/{slice_id}"], cwd=self.root,
+                                     capture_output=True, text=True).stdout
+            self.assertIn("Dispatch ledger: the captain's line for this slice", subject)
+
+
 class StopTest(Abreast):
     def test_a_stop_ends_every_slice_in_flight_and_the_next_captain_resumes_them_all(self) -> None:
         self.settings()

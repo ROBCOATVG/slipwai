@@ -819,6 +819,37 @@ def moored(slice_id: str) -> tuple[Path | None, str]:
     return None, f"it has no berth of its own and a sibling is in flight, so it did not start: {why}"
 
 
+def ledgered(feature: str, slice_id: str, berth: Path) -> str:
+    """Write the slice's dispatch-ledger line into its berth and commit it there; say what failed, or nothing.
+
+    `check-dispatch` refuses every commit naming a slice no ledger line accounts for, and the line was the
+    session's to write with `make dispatch` — which then refused, because the `claimed` line this captain had
+    just written makes clearance read the slice as running, not startable. hr-test-2's L03 and L06 were built
+    and could never pass the gate. The captain is the one that dispatched the slice, so it writes the line,
+    on the slice's own branch, where it rides to trunk with the work as every slice's line does.
+    """
+    path = berth / ".slipwai/dispatch" / feature / f"{slice_id}.jsonl"
+    held = path.read_text(encoding="utf-8") if path.is_file() else ""
+    if f'"slice": "{slice_id}"' in held:
+        return ""
+    row = {"v": 1, "t": logs.now(), "feature": feature, "slice": slice_id, "band": "", "slot": 0,
+           "outcome": "dispatched", "why": "dispatched by the captain into its berth", "delegate": "captain",
+           "harness": harness.current_key(), "machine": logs.machine(), "worktree": f"../{berth.name}"}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(row, sort_keys=True) + "\n")
+    # Forced, because a project may ignore `.slipwai/` whole, and this one file is meant to be committed.
+    for argv in (["add", "--force", "--", str(path)],
+                 ["commit", "--quiet", "--no-verify", "-m", "Dispatch ledger: the captain's line for this slice",
+                  "--", str(path)]):
+        done = subprocess.run(["git", *argv], cwd=berth, capture_output=True, text=True)
+        if done.returncode != 0:
+            said = (done.stderr or done.stdout).strip().splitlines()
+            return (f"its dispatch-ledger line is written at {path} and not committed "
+                    f"({said[-1] if said else 'git failed'}); the session's commits must carry it")
+    return ""
+
+
 def work(slice_id: str, feature: str, fairway: str) -> tuple[bool, str]:
     """One slice, start to finish. (did it finish, why it did not). Run in a thread of its own."""
     # Recorded before the `claimed` line, so a captain that reads the line also finds whose it is.
@@ -830,6 +861,10 @@ def work(slice_id: str, feature: str, fairway: str) -> tuple[bool, str]:
             return False, why
         FLIGHT.setdefault(slice_id, {})["berth"] = berth
         write(feature, fairway, logs.entry("claimed", fairway=fairway, slice=slice_id))
+        if berth.resolve() != ROOT.resolve():
+            unledgered = ledgered(feature, slice_id, berth)
+            if unledgered:
+                print(f"captain: {slice_id}: {unledgered}", flush=True)
         bound = attempts()
         ok, why = through_its_gate(slice_id, feature, fairway, bound)
         if not ok:

@@ -44,6 +44,7 @@ has no slipwai to import.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -218,6 +219,29 @@ def narrowed(found: dict, wanted: list[str]) -> tuple[dict, list[str]]:
     return {**found, "schedule": {**schedule, "start": starting}}, said
 
 
+def captains_slice(found: dict, wanted: list[str], machine: str, key: str) -> dict | None:
+    """The line for the slice a captain dispatched this session to work, or None where this is not one.
+
+    The captain writes `claimed` before it starts the session, so clearance reads the slice as running and
+    never as startable, and a dispatch that followed clearance alone refused the very slice it was asked for
+    — leaving its commits with no line for `check-dispatch` to find. A session the captain started says so in
+    `SLIPWAI_FAIRWAY` and `SLIPWAI_SLICE`; for that slice, while it reads as running, the line is written, and
+    the claim is left as the captain made it.
+    """
+    own = os.environ.get("SLIPWAI_SLICE", "")
+    if not own or not os.environ.get("SLIPWAI_FAIRWAY") or (wanted and own not in wanted):
+        return None
+    if (found.get("states") or {}).get(own, {}).get("state") != "running":
+        return None
+    feature = str(found.get("feature", ""))
+    if own in dispatched_slices(feature):
+        return None
+    berth = os.environ.get("SLIPWAI_BERTH", "")
+    return {"v": 1, "t": now(), "feature": feature, "slice": own, "band": "", "slot": 0, "outcome": "dispatched",
+            "why": "dispatched by the captain, which claimed it", "delegate": DELEGATE, "harness": key,
+            "machine": machine, "worktree": f"../{Path(berth).name}" if berth else f"../{ROOT.name}-{own}"}
+
+
 def claim(found: dict, written: list[dict]) -> list[str]:
     """A `claimed` line in each started slice's deck log, so clearance counts it as running."""
     feature = str(found.get("feature", ""))
@@ -307,12 +331,16 @@ def main(argv: list[str]) -> int:
             # ledger: a line per dispatch saying the same thing is a line nobody reads by the third one.
             print(f"dispatch: {len(owed)} slice(s) wait on a shipped mark and no baseline was taken — "
                   f"{said}", file=sys.stderr)
+    own = captains_slice(found, wanted, logs.machine(), harness.current_key())
     found, not_started = narrowed(found, wanted)
     for sentence in not_started:
-        print(f"dispatch: {sentence}", file=sys.stderr)
+        if own is None or not sentence.startswith(f"{own['slice']} "):
+            print(f"dispatch: {sentence}", file=sys.stderr)
     able = bool(flown.get("delegates") is True)
     why = str(flown.get("why") or "no reason was recorded")
     written = lines(found, able, why, logs.machine(), harness.current_key())
+    if own is not None and own["slice"] not in {row["slice"] for row in written}:
+        written.append(own)
     if taken:
         # Named in the ledger as well as in the harbour log, so a reader of *this run* can see that what it
         # dispatched on stood partly on derived evidence rather than on marks any stage here earned.
@@ -330,7 +358,7 @@ def main(argv: list[str]) -> int:
         paths.append(path)
         if (place := worktree_of(row)) is not None:
             append(place / path.relative_to(ROOT), [row])
-    unclaimed = claim(found, written)
+    unclaimed = claim(found, [row for row in written if row is not own])
     for sentence in unclaimed:
         print(f"dispatch: {sentence}", file=sys.stderr)
     shown = sorted({path.relative_to(ROOT).as_posix() for path in paths})

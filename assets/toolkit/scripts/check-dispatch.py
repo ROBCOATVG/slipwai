@@ -34,8 +34,8 @@ line. A file per slice is added once and touched by nobody else.
 commit in the run this came from names its work there — `036 UI9: …`, `SB2V: …`, `036 SB4-SB7 browser: …`
 — and a gate that read whole messages would refuse a commit for saying `HTTP2` in a sentence. A refusal
 that is wrong costs more than a miss here: this one blocks a push, and a gate people switch off holds
-nothing at all. Decision ids (`D12`) and task ids (`T018`) are excluded by shape, because they are not
-slices and never were.
+nothing at all. Decision ids (`D12`), task ids (`T018`), request ids (`R3`) and question ids (`Q7`) are
+excluded by shape, because they are not slices and never were.
 
 Standalone and dependency-free: PyYAML is read where it is installed and the charts are read by pattern
 where it is not, because a gate that could not run without a dependency would be a gate nobody installed.
@@ -66,9 +66,9 @@ OLD_LEDGER = "dispatch-ledger.jsonl"
 #: What a slice id looks like: letters then digits, optionally one more letter — `SB1`, `SB7V`, `OB7I`,
 #: `TN16V`, `GV5`, `UI9`. Anchored whole, so `HTTP2XX` inside a word is not one.
 SHAPE = re.compile(r"^[A-Z]{1,5}\d{1,3}[A-Z]{0,2}$")
-#: Shapes that are id-like and are never slices: a decision and a task. Excluded by what they are rather
+#: Shapes that are id-like and are never slices: a decision, a task, a request and a question. Excluded by what they are rather
 #: than by a list of the ones seen so far, which would need editing every time a project minted one.
-NOT_SLICES = re.compile(r"^(D\d+|T\d+)$")
+NOT_SLICES = re.compile(r"^(D\d+|T\d+|R\d+|Q\d+)$")
 #: Where a commit says what it is about. Everything after the first colon is prose about the change.
 SUBJECT = re.compile(r"^([^:\n]*):")
 

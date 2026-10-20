@@ -67,6 +67,10 @@ class Naming(unittest.TestCase):
         self.assertEqual(gate.named("036 D49: players read both armies' pinned lists"), [])
         self.assertEqual(gate.named("SB1 T018: Play opens or starts the setup's live battle"), ["SB1"])
 
+    def test_requests_and_questions_are_not_slices(self) -> None:
+        """`R3` answers a request and `Q7` a question; a commit naming either was refused as unplanned work."""
+        self.assertEqual(gate.named("L03 R3 Q7: the answered question folded in"), ["L03"])
+
     def test_nothing_after_the_colon_is_read(self) -> None:
         """A sentence that says HTTP2 is a sentence, not a claim about a slice."""
         self.assertEqual(gate.named("Fix the parser: HTTP2 frames with SB1 in the body"), [])

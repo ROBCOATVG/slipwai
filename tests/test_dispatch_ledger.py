@@ -55,9 +55,11 @@ class LedgerTest(unittest.TestCase):
             "why": "Claude Code reads 13 delegate type(s) from .claude/agents/" if delegates else
                    ".claude/agents/ holds none of this project's 13 delegate types"}), encoding="utf-8")
 
-    def run_it(self, *flags: str) -> subprocess.CompletedProcess:
+    def run_it(self, *flags: str, **told: str) -> subprocess.CompletedProcess:
         environment = {key: value for key, value in os.environ.items()
-                       if key not in ("CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID")}
+                       if key not in ("CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "SLIPWAI_FAIRWAY",
+                                      "SLIPWAI_SLICE", "SLIPWAI_BERTH")}
+        environment.update(told)
         return subprocess.run([sys.executable, "scripts/agents/dispatch.py", "--feature", "036-shared",
                                *flags], cwd=self.root, capture_output=True, text=True, timeout=120,
                               env=environment)
@@ -186,6 +188,35 @@ class LedgerTest(unittest.TestCase):
         self.assertEqual(done.returncode, 1)
         self.assertIn("SB2 does not start now: running", done.stderr)
         self.assertIn("SB9 does not start now", done.stderr)
+
+    def test_the_slice_a_captain_dispatched_gets_its_line_though_the_captain_claimed_it(self) -> None:
+        """The captain writes `claimed` before it starts the session, so clearance reads the slice as running,
+        and a dispatch that followed clearance alone refused it — hr-test-2's L03 and L06 were built and never
+        passed `check-dispatch`. The line is written; the claim is left as the captain made it."""
+        self.chart()
+        self.flown(True)
+        (self.root / ".slipwai/logs/036-shared").mkdir(parents=True)
+        (self.root / ".slipwai/logs/036-shared/f.jsonl").write_text(json.dumps(
+            {"v": 1, "t": "2026-10-20T09:00:00Z", "kind": "claimed", "fairway": "f", "slice": "SB2"}) + "\n",
+            encoding="utf-8")
+        done = self.run_it("--slice", "SB2", SLIPWAI_FAIRWAY="f", SLIPWAI_SLICE="SB2",
+                           SLIPWAI_BERTH=str(self.root.parent / "project-SB2"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("does not start now", done.stderr)
+        written = self.ledger("SB2")
+        self.assertEqual([row["outcome"] for row in written], ["dispatched"], written)
+        self.assertEqual(written[0]["worktree"], "../project-SB2")
+        self.assertEqual(len([row for row in self.deck() if row["kind"] == "claimed"]), 1, "it claimed twice")
+        again = self.run_it("--slice", "SB2", SLIPWAI_FAIRWAY="f", SLIPWAI_SLICE="SB2")
+        self.assertEqual(len(self.ledger("SB2")), 1, again.stdout + again.stderr)
+
+    def test_a_running_slice_is_still_refused_to_a_session_no_captain_started(self) -> None:
+        self.chart()
+        self.flown(True)
+        self.run_it("--slice", "SB2")
+        done = self.run_it("--slice", "SB2", SLIPWAI_SLICE="SB2")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("SB2 does not start now: running", done.stderr)
 
     def test_the_line_is_written_into_the_slices_worktree_where_one_exists(self) -> None:
         """So the slice branch commits it, and it rides in the pull request that lands the slice."""

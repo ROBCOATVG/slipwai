@@ -17,6 +17,7 @@ branch is only read again when its head has moved.
 """
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -28,6 +29,12 @@ from .logs import Entry
 LOGGED = {"request": (8, "Merging"), "demo": (7, "Demo"), "stowed": (5, "Review")}
 FILED = {"review.md": (6, "Review"), "tasks.md": (4, "Implementing"), "plan.md": (3, "Planning"),
          "research.md": (3, "Planning"), "examples.md": (2, "Example mapping")}
+#: The word for each stage `benchmark.py` brackets, by the stage name's first word: `implement-shipwright` and
+#: `implement` are both Implementing. A stage not named here is said as its own name.
+STAGES = {"example": "Example mapping", "gaps": "Example mapping", "contracts": "Example mapping",
+          "skipper": "Deciding", "plan": "Planning", "tasks": "Planning", "analyze": "Planning",
+          "screen": "Designing", "design": "Designing", "implement": "Implementing", "converge": "Converging",
+          "demo": "Demo", "review": "Review", "adversary": "Attack review", "mutation": "Mutation testing"}
 #: A task line in `tasks.md`: `- [ ] T001 …` or `- [x] T001 …`.
 TASK = re.compile(r"^\s*[-*] \[( |x|X)\] ", re.M)
 #: The branch read last time, by slice, with its head: what the branch said is only read again when it moved.
@@ -60,6 +67,31 @@ def branch_facts(root: Path, feature: str, slice_id: str) -> dict[str, str]:
     return facts
 
 
+def stage_now(root: Path, feature: str, slice_id: str) -> str:
+    """The word for the stage the slice's berth has open now, from its `benchmark.json`, or `""`.
+
+    The rungs above are read off what a stage leaves behind, so they move when a stage *ends*: hr-test-2's L18
+    ticked its eighteenth task and then said `Implementing · 18/18` for twenty-seven minutes through its demo
+    and review, because `review.md` is committed when a review closes. `benchmark.py start` writes an entry
+    the moment a stage opens, in the berth's own tree, so an open newest entry there is what the slice is on.
+    Between stages nothing is open, and the evidence says it better: a closed `implement` after a review is
+    the review's fixes, and `Implementing` would send the chip back down the ladder.
+    The berth is where the captain moors it (`moorings.py`), beside the checkout; a slice worked in the
+    checkout itself has its record there.
+    """
+    record = Path(f"specs/{feature}/slices/{slice_id}/benchmark.json")
+    for place in (root.parent / f"{root.name}-{slice_id}", root):
+        try:
+            stages = json.loads((place / record).read_text(encoding="utf-8")).get("stages") or []
+        except (OSError, ValueError, AttributeError):
+            continue
+        newest = (stages[-1] or {}) if stages else {}
+        named = str(newest.get("stage", ""))
+        if named:
+            return "" if newest.get("ended") else STAGES.get(named.split("-")[0], named)
+    return ""
+
+
 def rung(root: Path, feature: str, slice_id: str, entries: list[Entry]) -> dict[str, str]:
     """The slice's stage, the chip that names it, and the facts the opened card shows.
 
@@ -74,6 +106,10 @@ def rung(root: Path, feature: str, slice_id: str, entries: list[Entry]) -> dict[
     number, stage = max(climbed, default=(0, "Starting"))
     if stage == "Merging" and any(e.kind == "merged" for e in mine):
         stage = "Merged"
+    elif stage != "Merging" and (now := stage_now(root, feature, slice_id)):
+        # The stage open now says more than the last one to leave a file. `rank` stays the evidence's,
+        # which is what the captain ranks by.
+        stage = now
     tasks = facts.get("tasks", "")
     chip = f"{stage} · {tasks}" if stage == "Implementing" and tasks else stage
     told = [e for e in mine if e.kind != "heartbeat"]

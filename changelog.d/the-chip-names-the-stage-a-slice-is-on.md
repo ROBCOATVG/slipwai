@@ -1,0 +1,3 @@
+PATCH
+
+**A slice's chip names the stage it is on, not the last one to leave a file.** The voyage read a slice's stage off what stages leave behind — `tasks.md`, `review.md`, a demo or merge line — and those move when a stage ends, so a slice through its tasks said `Implementing · 18/18` through its whole demo and review: twenty-seven minutes on hr-test-2's L18. The board now reads the stage its berth has open in `benchmark.json`, which `benchmark.py start` writes the moment a stage begins: `Demo`, `Review`, `Attack review`, `Mutation testing`. Between stages the evidence speaks, as before, and the order the captain carries slices on in is unchanged.

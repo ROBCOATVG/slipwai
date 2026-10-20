@@ -573,6 +573,29 @@ class RungTest(unittest.TestCase):
         self.assertEqual(found["chip"], "Merging")
         self.assertTrue(found["last"].endswith(" request"), "a heartbeat is not what the slice last did")
 
+    def test_the_stage_its_berth_has_open_names_the_chip(self) -> None:
+        """hr-test-2's L18 said `Implementing · 18/18` through its demo and review: the files the board read
+        move when a stage ends, and the berth's benchmark record moves when one starts."""
+        import json
+        import shutil
+
+        from slipwai.slice_rungs import rung
+
+        berth = self.root.parent / f"{self.root.name}-S01"
+        self.addCleanup(shutil.rmtree, berth, ignore_errors=True)
+        record = berth / "specs/001-demo/slices/S01/benchmark.json"
+        record.parent.mkdir(parents=True)
+        stages = [{"stage": "implement-shipwright", "started": "t0", "ended": "t1"}]
+        stages.append({"stage": "demo", "started": "t2"})
+        record.write_text(json.dumps({"stages": stages}), encoding="utf-8")
+        found = rung(self.root, "001-demo", "S01", [])
+        self.assertEqual((found["chip"], found["rank"], found["tasks"]), ("Demo", "4", "2/3"),
+                         "the rank stays the evidence's, which is what the captain ranks by")
+        stages[-1]["ended"] = "t3"
+        record.write_text(json.dumps({"stages": stages}), encoding="utf-8")
+        self.assertEqual(rung(self.root, "001-demo", "S01", [])["chip"], "Implementing · 2/3",
+                         "between stages the evidence speaks")
+
     def test_a_slice_with_no_branch_is_starting(self) -> None:
         from slipwai.slice_rungs import rung
 

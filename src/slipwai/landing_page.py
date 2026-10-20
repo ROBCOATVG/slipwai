@@ -68,9 +68,8 @@ def looking(root: str) -> str:
     return ('<div class="card" id="looking"><h2>Looking at</h2>'
             f'<div class="ask"><input id="attach" value="{esc(root)}">'
             '<button class="go" id="attach-go">Look here</button></div>'
-            '<p class="empty">A directory on this machine: a project, or a harbour of them. This window '
-            "re-reads it on every request, so looking somewhere else is a sentence, not a restart — and it "
-            "moves this window only, so another one can be open on another project.</p></div>")
+            '<p class="empty">The project folder this window shows. Type another folder and press Look here '
+            "to switch. Only this window changes; other windows stay on their own projects.</p></div>")
 
 
 def standing(root: str, name: str, now: str, project: bool) -> str:

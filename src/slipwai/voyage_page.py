@@ -17,12 +17,13 @@ from .passage import Stage, current
 from .settings_card import project_tabs
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 610 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# budget: 620 — the bands of one window: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
 # different files than the ones it was drawn from. Both halves have to agree on what a band is, so both are here.
 # and a red card that opens on what its slice waits for, with a box that answers that slice and no other
+# and the strip's amber attention beside its red stop
 
 TITLES = {"todo": "To do", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -31,7 +32,7 @@ MODEL_CONTROLS = (("left", "←", "Nudge left"), ("right", "→", "Nudge right")
                   ("reset", "1:1", "Actual size"), ("fit", "Fit", "Fit the whole model"),
                   ("lightbox", "⤢", "Open full screen"))
 #: What each stage's dot says: a tick, a dot, or its number.
-DOTS = {"done": "✓", "working": "●", "waiting": "!", "skipped": "·"}
+DOTS = {"done": "✓", "working": "●", "attention": "!", "waiting": "■", "skipped": "·"}
 
 STYLE = """
 .passage{display:grid;grid-template-columns:repeat(var(--stages,8),minmax(0,1fr));position:relative;padding-top:6px}
@@ -47,10 +48,14 @@ STYLE = """
 .stage.working .dot{border-color:var(--brass);color:var(--brass);background:var(--brass-soft)}
 .stage.working .dot::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid var(--brass);
   opacity:.5;animation:pulse 1.6s ease-out infinite}
-.stage.waiting .dot{border-color:#b4432f;color:#b4432f}
+.stage.waiting .dot{border-color:#b4432f;background:#b4432f;color:#fff}
+.stage.attention .dot{border-color:#c77d14;color:#c77d14;background:var(--brass-soft)}
+.stage.attention .dot::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid #c77d14;
+  opacity:.5;animation:pulse 1.6s ease-out infinite}
 @keyframes pulse{from{transform:scale(.85);opacity:.6}to{transform:scale(1.25);opacity:0}}
-@media (prefers-reduced-motion:reduce){.stage.working .dot::after{animation:none}}
+@media (prefers-reduced-motion:reduce){.stage.working .dot::after,.stage.attention .dot::after{animation:none}}
 .stage b{font-size:.84rem;line-height:1.2}.stage.working b{color:var(--brass)}.stage.waiting b{color:#b4432f}
+.stage.attention b{color:#c77d14}
 .stage small{font-size:.74rem;color:var(--ink-3);line-height:1.3}
 .stage .ev{font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:var(--ink-3);word-break:break-all}
 .stage.skipped{opacity:.4}.stage.todo .dot{opacity:.75}
@@ -280,7 +285,7 @@ def stage_html(stage: Stage, index: int) -> str:
     """
     dot = DOTS.get(stage.state, "") or str(index + 1)
     title = esc(stage.title)
-    if stage.state == "waiting":
+    if stage.state in ("waiting", "attention"):
         where = ("#waiting" if stage.key in ("slices", "accepted")
                  else "#mockups" if stage.key == "storyboard" else "#fitting")
         title = f'<a href="{where}">{title}</a>'
@@ -321,7 +326,7 @@ def expect_card(found: list[Stage]) -> str:
     """
     now = current(found)
     rows = "".join(
-        f'<li class="{"" if one.state in ("working", "waiting", "todo") else "gone"}">'
+        f'<li class="{"" if one.state in ("working", "attention", "waiting", "todo") else "gone"}">'
         f"<b class=\"who\">{esc(one.title)}</b> \u2014 {said(one.expect)}</li>"
         for one in found if one.expect and one.state != "skipped")
     here = (f'<div class="now"><span class="who">Now \u00b7 {esc(now.title)}</span>'

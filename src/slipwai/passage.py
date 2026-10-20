@@ -17,8 +17,9 @@ stage that stops for a person *by design* is indistinguishable, from the outside
 `Stage.expect` is that sentence: roughly how long, and whether it will stop for you. It is written here
 beside the state rather than in the page, because the stage is what knows it.
 """
-# budget: 400 — the stages, and the storyboard read both ways: states waiting on a person, and a drawing
+# budget: 425 — the stages, and the storyboard read both ways: states waiting on a person, and a drawing
 # turned down whole that waits on being drawn again
+# and the Slices step's two kinds of wanting a person: attention while work goes on, and stopped
 from __future__ import annotations
 
 import json
@@ -31,7 +32,7 @@ from .next_steps import template_gone
 from .project.intake import pending as intake_pending
 
 #: In order. A stage that this profile has not got is kept and drawn faint, so both profiles read one strip.
-STATES = ("done", "working", "waiting", "todo", "skipped")
+STATES = ("done", "working", "attention", "waiting", "todo", "skipped")
 #: The profile whose stage 5 is a modelling conversation rather than nothing.
 EVENT_PROFILE = "event-modelling"
 
@@ -364,18 +365,25 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     # `working` is what `fleet.state_of` calls a live berth; this compared against `running`, which it never
     # returns, so a fleet at work read as `todo` whenever nothing waited on a person.
     working = any(row.get("state") == "working" for row in berths) or counts.get("working", 0) > 0
-    # Unread decisions below the ceiling are listed for reading and hold nothing up, so they do not turn the
-    # step red; past it the captain parks, and they do.
-    waiting = any(row.get("kind") != "decisions" or row.get("blocking") == "yes" for row in inbox) \
-        or counts.get("waiting", 0) > 0
+    # Unread decisions below the ceiling are listed for reading and want nothing yet; past it, and every park,
+    # question and note for the host, wants a person.
+    wants = [row for row in inbox if row.get("kind") != "decisions" or row.get("blocking") == "yes"]
+    wanted = len(wants) + counts.get("waiting", 0)
     all_done = split and counts.get("done", 0) == sum(counts.values())
     # Split, not done, nothing running: the one silence the tree cannot explain, said as a wait on a person.
     becalmed = split and not all_done and not working and not fleet.get("running") and not cruising
-    found.append(Stage("slices", "Slices", cruising or ("waiting" if waiting or becalmed else "working" if working
-                       else "done" if all_done else "todo"), "deck logs",
+    # Two different things, drawn differently: *attention* is something wanting a person while slices are
+    # still at work, and *waiting* is everything stopped until a person acts. One red for both drew a fleet
+    # with seven slices running and fifteen decisions to read the same as a fleet that had stopped.
+    stopped = becalmed or (bool(wanted) and not working)
+    found.append(Stage("slices", "Slices", cruising or ("waiting" if stopped else "attention" if wanted
+                                                        else "working" if working
+                                                        else "done" if all_done else "todo"), "deck logs",
                        ("the fleet is running; Stop the fleet ends it, and a park appears under Waiting on you"
                         if fleet.get("running") else "make cruise; make cruise-tell answers a park"),
-                       "the fleet is not running: cast off" if becalmed and not waiting else
+                       "the fleet is not running: cast off" if becalmed and not wanted else
+                       f"stopped until you act: {wanting(wants, counts)}" if stopped else
+                       f"{wanting(wants, counts)}; the rest is still at work" if wanted else
                        f"{counts.get('done', 0)} of {sum(counts.values())} merged" if split
                        else "the fleet, under /cruise",
                        expect="The fleet: a captain per fairway, working its slices. Hours, and the Speed "
@@ -392,7 +400,19 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     return found
 
 
+def wanting(wants: list[dict], counts: dict[str, int]) -> str:
+    """What wants a person, said by kind — `2 slice(s) parked; 15 decision(s) nobody has read yet, over the
+    ceiling of 10` — so the step names the thing to go and do rather than a count of things."""
+    kinds = {"parked": "park(s)", "question": "question(s)", "told": "note(s) for you"}
+    said = [f"{sum(1 for row in wants if row.get('kind') == kind)} {word}" for kind, word in kinds.items()
+            if any(row.get("kind") == kind for row in wants)]
+    said += [str(row.get("what", "")) for row in wants if row.get("kind") == "decisions"]
+    if counts.get("waiting") and not any(row.get("kind") == "parked" for row in wants):
+        said.insert(0, f"{counts['waiting']} slice(s) waiting")
+    return "; ".join(said) or "something waits on you"
+
+
 def current(found: list[Stage]) -> Stage | None:
     """The stage a person is on: the first that is working or waiting, else the first still to do."""
-    return (next((one for one in found if one.state in ("working", "waiting")), None)
+    return (next((one for one in found if one.state in ("working", "attention", "waiting")), None)
             or next((one for one in found if one.state == "todo"), None))

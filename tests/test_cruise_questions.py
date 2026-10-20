@@ -148,5 +148,18 @@ class HarbourmasterTest(harbourmaster_fixture.Fixture):
         self.assertEqual(self.cleared(), [])
 
 
+    def test_a_park_written_after_every_question_was_decided_is_not_cleared_by_them(self) -> None:
+        """hr-test-2's L21: D45-D50 answered its questions, then it parked "implementation held by D50 until
+        L09 is on main" — and two seconds later that park was cleared as answered by those same decisions."""
+        self.asked(logs.entry("decision", fairway="ORD", id="Q1", what="a", t="2026-10-20T08:20:00Z"),
+                   logs.entry("decision", fairway="ORD", id="Q2", what="b", t="2026-10-20T08:21:00Z"))
+        self.run_once()
+        first = self.cleared()
+        self.assertEqual(first, [("2026-10-20T08:16:00Z", "answered by decisions Q1, Q2")])
+        self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", slice="ORD-01",
+                                                why="held by D2 until ORD-02 is on main", t="2026-10-20T09:00:00Z"))
+        self.run_once()
+        self.assertEqual(self.cleared(), first, "a park on something else is still a person's")
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

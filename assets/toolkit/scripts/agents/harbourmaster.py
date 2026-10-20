@@ -1070,8 +1070,8 @@ def cleared_by_decisions(already: list[logs.Entry]) -> list[logs.Entry]:
     Under `/cruise` the skipper answers a slice's open questions — at the captain's turn, for a slice that
     parked on them before the session was told it was cruising — and a `decision` line carrying each
     question's `id` is the answer, in the same log the park is in. The park asked for exactly those answers,
-    so nothing is left for a person to say. **Only a slice's own park**, only where the slice asked at least
-    one question at or before it, and only once no question of that slice is open: a park on anything else
+    so nothing is left for a person to say. **Only a slice's own park**, only where at least one of the slice's
+    questions was still open when the park was written, and only once no question of that slice is open: a park on anything else
     is still a person's, and so is one whose skipper left a question `unavailable`. Not a message — a
     person's `told` still clears a park in `told_after_parks`, unchanged; this reads decisions alone.
     """
@@ -1092,11 +1092,17 @@ def cleared_by_decisions(already: list[logs.Entry]) -> list[logs.Entry]:
                 continue
             asked = [str(e.fields.get("id", "")) for e in deck
                      if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id]
-            if not any(e.kind == "question" and str(e.fields.get("slice", "")) == slice_id and e.t <= park.t
-                       for e in deck) or any(one not in decided for one in asked):
+            # The questions the park was waiting on: asked by then and not yet decided by then. A park written
+            # after every question was already answered is about something else — hr-test-2's L21 parked
+            # "implementation held by D50 until L09 is on main" with D45-D50 all written, and was cleared two
+            # seconds later as though its questions were what held it, to be run again before L09 landed.
+            settled = {str(e.fields.get("id", "")) for e in deck if e.kind == "decision" and e.t <= park.t}
+            waited = [str(e.fields.get("id", "")) for e in deck if e.kind == "question" and e.t <= park.t
+                      and str(e.fields.get("slice", "")) == slice_id and str(e.fields.get("id", "")) not in settled]
+            if not waited or any(one not in decided for one in asked):
                 continue
             found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
-                                    what=f"answered by decisions {', '.join(dict.fromkeys(asked))}"))
+                                    what=f"answered by decisions {', '.join(dict.fromkeys(waited))}"))
     return found
 
 

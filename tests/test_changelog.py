@@ -22,15 +22,16 @@ import checkout_packages  # noqa: F401
 
 from slipwai.assets import ROOT, VERSION
 from slipwai.changelog import FRAGMENTS, GUIDE, LEVELS, fragments, implied, level
-from slipwai.versions import base, is_release, is_snapshot
+from slipwai.versions import base, is_prerelease, is_release, is_snapshot, key
 
 CHANGELOG = ROOT / "CHANGELOG.md"
 # CHANGELOG.md, changelog.d/ and the release scripts come back in slice 8.1. Until then AGENTS.md says
 # this repository keeps no changelog at all, so the tests that read one are skipped rather than deleted:
 # they are the ones that will hold the machinery when it arrives.
 RELEASE_MACHINERY = "the release machinery comes back in slice 8.1"
-# `## 1.4.0 — MINOR`, or `## 1.0.0` for the first version, which nothing preceded to bump from.
-ENTRY = re.compile(r"(?m)^## (\d+\.\d+\.\d+)(?: — (MAJOR|MINOR|PATCH))?$")
+# `## 1.4.0 — MINOR`, or `## 1.0.0` for the first version, which nothing preceded to bump from. A release
+# candidate is an entry too — `## 2.0.0rc1 — MAJOR` — because it is tagged and published like any release.
+ENTRY = re.compile(r"(?m)^## (\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?)(?: — (MAJOR|MINOR|PATCH))?$")
 # The first line of a block: a bold lead sentence, `**Catch-up.** …` or `**A project is given …**`. A bold
 # word mid-paragraph (`**shared** mode`, `**One:** a Go service`) does not end its bold with a full stop.
 LEAD = re.compile(r"^\*\*[^*]+[.!?]\*\*")
@@ -38,11 +39,6 @@ LEAD = re.compile(r"^\*\*[^*]+[.!?]\*\*")
 
 def entries() -> list[tuple[str, str | None]]:
     return [(match.group(1), match.group(2)) for match in ENTRY.finditer(CHANGELOG.read_text(encoding="utf-8"))]
-
-
-def parts(version: str) -> tuple[int, int, int]:
-    major, minor, patch = version.split(".")
-    return int(major), int(minor), int(patch)
 
 
 def git(*arguments: str) -> str:
@@ -59,7 +55,7 @@ class ChangelogTest(unittest.TestCase):
 
         The tag's own `verify` run checks out that tagged commit, so a released `VERSION` is allowed there —
         and only there. Anywhere else it is a release sitting unpublished on a branch."""
-        if is_release(VERSION):
+        if is_release(VERSION) or (is_prerelease(VERSION) and not is_snapshot(VERSION)):
             self.need_history()
             head = git("rev-parse", "HEAD")
             tagged = git("rev-parse", f"v{VERSION}^{{commit}}")
@@ -75,7 +71,7 @@ class ChangelogTest(unittest.TestCase):
     def test_the_changelog_holds_released_entries_only(self) -> None:
         """The release in flight has no entry here until it is cut. `make release` assembles one from the
         fragments in the commit it tags, so an entry in this file is a version somebody can install."""
-        if is_release(VERSION):
+        if is_release(VERSION) or (is_prerelease(VERSION) and not is_snapshot(VERSION)):
             self.skipTest("this is the tagged commit, where the entry has just been assembled")
         found = entries()
         written = base(VERSION)
@@ -87,8 +83,10 @@ class ChangelogTest(unittest.TestCase):
                 "only the first public release may be in flight without an earlier changelog entry",
             )
             return
+        # By PEP 440 order rather than by the three numbers, so a release candidate's entry sits below the
+        # snapshot that follows it: `2.0.0rc1` below `2.0.0rc2.dev0`, and both below `2.0.0`.
         self.assertLess(
-            parts(found[0][0]), parts(written),
+            key(found[0][0]), key(VERSION),
             f"CHANGELOG.md's newest entry is {found[0][0]} and VERSION is a snapshot of {written}: the entry "
             f"being written belongs in changelog.d/, and `make release` is what moves it here",
         )
@@ -97,7 +95,7 @@ class ChangelogTest(unittest.TestCase):
     def test_the_entries_descend_and_none_is_written_twice(self) -> None:
         versions = [version for version, _level in entries()]
         self.assertEqual(len(versions), len(set(versions)), f"a version is entered twice: {versions}")
-        ordered = sorted(versions, key=parts, reverse=True)
+        ordered = sorted(versions, key=key, reverse=True)
         self.assertEqual(versions, ordered, "the entries are not newest-first")
 
     @unittest.skip(RELEASE_MACHINERY)

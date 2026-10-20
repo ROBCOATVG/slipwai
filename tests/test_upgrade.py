@@ -35,7 +35,7 @@ from slipwai.upgrade import (
     upgrade_command,
     versions_in,
 )
-from slipwai.versions import key
+from slipwai.versions import is_prerelease, key
 
 # A version this keel cannot have reached, so the "there is a newer one" page stays newer than whatever
 # `VERSION` says today — a fixture that has to be edited on a bump is a fixture that fails on a bump.
@@ -168,16 +168,16 @@ class UpgradeTest(unittest.TestCase):
         self.assertEqual(published("slipwai", f"{self.base}/snapshots"), NEWER)
         self.assertEqual(published("slipwai", f"{self.base}/snapshots", prerelease=True), SNAPSHOT)
         self.assertTrue(following_snapshots(asked=True))
-        # This checkout is a snapshot itself (`VERSION` is `<release>.dev0` on main), and a snapshot follows
-        # the snapshots unasked: whoever installed one was asking for main.
-        self.assertEqual(following_snapshots(), "dev" in VERSION)
+        # This checkout is a snapshot itself (`VERSION` is `<release>.dev0` on main), or a release candidate,
+        # and either follows the snapshots unasked: whoever installed one was asking for what comes next.
+        self.assertEqual(following_snapshots(), is_prerelease(VERSION))
 
         result = self.run_upgrade("--check", "--pre", SLIPWAI_INDEX=f"{self.base}/snapshots")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(f"newest published: {SNAPSHOT} (snapshots counted)", result.stdout)
         result = self.run_upgrade("--check", SLIPWAI_INDEX=f"{self.base}/snapshots")
         self.assertEqual(result.returncode, 0, result.stderr)
-        newest = SNAPSHOT if "dev" in VERSION else NEWER
+        newest = SNAPSHOT if is_prerelease(VERSION) else NEWER
         self.assertIn(f"newest published: {newest}", result.stdout)
 
     def test_a_package_the_registry_does_not_hold_is_none_rather_than_a_refusal(self) -> None:

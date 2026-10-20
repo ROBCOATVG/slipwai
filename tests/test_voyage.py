@@ -4,11 +4,13 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 510 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# budget: 605 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
 # the design files a storyboard links that the board serves beside it, a step it did not start,
 # and how far into its budget a drawing is, and a fleet at work read as working
 # and a waiting slice's card, opened on its park and its questions with a box aimed at it
 # and the Queued column a slice waiting for a slot stands in
+# and a slice's stage read off its branch and log, held to the captain's rungs
+# and a slice named from the model whatever its id
 from __future__ import annotations
 
 import json
@@ -437,8 +439,23 @@ class FoldTest(unittest.TestCase):
         html = page(root, [], [{"slice": "S10", "state": "todo", "title": "Appoint a moderator",
                                 "why": "cleared", "fairway": "", "clearance": "preparation-ready"}],
                     "", "", "", "", None, False)
-        self.assertIn("S10 = Appoint a moderator", html)
-        self.assertNotIn("S10 · Appoint", html)
+        self.assertIn("S10 · Appoint a moderator", html)
+        self.assertNotIn("Open an account", html, "the slice graph's note column is not its name")
+
+    def test_a_slice_is_called_what_the_model_names_it_whatever_its_id(self) -> None:
+        """hr-test-2's ids are `L01`, and every card was nameless: titles were read for `S` ids only, and
+        the model's `name`, which the drawio captions the slice with, was not read at all."""
+        root = Path(tempfile.mkdtemp())
+        (root / "specs/001-leaver").mkdir(parents=True)
+        (root / "specs/001-leaver/story-split.md").write_text(
+            "| Slice | Value | Includes |\n|---|---|---|\n| L04 | Access removal gets an owner | name |\n"
+            "| L05 | Settle an item | settle |\n", encoding="utf-8")
+        (root / "docs/event-model").mkdir(parents=True)
+        (root / "docs/event-model/model.yaml").write_text(
+            "slices:\n  - id: L04\n    name: Name the owner of access removal\n    pattern: state-change\n",
+            encoding="utf-8")
+        self.assertEqual(titles(root, "001-leaver"),
+                         {"L04": "Name the owner of access removal", "L05": "Settle an item"})
 
     def test_the_fleet_is_running_only_while_a_pid_it_wrote_is_alive(self) -> None:
         root = Path(tempfile.mkdtemp())
@@ -456,8 +473,6 @@ class FoldTest(unittest.TestCase):
         self.assertEqual(states_of(rows), {"A": "done", "B": "todo", "C": "todo"})
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class AnswerCardTest(unittest.TestCase):
@@ -483,12 +498,21 @@ class AnswerCardTest(unittest.TestCase):
         self.assertIn('data-slice=""', card)
         self.assertIn("Send to the leaver stream", card)
 
-    def test_a_slice_at_work_is_a_plain_card(self) -> None:
+    def test_a_closed_card_is_its_number_its_title_and_its_stage(self) -> None:
+        """The rest is behind a click: a column of cards carrying every reason was too loud to scan."""
         from slipwai.voyage_page import slice_html
 
-        row = {"slice": "L03", "title": "", "state": "working", "fairway": "leaver", "clearance": "running",
-               "why": "implementing"}
-        self.assertTrue(slice_html(row).startswith('<div class="slice working">'))
+        row = {"slice": "L03", "title": "Record equipment", "state": "working", "fairway": "leaver",
+               "clearance": "running", "why": "implementing — its own marks set", "chip": "Implementing · 14/22",
+               "stage": "Implementing", "artifacts": "examples,plan,tasks", "last": "2026-10-20T11:00:00Z mark-set"}
+        card = slice_html(row)
+        summary = card[card.index("<summary>"):card.index("</summary>")]
+        self.assertTrue(card.startswith('<details class="slice working">'))
+        self.assertIn("L03 · Record equipment", summary)
+        self.assertIn('<span class="chip">Implementing · 14/22</span>', summary)
+        self.assertNotIn("its own marks set", summary, "the reason waits behind the click")
+        self.assertIn("its own marks set", card)
+        self.assertIn("examples, plan, tasks", card)
 
 
 class QueuedColumnTest(unittest.TestCase):
@@ -502,4 +526,74 @@ class QueuedColumnTest(unittest.TestCase):
         card = work_card(rows, "")
         self.assertIn("Queued · 1", card)
         self.assertIn("Working · 1", card)
-        self.assertTrue(slice_html(rows[0]).startswith('<div class="slice queued">'))
+        self.assertTrue(slice_html(rows[0]).startswith('<details class="slice queued">'))
+        self.assertIn('<span class="chip">Queued</span>', slice_html(rows[0]))
+
+
+class RungTest(unittest.TestCase):
+    """A slice's stage, read off its branch and its log the way the captain ranks it."""
+
+    def setUp(self) -> None:
+        import subprocess
+
+        self.root = Path(tempfile.mkdtemp())
+        folder = self.root / "specs/001-demo/slices/S01"
+
+        def git(*argv: str) -> None:
+            subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *argv], cwd=self.root,
+                           check=True, capture_output=True)
+
+        git("init", "-q", "-b", "main")
+        (self.root / "README.md").write_text("x\n", encoding="utf-8")
+        git("add", "-A")
+        git("commit", "-q", "-m", "scaffold")
+        git("checkout", "-q", "-b", "slice/S01")
+        folder.mkdir(parents=True)
+        (folder / "examples.md").write_text("# examples\n", encoding="utf-8")
+        (folder / "plan.md").write_text("# plan\n", encoding="utf-8")
+        (folder / "tasks.md").write_text("- [x] T001 one\n- [X] T002 two\n- [ ] T003 three\n", encoding="utf-8")
+        git("add", "-A")
+        git("commit", "-q", "-m", "S01: tasks")
+        git("checkout", "-q", "main")
+
+    def test_a_slice_with_tasks_ticked_says_how_many(self) -> None:
+        from slipwai.slice_rungs import rung
+
+        found = rung(self.root, "001-demo", "S01", [])
+        self.assertEqual((found["stage"], found["chip"], found["artifacts"]),
+                         ("Implementing", "Implementing · 2/3", "examples,plan,tasks"))
+
+    def test_a_merge_request_in_its_log_is_the_furthest_rung(self) -> None:
+        from slipwai import logs
+        from slipwai.slice_rungs import rung
+
+        asked = [logs.entry("request", fairway="F", slice="S01", id="S01-merge", what="merge", detail="merge it"),
+                 logs.entry("heartbeat", fairway="F", slice="S01")]
+        found = rung(self.root, "001-demo", "S01", asked)
+        self.assertEqual(found["chip"], "Merging")
+        self.assertTrue(found["last"].endswith(" request"), "a heartbeat is not what the slice last did")
+
+    def test_a_slice_with_no_branch_is_starting(self) -> None:
+        from slipwai.slice_rungs import rung
+
+        self.assertEqual(rung(self.root, "001-demo", "S09", [])["chip"], "Starting")
+
+    def test_the_rungs_are_the_captain_s_rungs(self) -> None:
+        """The board names what the captain ranks by: the same signals at the same height, so the slice the
+        captain carries on first is the one whose chip says it is furthest along."""
+        import ast
+
+        from slipwai.slice_rungs import FILED, LOGGED
+
+        source = (Path(__file__).resolve().parents[1] / "assets/toolkit/scripts/agents/captain.py").read_text(
+            encoding="utf-8")
+        tables = {node.targets[0].id: ast.literal_eval(node.value) for node in ast.parse(source).body
+                  if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+                  and node.targets[0].id in ("LOG_RUNGS", "FILE_RUNGS")}
+        self.assertEqual(tables["LOG_RUNGS"], {kind: number for kind, (number, _word) in LOGGED.items()})
+        self.assertEqual(tables["FILE_RUNGS"],
+                         {name: number for name, (number, _word) in FILED.items() if name != "research.md"})
+
+
+if __name__ == "__main__":
+    unittest.main()

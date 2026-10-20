@@ -17,13 +17,14 @@ from .passage import Stage, current
 from .settings_card import project_tabs
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 620 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# budget: 650 — the bands of one window: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
 # different files than the ones it was drawn from. Both halves have to agree on what a band is, so both are here.
 # and a red card that opens on what its slice waits for, with a box that answers that slice and no other
 # and the strip's amber attention beside its red stop
+# and a slice card that is its number, its title and its stage until it is opened
 
 TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -79,7 +80,14 @@ a.quiet:hover{background:var(--teal-soft)}
   background:var(--paper)}
 .slice b{font-size:.86rem}.slice .fw{font-size:.72rem;color:var(--ink-3);font-family:ui-monospace,Menlo,monospace}
 .slice .why{font-size:.78rem;color:var(--ink-2)}
-details.slice summary{display:grid;gap:3px;cursor:pointer;list-style:none}
+details.slice summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;cursor:pointer;
+  list-style:none}
+.slice .chip{font-size:.7rem;padding:1px 7px;border-radius:999px;border:1px solid var(--rule);color:var(--ink-2);
+  white-space:nowrap}
+.slice.working .chip{border-color:var(--brass);color:var(--brass)}
+.slice.waiting .chip{border-color:#b4432f;color:#b4432f}
+details.slice .facts{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0 0;font-size:.78rem}
+details.slice .facts dt{color:var(--ink-3)}details.slice .facts dd{margin:0;color:var(--ink-2);overflow-wrap:anywhere}
 details.slice summary::-webkit-details-marker{display:none}
 details.slice[open]{grid-column:1 / -1}
 details.slice .park{font-size:.8rem;color:var(--ink-2);margin:6px 0 0;white-space:pre-wrap}
@@ -394,22 +402,49 @@ def model_card(xml: str, note: str, viewer_fault: str) -> str:
 
 
 def slice_html(row: dict[str, str]) -> str:
-    fairway = f'<span class="fw">{esc(row["fairway"])} · {esc(row["clearance"])}</span>' if row.get("fairway") else \
-        f'<span class="fw">{esc(row["clearance"])}</span>'
-    name = f'{row["slice"]} = {row["title"]}' if row.get("title") else row["slice"]
-    if row["state"] == "waiting" and row.get("fairway"):
-        return answer_html(row, name, fairway)
-    return (f'<div class="slice {esc(row["state"])}"><b>{esc(name)}</b>{fairway}'
-            f'<span class="why">{esc(row.get("why", ""))}</span></div>')
+    """One slice: its number and title, and a chip saying how far it has got. The rest behind a click.
+
+    A card that carried its stream, its clearance word, its reason and its park was a wall of text times
+    twenty-three, and the one thing a person scans the columns for — which slice, and how far along — was
+    lost in it. Closed, a card is the slice and its stage; opened in place, it is everything the board knows
+    about it, and for a slice waiting on a person, the box to answer it.
+    """
+    name = f'{row["slice"]} · {row["title"]}' if row.get("title") else row["slice"]
+    chip = chip_of(row)
+    shown = f'<span class="chip">{esc(chip)}</span>' if chip else ""
+    answer = answer_html(row) if row["state"] == "waiting" and row.get("fairway") else ""
+    return (f'<details class="slice {esc(row["state"])}"><summary><b>{esc(name)}</b>{shown}</summary>'
+            f"{facts_html(row)}{answer}</details>")
 
 
-def answer_html(row: dict[str, str], name: str, fairway: str) -> str:
-    """A slice waiting on a person, as a card that opens on what it waits for and a box to answer it.
+def chip_of(row: dict[str, str]) -> str:
+    """The word on a closed card: its stage at work, `Queued` and its stage while it waits for a slot, and
+    `Waiting on you` where a person holds it. Nothing on a slice still to do or done — the column says it."""
+    stage = row.get("chip") or row.get("stage") or ""
+    if row["state"] == "waiting":
+        return "Waiting on you"
+    if row["state"] == "queued":
+        return f"Queued · {stage}" if stage else "Queued"
+    return stage if row["state"] == "working" else ""
 
-    A red card said *waiting* and nothing a person could do about it from where they were looking: the
-    answer box was a stream's, further down, and a stream with three slices parked on three questions got
-    one box. Opened, the card says the park and each open question, and what is typed goes to that slice —
-    a `told` naming it, which clears its park and no sibling's, and which the captain records as the
+
+def facts_html(row: dict[str, str]) -> str:
+    """What an opened card says: only the facts there are, each on its own line."""
+    when, _, said = row.get("commit", "").partition(" ")
+    facts = (("Stream", row.get("fairway", "")), ("Stage", row.get("chip", "")),
+             ("Clearance", row.get("clearance", "")), ("On its branch", row.get("artifacts", "").replace(",", ", ")),
+             ("Last line", row.get("last", "")), ("Last commit", f"{when[:16]} {said}".strip() if said else ""),
+             ("Why", "" if row["state"] == "waiting" else row.get("why", "")))
+    lines = "".join(f"<dt>{esc(label)}</dt><dd>{esc(value)}</dd>" for label, value in facts if value)
+    return f'<dl class="facts">{lines}</dl>' if lines else ""
+
+
+def answer_html(row: dict[str, str]) -> str:
+    """What a slice waiting on a person waits for, and a box to answer it, inside its opened card.
+
+    The answer box was a stream's, further down, and a stream with three slices parked on three questions
+    got one box. Opened, the card says the park and each open question, and what is typed goes to that slice
+    — a `told` naming it, which clears its park and no sibling's, and which the captain records as the
     answer to its questions when it carries the slice on.
     """
     asked = "".join(f"<li>{esc(one)}</li>" for one in row.get("asked", "").splitlines() if one.strip())
@@ -417,13 +452,11 @@ def answer_html(row: dict[str, str], name: str, fairway: str) -> str:
     park = row.get("park") or row.get("why", "")
     box = f'answer-{row["slice"]}'
     target = row["slice"] if row.get("aim") else f'the {row["fairway"]} stream'
-    return (f'<details class="slice waiting"><summary><b>{esc(name)}</b>{fairway}'
-            f'<span class="why">Waiting on you — open to answer</span></summary>'
-            f'<p class="park">{esc(park)}</p>{questions}'
+    return (f'<p class="park">{esc(park)}</p>{questions}'
             f'<textarea id="{esc(box)}" rows="4" placeholder="Your answer, or what {esc(row["slice"])} needs to '
             f'know"></textarea>'
             f'<button type="button" data-answer="{esc(row["fairway"])}" data-slice="{esc(row.get("aim", ""))}" '
-            f'data-box="{esc(box)}">Send to {esc(target)}</button></details>')
+            f'data-box="{esc(box)}">Send to {esc(target)}</button>')
 
 
 def shot_html(shot: dict[str, str]) -> str:

@@ -14,10 +14,11 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 510 — the fold, the model, the mock-ups and the screenshots one voyage is read from, and the
+# budget: 525 — the fold, the model, the mock-ups and the screenshots one voyage is read from, and the
 # design files under `docs/design/` a storyboard links, served at the path they have in the project
 # and what a slice waiting on a person is held on: its park, its open questions, and where an answer goes
 # and a slice claimed and waiting for a slot, queued apart from the ones at work
+# and a slice's name from the model the drawio captions it with, for any slice-shaped id
 from __future__ import annotations
 
 import json
@@ -33,6 +34,7 @@ from .assets import SLIPWAI
 from .fleet import Fairway, clearance_query, fairways, harbour_log
 from .logs import held_slices
 from .process_alive import alive
+from .slice_rungs import rung
 
 #: Where the board shows a slice: the four columns, in the order a person reads them.
 COLUMNS = ("todo", "queued", "working", "waiting", "done")
@@ -44,6 +46,8 @@ STROKES = {"done": ("#0f6b6b", "3", ""), "working": ("#8a6d24", "3", ""),
            "waiting": ("#b4432f", "3", "dashed=1;dashPattern=6 4;"),
            "queued": ("#8a6d24", "2", "dashed=1;dashPattern=2 3;"), "todo": ("", "", "")}
 MODEL = "docs/event-model/model.yaml"
+#: What a slice id looks like, the shape `check-dispatch` reads: `S10`, `L04`, `SB7V`.
+SLICE_ID = r"[A-Z]{1,5}\d{1,3}[A-Z]{0,2}"
 DRAWIO = "docs/event-model/model.drawio"
 #: draw.io's read-only viewer, and where a copy of it is kept once fetched.
 VIEWER_URL = "https://viewer.diagrams.net/js/viewer-static.min.js"
@@ -59,19 +63,20 @@ def cell_id(slice_id: str) -> str:
 def titles(root: Path, feature: str) -> dict[str, str]:
     """What each slice is called. The chart carries ids and nothing a person would say.
 
-    Three places the split writes a name, and the candidates table is the one that matters: `| S10 |
-    Appoint a moderator |` under a `Value` heading. The same cell (`| S01 Set up an account |`) and a bold
-    heading are the older shapes. The slice graph is `| Slice | depends_on |`, so a second cell is only a
-    name while the heading in force says `Value` — otherwise a slice is called after a dash.
+    **The model's `name` first**, `- id: L04` then `name: Name the owner of access removal`, because it is
+    what the drawio captions the slice with, and a card that called it something else from the picture
+    above it would be two names for one thing. Then the split, for a project with no model: the candidates
+    table is the one that matters, `| S10 | Appoint a moderator |` under a `Value` heading. The same cell
+    (`| S01 Set up an account |`) and a bold heading are the older shapes. The slice graph is `| Slice |
+    depends_on |`, so a second cell is only a name while the heading in force says `Value` — otherwise a
+    slice is called after a dash. An id is any slice-shaped token, `S10` or `L04` alike.
     """
-    page = root / "specs" / feature / "story-split.md"
-    if not page.is_file():
-        return {}
-    text = page.read_text(encoding="utf-8", errors="replace")
     found: dict[str, str] = {}
-    for slice_id, title in re.findall(r"^\*\*(S\d+)\s+([^*\n]+?)\*\*", text, re.MULTILINE):
+    page = root / "specs" / feature / "story-split.md"
+    text = page.read_text(encoding="utf-8", errors="replace") if page.is_file() else ""
+    for slice_id, title in re.findall(rf"^\*\*({SLICE_ID})\s+([^*\n]+?)\*\*", text, re.MULTILINE):
         found.setdefault(slice_id, title.strip())
-    for slice_id, title in re.findall(r"^\|\s*(S\d+)\s+([^|\n]+?)\s*\|", text, re.MULTILINE):
+    for slice_id, title in re.findall(rf"^\|\s*({SLICE_ID})\s+([^|\n]+?)\s*\|", text, re.MULTILINE):
         found[slice_id] = title.strip()
     value = False
     for line in text.splitlines():
@@ -81,8 +86,13 @@ def titles(root: Path, feature: str) -> dict[str, str]:
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
         if cells[:1] == ["Slice"]:
             value = len(cells) > 1 and cells[1] == "Value"
-        elif value and len(cells) > 1 and re.fullmatch(r"S\d+", cells[0]) and cells[1] not in ("", "—", "-"):
+        elif value and len(cells) > 1 and re.fullmatch(SLICE_ID, cells[0]) and cells[1] not in ("", "—", "-"):
             found[cells[0]] = cells[1]
+    model = root / MODEL
+    if model.is_file():
+        named = re.findall(rf"^\s*-\s*id:\s*['\"]?({SLICE_ID})['\"]?\s*\n\s+name:\s*['\"]?([^'\"\n]+?)['\"]?\s*$",
+                           model.read_text(encoding="utf-8", errors="replace"), re.MULTILINE)
+        found.update({slice_id: title.strip() for slice_id, title in named})
     return found
 
 
@@ -142,6 +152,8 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
                     row["why"] = "claimed, waiting for a slot: carried on when a session frees"
             if row["state"] == "waiting":
                 row.update(held_on(owner, str(slice_id)))
+            if row["state"] in ("working", "queued", "waiting"):
+                row.update(rung(root, feature, str(slice_id), owner.entries))
         rows.append(row)
     return sorted(rows, key=lambda row: (COLUMNS.index(row["state"]), row["slice"])), ""
 

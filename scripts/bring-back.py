@@ -95,6 +95,9 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # What a headless session did, read off its event stream for the board's card. The experiment's board
        # printed a tool's name, so there was no reading of its input to bring back.
        "session_log",
+       # How far up the ladder a slice in flight has climbed, for the chip on its voyage card. The
+       # experiment's board had one column per state and no ladder to read a rung off.
+       "slice_rungs",
        # Phase 13: a named set of answers, the verb over it, and the interview that offers one first —
        # which the experiment had no equivalent of, because it asked every question every time.
        "quickstart", "cli_quickstart", "cli_generate", "quickstart_install", "cli_migrate",

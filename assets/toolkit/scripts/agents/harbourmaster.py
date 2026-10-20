@@ -83,6 +83,7 @@ import shutil
 import subprocess
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -522,7 +523,7 @@ def still_ours() -> bool:
     return found is not None and found.machine == logs.machine()
 
 
-def land(branch: str) -> tuple[str, str, bool, str, bool]:
+def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:
     """One fetch, rebase, gate and advance of this branch. `merge`'s answer, plus whether trunk moved.
 
     The last says the push lost a race to trunk and nothing else went wrong, which is the one outcome
@@ -544,7 +545,9 @@ def land(branch: str) -> tuple[str, str, bool, str, bool]:
             return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or 'files git did not name'}. "
                         f"The rebase was aborted, so nothing is half-done; resolve it in your own berth and "
                         f"ask again"), True, "", False
+        started = time.monotonic()
         done = gated(SCRATCH)
+        spent["gate_s"] = spent.get("gate_s", 0) + round(time.monotonic() - started)
         if done.returncode != 0:
             said = [line for line in (done.stdout + done.stderr).splitlines() if line.strip()]
             return "", (f"the full gate failed on {branch} rebased onto {onto}: "
@@ -563,7 +566,7 @@ def land(branch: str) -> tuple[str, str, bool, str, bool]:
         git("worktree", "remove", "--force", str(SCRATCH))
 
 
-def merge(slice_id: str) -> tuple[str, str, bool, str]:
+def merge(slice_id: str, spent: dict[str, int] | None = None) -> tuple[str, str, bool, str]:
     """Rebase this slice onto trunk, gate it there, and advance trunk.
 
     `(commit, "", False, note)` where it landed — the note saying what was done to the person's checkout to
@@ -580,7 +583,12 @@ def merge(slice_id: str) -> tuple[str, str, bool, str]:
     had passed its gate. Now it is fetched, rebased and gated again on the trunk that won, `PUSH_RACES`
     times, all under the one hold of the merge ref — and a trunk that outruns every one of them is refused
     as something asking again can fix, because it is.
+
+    `spent` is filled with the whole seconds each part took, as far as this merge got: `lock_s` waiting on
+    `refs/slipwai/merge` and `gate_s` running the gate. They are what says whether integration is slow
+    because the harbour queues or because the gate is long, which nothing could answer from the logs before.
     """
+    spent = {} if spent is None else spent
     branch = BRANCH.format(slice=slice_id)
     if git("rev-parse", "--verify", "--quiet", branch).returncode != 0:
         return "", f"there is no branch {branch} to merge", False, ""
@@ -592,12 +600,14 @@ def merge(slice_id: str) -> tuple[str, str, bool, str]:
                     "`git config user.email you@example.com` here, or set one globally"), False, ""
     # Taken before the fetch, because `base()` is read after it and the whole point is that trunk does not
     # move between the gate and the advance. Released in the `finally` below, whichever way this ends.
+    asked = time.monotonic()
     held, why = take_the_merge()
+    spent["lock_s"] = round(time.monotonic() - asked)
     if not held:
         return "", why, False, ""
     try:
         for race in range(PUSH_RACES + 1):
-            commit, fault, resolvable, note, raced = land(branch)
+            commit, fault, resolvable, note, raced = land(branch, spent)
             if not raced:
                 return commit, fault, resolvable, note
             print(f"harbourmaster: trunk moved on the forge while {branch} was gated "
@@ -753,6 +763,34 @@ def slice_asked(entry: logs.Entry) -> str:
     return given.removeprefix("merge-") if given.startswith("merge-") else ""
 
 
+def attempts(fairway: str, slice_id: str) -> int:
+    """Which attempt at merging this slice this one is: one more than the answers it has had already.
+
+    Counted from the harbour log rather than from the request id, because a captain asks again under a new
+    id — `merge-<slice>-<n>` — and an older harbour wrote no `slice` on a refusal.
+    """
+    def about(line: logs.Entry) -> bool:
+        named = line.fields.get("slice")
+        if named:
+            return named == slice_id
+        request = str(line.fields.get("request", ""))
+        return request == f"merge-{slice_id}" or request.startswith(f"merge-{slice_id}-")
+    return 1 + sum(1 for line in harbour_entries()
+                   if line.kind in ("granted", "refused") and line.fields.get("fairway") == fairway and about(line))
+
+
+def waited(entry: logs.Entry) -> dict[str, int]:
+    """`waited_s`: whole seconds from the request being written to this harbourmaster taking it up.
+
+    Nothing where the request carries no readable time, because a wait of nought would read as no queue.
+    """
+    try:
+        asked = datetime.strptime(entry.t, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError:
+        return {}
+    return {"waited_s": max(0, round((datetime.now(UTC) - asked).total_seconds()))}
+
+
 def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entry]:
     """The harbour-log line(s) one `request` gets: `granted` or `refused`, and always one of them.
 
@@ -775,6 +813,10 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
                            why=f"{refusal}. Asked: {detail}")]
     if what != "merge":
         return [logs.entry("granted", harbour=True, fairway=fairway, request=request, what=what)]
+    # Where a merge's time went, on both outcomes: queued for this harbourmaster, waiting on the merge ref,
+    # running the gate, and which attempt this was. A refusal is time spent too, and the attempts are what
+    # says a slice went round the berth three times before it landed.
+    spent = waited(entry)
     if trunk_state == "red":
         # `resolve` false, because no berth can turn trunk green, so the captain parks rather than driving
         # the slice again to be told the same thing. `waiting` is what clears that park when trunk is no
@@ -783,20 +825,21 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
                            why="trunk is red, and nothing merges onto a red trunk. The harbour log says "
                                "which commit and which job; no fairway is granted a merge until it is "
                                "green, and the queue drains the moment it is",
-                           resolve=False, waiting=GREEN_TRUNK)]
+                           resolve=False, waiting=GREEN_TRUNK, **spent)]
     slice_id = slice_asked(entry)
     if not slice_id:
         return [logs.entry("refused", harbour=True, fairway=fairway, request=request,
                            why="a merge request says which slice, in `slice` or in an id of `merge-<slice>`; "
                                "this one says neither, and guessing which branch to merge is not a thing to "
                                "guess at")]
-    commit, fault, resolvable, note = merge(slice_id)
+    spent["attempt"] = attempts(fairway, slice_id)
+    commit, fault, resolvable, note = merge(slice_id, spent)
     if fault:
         # `resolve` says whether going back into the berth could change the answer. A captain reads it to
         # decide between another turn and a park, which is the difference between a conflict it can fix and
         # a trunk nobody here can move.
         return [logs.entry("refused", harbour=True, fairway=fairway, request=request, why=fault,
-                           resolve=resolvable)]
+                           resolve=resolvable, slice=slice_id, **spent)]
     # `after-merge`, and only here: the slice is on trunk and pushed, which is a different event from the
     # gate passing on the rebased branch — `before-merge` is that one, and the merge can still be refused
     # after it. An extension with something to do once the commit exists had no point to say so at, and
@@ -810,7 +853,7 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
     if note:
         print(f"harbourmaster: {note}", flush=True)
     return [logs.entry("granted", harbour=True, fairway=fairway, request=request, what=what,
-                       slice=slice_id, commit=commit, ci=trunk_state, **said)]
+                       slice=slice_id, commit=commit, ci=trunk_state, **said, **spent)]
 
 
 def allocation(fairway: str, taken: list[str]) -> logs.Entry:

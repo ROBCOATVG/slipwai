@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ROBCOATVG/slipwai/main/docs/images/voyage-dark.png">
+  <img alt="The Voyage window: a project's stages from requirements to accepted, what it is doing now, and the buttons for the next step" src="https://raw.githubusercontent.com/ROBCOATVG/slipwai/main/docs/images/voyage-light.png">
+</picture>
+
 # Slipwai
 
 [![verify](https://github.com/ROBCOATVG/slipwai/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/ROBCOATVG/slipwai/actions/workflows/verify.yml)
@@ -26,15 +31,65 @@ $ cd bookings && make verify   # ./init ran where the project was made
 verify: all gates passed
 ```
 
-These steps take about ten minutes. The next page takes about five more. In those five minutes, one
-feature is specified, modelled, charted, split, built and demoed to you.
+These steps take about ten minutes. [Your first feature](docs/guide/first-feature.md) takes about five more.
+In those five minutes, one feature is specified, modelled, charted, split, built and demoed to you.
 
-**You can also do all of this on a web page.** Run `slipwai` with no arguments to open **the board**. This
-machine serves the board, and only this machine can open it. On the board, you can start a project from the
-same questions. You can also give the board a requirements document, or the folder that contains it. The
-board then drafts the first specification for you and waits for you to read it. After that, the
-**Voyage** tab shows which stage the project is at. The board reads the stage from the files in the
-project. Each stop that waits for a person has a button.
+The picture above is the board's **Voyage** tab for one project, part way through. 152 of its 226 slices
+have merged, and the storyboard for one feature waits for a person's verdict. Each tick on the strip comes
+from a file in the repository. Nobody typed a status. Run `slipwai` with no arguments to open the board.
+Only this machine can open it.
+
+## The development loop
+
+Every project that slipwai makes runs the same loop. A feature goes in at the top as a sentence or a
+requirements document. It comes out at the bottom as a capability that a person watched work and accepted.
+
+```
+ONCE PER FEATURE                                         ● = stops for you, by default
+  principles → specification ● → storyboard ● → event model ● → chart and split
+                                                                       │
+ONCE PER SLICE, in its own fairway, berth and worktree                 ▼
+  clearance → claim → example map → gaps, plan, tasks → analyze
+            → implement: red, green, refactor, one example at a time
+            → review of the whole diff → merge, after the full gate passes on trunk
+                                                                       │
+ONCE PER CAPABILITY, when its last slice merges                        ▼
+  the capability's gates → demo to you, as the actor ● → accepted
+```
+
+**Once per feature.** The agent writes the constitution and the specification. It then draws a wireframe
+for each screen and puts them into a storyboard. You approve the storyboard, or disapprove it with a reason.
+On the event-modelling profile, the agent then models the feature in `docs/event-model/model.yaml`. The
+**chart** comes last. It splits the feature into slices, puts each slice in a **fairway**, and names the one
+slice that owns each contract between fairways. That contract is a **mark**.
+
+**Once per slice.** A **captain** runs each fairway. A slice is *cleared* when every mark that it depends on
+is set. The captain claims the next cleared slice, and the slice goes through its stages in its own
+worktree. Implementation is test-first and commits one example at a time. The captain never merges. It asks
+the **harbourmaster**, which rebases the branch onto trunk, runs the whole gate there, and merges. Then the
+captain takes the next cleared slice.
+
+**Once per capability.** When the last slice of a capability merges, its gates run: converge, a gaps trace
+over the whole diff, the design review, an adversary pass where a slice widened the attack surface, and
+mutation testing. Then you see a demo as the actor. Say yes, and an `accepted` line goes into the log. Say no
+with notes, and the notes go back into the slice.
+
+**The loop starts where the files say it is.** Each stage writes a file, and a stage is done when its file
+exists. Close the terminal half way through a slice, and the next run starts at the first file that is
+missing. Run it in an empty repository, and it starts at the principles.
+
+There are three ways to drive it. All three run the same stages.
+
+| | |
+| --- | --- |
+| `/sail` in your coding agent | One person, one session. It runs the stage you are at, then takes the next ready slice without being asked |
+| The **Voyage** tab | A button for each stop. Each button runs a `make` target, so you can type it instead |
+| `make cruise` | Casts off the fleet: one captain per fairway, working in parallel, until something needs a person |
+
+By default the specification, the storyboard and the model each wait for you. Set **Who answers** to
+*advance on their own* and the board starts each of those steps when the one before it ends well. The demo
+always waits for you. [The workflow](docs/guide/the-workflow.md) lists every step, with who does it and the
+file it writes. [Your first feature](docs/guide/first-feature.md) walks one slice through the loop.
 
 ## New to this — start here
 

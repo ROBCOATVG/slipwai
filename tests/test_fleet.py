@@ -147,7 +147,8 @@ class InboxTest(Fixture):
 
     def test_a_message_a_decision_followed_is_not_waiting(self) -> None:
         self.deck("ORD", logs.entry("told", fairway="ORD", message="decide for me", t=when(8)),
-                  logs.entry("decision", fairway="ORD", id="ORD-Q1", what="D3", t=when(7)))
+                  logs.entry("decision", fairway="ORD", id="ORD-Q1", what="D3", t=when(7),
+                             decided_by="human"))
         self.assertEqual(self.board()["inbox"], [])
 
     def test_a_note_written_while_the_fairway_worked_is_still_waiting(self) -> None:
@@ -173,7 +174,8 @@ class InboxTest(Fixture):
 
     def test_a_question_a_decision_answered_is_not(self) -> None:
         self.deck("leaver", logs.entry("question", fairway="leaver", slice="chart", id="D25", what="?", t=when(3)),
-                  logs.entry("decision", fairway="leaver", id="D25", what="confirmed", t=when(1)))
+                  logs.entry("decision", fairway="leaver", id="D25", what="confirmed", t=when(1),
+                             decided_by="human"))
         self.assertEqual(self.board()["inbox"], [])
 
 

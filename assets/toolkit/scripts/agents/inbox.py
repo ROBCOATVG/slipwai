@@ -126,9 +126,16 @@ def unread(written: list[dict]) -> list[dict]:
 
 
 def unreviewed(written: list[dict]) -> list[dict]:
-    """Every `decision` a person has not read. The same receipt rule, for the same reason."""
+    """Every `decision` a person has not read. The same receipt rule, for the same reason.
+
+    A decision a person took is not one: `decided_by: human` is the captain recording a person's own answer
+    to a park — `decide for me` among them, which is a person handing the choice over knowingly. Counting
+    those held hr-test-2 over its ceiling on five answers its owner had typed, and nothing on the board could
+    write the receipt that would have let it go on. The board's *Mark read* writes the receipt for the rest.
+    """
     receipts = {str(line.get("told")) for line in written if line.get("kind") == "read"}
-    return [line for line in written if line.get("kind") == "decision" and str(line.get("t")) not in receipts]
+    return [line for line in written if line.get("kind") == "decision" and line.get("decided_by") != "human"
+            and str(line.get("t")) not in receipts]
 
 
 def overrun(written: list[dict], bound: float, now: datetime | None = None) -> list[dict]:

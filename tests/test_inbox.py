@@ -97,6 +97,18 @@ class InboxTest(unittest.TestCase):
         self.write([self.decision(5) for _ in range(3)])
         self.assertEqual(len(self.inbox.owed("ORD", NOW)["unreviewed"]), 3)
 
+    def test_a_decision_a_person_took_is_not_one_they_still_owe_a_read(self) -> None:
+        """hr-test-2 parked over its ceiling on five `decide for me` answers its owner had typed."""
+        human = {**self.decision(5), "decided_by": "human", "what": "decide for me"}
+        self.write([human for _ in range(12)] + [self.decision(4)])
+        self.assertEqual(len(self.inbox.owed("ORD", NOW)["unreviewed"]), 1)
+        self.assertFalse(self.inbox.owed("ORD", NOW)["over_ceiling"])
+
+    def test_a_read_receipt_takes_a_decision_off_the_count(self) -> None:
+        first, second = self.decision(6), self.decision(5)
+        self.write([first, second, self.read_of(first)])
+        self.assertEqual([line["t"] for line in self.inbox.owed("ORD", NOW)["unreviewed"]], [second["t"]])
+
     def test_under_the_ceiling_the_fairway_runs_on(self) -> None:
         self.write([self.decision(5) for _ in range(3)])
         state = self.inbox.owed("ORD", NOW)

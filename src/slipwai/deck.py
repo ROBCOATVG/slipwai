@@ -92,6 +92,31 @@ def tell(root: Path, fairway: str, message: str) -> str:
     return f"told {fairway}"
 
 
+def mark_read(root: Path, fairway: str, stamps: list[str]) -> str:
+    """Write a `read` receipt for each decision named by its instant, or say why none could be written.
+
+    The receipt the decision ceiling counts, and until this the only way to write one was by hand in a
+    terminal: hr-test-2 parked with fourteen decisions over its ceiling and a board that could show them and
+    could not take them off. Only a decision in this stream's own log is receipted, so a stale page or a
+    mistyped instant writes nothing rather than a receipt for something that was never decided.
+    """
+    feature = feature_of(root, fairway)
+    if not feature:
+        raise ValueError(f"{fairway} has no log here, so there is nothing of it to mark read")
+    found, fault = entries(root, fairway, feature)
+    if fault:
+        raise ValueError(fault)
+    decided = {e.t for e in found if e.kind == "decision"}
+    done = {str(e.fields.get("told")) for e in found if e.kind == "read"}
+    wanted = [one for one in dict.fromkeys(stamps) if one in decided and one not in done]
+    if not wanted:
+        raise ValueError(f"nothing to mark read: {fairway} has no unread decision at those instants")
+    with (root / deck_path(feature, fairway)).open("a", encoding="utf-8") as handle:
+        for one in wanted:
+            handle.write(entry("read", fairway=fairway, told=one).line())
+    return f"marked {len(wanted)} decision(s) read in {fairway}"
+
+
 def entries(root: Path, fairway: str, feature: str = "") -> tuple[list[Entry], str]:
     """One stream's entries, and the fault where its log cannot be read.
 

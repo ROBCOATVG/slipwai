@@ -48,7 +48,7 @@ from .bridge_page import page, payload
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
-from .deck import tell
+from .deck import mark_read, tell
 from .dials import set_dial
 from .errors import GenerationError
 from .fleet import board
@@ -117,9 +117,10 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 745 — one server and every route the board answers, each a few lines handing off to a page
+# budget: 755 — one server and every route the board answers, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
+# Mark read writes the receipts the decision ceiling counts.
 # The number is the route count rather than any one route's length: a control a person can press is ten
 # lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
 # board has gained the surfaces, the settings dials and the rendered specification since this was 560.
@@ -703,6 +704,12 @@ class Bridge(BaseHTTPRequestHandler):
                 said = "continuing the build"
             elif where == "/tell":
                 said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")))
+            # The receipt the decision ceiling counts, for the decisions a person has read on this page.
+            elif where == "/read":
+                stamps = held.get("decisions")
+                if not isinstance(stamps, list):
+                    raise ValueError("`decisions` is a list of the instants of the decisions read")
+                said = mark_read(self.root, str(held.get("fairway", "")), [str(one) for one in stamps])
             elif where == "/ring":
                 ring(self.root, str(held.get("position", "")))
                 said = f"rung to {held.get('position')}"

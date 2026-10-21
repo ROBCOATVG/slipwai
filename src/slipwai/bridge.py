@@ -49,6 +49,8 @@ from .bridge_page import page, payload
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
+from .decision_log import card as decision_card
+from .decision_log import mark as mark_decisions
 from .deck import dismiss, mark_read, tell
 from .dials import set_dial
 from .errors import GenerationError
@@ -592,7 +594,8 @@ class Bridge(BaseHTTPRequestHandler):
                       feature, self.drawable(), made_of, intake_ideas(self.root),
                       screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable(),
                       try_card(self.root, self.named_seat()), strip_html(rows, folds),
-                      feedback_card(self.root, rows, fleet, self.triaging(), trunk_head(self.root)))
+                      feedback_card(self.root, rows, fleet, self.triaging(), trunk_head(self.root)),
+                      decision_card(self.root))
 
     def triaging(self) -> bool:
         """Whether this board's child is the triage session, reading what a person said."""
@@ -776,6 +779,12 @@ class Bridge(BaseHTTPRequestHandler):
                 if not isinstance(stamps, list):
                     raise ValueError("`decisions` is a list of the instants of the decisions read")
                 said = mark_read(self.root, str(held.get("fairway", "")), [str(one) for one in stamps])
+            # The decision log's Mark read: the same deck receipt, named by the entry a person read.
+            elif where == "/decisions/read":
+                keys = held.get("keys")
+                if not isinstance(keys, list):
+                    raise ValueError("`keys` is a list of the decisions read")
+                said = mark_decisions(self.root, [str(one) for one in keys])
             elif where == "/dismiss":
                 said = dismiss(self.root, str(held.get("fairway", "")), str(held.get("told", "")))
             elif where == "/ring":

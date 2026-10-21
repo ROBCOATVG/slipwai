@@ -137,6 +137,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "try_card",
               # And what a person said after using it: the record under docs/feedback, and its card there.
               "feedback", "feedback_card",
+              # And every decision the fleet took, readable, each with the receipt the ceiling counts.
+              "decision_log",
               # And what each working slice is doing now, read off its activity log and drawn there.
               "activity", "live_page",
               # And the stop above the chart answered without a person, where the project says so.

@@ -208,9 +208,11 @@ def unread_decisions(row: dict, controls: bool) -> str:
     every = ",".join(str(one["t"]) for one in row["decisions"])
     all_read = (f'<div class="ask"><button class="go" data-read="{esc(name)}" data-stamps="{esc(every)}">'
                 f'I have read all {len(row["decisions"])}</button></div>' if controls else "")
+    # The log reads them whole — question, options, why — which these one-line ids never could.
+    log = '<p><a href="#decisions">Read them in the decision log</a>, each with its question and why.</p>'
     return (f'<details class="log"><summary><b>{esc(name)}</b> · decisions · {esc(row["what"])} '
             f'<span class="mono">{esc(row["t"])}</span></summary>'
-            f'<ol class="lines">{"".join(items)}</ol>{all_read}</details>')
+            f'{log if controls else ""}<ol class="lines">{"".join(items)}</ol>{all_read}</details>')
 
 
 def answer_boxes(rows: list[dict]) -> str:

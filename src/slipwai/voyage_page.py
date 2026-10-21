@@ -12,6 +12,8 @@ from pathlib import Path
 
 from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card, live_cards, live_sub
+from .decision_log import SCRIPT as DECISIONS_SCRIPT
+from .decision_log import STYLE as DECISIONS_STYLE
 from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
 from .feedback_card import STYLE as FEEDBACK_STYLE
 from .feedback_card import opener
@@ -35,6 +37,7 @@ from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 # and the Try it card, placed here and drawn by `try_card.py`
 # and the Now strip and a slice's live caption, drawn by `live_page.py`
 # and the tabs the bands below the strip sit in, and the Feedback card in one of them (`feedback_card.py`)
+# and the decision log's tab, drawn by `decision_log.py`
 
 TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -666,7 +669,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
          stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
          ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
-         modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "") -> str:
+         modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
+         decisions: tuple[str, int] = ("", 0)) -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
@@ -686,11 +690,15 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
              + mockups_card(left, root)),
             ("model", "Model", model_card(xml, note, viewer_fault) if xml or note or viewer_fault else ""),
             ("fleet", "Fleet" + (f'<span class="count">{waiting} waiting</span>' if waiting else ""), live),
+            ("decisions", f'Decisions<span class="count" data-decisions-unread{"" if decisions[1] else " hidden"}>'
+                          f"{decisions[1]} unread</span>", decisions[0]),
             ("next", "Next features", intake_card(ideas or []))]
-    body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}{LIVE_STYLE}</style>"
+    body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
+            f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}</style>"
             f"{where}{landed}{expect_card(found)}{tabs_html(tabs)}")
     script = SCRIPT + (TRY_SCRIPT if trying else "") + (FEEDBACK_SCRIPT if feedback else "") \
-        + (STRIP_SCRIPT if strip else "") + ("" if viewer_fault or not xml else "\n")
+        + (STRIP_SCRIPT if strip else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
+        + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person
     # picks it out by — in the dock, in a window switcher, across two runs open at once — is its title.
     page_html = document(f"Voyage \u00b7 {root.resolve().name}", sub, body, script, now="/voyage")

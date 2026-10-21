@@ -82,6 +82,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "catch_up_page",
        # The board's Voyage window: where a project stands, read off the tree, and the landing beside it.
        "passage", "voyage", "voyage_page", "landing_page",
+       # One captain's own window. Version 1 showed a captain only as a row and a terminal.
+       "captain_page",
        # A window each. The experiment's board served one directory, so it had no table of who is looking
        # at what to bring back. `wheel` is the other half of a board that is answered from: who answers at
        # each stop of a run, which the experiment left to a file somebody edited.

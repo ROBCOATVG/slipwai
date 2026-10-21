@@ -45,6 +45,9 @@ from .adopt_page import looked
 from .adopt_page import page as adoption
 from .adopt_page import run as adopt
 from .bridge_page import page, payload
+from .captain_page import number
+from .captain_page import page as captain
+from .captain_page import payload as captain_json
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
@@ -117,8 +120,9 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 755 — one server and every route the board answers, each a few lines handing off to a page
-# module. The intake route is the voyage button for a feature handed to /sail.
+# budget: 765 — one server and every route the board answers, each a few lines handing off to a page
+# module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
+# one fairway's log window and its poll.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
 # Mark read writes the receipts the decision ceiling counts.
 # The number is the route count rather than any one route's length: a control a person can press is ten
@@ -141,7 +145,7 @@ APP_FILES: dict[str, tuple[Callable[[], str], str]] = {
 #: The pages a person sits on, each of which is given a seat on arrival. The data routes are not here on
 #: purpose: a poll carries the seat of the page that made it, and a `curl /board.json` carries none and
 #: should read the board rather than be redirected into a seat it would then have to keep.
-SEATED: tuple[str, ...] = ("", "/index.html", "/voyage", "/generate", "/adopt", "/packages")
+SEATED: tuple[str, ...] = ("", "/index.html", "/voyage", "/captain", "/generate", "/adopt", "/packages")
 
 
 class Bridge(BaseHTTPRequestHandler):
@@ -274,6 +278,15 @@ class Bridge(BaseHTTPRequestHandler):
             return
         if where == "/voyage.json" and self.controls:
             self.send(200, self.voyage_json(), "application/json; charset=utf-8")
+            return
+        # One captain's window, and its poll: `captain_page` says what it reads.
+        if where in ("/captain", "/captain.json") and self.controls:
+            fairway, fleet = unquote(parameter(query, "fairway")), board(self.root, config(self.root))
+            if where == "/captain":
+                self.send(*captain(self.root, fairway, fleet))
+            else:
+                self.send(200, captain_json(self.root, fairway, fleet, number(query, "lines", 0),
+                                            number(query, "out", -1)), "application/json; charset=utf-8")
             return
         # A screen the design review photographed, from the project. Bytes, not text: a picture is not
         # a document, and decoding it would be serving a different file.

@@ -18,10 +18,16 @@ import os
 import re
 from pathlib import Path
 
-from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold
+from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold, harbour_logs
 
 #: How many lines one stream shows by default. Enough to cover a slice; short enough to read.
 RECENT = 60
+#: Where `fleet.py start` sends each captain's output, appended across every turn it runs.
+RUNNING = ".slipwai/running"
+#: How much of a captain's output its window opens on: the tail of a long run rather than all of it.
+TAIL = 64 * 1024
+#: Where a merge's time went, as the harbourmaster's answer carries it.
+TIMINGS = ("waited_s", "lock_s", "gate_s", "attempt")
 
 
 def said(entry: Entry) -> str:
@@ -188,3 +194,89 @@ def recent(root: Path, fairway: str, limit: int = RECENT) -> tuple[list[tuple[st
     """The last `limit` lines of one stream as (when, what), and the fault where there is one."""
     found, fault = entries(root, fairway)
     return [(one.t, said(one)) for one in found[-limit:]], fault
+
+
+def harbour_said(entry: Entry) -> str:
+    """One harbour line about a fairway as a sentence: what the harbourmaster did with what it was asked."""
+    at = entry.fields
+    kind = entry.kind
+    if kind == "granted":
+        commit = f" at {str(at['commit'])[:8]}" if at.get("commit") else ""
+        return f"{at.get('request')} granted{commit}" + (f" · CI {at['ci']}" if at.get("ci") else "")
+    if kind == "refused":
+        return f"{at.get('request')} refused: {at.get('why')}"
+    if kind == "berth-allocated":
+        return f"berth {at.get('berth')} allocated"
+    if kind == "cleared":
+        return f"cleared the park of {at.get('parked')}: {at.get('what')}"
+    if kind == "mark-set":
+        return f"carried {at.get('mark')} to the other fairways"
+    if kind == "park":
+        return f"carried the park to the inbox: {at.get('why')}"
+    if kind == "fix-trunk":
+        return (f"trunk went red at {str(at.get('commit'))[:8]} in {at.get('job')}, "
+                f"and this fairway's merge is the one to fix it")
+    return said(entry)
+
+
+def timeline(root: Path, fairway: str) -> tuple[list[dict], str]:
+    """One captain's whole history: its deck log, and every harbour line naming its fairway, by time.
+
+    The deck log alone says *asked to merge* and stops; what happened to the request is in the harbour log,
+    with the time it took. Read together, a request sits beside its answer. Each line says which slice it
+    belongs to — its own `slice` where it has one, else the slice last claimed — and carries the line as
+    written, so a reader who wants the fields rather than the sentence has them. Like `entries`, a log that
+    goes bad returns what came before it with the fault.
+    """
+    deck, fault = entries(root, fairway)
+    harbour: list[Entry] = []
+    for path in harbour_logs(root):
+        try:
+            found = fold(path.read_text(encoding="utf-8").splitlines(), harbour=True)
+        except (OSError, UnicodeDecodeError, Unreadable) as broken:
+            fault = fault or f"{path.name} cannot be read ({broken})"
+            continue
+        harbour += [one for one in found if one.fields.get("fairway") == fairway]
+    # By the instant, and at the same instant the captain's line first: an answer is written after what
+    # it answers. `sorted` keeps each log's own order inside one second.
+    both = sorted([(one, False) for one in deck] + [(one, True) for one in harbour],
+                  key=lambda pair: (pair[0].t, pair[1]))
+    lines: list[dict] = []
+    working = ""
+    for one, from_harbour in both:
+        if one.kind == "claimed" and not from_harbour:
+            working = str(one.fields.get("slice", ""))
+        lines.append({
+            "t": one.t,
+            "who": "harbour" if from_harbour else "person" if one.kind == "told" else "captain",
+            "kind": one.kind,
+            "slice": str(one.fields.get("slice") or working),
+            "what": harbour_said(one) if from_harbour else said(one),
+            "timing": {name: one.fields[name] for name in TIMINGS if name in one.fields},
+            "line": {"v": one.v, "t": one.t, "kind": one.kind, **one.fields},
+        })
+    return lines, fault
+
+
+def output(root: Path, fairway: str, after: int = -1) -> tuple[str, int]:
+    """What this captain's process has printed since byte `after`, and the byte it ends at.
+
+    `-1` is a window opening: the last `TAIL` bytes, from the first whole line in them. An `after` past the
+    end means the file was started again, so that is answered as an opening too rather than as silence.
+    Only a fairway with a deck log here has an output to read, which also keeps the name a fairway's.
+    """
+    if not feature_of(root, fairway):
+        return "", 0
+    path = root / RUNNING / f"captain-{fairway}.out"
+    try:
+        size = path.stat().st_size
+        opening = not 0 <= after <= size
+        start = max(0, size - TAIL) if opening else after
+        with path.open("rb") as handle:
+            handle.seek(start)
+            data = handle.read(size - start)
+    except OSError:
+        return "", 0
+    if opening and start:
+        data = data.partition(b"\n")[2]
+    return data.decode("utf-8", errors="replace"), size

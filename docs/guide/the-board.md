@@ -189,7 +189,8 @@ One answer box for each fairway that has written a line. **Send** writes a `told
 ### Streams
 
 One row for each fairway: **Stream**, **Feature**, **Piece of work** (the slice), **State**, **Waiting**,
-**Last line**, **Tokens** and **Merged**. Click a row to open that captain's whole log.
+**Last line**, **Tokens** and **Merged**. Click a row to fold open its last 60 lines. **Open log ↗** opens
+that captain's own window, described below.
 
 | State | Meaning |
 |---|---|
@@ -200,6 +201,23 @@ One row for each fairway: **Stream**, **Feature**, **Piece of work** (the slice)
 | idle | Its last slice merged, and its next slice waits on clearance |
 | not started | The fairway's log has no line yet |
 | clearance unavailable | Its last slice merged, and the board could not read clearance to say what is next |
+
+### The captain window
+
+**Open log ↗** on a Streams row opens one captain in a window of its own, titled with its fairway. It reads
+the files again every 2.5 seconds; **Following** pauses and resumes that.
+
+- **Timeline** shows every line in the fairway's deck log, with the lines in the harbour log that name the
+  fairway, in time order and grouped by slice. A merge request sits beside its `granted` or `refused`
+  answer, and the answer shows where the time went: queued, waiting on the merge ref, and the gate, with the
+  attempt. Filter by slice or by text, show the heartbeats, or show only the harbour's answers. **raw** shows
+  a line exactly as it was written.
+- **Captain output** shows what the captain process printed, from `.slipwai/running/captain-<fairway>.out`:
+  its own lines and each turn's closing message. It opens on the last 64 KB.
+- **Needs you** lists this fairway's open parks, unread messages and open questions, and **Tell this
+  captain** writes a `told` line, as the answer box does.
+
+The published copy has no captain window, because it has no server to read from.
 
 ### Settings
 

@@ -142,6 +142,8 @@ a{color:var(--teal)}
 .feed{font-family:var(--mono);font-size:.78rem;color:var(--ink-2);margin:0;padding:0;list-style:none}
 .feed li{padding:2px 0}
 tr.drawer td{padding:0 0 8px;border-bottom:1px solid var(--rule-2)}
+a.quiet-link{color:var(--teal);font-size:.82rem;white-space:nowrap;text-decoration:none}
+a.quiet-link:hover{text-decoration:underline}
 details.log summary{cursor:pointer;font-size:.82rem;color:var(--teal);padding:4px 0;list-style:none}
 details.log summary::-webkit-details-marker{display:none}
 details.log summary::before{content:"\\25B8  ";color:var(--ink-3)}

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from urllib.parse import quote
 
 from .fleet import NOTHING, inbox_detail
 
@@ -143,11 +144,17 @@ def queued_note(row: dict) -> str:
     return f' <small>· queued {esc(queued)}</small>' if queued and queued != "—" else ""
 
 
-def berth_rows(rows: list[dict], streams: dict) -> str:
+def log_link(fairway: str) -> str:
+    """The way into one captain's own window. Not on the published copy, which has no route behind it."""
+    return (f'<a class="quiet-link" href="/captain?fairway={quote(fairway)}" target="_blank" rel="noopener">'
+            f'Open log \u2197</a>')
+
+
+def berth_rows(rows: list[dict], streams: dict, controls: bool = True) -> str:
     if not rows:
         return '<p class="empty">No stream has written a line yet.</p>'
     head = ("<tr><th>Stream</th><th>Feature</th><th>Piece of work</th><th>State</th>"
-            "<th>Waiting</th><th>Last line</th><th>Tokens</th><th>Merged</th></tr>")
+            "<th>Waiting</th><th>Last line</th><th>Tokens</th><th>Merged</th><th></th></tr>")
     body = ""
     for row in rows:
         name = str(row["fairway"])
@@ -158,8 +165,9 @@ def berth_rows(rows: list[dict], streams: dict) -> str:
             f"<td><span class=\"chip {esc(STATES.get(str(row['state']), ''))}\" "
             f"data-state=\"{esc(state)}\">{esc(state)}</span></td>"
             f"<td>{esc(row.get('waiting', 0))}</td><td>{esc(row['last'])}</td>"
-            f"<td>{esc(row['tokens'])}</td><td>{esc(row['merged'])}</td></tr>"
-            f"<tr class=\"drawer\"><td colspan=\"8\">"
+            f"<td>{esc(row['tokens'])}</td><td>{esc(row['merged'])}</td>"
+            f"<td>{log_link(name) if controls else ''}</td></tr>"
+            f"<tr class=\"drawer\"><td colspan=\"9\">"
             f"{stream_log(name, streams.get(name) or [])}</td></tr>")
     return f"<table>{head}{body}</table>"
 
@@ -283,7 +291,7 @@ def live_cards(found: dict, config: dict, controls: bool = True,
     return f"""{unavailable}
 <div class="card" id="waiting"><h2>Waiting on you</h2>{inbox_rows(waiting, controls, found.get("streams"))}</div>
 {answer_boxes(berths) if controls else ""}
-<div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {})}</div>
+<div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {}, controls)}</div>
 {settings(pressure, config, controls, more)}
 <div class="card"><h2>Last lines</h2><ul class="feed" data-tail>{feed or "<li>nothing yet</li>"}</ul></div>"""
 

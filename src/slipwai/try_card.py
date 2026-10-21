@@ -23,6 +23,9 @@ from urllib.parse import quote, unquote
 
 from .page_shell import esc
 
+# budget: 390 — one card in four states and the routes' half of it: what Try it is doing, the app and who to
+# sign in as, its example records grouped by that person, what to try, its switches and its recorded walks.
+
 #: Where the demo hand's recordings are served from: `/walks/<feature>/<slice>/<example>.webm`.
 WALK_ROUTE = "/walks/"
 #: What a recording may be. A route that served the folder's anything would serve whatever lands in it.

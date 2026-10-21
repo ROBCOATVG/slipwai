@@ -390,7 +390,7 @@ def expect_card(found: list[Stage]) -> str:
     different question and the one somebody asks at the twenty-minute mark: a stage that waits for a person
     by design looks exactly like a stage that has hung, and until this nothing on the page said which it
     was. The stage somebody is on is given its own space; the rest are the whole voyage in order, so the
-    answer to "and then what" is on the same page as the answer to "what now".
+    answer to "and then what" is one click from the answer to "what now".
 
     A skipped stage is left out. The strip keeps its faint column, which says something worth saying — that
     this project is on the standard profile — but there is nothing to expect of a stage that is not going to
@@ -403,8 +403,9 @@ def expect_card(found: list[Stage]) -> str:
         for one in found if one.expect and one.state != "skipped")
     here = (f'<div class="now"><span class="who">Now \u00b7 {esc(now.title)}</span>'
             f"<p>{said(now.expect)}</p></div>" if now and now.expect else "")
+    # The whole voyage behind a click: above the tabs, eight paragraphs pushed them off the screen.
     return ('<div class="card expect"><h2>What to expect</h2>'
-            f"{here}<ol>{rows}</ol></div>")
+            f"{here}<details><summary>Every stage, in order</summary><ol>{rows}</ol></details></div>")
 
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,

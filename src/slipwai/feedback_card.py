@@ -140,7 +140,7 @@ def box_html() -> str:
             "</textarea>"
             '<div class="row"><input name="page" placeholder="The page you were on (optional): paste its address">'
             '</div><div class="row"><button type="button" class="go" data-fb-send>Send</button>'
-            '<button type="button" class="quiet" data-fb-cancel>Cancel</button></div></div>')
+            '<button type="button" class="install" data-fb-cancel>Cancel</button></div></div>')
 
 
 def capabilities_html(fleet: dict) -> str:

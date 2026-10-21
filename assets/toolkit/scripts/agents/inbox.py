@@ -144,12 +144,20 @@ def overrun(written: list[dict], bound: float, now: datetime | None = None) -> l
 
 
 def open_parks(written: list[dict], fairway: str) -> list[dict]:
-    """The original parks with no matching harbour receipt, never another fairway's receipt."""
+    """The original parks with no matching harbour receipt, never another fairway's receipt.
+
+    A park of one slice is also answered by a later `claimed` of that slice by this fairway: the captain
+    took it up again, so it is not waiting on anyone. Later by place, so a claim in the same second counts.
+    """
     receipts = {(str(line.get("fairway")), str(line.get("parked")))
                 for line in written if line.get("kind") == "cleared"}
-    return [line for line in written if line.get("kind") == "parked"
+    last_claim = {str(line["slice"]): index for index, line in enumerate(written)
+                  if line.get("kind") == "claimed" and line.get("slice")
+                  and str(line.get("fairway", fairway)) == fairway}
+    return [line for index, line in enumerate(written) if line.get("kind") == "parked"
             and str(line.get("fairway")) == fairway
-            and (fairway, str(line.get("t"))) not in receipts]
+            and (fairway, str(line.get("t"))) not in receipts
+            and last_claim.get(str(line.get("slice") or ""), -1) < index]
 
 
 def owed(fairway: str, now: datetime | None = None) -> dict:
@@ -159,7 +167,7 @@ def owed(fairway: str, now: datetime | None = None) -> dict:
     waiting, backlog = unread(written), unreviewed(written)
     late = overrun(written, bound, now)
     parks = [{**line, "waited": max(0.0, minutes_since(str(line.get("t", "")), now)),
-              "waiting_on": "harbourmaster"} for line in open_parks(written, fairway)]
+              "waiting_on": "you"} for line in open_parks(written, fairway)]
     overdue_parks = [line for line in parks if line["waited"] > bound]
     return {
         "unread": waiting,
@@ -193,7 +201,7 @@ def main(argv: list[str]) -> int:
         print(f"  told {line.get('t')}: {line.get('message')}")
     for line in state["parks"]:
         overdue = " — past its bound" if line in state["overdue_parks"] else ""
-        print(f"  parked {line.get('t')}: {line.get('why')} — waiting on harbourmaster "
+        print(f"  parked {line.get('t')}: {line.get('why')} — waiting on you "
               f"{line['waited']:.0f}m{overdue}")
     if state["over_ceiling"]:
         print(f"  over the decision ceiling — this fairway parks until a person reads them")

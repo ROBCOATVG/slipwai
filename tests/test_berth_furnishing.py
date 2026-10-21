@@ -65,6 +65,15 @@ class BerthTest(unittest.TestCase):
         status = subprocess.run(["git", "status", "--porcelain"], cwd=berth, capture_output=True, text=True)
         self.assertEqual(status.stdout.strip(), "", "nothing the berth was given shows up as a change")
 
+    def test_a_berth_in_the_way_says_both_steps_that_carry_the_slice_on(self) -> None:
+        """Nothing re-checks the berth, and a slice with an open park is skipped: hr-test-2's L04 was moved
+        on by neither step alone — told go with the berth still there, it parked again."""
+        (self.root.parent / f"{self.root.name}-L04").mkdir()
+        berth, said = self.module.berth(self.root, "L04", "slice/L04", "main")
+        self.assertIsNone(berth)
+        self.assertIn("check slice/L04 out in it, then answer this park (say go) and the slice is carried on",
+                      said)
+
     def test_lines_a_session_wrote_before_the_link_are_kept_aside_and_the_log_is_linked(self) -> None:
         berth = self.root.parent / f"{self.root.name}-L02"
         git(self.root, "worktree", "add", "-q", "-b", "slice/L02", str(berth), "main")

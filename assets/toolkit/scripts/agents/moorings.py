@@ -154,8 +154,11 @@ def berth(root: Path, slice_id: str, branch: str, base: str) -> tuple[Path | Non
     if found is None:
         found = root.parent / f"{root.name}-{slice_id}"
         if found.exists():
+            # Both steps, because nothing re-checks the berth and a slice with an open park is skipped:
+            # hr-test-2's L04 was told go without the berth being moved, and parked again.
             return None, (f"{found} is already there and is not a worktree on {branch}. Move it, or "
-                          f"check {branch} out in it, and the slice is carried on")
+                          f"check {branch} out in it, then answer this park (say go) and the slice is "
+                          f"carried on")
         exists = git(root, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").returncode == 0
         made = (git(root, "worktree", "add", "--quiet", str(found), branch) if exists
                 else git(root, "worktree", "add", "--quiet", "-b", branch, str(found), base or "HEAD"))

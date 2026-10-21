@@ -21,6 +21,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import quote, unquote
 
+from .feedback_card import opener
 from .page_shell import esc
 
 # budget: 390 — one card in four states and the routes' half of it: what Try it is doing, the app and who to
@@ -353,6 +354,7 @@ def card_html(state: dict, walks: list[dict] | None = None) -> str:
                 + "</div>" + links_html(state) + people_html(state) + new_html(state)
                 + flags_html(state))
         buttons = (f'<a class="quiet" href="{esc(url)}" target="{APP_TAB}">Open the app ↗</a>'
+                   + opener("What did using it show?", {"from": "try-it", "trunk": commit}, primary=True)
                    + (button("refresh", "Update to newest") if behind else "")
                    + button("fresh", "Start over with fresh data") + button("stop", "Stop"))
     said = said_of(state, walks or [])

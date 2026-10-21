@@ -84,6 +84,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "passage", "voyage", "voyage_page", "landing_page",
        # And Try it on it: version 1 had no board to put a running app on.
        "try_card",
+       # And feedback from using it: version 1 had no built product on a board to say anything about.
+       "feedback", "feedback_card",
        # And the live strip: version 1's runner printed to a terminal, and nothing kept what it said.
        "activity", "live_page",
        # A window each. The experiment's board served one directory, so it had no table of who is looking

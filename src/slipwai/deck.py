@@ -85,7 +85,7 @@ def teller() -> str:
     return "session" if os.environ.get("SLIPWAI_FAIRWAY") else "person"
 
 
-def tell(root: Path, fairway: str, message: str, slice_id: str = "") -> str:
+def tell(root: Path, fairway: str, message: str, slice_id: str = "", by: str = "") -> str:
     """Write a person's message into that stream's deck log, or say why it could not be.
 
     With `slice_id`, the message is for that one slice — the box on a red card on the voyage — and answers
@@ -94,6 +94,9 @@ def tell(root: Path, fairway: str, message: str, slice_id: str = "") -> str:
     Into the deck log rather than anywhere of its own: the log is what the captain reads at its next
     boundary, and a message somewhere else is a message nothing is watching. Here rather than beside the
     board's route for it, because this is a line in a deck log and that is what this module is.
+
+    `by` names a writer that is neither: `feedback`, a person's confirmed feedback handed to the captain,
+    which the captain reads and which answers no park.
     """
     if not fairway or not message.strip():
         raise ValueError("a message needs a stream to go to and something to say")
@@ -105,8 +108,8 @@ def tell(root: Path, fairway: str, message: str, slice_id: str = "") -> str:
                          f"A stream gets a log when its captain writes its first line")
     path = root / deck_path(feature, fairway)
     with path.open("a", encoding="utf-8") as handle:
-        line = (entry("told", fairway=fairway, message=message.strip(), by=teller(), slice=slice_id) if slice_id
-                else entry("told", fairway=fairway, message=message.strip(), by=teller()))
+        line = (entry("told", fairway=fairway, message=message.strip(), by=by or teller(), slice=slice_id)
+                if slice_id else entry("told", fairway=fairway, message=message.strip(), by=by or teller()))
         handle.write(line.line())
     return f"told {slice_id or fairway}"
 

@@ -394,6 +394,24 @@ def assess(where: Path, slug: str, said: list[str] | None = None) -> Fitting:
     return fitting
 
 
+TRIAGE = ["make", "triage"]
+TRIAGING = ("Reading your feedback — `make triage`: a headless session proposes where each thing you said goes. "
+            "It changes nothing; each proposal waits for you on the Feedback card.")
+
+
+def triaged(code: int) -> str:
+    if code == 0:
+        return "`make triage` is done. Each proposal is on the Feedback card, waiting for you to confirm it."
+    return f"`make triage` exited {code}. Its last lines say why; Triage on the Feedback card tries again."
+
+
+def triage(where: Path, said: list[str] | None = None) -> Fitting:
+    """The feedback nobody has proposed a route for, read in the background: what Send on the board starts."""
+    fitting = Fitting(where, [Step(TRIAGE, TRIAGING, triaged, "triage")], said)
+    fitting.thread.start()
+    return fitting
+
+
 def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitting:
     """The surfaces drawn, in the background: what the board's Draw the surfaces button starts.
 

@@ -52,6 +52,9 @@ from .cli_telegraph import ring, set_one
 from .deck import dismiss, mark_read, tell
 from .dials import set_dial
 from .errors import GenerationError
+from .feedback_card import act as feedback_act
+from .feedback_card import card as feedback_card
+from .feedback_card import payload as feedback_payload
 from .fleet import board
 from .folder_choice import chosen
 from .harbour import config
@@ -62,6 +65,7 @@ from .init_run import draw as draw_surfaces
 from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
+from .init_run import triage as begin_triage
 from .interview_form import form
 from .interview_form import page as interview
 from .interview_page import NO_INIT, destination, elected_in, repository_for
@@ -96,7 +100,7 @@ from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .spec_page import page as spec
 from .telegraph import Refused
-from .try_card import VIDEOS, WALK_ROUTE, walk_file
+from .try_card import VIDEOS, WALK_ROUTE, trunk_head, walk_file
 from .try_card import act as try_act
 from .try_card import card as try_card
 from .try_card import payload as try_payload
@@ -125,10 +129,11 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 805 — one server and every route the board answers, each a few lines handing off to a page
+# budget: 830 — one server and every route the board answers, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
 # And Try it's routes, `/try.json`, `/try` and the walks it shows, each handing straight to `try_card.py`.
+# And Feedback's, `/feedback.json` and `/feedback`, handing to `feedback_card.py`, and the triage it starts.
 # And what each slice is doing now: `/now.json`, `/slice` and `/slice.json`, handing to `live_page.py`.
 # Mark read writes the receipts the decision ceiling counts.
 # The number is the route count rather than any one route's length: a control a person can press is ten
@@ -296,6 +301,10 @@ class Bridge(BaseHTTPRequestHandler):
                 self.send(200, slice_window(self.root, fairway, named))
             else:
                 self.send(200, slice_payload(self.root, fairway, named), "application/json; charset=utf-8")
+            return
+        if where == "/feedback.json" and self.controls:
+            _, rows, _, fleet, _ = self.voyage_parts()
+            self.send(200, feedback_payload(self.root, rows, fleet, self.triaging()), "application/json; charset=utf-8")
             return
         if where == "/try.json" and self.controls:
             self.send(200, try_payload(self.root, self.named_seat()), "application/json; charset=utf-8")
@@ -582,7 +591,19 @@ class Bridge(BaseHTTPRequestHandler):
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
                       feature, self.drawable(), made_of, intake_ideas(self.root),
                       screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable(),
-                      try_card(self.root, self.named_seat()), strip_html(rows, folds))
+                      try_card(self.root, self.named_seat()), strip_html(rows, folds),
+                      feedback_card(self.root, rows, fleet, self.triaging(), trunk_head(self.root)))
+
+    def triaging(self) -> bool:
+        """Whether this board's child is the triage session, reading what a person said."""
+        return bool(self.fitting) and not self.fitting.said()["done"] and self.fitting.said()["step"] == "triage"
+
+    def triage_now(self) -> bool:
+        """Start reading the feedback when nothing else of this board is running, and say whether it did."""
+        if (self.fitting and not self.fitting.said()["done"]) or outside_session(self.root):
+            return False
+        self.fitting = begin_triage(self.root, self.fitting.said()["lines"] if self.fitting else None)
+        return True
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
@@ -689,6 +710,9 @@ class Bridge(BaseHTTPRequestHandler):
             elif where == "/try":
                 said = try_act(self.root, str(held.get("verb", "")), str(held.get("key", "")),
                                str(held.get("value", "")))
+            elif where == "/feedback":
+                _, rows, _, fleet, _ = self.voyage_parts()
+                said = feedback_act(self.root, held, rows, fleet, self.triage_now)
             elif where == "/stop":
                 _, _, _, fleet, _ = self.voyage_parts()
                 if not self.stoppable(fleet):

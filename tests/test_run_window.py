@@ -313,7 +313,7 @@ class BuiltScreenRouteTest(BoardTest):
             '{"deployables":{"api":{"kind":"service","port":3000},"web":{"kind":"web","port":5173}}}',
             encoding="utf-8")
         said = self.get("/voyage")[1]
-        card = said[said.index('id="built"'):said.index("<h2>The work</h2>")]
+        card = said[said.index('id="built"'):said.index("</section>", said.index('id="built"'))]  # its tab
         self.assertIn("Built screens", card)
         self.assertIn("To do", card)
         self.assertIn(f"/screens/001-demo/S01/home.png?seat={self.seat}", card)

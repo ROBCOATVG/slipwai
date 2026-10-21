@@ -92,6 +92,10 @@ from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .spec_page import page as spec
 from .telegraph import Refused
+from .try_card import VIDEOS, WALK_ROUTE, walk_file
+from .try_card import act as try_act
+from .try_card import card as try_card
+from .try_card import payload as try_payload
 from .upstream import advance
 from .voyage import (
     MOCK_ROUTE,
@@ -117,9 +121,10 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 755 — one server and every route the board answers, each a few lines handing off to a page
+# budget: 785 — one server and every route the board answers, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
+# And Try it's routes, `/try.json`, `/try` and the walks it shows, each handing straight to `try_card.py`.
 # Mark read writes the receipts the decision ceiling counts.
 # The number is the route count rather than any one route's length: a control a person can press is ten
 # lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
@@ -274,6 +279,17 @@ class Bridge(BaseHTTPRequestHandler):
             return
         if where == "/voyage.json" and self.controls:
             self.send(200, self.voyage_json(), "application/json; charset=utf-8")
+            return
+        if where == "/try.json" and self.controls:
+            self.send(200, try_payload(self.root, self.named_seat()), "application/json; charset=utf-8")
+            return
+        # A walk the demo hand recorded, as bytes, from the folder it records into and nowhere else.
+        if where.startswith(WALK_ROUTE) and self.controls:
+            path = walk_file(self.root, where.removeprefix(WALK_ROUTE))
+            if path is None:
+                self.send(404, "<p>No such walk.</p>")
+                return
+            self.send(200, path.read_bytes(), VIDEOS[path.suffix.lower()])
             return
         # A screen the design review photographed, from the project. Bytes, not text: a picture is not
         # a document, and decoding it would be serving a different file.
@@ -545,7 +561,8 @@ class Bridge(BaseHTTPRequestHandler):
         return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
                       feature, self.drawable(), made_of, intake_ideas(self.root),
-                      screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable())
+                      screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable(),
+                      try_card(self.root, self.named_seat()))
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
@@ -648,6 +665,10 @@ class Bridge(BaseHTTPRequestHandler):
             elif where == "/dial":
                 said = set_dial(self.root, str(held.get("panel", "")), str(held.get("key", "")),
                                 str(held.get("value", "")))
+            # Try it: the verb is the project's script's, run detached; the card polls what it does.
+            elif where == "/try":
+                said = try_act(self.root, str(held.get("verb", "")), str(held.get("key", "")),
+                               str(held.get("value", "")))
             elif where == "/stop":
                 _, _, _, fleet, _ = self.voyage_parts()
                 if not self.stoppable(fleet):

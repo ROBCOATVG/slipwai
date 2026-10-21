@@ -4,12 +4,13 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 605 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# budget: 640 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
 # the design files a storyboard links that the board serves beside it, a step it did not start,
 # and how far into its budget a drawing is, and a fleet at work read as working
 # and a waiting slice's card, opened on its park and its questions with a box aimed at it
 # and the Queued column a slice waiting for a slot stands in
 # and a slice's stage read off its branch and log, held to the captain's rungs
+# and the stage its berth has open now, which says more than the last rung to leave a file
 # and a slice named from the model whatever its id
 from __future__ import annotations
 

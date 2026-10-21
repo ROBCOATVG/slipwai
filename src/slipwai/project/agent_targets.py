@@ -72,3 +72,18 @@ launch: ## Continue the build from a drafted specification: chart and split it i
 check-decisions: ## Fail when a decision log or demo log /cruise wrote has lost its shape
 \tpython3 scripts/check-decisions.py
 """
+
+
+# Try it: trunk's newest merge for a person to use, beside the fleet. A script rather than a recipe, and
+# `scripts/agents/try_it.py` says why; written wherever the project has an app to run.
+TRY_TARGETS = """
+.PHONY: try try-update try-fresh try-stop
+try: ## Run trunk's newest merge for a person to use: its own ports, every merged slice on, example data loaded
+\tpython3 scripts/agents/try_it.py start
+try-update: ## Move Try it to trunk's newest merge, keeping its data and loading only the new slices' examples
+\tpython3 scripts/agents/try_it.py refresh
+try-fresh: ## Start Try it over: its data forgotten and every slice's examples loaded again
+\tpython3 scripts/agents/try_it.py fresh
+try-stop: ## Stop Try it, keeping its data for next time
+\tpython3 scripts/agents/try_it.py stop
+"""

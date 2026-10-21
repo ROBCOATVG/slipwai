@@ -39,8 +39,9 @@ export default defineConfig({
   server: {
     // Pinned, and a clash is an error rather than a silent move to 5174. A demo has to be able to state
     // the address it will be at before it starts, and every printed URL is wrong the moment Vite picks a
-    // different port on its own.
-    port: 5173,
+    // different port on its own. Moved only on purpose: `scripts/agents/try_it.py` runs the app beside the
+    // one a person may already have open, and says which port it gave it.
+    port: Number.parseInt(process.env.WEB_PORT ?? '', 10) || 5173,
     strictPort: true,
     // Vite binds localhost by default, deliberately — a dev server is not something to put on the LAN.
     // Inside a container localhost is the container, so `make demo` sets WEB_HOST and nothing else does.

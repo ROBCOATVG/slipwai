@@ -133,6 +133,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # Where the project stands, read for the board's Voyage window: the stages, the slices, the
               # model, and who answers at each stop of the run.
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
+              # And Try it, the app at trunk's newest merge for a person to use, started from that window.
+              "try_card",
               # And the stop above the chart answered without a person, where the project says so.
               "upstream",
               # What a handed-over document stands on, carried in with it.

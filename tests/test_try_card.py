@@ -73,12 +73,35 @@ class CardTest(unittest.TestCase):
         self.assertIn('data-try="refresh"', shown, "trunk has moved, so it can be brought up to date")
         self.assertIn("2 newer commits on trunk", shown)
         self.assertIn("<code>amara@example.test</code>", shown)
-        self.assertIn('href="http://localhost:6173/leaver-records/r-1"', shown)
+        self.assertIn('href="http://localhost:6173/leaver-records/r-1" target="try-it-app"', shown,
+                      "every link into the app opens in the one tab a person signed in to")
+        self.assertNotIn('target="_blank"', shown.split("Watch it work")[0])
         self.assertIn("agree: 422 late", shown)
         self.assertIn("New since the last update · 1", shown)
         self.assertIn("Press &lt;b&gt;Close&lt;/b&gt;", shown, "a quickstart's words are text, never markup")
         self.assertIn("1 of 2 switches on", shown)
         self.assertIn('data-key="leaver-record-withdrawal" data-value="off"', shown)
+
+    def test_the_example_data_is_grouped_under_who_to_sign_in_as_and_the_rest_are_listed(self) -> None:
+        people = [{"name": "Amara Shah", "username": "amara@example.test", "password": "amara"},
+                  {"name": "Joel Mensah", "username": "joel@example.test", "password": "joel"},
+                  {"name": "Sam Lee", "username": "sam@example.test", "password": "sam"}]
+        shown = card_html({
+            "state": "ready", "url": "http://localhost:6173", "commit": "f5784e0", "people": people,
+            "links": [{"slice": "001/L18", "label": "James's record", "path": "/r/1", "as": "amara@example.test"},
+                      {"slice": "001/L02", "label": "Grace's record", "path": "/r/2", "as": "joel@example.test"},
+                      {"slice": "001/L07", "label": "Sofia's record", "path": "/r/3", "as": "amara@example.test"}],
+            "new": [{"slice": "L18", "title": "Close as withdrawn", "steps": [], "as": "amara@example.test"}]})
+        amara = shown.index("Sign in as <b>Amara Shah</b> · <code>amara@example.test</code> · password "
+                            "<code>amara</code>")
+        joel = shown.index("Sign in as <b>Joel Mensah</b>")
+        self.assertLess(amara, shown.index("James&#x27;s record"))
+        self.assertLess(shown.index("Sofia&#x27;s record"), joel, "one person's records together, under them")
+        self.assertLess(joel, shown.index("Grace&#x27;s record"))
+        self.assertIn("Also there to sign in as", shown)
+        self.assertIn("<b>Sam Lee</b>", shown.split("Also there to sign in as")[1])
+        self.assertNotIn("<b>Amara Shah</b>", shown.split("Also there to sign in as")[1].split("</table>")[0])
+        self.assertIn("Close as withdrawn</b> <span class=\"empty\">· sign in as Amara Shah</span>", shown)
 
     def test_ready_and_current_offers_no_update(self) -> None:
         shown = card_html({"state": "ready", "url": "http://localhost:6173", "commit": "d3c2e39", "behind": 0})

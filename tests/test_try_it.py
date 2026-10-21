@@ -243,7 +243,7 @@ class SeedTest(Project):
         self.assertEqual(state["seed_failed"], [{"slice": "001-shop/L02", "step": "refused",
                                                  "said": '422 {"error":"invalid"}'}])
         self.assertEqual(state["links"], [{"slice": "001-shop/L18", "label": "Priya's record",
-                                           "path": "/records/r-1"}])
+                                           "path": "/records/r-1", "as": "amara@example.test"}])
         mine = [call for call in calls if "records" in call[1]]
         self.assertEqual(mine[1][1], "http://localhost:4000/api/records/r-1/withdrawal")
         self.assertEqual(mine[0][3], "token-for-amara@example.test")

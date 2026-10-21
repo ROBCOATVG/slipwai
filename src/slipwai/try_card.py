@@ -27,6 +27,11 @@ from .page_shell import esc
 WALK_ROUTE = "/walks/"
 #: What a recording may be. A route that served the folder's anything would serve whatever lands in it.
 VIDEOS = {".webm": "video/webm", ".mp4": "video/mp4"}
+#: The one tab every link into the app opens in. An app that keeps its sign-in per tab — `sessionStorage`,
+#: which hr-test-2's does on purpose — is signed out in every new tab, so a card whose links each opened one
+#: said "your sign-in has ended" on every record a person had just signed in to see. Named rather than
+#: `_blank`, and without `noopener`, which would make a browser open a new tab for the name every time.
+APP_TAB = "try-it-app"
 #: What each button asks the script to do.
 VERBS = ("start", "refresh", "fresh", "stop", "flag")
 #: How each state is said on the chip.
@@ -58,6 +63,8 @@ STYLE = """
 #try .flag{display:flex;gap:10px;align-items:center;font-size:.86rem;margin:4px 0}
 #try .flag code{flex:1}
 #try .warn{color:#b4432f;font-size:.86rem}
+#try .as-group{border-left:3px solid var(--teal);padding:2px 0 2px 12px;margin:8px 0 12px}
+#try .as{margin:0 0 6px;font-size:.88rem}
 """
 
 SCRIPT = """
@@ -176,25 +183,50 @@ def button(verb: str, face: str, primary: bool = False, **data: str) -> str:
     return f'<button type="button" class="{kind}" data-try="{verb}"{extra}>{esc(face)}</button>'
 
 
-def people_html(people: list[dict]) -> str:
-    rows = "".join(f'<tr><td class="who"><b>{esc(one.get("name", ""))}</b></td>'
-                   f'<td><code>{esc(one.get("username", ""))}</code></td>'
-                   f'<td><code>{esc(one.get("password", ""))}</code></td></tr>' for one in people)
-    return f"<h3>Sign in as</h3><table>{rows}</table>" if rows else ""
+def credentials(person: dict) -> str:
+    return (f'<code>{esc(person.get("username", ""))}</code> · password '
+            f'<code>{esc(person.get("password", ""))}</code>')
+
+
+def people_html(state: dict) -> str:
+    """Everyone the example data does not already sign in as: the people a story leaves out are the ones a
+    person tries a refusal with, and the card should not make them look up a realm file to find them."""
+    used = {str(one.get("as", "")) for one in state.get("links") or []}
+    rest = [one for one in state.get("people") or [] if one.get("username") not in used]
+    if not rest:
+        return ""
+    rows = "".join(f'<tr><td class="who"><b>{esc(one.get("name", ""))}</b></td><td>{credentials(one)}</td></tr>'
+                   for one in rest)
+    heading = "Also there to sign in as" if used - {""} else "Sign in as"
+    return f"<h3>{heading}</h3><table>{rows}</table>"
 
 
 def links_html(state: dict) -> str:
-    """The records the example data made, each a link into the app: an app with no list of its records has
-    no other way to reach them."""
+    """The records the example data made, grouped by who to sign in as to see them — the person each
+    slice's story was told as, since a record one person owns may be refused to another — each a link into
+    the app, which is the only way to reach a record in an app with no list of them yet."""
     url = str(state.get("url", ""))
-    rows = "".join(f'<li><span class="sid">{esc(str(one.get("slice", "")).rsplit("/", 1)[-1])}</span>'
-                   f'<a href="{esc(url + str(one.get("path", "")))}" target="_blank" rel="noopener">'
-                   f'{esc(one.get("label") or one.get("path", ""))}</a></li>'
-                   for one in state.get("links") or [])
+    people = {str(one.get("username", "")): one for one in state.get("people") or []}
+    groups: dict[str, list[dict]] = {}
+    for one in state.get("links") or []:
+        groups.setdefault(str(one.get("as", "")), []).append(one)
+    blocks = ""
+    for who, links in groups.items():
+        person = people.get(who, {"name": who, "username": who})
+        head = (f'<p class="as">Sign in as <b>{esc(person.get("name") or who)}</b> · {credentials(person)}</p>'
+                if who else '<p class="as">Signed in as the person the slice\'s story names</p>')
+        rows = "".join(f'<li><span class="sid">{esc(str(one.get("slice", "")).rsplit("/", 1)[-1])}</span>'
+                       f'<a href="{esc(url + str(one.get("path", "")))}" target="{APP_TAB}">'
+                       f'{esc(one.get("label") or one.get("path", ""))}</a></li>' for one in links)
+        blocks += f'<div class="as-group">{head}<ul class="new">{rows}</ul></div>'
     failed = "".join(f'<li class="warn"><span class="sid">{esc(str(one.get("slice", "")).rsplit("/", 1)[-1])}</span>'
                      f'{esc(one.get("step", ""))}: {esc(one.get("said", ""))}</li>'
                      for one in state.get("seed_failed") or [])
-    return f'<h3>Example data</h3><ul class="new">{rows}{failed}</ul>' if rows or failed else ""
+    if not blocks and not failed:
+        return ""
+    return ('<h3>Example data, by who to sign in as</h3><p class="empty">Sign in once, in the app\'s tab: every '
+            "link on this card opens in that same tab, which keeps the sign-in.</p>"
+            + blocks + (f'<ul class="new">{failed}</ul>' if failed else ""))
 
 
 def new_html(state: dict) -> str:
@@ -203,8 +235,14 @@ def new_html(state: dict) -> str:
     if not found:
         return ""
     first = not state.get("previous")
+    people = {str(one.get("username", "")): one for one in state.get("people") or []}
+
+    def who(one: dict) -> str:
+        person = people.get(str(one.get("as", "")))
+        return (f' <span class="empty">· sign in as {esc(person.get("name") or person.get("username", ""))}'
+                f"</span>") if person else ""
     items = "".join(
-        f'<li><span class="sid">{esc(one.get("slice", ""))}</span><b>{esc(one.get("title", ""))}</b>'
+        f'<li><span class="sid">{esc(one.get("slice", ""))}</span><b>{esc(one.get("title", ""))}</b>{who(one)}'
         f'<ol class="steps">{"".join(f"<li>{esc(step)}</li>" for step in one.get("steps") or [])}</ol></li>'
         for one in found)
     heading = f"Merged so far · {len(found)}" if first else f"New since the last update · {len(found)}"
@@ -309,9 +347,9 @@ def card_html(state: dict, walks: list[dict] | None = None) -> str:
                   + (f", {len(state.get('seed_failed'))} refused" if state.get("seed_failed") else "")))
         body = ('<div class="grid">'
                 + "".join(f'<div class="fact"><b>{esc(a)}</b><span>{esc(b)}</span></div>' for a, b in facts)
-                + "</div>" + people_html(state.get("people") or []) + links_html(state) + new_html(state)
+                + "</div>" + links_html(state) + people_html(state) + new_html(state)
                 + flags_html(state))
-        buttons = (f'<a class="quiet" href="{esc(url)}" target="_blank" rel="noopener">Open the app ↗</a>'
+        buttons = (f'<a class="quiet" href="{esc(url)}" target="{APP_TAB}">Open the app ↗</a>'
                    + (button("refresh", "Update to newest") if behind else "")
                    + button("fresh", "Start over with fresh data") + button("stop", "Stop"))
     said = said_of(state, walks or [])

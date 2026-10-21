@@ -38,9 +38,24 @@
  *
  * `usersConfig` is a pure function of its input so the tests can drive it with plain objects;
  * `UsersProvider` is the only place that hands it the real `import.meta.env`.
+ *
+ * ── Back to where sign-in started ─────────────────────────────────────────────────────────────────────
+ * Keycloak sends the browser back to one address, this origin's root, so a person who opened a link to a
+ * record, was asked to sign in and did, landed on the home page with the record gone. Every sign-in now
+ * carries the page it started on in OAuth's own `state` — which the library already round-trips and checks —
+ * and the callback puts the person back there. It is done once, in the manager the provider is given, so a
+ * screen that starts a sign-in of its own (`auth.signinRedirect()`) gets it without asking. Only a path on
+ * this origin is ever returned to: `state` comes back through the browser, and an address it named
+ * anywhere else would make this app an open redirect.
  */
-import { WebStorageStateStore } from 'oidc-client-ts';
-import type { ReactNode } from 'react';
+import {
+  type SigninRedirectArgs,
+  type User,
+  UserManager,
+  type UserManagerSettings,
+  WebStorageStateStore,
+} from 'oidc-client-ts';
+import { type ReactNode, useState } from 'react';
 import { AuthProvider, type AuthProviderProps } from 'react-oidc-context';
 
 import { Account } from './Account';
@@ -77,10 +92,37 @@ export function usersConfig(env: Record<string, string | undefined>): AuthProvid
     automaticSilentRenew: true,
     // After the redirect back, the address bar holds `?code=...&state=...`. Both have been used up by the
     // time this runs; leaving them there means a reload replays a spent code and shows an error.
-    onSigninCallback: () => {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    },
+    onSigninCallback: backToWhereSignInStarted,
   };
+}
+
+/** Where this page is, as somewhere a sign-in can bring a person back to. */
+export function hereNow(): string {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+/** A sign-in's `state` as a path on this origin, or null: one leading slash, never two, never a backslash. */
+export function returnPath(state: unknown): string | null {
+  if (typeof state !== 'string' || !state.startsWith('/')) return null;
+  return state.startsWith('//') || state.includes('\\') ? null : state;
+}
+
+/**
+ * After the redirect back: the spent code and state out of the address bar, and the person on the page
+ * they signed in from. The router is told by the same event the browser's own back button sends.
+ */
+// biome-ignore lint/suspicious/noConfusingVoidType: react-oidc-context's `onSigninCallback` is typed `User | void`.
+export function backToWhereSignInStarted(user?: User | void): void {
+  const back = returnPath(user?.state) ?? window.location.pathname;
+  window.history.replaceState({}, document.title, back);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+/** A manager whose every sign-in carries the page it started on, unless its caller says otherwise. */
+export class ReturningUserManager extends UserManager {
+  override signinRedirect(args: SigninRedirectArgs = {}): Promise<void> {
+    return super.signinRedirect({ state: hereNow(), ...args });
+  }
 }
 
 /**
@@ -92,11 +134,19 @@ export function usersConfig(env: Record<string, string | undefined>): AuthProvid
  */
 export function UsersProvider({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider {...usersConfig(import.meta.env)}>
+    <AuthProvider userManager={useManager()} onSigninCallback={backToWhereSignInStarted}>
       <header>
         <Account />
       </header>
       {children}
     </AuthProvider>
   );
+}
+
+/** One manager for the life of the provider: a new one per render would lose the sign-in in flight. */
+function useManager(): UserManager {
+  const [manager] = useState(
+    () => new ReturningUserManager(usersConfig(import.meta.env) as UserManagerSettings),
+  );
+  return manager;
 }

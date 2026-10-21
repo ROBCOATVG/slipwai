@@ -324,7 +324,13 @@ def things_to_try(commit: str, path: str) -> dict:
         elif steps and line.startswith("   ") and line.strip():
             steps[-1] += " " + line.strip()
     parts = path.split("/")
-    return {"feature": parts[1], "slice": parts[3], "title": title, "steps": steps[:8]}
+    # Who the slice's own example data signs in as, which is who a person should be to follow its steps.
+    try:
+        told = json.loads(git("show", f"{commit}:{path.rsplit('/', 1)[0]}/try-it.json") or "{}")
+    except ValueError:
+        told = {}
+    return {"feature": parts[1], "slice": parts[3], "title": title, "steps": steps[:8],
+            "as": str(told.get("as", "")) if isinstance(told, dict) else ""}
 
 
 def whats_new(commit: str, previous: str) -> list[dict]:
@@ -606,7 +612,8 @@ def seed(where: Path, env: dict[str, str], state: dict, only_new: bool, api: str
             # to reach what was just made.
             for opened in story.get("open") or []:
                 links.append({"slice": name, "label": str(opened.get("label", "")),
-                              "path": str(filled(opened.get("path", "/"), kept))})
+                              "path": str(filled(opened.get("path", "/"), kept)),
+                              "as": str(opened.get("as") or story.get("as", ""))})
     state["seeded"] = sorted(done)
     state["seed_failed"] = failed
     state["links"] = links

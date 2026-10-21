@@ -12,6 +12,8 @@ from pathlib import Path
 
 from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card, live_cards, live_sub
+from .live_page import STRIP_SCRIPT
+from .live_page import STYLE as LIVE_STYLE
 from .page_shell import document, esc
 from .passage import Stage, current
 from .settings_card import project_tabs
@@ -19,7 +21,7 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 660 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# budget: 670 — the bands of one window: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
@@ -28,6 +30,7 @@ from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 # and the strip's amber attention beside its red stop
 # and a slice card that is its number, its title and its stage until it is opened
 # and the Try it card, placed here and drawn by `try_card.py`
+# and the Now strip and a slice's live caption, drawn by `live_page.py`
 
 TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -416,7 +419,8 @@ def slice_html(row: dict[str, str]) -> str:
     chip = chip_of(row)
     shown = f'<span class="chip">{esc(chip)}</span>' if chip else ""
     answer = answer_html(row) if row["state"] == "waiting" and row.get("fairway") else ""
-    return (f'<details class="slice {esc(row["state"])}"><summary><b>{esc(name)}</b>{shown}</summary>'
+    cap = f'<span class="live-cap">{esc(row["live"])}</span>' if row.get("live") else ""
+    return (f'<details class="slice {esc(row["state"])}"><summary><b>{esc(name)}</b>{shown}{cap}</summary>'
             f"{facts_html(row)}{answer}</details>")
 
 
@@ -603,7 +607,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
          stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
          ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
-         modelable: bool = False, trying: str = "") -> str:
+         modelable: bool = False, trying: str = "", strip: str = "") -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
@@ -616,13 +620,14 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]
-    body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}</style>{where}"
+    body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{LIVE_STYLE}</style>{where}{strip}"
             f"{intake_card(ideas or [])}"
             f"{expect_card(found)}{landed}"
             f"{model_card(xml, note, viewer_fault)}{trying}"
             f"{screens_card(shots or [], mocks or [], '' if trying else app)}"
             f"{mockups_card(left, root)}{work_card(rows, fault)}{live}")
-    script = SCRIPT + (TRY_SCRIPT if trying else "") + ("" if viewer_fault or not xml else "\n")
+    script = SCRIPT + (TRY_SCRIPT if trying else "") + (STRIP_SCRIPT if strip else "") \
+        + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person
     # picks it out by — in the dock, in a window switcher, across two runs open at once — is its title.
     page_html = document(f"Voyage \u00b7 {root.resolve().name}", sub, body, script, now="/voyage")

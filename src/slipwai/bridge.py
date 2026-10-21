@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
+from .activity import caption, live
 from .adopt_page import looked
 from .adopt_page import page as adoption
 from .adopt_page import run as adopt
@@ -66,6 +67,9 @@ from .interview_form import page as interview
 from .interview_page import NO_INIT, destination, elected_in, repository_for
 from .interview_page import run as generate
 from .landing_page import landing
+from .live_page import strip_html, strip_payload
+from .live_page import window as slice_window
+from .live_page import window_payload as slice_payload
 from .page_shell import (
     ICON,
     MANIFEST,
@@ -121,10 +125,11 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 785 — one server and every route the board answers, each a few lines handing off to a page
+# budget: 805 — one server and every route the board answers, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
 # And Try it's routes, `/try.json`, `/try` and the walks it shows, each handing straight to `try_card.py`.
+# And what each slice is doing now: `/now.json`, `/slice` and `/slice.json`, handing to `live_page.py`.
 # Mark read writes the receipts the decision ceiling counts.
 # The number is the route count rather than any one route's length: a control a person can press is ten
 # lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
@@ -279,6 +284,18 @@ class Bridge(BaseHTTPRequestHandler):
             return
         if where == "/voyage.json" and self.controls:
             self.send(200, self.voyage_json(), "application/json; charset=utf-8")
+            return
+        # What each working slice is doing now: the Voyage tab's strip, and a window per slice.
+        if where == "/now.json" and self.controls:
+            rows = self.voyage_parts()[1]
+            self.send(200, strip_payload(rows, live(self.root, rows)), "application/json; charset=utf-8")
+            return
+        if where in ("/slice", "/slice.json") and self.controls:
+            fairway, named = unquote(parameter(query, "fairway")), unquote(parameter(query, "slice"))
+            if where == "/slice":
+                self.send(200, slice_window(self.root, fairway, named))
+            else:
+                self.send(200, slice_payload(self.root, fairway, named), "application/json; charset=utf-8")
             return
         if where == "/try.json" and self.controls:
             self.send(200, try_payload(self.root, self.named_seat()), "application/json; charset=utf-8")
@@ -553,6 +570,9 @@ class Bridge(BaseHTTPRequestHandler):
 
     def voyage(self) -> str:
         found, rows, fault, fleet, held = self.voyage_parts()
+        folds = live(self.root, rows)
+        rows = [{**row, "live": caption(folds[key])} if (key := f"{row.get('fairway')}/{row['slice']}") in folds
+                else row for row in rows]
         feature, made_of = self.made_of(rows, fleet)
         xml, note = model_xml(self.root, states_of(rows))
         # The frames are the one thing on this page the browser fetches without a script's help, so the
@@ -562,7 +582,7 @@ class Bridge(BaseHTTPRequestHandler):
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
                       feature, self.drawable(), made_of, intake_ideas(self.root),
                       screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable(),
-                      try_card(self.root, self.named_seat()))
+                      try_card(self.root, self.named_seat()), strip_html(rows, folds))
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()

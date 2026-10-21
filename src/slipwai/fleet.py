@@ -17,7 +17,7 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 490 — every column of the board folded from the logs, including what waits on a person: a park,
+# budget: 495 — every column of the board folded from the logs, including what waits on a person: a park,
 # a told, the decisions nobody has read, and a question a headless stage posted and nobody has answered
 # yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
 # which `told` an answer or a claim has already taken up, which one is a session's note for another session
@@ -475,6 +475,8 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         # accepted, and accepted is the only line a capability ends on.
         "accepted": sorted(set(accepted)),
         "demo_due": sorted(set(due) - set(accepted)),
+        "demo_due_in": {str(e.fields["capability"]): one.name for one in found for e in one.entries  # whose
+                        if e.kind == "demo-due" and str(e.fields["capability"]) not in accepted},
         # Each stream's own lines, said rather than printed. The board answers "is anything stuck"; the
         # next question is always "what has this one been doing", and that is forty lines of one file.
         "streams": {one.name: recent(root, one.name)[0] for one in found},

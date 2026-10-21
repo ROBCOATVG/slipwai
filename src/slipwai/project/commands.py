@@ -172,6 +172,8 @@ def command_files(
         # specification somebody has read is the line between them.
         "commands/draft.md": page(COMMANDS, "draft.md", {"make": layout.make}),
         "commands/assess.md": page(COMMANDS, "assess.md", {"make": layout.make}),
+        # And what a person said after using the built app, proposed a route and nothing more.
+        "commands/triage.md": page(COMMANDS, "triage.md", {"make": layout.make}),
         # And between them the surfaces: the stage a person is in for the half that counts, whose other
         # half the board can start. Written here rather than copied verbatim because it now names the
         # project's own make spelling, and a page that shipped `{{make}}` raw would read as a typo in the

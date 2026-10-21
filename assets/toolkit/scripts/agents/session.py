@@ -128,6 +128,68 @@ def about() -> dict[str, str]:
     return {word: value for word, value in named.items() if value}
 
 
+#: Where every slice's activity log is kept: the main checkout's, which the board reads, whichever worktree
+#: the session runs in. One file per slice, so two slices never append to one file.
+ACTIVITY = ".slipwai/activity"
+#: A slice's log is cut back to its newest lines past this size, so a poll reading its tail stays cheap.
+ACTIVITY_LIMIT, ACTIVITY_KEEP = 1_000_000, 2000
+#: How long a line may be: a sentence for a person, never a command's whole text or a file's contents.
+SAID = 240
+
+
+def main_checkout() -> Path:
+    """The main checkout this session's worktree belongs to, by Git's shared directory."""
+    try:
+        done = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                              capture_output=True, text=True, timeout=5, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return ROOT
+    common = done.stdout.strip()
+    return Path(common).parent if done.returncode == 0 and common else ROOT
+
+
+def record(kind: str, what: str, agent: str = "", **fields: object) -> None:
+    """One line in this slice's activity log: what happened, in words a person reads, and who did it.
+
+    Only in a session the captain dispatched, which is the one that has a slice to file it under. Never
+    raised: a hook that could not write a line has cost nothing but the line."""
+    fairway, slice_id = os.environ.get(FAIRWAY_VARIABLE, ""), os.environ.get(SLICE_VARIABLE, "")
+    if not fairway or not slice_id or not what.strip():
+        return
+    from datetime import datetime, timezone
+    line = {"t": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "fairway": fairway, "slice": slice_id,
+            "stage": os.environ.get(STAGE_VARIABLE, ""), "agent": agent or "session", "kind": kind,
+            "what": " ".join(what.split())[:SAID],
+            **{key: value for key, value in fields.items() if value not in (None, "")}}
+    path = main_checkout() / ACTIVITY / fairway / f"{slice_id}.jsonl"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as out:
+            out.write(json.dumps(line, ensure_ascii=False) + "\n")
+        if path.stat().st_size > ACTIVITY_LIMIT:
+            kept = path.read_text(encoding="utf-8").splitlines()[-ACTIVITY_KEEP:]
+            path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    except OSError:
+        return
+
+
+def acting() -> tuple[str, str]:
+    """Which agent a tool call came from — a sub-agent the harness names, or the session — and its type."""
+    given = event()
+    return str(given.get("agent_id") or ""), str(given.get("agent_type") or "")
+
+
+def described(given: dict) -> str:
+    """A command as a person would say it: the description its agent gave it, else its first words."""
+    tool_input = given.get("tool_input")
+    tool_input = tool_input if isinstance(tool_input, dict) else {}
+    words = str(tool_input.get("description") or "").strip()
+    if words:
+        return words
+    command = str(tool_input.get("command") or "").strip().splitlines()
+    return " ".join(command[0].split()[:6]) if command else ""
+
+
 def extensions(script: Path, point: str, given: dict[str, str]) -> int:
     """Run the extensions attached at `point`, and hand back what they said.
 
@@ -249,6 +311,8 @@ def before_write() -> int:
     given = event().get("tool_input")
     path = written(given if isinstance(given, dict) else {})
     cwd = str(event_cwd())
+    agent, role = acting()
+    record("edit", Path(path).name if path else "", agent, role=role)
     if dispatched():
         shown = controlled(path, cwd)
         if shown:
@@ -267,7 +331,12 @@ def before_command(command: str = "") -> int:
     """
     given = event().get("tool_input")
     text = command or (given.get("command") if isinstance(given, dict) else "") or ""
-    if dispatched() and any(word in text for word in WRITING):
+    # The session's own sentences for the board are words, not a write to `scripts/`, whatever they contain.
+    narrating = re.match(r"\s*python3\s+\S*scripts/agents/session\.py\s+(say|waiting)\b", text) is not None
+    if not narrating:
+        agent, role = acting()
+        record("ran", described(event()), agent, role=role)
+    if dispatched() and not narrating and any(word in text for word in WRITING):
         for control in CONTROL_PATHS:
             if control in text:
                 print(REFUSAL.format(path=control), file=sys.stderr)
@@ -361,6 +430,13 @@ def after_delegate() -> int:
     is sent back for the hash, because what the session integrates is a commit and not a working tree.
     """
     given = event()
+    answer = given.get("tool_response")
+    answer = answer if isinstance(answer, dict) else {}
+    named = NAMED_COMMIT.search(response_text(given))
+    record("done", str((given.get("tool_input") or {}).get("description") or delegate_type(given))
+           if isinstance(given.get("tool_input"), dict) else delegate_type(given),
+           str(given.get("tool_use_id") or ""), role=delegate_type(given), id=str(answer.get("agentId") or ""),
+           commit=named.group(0).split()[-1] if named else "", tokens=answer.get("totalTokens"))
     refused = uncommitted_return(given)
     if refused is not None:
         print(refused, file=sys.stderr)
@@ -484,7 +560,52 @@ def responded() -> int:
     return 0
 
 
+def before_delegate() -> int:
+    """A sub-agent is about to be given its brief. Recorded, never refused: the start of its lane."""
+    given = event()
+    tool_input = given.get("tool_input")
+    tool_input = tool_input if isinstance(tool_input, dict) else {}
+    record("start", str(tool_input.get("description") or ""), str(given.get("tool_use_id") or ""),
+           role=delegate_type(given), model=str(tool_input.get("model") or ""))
+    return 0
+
+
+def agent_started() -> int:
+    """The harness has started a sub-agent and named it: which start line its own tool calls belong to."""
+    agent, role = acting()
+    record("link", role or "sub-agent", agent, role=role)
+    return 0
+
+
+def after_failure() -> int:
+    """A tool call failed. A command's failure is a line of its own: the same one three times running is
+    an agent going round in circles, which is what the board warns of."""
+    given = event()
+    if str(given.get("tool_name") or "") not in ("Bash", "PowerShell", "Shell", "run_shell_command"):
+        return 0
+    agent, role = acting()
+    error = str(given.get("error") or "").strip().splitlines()
+    record("failed", described(given), agent, role=role, said=error[0] if error else "")
+    return 0
+
+
+def said_aloud(kind: str) -> int:
+    """`session.py say <sentence>` and `session.py waiting <on what>`: what only the session can say, on
+    every harness alike, because it is a command the session runs and not an event a harness may not have."""
+    words = " ".join(sys.argv[2:]).strip()
+    if not words:
+        print(f"session: {kind} needs the words to record", file=sys.stderr)
+        return 1
+    record("said" if kind == "say" else "wait", words, os.environ.get("SLIPWAI_AGENT", ""))
+    return 0
+
+
 VERBS = {
+    "before-delegate": before_delegate,
+    "agent-started": agent_started,
+    "after-failure": after_failure,
+    "say": lambda: said_aloud("say"),
+    "waiting": lambda: said_aloud("waiting"),
     "session": session,
     "before-search": before_search,
     "before-write": before_write,

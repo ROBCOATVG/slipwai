@@ -68,6 +68,12 @@ class ShapeTest(unittest.TestCase):
         self.assertIn(f"<string>{LABEL}</string>", one.text)
         self.assertIn(str(self.home / ".slipwai/board.log"), one.text)
 
+    def test_a_restart_of_the_board_leaves_the_fleet_it_cast_off_running(self) -> None:
+        """Every board restart stopped hr-test-2's captains mid-slice: launchd and systemd both end every
+        process a service started, unless told the service's children are not theirs to end."""
+        self.assertIn("<key>AbandonProcessGroup</key><true/>", launchd(self.line, self.home).text)
+        self.assertIn("KillMode=process\n", systemd(self.line, self.home).text)
+
     def test_the_launchd_agent_is_started_in_the_directory_it_serves(self) -> None:
         """launchd starts an agent in `/`, and a board whose process holds `/` proposed it as the output
         parent and read it wherever a verb reads where it is — which, on macOS, is a read-only filesystem."""

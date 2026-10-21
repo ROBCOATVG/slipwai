@@ -1,0 +1,3 @@
+PATCH
+
+**A slice whose park is cleared while its siblings run takes the next free slot.** The captain carried on claimed slices only where a turn began, and refilled a free slot only with slices nobody had claimed, so a park cleared mid-turn waited until every slice in flight had ended: hr-test-2 ran two slots of three for an hour with nine cleared slices waiting, and every unclaimed slice was steering by marks those nine set. The refill now takes cleared claims first, nearest its merge first, as a turn's start does. The board and `clearance.py` also read the harbourmaster's `cleared` receipt, so a cleared slice no longer shows as "parked on its own".

@@ -125,8 +125,10 @@ slices reads as fifty-eight features to somebody who did not write them.
 
 **It ends with the thing the actor uses.** The final turn states, in its own words:
 
-- the literal command or URL that runs it — the exact text to paste, not a description of where to look
-- the seed data it needs, or that it needs none
+- the literal command or URL that runs it — the exact text to paste, not a description of where to look.
+  Where the project has `make try`, that is the command: trunk on its own ports, every merged slice switched
+  on, signed-in users listed, and each slice's `try-it.json` loaded as its example data
+- the seed data it needs, or that it needs none — under `make try`, the records its `try-it.json` made
 - the result to expect, in the actor's vocabulary rather than a test name
 
 **When "the thing the actor uses" is a long-lived process** — a dev server, a container — starting it to

@@ -89,7 +89,8 @@ def web_files(project_name: str, web: App, apps: list[App], target: str, found: 
         elif relative == "index.html":
             content = content.replace("<title>Product</title>", f"<title>{project_name}</title>")
         elif relative == "vite.config.ts":
-            content = content.replace(f"port: {WEB_PORT},", f"port: {web.port},")
+            content = content.replace(f"|| {WEB_PORT},", f"|| {web.port},")
+            content = content.replace("process.env.WEB_PORT ", f"process.env.{web.port_variable} ")
             transport = api.transport if api is not None else None
             content = content.replace("__TRANSPORT__", transport or "none")
             if api is not None:

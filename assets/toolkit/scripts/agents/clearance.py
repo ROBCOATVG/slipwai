@@ -231,6 +231,9 @@ def folded(found: list[dict]) -> Folded:
     """The fold. Order matters for every pair that answers each other — a `decision` closes the `question`
     it names, an `accepted` closes the `demo-due` for its capability, a `claimed` lifts its fairway's park."""
     state = Folded()
+    slice_park_at: dict[str, tuple[str, str]] = {}
+    park_at: dict[str, str] = {}
+    receipts: set[tuple[str, str]] = set()
     for line in found:
         kind, slice_id = line.get("kind"), str(line.get("slice") or "")
         if slice_id:
@@ -261,8 +264,20 @@ def folded(found: list[dict]) -> Folded:
                 asked[:] = [(ident, what) for ident, what in asked if ident != answered]
         elif kind == "parked" and slice_id:
             state.slice_parked[slice_id] = str(line.get("why", ""))
+            slice_park_at[slice_id] = (str(line.get("fairway", "")), str(line.get("t", "")))
         elif kind == "parked":
             state.parked[str(line.get("fairway", ""))] = str(line.get("why", ""))
+            park_at[str(line.get("fairway", ""))] = str(line.get("t", ""))
+        elif kind == "cleared":
+            receipts.add((str(line.get("fairway", "")), str(line.get("parked", ""))))
+    # A park the harbourmaster has receipted is answered, as `logs.open_parks` reads it for the captain. After
+    # the loop, because the receipt is in the harbour log and that is read after every deck log.
+    for slice_id, at in slice_park_at.items():
+        if at in receipts:
+            state.slice_parked.pop(slice_id, None)
+    for fairway, t in park_at.items():
+        if (fairway, t) in receipts:
+            state.parked.pop(fairway, None)
     return state
 
 

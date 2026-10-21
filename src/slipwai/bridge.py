@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
+from .activity import caption, live
 from .adopt_page import looked
 from .adopt_page import page as adoption
 from .adopt_page import run as adopt
@@ -51,9 +52,14 @@ from .captain_page import payload as captain_json
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
+from .decision_log import card as decision_card
+from .decision_log import mark as mark_decisions
 from .deck import dismiss, mark_read, tell
 from .dials import set_dial
 from .errors import GenerationError
+from .feedback_card import act as feedback_act
+from .feedback_card import card as feedback_card
+from .feedback_card import payload as feedback_payload
 from .fleet import board
 from .folder_choice import chosen
 from .harbour import config
@@ -64,11 +70,15 @@ from .init_run import draw as draw_surfaces
 from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
+from .init_run import triage as begin_triage
 from .interview_form import form
 from .interview_form import page as interview
 from .interview_page import NO_INIT, destination, elected_in, repository_for
 from .interview_page import run as generate
 from .landing_page import landing
+from .live_page import strip_html, strip_payload
+from .live_page import window as slice_window
+from .live_page import window_payload as slice_payload
 from .page_shell import (
     ICON,
     MANIFEST,
@@ -95,6 +105,10 @@ from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .spec_page import page as spec
 from .telegraph import Refused
+from .try_card import VIDEOS, WALK_ROUTE, trunk_head, walk_file
+from .try_card import act as try_act
+from .try_card import card as try_card
+from .try_card import payload as try_payload
 from .upstream import advance
 from .voyage import (
     MOCK_ROUTE,
@@ -120,10 +134,13 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 765 — one server and every route the board answers, each a few lines handing off to a page
+# budget: 840 — one server and every route the board answers, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
+# And Try it's routes, `/try.json`, `/try` and the walks it shows, each handing straight to `try_card.py`.
+# And Feedback's, `/feedback.json` and `/feedback`, handing to `feedback_card.py`, and the triage it starts.
+# And what each slice is doing now: `/now.json`, `/slice` and `/slice.json`, handing to `live_page.py`.
 # Mark read writes the receipts the decision ceiling counts.
 # The number is the route count rather than any one route's length: a control a person can press is ten
 # lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
@@ -287,6 +304,33 @@ class Bridge(BaseHTTPRequestHandler):
             else:
                 self.send(200, captain_json(self.root, fairway, fleet, number(query, "lines", 0),
                                             number(query, "out", -1)), "application/json; charset=utf-8")
+            return
+        # What each working slice is doing now: the Voyage tab's strip, and a window per slice.
+        if where == "/now.json" and self.controls:
+            rows = self.voyage_parts()[1]
+            self.send(200, strip_payload(rows, live(self.root, rows)), "application/json; charset=utf-8")
+            return
+        if where in ("/slice", "/slice.json") and self.controls:
+            fairway, named = unquote(parameter(query, "fairway")), unquote(parameter(query, "slice"))
+            if where == "/slice":
+                self.send(200, slice_window(self.root, fairway, named))
+            else:
+                self.send(200, slice_payload(self.root, fairway, named), "application/json; charset=utf-8")
+            return
+        if where == "/feedback.json" and self.controls:
+            _, rows, _, fleet, _ = self.voyage_parts()
+            self.send(200, feedback_payload(self.root, rows, fleet, self.triaging()), "application/json; charset=utf-8")
+            return
+        if where == "/try.json" and self.controls:
+            self.send(200, try_payload(self.root, self.named_seat()), "application/json; charset=utf-8")
+            return
+        # A walk the demo hand recorded, as bytes, from the folder it records into and nowhere else.
+        if where.startswith(WALK_ROUTE) and self.controls:
+            path = walk_file(self.root, where.removeprefix(WALK_ROUTE))
+            if path is None:
+                self.send(404, "<p>No such walk.</p>")
+                return
+            self.send(200, path.read_bytes(), VIDEOS[path.suffix.lower()])
             return
         # A screen the design review photographed, from the project. Bytes, not text: a picture is not
         # a document, and decoding it would be serving a different file.
@@ -550,6 +594,9 @@ class Bridge(BaseHTTPRequestHandler):
 
     def voyage(self) -> str:
         found, rows, fault, fleet, held = self.voyage_parts()
+        folds = live(self.root, rows)
+        rows = [{**row, "live": caption(folds[key])} if (key := f"{row.get('fairway')}/{row['slice']}") in folds
+                else row for row in rows]
         feature, made_of = self.made_of(rows, fleet)
         xml, note = model_xml(self.root, states_of(rows))
         # The frames are the one thing on this page the browser fetches without a script's help, so the
@@ -558,7 +605,21 @@ class Bridge(BaseHTTPRequestHandler):
         return voyage(self.root, found, rows, fault, xml, note, "", self.made(), self.launchable(), fleet, held,
                       mockups(self.root, self.named_seat()), self.castable(rows, fleet), self.stoppable(fleet),
                       feature, self.drawable(), made_of, intake_ideas(self.root),
-                      screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable())
+                      screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable(),
+                      try_card(self.root, self.named_seat()), strip_html(rows, folds),
+                      feedback_card(self.root, rows, fleet, self.triaging(), trunk_head(self.root)),
+                      decision_card(self.root))
+
+    def triaging(self) -> bool:
+        """Whether this board's child is the triage session, reading what a person said."""
+        return bool(self.fitting) and not self.fitting.said()["done"] and self.fitting.said()["step"] == "triage"
+
+    def triage_now(self) -> bool:
+        """Start reading the feedback when nothing else of this board is running, and say whether it did."""
+        if (self.fitting and not self.fitting.said()["done"]) or outside_session(self.root):
+            return False
+        self.fitting = begin_triage(self.root, self.fitting.said()["lines"] if self.fitting else None)
+        return True
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
@@ -661,6 +722,13 @@ class Bridge(BaseHTTPRequestHandler):
             elif where == "/dial":
                 said = set_dial(self.root, str(held.get("panel", "")), str(held.get("key", "")),
                                 str(held.get("value", "")))
+            # Try it: the verb is the project's script's, run detached; the card polls what it does.
+            elif where == "/try":
+                said = try_act(self.root, str(held.get("verb", "")), str(held.get("key", "")),
+                               str(held.get("value", "")))
+            elif where == "/feedback":
+                _, rows, _, fleet, _ = self.voyage_parts()
+                said = feedback_act(self.root, held, rows, fleet, self.triage_now)
             elif where == "/stop":
                 _, _, _, fleet, _ = self.voyage_parts()
                 if not self.stoppable(fleet):
@@ -724,6 +792,12 @@ class Bridge(BaseHTTPRequestHandler):
                 if not isinstance(stamps, list):
                     raise ValueError("`decisions` is a list of the instants of the decisions read")
                 said = mark_read(self.root, str(held.get("fairway", "")), [str(one) for one in stamps])
+            # The decision log's Mark read: the same deck receipt, named by the entry a person read.
+            elif where == "/decisions/read":
+                keys = held.get("keys")
+                if not isinstance(keys, list):
+                    raise ValueError("`keys` is a list of the decisions read")
+                said = mark_decisions(self.root, [str(one) for one in keys])
             elif where == "/dismiss":
                 said = dismiss(self.root, str(held.get("fairway", "")), str(held.get("told", "")))
             elif where == "/ring":

@@ -135,6 +135,14 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
               # One captain's own window: its deck and harbour lines as one timeline, and its output.
               "captain_page",
+              # And Try it, the app at trunk's newest merge for a person to use, started from that window.
+              "try_card",
+              # And what a person said after using it: the record under docs/feedback, and its card there.
+              "feedback", "feedback_card",
+              # And every decision the fleet took, readable, each with the receipt the ceiling counts.
+              "decision_log",
+              # And what each working slice is doing now, read off its activity log and drawn there.
+              "activity", "live_page",
               # And the stop above the chart answered without a person, where the project says so.
               "upstream",
               # What a handed-over document stands on, carried in with it.

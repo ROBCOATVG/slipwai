@@ -324,7 +324,7 @@ class ServicesTest(FactoryTestCase):
         admin = manifest["deployables"]["admin"]
         self.assertEqual((admin["kind"], admin["port"], admin["api"]), ("web", 5174, "payments"))
         self.assertEqual(manifest["frontend"], "react-vite")
-        self.assertIn("port: 5174,", files["apps/admin/vite.config.ts"])
+        self.assertIn("process.env.WEB_PORT_ADMIN ?? '', 10) || 5174,", files["apps/admin/vite.config.ts"])
         self.assertIn("'http://localhost:3001'", files["apps/admin/vite.config.ts"])
         self.assertIn("'http://localhost:3000'", files["apps/web/vite.config.ts"])
         makefile = files["Makefile"]

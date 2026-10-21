@@ -62,13 +62,21 @@ def harness_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
                        # that, ask the index* has to see both. It runs in every session, not only the
                        # captain's, because a guard is the project's rule and not the run's.
                        {"matcher": "Grep|Glob|Bash",
-                        "hooks": [{"type": "command", "command": f"python3 {script} before-search"}]}],
+                        "hooks": [{"type": "command", "command": f"python3 {script} before-search"}]},
+                       {"matcher": "Agent|Task",
+                        "hooks": [{"type": "command", "command": f"python3 {script} before-delegate"}]}],
         # The one guard that fires after a tool call rather than before it: a delegate has answered and its
         # answer has not been used yet, so an extension may still refuse it and have the agent ask again. A
         # delegate also came back having edited whatever it edited, which is why an index syncs here rather
         # than being trusted to have followed.
         "PostToolUse": [{"matcher": "Agent|Task",
                          "hooks": [{"type": "command", "command": f"python3 {script} after-delegate"}]}],
+        # The activity log, which none of the rows above would refuse anything for: a sub-agent's brief as it
+        # starts, the name the harness gives it, and a command that failed — the lines the board's Now strip
+        # and slice window are drawn from (`session.py record`).
+        "PostToolUseFailure": [{"matcher": "Bash",
+                                "hooks": [{"type": "command", "command": f"python3 {script} after-failure"}]}],
+        "SubagentStart": [{"hooks": [{"type": "command", "command": f"python3 {script} agent-started"}]}],
     }
 
 

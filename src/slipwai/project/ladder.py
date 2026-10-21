@@ -51,6 +51,19 @@ def rung_of_the_slice(apps: list[App]) -> str:
    against."""
 
 
+#: The Demo rung's second record, where the project has a service to call: the story `quickstart.md` tells, as
+#: the calls that make its records, so `make try` opens on them. Written here because the routes and their
+#: answers are settled by now, and the plan that wrote the quickstart knew neither.
+TRY_STORY = """Beside `quickstart.md` it writes `try-it.json`: the records that story needs, as the calls
+   a person's browser would make — `{"as": "<a fixture user>", "open": [{"label": "<whose record>", "path":
+   "<the screen it is on>"}], "steps": [{"say": "…", "method": "POST", "path": "/api/…", "body": {…},
+   "keep": {"<name>": "<field of the answer>"}}]}`, a kept `{name}` filling a later path or body. It makes its
+   own records rather than reaching for another slice's, and uses the quickstart's synthetic people.
+   `python3 scripts/agents/try_it.py seed --slice <id> --api <the service this berth runs>` loads it into
+   the app the demo runs, and one the service refuses is fixed here: it is the first thing a person sees of
+   this slice once it merges, when `make try` loads every slice's. """
+
+
 def sail_ladder(
     event: bool, apps: list[App], target: str = "none", layout: Layout = AT_ROOT,
     adoption: Adoption | None = None,
@@ -234,6 +247,7 @@ def sail_ladder(
    boundary is recorded as such, with why, and is the first thing the hand looks at when it walks the
    capability. **No person is stopped at this rung, and no browser is opened**: the hand walks the whole
    capability once, at *Capability gates*, and the person's demo follows that. """
+   + (TRY_STORY if any(app.transport is not None for app in apps if app.is_service) else "")
    + open_mode_note("the hand also walks this slice's examples against the running thing here and records "
                     "a verdict in three words, and the push waits for that verdict as well"),
         """**Review and reshape** — `specs/<feature>/slices/<id>/` records a review of this slice's whole

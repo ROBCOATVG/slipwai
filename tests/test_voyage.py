@@ -4,12 +4,13 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 605 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# budget: 640 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
 # the design files a storyboard links that the board serves beside it, a step it did not start,
 # and how far into its budget a drawing is, and a fleet at work read as working
 # and a waiting slice's card, opened on its park and its questions with a box aimed at it
 # and the Queued column a slice waiting for a slot stands in
 # and a slice's stage read off its branch and log, held to the captain's rungs
+# and the stage its berth has open now, which says more than the last rung to leave a file
 # and a slice named from the model whatever its id
 from __future__ import annotations
 
@@ -572,6 +573,29 @@ class RungTest(unittest.TestCase):
         found = rung(self.root, "001-demo", "S01", asked)
         self.assertEqual(found["chip"], "Merging")
         self.assertTrue(found["last"].endswith(" request"), "a heartbeat is not what the slice last did")
+
+    def test_the_stage_its_berth_has_open_names_the_chip(self) -> None:
+        """hr-test-2's L18 said `Implementing · 18/18` through its demo and review: the files the board read
+        move when a stage ends, and the berth's benchmark record moves when one starts."""
+        import json
+        import shutil
+
+        from slipwai.slice_rungs import rung
+
+        berth = self.root.parent / f"{self.root.name}-S01"
+        self.addCleanup(shutil.rmtree, berth, ignore_errors=True)
+        record = berth / "specs/001-demo/slices/S01/benchmark.json"
+        record.parent.mkdir(parents=True)
+        stages = [{"stage": "implement-shipwright", "started": "t0", "ended": "t1"}]
+        stages.append({"stage": "demo", "started": "t2"})
+        record.write_text(json.dumps({"stages": stages}), encoding="utf-8")
+        found = rung(self.root, "001-demo", "S01", [])
+        self.assertEqual((found["chip"], found["rank"], found["tasks"]), ("Demo", "4", "2/3"),
+                         "the rank stays the evidence's, which is what the captain ranks by")
+        stages[-1]["ended"] = "t3"
+        record.write_text(json.dumps({"stages": stages}), encoding="utf-8")
+        self.assertEqual(rung(self.root, "001-demo", "S01", [])["chip"], "Implementing · 2/3",
+                         "between stages the evidence speaks")
 
     def test_a_slice_with_no_branch_is_starting(self) -> None:
         from slipwai.slice_rungs import rung

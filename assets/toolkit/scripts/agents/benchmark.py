@@ -1156,8 +1156,22 @@ def main() -> None:
         if rest[2:]:
             raise RuntimeError("start takes no signals; pass them to end")
         start(directory, rest[1])
+        told("stage", f"{rest[1]} started")
     else:
         end(directory, rest[1], rest[2:])
+        outcome = next((one.split("=", 1)[1] for one in rest[2:] if one.startswith("outcome=")), "")
+        told("stage", f"{rest[1]} ended" + (f": {outcome}" if outcome else ""))
+
+
+def told(kind: str, what: str) -> None:
+    """A line in the slice's activity log, which the board's Now strip reads: the stage a session opened or
+    closed, said on every harness because every harness's session runs this script."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from session import record  # noqa: PLC0415 - only a captain's session has a log to write to
+        record(kind, what)
+    except Exception:  # noqa: BLE001 - a line not written costs the board a line and nothing else
+        return
 
 
 if __name__ == "__main__":

@@ -189,6 +189,78 @@ class ParkTest(Abreast):
         self.assertNotIn("is parked", again.stdout)
         self.assertIn("nothing to start", again.stdout)
 
+    def test_a_park_cleared_mid_turn_takes_the_free_slot_without_waiting_for_the_turn_to_end(self) -> None:
+        """hr-test-2 ran two slots of three for an hour: nine claimed slices had their parks cleared while
+        two siblings worked, every unclaimed slice waited on marks those nine set, and the refill read only
+        unclaimed slices — so a cleared park waited for every slice in flight to end."""
+        self.settings(attempts=0)
+        self.skeleton_merged()
+        for slice_id, at in (("L02", "2026-10-01T09:01:00Z"), ("L03", "2026-10-01T09:02:00Z")):
+            self.deck("LVR", logs.entry("claimed", fairway="LVR", slice=slice_id, t=OLD),
+                      logs.entry("parked", fairway="LVR", slice=slice_id, why="logged out", t=at))
+        self.slots(2)
+        self.granted("L02", "L03", "L04")
+        captain = subprocess.Popen([sys.executable, str(self.script), "LVR", "--once"], cwd=self.root,
+                                   env=self.environment(ABREAST_SLEEP="20"), stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(captain.kill)
+        until = time.monotonic() + 60
+        while "L04" not in self.windows():
+            self.assertLess(time.monotonic(), until, "L04 never started")
+            time.sleep(0.2)
+        self.assertEqual(sorted(self.windows()), ["L04"], "a held slice started before its park was cleared")
+        for at in ("2026-10-01T09:01:00Z", "2026-10-01T09:02:00Z"):
+            self.harbour(logs.entry("cleared", harbour=True, fairway="LVR", parked=at, what="go"))
+        said, _ = captain.communicate(timeout=240)
+        ran = self.windows()
+        self.assertIn("L02", ran, said)
+        self.assertLess(ran["L02"][0], ran["L04"][1], f"L02 waited for L04 to end: {said}")
+        for slice_id in ("L02", "L04"):
+            self.assertIn(f"{slice_id} is through its gate and merged", said)
+
+
+class WorkersTest(Abreast):
+    """hr-test-2 at three berths on eighteen cores sat at a load of eighty: its runner starts a worker per core in
+    every session, so three sessions testing at once were three machines' worth. Each is told its share."""
+
+    def told(self, boilers: int, **env: str) -> str | None:
+        self.settings(attempts=0, boilers=boilers)
+        drive = self.sail("import json, os, pathlib\n"
+                          "pathlib.Path(os.environ['ABREAST_RECORD']).write_text("
+                          "json.dumps(os.environ.get('SLIPWAI_TEST_WORKERS')))\n")
+        self.turn("--once", SLIPWAI_SAIL=drive, **env)
+        return json.loads(self.record.read_text(encoding="utf-8"))
+
+    def test_each_session_is_given_its_share_of_the_cores(self) -> None:
+        self.assertEqual(self.told(3), str(max(1, (os.cpu_count() or 1) // 3)))
+
+    def test_one_boiler_is_the_whole_machine(self) -> None:
+        self.assertIsNone(self.told(1))
+
+    def test_a_persons_own_setting_stands(self) -> None:
+        self.assertEqual(self.told(3, SLIPWAI_TEST_WORKERS="2"), "2")
+
+
+class BrowsersTest(Abreast):
+    """`browsers` bound nothing: hr-test-2's L18 opened twenty Chromes in one verify. Each session is told
+    its share, and the trunk its work is measured against, for whatever drives a browser to read."""
+
+    def told(self, **held: object) -> dict:
+        self.settings(attempts=0, **held)
+        drive = self.sail("import json, os, pathlib\n"
+                          "pathlib.Path(os.environ['ABREAST_RECORD']).write_text(json.dumps("
+                          "{k: os.environ.get(k) for k in ('SLIPWAI_BROWSERS', 'SLIPWAI_TRUNK')}))\n")
+        self.turn("--once", SLIPWAI_SAIL=drive)
+        return json.loads(self.record.read_text(encoding="utf-8"))
+
+    def test_each_session_is_given_its_share_of_the_browsers_never_none(self) -> None:
+        self.assertEqual(self.told(boilers=2, browsers=4)["SLIPWAI_BROWSERS"], "2")
+
+    def test_fewer_browsers_than_boilers_is_still_one_each(self) -> None:
+        found = self.told(boilers=3, browsers=1)
+        self.assertEqual(found["SLIPWAI_BROWSERS"], "1")
+        self.assertIn(found["SLIPWAI_TRUNK"], ("main", "origin/main"))
+
 
 class LedgerTest(Abreast):
     def test_a_slice_in_its_berth_carries_its_own_dispatch_line_on_its_branch(self) -> None:

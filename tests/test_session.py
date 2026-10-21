@@ -33,6 +33,11 @@ AGENTS = TOOLKIT_ROOT / "scripts/agents"
 SCRIPT = AGENTS / "session.py"
 
 
+#: The activity log's verbs, which are plumbing too: the board's Now strip reads what they write, they refuse
+#: nothing, and an extension has nothing to attach to a sentence the session says about itself.
+ACTIVITY_VERBS = {"before-delegate", "agent-started", "after-failure", "say", "waiting"}
+
+
 class VerbTest(unittest.TestCase):
     """Every verb is a point of a set, and every row the keel writes names a verb."""
 
@@ -45,7 +50,7 @@ class VerbTest(unittest.TestCase):
         """`responded` is the one that is neither, and it is plumbing: a harness whose stop event carries no
         text needs its last message kept a moment earlier. An extension has nothing to attach there, and a
         point nothing could use would be a promise with no caller."""
-        self.assertEqual(self.verbs() - set(guards.NAMES) - set(hooks.NAMES), {"responded"})
+        self.assertEqual(self.verbs() - set(guards.NAMES) - set(hooks.NAMES), {"responded"} | ACTIVITY_VERBS)
 
     def test_every_guard_is_answered(self) -> None:
         """All seven, with no exception — including `after-delegate`, which fires on a harness's post-tool

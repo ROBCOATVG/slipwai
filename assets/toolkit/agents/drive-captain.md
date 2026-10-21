@@ -71,6 +71,13 @@ Write `heartbeat` often enough that a stall is told from a finish. A last line o
 It means **finished** when no cleared work remains. An in-flight slice whose heartbeat is old is
 stalled. That distinction is free only if you keep writing.
 
+**Say what you are doing, for the person watching.** Each time you move on — a task done and the next
+dispatched, a review's findings read, a check started that will take a while — run `python3
+scripts/agents/session.py say "<one sentence>"` with the sentence you would say to a person: "T018 done
+(a5fd5e2). Dispatching T018a." Before a wait you know will be long — a whole suite, a browser gate, a merge
+slot — run `python3 scripts/agents/session.py waiting "<on what>"`. Both go to the board's Now strip, not the
+deck log: they are not a heartbeat and never stand in for one.
+
 Append with one write per line, in append mode. Several captains share a harbour and whole lines interleave;
 half-written ones do not.
 

@@ -12,12 +12,21 @@ from pathlib import Path
 
 from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card, live_cards, live_sub
+from .decision_log import SCRIPT as DECISIONS_SCRIPT
+from .decision_log import STYLE as DECISIONS_STYLE
+from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
+from .feedback_card import STYLE as FEEDBACK_STYLE
+from .feedback_card import opener
+from .live_page import STRIP_SCRIPT
+from .live_page import STYLE as LIVE_STYLE
 from .page_shell import document, esc
 from .passage import Stage, current
 from .settings_card import project_tabs
+from .try_card import SCRIPT as TRY_SCRIPT
+from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 650 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# budget: 760 — the bands of one window: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
@@ -25,6 +34,10 @@ from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 # and a red card that opens on what its slice waits for, with a box that answers that slice and no other
 # and the strip's amber attention beside its red stop
 # and a slice card that is its number, its title and its stage until it is opened
+# and the Try it card, placed here and drawn by `try_card.py`
+# and the Now strip and a slice's live caption, drawn by `live_page.py`
+# and the tabs the bands below the strip sit in, and the Feedback card in one of them (`feedback_card.py`)
+# and the decision log's tab, drawn by `decision_log.py`
 
 TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -122,6 +135,13 @@ details.slice button{justify-self:start;margin-top:4px}
   border-radius:4px;background:#fff;color:#444;cursor:pointer}
 .viewer .model-dial button:hover{border-color:#0f6b6b;color:#0f6b6b}
 .viewer .hint{font-size:.74rem;color:#666;padding:6px 10px;margin:0;border-top:1px solid #e3e3e3;background:#fafafa}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin:18px 0 0;border-bottom:1px solid var(--rule)}
+.tabs button{font:inherit;font-size:.88rem;background:none;border:1px solid transparent;border-bottom:0;
+  border-radius:8px 8px 0 0;padding:7px 14px;margin-bottom:-1px;color:var(--ink-2);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--paper);border-color:var(--rule);color:var(--ink);font-weight:600}
+.tabs .count{font-size:.72rem;padding:0 6px;border-radius:999px;margin-left:6px;background:var(--brass-soft);
+  color:var(--brass)}
+.tab[hidden]{display:none}
 @media (max-width:900px){.passage{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:18px}
   .passage::before{display:none}.columns{grid-template-columns:repeat(2,minmax(0,1fr))}
   .compare{grid-template-columns:1fr}}
@@ -129,6 +149,42 @@ details.slice button{justify-self:start;margin-top:4px}
 """
 
 SCRIPT = BOARD_SCRIPT + """
+// The bands below the strip are tabs: one shown at a time, the choice kept in the address and in this
+// browser, and a link to anything inside another tab — the strip's "Waiting on you" — opens that tab first.
+(function(){
+  const tabs = [...document.querySelectorAll('.tabs [data-tab]')];
+  if (!tabs.length) return;
+  const show = (name, keep) => {
+    if (!tabs.some(one => one.dataset.tab === name)) name = tabs[0].dataset.tab;
+    tabs.forEach(one => one.setAttribute('aria-selected', String(one.dataset.tab === name)));
+    document.querySelectorAll('section.tab').forEach(one => { one.hidden = one.dataset.tab !== name; });
+    if (keep) {
+      try { localStorage.setItem('voyage-tab', name); } catch (fault) {}
+      history.replaceState(null, '', location.pathname + location.search + '#tab-' + name);
+    }
+    document.dispatchEvent(new CustomEvent('voyage:tab', {detail: name}));
+  };
+  const into = id => {
+    const node = id && document.getElementById(id);
+    const panel = node && node.closest('section.tab');
+    if (panel) { show(panel.dataset.tab, true); node.scrollIntoView({block: 'start'}); }
+    return Boolean(panel);
+  };
+  let first = (location.hash.match(/^#tab-([a-z]+)$/) || [])[1];
+  if (!first && !into(location.hash.slice(1))) { try { first = localStorage.getItem('voyage-tab'); } catch (fault) {} }
+  if (first || !location.hash) show(first || '', false);
+  document.addEventListener('click', event => {
+    const tab = event.target.closest('.tabs [data-tab]');
+    if (tab) { show(tab.dataset.tab, true); return; }
+    const link = event.target.closest('a[href^="#"]');
+    if (link && into(link.getAttribute('href').slice(1))) event.preventDefault();
+    // A Feedback button on a slice's card opens the box, which lives on the feedback tab.
+    const opener = event.target.closest('[data-feedback]');
+    const box = document.getElementById('feedback-box');
+    const home = box && box.closest('section.tab');
+    if (opener && home && !home.contains(opener)) show(home.dataset.tab, true);
+  }, true);
+})();
 // The strip, kept current while the board's child or the fleet is moving: the stages are re-read on the
 // server and only their state and words change here, so the page never flickers.
 (function(){
@@ -170,7 +226,8 @@ SCRIPT = BOARD_SCRIPT + """
     try { found = await (await fetch('/voyage.json')).json(); }
     catch (fault) { setTimeout(poll, 8000); return; }
     // Not while somebody is typing an answer into a card: the reload would throw the words away.
-    const typing = [...document.querySelectorAll('details.slice textarea')].some(box => box.value.trim());
+    const typing = [...document.querySelectorAll('details.slice textarea, #feedback-box textarea')]
+      .some(box => box.value.trim());
     if (found.shape !== shape && !typing) { location.reload(); return; }
     paint(found);
     setTimeout(poll, found.moving ? 2500 : 8000);
@@ -280,6 +337,14 @@ MODEL_SCRIPT = """
     if (key) { act[key](); evt.preventDefault(); }
   });
   box.tabIndex = 0;
+  // Drawn while its tab was hidden, the canvas had no size to fit to: fit it again the first time it shows.
+  let fitted = box.offsetWidth > 0;
+  document.addEventListener('voyage:tab', () => {
+    if (fitted || !box.offsetWidth) return;
+    fitted = true;
+    g.fit(12, false, 0, true, true, false);
+    g.view.setTranslate(12 / g.view.scale, g.view.translate.y);
+  });
 })();
 """
 
@@ -328,7 +393,7 @@ def expect_card(found: list[Stage]) -> str:
     different question and the one somebody asks at the twenty-minute mark: a stage that waits for a person
     by design looks exactly like a stage that has hung, and until this nothing on the page said which it
     was. The stage somebody is on is given its own space; the rest are the whole voyage in order, so the
-    answer to "and then what" is on the same page as the answer to "what now".
+    answer to "and then what" is one click from the answer to "what now".
 
     A skipped stage is left out. The strip keeps its faint column, which says something worth saying — that
     this project is on the standard profile — but there is nothing to expect of a stage that is not going to
@@ -341,8 +406,9 @@ def expect_card(found: list[Stage]) -> str:
         for one in found if one.expect and one.state != "skipped")
     here = (f'<div class="now"><span class="who">Now \u00b7 {esc(now.title)}</span>'
             f"<p>{said(now.expect)}</p></div>" if now and now.expect else "")
+    # The whole voyage behind a click: above the tabs, eight paragraphs pushed them off the screen.
     return ('<div class="card expect"><h2>What to expect</h2>'
-            f"{here}<ol>{rows}</ol></div>")
+            f"{here}<details><summary>Every stage, in order</summary><ol>{rows}</ol></details></div>")
 
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
@@ -413,8 +479,11 @@ def slice_html(row: dict[str, str]) -> str:
     chip = chip_of(row)
     shown = f'<span class="chip">{esc(chip)}</span>' if chip else ""
     answer = answer_html(row) if row["state"] == "waiting" and row.get("fairway") else ""
-    return (f'<details class="slice {esc(row["state"])}"><summary><b>{esc(name)}</b>{shown}</summary>'
-            f"{facts_html(row)}{answer}</details>")
+    cap = f'<span class="live-cap">{esc(row["live"])}</span>' if row.get("live") else ""
+    said = opener("Feedback", {"from": "slice", "feature": row.get("feature", ""), "fairway": row.get("fairway", ""),
+                               "slice": row["slice"]}, ask=f"What did {row['slice']} show you?")
+    return (f'<details class="slice {esc(row["state"])}"><summary><b>{esc(name)}</b>{shown}{cap}</summary>'
+            f'{facts_html(row)}{answer}<div class="ask">{said}</div></details>')
 
 
 def chip_of(row: dict[str, str]) -> str:
@@ -600,7 +669,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          config: dict | None = None, mocks: list[dict[str, str]] | None = None, castable: bool = False,
          stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
          ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
-         modelable: bool = False) -> str:
+         modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
+         decisions: tuple[str, int] = ("", 0)) -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
@@ -613,12 +683,22 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]
-    body = (f"<style>{STYLE}</style>{where}"
-            f"{intake_card(ideas or [])}"
-            f"{expect_card(found)}{landed}"
-            f"{model_card(xml, note, viewer_fault)}{screens_card(shots or [], mocks or [], app)}"
-            f"{mockups_card(left, root)}{work_card(rows, fault)}{live}")
-    script = SCRIPT + ("" if viewer_fault or not xml else "\n")
+    waiting = len((fleet or {}).get("inbox") or [])
+    tabs = [("work", "Work", f"{strip}{work_card(rows, fault)}"),
+            ("try", "Try it & feedback" if trying else "Feedback", f"{trying}{feedback}"),
+            ("screens", "Screens", screens_card(shots or [], mocks or [], "" if trying else app)
+             + mockups_card(left, root)),
+            ("model", "Model", model_card(xml, note, viewer_fault) if xml or note or viewer_fault else ""),
+            ("fleet", "Fleet" + (f'<span class="count">{waiting} waiting</span>' if waiting else ""), live),
+            ("decisions", f'Decisions<span class="count" data-decisions-unread{"" if decisions[1] else " hidden"}>'
+                          f"{decisions[1]} unread</span>", decisions[0]),
+            ("next", "Next features", intake_card(ideas or []))]
+    body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
+            f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}</style>"
+            f"{where}{landed}{expect_card(found)}{tabs_html(tabs)}")
+    script = SCRIPT + (TRY_SCRIPT if trying else "") + (FEEDBACK_SCRIPT if feedback else "") \
+        + (STRIP_SCRIPT if strip else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
+        + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person
     # picks it out by — in the dock, in a window switcher, across two runs open at once — is its title.
     page_html = document(f"Voyage \u00b7 {root.resolve().name}", sub, body, script, now="/voyage")
@@ -626,6 +706,19 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
         page_html = page_html.replace(
             "</body>", f'<script src="/drawio-viewer.js"></script><script>{MODEL_SCRIPT}</script></body>', 1)
     return page_html
+
+
+def tabs_html(tabs: list[tuple[str, str, str]]) -> str:
+    """The bands below the strip, one tab each, leaving out a band with nothing in it. The first is shown
+    until the page's script says which one this person had open."""
+    kept = [(key, face, body) for key, face, body in tabs if body.strip()]
+    if not kept:
+        return ""
+    bar = "".join(f'<button type="button" role="tab" data-tab="{key}" aria-selected="{str(n == 0).lower()}">'
+                  f"{face}</button>" for n, (key, face, _) in enumerate(kept))
+    panels = "".join(f'<section class="tab" data-tab="{key}" role="tabpanel"{" hidden" if n else ""}>{body}</section>'
+                     for n, (key, _, body) in enumerate(kept))
+    return f'<nav class="tabs" role="tablist">{bar}</nav>{panels}'
 
 
 def now_said(found: list[Stage]) -> str:

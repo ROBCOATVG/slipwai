@@ -18,6 +18,11 @@ import { configDefaults, defineConfig } from 'vitest/config';
  */
 const apiOrigin = process.env.API_ORIGIN ?? 'http://localhost:3000';
 
+// A session slipwai's captain started is told its share of this machine's cores, because several slices
+// testing at once would otherwise each start a worker per core. Unset, as in a person's own run, the
+// default stands.
+const workers = Number.parseInt(process.env.SLIPWAI_TEST_WORKERS ?? '', 10);
+
 // backing-service:__TRANSPORT__:end
 export default defineConfig({
   plugins: [react()],
@@ -34,8 +39,9 @@ export default defineConfig({
   server: {
     // Pinned, and a clash is an error rather than a silent move to 5174. A demo has to be able to state
     // the address it will be at before it starts, and every printed URL is wrong the moment Vite picks a
-    // different port on its own.
-    port: 5173,
+    // different port on its own. Moved only on purpose: `scripts/agents/try_it.py` runs the app beside the
+    // one a person may already have open, and says which port it gave it.
+    port: Number.parseInt(process.env.WEB_PORT ?? '', 10) || 5173,
     strictPort: true,
     // Vite binds localhost by default, deliberately — a dev server is not something to put on the LAN.
     // Inside a container localhost is the container, so `make demo` sets WEB_HOST and nothing else does.
@@ -66,6 +72,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
+    ...(workers > 0 ? { maxWorkers: workers } : {}),
     // A mutation run copies this app into `.stryker-tmp/sandbox-*/` and runs the suite there; a `make unit`
     // that started while one was running discovered those copies as tests of their own — 1,104 files where
     // there were 514, with every copied fixture path failing on ENOENT — and the run was thrown away.

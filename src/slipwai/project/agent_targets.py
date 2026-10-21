@@ -14,7 +14,7 @@ from __future__ import annotations
 
 def agent_targets() -> str:
     """The `.PHONY` block between the npm workspace targets and the native gate targets."""
-    return """.PHONY: check-python preflight arrive depart dispatch hooks crossing agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft assess surfaces model-next launch check-decisions
+    return """.PHONY: check-python preflight arrive depart dispatch hooks crossing agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft assess triage surfaces model-next launch check-decisions
 check-python: ## Fail, first, when python3 is older than the 3.10 every gate script is written for
 \t@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 'check-python: ' + sys.executable + ' is Python ' + sys.version.split()[0] + ', and the gate scripts need 3.10 or newer; put a newer python3 first on PATH (a non-interactive macOS shell finds /usr/bin/python3, which is 3.9, before Homebrew)')"
 preflight: ## Check once, in a fresh worktree, that an increment can run here: toolchains, caches, a socket, the index
@@ -63,6 +63,8 @@ draft: ## Draft the constitution and the first specification from a PRD in a hea
 \tpython3 scripts/agents/draft.py $(PRD)
 assess: ## Assess one idea /sail captured, and specify it only after a yes and a go (SLUG=<name>)
 \tpython3 scripts/agents/assess.py $(SLUG)
+triage: ## Propose where each piece of feedback from the board goes, and change nothing else (N=<numbers>; default all waiting)
+\tpython3 scripts/agents/triage.py $(N)
 surfaces: ## Research, draft and storyboard this feature's surfaces in a headless session, and stop for a person to approve each state (FEATURE=<name>; default the first specified)
 \tpython3 scripts/agents/surfaces.py $(FEATURE)
 model-next: ## Model the product from an approved storyboard, and stop before the chart
@@ -71,4 +73,19 @@ launch: ## Continue the build from a drafted specification: chart and split it i
 \tpython3 scripts/agents/launch.py $(CRUISE_FLAGS)
 check-decisions: ## Fail when a decision log or demo log /cruise wrote has lost its shape
 \tpython3 scripts/check-decisions.py
+"""
+
+
+# Try it: trunk's newest merge for a person to use, beside the fleet. A script rather than a recipe, and
+# `scripts/agents/try_it.py` says why; written wherever the project has an app to run.
+TRY_TARGETS = """
+.PHONY: try try-update try-fresh try-stop
+try: ## Run trunk's newest merge for a person to use: its own ports, every merged slice on, example data loaded
+\tpython3 scripts/agents/try_it.py start
+try-update: ## Move Try it to trunk's newest merge, keeping its data and loading only the new slices' examples
+\tpython3 scripts/agents/try_it.py refresh
+try-fresh: ## Start Try it over: its data forgotten and every slice's examples loaded again
+\tpython3 scripts/agents/try_it.py fresh
+try-stop: ## Stop Try it, keeping its data for next time
+\tpython3 scripts/agents/try_it.py stop
 """

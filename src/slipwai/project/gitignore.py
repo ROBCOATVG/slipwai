@@ -19,8 +19,12 @@ from .shared_packages import PACKAGES, node_workspace
 #: `preflight.json` is what preflight writes before a stage, and `logs.unread-*/` is where a slice's berth
 #: keeps lines a session wrote before the berth was linked to the shared deck log; left out, both are
 #: untracked files in every berth, and `check-slice-scope` failed every slice run abreast on them.
+#: `try-it/` is what `make try` is doing and its processes' logs; `walks/` the demo hand's recordings, which
+#: are watched rather than cited and run to megabytes each. `activity/` is each slice's live activity log,
+#: which the board's Now strip reads; left out, it was an untracked folder that stopped `slipwai migrate`.
 RUN_STATE = ("logs/", "run-state.json", "running/", "harbourmaster.json", "berths/", "intake-cleanup.json",
-             "catch-up/", "preflight.json", "logs.unread-*/")
+             "catch-up/", "preflight.json", "logs.unread-*/", "try-it/", "walks/",
+             "activity/")
 
 # What each store writes beside the code, keyed by feature, for a store that keeps its data in the working
 # tree. A SQLite event store writes its log next to the code, and WAL mode writes two more files beside it.

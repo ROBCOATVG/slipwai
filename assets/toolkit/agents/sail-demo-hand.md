@@ -57,6 +57,13 @@ chosen differently — is a `design:` note in **Feedback** with its screenshot, 
 reason to withhold acceptance. Where you could not drive a browser, say the screens were not read rather than
 letting the verdict imply they were: a screen judged from its API alone has not been looked at.
 
+**Record each example you walk in a browser.** Before its first step, `agent-browser record start
+<walks>/<feature>/<slice>/<example>.webm <url>`, and `agent-browser record stop` after its last, where `<walks>`
+is the folder `python3 scripts/agents/try_it.py walks` prints and `<example>` is the example's id as
+`examples.md` numbers it, lower-cased. One file per example; a later walk replaces it. They are what a person
+watches on the board before they have time to use the thing themselves, and they are not evidence: the
+screenshots are still what the log cites, and a walk that could not be recorded is said, not retried.
+
 Your writes are the demo log — `specs/<feature>/capabilities/<capability>/demo-log.md` walking a capability,
 `{{demo-log}}` walking one slice — one section per demo, in the shape that file shows, and the screenshots and
 responses it cites, beside it (under `{{demo-evidence}}` for a slice). You read and run anything; you edit no code, no test and no artifact of

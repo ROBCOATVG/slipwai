@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { usersConfig } from '../../src/auth/users';
+import { backToWhereSignInStarted, hereNow, returnPath, usersConfig } from '../../src/auth/users';
 
 const env = {
   VITE_USERS_ISSUER: 'http://localhost:8081/realms/customers',
@@ -48,6 +48,33 @@ describe('usersConfig', () => {
 
     expect(window.location.search).toBe('');
     expect(window.location.pathname).toBe('/');
+  });
+
+  it('puts the person back on the page they signed in from', () => {
+    window.history.pushState({}, '', '/?code=spent&state=used');
+
+    backToWhereSignInStarted({ state: '/leaver-records/r-1?tab=facts' } as never);
+
+    expect(`${window.location.pathname}${window.location.search}`).toBe(
+      '/leaver-records/r-1?tab=facts',
+    );
+  });
+
+  it('carries where this page is, and returns only to a path on this origin', () => {
+    window.history.pushState({}, '', '/leaver-records/r-1?x=1#notes');
+    expect(hereNow()).toBe('/leaver-records/r-1?x=1#notes');
+
+    expect(returnPath('/leaver-records/r-1')).toBe('/leaver-records/r-1');
+    for (const elsewhere of [
+      '//evil.example/',
+      'https://evil.example/',
+      '/\\evil.example',
+      '',
+      42,
+      undefined,
+    ]) {
+      expect(returnPath(elsewhere)).toBeNull();
+    }
   });
 
   it.each(['VITE_USERS_ISSUER', 'VITE_USERS_CLIENT_ID'])(

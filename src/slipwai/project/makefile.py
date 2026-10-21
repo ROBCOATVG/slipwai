@@ -16,7 +16,7 @@ from ..services import App, containers_of, services_of, web_apps, wrapped_of
 from ..targets import managed
 from ..tooling import app_tooling, service_qualifier, verify_path
 from .adopted_targets import adoption_targets, gate_target
-from .agent_targets import agent_targets
+from .agent_targets import TRY_TARGETS, agent_targets
 from .compose import composed
 from .flags import flag_gate, flag_gate_dependency
 from .integration import integration_targets, integration_variables
@@ -266,7 +266,7 @@ demo-down: ## Stop the demo, keeping any volume
             )
             if present
         )
-        run_targets = f"\n.PHONY: {phony}{dev_target}{dev_web_target}{demo_targets}"
+        run_targets = f"\n.PHONY: {phony}{dev_target}{dev_web_target}{demo_targets}{TRY_TARGETS if dev_target or dev_web_target else ''}"
     service_targets = compose_targets + migrate_targets(services, apps) + run_targets
     mutation_note = mutation_notes(apps)
     # `$(CI_DATABASE)` expands to nothing once its definition is pruned, which is exactly the difference

@@ -17,12 +17,13 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 480 — every column of the board folded from the logs, including what waits on a person: a park,
+# budget: 495 — every column of the board folded from the logs, including what waits on a person: a park,
 # a told, the decisions nobody has read, and a question a headless stage posted and nobody has answered
 # yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
 # which `told` an answer or a claim has already taken up, which one is a session's note for another session
 # rather than for the person, and whether unread decisions hold anything up
-# and which slices in flight a session is on now, and which are claimed and waiting for a slot
+# and which slices in flight a session is on now, and which are claimed and waiting for a slot, and the
+# lines of its own slice each park opens onto
 from __future__ import annotations
 
 import ast
@@ -35,7 +36,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .deck import recent
+from .deck import recent, said
 from .logs import Entry, Unreadable, deck_logs, fairway_parks, fold, harbour_logs, held_slices, open_parks, unmerged
 from .shell_environment import login_environment
 
@@ -324,6 +325,10 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
     return rows
 
 
+#: How many of a park's own lines its drawer on the board shows.
+DRAWER = 20
+
+
 def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | None = None,
           ceiling: int | None = None) -> list[dict[str, Any]]:
     """Every open message, question and park: the things waiting on a person, which is what a board is for.
@@ -350,9 +355,16 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
                                            "what": str(e.fields.get("what", ""))} for e in one.unreviewed]})
         for park in one.parks:
             waited = minutes_since(park.t, now)
+            named = str(park.fields.get("slice") or "")
+            # The drawer under a park is that slice's own story. The fairway's tail with three slices
+            # running was every other slice's heartbeats, which drew a parked L04 as if it were going.
+            own = [e for e in one.entries if e.kind != "heartbeat"
+                   and (not named or str(e.fields.get("slice") or "") == named)]
+            # Waiting on you: the harbourmaster only writes the receipt once a person has answered.
             waiting.append({"fairway": one.name, "kind": "parked", "what": str(park.fields["why"]),
                             "t": park.t, "waited": f"{max(0.0, waited):.0f}m" if waited is not None else NOTHING,
-                            "waiting_on": "harbourmaster",
+                            "slice": named, "lines": [(e.t, said(e)) for e in own[-DRAWER:]],
+                            "waiting_on": "you",
                             "overdue": "yes" if waited is not None and waited > bound else "no"})
     return sorted(waiting, key=lambda row: row["t"])
 

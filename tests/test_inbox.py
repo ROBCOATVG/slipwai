@@ -66,6 +66,21 @@ class InboxTest(unittest.TestCase):
         self.assertEqual(self.inbox.owed("ORD", NOW)["parks"], [])
         self.assertFalse(self.inbox.owed("ORD", NOW)["forced"])
 
+    def test_a_slice_park_is_answered_by_a_later_claim_of_that_slice_only(self) -> None:
+        """The captain took the slice up again, so nobody is waiting on a person for it."""
+        park = {"kind": "parked", "fairway": "ORD", "slice": "L13", "t": at(120), "why": "over budget"}
+        claim = {"kind": "claimed", "fairway": "ORD", "slice": "L13", "t": at(120)}
+        self.write([park, {**claim, "slice": "L04"}])
+        self.assertEqual(len(self.inbox.owed("ORD", NOW)["parks"]), 1)
+        self.write([park, claim])
+        self.assertEqual(self.inbox.owed("ORD", NOW)["parks"], [])
+        self.write([claim, park])
+        self.assertEqual(len(self.inbox.owed("ORD", NOW)["parks"]), 1, "a claim before the park answers nothing")
+
+    def test_a_park_is_waiting_on_you(self) -> None:
+        self.write([{"kind": "parked", "fairway": "ORD", "t": at(5), "why": "decide"}])
+        self.assertEqual(self.inbox.owed("ORD", NOW)["parks"][0]["waiting_on"], "you")
+
     def test_a_message_with_no_receipt_is_unread(self) -> None:
         self.write([self.told(5)])
         self.assertEqual(len(self.inbox.owed("ORD", NOW)["unread"]), 1)

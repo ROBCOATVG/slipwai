@@ -176,7 +176,8 @@ def inbox_rows(rows: list[dict], controls: bool, streams: dict | None = None) ->
             said.append(unread_decisions(row, controls))
             continue
         name, detail = str(row["fairway"]), inbox_detail(row)
-        lines = (streams or {}).get(name) or []
+        # A park brings its own slice's lines, without heartbeats; anything else shows the stream's tail.
+        lines = row["lines"] if "lines" in row else (streams or {}).get(name) or []
         log = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines[-20:])
         # A note needs no answer, only to be seen: Done writes its `read` receipt and it leaves the list.
         done = (f'<button data-dismiss="{esc(name)}" data-told="{esc(row["t"])}">Done</button>'

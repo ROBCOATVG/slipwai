@@ -337,11 +337,19 @@ def fold(lines: list[str], harbour: bool = False) -> list[Entry]:
 
 
 def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[Entry]:
-    """The parks that still owe an answer: receipt identity is fairway plus original timestamp."""
+    """The parks that still owe an answer: receipt identity is fairway plus original timestamp.
+
+    A park of one slice is also answered by a later `claimed` of it — the captain took it up again, as
+    `clearance.folded` has it. hr-test-2's L13 was worked for hours after its budget park while the board
+    listed it as waiting. Later by place in the deck, not timestamp, so a claim in the same second counts.
+    """
     receipts = {(str(e.fields["fairway"]), str(e.fields["parked"]))
                 for e in harbour if e.kind == "cleared"}
-    return [e for e in deck if e.kind == "parked" and str(e.fields["fairway"]) == fairway
-            and (fairway, e.t) not in receipts]
+    last_claim = {str(e.fields["slice"]): index for index, e in enumerate(deck)
+                  if e.kind == "claimed" and e.fields.get("slice")}
+    return [e for index, e in enumerate(deck) if e.kind == "parked" and str(e.fields["fairway"]) == fairway
+            and (fairway, e.t) not in receipts
+            and last_claim.get(str(e.fields.get("slice") or ""), -1) < index]
 
 
 def fairway_parks(parks: list[Entry]) -> list[Entry]:

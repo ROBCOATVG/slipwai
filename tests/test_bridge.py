@@ -30,7 +30,7 @@ from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 690 — every route the board answers, driven against `board_fixture`: the fleet pages, the
+# budget: 700 — every route the board answers, driven against `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
 # hold; the fixture moved out with it rather than being copied, which is what the one-suite rule was for.
@@ -676,6 +676,20 @@ class StreamDrawerTest(Fixture):
         said = read_only(board(self.root, config(self.root)), config(self.root))
         self.assertIn("captain", said)
         self.assertIn("<details class=\"log\">", said)
+
+    def test_a_park_s_drawer_shows_its_own_slice_and_no_heartbeats(self) -> None:
+        """hr-test-2's L04 drawer was the fairway's last twenty lines: other slices' heartbeats, which read
+        as `still going` and drew a parked slice as running."""
+        self.deck("LVR", logs.entry("claimed", fairway="LVR", slice="L04"),
+                  logs.entry("mark-set", fairway="LVR", slice="L04", mark="BerthAsked"),
+                  logs.entry("parked", fairway="LVR", slice="L04", why="its berth is in the way"),
+                  *(logs.entry("heartbeat", fairway="LVR", slice="L13") for _ in range(25)),
+                  logs.entry("mark-set", fairway="LVR", slice="L13", mark="Elsewhere"))
+        drawer = self.rendered().partition('id="waiting"')[2].partition("</details>")[0]
+        self.assertIn("claimed L04", drawer)
+        self.assertIn("set BerthAsked", drawer)
+        self.assertNotIn("still going", drawer)
+        self.assertNotIn("Elsewhere", drawer)
 
     def test_a_person_s_message_is_still_escaped_inside_the_drawer(self) -> None:
         self.deck("ORD", logs.entry("told", fairway="ORD", message="<script>alert(1)</script>"))

@@ -222,9 +222,31 @@ class ParkReceiptTest(Fixture):
                   logs.entry("heartbeat", fairway="ORD", t=when(1)))
         row = self.board()["inbox"][0]
         self.assertEqual((row["t"], row["waited"], row["waiting_on"], row["overdue"]),
-                         (when(120), "120m", "harbourmaster", "yes"))
-        self.assertIn("waiting on harbourmaster for 120m", fleet.inbox_detail(row))
-        self.assertIn("waiting on harbourmaster", "\n".join(lines(self.root)))
+                         (when(120), "120m", "you", "yes"))
+        self.assertIn("waiting on you for 120m (past wait bound)", fleet.inbox_detail(row))
+        self.assertIn("waiting on you", "\n".join(lines(self.root)))
+
+    def test_a_later_claim_of_the_parked_slice_takes_it_out_of_waiting_and_back_in_flight(self) -> None:
+        """hr-test-2's L13 parked over its budget, then the captain claimed it and worked it for hours while
+        the board listed it as waiting on a person and left it out of the slices in flight."""
+        self.deck("LVR", logs.entry("claimed", fairway="LVR", slice="L13", t=when(3)),
+                  logs.entry("parked", fairway="LVR", slice="L13", why="over its budget", t=when(2)),
+                  logs.entry("claimed", fairway="LVR", slice="L13", t=when(2)))
+        self.assertEqual(self.board()["inbox"], [])
+        row = self.board()["berths"][0]
+        self.assertEqual((row["slice"], row["state"]), ("L13", "working"))
+
+    def test_a_claim_of_another_slice_leaves_the_park_waiting(self) -> None:
+        self.deck("LVR", logs.entry("claimed", fairway="LVR", slice="L04", t=when(3)),
+                  logs.entry("parked", fairway="LVR", slice="L04", why="its berth is in the way", t=when(2)),
+                  logs.entry("claimed", fairway="LVR", slice="L13", t=when(1)))
+        self.assertEqual([(row["kind"], row["slice"]) for row in self.board()["inbox"]], [("parked", "L04")])
+        self.assertEqual(self.board()["berths"][0]["slice"], "L13")
+
+    def test_a_park_of_the_whole_fairway_is_not_answered_by_a_claim(self) -> None:
+        self.deck("LVR", logs.entry("parked", fairway="LVR", why="the gate stayed red", t=when(9)),
+                  logs.entry("claimed", fairway="LVR", slice="L13", t=when(8)))
+        self.assertEqual([row["kind"] for row in self.board()["inbox"]], ["parked"])
 
     def test_a_matching_receipt_removes_the_park_and_its_parked_state(self) -> None:
         self.deck("ORD", logs.entry("parked", fairway="ORD", why="choose the storage", t=when(2)))

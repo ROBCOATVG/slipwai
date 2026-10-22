@@ -1,0 +1,314 @@
+<!doctype html>
+<!-- The Fleet tab as agreed on 2026-10-22: artboard D of the canvas "Fleet status mockups"
+     (https://claude.ai/artifact/XZYqPMtXaztPD9qXSYsy8e), drawn from the recap voyage of 2026-10-21 at 18:05.
+     docs/fleet-status-plan.md is the plan built from it; src/slipwai/fleet_page.py and timeline_page.py
+     are what the board draws. A still of the design, not the design: the scale dropdown is a chip here. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fleet tab, combined: status, processes, needs</title>
+</head>
+<body>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#f1f3f4;color:#172129;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:14px;line-height:1.45}
+a{color:#0f6b6b}a:hover{color:#0a4f4f}
+.wrap{max-width:1200px;margin:0 auto;padding:0 20px 60px}
+.top{padding:22px 0 14px;border-bottom:1px solid #d9e0e4;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+h1{font-size:1.35rem;font-weight:600;margin:0}
+h2{font-size:.95rem;font-weight:600;margin:0 0 10px}
+h3{font-size:.95rem;font-weight:600;margin:0}
+.sub{color:#657079;font-size:.85rem;margin-top:3px}
+.card{background:#fcfcfb;border:1px solid #d9e0e4;border-radius:10px;padding:16px;margin-top:18px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:.92em}
+.chip{display:inline-block;font-size:.76rem;padding:2px 8px;border-radius:999px;background:#e9eef1;color:#4a5862;white-space:nowrap}
+.chip.run{background:#dcecea;color:#0f6b6b}
+.chip.you{background:#f1e9d2;color:#6f5619}
+.chip.stop{background:#fbe1d7;color:#b02a2a}
+.chip.auto{background:#d6e6f8;color:#1d4f8f}
+.go{font:inherit;padding:8px 14px;border-radius:7px;border:1px solid #0f6b6b;background:#0f6b6b;color:#fff;cursor:pointer;white-space:nowrap}
+.quiet{font:inherit;padding:8px 14px;border-radius:7px;border:1px solid #d9e0e4;background:#fcfcfb;color:#4a5862;cursor:pointer;white-space:nowrap}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:8px;flex:none}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th{text-align:left;font-weight:500;color:#657079;font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;padding:0 10px 6px 0;border-bottom:1px solid #e9eef1}
+td{padding:8px 10px 8px 0;border-bottom:1px solid #e9eef1;vertical-align:top}
+.tabs{display:flex;gap:4px;margin-top:18px;border-bottom:1px solid #d9e0e4;flex-wrap:wrap}
+.tab{padding:8px 14px;border:1px solid transparent;border-bottom:none;border-radius:8px 8px 0 0;color:#4a5862}
+.tab.on{background:#fcfcfb;border-color:#d9e0e4;color:#172129;font-weight:600;margin-bottom:-1px}
+.meta{color:#657079;font-size:.82rem}
+.banner{background:#fcfcfb;border:1px solid #d9e0e4;border-radius:10px;padding:18px 20px;margin-top:18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 24px;align-items:start}
+.procs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+.proc{border:1px solid #e9eef1;border-radius:8px;padding:10px 12px;background:#f7f8f8}
+.proc .n{display:flex;align-items:center;font-weight:600;font-size:.88rem}
+.proc .s{margin-top:4px}
+.proc .w{font-size:.8rem;color:#4a5862;margin-top:6px}
+.counts{display:flex;gap:18px;flex-wrap:wrap;font-size:.85rem;color:#4a5862;margin-top:12px}
+.counts b{color:#172129}
+.item{border:1px solid #d9e0e4;border-radius:10px;padding:14px 16px;margin-top:12px;background:#fcfcfb}
+.item .head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.prog{height:6px;border-radius:3px;background:#e9eef1;overflow:hidden;margin-top:10px}
+.prog i{display:block;height:100%;background:#0f6b6b}
+.need{list-style:none;padding:0;margin:10px 0 0}
+.need li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:start;padding:7px 0;border-top:1px solid #e9eef1}
+.box{width:16px;height:16px;border:1.5px solid #7a8891;border-radius:4px;margin-top:2px}
+.how{font-size:.78rem;color:#657079;white-space:nowrap;text-align:right}
+.then{margin-top:10px;padding:8px 10px;border-radius:7px;background:#f1f3f4;font-size:.85rem;color:#4a5862}
+.then b{color:#172129}
+select.scale{font:inherit;padding:5px 8px;border:1px solid #d9e0e4;border-radius:7px;background:#fcfcfb;color:#172129}
+.names{width:130px;flex:none}
+.lname{height:30px;line-height:30px;font-size:.82rem;color:#4a5862;text-align:right;padding-right:8px;border-bottom:1px solid #e9eef1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scroll{flex:1;min-width:0;overflow-x:auto;overflow-y:hidden}
+.axis{position:relative;height:22px;border-bottom:1px solid #d9e0e4}
+.tick{position:absolute;top:0;transform:translateX(-50%);font-size:.74rem;color:#657079;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;white-space:nowrap}
+.rows{position:relative}
+.lane{position:relative;height:30px;border-bottom:1px solid #e9eef1}
+.bar{position:absolute;top:7px;height:16px;border-radius:3px}
+.run{background:#0f6b6b}
+.park{background:#d2b465}
+.pause{background:#d6e6f8;border:1px dashed #1d4f8f;box-sizing:border-box}
+.mark{position:absolute;top:0;bottom:0;width:2px}
+.lbl{position:absolute;font-size:.72rem;white-space:nowrap;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+.dense .lbl.in{display:none}
+.grid{position:absolute;top:0;bottom:0;width:1px;background:#e9eef1}
+.future{position:absolute;top:0;bottom:0;background:rgba(23,33,41,.04)}
+.leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:.82rem;color:#4a5862}
+.leg span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+@media (max-width:860px){.procs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.banner{grid-template-columns:1fr}.need li{grid-template-columns:20px 1fr}.how{grid-column:2;text-align:left;white-space:normal}.names{width:90px}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Voyage · recap</h1>
+      <div class="sub">18:05 · paused, resumes itself at 21:40 · 2 things only you can do · 9 decisions to read</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="chip">Auto</span><span class="chip">Light</span><span class="chip">Dark</span>
+    </div>
+  </div>
+
+  <div class="tabs" aria-label="Voyage tabs">
+    <span class="tab">Work</span><span class="tab">Try it &amp; feedback</span><span class="tab">Screens</span><span class="tab">Model</span><span class="tab on">Fleet · paused · 2 for you</span>
+  </div>
+
+  <div class="banner">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="dot" style="background:#1d4f8f"></span>
+        <h3 style="font-size:1.1rem">Paused. The Claude session limit refused the fleet at 17:40; it resumes itself at 21:40, in 3h 35m.</h3>
+      </div>
+      <p style="margin:10px 0 0;color:#4a5862">Eight slices are paused, not parked: a limit refusal spends no attempts and needs nothing from you. Three slices are parked on a change only you can land on main, below. Nothing is lost: each paused slice committed its work in progress before it stopped.</p>
+      <div class="procs">
+        <div class="proc">
+          <div class="n"><span class="dot" style="background:#0ca30c"></span>Harbourmaster</div>
+          <div class="s"><span class="chip run">running · 3h 30m</span></div>
+          <div class="w">Holding the 21:40 resume. Checking the needs below against main every minute.</div>
+        </div>
+        <div class="proc">
+          <div class="n"><span class="dot" style="background:#7a8891"></span>Library captain</div>
+          <div class="s"><span class="chip">exited 17:42</span></div>
+          <div class="w">Nothing to start until the pause ends. Relit at 21:40: LB3, LB1, LB9 first, three slots.</div>
+        </div>
+        <div class="proc">
+          <div class="n"><span class="dot" style="background:#7a8891"></span>Catch-up captain</div>
+          <div class="s"><span class="chip">not lit</span></div>
+          <div class="w">Its only claimed slice, CU1, is paused. Relit at 21:40 at CU1's tasks.</div>
+        </div>
+        <div class="proc">
+          <div class="n"><span class="dot" style="background:#7a8891"></span>Preparation captain</div>
+          <div class="s"><span class="chip">exited 16:42</span></div>
+          <div class="w">PR1 waits on AudioFetched from LB5, which waits on LB4. Not a fault.</div>
+        </div>
+      </div>
+      <div class="counts"><span><b>0</b> of 3 slots in use</span><span><b>8</b> paused until 21:40</span><span><b>3</b> parked on you</span><span><b>2</b> blocked on a sibling</span><span><b>20</b> not started</span><span><b>0</b> merged</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;min-width:220px">
+      <button class="quiet" type="button">Resume now anyway</button>
+      <button class="quiet" type="button">Open the library captain's log</button>
+      <span class="meta" style="text-align:center">Resuming before 21:40 will be refused again</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Needs you</h2>
+    <p class="meta" style="margin:0">Grouped by what has to change, in the order it unblocks work. Each line is checked against <span class="mono">main</span> every minute and ticks when the fleet sees it land. You can tick one yourself when it landed where the fleet cannot look.</p>
+
+    <div class="item">
+      <div class="head">
+        <div>
+          <h3><span class="chip you">on main</span> Move the listening stream to catch-up <span class="meta" style="font-weight:400">· 0 of 5</span></h3>
+          <div class="meta">From your steer at 15:43, recorded as D31 and D32 · holds <span class="mono">LB6 LB7 LB8</span>, planned and tasked, at their first implementation task</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="quiet" type="button">Open D32</button><button class="quiet" type="button">Copy as a to-do</button></div>
+      </div>
+      <div class="prog"><i style="width:0%"></i></div>
+      <ul class="need">
+        <li><span class="box"></span><span><span class="mono">docs/event-model/model.yaml</span>: <span class="mono">context: catch-up</span> on LB6, LB7, LB8, LB9, LB10, in one commit. One stream may not be written from two contexts.</span><span class="how">checked by <span class="mono">make check-model</span></span></li>
+        <li><span class="box"></span><span><span class="mono">make chart</span> and <span class="mono">make decisions</span>: chart.yaml and the split's Fairways table put the five in catch-up.</span><span class="how">checked by reading <span class="mono">chart.yaml</span></span></li>
+        <li><span class="box"></span><span><span class="mono">docs/architecture.md</span> and the recap-api purpose name the move.</span><span class="how">checked by <span class="mono">describe-service</span></span></li>
+        <li><span class="box"></span><span>D33's clock-skew sentence in <span class="mono">streams.listening.because</span>, beside the later-timed-wins rule.</span><span class="how">checked by <span class="mono">make check-model</span></span></li>
+        <li><span class="box"></span><span>LB13 follows (recommended) · LB12 stays (recommended). Say which.</span><span class="how">your word: <button class="quiet" type="button" style="padding:3px 10px;font-size:.8rem">As recommended</button></span></li>
+      </ul>
+      <div class="then"><b>Then, without you:</b> LB6, LB7 and LB8 are re-dispatched in the catch-up fairway, in that order. LB6 merges before LB7 starts: LB7 extends LB6's fold, owner reader and control strip. 58 tasks between the three.</div>
+    </div>
+
+    <div class="item">
+      <div class="head">
+        <div>
+          <h3><span class="chip you">on main</span> Dependencies and environment <span class="meta" style="font-weight:400">· 0 of 6</span></h3>
+          <div class="meta">Asked by CU1 13:46, LB3 15:59, LB1 16:40 · stops nothing today, each slice has a fallback behind a port · needed before <span class="mono">LB3 CU1 LB1</span> merge</div>
+        </div>
+        <button class="quiet" type="button">Show the asks</button>
+      </div>
+      <div class="prog"><i style="width:0%"></i></div>
+      <ul class="need">
+        <li><span class="box"></span><span><span class="mono">jose</span> on <span class="mono">apps/recap-api</span> for bearer-token validation.</span><span class="how">checked in <span class="mono">package-lock.json</span></span></li>
+        <li><span class="box"></span><span><span class="mono">zod</span>, <span class="mono">@fastify/multipart</span>, <span class="mono">music-metadata</span> on <span class="mono">apps/recap-api</span>; <span class="mono">post</span> on <span class="mono">packages/api-client</span>.</span><span class="how">checked in <span class="mono">package-lock.json</span></span></li>
+        <li><span class="box"></span><span><span class="mono">CREDENTIALS_KEY</span> in <span class="mono">.env.example</span> and in <span class="mono">make demo</span>'s environment.</span><span class="how">checked in <span class="mono">.env.example</span></span></li>
+        <li><span class="box"></span><span><span class="mono">VITE_FLAG_AUDIOBOOKSHELF_COMPANION=off</span> and <span class="mono">VITE_FLAG_TRACK_POSITION=off</span> in <span class="mono">.env.example</span>.</span><span class="how">checked in <span class="mono">.env.example</span></span></li>
+        <li><span class="box"></span><span><span class="mono">__pycache__/</span> in <span class="mono">.gitignore</span>: without it the scope check is red in every berth.</span><span class="how">checked in <span class="mono">.gitignore</span></span></li>
+        <li><span class="box"></span><span>The AddBook design decision carried into <span class="mono">docs/design.md</span> from LB3's tasks.</span><span class="how">your tick</span></li>
+      </ul>
+      <div class="then"><b>Then, without you:</b> the merges of LB3, then LB1, then CU1 go ahead when each demo is accepted. LB1 carries LB3's authentication files byte-identical, so LB3 first.</div>
+    </div>
+
+    <div class="item">
+      <div class="head">
+        <div>
+          <h3><span class="chip">to read</span> Nine decisions taken for you <span class="meta" style="font-weight:400">· 9 of 10 before the fleet stops to wait</span></h3>
+          <div class="meta">D34 (LB7) · D38 to D42 (LB1) · D43, D44 (LB9)</div>
+        </div>
+        <div style="display:flex;gap:8px"><button class="quiet" type="button">Read them in the decision log</button><button class="quiet" type="button">I have read all 9</button></div>
+      </div>
+      <div class="prog"><i style="width:90%;background:#d2b465"></i></div>
+    </div>
+
+    <div class="item">
+      <div class="head">
+        <div>
+          <h3><span class="chip">questions</span> None open</h3>
+          <div class="meta">No slice has stopped to ask you anything. The skipper decided 44 questions on your behalf so far today; the nine above are the ones you have not read.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <h2 style="margin:0">Timeline</h2>
+      <label style="font-size:.85rem;color:#4a5862;display:flex;align-items:center;gap:8px">Scale
+        <span class="chip">8 hours across</span>
+      </label>
+    </div>
+    <p class="meta" style="margin:6px 0 0">From the cast-off at 14:00 yesterday, two days forward. Scroll sideways; the lane names stay put. One bar per session in one slot. Red is a limit refusal, gold is parked on you, blue is paused with a time on it, triangles are the two times you cleared a park by hand.</p>
+    <div style="display:flex;margin-top:10px">
+      <div class="names">
+        <div style="height:22px;border-bottom:1px solid #d9e0e4"></div>
+        <div class="lname">library · slot 1</div>
+        <div class="lname">library · slot 2</div>
+        <div class="lname">library · slot 3</div>
+        <div class="lname">parked on you</div>
+        <div class="lname">catch-up</div>
+      </div>
+      <div class="scroll">
+        <div style="position:relative;width:600%">
+          <div class="axis">
+            <span class="tick" style="left:0.000%">21 Oct 00:00</span><span class="tick" style="left:2.083%">15:00</span><span class="tick" style="left:4.167%">16:00</span><span class="tick" style="left:6.250%">17:00</span><span class="tick" style="left:8.333%">18:00</span><span class="tick" style="left:10.417%">19:00</span><span class="tick" style="left:12.500%">20:00</span><span class="tick" style="left:14.583%">21:00</span><span class="tick" style="left:16.667%">22:00</span><span class="tick" style="left:18.750%">23:00</span><span class="tick" style="left:20.833%">22 Oct 00:00</span><span class="tick" style="left:22.917%">01:00</span><span class="tick" style="left:25.000%">02:00</span><span class="tick" style="left:27.083%">03:00</span><span class="tick" style="left:29.167%">04:00</span><span class="tick" style="left:31.250%">05:00</span><span class="tick" style="left:33.333%">06:00</span><span class="tick" style="left:35.417%">07:00</span><span class="tick" style="left:37.500%">08:00</span><span class="tick" style="left:39.583%">09:00</span><span class="tick" style="left:41.667%">10:00</span><span class="tick" style="left:43.750%">11:00</span><span class="tick" style="left:45.833%">12:00</span><span class="tick" style="left:47.917%">13:00</span><span class="tick" style="left:50.000%">14:00</span><span class="tick" style="left:52.083%">15:00</span><span class="tick" style="left:54.167%">16:00</span><span class="tick" style="left:56.250%">17:00</span><span class="tick" style="left:58.333%">18:00</span><span class="tick" style="left:60.417%">19:00</span><span class="tick" style="left:62.500%">20:00</span><span class="tick" style="left:64.583%">21:00</span><span class="tick" style="left:66.667%">22:00</span><span class="tick" style="left:68.750%">23:00</span><span class="tick" style="left:70.833%">23 Oct 00:00</span><span class="tick" style="left:72.917%">01:00</span><span class="tick" style="left:75.000%">02:00</span><span class="tick" style="left:77.083%">03:00</span><span class="tick" style="left:79.167%">04:00</span><span class="tick" style="left:81.250%">05:00</span><span class="tick" style="left:83.333%">06:00</span><span class="tick" style="left:85.417%">07:00</span><span class="tick" style="left:87.500%">08:00</span><span class="tick" style="left:89.583%">09:00</span><span class="tick" style="left:91.667%">10:00</span><span class="tick" style="left:93.750%">11:00</span><span class="tick" style="left:95.833%">12:00</span><span class="tick" style="left:97.917%">13:00</span><span class="tick" style="left:100.000%">14:00</span>
+          </div>
+          <div class="rows ">
+            <div class="grid" style="left:0.000%"></div><div class="grid" style="left:2.083%"></div><div class="grid" style="left:4.167%"></div><div class="grid" style="left:6.250%"></div><div class="grid" style="left:8.333%"></div><div class="grid" style="left:10.417%"></div><div class="grid" style="left:12.500%"></div><div class="grid" style="left:14.583%"></div><div class="grid" style="left:16.667%"></div><div class="grid" style="left:18.750%"></div><div class="grid" style="left:20.833%"></div><div class="grid" style="left:22.917%"></div><div class="grid" style="left:25.000%"></div><div class="grid" style="left:27.083%"></div><div class="grid" style="left:29.167%"></div><div class="grid" style="left:31.250%"></div><div class="grid" style="left:33.333%"></div><div class="grid" style="left:35.417%"></div><div class="grid" style="left:37.500%"></div><div class="grid" style="left:39.583%"></div><div class="grid" style="left:41.667%"></div><div class="grid" style="left:43.750%"></div><div class="grid" style="left:45.833%"></div><div class="grid" style="left:47.917%"></div><div class="grid" style="left:50.000%"></div><div class="grid" style="left:52.083%"></div><div class="grid" style="left:54.167%"></div><div class="grid" style="left:56.250%"></div><div class="grid" style="left:58.333%"></div><div class="grid" style="left:60.417%"></div><div class="grid" style="left:62.500%"></div><div class="grid" style="left:64.583%"></div><div class="grid" style="left:66.667%"></div><div class="grid" style="left:68.750%"></div><div class="grid" style="left:70.833%"></div><div class="grid" style="left:72.917%"></div><div class="grid" style="left:75.000%"></div><div class="grid" style="left:77.083%"></div><div class="grid" style="left:79.167%"></div><div class="grid" style="left:81.250%"></div><div class="grid" style="left:83.333%"></div><div class="grid" style="left:85.417%"></div><div class="grid" style="left:87.500%"></div><div class="grid" style="left:89.583%"></div><div class="grid" style="left:91.667%"></div><div class="grid" style="left:93.750%"></div><div class="grid" style="left:95.833%"></div><div class="grid" style="left:97.917%"></div><div class="grid" style="left:100.000%"></div>
+            <div class="future" style="left:8.507%;right:0"></div>
+
+            <div class="lane">
+              <div class="bar run" style="left:1.215%;width:0.80%" title="LB3 14:35–14:58"></div>
+              <span class="lbl in" style="left:1.3%;top:9px;color:#fff">LB3</span>
+              <div class="bar park" style="left:2.05%;width:0.10%"></div>
+              <div class="bar park" style="left:3.854%;width:0.05%"></div>
+              <div class="bar run" style="left:5.660%;width:1.979%" title="LB3 16:43–17:40"></div>
+              <span class="lbl in" style="left:5.75%;top:9px;color:#fff">LB3 · review</span>
+              <div class="bar pause" style="left:7.639%;width:8.333%" title="paused 17:40 → 21:40"></div>
+              <span class="lbl in" style="left:8.65%;top:9px;color:#1d4f8f">paused · resumes at review 21:40</span>
+            </div>
+            <div class="lane">
+              <div class="bar run" style="left:1.215%;width:0.868%" title="LB6 14:35–15:00"></div>
+              <span class="lbl in" style="left:1.3%;top:9px;color:#fff">LB6</span>
+              <div class="bar park" style="left:2.083%;width:0.07%"></div>
+              <div class="bar park" style="left:3.854%;width:0.05%"></div>
+              <div class="bar run" style="left:5.660%;width:0.694%" title="LB6 16:43–17:03"></div>
+              <span class="lbl in" style="left:5.75%;top:9px;color:#fff">LB6</span>
+              <div class="bar run" style="left:6.354%;width:0.972%" title="LB8 17:03–17:31"></div>
+              <span class="lbl in" style="left:6.45%;top:9px;color:#fff">LB8</span>
+              <div class="bar run" style="left:7.326%;width:0.313%" title="LB9 17:31–17:40"></div>
+              <div class="bar pause" style="left:7.639%;width:8.333%"></div>
+              <span class="lbl in" style="left:8.65%;top:9px;color:#1d4f8f">LB9 paused · resumes at example map</span>
+            </div>
+            <div class="lane">
+              <div class="bar park" style="left:2.05%;width:0.10%" title="LB7 LB8 LB1 LB9 LB4 LB2 LB15 LB11 claimed and parked 14:59–15:02"></div>
+              <span class="lbl in" style="left:2.25%;top:9px;color:#6f5619">8 parked in 3 min</span>
+              <div class="bar run" style="left:5.660%;width:1.041%" title="LB7 16:43–17:13"></div>
+              <span class="lbl in" style="left:5.75%;top:9px;color:#fff">LB7</span>
+              <div class="bar run" style="left:6.701%;width:0.938%" title="LB1 17:13–17:40"></div>
+              <span class="lbl in" style="left:6.8%;top:9px;color:#fff">LB1</span>
+              <div class="bar pause" style="left:7.639%;width:8.333%"></div>
+              <span class="lbl in" style="left:8.65%;top:9px;color:#1d4f8f">LB1 paused · resumes at plan</span>
+            </div>
+            <div class="lane">
+              <div class="bar park" style="left:6.354%;width:2.153%;height:4px;top:8px;border-radius:2px" title="LB6 since 17:03"></div>
+              <div class="bar park" style="left:6.701%;width:1.806%;height:4px;top:13px;border-radius:2px" title="LB7 since 17:13"></div>
+              <div class="bar park" style="left:7.326%;width:1.181%;height:4px;top:18px;border-radius:2px" title="LB8 since 17:31"></div>
+              <span class="lbl in" style="left:8.65%;top:7px;color:#6f5619">LB6 LB7 LB8 · the context move, above · still parked</span>
+            </div>
+            <div class="lane">
+              <div class="bar run" style="left:1.215%;width:0.80%" title="CU1 14:35–14:58"></div>
+              <span class="lbl in" style="left:1.3%;top:9px;color:#fff">CU1</span>
+              <div class="bar park" style="left:2.05%;width:6.457%;height:4px;top:13px;border-radius:2px" title="parked on the first limit, never cleared"></div>
+              <span class="lbl in" style="left:2.3%;top:7px;color:#6f5619">parked on the first limit · nobody cleared it</span>
+              <div class="bar pause" style="left:8.507%;width:7.465%"></div>
+              <span class="lbl in" style="left:8.65%;top:9px;color:#1d4f8f">folded into the pause · resumes at tasks</span>
+            </div>
+
+            <div class="mark" style="left:2.014%;background:#b02a2a"></div>
+            <span class="lbl" style="left:2.2%;top:-18px;color:#b02a2a">limit 14:58</span>
+            <div class="mark" style="left:7.639%;background:#b02a2a"></div>
+            <span class="lbl" style="left:7.8%;top:-18px;color:#b02a2a">limit 17:40</span>
+            <div class="mark" style="left:8.507%;background:#172129"></div>
+            <span class="lbl" style="left:8.65%;top:-18px;color:#172129;margin-left:70px">now 18:05</span>
+            <div class="mark" style="left:15.972%;background:#1d4f8f;opacity:.8"></div>
+            <span class="lbl" style="left:16.1%;top:-18px;color:#1d4f8f">resumes 21:40</span>
+            <span class="lbl" style="left:3.854%;top:-8px;color:#6f5619;transform:translateX(-50%)">▲</span>
+            <span class="lbl" style="left:5.660%;top:-8px;color:#6f5619;transform:translateX(-50%)">▲</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="leg">
+      <span><i class="sw" style="background:#0f6b6b"></i>a session doing work</span>
+      <span><i class="sw" style="background:#d2b465"></i>parked on you</span>
+      <span><i class="sw" style="background:#d6e6f8;border:1px dashed #1d4f8f"></i>paused, with a time</span>
+      <span><i class="sw" style="background:#b02a2a"></i>limit refused the run</span>
+      <span style="color:#6f5619">▲ you cleared a park</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Each pause and park, as its captain recorded it</h2>
+    <p class="meta" style="margin:0 0 8px">The page above is a fold of these lines. A cause is one word; needs are a list; "then" is what the fleet does once they are met.</p>
+    <table>
+      <tr><th>Slice</th><th>At</th><th>Cause</th><th>Reached</th><th>Needs</th><th>Then</th></tr>
+      <tr><td class="mono">LB3</td><td>17:40</td><td><span class="chip auto">limit</span> until 21:40</td><td>review · 51 commits · 180 tests green</td><td>—</td><td>resume at review</td></tr>
+      <tr><td class="mono">LB1</td><td>17:40</td><td><span class="chip auto">limit</span> until 21:40</td><td>plan · example map and ADR 0006 committed</td><td>—</td><td>resume at plan</td></tr>
+      <tr><td class="mono">LB9</td><td>17:42</td><td><span class="chip auto">limit</span> until 21:40</td><td>example map</td><td>—</td><td>resume at example map</td></tr>
+      <tr><td class="mono">LB4 LB2 LB15 LB11</td><td>17:40</td><td><span class="chip auto">limit</span> until 21:40</td><td>no first turn</td><td>—</td><td>start at example map</td></tr>
+      <tr><td class="mono">CU1</td><td>14:59</td><td><span class="chip auto">limit</span> until 21:40</td><td>plan</td><td>—</td><td>resume at tasks</td></tr>
+      <tr><td class="mono">LB6</td><td>17:03</td><td><span class="chip you">host change</span> D32</td><td>tasked · 19 tasks</td><td>the 5 above</td><td>re-dispatch in catch-up at T001</td></tr>
+      <tr><td class="mono">LB7</td><td>17:13</td><td><span class="chip you">host change</span> D32</td><td>tasked · 19 tasks</td><td>same 5 · LB6 merged</td><td>re-dispatch after LB6</td></tr>
+      <tr><td class="mono">LB8</td><td>17:31</td><td><span class="chip you">host change</span> D32</td><td>tasked · 20 tasks</td><td>same 5 · LB7 merged</td><td>re-dispatch after LB7</td></tr>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>

@@ -4,6 +4,8 @@ A plan for the combined design agreed on 2026-10-22, drawn as artboard D of the 
 <https://claude.ai/artifact/XZYqPMtXaztPD9qXSYsy8e> ("Fleet status mockups"). The design was taken from one
 real day: the `recap` voyage of 2026-10-21, whose logs are the fixture every slice below is checked against.
 
+**Status, 2026-10-22:** slices 19.1 to 19.13 are built on the `fleet-status` branch, one commit each, with `tests/test_recap_day.py` and `tests/test_timeline.py` holding the board to the day. Section 5's open points stand.
+
 ## 1. What went wrong, in the words of the logs
 
 At 14:58 and again at 17:40 the harness answered a dispatched session with one line:

@@ -37,7 +37,19 @@ from pathlib import Path
 from typing import Any
 
 from .deck import recent, said
-from .logs import Entry, Unreadable, deck_logs, fairway_parks, fold, harbour_logs, held_slices, open_parks, unmerged
+from .logs import (
+    Entry,
+    Unreadable,
+    cause_of,
+    deck_logs,
+    fairway_parks,
+    fold,
+    harbour_logs,
+    held_slices,
+    open_parks,
+    paused,
+    unmerged,
+)
 from .shell_environment import login_environment
 
 #: Minutes since the last line after which a berth that has not finished is drawn as stalled. The default
@@ -83,6 +95,31 @@ class Fairway:
     @property
     def parks(self) -> list[Entry]:
         return open_parks(self.entries, self.receipts, self.name)
+
+    @property
+    def paused(self) -> str:
+        """The latest `until` of the parks that make this stream parked, where every one of them lifts by
+        itself — a limit, or a time still ahead — and `""` where any of them waits on a person or the stream
+        is not parked at all. One slice on a person beside seven on the harness is a stream on a person."""
+        if not self.parked:
+            return ""
+        parks = self.parks
+        whole = fairway_parks(parks)
+        held = whole or parks
+        lifting = paused(held)
+        if len(lifting) != len(held):
+            return ""
+        return max((str(e.fields.get("until") or "") for e in lifting), default="") or "soon"
+
+    def needs_met(self, park: Entry) -> set[int]:
+        """Which of a park's needs have been ticked: a `need-met` receipt from the harbourmaster, or a
+        person's `need-done` line the harbourmaster has not carried yet."""
+        found = {int(e.fields.get("need", -1)) for e in self.receipts
+                 if e.kind == "need-met" and str(e.fields.get("fairway", "")) == self.name
+                 and str(e.fields.get("parked", "")) == park.t}
+        found |= {int(e.fields.get("need", -1)) for e in self.entries
+                  if e.kind == "need-done" and str(e.fields.get("parked", "")) == park.t}
+        return found
 
     @property
     def slice_now(self) -> str:
@@ -216,7 +253,9 @@ def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | Non
     if not fairway.entries:
         return "not started"
     if fairway.parked:
-        return "parked"
+        # Paused is parked on nobody: the harness said when it would run again, and the harbourmaster
+        # lifts the park at that time. The word on the board has to say that nothing here needs a person.
+        return "paused" if fairway.paused else "parked"
     last = fairway.entries[-1]
     if last.kind == "stopped":
         # Asked to stop and said so. Not `stalled`, which is a captain that went quiet without a word, and
@@ -310,6 +349,8 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
         pending = [slice_id for slice_id in (ready or {}).get((one.feature, one.name), [])
                    if slice_id not in set(one.claimed) | set(one.merged)]
         count = None if one.feature in (clearance_faults or set()) else len(pending)
+        parks = one.parks
+        lifting = paused(parks)
         rows.append({
             "fairway": one.name,
             "feature": one.feature,
@@ -321,8 +362,91 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
             "tokens": one.tokens if one.tokens is not None else NOTHING,
             "merged": len(one.merged),
             "marks": len(one.marks),
+            # The parks split by who lifts them: the harbourmaster, at a time, or a person.
+            "paused": len(lifting),
+            "parked": len(parks) - len(lifting),
+            "until": clock_of(one.paused) if one.paused and one.paused != "soon" else "",
         })
     return rows
+
+
+def clock_of(until: str) -> str:
+    """An instant from the log as a person reads a clock on this machine, `21:40`; the instant itself
+    where it is not one this can read, and `""` for nothing."""
+    if not until:
+        return ""
+    try:
+        when = datetime.strptime(until, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError:
+        return until
+    return when.astimezone().strftime("%H:%M")
+
+
+def need_rows(park: Entry, met: set[int]) -> list[dict[str, str]]:
+    """A park's needs as the board draws them: what, who ticks it, how the fleet would, and whether it is."""
+    needs = park.fields.get("needs")
+    rows: list[dict[str, str]] = []
+    for index, need in enumerate(needs if isinstance(needs, list) else []):
+        if not isinstance(need, dict):
+            continue
+        held = need.get("check")
+        check: dict = held if isinstance(held, dict) else {}
+        how = ""
+        if check.get("kind") == "text":
+            how = f"{check.get('path', '')} holds {str(check.get('has', ''))!r}"
+        elif check.get("kind") == "make":
+            how = f"make {check.get('target', '')} passes on trunk"
+        rows.append({"what": str(need.get("what", "")), "by": str(need.get("by", "person")), "how": how,
+                     "met": "yes" if index in met else "no", "index": str(index)})
+    return rows
+
+
+#: The causes whose parks are one thing to a person however many slices stand on them: a limit lifts for all
+#: of them at once, and the same list of needs on trunk is the same list however many times it was written.
+#: A question, a missed gate, a crash is its own slice's and is not folded into a sibling's.
+GROUPED = ("limit", "host", "ceiling", "trunk", "budget")
+
+
+def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The parks waiting on a person, folded by what they wait on rather than listed by slice.
+
+    recap had eleven parks under *Waiting on you*: eight were one session limit and three were one change
+    to trunk. A person reading eleven paragraphs found that out by reading them. A group is one cause and,
+    for a change on trunk, one list of needs; it carries every slice standing on it, the ticks, the latest
+    `until`, the `then` the newest park wrote, and the parks themselves for whatever answers them.
+    """
+    keyed: dict[tuple, dict[str, Any]] = {}
+    for row in rows:
+        if row.get("kind") != "parked":
+            continue
+        cause = str(row.get("cause") or "other")
+        if cause not in GROUPED:
+            key: tuple = (cause, row["fairway"], row["t"], str(row.get("slice") or ""))
+        elif cause == "limit":
+            key = ("limit",)
+        else:
+            key = (cause, tuple(need["what"] for need in row.get("needs") or []))
+        held = keyed.setdefault(key, {"kind": "group", "cause": cause, "slices": [], "fairways": [], "parks": [],
+                                      "needs": [dict(need) for need in row.get("needs") or []],
+                                      "t": row["t"], "until": "", "then": "", "what": "", "paused": "yes"})
+        held["slices"].append(str(row.get("slice") or row["fairway"]))
+        if row["fairway"] not in held["fairways"]:
+            held["fairways"].append(row["fairway"])
+        held["parks"].append({"fairway": row["fairway"], "t": row["t"], "slice": str(row.get("slice") or "")})
+        held["t"] = min(held["t"], row["t"])
+        held["until"] = max(held["until"], str(row.get("until") or ""))
+        if row["t"] >= max(park["t"] for park in held["parks"]):
+            held["then"], held["what"] = str(row.get("then") or ""), str(row.get("what") or "")
+        for mine, theirs in zip(held["needs"], row.get("needs") or [], strict=False):
+            if theirs.get("met") == "yes":
+                mine["met"] = "yes"
+        if row.get("paused") != "yes":
+            held["paused"] = "no"
+    found = sorted(keyed.values(), key=lambda one: (one["paused"] == "yes", one["t"]))
+    for one in found:
+        one["clock"] = clock_of(one["until"])
+        one["met"] = sum(1 for need in one["needs"] if need.get("met") == "yes")
+    return found
 
 
 #: How many of a park's own lines its drawer on the board shows.
@@ -353,6 +477,7 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
                             "blocking": "yes" if over else "no",
                             "decisions": [{"t": e.t, "id": str(e.fields.get("id", "")),
                                            "what": str(e.fields.get("what", ""))} for e in one.unreviewed]})
+        lifting = paused(one.parks)
         for park in one.parks:
             waited = minutes_since(park.t, now)
             named = str(park.fields.get("slice") or "")
@@ -360,19 +485,44 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
             # running was every other slice's heartbeats, which drew a parked L04 as if it were going.
             own = [e for e in one.entries if e.kind != "heartbeat"
                    and (not named or str(e.fields.get("slice") or "") == named)]
-            # Waiting on you: the harbourmaster only writes the receipt once a person has answered.
+            # Waiting on you: the harbourmaster only writes the receipt once a person has answered — or,
+            # for a park that lifts by itself, once its time comes, which is `paused` and not a wait on you.
+            resting = park in lifting
             waiting.append({"fairway": one.name, "kind": "parked", "what": str(park.fields["why"]),
                             "t": park.t, "waited": f"{max(0.0, waited):.0f}m" if waited is not None else NOTHING,
                             "slice": named, "lines": [(e.t, said(e)) for e in own[-DRAWER:]],
-                            "waiting_on": "you",
-                            "overdue": "yes" if waited is not None and waited > bound else "no"})
+                            "waiting_on": "the harness" if resting else "you",
+                            "overdue": "yes" if waited is not None and waited > bound and not resting else "no",
+                            # The record, where the park carries one: see `logs.OPTIONAL`.
+                            "cause": cause_of(park), "until": str(park.fields.get("until") or ""),
+                            "then": str(park.fields.get("then") or ""),
+                            "needs": need_rows(park, one.needs_met(park)),
+                            "paused": "yes" if resting else "no"})
     return sorted(waiting, key=lambda row: row["t"])
+
+
+def counts(found: list[Fairway], config: dict, bound: float = STALL_MINUTES,
+           now: datetime | None = None) -> dict[str, object]:
+    """The numbers under the headline: what is running, what waits for a slot, what is paused, what is
+    parked on a person, what has merged, and how many may run at once. From the logs, like every column."""
+    running = sum(len(one.at_work(bound, now)) for one in found)
+    queued = sum(len(one.queued(bound, now)) for one in found)
+    resting = sum(len(paused(one.parks)) for one in found)
+    parked = sum(len(one.parks) for one in found) - resting
+    boilers = config.get("boilers")
+    return {"slots": boilers if isinstance(boilers, int) and not isinstance(boilers, bool) else NOTHING,
+            "running": running, "queued": queued, "paused": resting, "parked": parked,
+            "merged": sum(len(one.merged) for one in found),
+            "questions": sum(len(one.asked) for one in found)}
 
 
 def inbox_detail(row: dict) -> str:
     """The same wait clock in the terminal, page and agent inbox, with the age visible first."""
     if not row.get("waited"):
         return str(row["what"])
+    if row.get("paused") == "yes":
+        lifts = clock_of(str(row.get("until") or ""))
+        return f"paused{' until ' + lifts if lifts else ''}, nothing needed from you: {row['what']}"
     overdue = " (past wait bound)" if row.get("overdue") == "yes" else ""
     return f"waiting on {row['waiting_on']} for {row['waited']}{overdue}: {row['what']}"
 
@@ -469,8 +619,13 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
     accepted = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "accepted"]
     due = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "demo-due"]
+    waiting = inbox(found, bound, now, ceiling_of(held))
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
+        # The parks folded by what they wait on, and the numbers under the headline: both from the same
+        # rows the inbox lists one by one, so the two never disagree.
+        "groups": groups(waiting),
+        "counts": counts(found, held, bound, now),
         # The acceptance facts, for the voyage's last stage: a demo owed is a capability due and not yet
         # accepted, and accepted is the only line a capability ends on.
         "accepted": sorted(set(accepted)),
@@ -482,7 +637,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         "streams": {one.name: recent(root, one.name)[0] for one in found},
         "pressure": pressure(held, harbour),
         "bunker": {"spent": spent(found), "allowed": held.get("bunker_per_day", NOTHING)},
-        "inbox": inbox(found, bound, now, ceiling_of(held)),
+        "inbox": waiting,
         "feed": feed(found, harbour),
         "unreadable": faults,
     }

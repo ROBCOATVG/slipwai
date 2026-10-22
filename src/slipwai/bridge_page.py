@@ -30,7 +30,7 @@ from .settings_card import settings
 
 #: What each state means in a word a reader does not have to be told. `stalled` stays `stalled`: it is the
 #: one that has to be noticed, and a gentler word for it would be the dashboard hiding something.
-STATES = {"working": "running", "stalled": "stalled", "parked": "waiting on you",
+STATES = {"working": "running", "stalled": "stalled", "parked": "waiting on you", "paused": "paused",
           "finished": "done", "idle": "idle", "unknown": "clearance unavailable", "not started": "not started"}
 
 SCRIPT = """

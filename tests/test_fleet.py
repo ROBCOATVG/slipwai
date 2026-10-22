@@ -264,6 +264,75 @@ class ParkReceiptTest(Fixture):
         self.assertEqual(self.board()["berths"][0]["state"], "parked")
 
 
+class RecordTest(Fixture):
+    """A park's record reaches the board: its cause, its needs with their ticks, and whether it lifts by itself.
+
+    recap, 2026-10-21: eleven parks under *Waiting on you* were one session limit and one change to trunk.
+    """
+
+    NEEDS = [{"what": "context: catch-up in docs/event-model/model.yaml", "by": "fleet",
+              "check": {"kind": "text", "path": "docs/event-model/model.yaml", "has": "context: catch-up"}},
+             {"what": "decide whether LB13 follows", "by": "person"}]
+
+    def host_park(self, slice_id: str, at: float) -> None:
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice=slice_id, t=when(at + 1)),
+                  logs.entry("parked", fairway="ORD", slice=slice_id, why=f"{slice_id}: D32", cause="host",
+                             needs=self.NEEDS, then="re-dispatch in catch-up at T001", t=when(at)))
+
+    def test_a_park_row_carries_its_record_and_the_ticks_the_harbourmaster_wrote(self) -> None:
+        self.host_park("LB6", 30)
+        self.harbour(logs.entry("need-met", harbour=True, fairway="ORD", parked=when(30), need=0,
+                                how="trunk at abc12345"))
+        row = self.board()["inbox"][0]
+        self.assertEqual((row["cause"], row["then"]), ("host", "re-dispatch in catch-up at T001"))
+        self.assertEqual([need["met"] for need in row["needs"]], ["yes", "no"])
+        self.assertIn("model.yaml holds", row["needs"][0]["how"])
+        self.assertEqual(row["paused"], "no")
+
+    def test_a_person_s_tick_in_the_deck_log_counts_before_the_harbourmaster_carries_it(self) -> None:
+        self.host_park("LB6", 30)
+        self.deck("ORD", logs.entry("need-done", fairway="ORD", parked=when(30), need=1))
+        self.assertEqual([need["met"] for need in self.board()["inbox"][0]["needs"]], ["no", "yes"])
+
+    def test_three_parks_on_one_change_to_trunk_are_one_group_with_the_slices_on_it(self) -> None:
+        for slice_id, at in (("LB6", 30), ("LB7", 20), ("LB8", 10)):
+            self.host_park(slice_id, at)
+        found = self.board()["groups"]
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["slices"], ["LB6", "LB7", "LB8"])
+        self.assertEqual(found[0]["cause"], "host")
+        self.assertEqual(len(found[0]["needs"]), 2)
+        self.assertEqual(found[0]["then"], "re-dispatch in catch-up at T001")
+
+    def test_limit_parks_are_one_group_however_many_slices_and_it_is_paused_not_waiting(self) -> None:
+        for slice_id, at in (("LB3", 30), ("LB1", 20)):
+            self.deck("ORD", logs.entry("claimed", fairway="ORD", slice=slice_id, t=when(at + 1)),
+                      logs.entry("parked", fairway="ORD", slice=slice_id, why=f"{slice_id}: refused",
+                                 cause="limit", until="2999-01-01T20:40:00Z", t=when(at)))
+        self.deck("CU", logs.entry("claimed", fairway="CU", slice="CU1", t=when(60)),
+                  logs.entry("parked", fairway="CU", why="CU1: refused", cause="limit",
+                             until="2999-01-01T15:40:00Z", t=when(50)), feature="ordering")
+        board = self.board()
+        found = board["groups"]
+        self.assertEqual(len(found), 1)
+        self.assertEqual(sorted(found[0]["slices"]), ["CU", "LB1", "LB3"])
+        self.assertEqual(found[0]["paused"], "yes")
+        self.assertEqual(found[0]["until"], "2999-01-01T20:40:00Z")
+        self.assertEqual(board["counts"]["paused"], 3)
+        self.assertEqual(board["counts"]["parked"], 0)
+        states = {row["fairway"]: row["state"] for row in board["berths"]}
+        self.assertEqual(states["CU"], "paused")
+        self.assertIn("paused until", fleet.inbox_detail(board["inbox"][0]))
+
+    def test_a_park_with_no_cause_is_other_and_groups_with_nothing(self) -> None:
+        for slice_id, at in (("LB3", 30), ("LB1", 20)):
+            self.deck("ORD", logs.entry("claimed", fairway="ORD", slice=slice_id, t=when(at + 1)),
+                      logs.entry("parked", fairway="ORD", slice=slice_id, why=f"{slice_id}: exited 1", t=when(at)))
+        found = self.board()["groups"]
+        self.assertEqual([one["cause"] for one in found], ["other", "other"])
+        self.assertEqual(self.board()["counts"]["parked"], 2)
+
+
 class FeedTest(Fixture):
     def test_both_logs_are_merged_by_time(self) -> None:
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(3)))

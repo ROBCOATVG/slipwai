@@ -20,6 +20,7 @@ from .cli_start import start_main
 from .deck import RECENT, recent, streams
 from .errors import GenerationError, refuse
 from .fleet import NOTHING, board, inbox_detail
+from .fleet_page import headline
 from .harbour import config
 from .project.harbour import CONFIG
 
@@ -46,10 +47,18 @@ def lines(root: Path) -> list[str]:
 
     waiting = found["inbox"]
     assert isinstance(waiting, list)
-    said.append(f"waiting on you: {len(waiting)}" if waiting else "waiting on you: nothing")
-    for row in waiting:
+    _, sentence, under = headline(found)
+    said += [sentence, f"  {under}"]
+    on_you = [row for row in waiting if row.get("paused") != "yes"]
+    resting = [row for row in waiting if row.get("paused") == "yes"]
+    said.append(f"waiting on you: {len(on_you)}" if on_you else "waiting on you: nothing")
+    for row in on_you:
         detail = inbox_detail(row)
         said.append(f"  {row['fairway']:<10} {row['kind']:<7} {detail[:width - 24]}")
+    if resting:
+        said.append(f"paused, nothing needed from you: {len(resting)}")
+        for row in resting:
+            said.append(f"  {row['fairway']:<10} {row.get('slice') or '':<7} {inbox_detail(row)[:width - 24]}")
 
     processes = found["processes"]
     assert isinstance(processes, list)

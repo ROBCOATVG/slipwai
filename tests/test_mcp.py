@@ -115,6 +115,14 @@ class SameFoldTest(Harbour):
         self.assertIn("which currency?", said)
         self.assertNotIn("berths", said)
 
+    def test_a_pause_is_listed_apart_and_not_counted_as_waiting_on_you(self) -> None:
+        self.deck("ordering", logs.entry("claimed", fairway="ordering", slice="ORD-01"),
+                  logs.entry("parked", fairway="ordering", slice="ORD-01", why="refused", cause="limit",
+                             until="2999-01-01T20:40:00Z"))
+        said = self.text("inbox")
+        self.assertIn("waiting on you: nothing", said)
+        self.assertIn("paused, nothing needed from you: 1", said)
+
     def test_an_empty_inbox_says_so_rather_than_answering_nothing(self) -> None:
         self.assertIn("nothing", self.text("inbox"))
 

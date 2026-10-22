@@ -56,6 +56,7 @@ filled the disk twice lost the work in flight both times.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 import re
 import shutil
 import subprocess
@@ -92,7 +93,7 @@ QUERY_VERSION = 1
 #: Every state a slice can be in, slowest-moving first — the order a slice walks them, so a board can treat
 #: it as a scale. `awaiting-decision` sits before the two ready states because a slice with an open
 #: question is one nothing may start on, whatever else is true of it.
-STATES = ("blocked", "migration-evidence-required", "awaiting-decision", "preparation-ready",
+STATES = ("blocked", "migration-evidence-required", "paused", "awaiting-decision", "preparation-ready",
           "implementation-ready", "running", "awaiting-demo", "done")
 #: Which band of the ladder each ready state admits a slice to. Preparation is the example map, the
 #: contract the slice sets and the gaps review — the stages that end with its `mark-set` lines.
@@ -221,6 +222,11 @@ class Folded:
         self.parked: dict[str, str] = {}  # fairway -> why
         #: Slices held by a park of their own — a `parked` line naming a `slice` — which hold no sibling.
         self.slice_parked: dict[str, str] = {}
+        #: The parks above that lift by themselves — `cause: limit`, or an `until` still ahead — by the
+        #: instant they lift. Nobody is asked anything by one of these, so a slice held by one is `paused`
+        #: and not `awaiting-decision`: the fleet-status plan's one word for the recap voyage's eight parks.
+        self.paused: dict[str, str] = {}  # fairway -> until
+        self.slice_paused: dict[str, str] = {}  # slice -> until
         #: Every slice any line names at all. A done slice with none is one that shipped before marks were logged.
         self.mentioned: set[str] = set()
         #: Slices whose marks `--baseline-marks` recorded: shipped before the mark log, and never work again.
@@ -248,6 +254,8 @@ def folded(found: list[dict]) -> Folded:
             state.claimed_band[slice_id] = str(line.get("band") or "")
             state.slice_parked.pop(slice_id, None)
             state.parked.pop(str(line.get("fairway", "")), None)
+            state.slice_paused.pop(slice_id, None)
+            state.paused.pop(str(line.get("fairway", "")), None)
         elif kind == "merged" and slice_id:
             state.merged[slice_id] = str(line.get("commit", ""))
         elif kind == "demo" and slice_id:
@@ -265,9 +273,17 @@ def folded(found: list[dict]) -> Folded:
         elif kind == "parked" and slice_id:
             state.slice_parked[slice_id] = str(line.get("why", ""))
             slice_park_at[slice_id] = (str(line.get("fairway", "")), str(line.get("t", "")))
+            if resting(line):
+                state.slice_paused[slice_id] = str(line.get("until") or "")
+            else:
+                state.slice_paused.pop(slice_id, None)
         elif kind == "parked":
             state.parked[str(line.get("fairway", ""))] = str(line.get("why", ""))
             park_at[str(line.get("fairway", ""))] = str(line.get("t", ""))
+            if resting(line):
+                state.paused[str(line.get("fairway", ""))] = str(line.get("until") or "")
+            else:
+                state.paused.pop(str(line.get("fairway", "")), None)
         elif kind == "cleared":
             receipts.add((str(line.get("fairway", "")), str(line.get("parked", ""))))
     # A park the harbourmaster has receipted is answered, as `logs.open_parks` reads it for the captain. After
@@ -275,10 +291,21 @@ def folded(found: list[dict]) -> Folded:
     for slice_id, at in slice_park_at.items():
         if at in receipts:
             state.slice_parked.pop(slice_id, None)
+            state.slice_paused.pop(slice_id, None)
     for fairway, t in park_at.items():
         if (fairway, t) in receipts:
             state.parked.pop(fairway, None)
+            state.paused.pop(fairway, None)
     return state
+
+
+def resting(line: dict) -> bool:
+    """Whether a park lifts by itself: the harness refused the run (`cause: limit`), or it carries an
+    `until` still ahead. The clock is read once per fold, which is what the board does too."""
+    if str(line.get("cause") or "") == "limit":
+        return True
+    until = str(line.get("until") or "")
+    return bool(until) and until > datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def git(*argv: str) -> str:
@@ -703,8 +730,14 @@ def position(charted: dict, folded_logs: Folded, slice_id: str,
                         "mark log, not work; `--baseline-marks` records the marks it sets")
     fairway = str(entry.get("fairway", ""))
     if fairway in folded_logs.parked:
+        if fairway in folded_logs.paused:
+            return "paused", (f"its fairway {fairway} is paused until {folded_logs.paused[fairway] or 'the harness '
+                              f'runs sessions again'} — {folded_logs.parked[fairway]}")
         return "awaiting-decision", f"its fairway {fairway} is parked — {folded_logs.parked[fairway]}"
     if slice_id in folded_logs.slice_parked:
+        if slice_id in folded_logs.slice_paused:
+            return "paused", (f"it is paused until {folded_logs.slice_paused[slice_id] or 'the harness runs '
+                              f'sessions again'} — {folded_logs.slice_parked[slice_id]}")
         return "awaiting-decision", f"it is parked on its own — {folded_logs.slice_parked[slice_id]}"
     depends, _ = slice_graph(charted)
     waiting_for = [dep for dep in depends.get(slice_id, []) if dep not in observed(charted)

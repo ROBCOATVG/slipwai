@@ -101,12 +101,17 @@ def the_inbox(root: Path, arguments: dict) -> str:
     harbour(root)
     waiting = board(root, config(root))["inbox"]
     assert isinstance(waiting, list)
+    on_you = [row for row in waiting if row.get("paused") != "yes"]
+    resting = [row for row in waiting if row.get("paused") == "yes"]
     if not waiting:
         return "waiting on you: nothing"
-    said = [f"waiting on you: {len(waiting)}"]
-    for row in waiting:
+    said = [f"waiting on you: {len(on_you)}" if on_you else "waiting on you: nothing"]
+    for row in on_you:
         detail = inbox_detail(row)
         said.append(f"  {row['fairway']:<10} {row['kind']:<7} {detail}")
+    if resting:
+        said.append(f"paused, nothing needed from you: {len(resting)}")
+        said += [f"  {row['fairway']:<10} {row.get('slice') or '':<7} {inbox_detail(row)}" for row in resting]
     return "\n".join(said)
 
 

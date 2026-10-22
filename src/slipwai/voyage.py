@@ -14,7 +14,8 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 525 — the fold, the model, the mock-ups and the screenshots one voyage is read from, and the
+# budget: 545 — a paused slice as queued with the time it lifts, beside the fold, the model, the mock-ups and the
+# screenshots one voyage is read from, and the
 # design files under `docs/design/` a storyboard links, served at the path they have in the project
 # and what a slice waiting on a person is held on: its park, its open questions, and where an answer goes
 # and a slice claimed and waiting for a slot, queued apart from the ones at work
@@ -32,7 +33,8 @@ from urllib.parse import quote, unquote
 
 from .assets import SLIPWAI
 from .fleet import Fairway, clearance_query, fairways, harbour_log
-from .logs import held_slices
+from .fleet_record import clock_of
+from .logs import held_slices, paused
 from .process_alive import alive
 from .slice_rungs import rung
 
@@ -109,6 +111,18 @@ def fleet_running(root: Path) -> bool:
     return False
 
 
+def resting(owner: Fairway, slice_id: str) -> str:
+    """When this slice's pause lifts, as a clock, or `""` where it is not paused: its own park lifts by
+    itself, or the stream's park holding it does. A paused slice is queued, not waiting on you."""
+    lifting = paused(owner.parks)
+    own = [e for e in lifting if str(e.fields.get("slice") or "") in (slice_id, "")]
+    if not own or (slice_id in held_slices(owner.parks) and not any(
+            str(e.fields.get("slice") or "") == slice_id for e in lifting)):
+        return ""
+    latest = max(str(e.fields.get("until") or "") for e in own)
+    return clock_of(latest) or "soon"
+
+
 def held_on(owner: Fairway, slice_id: str) -> dict[str, str]:
     """What a waiting slice is held on, for its card to say and its answer box to aim at.
 
@@ -151,7 +165,14 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
                 if row["state"] == "queued":
                     row["why"] = "claimed, waiting for a slot: carried on when a session frees"
             if row["state"] == "waiting":
-                row.update(held_on(owner, str(slice_id)))
+                lifts = resting(owner, str(slice_id))
+                if lifts:
+                    # Paused: the harness said when it will run sessions again, and nothing is asked of you.
+                    row.update(state="queued", paused=lifts,
+                               why=f"paused, lifts at {lifts}: the harness refused the run and the harbourmaster "
+                                   f"carries it on when the time comes")
+                else:
+                    row.update(held_on(owner, str(slice_id)))
             if row["state"] in ("working", "queued", "waiting"):
                 row.update(rung(root, feature, str(slice_id), owner.entries))
         rows.append(row)

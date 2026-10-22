@@ -4,7 +4,8 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 640 — the fold, the mock-ups, the screenshots and the storyboard verdict one voyage page is held to,
+# budget: 660 — the paused chip, beside the fold, the mock-ups, the screenshots and the storyboard verdict one voyage
+# page is held to,
 # the design files a storyboard links that the board serves beside it, a step it did not start,
 # and how far into its budget a drawing is, and a fleet at work read as working
 # and a waiting slice's card, opened on its park and its questions with a box aimed at it
@@ -467,6 +468,24 @@ class FoldTest(unittest.TestCase):
         import os
         (root / ".slipwai/running/harbourmaster.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
         self.assertTrue(fleet_running(root))
+
+    def test_a_paused_slice_is_queued_with_the_time_it_lifts_on_its_chip(self) -> None:
+        from slipwai import logs
+        from slipwai.fleet import Fairway
+        from slipwai.voyage import resting
+        from slipwai.voyage_page import chip_of
+
+        owner = Fairway("library", "001", [
+            logs.Entry("claimed", {"fairway": "library", "slice": "LB3"}, t="2026-10-21T16:00:00Z"),
+            logs.Entry("parked", {"fairway": "library", "slice": "LB3", "why": "refused", "cause": "limit",
+                                  "until": "2999-01-01T20:40:00Z"}, t="2026-10-21T16:40:00Z"),
+            logs.Entry("claimed", {"fairway": "library", "slice": "LB6"}, t="2026-10-21T16:00:00Z"),
+            logs.Entry("parked", {"fairway": "library", "slice": "LB6", "why": "D32", "cause": "host"},
+                       t="2026-10-21T16:03:00Z")], [])
+        self.assertRegex(resting(owner, "LB3"), r"^\d\d:\d\d$")
+        self.assertEqual(resting(owner, "LB6"), "")
+        self.assertEqual(chip_of({"state": "queued", "paused": "21:40"}), "Paused · lifts 21:40")
+        self.assertEqual(chip_of({"state": "queued", "chip": "plan"}), "Queued · plan")
 
     def test_counts_and_states_read_the_rows(self) -> None:
         rows = [{"slice": "A", "state": "done"}, {"slice": "B", "state": "todo"}, {"slice": "C", "state": "todo"}]

@@ -492,6 +492,8 @@ def chip_of(row: dict[str, str]) -> str:
     stage = row.get("chip") or row.get("stage") or ""
     if row["state"] == "waiting":
         return "Waiting on you"
+    if row.get("paused"):
+        return f"Paused · lifts {row['paused']}"
     if row["state"] == "queued":
         return f"Queued · {stage}" if stage else "Queued"
     return stage if row["state"] == "working" else ""

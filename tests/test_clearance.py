@@ -196,6 +196,24 @@ class StateTest(unittest.TestCase):
         held, _ = state_of("ORD-02", line("parked", why="which currency", t="2026-10-20T12:41:00Z"), receipt)
         self.assertEqual(held, "awaiting-decision", "a receipt answers only the park it names")
 
+    def test_a_park_that_lifts_by_itself_is_paused_and_not_awaiting_a_decision(self) -> None:
+        """recap, 2026-10-21: eight parks on a session limit read as awaiting a decision nobody had to make."""
+        state, why = state_of("ORD-01", line("claimed", slice="ORD-01"),
+                              line("parked", slice="ORD-01", why="refused", cause="limit",
+                                   until="2026-10-21T20:40:00Z", t="2026-10-21T16:40:00Z"))
+        self.assertEqual(state, "paused")
+        self.assertIn("until 2026-10-21T20:40:00Z", why)
+        state, why = state_of("ORD-02", line("parked", why="refused", cause="limit", t="2026-10-21T16:40:00Z"))
+        self.assertEqual(state, "paused")
+        self.assertIn("ordering is paused", why)
+        state, _ = state_of("ORD-02", line("parked", why="D32", cause="host", t="2026-10-21T16:40:00Z"))
+        self.assertEqual(state, "awaiting-decision")
+
+    def test_a_pause_the_harbourmaster_has_receipted_holds_nothing(self) -> None:
+        parked = line("parked", slice="ORD-01", why="refused", cause="limit", t="2026-10-21T16:40:00Z")
+        receipt = line("cleared", parked="2026-10-21T16:40:00Z", what="the time it waited for came")
+        self.assertEqual(state_of("ORD-01", line("claimed", slice="ORD-01"), parked, receipt)[0], "running")
+
     def test_every_state_the_fold_can_produce_is_on_the_scale(self) -> None:
         self.assertEqual(len(chart.STATES), len(set(chart.STATES)))
         for state in ("blocked", "preparation-ready", "implementation-ready", "running", "awaiting-demo",

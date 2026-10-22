@@ -41,8 +41,11 @@ DONE, TODO = "done", ""
 
 def shipped() -> dict[str, str]:
     """Each slice the history has landed, by id, with the short hash of the commit that landed it."""
+    # Read as UTF-8 and never in the console's code page: on Windows a pipe is read on a thread, and a
+    # commit message with one byte cp1252 has not got killed that thread and left `stdout` as `None`.
     log = subprocess.run(
-        ["git", "log", "--format=%h%x1e%B%x1f"], cwd=ROOT, capture_output=True, text=True, check=True
+        ["git", "log", "--format=%h%x1e%B%x1f"], cwd=ROOT, capture_output=True, text=True, check=True,
+        encoding="utf-8", errors="replace",
     ).stdout
     found: dict[str, str] = {}
     for entry in log.split("\x1f"):

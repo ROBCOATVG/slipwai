@@ -159,7 +159,8 @@ def frozen(path: Path) -> dict | None:
     relative = path.relative_to(ROOT).as_posix()
     for revision in ("origin/main", "main"):
         shown = subprocess.run(["git", "show", f"{revision}:{relative}"],
-                               cwd=ROOT, capture_output=True, text=True, check=False)
+                               cwd=ROOT, capture_output=True, text=True, check=False, encoding="utf-8",
+                               errors="replace")
         if shown.returncode == 0:
             was = load_yaml(shown.stdout)
             return was if isinstance(was, dict) else None

@@ -260,7 +260,7 @@ def history(root: Path, ignoring: str = "") -> tuple[list[list[str]], set[str], 
     until = before_the_method(root, ignoring)
     result = subprocess.run(
         ["git", "log", f"-n{HISTORY}", "--format=%x1e%an%x1f%ae%x1f%as", "--name-only", until],
-        cwd=root, text=True, capture_output=True, check=False,
+        cwd=root, text=True, capture_output=True, check=False, encoding="utf-8", errors="replace",
     )
     if result.returncode != 0:
         return [], set(), ""

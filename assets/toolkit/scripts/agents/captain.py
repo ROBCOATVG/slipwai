@@ -1694,6 +1694,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--interval", type=float, default=30.0, help="seconds between turns")
     parsed = parser.parse_args(argv)
     signal.signal(signal.SIGTERM, on_term)
+    # What this prints is the harness's own words as often as its own, and a Windows pipe is the console's
+    # code page: a character the page has not got — the replacement mark a refusal arrived with — would end
+    # the captain in a traceback at the moment it had something to say. Said with a mark instead.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     last = ""
     try:
         while True:

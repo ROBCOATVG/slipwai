@@ -140,15 +140,17 @@ def replay(
         staged = Path(staging)
         if adoption is not None and parent is not None:
             inherit(root, parent, staged, layout)
-        write_project(
-            staged, name, document["profile"], document["target"], apps,
-            files=files, keep=installed, settled=installed - present, layout=target, adoption=adoption,
-        )
+        # Before the project is written and committed, as `inherit` is: the keel writes over what is here
+        # and commits the whole tree, so a file put down afterwards is in the directory and not in the commit.
         for relative, body in carried.items():
             handed = staged / relative
             if not handed.exists():
                 handed.parent.mkdir(parents=True, exist_ok=True)
                 handed.write_bytes(body)
+        write_project(
+            staged, name, document["profile"], document["target"], apps,
+            files=files, keep=installed, settled=installed - present, layout=target, adoption=adoption,
+        )
         if parent is not None:
             graft(staged, root, parent, message or f"Replay {name} with slipwai {VERSION}")
         staged.rename(destination)

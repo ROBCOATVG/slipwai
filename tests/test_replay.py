@@ -175,6 +175,11 @@ class ReplayTest(FactoryTestCase):
             result = replay(repo, ROOT, "--into", str(Path(directory) / "offered"))
             self.assertEqual(result.returncode, 0, result.stderr)
             offered = tree(Path(directory) / "offered")
+            # In the commit, not only in the directory: the first fix wrote them after the tree was
+            # committed, and the merge still read them as deleted.
+            committed = git(Path(directory) / "offered", "ls-tree", "-r", "--name-only", "HEAD").stdout.split()
+            self.assertIn("docs/prd.md", committed)
+            self.assertIn("docs/design/brand.md", committed)
             self.assertEqual(offered.get("docs/prd.md"), before["docs/prd.md"])
             self.assertEqual(offered.get("docs/design/brand.md"), before["docs/design/brand.md"])
             self.assertEqual(offered.get("docs/README.md"), before["docs/README.md"])

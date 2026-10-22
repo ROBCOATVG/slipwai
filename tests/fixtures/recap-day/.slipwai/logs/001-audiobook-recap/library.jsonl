@@ -1,0 +1,328 @@
+{"v": 1, "t": "2026-10-21T13:12:57Z", "kind": "question", "fairway": "library", "slice": "chart", "id": "D1", "what": "Three bounded contexts proposed for recap-api: library (books, positions, server, settings), preparation (transcription and who's-who index by content hash), catch-up (offer, recap, ask, who's who, reports). Least sure: library <-> catch-up — FR-013's two taps from play read as one actor's job (merge), while the change test (FR-005/006 gradient and tiers vs FR-028/029/032 position, sync and player) and US1's engine-only phase 1 say two. Confirm or overturn D1 in specs/001-audiobook-recap/decisions.md."}
+{"v": 1, "t": "2026-10-21T13:32:41Z", "kind": "question", "fairway": "library", "slice": "chart", "id": "D8", "what": "Recaps, answers, ratings and reports are per book and never served across accounts; only the transcription and index are shared by hash (keeps Principle IX exact). Confirm or overturn D8 in specs/001-audiobook-recap/decisions.md."}
+{"v": 1, "t": "2026-10-21T13:32:41Z", "kind": "question", "fairway": "library", "slice": "chart", "id": "D15", "what": "v1 prepares English only; a book whose first transcribed chapter is in another language fails preparation with that reason. Scope the PRD did not state. Confirm or overturn D15."}
+{"v": 1, "t": "2026-10-21T13:32:41Z", "kind": "question", "fairway": "library", "slice": "chart", "id": "D19", "what": "Split order: walking skeleton first (LB3 import heads the library, CU4-CU6 request/generate/hear head catch-up after CU1), companion mode after position tracking. Confirm or overturn D19; reasons per row in story-split.md."}
+{"v": 1, "t": "2026-10-21T13:35:15Z", "kind": "claimed", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:35:17Z", "kind": "claimed", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:36:16Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:36:18Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:37:16Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:37:18Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:38:16Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:38:19Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:39:17Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:39:19Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:40:17Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:40:19Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:41:17Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:41:20Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:42:18Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:42:20Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:43:18Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:43:20Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:43:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+
+{"v": 1, "t": "2026-10-21T13:44:19Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:44:21Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:45:19Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:45:21Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:46:12Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+
+{"v": 1, "t": "2026-10-21T13:46:19Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:46:21Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:47:19Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:47:21Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:48:20Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:48:22Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:48:22Z", "kind": "decision", "fairway": "library", "slice": "LB3", "id": "D20", "what": "In what order do several imported files' chapters run? Tags, then names in natural order, never the selection order; the hash follows the same order (docs/adr/0002).", "decided_by": "sail-decide-skipper (claude-fable-5-1)"}
+
+{"v": 1, "t": "2026-10-21T13:48:22Z", "kind": "decision", "fairway": "library", "slice": "LB3", "id": "D21", "what": "What is a book called when its files carry no title tag or disagree, and a chapter when its mark has no title? First tagged file's title, else the first file's name; author and chapter title optional, never a sentinel (docs/adr/0003).", "decided_by": "sail-decide-skipper (claude-fable-5-1)"}
+
+{"v": 1, "t": "2026-10-21T13:48:22Z", "kind": "decision", "fairway": "library", "slice": "LB3", "id": "D22", "what": "The same listener imports the same audio again under a new bookId: a second book, no refusal, no cross-stream guard.", "decided_by": "sail-decide-skipper (claude-fable-5-1)"}
+
+{"v": 1, "t": "2026-10-21T13:48:27Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6", "stage": "example-map"}
+{"v": 1, "t": "2026-10-21T13:49:15Z", "kind": "mark-set", "fairway": "library", "slice": "LB3", "mark": "BookImported"}
+
+{"v": 1, "t": "2026-10-21T13:49:20Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:49:21Z", "kind": "decision", "fairway": "library", "slice": "LB6", "id": "D27", "decided_by": "host (stage recommendation)", "what": "A position entered by hand (LB8) counts as the last-listened time the gap is measured from: the gap runs from the latest instant the listening stream holds - a stop, the server last-listened time, an entry, or an earlier resume. Recorded in specs/001-audiobook-recap/decisions.md D27."}
+{"v": 1, "t": "2026-10-21T13:49:22Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:50:20Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:50:22Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:50:23Z", "kind": "told", "fairway": "library", "slice": "LB3", "message": "Tooling gap, host's to fix on main: .gitignore does not cover __pycache__/, and check-slice-scope counts untracked files, so running make check-model (scripts/event-model/check.py imports rung) or the captain's own imports leaves scripts/**/__pycache__/*.pyc that fail the scope gate on every slice branch. This berth deletes them and runs make under PYTHONDONTWRITEBYTECODE=1 meanwhile.", "by": "session"}
+
+{"v": 1, "t": "2026-10-21T13:51:21Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:51:22Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:52:21Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:52:23Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:53:21Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:53:23Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:54:22Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:54:24Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:55:22Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:55:24Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:55:24Z", "kind": "mark-set", "fairway": "library", "slice": "LB6", "mark": "ListeningResumed"}
+{"v": 1, "t": "2026-10-21T13:55:24Z", "kind": "read", "fairway": "library", "slice": "LB6", "told": "2026-10-21T13:50:23Z"}
+{"v": 1, "t": "2026-10-21T13:56:23Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:56:24Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:57:23Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:57:25Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:58:23Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:58:25Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T13:58:56Z", "kind": "parked", "fairway": "library", "why": "LB3: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T13:59:06Z", "kind": "claimed", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T13:59:06Z", "kind": "claimed", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T13:59:20Z", "kind": "parked", "fairway": "library", "why": "LB8: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T13:59:20Z", "kind": "parked", "fairway": "library", "why": "LB7: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T13:59:26Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T14:00:26Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T14:00:44Z", "kind": "parked", "fairway": "library", "why": "LB6: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T14:01:15Z", "kind": "claimed", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T14:01:15Z", "kind": "claimed", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T14:01:15Z", "kind": "claimed", "fairway": "library", "slice": "LB4"}
+{"v": 1, "t": "2026-10-21T14:01:29Z", "kind": "parked", "fairway": "library", "why": "LB9: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T14:01:29Z", "kind": "parked", "fairway": "library", "why": "LB1: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T14:01:29Z", "kind": "parked", "fairway": "library", "why": "LB4: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB4"}
+{"v": 1, "t": "2026-10-21T14:02:00Z", "kind": "claimed", "fairway": "library", "slice": "LB15"}
+{"v": 1, "t": "2026-10-21T14:02:00Z", "kind": "claimed", "fairway": "library", "slice": "LB2"}
+{"v": 1, "t": "2026-10-21T14:02:00Z", "kind": "claimed", "fairway": "library", "slice": "LB11"}
+{"v": 1, "t": "2026-10-21T14:02:14Z", "kind": "parked", "fairway": "library", "why": "LB2: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB2"}
+{"v": 1, "t": "2026-10-21T14:02:15Z", "kind": "parked", "fairway": "library", "why": "LB11: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB11"}
+{"v": 1, "t": "2026-10-21T14:02:15Z", "kind": "parked", "fairway": "library", "why": "LB15: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB15"}
+{"v": 1, "t": "2026-10-21T14:48:59Z", "kind": "read", "fairway": "library", "told": "2026-10-21T13:49:21Z"}
+{"v": 1, "t": "2026-10-21T14:48:59Z", "kind": "read", "fairway": "library", "told": "2026-10-21T13:48:22Z"}
+{"v": 1, "t": "2026-10-21T14:51:12Z", "kind": "told", "fairway": "library", "message": "library and current read/catchup sepearate - positions should be in the latter", "by": "person"}
+{"v": 1, "t": "2026-10-21T14:51:24Z", "kind": "claimed", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T14:51:24Z", "kind": "claimed", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T14:51:24Z", "kind": "claimed", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T14:51:37Z", "kind": "parked", "fairway": "library", "why": "LB6: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T14:51:37Z", "kind": "parked", "fairway": "library", "why": "LB7: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T14:51:37Z", "kind": "parked", "fairway": "library", "why": "LB3: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows"}
+{"v": 1, "t": "2026-10-21T15:43:22Z", "kind": "told", "fairway": "library", "message": "library and current read/catchup sepearate - positions should be in the latter", "by": "person"}
+{"v": 1, "t": "2026-10-21T15:43:30Z", "kind": "claimed", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:43:30Z", "kind": "claimed", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:43:30Z", "kind": "claimed", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:44:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:44:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:44:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:45:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:45:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:45:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:46:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:46:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:46:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:47:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:47:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:47:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:48:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:48:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:48:32Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:48:59Z", "kind": "read", "fairway": "library", "slice": "LB3", "told": "2026-10-21T15:43:22Z"}
+{"v": 1, "t": "2026-10-21T15:48:59Z", "kind": "decision", "fairway": "library", "slice": "LB3", "id": "D1", "decided_by": "human", "what": "Person, 2026-10-21T15:43:22Z: library and current read/catchup separate - positions should be in the latter. D1 three contexts confirmed, with the listening stream (positions: LB6-LB10) re-homed from library to catch-up; recorded as D31 in specs/001-audiobook-recap/decisions.md. The chart, model and project.json re-homing is the host's, on main."}
+{"v": 1, "t": "2026-10-21T15:48:59Z", "kind": "told", "fairway": "library", "slice": "LB3", "by": "session", "message": "Host, on main: the person's steer (15:43:22Z) moves the listening stream - LB6, LB7, LB8, LB9, LB10 - from the library context to catch-up. D31 records it; the re-homing of their model.yaml blocks (context:), chart.yaml fairways, story-split.md Fairways table, project.json purpose and docs/architecture.md is a chart edit no slice branch may make. LB3 (import, book stream) is unaffected and continues."}
+{"v": 1, "t": "2026-10-21T15:49:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:49:32Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:49:33Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:50:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:50:32Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:50:35Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:51:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:51:34Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:51:35Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:52:34Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:52:35Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:52:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:52:44Z", "kind": "read", "fairway": "library", "slice": "LB6", "told": "2026-10-21T14:51:12Z"}
+{"v": 1, "t": "2026-10-21T15:52:44Z", "kind": "read", "fairway": "library", "slice": "LB6", "told": "2026-10-21T15:43:22Z"}
+{"v": 1, "t": "2026-10-21T15:52:44Z", "kind": "decision", "fairway": "library", "slice": "LB6", "id": "D1", "decided_by": "human", "what": "The person's steer (told 2026-10-21T14:51:12Z and 15:43:22Z): library and catch-up stay separate contexts, and positions - the listening-{bookId} stream and every slice that writes it, LB6, LB7, LB8, LB9, LB10 - belong to catch-up, not library. Recorded as D32 (Decided by: human) in specs/001-audiobook-recap/decisions.md; D1 is overridden by D32 for that stream and stands for the rest. The move is the host's to land on main: see the told that follows."}
+{"v": 1, "t": "2026-10-21T15:52:44Z", "kind": "told", "fairway": "library", "slice": "LB6", "by": "session", "message": "Host change owed on main from the person's steer (D32): set context: catch-up on the listening-{bookId} slices LB6, LB7, LB8, LB9, LB10 in docs/event-model/model.yaml - check-model's one-stream-one-context rule refuses a stream written from two contexts, so no single slice branch can move its own block alone - then make chart and make decisions so chart.yaml and the split's Fairways table put those slices in the catch-up fairway, and refresh the recap-api purpose (slipwai describe-service) and docs/architecture.md. Open for the person: whether the Player view LB13 (and the library list LB12) follow positions into catch-up; the planning of LB6 recommends LB13 moves and LB12 stays. Until the chart names LB6 in catch-up, its code cannot pass check-slice-scope under either context, so LB6 plans under catch-up and parks at implementation; LB7, preparing now in this fairway, is affected the same way. LB6's plan also asks the host for: jose (or another maintained JWKS library) pinned on apps/recap-api so the fail-closed bearer verifier can be replaced (LB3 needs it too); post on packages/api-client typed like get; VITE_FLAG_TRACK_POSITION=off documented in .env.example; __pycache__/ in .gitignore."}
+{"v": 1, "t": "2026-10-21T15:53:34Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:53:35Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:53:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:54:34Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:54:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:54:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:55:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:55:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:55:38Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:56:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:56:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:56:38Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:57:09Z", "kind": "read", "fairway": "library", "slice": "LB7", "told": "2026-10-21T14:51:12Z"}
+{"v": 1, "t": "2026-10-21T15:57:09Z", "kind": "read", "fairway": "library", "slice": "LB7", "told": "2026-10-21T15:43:22Z"}
+{"v": 1, "t": "2026-10-21T15:57:09Z", "kind": "told", "fairway": "library", "slice": "LB7", "by": "session", "message": "LB7 (this session): the person's steer (positions to catch-up) is already on record twice, as D31 on slice/LB3 and D32 on slice/LB6, each with a decision line for D1; LB7 adds no third entry and cites them. LB7 prepares here now - example map, the ListeningStopped contract on its model block, the gaps pass, mark-set - because the mark is the same whichever context holds the stream; then it plans under catch-up as LB6 does and parks at implementation until the host lands the context move on main (the told lines from LB3 15:48:59Z and LB6 15:52:44Z say what to edit). At merge the host keeps one of D31/D32 and D1's Status line follows it."}
+{"v": 1, "t": "2026-10-21T15:57:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:57:38Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:57:39Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:58:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:58:38Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:58:39Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T15:59:15Z", "kind": "told", "fairway": "library", "slice": "LB3", "by": "session", "message": "Host, on main, two things a slice branch may not write: (1) docs/design.md — carry the AddBook design decision from the Designed: line in specs/001-audiobook-recap/slices/LB3/tasks.md (the handed-over mock-up palette into tokens.css, dark scheme as drawn, a derived light scheme, Playfair for book titles only); (2) dependencies for recap-api — zod (the domain may import only zod and it is not installed; events are hand-parsed meanwhile, research P-10), @fastify/multipart, music-metadata and jose (research P-1..P-3); each lands as a one-adapter swap. Also: make check-ux-gates is not a target here and tools/ux-gates is absent, so AGENTS.md promises a gate the checkout has not got."}
+{"v": 1, "t": "2026-10-21T15:59:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T15:59:38Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T15:59:41Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:00:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:00:38Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T16:00:41Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:01:37Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:01:40Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T16:01:41Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:02:04Z", "kind": "decision", "fairway": "library", "slice": "LB7", "id": "D33", "decided_by": "sail-decide-skipper (claude-fable-5-1)", "what": "A position report timed more than 5 minutes after the service's own now is refused clock-ahead (no events, the service's instant in the answer); within the tolerance it is held as given, never clamped; now reaches the use case from a clock port with a fake. One rule for every writer of listening-{bookId} - LB6, LB7, LB8, LB9 inherit it. Entry D33 in specs/001-audiobook-recap/decisions.md; rule R6 in slices/LB7/examples.md."}
+{"v": 1, "t": "2026-10-21T16:02:04Z", "kind": "told", "fairway": "library", "slice": "LB7", "by": "session", "message": "LB6 (abreast): D33 now stands for the listening stream - a report timed more than 5 minutes ahead of the service's now is refused clock-ahead, held as given within the tolerance, never clamped, with now injected from a clock port. It is the stream's rule, so LB6's resume refuses the same way; please read D33 before implementing R4. Host: the sentence belongs in streams.listening.because in docs/event-model/model.yaml beside the later-timed-wins rule - left for main, since two abreast edits of one line would conflict."}
+{"v": 1, "t": "2026-10-21T16:02:37Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:02:41Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:02:42Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T16:02:45Z", "kind": "mark-set", "fairway": "library", "slice": "LB7", "mark": "ListeningStopped", "contract": "docs/event-model/model.yaml#ListeningStopped", "examples": "specs/001-audiobook-recap/slices/LB7/examples.md"}
+{"v": 1, "t": "2026-10-21T16:03:03Z", "kind": "parked", "fairway": "library", "slice": "LB6", "why": "LB6 is planned and tasked (plan, tasks, Designed line committed on slice/LB6) and waits at the implementation rung on a host change the person decided (D32): land on main `context: catch-up` for LB6, LB7, LB8, LB9, LB10 in docs/event-model/model.yaml (check-model's one-stream-one-context rule means all five together), then `make chart` and `make decisions` so chart.yaml and the split's Fairways table put them in the catch-up fairway, and refresh the recap-api purpose and docs/architecture.md; until the chart names LB6 in catch-up, check-slice-scope refuses its code under either context. Decide too whether LB13 (recommended: moves) and LB12 (recommended: stays) follow. Then re-dispatch LB6 - in the catch-up fairway - and it enters at implementation (T001). Not sent to the bosun: the blocker is a commit on main to other slices' blocks and the chart, which no delegate may make. Also owed on main (told above): jose pinned on apps/recap-api, post on packages/api-client, VITE_FLAG_TRACK_POSITION=off in .env.example, __pycache__/ in .gitignore."}
+{"v": 1, "t": "2026-10-21T16:03:37Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:03:41Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:03:43Z", "kind": "heartbeat", "fairway": "library", "slice": "LB6"}
+{"v": 1, "t": "2026-10-21T16:03:43Z", "kind": "claimed", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:04:37Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:04:41Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:04:45Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:05:37Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:05:41Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:05:46Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:06:39Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:06:43Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:06:48Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:07:41Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:07:43Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:07:48Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:08:31Z", "kind": "told", "fairway": "library", "slice": "LB7", "by": "session", "message": "LB6 (abreast), from LB7's plan (research section 4): D33 is carried by one new driven port, Clock { now(): Instant } at apps/recap-api/src/application/ports/clock.ts, createSystemClock() under adapters/driven/clock-system.ts, a settable fake at tests/fakes/clock.ts; the use case asks it once and hands `now` to decide(command, state, now) as a typed argument; the tolerance is one constant in the domain, CLOCK_SKEW_TOLERANCE_SECONDS = 300, inclusive, checked after the idempotent repeat and before the stale check. LB7 builds after LB6 merges and extends LB6's fold (stops map), reader, token port and control strip rather than adding a second of each - so whichever of us lands the port first, the other uses it. Route: POST /api/books/{bookId}/stops, D30's shape (specs/001-audiobook-recap/contracts/LB7-stops.md)."}
+{"v": 1, "t": "2026-10-21T16:08:43Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:08:45Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:08:48Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:09:43Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:09:45Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:09:48Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:10:43Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:10:46Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:10:48Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:11:43Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:11:48Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:11:50Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:12:45Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:12:50Z", "kind": "heartbeat", "fairway": "library", "slice": "LB7"}
+{"v": 1, "t": "2026-10-21T16:12:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:13:06Z", "kind": "parked", "fairway": "library", "slice": "LB7", "why": "LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed on slice/LB7 at 83f5d36; mark ListeningStopped set 16:02:45Z) and waits at the implementation rung on the same host change LB6 parked on (D31/D32): land on main `context: catch-up` for LB6, LB7, LB8, LB9, LB10 (and LB13, recommended) in docs/event-model/model.yaml - check-model's one-stream-one-context rule means all together - then make chart and make decisions so chart.yaml and the split's Fairways table put them in the catch-up fairway, and refresh the recap-api purpose and docs/architecture.md; D33's sentence belongs in streams.listening.because beside the later-timed-wins rule. Merge LB6 before LB7 runs: LB7 extends LB6's fold, owner reader, token port and control strip (split order). Then start LB7 again in the catch-up fairway; it enters at /speckit-analyze and T001. Not sent to the bosun: the blocker is a commit on main to other slices' blocks and the chart, which no delegate may make. Also: the bytecode caches the command guard leaves untracked under the agents' directory make check-slice-scope red in every berth - __pycache__/ in .gitignore is already asked for by LB3 and LB6."}
+{"v": 1, "t": "2026-10-21T16:13:23Z", "kind": "claimed", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:13:47Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:13:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:14:23Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:14:38Z", "kind": "read", "fairway": "library", "slice": "LB8", "told": "2026-10-21T16:02:04Z"}
+{"v": 1, "t": "2026-10-21T16:14:38Z", "kind": "decision", "fairway": "library", "slice": "LB8", "id": "D35", "decided_by": "host (stage recommendation)", "what": "A hand entry is whole minutes into a chapter (FR-030); position = the chapter's start + minutes x 60 in seconds, read from the book's chapters on book-{bookId}; refused beyond-chapter only when the minutes exceed the chapter's length (equal accepted), no-such-chapter outside 1..N; the instant is the client's at, so D27 and D33 apply unchanged. Entry D35 in specs/001-audiobook-recap/decisions.md; R1-R3, R5 in slices/LB8/examples.md."}
+{"v": 1, "t": "2026-10-21T16:14:38Z", "kind": "decision", "fairway": "library", "slice": "LB8", "id": "D36", "decided_by": "host (stage recommendation)", "what": "The manual-position form is Set position on the Player's control strip (LB6's strip): chapter and whole-minute number fields, the preview reads the inputs back as 'Chapter 12 · 20:00' before Confirm, the status region names the absolute position the answer carries; chapter titles arrive with LB13's read model. Entry D36; R8 in slices/LB8/examples.md."}
+{"v": 1, "t": "2026-10-21T16:14:38Z", "kind": "decision", "fairway": "library", "slice": "LB8", "id": "D37", "decided_by": "host (stage recommendation)", "what": "Moving the position backwards by hand carries no warning about the recap cache beyond the preview and Confirm; the cache is catch-up's rule (A5, FR-008) read off PositionEntered. Entry D37; R3 and R8 in slices/LB8/examples.md."}
+{"v": 1, "t": "2026-10-21T16:14:47Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:14:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:15:03Z", "kind": "mark-set", "fairway": "library", "slice": "LB8", "mark": "PositionEntered", "contract": "docs/event-model/model.yaml#PositionEntered", "examples": "specs/001-audiobook-recap/slices/LB8/examples.md"}
+{"v": 1, "t": "2026-10-21T16:15:25Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:15:49Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:15:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:16:25Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:16:49Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:16:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:17:26Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:17:49Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:17:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:18:11Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:18:11Z", "kind": "read", "fairway": "library", "slice": "LB1", "told": "2026-10-21T14:51:12Z"}
+{"v": 1, "t": "2026-10-21T16:18:11Z", "kind": "read", "fairway": "library", "slice": "LB1", "told": "2026-10-21T15:43:22Z"}
+{"v": 1, "t": "2026-10-21T16:18:26Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:18:51Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:18:53Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:19:26Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:19:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:19:53Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:20:25Z", "kind": "read", "fairway": "library", "told": "2026-10-21T16:14:38Z"}
+{"v": 1, "t": "2026-10-21T16:20:25Z", "kind": "read", "fairway": "library", "told": "2026-10-21T15:52:44Z"}
+{"v": 1, "t": "2026-10-21T16:20:25Z", "kind": "read", "fairway": "library", "told": "2026-10-21T15:48:59Z"}
+{"v": 1, "t": "2026-10-21T16:20:26Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:20:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:20:55Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:21:28Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:21:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:21:55Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:22:28Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:22:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:22:55Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:23:12Z", "kind": "told", "fairway": "library", "slice": "LB8", "by": "session", "message": "LB4 (abreast): LB8's EnterPosition turns chapter plus minutes into a position from the book's chapters, read off book-{bookId} by a tolerant reader that folds BookImported.chapters and ServerBookAdded.chapters alike and asserts number, start and length of each chapter and nothing else (slices/LB8/research.md section 1). Please carry chapters[] on ServerBookAdded as { number, title?, start, length } in whole seconds, numbered 1..N in the server's order - the server's start/end pairs mapped to start/length in your translation - the shape LB3's data model gives BookImported.chapters. Until the shapes agree a server book answers no-such-chapter for every chapter; LB8's acceptance tests seed ServerBookAdded in that shape. Host: nothing new owed on main from LB8 - the context move (D31/D32), jose, post on packages/api-client, VITE_FLAG_TRACK_POSITION and __pycache__/ are already asked for by LB3, LB6 and LB7."}
+{"v": 1, "t": "2026-10-21T16:23:30Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:23:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:23:55Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:24:30Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:24:46Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:24:52Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:24:55Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:25:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:25:53Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:25:56Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:26:23Z", "kind": "decision", "fairway": "library", "slice": "LB1", "id": "D38", "decided_by": "sail-decide-skipper (claude-fable-5-1)", "what": "ServerConnected carries no book count: listenerId, connectionId, serverUrl, connectedAt and nothing about the library; the AddBook row's '2 new books' is LB4's live read of the server's list. Recorded as D38 in specs/001-audiobook-recap/decisions.md."}
+{"v": 1, "t": "2026-10-21T16:26:23Z", "kind": "decision", "fairway": "library", "slice": "LB1", "id": "D39", "decided_by": "sail-decide-skipper (claude-fable-5-1)", "what": "A plain http:// Audiobookshelf server URL is accepted beside https://; the URL type admits exactly those two schemes and the screen adds no http-specific state. A TLS failure is server-unreachable; trusting a self-signed certificate is the plan's. Recorded as D39."}
+{"v": 1, "t": "2026-10-21T16:26:23Z", "kind": "decision", "fairway": "library", "slice": "LB1", "id": "D40", "decided_by": "sail-decide-skipper (claude-fable-5-1)", "what": "Connecting to a different server than the one held replaces it exactly as a renewal does: one more ServerConnected, the latest in force, the credential replaced; books from the first server stay in the library and their sync through the new connection is that server's answer (LB10). Follow-ons named for LB4 (does ServerBookAdded record its server) and LB10 (a third ServerSyncFailed reason). Recorded as D40."}
+{"v": 1, "t": "2026-10-21T16:26:23Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:26:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:26:55Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:26:56Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:27:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:27:55Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:27:57Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:28:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:28:54Z", "kind": "mark-set", "fairway": "library", "slice": "LB1", "mark": "ServerConnected", "contract": "docs/event-model/model.yaml#ServerConnected", "examples": "specs/001-audiobook-recap/slices/LB1/examples.md", "commit": "62952c1"}
+{"v": 1, "t": "2026-10-21T16:28:54Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:28:55Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:28:57Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:29:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:29:57Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:29:57Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:30:32Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:30:52Z", "kind": "parked", "fairway": "library", "slice": "LB8", "why": "LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and the Designed line committed on slice/LB8 at fc0ee23; mark PositionEntered set 16:15:03Z) and waits at the implementation rung on the same host change LB6 (16:03:03Z) and LB7 (16:13:06Z) parked on (D31/D32): land on main `context: catch-up` for LB6, LB7, LB8, LB9, LB10 (and LB13, recommended) in docs/event-model/model.yaml - check-model's one-stream-one-context rule means all together - then make chart and make decisions so chart.yaml and the split's Fairways table put them in the catch-up fairway, and refresh the recap-api purpose and docs/architecture.md. Merge order inside the stream: LB6, then LB7, then LB8 - LB8 extends LB6's fold, owner reader, token port and control strip and reuses LB7's Clock port and tolerance constant. LB4 has been told (16:23:12Z) the chapter shape ServerBookAdded must carry for LB8's reader. Then start LB8 again in the catch-up fairway; it enters at /speckit-analyze and T001. Not sent to the bosun: the blocker is a commit on main to other slices' blocks and the chart, which no delegate may make. Nothing new owed on main from LB8 beyond what LB3, LB6 and LB7 already asked for (jose, post on packages/api-client, VITE_FLAG_TRACK_POSITION=off, __pycache__/ in .gitignore)."}
+{"v": 1, "t": "2026-10-21T16:30:57Z", "kind": "heartbeat", "fairway": "library", "slice": "LB8"}
+{"v": 1, "t": "2026-10-21T16:30:57Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:31:31Z", "kind": "claimed", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:31:32Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:32:00Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:32:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:32:32Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:32:33Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:33:00Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:33:31Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:33:32Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:34:00Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:34:32Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:34:33Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:35:00Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:35:27Z", "kind": "stowed", "fairway": "library", "slice": "LB3", "from": "review", "what": "1 item: every imported file is read in full up to three times (the D20 digest tie-break, the book hash, an M4B chapter text track) - correctness holds, the cost is time on a 1 GB book; one pass that scans and hashes is a reshape of the store and the reader together. Recorded in specs/001-audiobook-recap/slices/LB3/review.md #6; fairways/library/careen.md is outside what a slice branch may write, so the host carries the row."}
+{"v": 1, "t": "2026-10-21T16:35:32Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:35:33Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:36:01Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:36:34Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:36:35Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:37:03Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:37:35Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:37:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:37:38Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9", "stage": "example-map"}
+{"v": 1, "t": "2026-10-21T16:38:05Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:38:36Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:38:37Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:39:07Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:39:37Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:39:38Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:40:06Z", "kind": "told", "fairway": "library", "slice": "LB1", "by": "session", "message": "Host, on main, from LB1's plan (research P-10): (1) CREDENTIALS_KEY (32 bytes base64, openssl rand -base64 32) documented in .env.example and set in make demo's environment - the Postgres credential store (ADR 0006, D41) is wired only when DATABASE_URL and CREDENTIALS_KEY are both set, else the in-memory one; (2) VITE_FLAG_AUDIOBOOKSHELF_COMPANION=off in .env.example; (3) merge slice/LB3 before slice/LB1 (split order already says so): LB1 carries LB3's authentication files byte-identical (authenticate port, bearer.ts, the userinfo adapter, clock, ids, their fakes, stub and tests) so the merge is a union, and main.ts, application/library/public.ts and apps/recap-web/src/App.tsx take both sides; (4) the events-module shape diverges - LB3 domain/library/events.ts, LB1 and LB6 domain/<context>/events/<name>.ts (the constitution's wording under III) - settle on one on main once both are in; (5) repeated from LB3 and LB6: jose pinned on apps/recap-api, post on packages/api-client, __pycache__/ in .gitignore. LB1's BookServer port (D42) is the one LB5, LB9 and LB10 extend; its ListenerCredentials port (D41) is where they fetch the token."}
+{"v": 1, "t": "2026-10-21T16:40:06Z", "kind": "heartbeat", "fairway": "library", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:40:07Z", "kind": "heartbeat", "fairway": "library", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:40:25Z", "kind": "parked", "fairway": "library", "why": "LB3: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB3"}
+{"v": 1, "t": "2026-10-21T16:40:27Z", "kind": "claimed", "fairway": "library", "slice": "LB4"}
+{"v": 1, "t": "2026-10-21T16:40:33Z", "kind": "parked", "fairway": "library", "why": "LB1: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB1"}
+{"v": 1, "t": "2026-10-21T16:40:39Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:40:41Z", "kind": "parked", "fairway": "library", "why": "LB4: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB4"}
+{"v": 1, "t": "2026-10-21T16:40:44Z", "kind": "claimed", "fairway": "library", "slice": "LB2"}
+{"v": 1, "t": "2026-10-21T16:40:44Z", "kind": "claimed", "fairway": "library", "slice": "LB15"}
+{"v": 1, "t": "2026-10-21T16:40:58Z", "kind": "parked", "fairway": "library", "why": "LB15: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB15"}
+{"v": 1, "t": "2026-10-21T16:40:58Z", "kind": "parked", "fairway": "library", "why": "LB2: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB2"}
+{"v": 1, "t": "2026-10-21T16:41:13Z", "kind": "claimed", "fairway": "library", "slice": "LB11"}
+{"v": 1, "t": "2026-10-21T16:41:26Z", "kind": "parked", "fairway": "library", "why": "LB11: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB11"}
+{"v": 1, "t": "2026-10-21T16:41:41Z", "kind": "heartbeat", "fairway": "library", "slice": "LB9"}
+{"v": 1, "t": "2026-10-21T16:42:07Z", "kind": "parked", "fairway": "library", "why": "LB9: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows", "slice": "LB9"}
+{"v": 1, "t": "2026-10-22T08:00:25Z", "kind": "read", "fairway": "library", "told": "2026-10-21T16:26:23Z"}

@@ -120,6 +120,32 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     "parked": ("fairway", "why"),
 }
 
+#: Why a park stands, as one word a reader and a board can act on without parsing `why`. `limit`: the
+#: harness refused the run (a session limit, a rate limit) and the park carries `until`, the instant it
+#: lifts by itself. `host`: a change on trunk only a person may make. `question`: a `question` line stands
+#: open. `demo`: sent back. `gate`: a mark not set. `silence`: ended for writing nothing. `exit`: `/sail`
+#: exited non-zero for any other reason. `ceiling`, `trunk`, `budget`: the decision ceiling, a red trunk,
+#: a spent stage budget — the three parks that already clear by rule rather than by answer. `other` is
+#: what a park with no `cause` reads as, so every old line has one.
+CAUSES = ("limit", "host", "question", "demo", "gate", "silence", "exit", "ceiling", "trunk", "budget",
+          "other")
+#: The checks a `need` may carry, which is how the harbourmaster ticks it without a person: `text` says a
+#: file at `path` holds `has`; `make` says a target exits 0. Both are asked of trunk, never of a berth.
+CHECKS = ("text", "make")
+#: Who ticks a need: a `person`, or the `fleet` through its `check`.
+TICKERS = ("person", "fleet")
+#: The fields a kind may carry beyond what it must. Named so a reader knows the shape to hold them to:
+#: `slice` and `waiting` were written and read for months before anything said they existed. A `parked`
+#: line is a record, not a paragraph: `cause` from `CAUSES`; `until`, an instant after which the park
+#: lifts by itself; `needs`, one item per thing that has to change — `{"what", "by", "check"?, "path"?}` —
+#: ticked by the harbourmaster or a person; `then`, one sentence on what the fleet does once they are met.
+#: `why` stays, as the paragraph a reader without the board sees.
+OPTIONAL: dict[str, tuple[str, ...]] = {
+    "parked": ("slice", "waiting", "cause", "until", "needs", "then"),
+}
+#: The instant an `until` is written in: the log's own format, so two logs sort it with everything else.
+INSTANT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+
 #: What a demo can have said, and the only three. The same three `check-decisions.py` already holds the demo
 #: log's markdown to and `benchmark.py` records as an outcome, so this names the vocabulary rather than
 #: inventing one: `accepted`, or sent back because the *behaviour* is wrong or because the *implementation*
@@ -128,7 +154,7 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
 VERDICTS = ("accepted", "behaviour", "implementation")
 #: Field → the only values it may hold, per kind. Checked on the way in *and* on the way out, like every
 #: other rule here: a line nobody can interpret reads exactly like a line that was never written.
-CLOSED: dict[str, dict[str, tuple[str, ...]]] = {"demo": {"verdict": VERDICTS}}
+CLOSED: dict[str, dict[str, tuple[str, ...]]] = {"demo": {"verdict": VERDICTS}, "parked": {"cause": CAUSES}}
 
 #: Each harbour-log kind. Only the harbourmaster writes these, which is how one shared file never conflicts.
 HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
@@ -144,6 +170,10 @@ HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
     "granted": ("fairway", "request", "what"),
     # A receipt for the original park, never for a later heartbeat or another fairway.
     "cleared": ("fairway", "parked", "what"),
+    # One need of a park, met: `parked` is the park's instant, `need` its index in the park's `needs`,
+    # `how` what saw it — the trunk commit a check passed at, or the person's word. A park whose every
+    # need has one of these gets its `cleared` receipt without anybody being asked.
+    "need-met": ("fairway", "parked", "need", "how"),
     "refused": ("fairway", "request", "why"),
     # Trunk's own CI, which is harbour-wide rather than one fairway's: the gate before a merge is `make
     # verify` and CI runs `make ci`, so trunk can go red from a check `verify` never ran. Written once per
@@ -237,6 +267,40 @@ def closed(kind: str, body: dict) -> None:
         if value is not None and value not in allowed:
             raise Unreadable(f"a {kind!r} line's {name} is one of {', '.join(allowed)}; this one says "
                              f"{value!r}, which no reader can act on")
+    if kind == "parked":
+        shaped(body)
+
+
+def shaped(body: dict) -> None:
+    """Refuse a park whose record fields are not the shape a reader can hold them to.
+
+    Checked in both directions like everything else here: an `until` nobody can parse is a pause that never
+    lifts, and a `needs` item with no `what` is a tick nobody can draw. Refusing is the kinder failure.
+    """
+    until = body.get("until")
+    if until is not None and not (isinstance(until, str) and INSTANT.match(until)):
+        raise Unreadable(f"a park's until is an instant like 2026-10-21T20:40:00Z; this one says {until!r}")
+    needs = body.get("needs")
+    if needs is None:
+        return
+    if not isinstance(needs, list):
+        raise Unreadable("a park's needs is a list, one item per thing that has to change")
+    for index, need in enumerate(needs):
+        if not isinstance(need, dict) or not str(need.get("what", "")).strip():
+            raise Unreadable(f"need {index} of a park says nothing: each need is an object with `what`")
+        if need.get("by", "person") not in TICKERS:
+            raise Unreadable(f"need {index} is ticked by one of {', '.join(TICKERS)}; this one says "
+                             f"{need.get('by')!r}")
+        check = need.get("check")
+        if check is None:
+            continue
+        if not isinstance(check, dict) or check.get("kind") not in CHECKS:
+            raise Unreadable(f"need {index}'s check is one of {', '.join(CHECKS)}; this one says "
+                             f"{check!r}")
+        if check["kind"] == "text" and not (check.get("path") and check.get("has")):
+            raise Unreadable(f"need {index}'s text check names a `path` and what it `has`")
+        if check["kind"] == "make" and not check.get("target"):
+            raise Unreadable(f"need {index}'s make check names a `target`")
 
 
 def entry(kind: str, harbour: bool = False, **fields: object) -> Entry:
@@ -342,10 +406,9 @@ def fold(lines: list[str], harbour: bool = False) -> list[Entry]:
 def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[Entry]:
     """The parks that still owe an answer: receipt identity is fairway plus original timestamp.
 
-    A park of one slice is also answered by a later `claimed` of that slice, which is the captain taking it
-    up again — the rule `clearance.folded` already keeps. hr-test-2's L13 was claimed and worked for hours
-    after its budget park while the board still listed it as waiting and drew it as not in flight. Later is
-    by place in the deck, not by timestamp, so a claim written in the same second as the park still counts.
+    A park of one slice is also answered by a later `claimed` of it — the captain took it up again, as
+    `clearance.folded` has it. hr-test-2's L13 was worked for hours after its budget park while the board
+    listed it as waiting. Later by place in the deck, not timestamp, so a claim in the same second counts.
     """
     receipts = {(str(e.fields["fairway"]), str(e.fields["parked"]))
                 for e in harbour if e.kind == "cleared"}
@@ -365,6 +428,21 @@ def fairway_parks(parks: list[Entry]) -> list[Entry]:
 def held_slices(parks: list[Entry]) -> dict[str, str]:
     """Each slice an open park holds on its own, with the latest reason. Its siblings are not held by it."""
     return {str(e.fields["slice"]): str(e.fields.get("why", "")) for e in parks if e.fields.get("slice")}
+
+
+def cause_of(park: Entry) -> str:
+    """The one word a park stands on. A line written before parks had one is `other`."""
+    return str(park.fields.get("cause") or "other")
+
+
+def paused(parks: list[Entry], now: str = "") -> list[Entry]:
+    """The open parks that lift by themselves: a `limit`, or any park with an `until` still ahead.
+
+    Nobody is asked anything by one of these, so a board calls them paused and a fleet does not wait on a
+    person for them. `now` is an instant in the log's format; the clock where it is not given.
+    """
+    at = now or globals()["now"]()
+    return [e for e in parks if cause_of(e) == "limit" or str(e.fields.get("until") or "") > at]
 
 
 def unmerged(deck: list[Entry]) -> list[str]:

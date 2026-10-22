@@ -1728,8 +1728,8 @@ def left(fairway: str, why: str) -> None:
     try:
         fleet.RUNNING.mkdir(parents=True, exist_ok=True)
         last = (why.strip().splitlines() or [""])[-1].removeprefix("captain: ").strip()
-        (fleet.RUNNING / f"captain-{fairway}.exit").write_text(
-            json.dumps({"at": logs.now(), "why": last, "code": 0}) + "\n", encoding="utf-8")
+        said = json.dumps({"at": logs.now(), "why": last, "code": 0}) + "\n"
+        (fleet.RUNNING / f"captain-{fairway}.exit").write_text(said, encoding="utf-8")
     except OSError:
         pass
 

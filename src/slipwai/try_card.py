@@ -16,11 +16,11 @@ the fleet does, so restarting the board never takes away the thing a person has 
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from pathlib import Path
 from urllib.parse import quote, unquote
 
+from . import process_alive
 from .feedback_card import opener
 from .page_shell import esc
 
@@ -115,11 +115,13 @@ def script_of(root: Path) -> Path | None:
 
 
 def alive(pid: object) -> bool:
+    """Whether the process the state names is still running, asked through `process_alive` and never with
+    `os.kill(pid, 0)`: signal 0 is a Ctrl-C to the whole console on Windows, and the board asking after a
+    try-it process ended the suite that asked."""
     try:
-        os.kill(int(str(pid)), 0)
-    except (OSError, ValueError):
+        return process_alive.alive(int(str(pid)))
+    except ValueError:
         return False
-    return True
 
 
 def trunk_head(root: Path) -> str:

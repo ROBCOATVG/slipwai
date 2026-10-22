@@ -112,13 +112,11 @@ def agents_of(lines: list[dict], slice_id: str, now: float | None = None) -> lis
         name = str(one.get("agent") or "")
         name = alias.get(name, name)
         if one["kind"] == "link" and name:
-            waiting = [a for a in agents.values() if (not a["ended"] or a["launched"]) and not a["linked"]
+            waiting = [a for a in agents.values() if not a["ended"] and not a["linked"]
                        and a["role"] == str(one.get("role", ""))]
             if waiting:
                 waiting[0]["linked"] = True
                 alias[name] = waiting[0]["agent"]
-                if waiting[0]["launched"]:
-                    waiting[0]["ended"] = 0.0
             continue
         if one["kind"] == "done" and one.get("id"):
             alias.setdefault(str(one["id"]), name)
@@ -129,14 +127,17 @@ def agents_of(lines: list[dict], slice_id: str, now: float | None = None) -> lis
                             "ended": 0.0, "commit": "", "last": "", "last_t": stamp(one["t"]), "linked": False,
                             "launched": False}
         elif one["kind"] == "done" and name in agents:
+            # The launch receipt: seconds after the start, before the sub-agent has done a thing. Whether the
+            # harness named the sub-agent first or after is the order of two hooks in one second, not a fact.
             held = agents[name]
             ended = stamp(one["t"])
-            held.update(ended=ended, commit=str(one.get("commit", "")) or held["commit"],
-                        launched=not held["linked"] and ended - held["started"] <= LAUNCH)
+            quick = ended - held["started"] <= LAUNCH and held["last_t"] <= held["started"]
+            held.update(ended=0.0 if quick else ended, launched=quick,
+                        commit=str(one.get("commit", "")) or held["commit"])
         elif name in agents and one["kind"] in ("ran", "failed", "edit", "wait"):
             agents[name].update(last=str(one.get("what", "")), last_t=stamp(one["t"]))
     for held in agents.values():
-        if held["launched"] and held["linked"] and not held["ended"] and now - held["last_t"] > QUIET:
+        if held["launched"] and not held["ended"] and now - held["last_t"] > QUIET:
             held["ended"] = held["last_t"]
     return sorted(agents.values(), key=lambda one: one["started"])
 

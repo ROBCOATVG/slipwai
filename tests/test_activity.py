@@ -185,6 +185,17 @@ class FoldTest(unittest.TestCase):
         self.assertEqual(second["ended"], 0.0, "still writing, so still running")
         self.assertEqual(found["current"]["last"], "Run the form tests")
 
+    def test_the_launch_receipt_is_read_the_same_whichever_hook_wrote_first(self) -> None:
+        """Two of LB8's lanes still came out at nothing: the harness had named the sub-agent before it
+        answered the call, in the same second, so the `done` found it linked and was taken for the end."""
+        lines = [line(30, "start", "LB8 form states T012-T016", "toolu_1", role="sail-implement-shipwright"),
+                 line(30, "link", "sail-implement-shipwright", "a9f0", role="sail-implement-shipwright"),
+                 line(30, "done", "LB8 form states T012-T016", "toolu_1", role="sail-implement-shipwright"),
+                 line(26, "ran", "Run the form tests", "a9f0"),
+                 line(24, "done", "sail-implement-shipwright", "a9f0", role="sail-implement-shipwright")]
+        found = fold(lines, "LB8", NOW.timestamp())
+        self.assertEqual((found["agents"][0]["ended"] - found["agents"][0]["started"]) / 60, 6)
+
     def test_a_launched_sub_agent_nobody_said_stopped_ended_at_its_last_line_once_quiet(self) -> None:
         lines = [line(40, "start", "LB8 backend rules", "toolu_1", role="sail-implement-shipwright"),
                  line(40, "done", "LB8 backend rules", "toolu_1", role="sail-implement-shipwright"),

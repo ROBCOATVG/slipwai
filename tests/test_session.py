@@ -35,7 +35,7 @@ SCRIPT = AGENTS / "session.py"
 
 #: The activity log's verbs, which are plumbing too: the board's Now strip reads what they write, they refuse
 #: nothing, and an extension has nothing to attach to a sentence the session says about itself.
-ACTIVITY_VERBS = {"before-delegate", "agent-started", "after-failure", "say", "waiting"}
+ACTIVITY_VERBS = {"before-delegate", "agent-started", "agent-stopped", "after-failure", "say", "waiting"}
 
 
 class VerbTest(unittest.TestCase):

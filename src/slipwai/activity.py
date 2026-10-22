@@ -88,23 +88,37 @@ def task_of(what: str, slice_id: str) -> tuple[str, str]:
     return "", words
 
 
-def agents_of(lines: list[dict], slice_id: str) -> list[dict]:
+#: A `done` this soon after its `start`, before the harness has named the sub-agent, is the harness answering
+#: the delegating call at once because it runs sub-agents in the background: a launch receipt, not an end.
+LAUNCH = 5
+
+
+def agents_of(lines: list[dict], slice_id: str, now: float | None = None) -> list[dict]:
     """Every sub-agent the log saw start, with what it was given, when it ran and what it handed back.
 
     A sub-agent is started under the call that briefed it and works under the name the harness gave it, so
     a `link` line — the harness saying it started one of a type — ties the oldest unlinked start of that type
-    to the name its own commands will carry. A harness that never says leaves the commands with the session."""
+    to the name its own commands will carry. A harness that never says leaves the commands with the session.
+
+    A harness that runs sub-agents in the background answers the delegating call the second it is made, so
+    its `done` under the call's name is the launch, and the one that counts is the `done` the harness writes
+    under the sub-agent's own name when it stops. On a log with no such line — a harness that never says, or
+    one written before the hook existed — a launched sub-agent that has gone quiet ended at its last line,
+    and one still writing is still running."""
+    now = now_stamp() if now is None else now
     agents: dict[str, dict] = {}
     alias: dict[str, str] = {}
     for one in lines:
         name = str(one.get("agent") or "")
         name = alias.get(name, name)
         if one["kind"] == "link" and name:
-            waiting = [a for a in agents.values() if not a["ended"] and not a["linked"]
+            waiting = [a for a in agents.values() if (not a["ended"] or a["launched"]) and not a["linked"]
                        and a["role"] == str(one.get("role", ""))]
             if waiting:
                 waiting[0]["linked"] = True
                 alias[name] = waiting[0]["agent"]
+                if waiting[0]["launched"]:
+                    waiting[0]["ended"] = 0.0
             continue
         if one["kind"] == "done" and one.get("id"):
             alias.setdefault(str(one["id"]), name)
@@ -112,11 +126,18 @@ def agents_of(lines: list[dict], slice_id: str) -> list[dict]:
             task, words = task_of(str(one.get("what", "")), slice_id)
             agents[name] = {"agent": name, "role": str(one.get("role", "")), "model": str(one.get("model", "")),
                             "task": str(one.get("task") or task), "what": words, "started": stamp(one["t"]),
-                            "ended": 0.0, "commit": "", "last": "", "last_t": stamp(one["t"]), "linked": False}
+                            "ended": 0.0, "commit": "", "last": "", "last_t": stamp(one["t"]), "linked": False,
+                            "launched": False}
         elif one["kind"] == "done" and name in agents:
-            agents[name].update(ended=stamp(one["t"]), commit=str(one.get("commit", "")))
+            held = agents[name]
+            ended = stamp(one["t"])
+            held.update(ended=ended, commit=str(one.get("commit", "")) or held["commit"],
+                        launched=not held["linked"] and ended - held["started"] <= LAUNCH)
         elif name in agents and one["kind"] in ("ran", "failed", "edit", "wait"):
             agents[name].update(last=str(one.get("what", "")), last_t=stamp(one["t"]))
+    for held in agents.values():
+        if held["launched"] and held["linked"] and not held["ended"] and now - held["last_t"] > QUIET:
+            held["ended"] = held["last_t"]
     return sorted(agents.values(), key=lambda one: one["started"])
 
 
@@ -138,7 +159,7 @@ def fold(lines: list[dict], slice_id: str, now: float | None = None) -> dict:
     """One slice, now: its agents, the one running, its newest sentence, how long it has been quiet, and
     the warnings a person would act on (except the one that needs the other slices: `shared`)."""
     now = now_stamp() if now is None else now
-    agents = agents_of(lines, slice_id)
+    agents = agents_of(lines, slice_id, now)
     lines = [one for one in lines if one["kind"] != "link"]
     running = [one for one in agents if not one["ended"]]
     finished = [one["ended"] - one["started"] for one in agents if one["ended"]]

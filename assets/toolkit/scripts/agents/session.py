@@ -577,6 +577,19 @@ def agent_started() -> int:
     return 0
 
 
+def agent_stopped() -> int:
+    """The harness says a sub-agent has finished, under the name its own tool calls carried.
+
+    A harness that runs its sub-agents in the background answers the delegating call at once, so the `done`
+    `after_delegate` writes lands in the same second as the `start` and says only that the sub-agent was
+    launched. This line is when it actually stopped — the end of its lane on the slice window, which drew
+    LB8's four implementing sub-agents as slivers while they wrote a hundred and thirty lines between them.
+    """
+    agent, role = acting()
+    record("done", role or "sub-agent", agent, role=role)
+    return 0
+
+
 def after_failure() -> int:
     """A tool call failed. A command's failure is a line of its own: the same one three times running is
     an agent going round in circles, which is what the board warns of."""
@@ -603,6 +616,7 @@ def said_aloud(kind: str) -> int:
 VERBS = {
     "before-delegate": before_delegate,
     "agent-started": agent_started,
+    "agent-stopped": agent_stopped,
     "after-failure": after_failure,
     "say": lambda: said_aloud("say"),
     "waiting": lambda: said_aloud("waiting"),

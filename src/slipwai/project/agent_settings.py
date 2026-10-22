@@ -77,6 +77,7 @@ def harness_hooks(layout: Layout) -> dict[str, list[dict[str, object]]]:
         "PostToolUseFailure": [{"matcher": "Bash",
                                 "hooks": [{"type": "command", "command": f"python3 {script} after-failure"}]}],
         "SubagentStart": [{"hooks": [{"type": "command", "command": f"python3 {script} agent-started"}]}],
+        "SubagentStop": [{"hooks": [{"type": "command", "command": f"python3 {script} agent-stopped"}]}],
     }
 
 

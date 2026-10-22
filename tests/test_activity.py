@@ -16,7 +16,7 @@ import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from slipwai.activity import caption, fold, lines_of, live, log_path, task_of
+from slipwai.activity import caption, fold, lines_of, live, log_path, stamp, task_of
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.live_page import strip_html, strip_payload, window_body, window_payload
 
@@ -78,6 +78,11 @@ class WriterTest(unittest.TestCase):
                          ("sail-implement-shipwright", "sonnet", "L10", "leaver-offboarding"))
         self.assertNotIn("prompt", json.dumps(start), "a brief is not a line for a person")
         self.assertEqual((done["commit"], done["id"], done["tokens"]), ("a5fd5e2", "a3cd25", 61000))
+
+    def test_a_sub_agent_stopping_is_a_done_under_its_own_name(self) -> None:
+        self.fire("agent-stopped", event={"agent_id": "a3cd25", "agent_type": "sail-implement-shipwright"})
+        self.assertEqual([(one["kind"], one["agent"], one["what"], one["role"]) for one in self.written()],
+                         [("done", "a3cd25", "sail-implement-shipwright", "sail-implement-shipwright")])
 
     def test_a_failed_command_is_its_own_line_with_the_first_line_of_why(self) -> None:
         self.fire("after-failure", event={"tool_name": "Bash", "agent_id": "a1", "tool_input": {
@@ -159,6 +164,35 @@ class FoldTest(unittest.TestCase):
         self.assertEqual(found["current"]["last"], "Read the page", "its own command, matched by the link line")
         self.assertEqual(found["said"], "T017 done (9f1fa53). Dispatching T018.")
         self.assertEqual(found["warnings"], [])
+
+    def test_a_sub_agent_launched_in_the_background_runs_until_its_own_stop_line(self) -> None:
+        """LB8's harness answered each delegating call at once: `done` in the same second as `start`, the
+        sub-agent's hundred lines after it, and the window drew it as a sliver. The stop line is its end."""
+        lines = [line(30, "start", "LB8 backend rules T002-T010", "toolu_1", role="sail-implement-shipwright"),
+                 line(30, "done", "LB8 backend rules T002-T010", "toolu_1", role="sail-implement-shipwright"),
+                 line(30, "link", "sail-implement-shipwright", "aff3", role="sail-implement-shipwright"),
+                 line(25, "ran", "Run unit tests", "aff3"),
+                 line(21, "edit", "entries.ts", "aff3"),
+                 line(20, "done", "sail-implement-shipwright", "aff3", role="sail-implement-shipwright"),
+                 line(4, "start", "LB8 form states T012-T016", "toolu_2", role="sail-implement-shipwright"),
+                 line(4, "done", "LB8 form states T012-T016", "toolu_2", role="sail-implement-shipwright"),
+                 line(4, "link", "sail-implement-shipwright", "a9f0", role="sail-implement-shipwright"),
+                 line(1, "ran", "Run the form tests", "a9f0")]
+        found = fold(lines, "LB8", NOW.timestamp())
+        first, second = found["agents"]
+        self.assertEqual((first["ended"] - first["started"]) / 60, 10, "the launch receipt is not the end")
+        self.assertEqual(first["last"], "entries.ts")
+        self.assertEqual(second["ended"], 0.0, "still writing, so still running")
+        self.assertEqual(found["current"]["last"], "Run the form tests")
+
+    def test_a_launched_sub_agent_nobody_said_stopped_ended_at_its_last_line_once_quiet(self) -> None:
+        lines = [line(40, "start", "LB8 backend rules", "toolu_1", role="sail-implement-shipwright"),
+                 line(40, "done", "LB8 backend rules", "toolu_1", role="sail-implement-shipwright"),
+                 line(40, "link", "sail-implement-shipwright", "aff3", role="sail-implement-shipwright"),
+                 line(31, "ran", "Run unit tests", "aff3")]
+        found = fold(lines, "LB8", NOW.timestamp())
+        self.assertEqual(found["agents"][0]["ended"], stamp(at(31)))
+        self.assertEqual(found["running"], [])
 
     def test_a_task_far_past_its_slices_usual_is_said_to_be_taking_long(self) -> None:
         lines = [line(60, "start", "L13 T015: one", "t1", role="r"), line(54, "done", "L13 T015: one", "t1"),

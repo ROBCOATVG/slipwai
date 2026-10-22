@@ -37,6 +37,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import re
 import shlex
 import shutil
 import signal
@@ -44,8 +45,10 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, NamedTuple
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 HERE = Path(__file__).resolve().parent
 REGISTRY = HERE / "registry.json"
@@ -237,6 +240,70 @@ DRAIN = 2.0
 #: A `task_updated` status that means the task is over even where its `task_notification` never comes.
 TASK_OVER = frozenset({"completed", "failed", "killed", "stopped", "cancelled"})
 
+#: The words a harness answers with when it will not run the session at all, rather than when the session
+#: ran and failed. The recap voyage's was `You've hit your session limit · resets 9:40pm (Europe/London)`,
+#: in a `result` event with `is_error` true — indistinguishable, by exit code, from a stage that crashed,
+#: and it was retried three times in a second and parked eight slices. These are Claude Code's words; a
+#: second harness's go in `registry.json` beside its other columns when one is wired.
+LIMIT_WORDS = ("session limit", "usage limit", "rate limit", "rate_limit", "overloaded", "too many requests",
+               "429")
+#: `resets 9:40pm (Europe/London)`, `resets at 4pm`, `resets 09:40 PM`: the hour, the minutes, am or pm,
+#: and the zone where one is named.
+RESET = re.compile(r"resets?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b(?:\s*\(([^)]+)\))?", re.IGNORECASE)
+#: How long a refusal that names no time is paused for: a rate limit clears in minutes.
+GUESSED_SHORT = timedelta(minutes=15)
+#: How long a session-limit refusal whose time could not be read is paused for. The window is five hours,
+#: so an hour is a guess that is wrong by less than another refusal would cost.
+GUESSED_LONG = timedelta(minutes=60)
+
+
+class Refusal(NamedTuple):
+    """A harness that would not run the session: why in one word, when to try again, and what it said.
+
+    A `NamedTuple` and not a dataclass: the suite loads this module from its path, outside `sys.modules`,
+    and a dataclass under `from __future__ import annotations` looks its module up there to read its fields.
+    """
+
+    cause: str
+    until: str
+    said: str
+
+
+def instant(when: datetime) -> str:
+    """An instant in the log's own format, to the second, in UTC."""
+    return when.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def refusal(text: str, now: datetime | None = None) -> Refusal | None:
+    """What a `result` said, read as a refusal to run — or `None` where the session ran and said that.
+
+    A session limit names the time it lifts, and that time is the `until`: today at that hour in the zone
+    named, or tomorrow where today's has passed. A rate limit or an overloaded answer names no time and is
+    paused for `GUESSED_SHORT`. A limit whose time cannot be read is paused for `GUESSED_LONG`, and `said`
+    says the time was guessed, so the park a captain writes from this carries that in its `why`.
+    """
+    said = (text or "").strip()
+    lowered = said.lower()
+    if not any(word in lowered for word in LIMIT_WORDS):
+        return None
+    at = now or datetime.now(UTC)
+    found = RESET.search(said)
+    if found is None:
+        guessed = GUESSED_SHORT if "limit" not in lowered or "rate" in lowered else GUESSED_LONG
+        return Refusal("limit", instant(at + guessed),
+                       f"{said} — no reset time given, so paused {int(guessed.total_seconds() // 60)} minutes")
+    hour, minutes, half, zone = int(found.group(1)), int(found.group(2) or 0), found.group(3).lower(), found.group(4)
+    hour = hour % 12 + (12 if half == "pm" else 0)
+    try:
+        where = ZoneInfo(zone.strip()) if zone else at.astimezone().tzinfo
+    except (ZoneInfoNotFoundError, ValueError):
+        where = at.astimezone().tzinfo
+    local = at.astimezone(where)
+    lifts = local.replace(hour=hour, minute=minutes, second=0, microsecond=0)
+    if lifts <= local:
+        lifts += timedelta(days=1)
+    return Refusal("limit", instant(lifts), said)
+
 
 def streams_events(argv: list[str]) -> bool:
     """Whether a session writes one JSON event per line (`--output-format stream-json`), which is the only
@@ -258,6 +325,9 @@ class Ending:
     def __init__(self) -> None:
         self.outcome: str | None = None
         self.erred = False
+        #: What the last `result` said, kept because a refusal to run is told from a run that failed only
+        #: by its words: the exit code is 1 either way.
+        self.said = ""
         self.started: set[str] = set()
         self.background: set[str] = set()
         self.over: set[str] = set()
@@ -272,6 +342,7 @@ class Ending:
         kind, subtype = event.get("type"), event.get("subtype")
         if kind == "result":
             self.outcome, self.erred = str(subtype), bool(event.get("is_error"))
+            self.said = str(event.get("result") or "")
         elif kind in ("assistant", "user") or (kind == "system" and subtype == "init"):
             self.outcome = None
         elif kind == "system" and subtype == "task_started":
@@ -348,6 +419,14 @@ class Session(subprocess.Popen[bytes]):
     @returncode.setter
     def returncode(self, value: int | None) -> None:
         self.raw = value
+
+    @property
+    def refusal(self) -> Refusal | None:
+        """Whether the harness refused to run this session at all, read from what its last `result` said.
+        Only once it has ended and only where it erred: a session that ran and succeeded is never one."""
+        if subprocess.Popen.poll(self) is None or not self.ending.erred:
+            return None
+        return refusal(self.ending.said)
 
     def pass_through(self) -> None:
         stdout: IO[bytes] | None = self.stdout

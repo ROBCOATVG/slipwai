@@ -21,6 +21,7 @@ from .deck import RECENT, recent, streams
 from .errors import GenerationError, refuse
 from .fleet import NOTHING, board, inbox_detail
 from .fleet_page import headline
+from .fleet_record import clock_of
 from .harbour import config
 from .project.harbour import CONFIG
 
@@ -64,7 +65,7 @@ def lines(root: Path) -> list[str]:
     assert isinstance(processes, list)
     said += ["", "processes"]
     for row in processes:
-        when = row["since"][11:16] if row["since"] else ""
+        when = clock_of(row["since"]) if row["since"] else ""
         rest = row["why"] or (f"starts again when {row['starts_when']}" if row["starts_when"] else "")
         said.append(f"  {row['name']:<22} {row['state']:<8} {when:<6} {rest[:width - 42]}")
 

@@ -175,6 +175,17 @@ class CastOffTest(Fixture):
         self.assertEqual([one for one in self.running() if one.startswith("captain-")], ["captain-ORD"])
         self.assertIn("FUL: parked, so not lit — trunk is red", done.stdout)
 
+    def test_a_paused_fairway_says_when_it_lifts_rather_than_parked(self) -> None:
+        from slipwai import logs
+        path = self.root / logs.deck_path("ordering", "FUL")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(logs.entry("parked", fairway="FUL", why="FUL-01: the harness would not run it",
+                                   cause="limit", until="2999-01-01T09:40:00Z",
+                                   t="2026-10-21T16:40:00Z").line(), encoding="utf-8")
+        done = self.run_it("relight")
+        self.assertNotIn("captain-FUL", self.running())
+        self.assertRegex(done.stdout, r"FUL: paused until \d\d:\d\d, so not lit — FUL-01")
+
     def test_a_cleared_park_is_lit_again(self) -> None:
         from slipwai import logs
         at = "2026-10-12T09:00:00Z"

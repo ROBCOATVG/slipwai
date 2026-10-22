@@ -974,6 +974,7 @@ def once() -> int:
     written += cleared_for_review()
     written += cleared_by_decisions(written)
     written += cleared_for_green(trunk_state, written)
+    written += cleared_by_time(written)
     if written:
         append(written)
     write_cursors(cursors)
@@ -1152,6 +1153,35 @@ def cleared_for_green(trunk_state: str, already: list[logs.Entry]) -> list[logs.
                 continue
             found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                     what="trunk is no longer red, so the merge it refused is asked for again"))
+    return found
+
+
+def cleared_by_time(already: list[logs.Entry]) -> list[logs.Entry]:
+    """A `cleared` receipt for every open park whose `until` has come.
+
+    A park with an `until` is a pause: the harness said when it would run the session again, and nobody
+    was asked anything. On the recap voyage the limit reset at 21:40 and eight parks stood until a person
+    came back at 09:00, because nothing in the fleet knew that time existed. This is the thing that knows.
+    The pass after the receipt lights the captain (`fill_free_berths`), so a resume lands within one
+    pass of the time. `already` is this pass's lines, so a pause a person cleared early is not cleared twice.
+    """
+    harbour = harbour_entries()
+    now = logs.now()
+    done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
+            for e in already if e.kind == "cleared"}
+    found: list[logs.Entry] = []
+    for path in deck_logs():
+        fairway = path.stem
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        for park in logs.open_parks(deck, harbour, fairway):
+            until = str(park.fields.get("until") or "")
+            if not until or until > now or (fairway, park.t) in done:
+                continue
+            found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
+                                    what=f"the time it waited for came: {until}"))
     return found
 
 

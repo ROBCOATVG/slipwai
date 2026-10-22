@@ -33,6 +33,7 @@ import signal
 import subprocess
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -235,7 +236,9 @@ def relight(limit: int | None, say: bool = False, wanted: list[str] | None = Non
         why = parked(fairway)
         if why:
             if say:
-                print(f"{fairway}: parked, so not lit — {why}")
+                lifting = paused_until(fairway)
+                print(f"{fairway}: paused until {lifting}, so not lit — {why}" if lifting
+                      else f"{fairway}: parked, so not lit — {why}")
             continue
         if limit is not None and lit >= limit:
             if say:
@@ -254,16 +257,39 @@ def parked(fairway: str) -> str:
     A log that cannot be read is not a park: lighting the captain is what gets that said, by the one process
     whose job is to read the log.
     """
-    where = deck_of(fairway)
-    if where is None:
-        return ""
-    try:
-        deck = logs.fold(where.read_text(encoding="utf-8").splitlines())
-        parks = logs.fairway_parks(logs.open_parks(deck, logs.harbour_fold(ROOT), fairway))
-    except (logs.Unreadable, OSError, UnicodeDecodeError):
-        return ""
+    parks = open_fairway_parks(fairway)
     # A park naming one slice holds that slice, not the stream: its siblings are still work to light for.
     return (str(parks[-1].fields.get("why", "")) or "parked") if parks else ""
+
+
+def open_fairway_parks(fairway: str) -> list[logs.Entry]:
+    """The parks holding this whole fairway that no receipt has answered, oldest first. Empty where the log
+    cannot be read: that is not a park, and lighting the captain is what gets it said."""
+    where = deck_of(fairway)
+    if where is None:
+        return []
+    try:
+        deck = logs.fold(where.read_text(encoding="utf-8").splitlines())
+        return logs.fairway_parks(logs.open_parks(deck, logs.harbour_fold(ROOT), fairway))
+    except (logs.Unreadable, OSError, UnicodeDecodeError):
+        return []
+
+
+def paused_until(fairway: str) -> str:
+    """When this fairway's pause lifts, as a clock on this machine, or `""` where it is parked on a person
+    or not parked at all. Paused is every open park lifting by itself — a `limit`, or an `until` ahead."""
+    parks = open_fairway_parks(fairway)
+    lifting = logs.paused(parks) if parks else []
+    if not parks or len(lifting) != len(parks):
+        return ""
+    latest = max(str(e.fields.get("until") or "") for e in lifting)
+    if not latest:
+        return "the harness says"
+    try:
+        when = datetime.strptime(latest, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError:
+        return latest
+    return when.astimezone().strftime("%H:%M")
 
 
 def stop_all() -> int:

@@ -65,6 +65,40 @@ class ToldAfterParkTest(Fixture):
         self.assertEqual([entry for entry in self.harbour() if entry.kind == "cleared"], [])
 
 
+class PausedTest(Fixture):
+    """A park with a time on it is cleared when the time comes, by the one process that watches the clock.
+
+    recap, 2026-10-21: the limit reset at 21:40 and eight parks stood until 09:00 the next day.
+    """
+
+    def test_a_pause_whose_time_has_come_is_cleared_once_with_the_time_as_the_answer(self) -> None:
+        self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", slice="ORD-01", why="refused",
+                                                cause="limit", until="2026-10-21T20:40:00Z",
+                                                t="2026-10-21T16:40:00Z"))
+        for _ in range(2):
+            done = self.run_once()
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        receipts = [entry.fields for entry in self.harbour() if entry.kind == "cleared"]
+        self.assertEqual(receipts, [{"fairway": "ORD", "parked": "2026-10-21T16:40:00Z",
+                                     "what": "the time it waited for came: 2026-10-21T20:40:00Z"}])
+
+    def test_a_pause_whose_time_is_ahead_stands(self) -> None:
+        self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", slice="ORD-01", why="refused",
+                                                cause="limit", until="2999-01-01T00:00:00Z",
+                                                t="2026-10-21T16:40:00Z"))
+        self.run_once()
+        self.assertEqual([entry for entry in self.harbour() if entry.kind == "cleared"], [])
+
+    def test_a_person_s_word_clears_a_pause_early_and_the_time_does_not_clear_it_again(self) -> None:
+        self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", why="refused", cause="limit",
+                                                until="2026-10-21T20:40:00Z", t="2026-10-21T16:40:00Z"),
+                  logs.entry("told", fairway="ORD", message="resume now", t="2026-10-21T17:00:00Z", by="person"))
+        self.run_once()
+        self.run_once()
+        receipts = [entry.fields["what"] for entry in self.harbour() if entry.kind == "cleared"]
+        self.assertEqual(receipts, ["resume now"])
+
+
 class PerMachineTest(Fixture):
     """One harbourmaster per machine: it writes its own file and reads everybody's.
 

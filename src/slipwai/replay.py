@@ -22,8 +22,11 @@ conflicts. A history that has lost that authorship falls back to its root commit
 parent outright. A project that is not a Git repository gets the tree and no parentage — a diff by hand is
 still a diff the project could not have had.
 """
+# budget: 390 — the replay carries what a person handed over at generate time from the base commit, beside
+# everything a replay already was: the factory's side of a three-way merge, parented on its last commit
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import json
 import shlex
@@ -40,11 +43,23 @@ from .manifest import apps_from_manifest, check_known, read_manifest, recorded_l
 from .origin import adoption_of
 from .project.adopted import WRITTEN
 from .project.design_page import DESIGN, existing_design_page
+from .project.docs_index import docs_index
 from .project.pruner import pruner
 from .scaffold import FACTORY_EMAIL, FACTORY_IDENTITY, NO_MAINTENANCE, project_files, write_project
 from .services import App, web_apps
 
 STARTER_STYLES = ("src/styles/tokens.css", "src/styles/base.css")
+#: What `generate` wrote that no answer regenerates: the requirements document a person handed over, the
+#: design material it stood on or `--design` carried, and the record of which quickstart the project came
+#: from. All three sit in the base commit beside the factory's files, so a replay that left them out read,
+#: against that base, as the factory deleting them — and `migrate` offered a project the deletion of its own
+#: PRD and every design file. They are carried from the base as they were there, so the merge sees the
+#: factory leaving them alone and keeps whatever the project has made of them since.
+PRD = "docs/prd.md"
+# The same string as `design_docs.DESIGN`, spelled here because the tiers point inward and this module may
+# not read that one; `tests/test_replay_handed_over.py` holds the two in step.
+HANDED_DESIGN = "docs/design"
+QUICKSTART_RECORD = ".slipwai/quickstart.json"
 STARTER_IMPORTS = ("import './styles/tokens.css';\n", "import './styles/base.css';\n")
 
 
@@ -110,6 +125,8 @@ def replay(
         name, document["profile"], document["target"], apps, target, adoption, recorded_shape(document),
     )
     preserve_project_styles(root, parent, apps, files, target)
+    carried = handed_over_at(root, parent, layout) if parent is not None else {}
+    index_handed_over(files, carried, layout)
     manifest = json.loads(files["project.json"])
     used, recorded = manifest["generator"]["languages"], recorded_languages(document) or {}
     manifest["generator"] = wrote_here(document.get("generator"), used)
@@ -127,12 +144,53 @@ def replay(
             staged, name, document["profile"], document["target"], apps,
             files=files, keep=installed, settled=installed - present, layout=target, adoption=adoption,
         )
+        for relative, body in carried.items():
+            handed = staged / relative
+            if not handed.exists():
+                handed.parent.mkdir(parents=True, exist_ok=True)
+                handed.write_bytes(body)
         if parent is not None:
             graft(staged, root, parent, message or f"Replay {name} with slipwai {VERSION}")
         staged.rename(destination)
     return Replay(
         root, destination, name, len(files), manifest["generator"]["generatedWith"], parent, from_factory, differing
     )
+
+
+def handed_over_paths(layout: Layout) -> tuple[str, str, str]:
+    """Where the handed-over material sits in this layout: the PRD, the design folder, the quickstart record."""
+    return layout.place(PRD), layout.place(HANDED_DESIGN) + "/", QUICKSTART_RECORD
+
+
+def handed_over_at(root: Path, parent: str, layout: Layout) -> dict[str, bytes]:
+    """The handed-over files as the base commit holds them, by path, with their bytes.
+
+    Read out of the commit rather than off the project's disk: the replay is the factory's side of a
+    three-way merge, and the factory's side of a file it never touched is the base's version of it. A PNG
+    is bytes, so everything here is.
+    """
+    prd, design, record = handed_over_paths(layout)
+    listed = git(root, "ls-tree", "-r", "--name-only", parent, check=False).splitlines()
+    found: dict[str, bytes] = {}
+    for relative in listed:
+        relative = relative.strip()
+        if relative in (prd, record) or relative.startswith(design):
+            shown = subprocess.run(["git", "show", f"{parent}:{relative}"], cwd=root, capture_output=True, check=False)
+            if shown.returncode == 0:
+                found[relative] = shown.stdout
+    return found
+
+
+def index_handed_over(files: dict[str, str], carried: dict[str, bytes], layout: Layout) -> None:
+    """Put the PRD among the files the docs index is built from, and list the design material under it, as
+    `generate` did: a replay whose index forgot them would merge that forgetting into the project."""
+    prd, design, _ = handed_over_paths(layout)
+    material = sorted(name for name in carried if name.startswith(design))
+    if prd in carried:
+        with contextlib.suppress(UnicodeDecodeError):
+            files[prd] = carried[prd].decode("utf-8")
+    if prd in files or material:
+        files[layout.place("docs/README.md")] = docs_index(files, material)
 
 
 def unchanged_from(root: Path, parent: str, relative: str) -> bool:

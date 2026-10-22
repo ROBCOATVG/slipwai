@@ -158,6 +158,37 @@ class ReplayTest(FactoryTestCase):
             self.assertEqual(git(repo, "rev-parse", "HEAD").stdout.strip(), head)
             self.assertEqual(git(repo, "status", "--porcelain").stdout, "")
 
+    def test_what_a_person_handed_over_is_replayed_and_never_offered_for_deletion(self) -> None:
+        """Migrating recap staged the deletion of its PRD and eight design files: the replay wrote only what
+        the answers regenerate, and the scaffold commit held the handed-over files beside the factory's."""
+        with tempfile.TemporaryDirectory() as directory:
+            brief = Path(directory) / "brief"
+            (brief / "design").mkdir(parents=True)
+            (brief / "prd.md").write_text("# Product\n\nA listener catches up on an audiobook.\n")
+            (brief / "design/brand.md").write_text("# Brand\n\nTeal and brass.\n")
+            repo = self.generate(directory, "product", "event-modelling", "typescript",
+                                 prd=str(brief / "prd.md"), design=str(brief / "design"))
+            self.assertTrue((repo / "docs/prd.md").is_file())
+            self.assertTrue((repo / "docs/design/brand.md").is_file())
+            before = tree(repo)
+
+            result = replay(repo, ROOT, "--into", str(Path(directory) / "offered"))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            offered = tree(Path(directory) / "offered")
+            self.assertEqual(offered.get("docs/prd.md"), before["docs/prd.md"])
+            self.assertEqual(offered.get("docs/design/brand.md"), before["docs/design/brand.md"])
+            self.assertEqual(offered.get("docs/README.md"), before["docs/README.md"])
+
+            factory = newer_factory(Path(directory), "\n## A section a newer factory added\n")
+            result = replay(repo, factory, "--into", str(Path(directory) / "offered-newer"))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            git(repo, "fetch", str(Path(directory) / "offered-newer"), "main")
+            merged = git(repo, "-c", "user.name=t", "-c", "user.email=t@local", "merge", "--no-edit", "FETCH_HEAD")
+            self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
+            self.assertEqual((repo / "docs/prd.md").read_bytes(), before["docs/prd.md"])
+            self.assertEqual((repo / "docs/design/brand.md").read_bytes(), before["docs/design/brand.md"])
+            self.assertIn("A section a newer factory added", (repo / SKILL).read_text())
+
     def test_a_feature_the_project_pruned_is_not_offered_back(self) -> None:
         """`./init --auth none` took Keycloak away; the replay reads the project's disk, as `add-service`
         does, and the offered tree has no adapter for it either — so the merge keeps it gone.

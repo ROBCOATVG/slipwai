@@ -56,7 +56,7 @@ parks are one row with a time on it. Three parks on the same host change are one
 per captain saying why it exited. The board stores nothing; it reads what the process wrote when it left.
 
 **D6. The timeline is a fold of the deck and harbour logs**, served as JSON for a window the page asks
-for, drawn as a scrollable track with a scale the person picks. Lane names stay fixed. No money anywhere on
+for, drawn as a scrollable track with a scale the person picks. Row names stay fixed. No money anywhere on
 the tab: tokens are shown where the logs record them, cost is not computed.
 
 **D7. One fixture: recap's day.** The three logs from 2026-10-21 (`library.jsonl`, `catch-up.jsonl`,
@@ -253,8 +253,8 @@ instructions live in `assets/toolkit/commands/sail.md`; there is no writer scrip
   `parked`/`merged`/`stopped` naming it; a park span from the park to its receipt or `until` or now, with its
   `cause`; harbour `cleared` whose `what` came from a person's `told` as a `person` mark; parks with
   `cause: limit` as `limit` marks at their `t`; `fleet` `.exit` files and pid mtimes as `lit`/`exited` marks.
-  Lanes: run spans of one fairway are packed into `boilers` lanes by first fit; park spans of slices held on
-  a person go in a `parked on you` lane per fairway; a whole-fairway park is its own thin span.
+  Rows: run spans of one fairway are packed into `boilers` rows by first fit; park spans of slices held on
+  a person go in a `parked on you` row per fairway; a whole-fairway park is its own thin span.
 - `GET /timeline.json?from=<iso>&to=<iso>` on the bridge, controls only; the published copy embeds the
   fold for the voyage so far at publish time.
 - Tests: the recap fixture yields two limit marks, two person marks, the three-slot packing of 16:43 to
@@ -271,7 +271,7 @@ instructions live in `assets/toolkit/commands/sail.md`; there is no writer scrip
   light; the dark pair is added to `page_shell.THEME`), critical red for a limit mark.
 - The page asks `/timeline.json` for the window and redraws on scale change; the published copy draws the
   embedded fold with the select working on it.
-- Tests: the markup for the fixture holds the lane names, the marks, the select; the published copy has no
+- Tests: the markup for the fixture holds the row names, the marks, the select; the published copy has no
   fetch.
 
 ### 19.12 Paused in clearance, the work columns, the terminal and the agent inbox — S

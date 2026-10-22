@@ -63,6 +63,7 @@ believed. Every line carries `fairway`.
 | `yielded` | the harbour's fairway priority moved and this stream is below the lit line, so you have given the berth up | `to`, the fairway that displaced you |
 | `stopped` | you were asked to stop mid-slice, ended the stage, and gave the claim back; the slice is carried on when the fairway is lit again | `slice` |
 | `parked` | you have stopped, and this is why | `why`; `slice` where the park holds that slice alone and not its siblings; `cause`, one word; `needs`, `then`, `until` — the record, below |
+| `need-done` | a person ticked one need of a park on the board; the harbourmaster turns it into the receipt. Never yours to write | `parked` (that park's `t`), `need` (its index in the park's `needs`) |
 
 Several slices of one fairway write into one log, so **every line about a slice carries `slice`**: a line
 naming none is nobody's in particular once a sibling is in flight, and counts as no slice's progress.

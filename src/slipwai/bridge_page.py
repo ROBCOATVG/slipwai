@@ -179,31 +179,60 @@ def berth_rows(rows: list[dict], streams: dict, controls: bool = True) -> str:
     return f"<table>{head}{body}</table>"
 
 
+#: What a person has to do with each kind of waiting row, in the order they should be looked at. A park or a
+#: question needs an answer; unread decisions need reading; a told is only a note, and Done clears it.
+WAIT_GROUPS = (
+    ("answer", "Needs an answer", ("question", "parked"), "Silence keeps the stream parked."),
+    ("read", "Read and mark read", ("decisions",), "A stream over its decision ceiling is waiting on these."),
+    ("note", "Notes", ("told",), "Nothing here blocks a stream; Done clears one."),
+)
+
+
+def headline(detail: str, limit: int = 140) -> str:
+    """The first sentence of what is waiting, cut at a word, so the row says what it is before it is opened."""
+    first = detail.split(". ", 1)[0].strip()
+    if len(first) <= limit:
+        return first
+    return first[:limit].rsplit(" ", 1)[0] + "…"
+
+
 def inbox_rows(rows: list[dict], controls: bool, streams: dict | None = None) -> str:
-    """Each thing waiting on a person, opened by clicking it: what the stream has been saying, and a box
-    to answer it from here. The answer becomes a `told` in the stream's deck log, which its captain reads at
-    the next boundary — the one way a park is lifted without a terminal."""
+    """Each thing waiting on a person, grouped by what they have to do with it and opened by clicking it:
+    what the stream has been saying, and a box to answer it from here. The answer becomes a `told` in the
+    stream's deck log, which its captain reads at the next boundary — the one way a park is lifted without a
+    terminal."""
     if not rows:
         return '<p class="empty">Nothing is waiting on you.</p>'
-    said = []
-    for index, row in enumerate(rows):
-        if row["kind"] == "decisions":
-            said.append(unread_decisions(row, controls))
+    groups = []
+    for key, title, kinds, hint in WAIT_GROUPS:
+        mine = [(index, row) for index, row in enumerate(rows) if row["kind"] in kinds]
+        if not mine:
             continue
-        name, detail = str(row["fairway"]), inbox_detail(row)
-        # A park brings its own slice's lines, without heartbeats; anything else shows the stream's tail.
-        lines = row["lines"] if "lines" in row else (streams or {}).get(name) or []
-        log = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines[-20:])
-        # A note needs no answer, only to be seen: Done writes its `read` receipt and it leaves the list.
-        done = (f'<button data-dismiss="{esc(name)}" data-told="{esc(row["t"])}">Done</button>'
-                if row["kind"] == "told" else "")
-        box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
-               f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button>{done}</div>'
-               if controls else "")
-        said.append(f'<details class="log"><summary><b>{esc(name)}</b> · {esc(row["kind"])} · {esc(detail)} '
-                    f'<span class="mono">{esc(row["t"])}</span></summary>'
-                    f'<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}</ol>{box}</details>')
-    return "".join(said)
+        said = "".join(inbox_row(index, row, controls, streams, key) for index, row in mine)
+        groups.append(f'<div class="wait-group {key}"><h3>{esc(title)} <span class="count">{len(mine)}</span> '
+                      f'<small>{esc(hint)}</small></h3>{said}</div>')
+    counts = " · ".join(f"{len([r for r in rows if r['kind'] in kinds])} {title.lower()}"
+                        for _, title, kinds, _ in WAIT_GROUPS if any(r["kind"] in kinds for r in rows))
+    return f'<p class="wait-sum">{esc(counts)}</p>' + "".join(groups)
+
+
+def inbox_row(index: int, row: dict, controls: bool, streams: dict | None, group: str) -> str:
+    if row["kind"] == "decisions":
+        return unread_decisions(row, controls)
+    name, detail = str(row["fairway"]), inbox_detail(row)
+    # A park brings its own slice's lines, without heartbeats; anything else shows the stream's tail.
+    lines = row["lines"] if "lines" in row else (streams or {}).get(name) or []
+    log = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines[-20:])
+    # A note needs no answer, only to be seen: Done writes its `read` receipt and it leaves the list.
+    done = (f'<button data-dismiss="{esc(name)}" data-told="{esc(row["t"])}">Done</button>'
+            if row["kind"] == "told" else "")
+    box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
+           f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button>{done}</div>'
+           if controls else "")
+    full = f'<p class="why">{esc(detail)}</p>' if headline(detail) != detail else ""
+    return (f'<details class="log"><summary><b>{esc(headline(detail))}</b> '
+            f'<span class="tag">{esc(name)}</span> <span class="mono">{esc(row["t"])}</span></summary>'
+            f'{full}<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}</ol>{box}</details>')
 
 
 def unread_decisions(row: dict, controls: bool) -> str:
@@ -225,8 +254,8 @@ def unread_decisions(row: dict, controls: bool) -> str:
                 f'I have read all {len(row["decisions"])}</button></div>' if controls else "")
     # The log reads them whole — question, options, why — which these one-line ids never could.
     log = '<p><a href="#decisions">Read them in the decision log</a>, each with its question and why.</p>'
-    return (f'<details class="log"><summary><b>{esc(name)}</b> · decisions · {esc(row["what"])} '
-            f'<span class="mono">{esc(row["t"])}</span></summary>'
+    return (f'<details class="log"><summary><b>{esc(row["what"])}</b> '
+            f'<span class="tag">{esc(name)}</span> <span class="mono">{esc(row["t"])}</span></summary>'
             f'{log if controls else ""}<ol class="lines">{"".join(items)}</ol>{all_read}</details>')
 
 

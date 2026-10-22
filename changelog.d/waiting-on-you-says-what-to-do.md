@@ -1,0 +1,3 @@
+PATCH
+
+**The *Waiting on you* card is grouped by what a person has to do, and each row opens on its first sentence.** Everything waiting sat in one list of identical `stream · kind · long text` lines, so a question to answer looked like a note to dismiss. The card now opens with a one-line count and groups the rows as *Needs an answer* (questions and parks), *Read and mark read* (unread decisions) and *Notes* (a `told`, cleared with Done). Each row leads with its first sentence and the stream's name as a tag; the full text and the stream's lines are in the drawer as before. Nothing is asked of a person that a stream or the merge step can do itself.

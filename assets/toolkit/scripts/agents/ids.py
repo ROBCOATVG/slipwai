@@ -112,7 +112,8 @@ HEADING = re.compile(r"^## D(\d+) — ", re.M)
 
 
 def git(*argv: str) -> str:
-    done = subprocess.run(["git", *argv], cwd=ROOT, capture_output=True, text=True, check=False)
+    done = subprocess.run(["git", *argv], cwd=ROOT, capture_output=True, text=True, check=False,
+                          encoding="utf-8", errors="replace")  # a heading's em dash, on Windows too
     return done.stdout if done.returncode == 0 else ""
 
 

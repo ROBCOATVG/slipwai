@@ -14,3 +14,8 @@ mypy==2.3.1
 # pinned here, so those tests ran on a laptop that happened to have PyYAML and errored in CI, which is the
 # shape of failure this file exists to stop — a gate that proves less on the machine that matters.
 PyYAML==6.0.3
+# The session-limit refusal names its reset in a zone — `resets 9:40pm (Europe/London)` — and `zoneinfo`
+# reads that zone from the system's tz database, which Windows has not got. Without this the gate's
+# Windows runner fell back to its own clock and paused every limit an hour out. Unix has the database
+# and ignores this package; Windows reads it.
+tzdata==2025.2

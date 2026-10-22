@@ -102,7 +102,8 @@ def moment(text: str) -> datetime:
 
 
 def git(*arguments: str) -> str | None:
-    result = subprocess.run(["git", *arguments], cwd=ROOT, text=True, capture_output=True)
+    result = subprocess.run(["git", *arguments], cwd=ROOT, text=True, capture_output=True, encoding="utf-8",
+                            errors="replace")
     return result.stdout.strip() if result.returncode == 0 else None
 
 

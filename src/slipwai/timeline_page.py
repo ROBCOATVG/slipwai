@@ -124,7 +124,7 @@ def ticks(begin: str, end: str) -> str:
     at = opened.astimezone().replace(minute=0, second=0, microsecond=0)
     while at <= closed.astimezone():
         if at.hour % step == 0 and at >= opened.astimezone():
-            label = at.strftime("%-d %b 00:00") if at.hour == 0 else at.strftime("%H:00")
+            label = f"{at.day} {at:%b} 00:00" if at.hour == 0 else at.strftime("%H:00")
             left = percent(at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), begin, end)
             found.append(f'<span class="tl-tick" style="left:{left:.3f}%">{esc(label)}</span>')
         at = at.replace(hour=(at.hour + 1) % 24) if at.hour < 23 else (at + timedelta(hours=1))

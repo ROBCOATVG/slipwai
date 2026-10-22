@@ -333,6 +333,11 @@ class Ending:
         self.over: set[str] = set()
 
     def read(self, line: bytes | str) -> None:
+        # Decoded here and not left to `json.loads`, which reads bytes strictly: a result line with one byte
+        # the session wrote in its own console's encoding — a Windows session's `·` — would be dropped whole,
+        # and a refusal to run would be read as three runs that failed.
+        if isinstance(line, bytes):
+            line = line.decode("utf-8", errors="replace")
         try:
             event = json.loads(line)
         except ValueError:

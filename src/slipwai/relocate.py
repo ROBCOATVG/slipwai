@@ -24,7 +24,8 @@ MOVES: tuple[tuple[re.Pattern[str], str], ...] = (
 
 
 def git(root: Path, *argv: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", *argv], cwd=root, text=True, capture_output=True, check=False)
+    return subprocess.run(["git", *argv], cwd=root, text=True, capture_output=True, check=False,
+                          encoding="utf-8", errors="replace")
 
 
 def relocate(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:

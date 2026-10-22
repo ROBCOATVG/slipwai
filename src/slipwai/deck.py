@@ -306,4 +306,4 @@ def output(root: Path, fairway: str, after: int = -1) -> tuple[str, int]:
         return "", 0
     if opening and start:
         data = data.partition(b"\n")[2]
-    return data.decode("utf-8", errors="replace"), size
+    return data.decode("utf-8", errors="replace").replace("\r\n", "\n"), size

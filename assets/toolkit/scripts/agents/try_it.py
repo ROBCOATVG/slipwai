@@ -120,7 +120,8 @@ def workspace() -> Path:
 
 
 def git(*argv: str, where: Path = ROOT) -> str:
-    done = subprocess.run(["git", "-C", str(where), *argv], capture_output=True, text=True, check=False)
+    done = subprocess.run(["git", "-C", str(where), *argv], capture_output=True, text=True, check=False,
+                          encoding="utf-8", errors="replace")  # a quickstart's em dash, on Windows too
     return done.stdout.strip() if done.returncode == 0 else ""
 
 

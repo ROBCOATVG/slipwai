@@ -46,7 +46,8 @@ EXCLUDED = "/.slipwai/logs"
 
 
 def git(root: Path, *argv: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", *argv], cwd=root, capture_output=True, text=True, check=False)
+    return subprocess.run(["git", *argv], cwd=root, capture_output=True, text=True, check=False,
+                          encoding="utf-8", errors="replace")
 
 
 def checked_out(root: Path, branch: str) -> Path | None:

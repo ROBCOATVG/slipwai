@@ -42,7 +42,8 @@ SEEN: dict[tuple[str, str], tuple[str, dict[str, str]]] = {}
 
 
 def git(root: Path, *argv: str) -> str:
-    done = subprocess.run(["git", "-C", str(root), *argv], capture_output=True, text=True, check=False)
+    done = subprocess.run(["git", "-C", str(root), *argv], capture_output=True, text=True, check=False,
+                          encoding="utf-8", errors="replace")
     return done.stdout if done.returncode == 0 else ""
 
 

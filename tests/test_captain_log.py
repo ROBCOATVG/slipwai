@@ -30,7 +30,7 @@ class CaptainFixture(Fixture):
     def printed(self, fairway: str, text: str) -> None:
         path = self.root / ".slipwai/running" / f"captain-{fairway}.out"
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as handle:
+        with path.open("a", encoding="utf-8", newline="") as handle:  # the bytes as given, on Windows too
             handle.write(text)
 
     def a_merge(self) -> None:

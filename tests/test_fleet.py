@@ -333,6 +333,65 @@ class RecordTest(Fixture):
         self.assertEqual(self.board()["counts"]["parked"], 2)
 
 
+class ProcessTest(Fixture):
+    """Each process the fleet has, what it is doing and what would start it: the question a restart that
+    lit two captains for one second each left unanswered on recap."""
+
+    def pid_file(self, name: str, pid: int, exit_why: str = "") -> None:
+        import json as json_
+
+        place = self.root / fleet.RUNNING
+        place.mkdir(parents=True, exist_ok=True)
+        (place / f"{name}.pid").write_text(f"{pid}\n", encoding="utf-8")
+        if exit_why:
+            (place / f"{name}.exit").write_text(json_.dumps({"at": when(5), "why": exit_why, "code": 0}),
+                                                encoding="utf-8")
+
+    def gone(self) -> int:
+        """A pid nothing is using: a child that has already exited."""
+        import subprocess
+        import sys
+
+        done = subprocess.run([sys.executable, "-c", "pass"], check=False)
+        return done.pid if hasattr(done, "pid") else 2**22 - 7
+
+    def test_a_live_pid_is_running_and_says_nothing_else(self) -> None:
+        import os
+
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(10)))
+        self.pid_file("harbourmaster", os.getpid())
+        self.pid_file("captain-ORD", os.getpid())
+        rows = {row["name"]: row for row in self.board()["processes"]}
+        self.assertEqual(rows["harbourmaster"]["state"], "running")
+        self.assertEqual(rows["captain-ORD"]["state"], "running")
+        self.assertEqual(rows["captain-ORD"]["starts_when"], "")
+
+    def test_an_exited_captain_carries_its_own_word_and_what_starts_it(self) -> None:
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(10)),
+                  logs.entry("parked", fairway="ORD", why="ORD-01: decide", cause="question", t=when(8)))
+        self.pid_file("captain-ORD", 2**22 - 7, "ORD is parked — ORD-01: decide")
+        row = next(one for one in self.board()["processes"] if one["name"] == "captain-ORD")
+        self.assertEqual(row["state"], "exited")
+        self.assertEqual(row["why"], "ORD is parked — ORD-01: decide")
+        self.assertEqual(row["starts_when"], "a park is cleared")
+
+    def test_a_captain_never_lit_for_a_paused_stream_says_when_the_pause_ends(self) -> None:
+        self.deck("CU", logs.entry("claimed", fairway="CU", slice="CU1", t=when(10)),
+                  logs.entry("parked", fairway="CU", why="CU1: refused", cause="limit",
+                             until="2999-01-01T20:40:00Z", t=when(8)))
+        row = next(one for one in self.board()["processes"] if one["name"] == "captain-CU")
+        self.assertEqual(row["state"], "not lit")
+        self.assertRegex(row["starts_when"], r"^the pause ends at \d\d:\d\d$")
+
+    def test_a_captain_that_found_nothing_to_start_says_what_it_waits_on(self) -> None:
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(10)),
+                  logs.entry("merged", fairway="ORD", slice="ORD-01", commit="abc", t=when(8)))
+        self.pid_file("captain-ORD", 2**22 - 7, "nothing to start in ORD — ORD-02 steers by Placed")
+        row = next(one for one in self.board()["processes"] if one["name"] == "captain-ORD")
+        self.assertEqual(row["starts_when"], "a slice may start; now ORD-02 steers by Placed")
+        self.assertIn("processes", "\n".join(lines(self.root)))
+
+
 class FeedTest(Fixture):
     def test_both_logs_are_merged_by_time(self) -> None:
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(3)))

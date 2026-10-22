@@ -192,6 +192,9 @@ sys.exit(1)
         self.assertRegex(str(parked[0].fields.get("until")), r"^\d{4}-\d{2}-\d{2}T\d{2}:40:00Z$")
         self.assertIn("no attempt spent", str(parked[0].fields["why"]))
         self.assertIn("paused at ORD-01 until", done.stdout)
+        # Its own word on why it left, beside its pid file, for the board.
+        left = json.loads((self.root / ".slipwai/running/captain-ORD.exit").read_text(encoding="utf-8"))
+        self.assertIn("paused at ORD-01 until", left["why"])
 
     def test_a_paused_stream_lit_again_says_when_and_runs_nothing(self) -> None:
         sail, runs = self.refusing()

@@ -50,6 +50,7 @@ from .logs import (
     paused,
     unmerged,
 )
+from .process_alive import alive
 from .shell_environment import login_environment
 
 #: Minutes since the last line after which a berth that has not finished is drawn as stalled. The default
@@ -501,6 +502,73 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
     return sorted(waiting, key=lambda row: row["t"])
 
 
+#: Where `fleet.start` records what it started: `<name>.pid`, its output in `<name>.out`, and — since the
+#: captain writes one — `<name>.exit`, the process's own word on why it left.
+RUNNING = ".slipwai/running"
+
+
+def processes(root: Path, found: list[Fairway], now: datetime | None = None) -> list[dict[str, str]]:
+    """Every process the fleet has, or should have: the harbourmaster and one captain per stream.
+
+    Each row says whether it is running, since when, why it left where it did, and what would start it —
+    the question recap's person could not answer at 09:00, when a restart lit two captains that each read
+    the standing parks and left within a second. `state` is `running`, `exited` or `not lit`; `why` is the
+    `.exit` file the captain wrote; `starts_when` is read off the stream's own log, which is what the next
+    captain lit for it would read.
+    """
+    place = root / RUNNING
+    rows: list[dict[str, str]] = []
+    streams = {one.name: one for one in found}
+    names = ["harbourmaster", *(f"captain-{one.name}" for one in found)]
+    for path in sorted(place.glob("captain-*.pid")) if place.is_dir() else []:
+        if path.stem not in names and "--" not in path.stem:
+            names.append(path.stem)
+    for name in names:
+        fairway = name.removeprefix("captain-") if name != "harbourmaster" else ""
+        pid_file, exit_file = place / f"{name}.pid", place / f"{name}.exit"
+        pid = 0
+        try:
+            pid = int(pid_file.read_text(encoding="utf-8").strip()) if pid_file.is_file() else 0
+        except (OSError, ValueError):
+            pid = 0
+        live = pid > 0 and alive(pid)
+        why, at = "", ""
+        if not live and exit_file.is_file():
+            try:
+                said = json.loads(exit_file.read_text(encoding="utf-8"))
+                why, at = str(said.get("why", "")), str(said.get("at", ""))
+            except (OSError, ValueError, AttributeError):
+                why = ""
+        since = ""
+        if pid_file.is_file():
+            try:
+                since = datetime.fromtimestamp(pid_file.stat().st_mtime, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except OSError:
+                since = ""
+        state = "running" if live else ("exited" if pid else "not lit")
+        rows.append({"name": name, "role": "harbourmaster" if not fairway else "captain", "fairway": fairway,
+                     "state": state, "since": since if live else (at or since), "why": why,
+                     "starts_when": "" if live else starts_when(fairway, streams.get(fairway), why)})
+    return rows
+
+
+def starts_when(fairway: str, stream: Fairway | None, why: str) -> str:
+    """What would start this process again, in one sentence read off the stream's log."""
+    if not fairway:
+        return "the fleet is started"
+    if stream is not None and stream.paused:
+        lifts = clock_of(stream.paused) if stream.paused != "soon" else ""
+        return f"the pause ends at {lifts}" if lifts else "the harness runs sessions again"
+    if stream is not None and stream.parked:
+        return "a park is cleared"
+    if "nothing to start" in why:
+        _, _, tail = why.partition(" — ")
+        return f"a slice may start; now {tail}" if tail else "a slice may start"
+    if "paused until" in why:
+        return "the pause ends"
+    return "the fleet is lit"
+
+
 def counts(found: list[Fairway], config: dict, bound: float = STALL_MINUTES,
            now: datetime | None = None) -> dict[str, object]:
     """The numbers under the headline: what is running, what waits for a slot, what is paused, what is
@@ -626,6 +694,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         # rows the inbox lists one by one, so the two never disagree.
         "groups": groups(waiting),
         "counts": counts(found, held, bound, now),
+        "processes": processes(root, found, now),
         # The acceptance facts, for the voyage's last stage: a demo owed is a capability due and not yet
         # accepted, and accepted is the only line a capability ends on.
         "accepted": sorted(set(accepted)),

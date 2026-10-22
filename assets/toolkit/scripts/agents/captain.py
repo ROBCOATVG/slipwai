@@ -1694,9 +1694,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--interval", type=float, default=30.0, help="seconds between turns")
     parsed = parser.parse_args(argv)
     signal.signal(signal.SIGTERM, on_term)
+    last = ""
     try:
         while True:
             said = turn(parsed.fairway)
+            last = said
             # The turn's slices are merged or parked by now, so a stop while sleeping interrupts nothing.
             FLIGHT.clear()
             print(said, flush=True)
@@ -1705,11 +1707,31 @@ def main(argv: list[str]) -> int:
             time.sleep(parsed.interval)
     except Stopped:
         stopped(parsed.fairway)
+        last = f"captain: {parsed.fairway} was asked to stop"
         return 0
     finally:
+        left(parsed.fairway, last)
         # The final line must travel while this captain still holds the pen. A captain killed outright
         # still leaves its claim behind, which is what 11.2's lease is for.
         release_after_publication(parsed.fairway)
+
+
+def left(fairway: str, why: str) -> None:
+    """Write why this captain is leaving, beside its pid file, for the board to read.
+
+    A captain that exits is a fact a board has to show, and until this the only trace was the last line
+    of a 29 MB output file. recap's person restarted the fleet at 09:00 and watched two captains leave
+    within a second, each having read eleven standing parks, with nothing on the board saying so. The file
+    is this process's own word on its own exit, written at the moment of it, and `fleet.start` removes it
+    when the captain is lit again.
+    """
+    try:
+        fleet.RUNNING.mkdir(parents=True, exist_ok=True)
+        last = (why.strip().splitlines() or [""])[-1].removeprefix("captain: ").strip()
+        (fleet.RUNNING / f"captain-{fairway}.exit").write_text(
+            json.dumps({"at": logs.now(), "why": last, "code": 0}) + "\n", encoding="utf-8")
+    except OSError:
+        pass
 
 
 if __name__ == "__main__":

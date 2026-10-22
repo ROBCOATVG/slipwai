@@ -122,6 +122,8 @@ def recorded() -> dict[str, int]:
 def start(name: str, argv: list[str]) -> int:
     """One process, detached, with its own log, and its pid written down."""
     RUNNING.mkdir(parents=True, exist_ok=True)
+    # The word the last process of this name left on its way out is that process's, not this one's.
+    (RUNNING / f"{name}.exit").unlink(missing_ok=True)
     out = (RUNNING / f"{name}.out").open("a", encoding="utf-8")
     process = subprocess.Popen(argv, cwd=ROOT, stdout=out, stderr=subprocess.STDOUT,
                                start_new_session=True)

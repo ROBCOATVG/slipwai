@@ -51,6 +51,14 @@ def lines(root: Path) -> list[str]:
         detail = inbox_detail(row)
         said.append(f"  {row['fairway']:<10} {row['kind']:<7} {detail[:width - 24]}")
 
+    processes = found["processes"]
+    assert isinstance(processes, list)
+    said += ["", "processes"]
+    for row in processes:
+        when = row["since"][11:16] if row["since"] else ""
+        rest = row["why"] or (f"starts when {row['starts_when']}" if row["starts_when"] else "")
+        said.append(f"  {row['name']:<22} {row['state']:<8} {when:<6} {rest[:width - 42]}")
+
     berths = found["berths"]
     assert isinstance(berths, list)
     stalled = [row for row in berths if row["state"] == "stalled"]

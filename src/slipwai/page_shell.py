@@ -24,7 +24,8 @@ import json
 from .assets import this_command
 from .brand import MARK, favicon, inline, svg
 
-# budget: 450 — one stylesheet, one document, the bar and its two ways back, the four routes an installable
+# budget: 470 — the waiting groups' chips and their row styles landed here with the rest of the sheet;
+# one stylesheet, one document, the bar and its two ways back, the four routes an installable
 # page is made of, and the one button state every page shares: a press that waits on something slow saying
 # so in itself, with the seat every page carries. Splitting the stylesheet out would put the look in one file and the
 # document that is the only reason it exists in another, which is the seam 14.4 removed.

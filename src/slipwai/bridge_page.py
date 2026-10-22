@@ -15,6 +15,9 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
+# budget: 380 — the waiting card now groups parks, questions and notes by what a person has to do, and
+# each group carries its own heading, count and the rows under it, so the page is a little longer than one
+# that listed them flat.
 from __future__ import annotations
 
 import json

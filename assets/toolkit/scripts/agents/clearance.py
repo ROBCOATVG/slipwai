@@ -731,13 +731,13 @@ def position(charted: dict, folded_logs: Folded, slice_id: str,
     fairway = str(entry.get("fairway", ""))
     if fairway in folded_logs.parked:
         if fairway in folded_logs.paused:
-            return "paused", (f"its fairway {fairway} is paused until {folded_logs.paused[fairway] or 'the harness '
-                              f'runs sessions again'} — {folded_logs.parked[fairway]}")
+            until = folded_logs.paused[fairway] or "the harness runs sessions again"
+            return "paused", f"its fairway {fairway} is paused until {until} — {folded_logs.parked[fairway]}"
         return "awaiting-decision", f"its fairway {fairway} is parked — {folded_logs.parked[fairway]}"
     if slice_id in folded_logs.slice_parked:
         if slice_id in folded_logs.slice_paused:
-            return "paused", (f"it is paused until {folded_logs.slice_paused[slice_id] or 'the harness runs '
-                              f'sessions again'} — {folded_logs.slice_parked[slice_id]}")
+            until = folded_logs.slice_paused[slice_id] or "the harness runs sessions again"
+            return "paused", f"it is paused until {until} — {folded_logs.slice_parked[slice_id]}"
         return "awaiting-decision", f"it is parked on its own — {folded_logs.slice_parked[slice_id]}"
     depends, _ = slice_graph(charted)
     waiting_for = [dep for dep in depends.get(slice_id, []) if dep not in observed(charted)

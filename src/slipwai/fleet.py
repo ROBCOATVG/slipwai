@@ -63,6 +63,7 @@ from .logs import (
     unmerged,
 )
 from .shell_environment import login_environment
+from .timeline import spans
 
 
 @dataclass
@@ -537,6 +538,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         "groups": groups(waiting),
         "counts": counts(found, held, bound, now),
         "processes": processes(root, found, now),
+        "timeline": spans(found, now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ") if now else ""),
         # The acceptance facts, for the voyage's last stage: a demo owed is a capability due and not yet
         # accepted, and accepted is the only line a capability ends on.
         "accepted": sorted(set(accepted)),

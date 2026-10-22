@@ -31,6 +31,9 @@ from .fleet_page import live_sub as fleet_sub
 # plain-words table was until the settings box needed it too.
 from .page_shell import PLAIN, STYLE, THEME, document, esc  # noqa: F401
 from .settings_card import settings
+from .timeline_page import SCRIPT as TIMELINE_SCRIPT
+from .timeline_page import STYLE as TIMELINE_STYLE
+from .timeline_page import timeline_card
 
 #: What each state means in a word a reader does not have to be told. `stalled` stays `stalled`: it is the
 #: one that has to be noticed, and a gentler word for it would be the dashboard hiding something.
@@ -124,7 +127,7 @@ document.addEventListener('click', event => {
     send('/set', {pairs});
   }
 });
-""" + FLEET_SCRIPT
+""" + FLEET_SCRIPT + TIMELINE_SCRIPT
 
 
 def stream_log(fairway: str, lines: list) -> str:
@@ -294,10 +297,11 @@ def live_cards(found: dict, config: dict, controls: bool = True,
     # the decisions nobody has read.
     others = [row for row in waiting if row["kind"] != "parked"]
     listed = inbox_rows(others, controls, found.get("streams")) if others else ""
-    return f"""<style>{FLEET_STYLE}</style>{unavailable}
+    return f"""<style>{FLEET_STYLE}{TIMELINE_STYLE}</style>{unavailable}
 {headline_card(found, controls)}
 {waiting_card(found, controls, listed)}
 {parks_table(found)}
+{timeline_card(found, controls)}
 {answer_boxes(berths) if controls else ""}
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {}, controls)}</div>
 {settings(pressure, config, controls, more)}

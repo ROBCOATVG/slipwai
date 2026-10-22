@@ -64,7 +64,8 @@ STYLE = """
   color:var(--ink-2);cursor:pointer;white-space:nowrap}
 .quiet-button:hover{border-color:var(--teal);color:var(--ink)}
 @media (max-width:720px){.headline{grid-template-columns:1fr}.needs li{grid-template-columns:20px 1fr}
-  .needs .how{grid-column:2;text-align:left;white-space:normal}}
+  .needs .how{grid-column:2;text-align:left;white-space:normal}.tl-names{width:90px}}
+
 """
 
 #: What the page's script does with the two controls this tab adds. One `told` per park in a group, then
@@ -90,6 +91,7 @@ document.addEventListener('click', event => {
     each('/need', parks.map(park => ({fairway: park.fairway, parked: park.t, need: Number(tick.dataset.need)})));
   }
 });
+
 """
 
 
@@ -319,3 +321,4 @@ def parks_table(found: dict, now: datetime | None = None) -> str:
                  f"<td>{esc(first_sentence(str(row.get('what') or '')))}</td><td>{esc(then or NOTHING)}</td></tr>")
     return (f'<div class="card"><h2>Each park, in one line</h2><table><tr><th>Slice</th><th>Parked</th>'
             f"<th>Cause</th><th>Why</th><th>Then</th></tr>{body}</table></div>")
+

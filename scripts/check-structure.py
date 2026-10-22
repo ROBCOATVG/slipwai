@@ -86,7 +86,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # One validated answer per axis, which applications a project has, and what they add up to being able
     # to do.
     ("answers", ("selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
-                 "fleet_record", "deck",
+                 "fleet_record", "timeline", "deck",
                  "toolkit", "platform", "convergence", "delivery_facts", "programme", "quick_wins",
                  "uncommitted", "wrappers", "strategy", "survey", "structure", "big_picture", "deployment_shapes",
                  # Whether a project's stacks still parse — a reading of a tree, like the survey beside it.
@@ -125,7 +125,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # The board, as a page a person answers from: the render, the server and the verb — and
               # what bare `slipwai` does, which is open that same board. `seats` is the one piece of state
               # that server has, which is a window each: every route beside it is a fold of files on disk.
-              "page_shell", "seats", "bridge", "bridge_page", "fleet_page", "cli_bridge", "cli_start",
+              "page_shell", "seats", "bridge", "bridge_page", "fleet_page", "timeline_page", "cli_bridge", "cli_start",
               "interview_page",
               # The interview's rows, split from its questions at the seam that module's budget names:
               # which control a question gets depends on its kind, never on which flag it becomes.

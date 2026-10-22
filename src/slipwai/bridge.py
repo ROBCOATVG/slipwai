@@ -134,7 +134,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 850 — one server and every route the board answers, the need tick among them,
+# budget: 860 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -317,6 +317,11 @@ class Bridge(BaseHTTPRequestHandler):
                 self.send(200, slice_window(self.root, fairway, named))
             else:
                 self.send(200, slice_payload(self.root, fairway, named), "application/json; charset=utf-8")
+            return
+        # The voyage as lanes and marks, the same fold the Fleet tab draws.
+        if where == "/timeline.json" and self.controls:
+            self.send(200, json.dumps(board(self.root, config(self.root))["timeline"]),
+                      "application/json; charset=utf-8")
             return
         if where == "/feedback.json" and self.controls:
             _, rows, _, fleet, _ = self.voyage_parts()

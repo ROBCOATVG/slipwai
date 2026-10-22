@@ -618,7 +618,11 @@ class Bridge(BaseHTTPRequestHandler):
 
     def triaging(self) -> bool:
         """Whether this board's child is the triage session, reading what a person said."""
-        return bool(self.fitting) and not self.fitting.said()["done"] and self.fitting.said()["step"] == "triage"
+        fitting = self.fitting
+        if fitting is None:
+            return False
+        said = fitting.said()
+        return not said["done"] and said["step"] == "triage"
 
     def triage_now(self) -> bool:
         """Start reading the feedback when nothing else of this board is running, and say whether it did."""

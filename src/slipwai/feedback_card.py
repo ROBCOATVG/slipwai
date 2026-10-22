@@ -242,7 +242,8 @@ def act(root: Path, held: dict, rows: list[dict[str, str]], fleet: dict, start: 
         tell(root, fairway, f"Demo verdict for the {capability} capability: accepted.")
         return f"told {fairway}: {capability} accepted"
     if verb == "send":
-        context = held.get("context") if isinstance(held.get("context"), dict) else {}
+        given = held.get("context")
+        context: dict = given if isinstance(given, dict) else {}
         item = capture(root, str(held.get("words", "")), context)
         said = f"feedback {item.number} written"
         if held.get("verdict") == "not-yet" and context.get("capability") and context.get("fairway"):

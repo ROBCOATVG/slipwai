@@ -348,7 +348,7 @@ def card_html(state: dict, walks: list[dict] | None = None) -> str:
         newer = f"{behind} newer commit{'s' if behind != 1 else ''} on trunk" if behind else "up to date"
         facts = (("Showing", f"trunk at {commit}"), ("Trunk", newer), ("Address", url.removeprefix("http://")),
                  ("Example data", f"{len(state.get('seeded') or [])} slices loaded"
-                  + (f", {len(state.get('seed_failed'))} refused" if state.get("seed_failed") else "")))
+                  + (f", {len(state.get('seed_failed') or [])} refused" if state.get("seed_failed") else "")))
         body = ('<div class="grid">'
                 + "".join(f'<div class="fact"><b>{esc(a)}</b><span>{esc(b)}</span></div>' for a, b in facts)
                 + "</div>" + links_html(state) + people_html(state) + new_html(state)

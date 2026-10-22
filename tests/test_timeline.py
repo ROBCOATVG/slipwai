@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import unittest
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
 import checkout_packages  # noqa: F401
 from test_recap_day import MORNING, copied, recorded
@@ -20,7 +22,7 @@ from slipwai.timeline_page import percent, ticks, timeline_card
 NOW = MORNING.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def folded(root):  # type: ignore[no-untyped-def]
+def folded(root: Path) -> dict[str, Any]:
     found, _ = fairways(root, harbour_log(root))
     return spans(found, NOW)
 

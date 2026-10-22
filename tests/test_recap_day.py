@@ -14,6 +14,7 @@ import tempfile
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import checkout_packages  # noqa: F401
 
@@ -64,7 +65,7 @@ class AsItWasTest(unittest.TestCase):
     """The logs as the captains wrote them: eleven parks, none with a cause, all read as waiting on you."""
 
     def setUp(self) -> None:
-        self.found = fleet.board(copied(), {"boilers": 3}, now=MORNING)
+        self.found: dict[str, Any] = fleet.board(copied(), {"boilers": 3}, now=MORNING)
 
     def test_the_fixture_reads_whole(self) -> None:
         self.assertEqual(self.found["unreadable"], {})
@@ -89,7 +90,7 @@ class WithTheRecordTest(unittest.TestCase):
     """The same day with the record: two groups, eight paused on the limit, three parked on one change."""
 
     def setUp(self) -> None:
-        self.found = fleet.board(recorded(), {"boilers": 3}, now=MORNING)
+        self.found: dict[str, Any] = fleet.board(recorded(), {"boilers": 3}, now=MORNING)
 
     def test_two_groups_where_there_were_eleven_rows(self) -> None:
         found = self.found["groups"]

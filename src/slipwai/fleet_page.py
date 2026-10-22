@@ -133,6 +133,23 @@ def first_sentence(text: str, limit: int = 160) -> str:
     return sentence if len(sentence) <= limit else sentence[:limit - 1].rstrip() + "…"
 
 
+def needs_title(needs: list[dict[str, str]]) -> str:
+    """A group's headline from its needs, where it has them: the first need, and how many more.
+
+    A park's `why` is the paragraph a reader without the board sees, and recap's three host parks each ran
+    to 900 characters before they said what they wanted. The needs are the ask itself, so the headline is
+    the first of them — `context: catch-up on LB6, LB7, LB8, LB9, LB10 in docs/event-model/model.yaml and 4
+    more` names the move where the paragraph's first sentence named the slice's rungs.
+    """
+    said = [str(need.get("what") or "").strip() for need in needs]
+    said = [one for one in said if one]
+    if not said:
+        return ""
+    first = first_sentence(said[0])
+    rest = len(said) - 1
+    return f"{first} and {rest} more" if rest else first
+
+
 def plural(count: int, word: str) -> str:
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
@@ -255,7 +272,7 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
     slices = group.get("slices") or []
     needs = group.get("needs") or []
     parks = json.dumps(group.get("parks") or [])
-    title = first_sentence(str(group.get("what") or "")) or CAUSES.get(cause, cause)
+    title = needs_title(needs) or first_sentence(str(group.get("what") or "")) or CAUSES.get(cause, cause)
     met = sum(1 for need in needs if need.get("met") == "yes")
     meta = [f"holds {', '.join(slices)}" if len(slices) > 1 else slices[0] if slices else "",
             f"since {when(str(group.get('t') or ''), now)}"]

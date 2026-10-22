@@ -228,7 +228,7 @@ class WorkersTest(Abreast):
         drive = self.sail("import json, os, pathlib\n"
                           "pathlib.Path(os.environ['ABREAST_RECORD']).write_text("
                           "json.dumps(os.environ.get('SLIPWAI_TEST_WORKERS')))\n")
-        self.turn("--once", SLIPWAI_SAIL=drive, **env)
+        self.turn("--once", **{"SLIPWAI_SAIL": drive, **env})  # type: ignore[arg-type]
         return json.loads(self.record.read_text(encoding="utf-8"))
 
     def test_each_session_is_given_its_share_of_the_cores(self) -> None:

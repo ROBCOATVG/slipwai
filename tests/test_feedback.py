@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 import checkout_packages  # noqa: F401
 
@@ -177,9 +178,13 @@ class CardTest(Project):
     fleet = {"demo_due_in": {"basket": "ORD"}}
 
     def test_send_writes_the_record_and_starts_reading_it(self) -> None:
-        started = []
-        said = act(self.root, {"verb": "send", "words": "It broke.", "context": {"slice": "L01"}}, [], {},
-                   lambda: started.append(1) or True)
+        started: list[int] = []
+
+        def start() -> bool:
+            started.append(1)
+            return True
+
+        said = act(self.root, {"verb": "send", "words": "It broke.", "context": {"slice": "L01"}}, [], {}, start)
         self.assertEqual(said, "feedback 0001 written; reading it now")
         self.assertEqual(started, [1])
 
@@ -238,13 +243,13 @@ class TabsTest(unittest.TestCase):
 class TriageScriptTest(unittest.TestCase):
     """The toolkit script finds what nobody has proposed a route for, and starts nothing without one."""
 
-    def load(self, root: Path):
+    def load(self, root: Path) -> Any:
         here = Path(__file__).resolve().parents[1] / "assets/toolkit/scripts/agents"
         sys.path.insert(0, str(here))
         try:
             spec = importlib.util.spec_from_file_location("triage_under_test", here / "triage.py")
             assert spec and spec.loader
-            module = importlib.util.module_from_spec(spec)
+            module: Any = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
         finally:
             sys.path.remove(str(here))

@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from types import ModuleType
+from typing import Any
 
 from slipwai.assets import TOOLKIT_ROOT
 
@@ -91,7 +91,7 @@ class Project(unittest.TestCase):
         (self.root / "project.json").write_text(
             json.dumps({"name": "shop", "frontend": "react-vite", "deployables": deployables}), encoding="utf-8")
 
-    def load(self) -> ModuleType:
+    def load(self) -> Any:
         spec = importlib.util.spec_from_file_location("try_it_under_test", self.root / "scripts/agents/try_it.py")
         assert spec and spec.loader
         module = importlib.util.module_from_spec(spec)
@@ -232,7 +232,8 @@ class SeedTest(Project):
             if address.endswith("/api/nope"):
                 import io
                 import urllib.error
-                raise urllib.error.HTTPError(address, 422, "no", {}, io.BytesIO(b'{"error":"invalid"}'))
+                from email.message import Message
+                raise urllib.error.HTTPError(address, 422, "no", Message(), io.BytesIO(b'{"error":"invalid"}'))
             return {"id": "r-1"} if address.endswith("/api/records") else None
 
         self.module.request = request

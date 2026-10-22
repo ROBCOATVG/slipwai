@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 
 import checkout_packages  # noqa: F401
 from captain_fixture import SLICES, WORKS, Fixture, fake_drive  # noqa: F401
@@ -159,6 +160,57 @@ exec({fake_drive("behaviour")!r} if first else {fake_drive()!r})
         self.attempts(0)
         self.captain("ORD", self.sail(fake_drive("behaviour")))
         self.assertEqual(len([e for e in self.read("ORD") if e.kind == "demo"]), 1)
+
+
+class RefusalTest(Fixture):
+    """A harness that would not run the session is a pause with a time on it, not three failed runs.
+
+    recap, 2026-10-21: the session limit answered eight slices with one `result` line and exit 1. Each was
+    run three times in a second, parked as "`/sail` exited 1", and stood until a person came back the next
+    morning — four hours after the limit had reset.
+    """
+
+    def refusing(self) -> tuple[str, Path]:
+        runs = self.root / "runs.txt"
+        body = f"""import sys, pathlib
+runs = pathlib.Path({str(runs)!r})
+runs.write_text(runs.read_text() + "x" if runs.exists() else "x")
+print('{{"type":"system","subtype":"init","session_id":"s"}}', flush=True)
+print('{{"type":"result","subtype":"success","is_error":true,"num_turns":1,'
+      '"result":"You\\'ve hit your session limit · resets 9:40pm (Europe/London)"}}', flush=True)
+sys.exit(1)
+"""
+        return self.sail(body) + " --output-format stream-json", runs
+
+    def test_a_refusal_pauses_the_slice_with_the_time_and_spends_no_attempt(self) -> None:
+        sail, runs = self.refusing()
+        done = self.captain("ORD", sail)
+        self.assertEqual(runs.read_text(), "x", done.stdout + done.stderr)
+        parked = [e for e in self.read("ORD") if e.kind == "parked"]
+        self.assertEqual(len(parked), 1, done.stdout)
+        self.assertEqual(parked[0].fields.get("cause"), "limit")
+        self.assertRegex(str(parked[0].fields.get("until")), r"^\d{4}-\d{2}-\d{2}T\d{2}:40:00Z$")
+        self.assertIn("no attempt spent", str(parked[0].fields["why"]))
+        self.assertIn("paused at ORD-01 until", done.stdout)
+
+    def test_a_paused_stream_lit_again_says_when_and_runs_nothing(self) -> None:
+        sail, runs = self.refusing()
+        self.captain("ORD", sail)
+        again = self.captain("ORD", sail)
+        self.assertIn("ORD is paused until", again.stdout)
+        self.assertEqual(runs.read_text(), "x")
+
+    def test_a_park_on_a_missed_gate_says_gate(self) -> None:
+        done = self.captain("ORD", self.sail("import sys\nsys.exit(0)\n"))
+        parked = [e for e in self.read("ORD") if e.kind == "parked"]
+        self.assertEqual(parked[0].fields.get("cause"), "gate", done.stdout)
+
+    def test_a_park_on_a_session_that_crashed_says_exit_and_still_spends_its_attempts(self) -> None:
+        self.budget(minutes=5, attempts=0)
+        done = self.captain("ORD", self.sail("import sys\nsys.exit(3)\n"))
+        parked = [e for e in self.read("ORD") if e.kind == "parked"]
+        self.assertEqual(parked[-1].fields.get("cause"), "exit", done.stdout)
+        self.assertIn("exited 3", str(parked[-1].fields["why"]))
 
 
 class FixTrunkTest(Fixture):

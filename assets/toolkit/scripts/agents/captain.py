@@ -79,6 +79,7 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -136,7 +137,9 @@ ACCEPTED = "accepted"
 ANSWER_POLL = 2.0
 #: What a turn can say that ends the run rather than inviting another: a park is a person's to clear, there
 #: is nothing to start, or another machine holds this fairway and nothing here changes that by waiting.
-STOPS = (" is parked — ", "nothing to start", " is held by ", " yields its berth to ")
+STOPS = (" is parked — ", " is paused until ", "nothing to start", " is held by ", " yields its berth to ")
+#: What a park waits on, as `waiting` says it, against the one-word cause the record carries.
+CAUSE_OF_WAIT = {"decision-review": "ceiling", "green-trunk": "trunk"}
 #: Minutes a harbour may be *silent* for before a wait on it is a park, where `harbour.json` does not say.
 #: `half-ahead`'s number. Silence and not elapsed time: see `await_answer`.
 DEFAULT_WAIT_MINUTES = 60
@@ -359,6 +362,25 @@ def state(found: list[logs.Entry], fairway: str = "") -> tuple[str, dict[str, st
     parks = logs.open_parks(found, harbour_entries(), name)
     whole = logs.fairway_parks(parks)
     return (str(whole[-1].fields["why"]) if whole else ""), logs.held_slices(parks)
+
+
+def paused_until(found: list[logs.Entry], fairway: str, whole: bool = False) -> str:
+    """When this fairway's pause lifts, as a clock, or `""` where it is not paused.
+
+    `whole` asks about the park that holds the fairway itself; otherwise about the slices parked on their
+    own. Paused is every open park lifting by itself — a `limit`, or an `until` still ahead — and none
+    standing on a person: one slice waiting on a person beside seven waiting on the harness is a stream
+    that is parked, and saying paused would hide the one that needs somebody.
+    """
+    parks = logs.open_parks(found, harbour_entries(), fairway)
+    parks = logs.fairway_parks(parks) if whole else [e for e in parks if e.fields.get("slice")]
+    if not parks:
+        return ""
+    lifting = logs.paused(parks)
+    if len(lifting) != len(parks):
+        return ""
+    latest = max(str(e.fields.get("until") or "") for e in lifting)
+    return local_clock(latest) if latest else "the harness says"
 
 
 def displaced_by(fairway: str) -> str:
@@ -762,8 +784,40 @@ def dispatch(slice_id: str, feature: str, fairway: str,
         # A stop, a Ctrl-C, anything that leaves mid-stage: the stage ends with the captain, never after it.
         end(process)
         flying.pop("process", None)
+    # A harness that would not run the session at all exits 1 exactly as a session that ran and failed
+    # does. What it said is the only difference, and it is left here for `through_its_gate` to read before
+    # it counts this as a run: recap's eight slices were each refused three times in a second.
+    refused = process.refusal
+    if refused is not None:
+        flying["refusal"] = refused
     fire("after-stage", stage="drive", slice=slice_id, fairway=fairway)
     return finished, why, entries(feature, fairway)[started:]
+
+
+def record(slice_id: str, **fields: object) -> None:
+    """What the park this slice ends on will carry beyond its `why`: a cause, an `until`, needs, then."""
+    FLIGHT.setdefault(slice_id, {}).setdefault("park", {}).update(fields)
+
+
+def local_clock(until: str) -> str:
+    """An instant from the log as a person reads a clock on this machine: `21:40`, or the instant itself
+    where it is not one this can read."""
+    try:
+        when = datetime.strptime(until, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError:
+        return until
+    return when.astimezone().strftime("%H:%M")
+
+
+def cause_for(why: str) -> str:
+    """The one word for why a run missed its gate, read off the sentence `watched` and `gate_missed` say."""
+    if "nothing was written to the deck log" in why:
+        return "silence"
+    if "`/sail` exited" in why:
+        return "exit"
+    if "the demo came back" in why:
+        return "demo"
+    return "gate"
 
 
 def refurnish(slice_id: str, berth: Path | None) -> None:
@@ -967,7 +1021,15 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
         try:
             finished, why, fresh = dispatch(slice_id, feature, fairway, retry)
         except NeverRan as refused:
+            record(slice_id, cause="exit")
             return False, str(refused)
+        refused_run = FLIGHT.get(slice_id, {}).pop("refusal", None)
+        if refused_run is not None:
+            # Not a run: the harness said no before the ladder started. A pause with the time on it, no
+            # attempt spent, nobody asked anything — the harbourmaster clears it when the time comes.
+            record(slice_id, cause=refused_run.cause, until=refused_run.until)
+            return False, (f"the harness would not run {slice_id}: {refused_run.said}. Paused until "
+                           f"{local_clock(refused_run.until)}; no attempt spent")
         tried += 1
         own = own_parks(fresh, fairway, slice_id)
         asked = open_questions(entries(feature, fairway), slice_id) if own or finished else []
@@ -996,6 +1058,7 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
                 # Before the mark check: a stage that stopped to ask is not a stage that wrote nothing, and
                 # the park has to carry the question, because the person reading it answers it.
                 said = "; ".join(f"{e.fields.get('id')}: {e.fields.get('what')}" for e in asked)
+                record(slice_id, cause="question")
                 return False, (f"{slice_id} is awaiting a decision — {said}. A person answers with "
                                f"`/cruise-tell {fairway} <answer>`; the captain records the decision and "
                                f"resumes {slice_id}")
@@ -1005,6 +1068,7 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             print(f"captain: {slice_id} run {tried} did not close its gate — {why}. Running it again",
                   flush=True)
             continue
+        record(slice_id, cause=cause_for(why))
         return False, f"{why}. That was the last of {tried} run(s), which is what `attempts` allows"
 
 
@@ -1363,7 +1427,7 @@ def allowed(fairway: str, flying: int, found: list[logs.Entry]) -> int:
 
 
 def finished(feature: str, fairway: str, slice_id: str, done: bool, fault: str, since: int, alone: bool,
-             waiting: str = "") -> str:
+             waiting: str = "", carried: dict | None = None) -> str:
     """The line a slice's end prints, and the park it writes where it did not merge.
 
     The session parked itself, with the reason it met: a second park on top of it would say what the gate
@@ -1377,10 +1441,18 @@ def finished(feature: str, fairway: str, slice_id: str, done: bool, fault: str, 
     own = own_parks(entries(feature, fairway)[since:], fairway, slice_id)
     if own:
         return f"captain: {fairway} parked at {slice_id} — {own[-1].fields.get('why', '')}"
-    named: dict[str, str] = {} if alone else {"slice": slice_id}
+    named: dict[str, object] = {} if alone else {"slice": slice_id}
     if waiting:
         named["waiting"] = waiting
+    # The record: what the run left for its park to carry — a cause, an `until`, needs, then. A wait the
+    # harbourmaster answers by rule names its cause by what it waits on, so no park is left as `other`
+    # that this process knew the word for.
+    named.update(carried or {})
+    if "cause" not in named and waiting in CAUSE_OF_WAIT:
+        named["cause"] = CAUSE_OF_WAIT[waiting]
     write(feature, fairway, logs.entry("parked", fairway=fairway, why=f"{slice_id}: {fault}", **named))
+    if str(named.get("cause", "")) == "limit" and named.get("until"):
+        return f"captain: {fairway} paused at {slice_id} until {local_clock(str(named['until']))} — {fault}"
     return f"captain: {fairway} parked at {slice_id} — {fault}"
 
 
@@ -1440,8 +1512,10 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
         for slice_id in [one for one, thread in threads.items() if not thread.is_alive()]:
             threads.pop(slice_id).join()
             done, fault, alone = results.pop(slice_id, (False, "the slice's thread ended without a word", True))
-            waiting = str((FLIGHT.pop(slice_id, None) or {}).get("waiting") or "")
-            line = finished(feature, fairway, slice_id, done, fault, since, alone and not threads, waiting)
+            held = FLIGHT.pop(slice_id, None) or {}
+            waiting = str(held.get("waiting") or "")
+            line = finished(feature, fairway, slice_id, done, fault, since, alone and not threads, waiting,
+                            held.get("park") or {})
             print(line, flush=True)
             said.append(line)
         if not threads:
@@ -1501,6 +1575,9 @@ def turn(fairway: str) -> str:
     found = entries(feature, fairway)
     parked, held = state(found, fairway)
     if parked:
+        lifting = paused_until(found, fairway, whole=True)
+        if lifting:
+            return f"captain: {fairway} is paused until {lifting} — {parked}"
         return f"captain: {fairway} is parked — {parked}"
     if stranded:
         write(feature, fairway, logs.entry("parked", fairway=fairway, why=stranded))
@@ -1538,6 +1615,12 @@ def turn(fairway: str) -> str:
             return f"captain: {fairway} yields its berth to {giving_up}"
         first, why = next_slices(fairway, [])
         if not first:
+            lifting = paused_until(found, fairway)
+            if lifting:
+                # Nothing new and every slice this stream holds is waiting for the harness: a pause, with
+                # the time, rather than "nothing to start", which reads as a fairway with nothing to do.
+                return (f"captain: {fairway} is paused until {lifting} — {len(held)} claimed slice(s) wait "
+                        f"for the harness, and {why}")
             return f"captain: nothing to start in {fairway} — {why}"
         said = sail_out(feature, fairway, first[:1], fresh=True)
     # Nothing started at all is a turn with nothing to start, said in the words that end the loop: a turn

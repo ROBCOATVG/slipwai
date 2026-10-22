@@ -1182,7 +1182,7 @@ def cleared_by_time(already: list[logs.Entry]) -> list[logs.Entry]:
             if not until or until > now or (fairway, park.t) in done:
                 continue
             found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
-                                    what=f"the time it waited for came: {until}"))
+                                    what=f"its time came: {until}"))
     return found
 
 
@@ -1285,7 +1285,7 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
                                             need=index, how=how))
             if all((fairway, park.t, index) in met for index in range(len(needs))):
                 found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
-                                        what=f"every need of this park is met: {len(needs)} of {len(needs)}"))
+                                        what=f"needs met: {len(needs)} of {len(needs)}"))
     return found
 
 

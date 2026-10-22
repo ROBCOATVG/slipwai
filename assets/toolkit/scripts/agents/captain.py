@@ -380,7 +380,7 @@ def paused_until(found: list[logs.Entry], fairway: str, whole: bool = False) -> 
     if len(lifting) != len(parks):
         return ""
     latest = max(str(e.fields.get("until") or "") for e in lifting)
-    return local_clock(latest) if latest else "the harness says"
+    return local_clock(latest) if latest else "the harness says when"
 
 
 def displaced_by(fairway: str) -> str:
@@ -1028,8 +1028,8 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             # Not a run: the harness said no before the ladder started. A pause with the time on it, no
             # attempt spent, nobody asked anything — the harbourmaster clears it when the time comes.
             record(slice_id, cause=refused_run.cause, until=refused_run.until)
-            return False, (f"the harness would not run {slice_id}: {refused_run.said}. Paused until "
-                           f"{local_clock(refused_run.until)}; no attempt spent")
+            return False, (f"the harness would not run {slice_id} ({refused_run.said}). Paused until "
+                           f"{local_clock(refused_run.until)}, no attempt spent")
         tried += 1
         own = own_parks(fresh, fairway, slice_id)
         asked = open_questions(entries(feature, fairway), slice_id) if own or finished else []

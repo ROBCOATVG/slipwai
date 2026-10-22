@@ -29,7 +29,7 @@ class PausedTest(Fixture):
             self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         receipts = [entry.fields for entry in self.harbour() if entry.kind == "cleared"]
         self.assertEqual(receipts, [{"fairway": "ORD", "parked": "2026-10-21T16:40:00Z",
-                                     "what": "the time it waited for came: 2026-10-21T20:40:00Z"}])
+                                     "what": "its time came: 2026-10-21T20:40:00Z"}])
 
     def test_a_pause_whose_time_is_ahead_stands(self) -> None:
         self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", slice="ORD-01", why="refused",
@@ -72,7 +72,7 @@ class NeedsTest(MergeFixture):
         met = self.receipts("need-met")
         self.assertEqual([(m["parked"], m["need"]) for m in met], [(self.PARKED, 0)])
         self.assertIn(f"trunk at {self.trunk_was[:8]}", met[0]["how"])
-        self.assertEqual([c["what"] for c in self.receipts("cleared")], ["every need of this park is met: 1 of 1"])
+        self.assertEqual([c["what"] for c in self.receipts("cleared")], ["needs met: 1 of 1"])
 
     def test_a_need_trunk_does_not_satisfy_yet_stands_and_a_berth_s_edit_does_not_tick_it(self) -> None:
         self.park({"what": "service.txt says two", "by": "fleet",

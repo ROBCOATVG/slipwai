@@ -433,7 +433,7 @@ def inbox_detail(row: dict) -> str:
         return str(row["what"])
     if row.get("paused") == "yes":
         lifts = clock_of(str(row.get("until") or ""))
-        return f"paused{' until ' + lifts if lifts else ''}, nothing needed from you: {row['what']}"
+        return f"paused{' until ' + lifts if lifts else ''}, nothing for you to do: {row['what']}"
     overdue = " (past wait bound)" if row.get("overdue") == "yes" else ""
     return f"waiting on {row['waiting_on']} for {row['waited']}{overdue}: {row['what']}"
 

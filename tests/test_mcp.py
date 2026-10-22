@@ -121,7 +121,7 @@ class SameFoldTest(Harbour):
                              until="2999-01-01T20:40:00Z"))
         said = self.text("inbox")
         self.assertIn("waiting on you: nothing", said)
-        self.assertIn("paused, nothing needed from you: 1", said)
+        self.assertIn("paused, nothing for you to do: 1", said)
 
     def test_an_empty_inbox_says_so_rather_than_answering_nothing(self) -> None:
         self.assertIn("nothing", self.text("inbox"))

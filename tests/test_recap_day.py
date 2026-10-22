@@ -133,7 +133,7 @@ class WithTheRecordTest(unittest.TestCase):
         self.assertIn("catch-up captain", said)
         self.assertIn("not lit", said)
         self.assertIn("0 of 5 done", said)
-        self.assertIn("Landed, carry on", said)
+        self.assertIn("I have landed it, carry on", said)
         self.assertIn("re-dispatch in the catch-up fairway at T001", said)
         self.assertLess(said.index("Waiting on you"), said.index("Streams"))
         still = read_only(self.found, {"boilers": 3})

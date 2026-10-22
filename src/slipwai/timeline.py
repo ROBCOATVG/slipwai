@@ -27,7 +27,7 @@ from .logs import Entry, cause_of, now
 #: captain died leaves no park, and a bar to the present would draw a dead session as a live one.
 TRAIL_MINUTES = 15
 #: Receipts the harbourmaster writes by itself, which are not a person's clear.
-BY_RULE = ("the time it waited for came", "every need of this park is met", "trunk is no longer red",
+BY_RULE = ("its time came", "needs met:", "trunk is no longer red",
            "answered by decisions", "the decisions it waited on have been read")
 
 

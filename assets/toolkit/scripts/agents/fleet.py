@@ -286,7 +286,7 @@ def paused_until(fairway: str) -> str:
         return ""
     latest = max(str(e.fields.get("until") or "") for e in lifting)
     if not latest:
-        return "the harness says"
+        return "the harness says when"
     try:
         when = datetime.strptime(latest, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
     except ValueError:

@@ -156,10 +156,10 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
         lifts = f"{lifts}, {wait}" if wait else (f"{lifts}, which has passed; the harbourmaster lifts it on "
                                                   f"its next pass" if lifts else "")
     if not berths:
-        return "grey", "Nothing has run yet.", "The fleet writes its first line when it is cast off."
+        return "grey", "Nothing has run yet.", "It writes its first line when you cast off."
     if stalled:
         return ("red", f"Stalled: {', '.join(stalled)} stopped writing without a word.",
-                "A captain that is alive and silent looks like one working hard. Open its log.")
+                "A captain that is alive but silent looks just like one working hard. Open its log.")
     if running:
         said = f"{plural(running, 'slice')} working" + (f" in {slots} slots" if isinstance(slots, int) else "")
         extra = []
@@ -179,11 +179,11 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
     if paused:
         since = when(str(limit.get("t") or ""), now) if limit else ""
         return ("blue", f"Paused. The harness refused the fleet at {since}; it resumes itself at {lifts}.",
-                f"{plural(paused, 'slice')} paused, no attempt spent, nothing needed from you. The harbourmaster "
-                f"clears the pause when the time comes and lights the captains.")
+                f"{plural(paused, 'slice')} paused, no attempt spent, nothing for you to do. The harbourmaster "
+                f"lifts the pause when the time comes and relights the captains.")
     merged = int(counts.get("merged") or 0)
-    return ("grey", "Nothing is lit, and nothing is waiting on you.",
-            f"{plural(merged, 'slice')} merged so far. The processes below say what would start one.")
+    return ("grey", "Nothing is running and nothing needs you.",
+            f"{plural(merged, 'slice')} merged so far. The processes below say what would start things again.")
 
 
 def live_sub(found: dict) -> str:
@@ -218,8 +218,8 @@ def process_tiles(found: dict, now: datetime | None = None) -> str:
             chip = '<span class="chip">not lit</span>'
         said = row.get("why") or ""
         starts = row.get("starts_when") or ""
-        text = esc(said) + (f"<br>Starts when {esc(starts)}." if starts else "")
-        tiles.append(f'<div class="proc"><b>{esc(name)}</b>{chip}<div class="w">{text or "Working."}</div></div>')
+        text = esc(said) + (f"<br>Starts again when {esc(starts)}." if starts else "")
+        tiles.append(f'<div class="proc"><b>{esc(name)}</b>{chip}<div class="w">{text}</div></div>')
     return f'<div class="procs">{"".join(tiles)}</div>'
 
 
@@ -241,8 +241,8 @@ def headline_card(found: dict, controls: bool, now: datetime | None = None) -> s
     if controls and limit is not None:
         parks = json.dumps(limit.get("parks") or [])
         acts = (f'<div class="acts"><button type="button" class="quiet-button" data-tell-each=\'{esc(parks)}\' '
-                f'data-message="resume now">Resume the {len(limit.get("slices") or [])} paused now anyway</button>'
-                f'<span class="empty" style="text-align:center">Before the time, the harness will refuse again'
+                f'data-message="resume now">Try the {len(limit.get("slices") or [])} paused slices now anyway</button>'
+                f'<span class="empty" style="text-align:center">Before then the harness will just say no again'
                 f"</span></div>")
     return (f'<div class="card headline {esc(colour)}"><div><h2><span class="dot"></span><span>{esc(sentence)}'
             f"</span></h2><p>{esc(under)}</p>{process_tiles(found, now)}{counts_line(found)}</div>{acts}</div>")
@@ -263,7 +263,7 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
         meta.append(f"{met} of {len(needs)} done")
     buttons = ""
     if controls:
-        label = "Landed, carry on" if cause == "host" else "Answered, carry on"
+        label = "I have landed it, carry on" if cause == "host" else "Sorted, carry on"
         buttons = (f'<button type="button" class="go" data-tell-each=\'{esc(parks)}\' '
                    f'data-message="{esc(label.lower())}: {esc(title)}">{esc(label)}</button>')
     items = []
@@ -274,21 +274,21 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
         if not on and need.get("by") == "person" and controls:
             how = f'<button type="button" data-need="{esc(index)}" data-parks=\'{esc(parks)}\'>Done</button>'
         elif not on and need.get("by") == "person":
-            how = "your word"
+            how = "only you can say"
         elif on:
             how = "done"
         else:
-            how = f"ticked when {how}" if how else "ticked by the fleet"
+            how = f"ticks itself when {how}" if how else "ticks itself"
         items.append(f'<li><span class="box{" on" if on else ""}"></span><span>{esc(need.get("what", ""))}</span>'
                      f'<span class="how">{how}</span></li>')
     listed = f'<ul class="needs">{"".join(items)}</ul>' if items else ""
     bar = (f'<div class="prog"><i style="width:{int(100 * met / len(needs))}%"></i></div>' if needs else "")
-    then = f'<div class="then"><b>Then, without you:</b> {esc(group["then"])}</div>' if group.get("then") else ""
+    then = f'<div class="then"><b>Then, on its own:</b> {esc(group["then"])}</div>' if group.get("then") else ""
     # The drawer is the park's own slice's story — its lines, no heartbeats — and the park as the captain
     # wrote it, whole. The group's headline is the first sentence; this is the rest.
     log = "".join(f'<li><span class="when">{esc(at)}</span> {esc(what)}</li>' for at, what in group.get("lines") or [])
-    whole = (f'<details class="log"><summary>What {esc(slices[-1] if slices else "it")} has been saying, and the '
-             f'park as the captain wrote it</summary><ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}'
+    whole = (f'<details class="log"><summary>{esc(slices[-1] if slices else "Its")}&#8217;s own lines, and the park '
+             f'in full</summary><ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}'
              f'</ol><p class="empty" style="white-space:pre-wrap">{esc(group.get("what") or "")}</p></details>')
     return (f'<div class="group"><div class="head"><div><h3><span class="chip" data-state="waiting on you">'
             f'{esc(CAUSES.get(cause, cause))}</span> {esc(title)}</h3><div class="meta">'

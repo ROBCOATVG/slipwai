@@ -110,7 +110,7 @@ def the_inbox(root: Path, arguments: dict) -> str:
         detail = inbox_detail(row)
         said.append(f"  {row['fairway']:<10} {row['kind']:<7} {detail}")
     if resting:
-        said.append(f"paused, nothing needed from you: {len(resting)}")
+        said.append(f"paused, nothing for you to do: {len(resting)}")
         said += [f"  {row['fairway']:<10} {row.get('slice') or '':<7} {inbox_detail(row)}" for row in resting]
     return "\n".join(said)
 

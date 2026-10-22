@@ -183,18 +183,18 @@ def processes(root: Path, found: Sequence[Stream], now: datetime | None = None) 
 def starts_when(fairway: str, stream: Stream | None, why: str) -> str:
     """What would start this process again, in one sentence read off the stream's log."""
     if not fairway:
-        return "the fleet is started"
+        return "the fleet is started again"
     if stream is not None and stream.paused:
         lifts = clock_of(stream.paused) if stream.paused != "soon" else ""
         return f"the pause ends at {lifts}" if lifts else "the harness runs sessions again"
     if stream is not None and stream.parked:
-        return "a park is cleared"
+        return "one of its parks is cleared"
     if "nothing to start" in why:
         _, _, tail = why.partition(" — ")
-        return f"a slice may start; now {tail}" if tail else "a slice may start"
+        return f"something becomes startable (now {tail})" if tail else "something becomes startable"
     if "paused until" in why:
         return "the pause ends"
-    return "the fleet is lit"
+    return "the fleet is lit again"
 
 
 def counts(found: Sequence[Stream], config: dict, bound: float = STALL_MINUTES,

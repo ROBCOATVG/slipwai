@@ -173,7 +173,7 @@ def timeline_card(found: dict, controls: bool) -> str:
               '<span><i style="background:var(--critical)"></i>the harness refused the run</span>'
               '<span style="color:var(--brass)">▲ you cleared a park</span></div>')
     return (f'<div class="card" id="timeline"><div class="tl-head"><h2>Timeline</h2>{chooser}</div>'
-            f'<p class="empty" style="margin:6px 0 0">From the first line to now, one bar per session in its slot. '
+            f'<p class="empty" style="margin:6px 0 0">One bar per session, in the slot it ran in. '
             f"Scroll sideways; the names stay put.</p>"
             f'<div class="tl"><div class="tl-names"><div class="spacer"></div>{names}</div>'
             f'<div class="tl-scroll"><div class="tl-track" data-from="{esc(begin)}" data-to="{esc(end)}">'

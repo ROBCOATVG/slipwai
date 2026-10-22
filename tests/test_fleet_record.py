@@ -124,7 +124,7 @@ class ProcessTest(Fixture):
         row = next(one for one in self.board()["processes"] if one["name"] == "captain-ORD")
         self.assertEqual(row["state"], "exited")
         self.assertEqual(row["why"], "ORD is parked — ORD-01: decide")
-        self.assertEqual(row["starts_when"], "a park is cleared")
+        self.assertEqual(row["starts_when"], "one of its parks is cleared")
 
     def test_a_captain_never_lit_for_a_paused_stream_says_when_the_pause_ends(self) -> None:
         self.deck("CU", logs.entry("claimed", fairway="CU", slice="CU1", t=when(10)),
@@ -139,7 +139,7 @@ class ProcessTest(Fixture):
                   logs.entry("merged", fairway="ORD", slice="ORD-01", commit="abc", t=when(8)))
         self.pid_file("captain-ORD", 2**22 - 7, "nothing to start in ORD — ORD-02 steers by Placed")
         row = next(one for one in self.board()["processes"] if one["name"] == "captain-ORD")
-        self.assertEqual(row["starts_when"], "a slice may start; now ORD-02 steers by Placed")
+        self.assertEqual(row["starts_when"], "something becomes startable (now ORD-02 steers by Placed)")
         self.assertIn("processes", "\n".join(lines(self.root)))
 
 

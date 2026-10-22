@@ -57,6 +57,9 @@ WINDOW_STYLE = """
 .seg{position:absolute;top:4px;bottom:4px;border-radius:4px;background:var(--teal-soft);color:var(--ink);
   font-size:.7rem;display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden;min-width:3px}
 .seg.sub{background:var(--brass-soft)}
+/* A bar a few seconds wide shows one letter of its label. Hovered, it widens to say the whole thing over
+   its neighbours, which is what a person reaching for it wants to read. */
+.seg:hover{min-width:max-content;overflow:visible;z-index:2;box-shadow:0 1px 6px rgba(23,33,41,.3)}
 .seg.open{box-shadow:inset -3px 0 0 var(--teal)}
 .axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.68rem;color:var(--ink-3)}
 .feed{font-family:var(--mono);font-size:.78rem;list-style:none;margin:0;padding:0;display:grid;gap:3px;
@@ -177,10 +180,13 @@ def lanes_html(found: dict, lines: list[dict], now: float) -> str:
     for agent in found["agents"]:
         if (agent["ended"] or now) < start:
             continue
-        name = agent["task"] or agent["role"]
-        rows += (f'<div class="lane-name"><b>{esc(name)}</b><span class="sub">'
-                 f'{esc(agent["role"].removeprefix("sail-"))}{" · " + esc(agent["model"]) if agent["model"] else ""}'
-                 f'</span></div><div class="track">'
+        # A sub-agent with no task of its own is named by its role, once: the role again underneath would be
+        # the same words twice, so the line under it then says only the model.
+        role = agent["role"].removeprefix("sail-")
+        name = agent["task"] or role
+        under = " · ".join(part for part in ((role if agent["task"] else ""), agent["model"]) if part)
+        rows += (f'<div class="lane-name"><b>{esc(name)}</b><span class="sub">{esc(under)}</span></div>'
+                 f'<div class="track">'
                  f'{segment(agent["started"], agent["ended"], agent["what"], "sub", not agent["ended"])}</div>')
     ticks = "".join(f"<span>{minutes(SPAN - step * SPAN / 6)} ago</span>" for step in range(6)) + "<span>now</span>"
     return f'<div class="lanes"><div></div><div class="axis">{ticks}</div>{rows}</div>'
@@ -238,7 +244,7 @@ def window_body(root: Path, fairway: str, slice_id: str) -> str:
 
 def window(root: Path, fairway: str, slice_id: str) -> str:
     body = f"<style>{STYLE}{WINDOW_STYLE}</style>{window_body(root, fairway, slice_id)}"
-    return document(f"{slice_id} · {root.resolve().name}", f"live · {fairway}", body, WINDOW_SCRIPT, now="/voyage")
+    return document(f"{slice_id} · {root.resolve().name}", f"live · {fairway}", body, WINDOW_SCRIPT, now="/slice")
 
 
 def said_in(drawn: str) -> str:

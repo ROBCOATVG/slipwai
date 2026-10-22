@@ -24,7 +24,7 @@ from slipwai.bridge_page import read_only
 from slipwai.cli_fleet import config
 from slipwai.cli_start import open_board, running
 from slipwai.fleet import board
-from slipwai.page_shell import TABS, tabs
+from slipwai.page_shell import TABS, VOYAGE, tabs
 from slipwai.project.harbour import harbour_config
 
 
@@ -107,6 +107,17 @@ class TabBarTest(unittest.TestCase):
 
     def test_a_page_that_is_no_tab_marks_none_of_them(self) -> None:
         self.assertNotIn("aria-current", tabs("/nowhere"))
+
+    def test_the_voyage_s_home_leads_back_to_the_board_and_its_other_pages_lead_back_to_the_voyage(self) -> None:
+        """The captain's log, the live window and the specification are opened from the voyage: their way
+        back is to it, in this window, not past it to the board in another."""
+        self.assertIn('href="/" target="_blank"', tabs(VOYAGE))
+        for where in ("/captain", "/slice", "/spec"):
+            said = tabs(where)
+            self.assertIn('href="/voyage"', said, where)
+            self.assertIn("The voyage", said, where)
+            self.assertNotIn("target=", said, where)
+            self.assertNotIn("The board", said, where)
 
 
 if __name__ == "__main__":  # pragma: no cover

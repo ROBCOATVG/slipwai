@@ -198,9 +198,9 @@ def titled(text: str, fallback: str) -> str:
 def page(where: str, text: str, back: str = "/voyage") -> str:
     """The document, in the board's own shell, with the way back to the window that opened it.
 
-    `now` is a route and not a tab, so the bar is the one link to the board \u2014 and the page is still
-    served rather than published, which is what carries the seat onto the link back: this window is a view
-    of one project, and the voyage it returns to is that project's.
+    `now` is a route and not a tab, so the bar is the one link back to the voyage \u2014 and the page is
+    still served rather than published, which is what carries the seat onto both links back: this window is
+    a view of one project, and the voyage it returns to is that project's.
     """
     body = (f'<style>{STYLE}</style><div class="card doc">{rendered(text)}</div>'
             f'<p class="empty"><a href="{esc(back)}">\u2190 the voyage</a></p>')

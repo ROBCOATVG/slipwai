@@ -40,6 +40,11 @@ STYLE = """
 .tl-lbl.in{top:9px;color:#fff;padding-left:4px;overflow:hidden;max-width:100%}
 .tl-lbl.pause{color:#1d4f8f}
 .dense .tl-lbl.in{display:none}
+/* A bar too narrow for its label says it, and when, over itself while hovered: the title, drawn at once
+   rather than after the browser's own pause. */
+.tl-bar:hover::after{content:attr(title);position:absolute;left:0;top:-2px;z-index:3;background:var(--ink);
+  color:var(--paper,#fff);padding:2px 7px;border-radius:3px;font:.7rem var(--mono);white-space:nowrap;
+  pointer-events:none}
 .tl-grid{position:absolute;top:0;bottom:0;width:1px;background:var(--rule-2)}
 .tl-future{position:absolute;top:0;bottom:0;background:rgba(23,33,41,.05)}
 .tl-mark{position:absolute;top:0;bottom:0;width:2px}

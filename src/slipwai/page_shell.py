@@ -24,9 +24,9 @@ import json
 from .assets import this_command
 from .brand import MARK, favicon, inline, svg
 
-# budget: 440 — one stylesheet, one document, the bar, the four routes an installable page is made of,
-# and the one button state every page shares: a press that waits on something slow saying so in itself,
-# with the seat every page carries. Splitting the stylesheet out would put the look in one file and the
+# budget: 450 — one stylesheet, one document, the bar and its two ways back, the four routes an installable
+# page is made of, and the one button state every page shares: a press that waits on something slow saying
+# so in itself, with the seat every page carries. Splitting the stylesheet out would put the look in one file and the
 # document that is the only reason it exists in another, which is the seam 14.4 removed.
 
 
@@ -247,23 +247,28 @@ TABS: tuple[tuple[str, str], ...] = (
     ("/packages", "Packages"),
 )
 
-#: What a page that is not one of the board's tabs carries instead: the one way back, in its own window.
-#: Its own window for the same reason it is not a tab — a run window that navigated itself to the board
-#: would be a run nobody is watching, and the board it went to is probably already open behind it.
+#: The voyage's home, and what it carries instead of the bar: the one way back to the board, in its own
+#: window. Its own window for the same reason it is not a tab — a run window that navigated itself to the
+#: board would be a run nobody is watching, and the board it went to is probably already open behind it.
+VOYAGE = "/voyage"
 AWAY = ('<nav class="tabs" aria-label="Board">'
         '<a href="/" target="_blank" rel="noopener">The board \u2197</a></nav>')
+#: What every other page off the bar carries: the captain's log, a slice's live window, the specification.
+#: They are opened from the voyage, so the way back is to the voyage and not past it to the board — and in
+#: this window, because these are views and not runs, and the seat on the address keeps it this project's.
+BACK = f'<nav class="tabs" aria-label="Voyage"><a href="{VOYAGE}">\u2190 The voyage</a></nav>'
 
 
 def tabs(now: str) -> str:
     """The bar, with the tab being shown marked as the one it is — or, on a page that is not one of the
-    board's, the one link back to it.
+    board's, the one link back: to the board from the voyage's home, to the voyage from everywhere else.
 
     Links, not a script: a tab is a place, and a place has a URL somebody can keep. That is also what makes
     `slipwai fleet` and `slipwai bridge` deep links into one page rather than three commands that each open
     something of their own.
     """
     if not any(where == now for where, _ in TABS):
-        return AWAY
+        return AWAY if now == VOYAGE else BACK
     here = ' aria-current="page"'
     rows = "".join(f'<a href="{esc(where)}"{here if where == now else ""}>{esc(name)}</a>'
                    for where, name in TABS)

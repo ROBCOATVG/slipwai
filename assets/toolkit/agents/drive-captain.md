@@ -62,7 +62,7 @@ believed. Every line carries `fairway`.
 | `taken-over` | this stream was another machine's and you have carried it on | `slice`, `from` (that machine) |
 | `yielded` | the harbour's fairway priority moved and this stream is below the lit line, so you have given the berth up | `to`, the fairway that displaced you |
 | `stopped` | you were asked to stop mid-slice, ended the stage, and gave the claim back; the slice is carried on when the fairway is lit again | `slice` |
-| `parked` | you have stopped, and this is why | `why`; `slice` where the park holds that slice alone and not its siblings |
+| `parked` | you have stopped, and this is why | `why`; `slice` where the park holds that slice alone and not its siblings; `cause`, one word; `needs`, `then`, `until` — the record, below |
 
 Several slices of one fairway write into one log, so **every line about a slice carries `slice`**: a line
 naming none is nobody's in particular once a sibling is in flight, and counts as no slice's progress.
@@ -124,6 +124,19 @@ Every stop records a reason. If you cannot proceed — a blocked fairway, a gate
 with nobody to answer it — write `parked` with a `why` somebody who was not here can act on, and stop.
 Stopping with a line is a state the harbour can see. Stopping without one is indistinguishable from having
 died, and somebody will spend an hour working out which.
+
+**A park is a record, not only a paragraph.** Beside `why`, write `cause` as one word — `host` for a change
+on trunk only a person may make, `question` for an open question, `gate` for a gate you cannot pass,
+`budget` for a stage budget spent — and, for a `host` park, `needs`: one item per thing that has to
+change, each `{"what": one sentence with the path in it, "by": "fleet" or "person", "check": ...}`. A
+`check` is how the harbourmaster ticks the need without a person: `{"kind": "text", "path": "docs/
+event-model/model.yaml", "has": "context: catch-up"}` says a file on trunk holds a string; `{"kind":
+"make", "target": "check-model"}` says a `check-*` target passes on trunk. A need nobody can check is
+`"by": "person"` with no `check`, and a person ticks it on the board. Write `then` as one sentence on what
+the fleet does once every need is met: "re-dispatch LB6 in catch-up at T001". When the last need is
+ticked the harbourmaster clears the park itself, and the board draws eleven parks on one host change as
+one checklist rather than eleven paragraphs. A paragraph with no `cause` still stands; it is drawn as
+`other` and grouped with nothing.
 
 A park owes an answer. Keep its original timestamp: only a harbour `cleared` line carrying this
 `fairway`, that timestamp as `parked`, and the answer as `what` closes it. A later heartbeat does not

@@ -21,7 +21,11 @@ import json
 from pathlib import Path
 from urllib.parse import quote
 
-from .fleet import NOTHING, inbox_detail
+from .fleet import NOTHING, inbox_detail  # noqa: F401 - NOTHING is read by name by the pages built on this
+from .fleet_page import SCRIPT as FLEET_SCRIPT
+from .fleet_page import STYLE as FLEET_STYLE
+from .fleet_page import headline_card, parks_table, waiting_card
+from .fleet_page import live_sub as fleet_sub
 
 # PLAIN, STYLE and THEME are read by name here — and `PLAIN` by the suite, which is where the board's
 # plain-words table was until the settings box needed it too.
@@ -120,7 +124,7 @@ document.addEventListener('click', event => {
     send('/set', {pairs});
   }
 });
-"""
+""" + FLEET_SCRIPT
 
 
 def stream_log(fairway: str, lines: list) -> str:
@@ -269,20 +273,16 @@ def fitting_card(made: dict) -> str:
 
 
 def live_sub(found: dict) -> str:
-    """The one line over the live cards: what is waiting, what is running, what today has cost."""
-    berths, waiting, bunker = found["berths"], found["inbox"], found["bunker"]
-    spent = bunker["spent"]
-    stalled = [row for row in berths if row["state"] == "stalled"]
-    return (f"{len(waiting)} waiting on you · {len(berths)} stream(s)"
-            + (f" · {len(stalled)} stalled" if stalled else "")
-            + f" · {spent if spent is not None else NOTHING}/{bunker['allowed']}k today")
+    """The one line over the live cards: the fleet's state in a word, and what is waiting on a person."""
+    return fleet_sub(found)
 
 
 def live_cards(found: dict, config: dict, controls: bool = True,
                more: list[tuple[str, str, str]] | None = None) -> str:
-    """Everything folded from the logs, with its controls: the inbox, the answer boxes, the streams, the
-    speed, the fine tune and the feed. The Voyage tab carries these beside the stages and the model; the
-    published copy carries them alone, with nothing to press."""
+    """Everything folded from the logs, with its controls: the headline with the processes under it, what
+    waits on a person grouped by what it waits on, each park in one line, the answer boxes, the streams,
+    the speed, the fine tune and the feed. The Voyage tab carries these beside the stages and the model;
+    the published copy carries them alone, with nothing to press."""
     berths, waiting, pressure = found["berths"], found["inbox"], found["pressure"]
     # Every line the fold carries, not the last fifteen: the list is a tail now, so what used to be cut to
     # keep the page short is scrolled instead, and the newest is the one it opens on.
@@ -290,8 +290,14 @@ def live_cards(found: dict, config: dict, controls: bool = True,
     clearance_fault = (found.get("unreadable") or {}).get("clearance", "")
     unavailable = (f'<div class="card"><h2>Waiting counts unavailable</h2>'
                    f'<p class="empty">{esc(clearance_fault)}</p></div>') if clearance_fault else ""
-    return f"""{unavailable}
-<div class="card" id="waiting"><h2>Waiting on you</h2>{inbox_rows(waiting, controls, found.get("streams"))}</div>
+    # A park is drawn by its group above; what is listed one by one here is a message, a question, and
+    # the decisions nobody has read.
+    others = [row for row in waiting if row["kind"] != "parked"]
+    listed = inbox_rows(others, controls, found.get("streams")) if others else ""
+    return f"""<style>{FLEET_STYLE}</style>{unavailable}
+{headline_card(found, controls)}
+{waiting_card(found, controls, listed)}
+{parks_table(found)}
 {answer_boxes(berths) if controls else ""}
 <div class="card"><h2>Streams</h2>{berth_rows(berths, found.get("streams") or {}, controls)}</div>
 {settings(pressure, config, controls, more)}

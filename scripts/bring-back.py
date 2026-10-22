@@ -71,6 +71,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "conformance.extension", "index_schema", "trust", "cli_trust", "ed25519", "rungs", "renamed",
        "channel", "channel_new", "channel_page", "cli_channel", "telegraph", "cli_telegraph", "fleet", "cli_fleet",
        "bridge", "bridge_page", "cli_bridge", "cli_start", "whats_new", "deck", "brand",
+       # The Fleet tab and the fold under it: the park record, the groups, the processes. Version 2's.
+       "fleet_page", "fleet_record",
        # Pointing a checkout at the hooks it carries. Version 2's: version 1 had no hook that held a push,
        # and `core.hooksPath` is per-checkout, so nothing about it could have been brought back.
        "githooks",

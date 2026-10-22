@@ -146,6 +146,30 @@ def mark_read(root: Path, fairway: str, stamps: list[str]) -> str:
 
 
 
+def tick_need(root: Path, fairway: str, parked: str, need: int) -> str:
+    """Write a person's tick of one need of a park: a `need-done` line naming the park and the need.
+
+    Not a `told`: a `told` after a park clears the whole park, and a tick is one item of it. The
+    harbourmaster turns the line into its `need-met` receipt on its next pass and clears the park once every
+    need has one. Only a need the park actually lists is ticked, so a stale page writes nothing.
+    """
+    if not fairway or not parked:
+        raise ValueError("a tick names the stream, the park's instant and the need")
+    found, fault = entries(root, fairway)
+    if fault and not found:
+        raise ValueError(fault)
+    park = next((e for e in found if e.kind == "parked" and e.t == parked), None)
+    if park is None:
+        raise ValueError(f"{fairway} has no park at {parked}")
+    needs = park.fields.get("needs")
+    if not isinstance(needs, list) or not 0 <= need < len(needs):
+        raise ValueError(f"the park at {parked} has no need {need}")
+    path = root / deck_path(feature_of(root, fairway), fairway)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(entry("need-done", fairway=fairway, parked=parked, need=need).line())
+    return f"ticked need {need} of {fairway}'s park at {parked}"
+
+
 def dismiss(root: Path, fairway: str, told: str) -> str:
     """Write the `read` receipt for one `told`, named by its instant, so it leaves *Waiting on you*.
 

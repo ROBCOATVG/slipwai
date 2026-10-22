@@ -683,7 +683,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]
-    waiting = len((fleet or {}).get("inbox") or [])
+    # The count on the tab is what waits on a person: a park that lifts by itself is paused, not waiting.
+    waiting = len([row for row in (fleet or {}).get("inbox") or [] if row.get("paused") != "yes"])
     tabs = [("work", "Work", f"{strip}{work_card(rows, fault)}"),
             ("try", "Try it & feedback" if trying else "Feedback", f"{trying}{feedback}"),
             ("screens", "Screens", screens_card(shots or [], mocks or [], "" if trying else app)

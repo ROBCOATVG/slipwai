@@ -22,7 +22,8 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 380 — the whole vocabulary of both logs, each kind beside the reason it exists, and the few folds
+# budget: 470 — the park record (cause, until, needs, then) and the shape each field is held to, beside
+# the whole vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once
 from __future__ import annotations
 

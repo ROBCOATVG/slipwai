@@ -119,6 +119,27 @@ class WithTheRecordTest(unittest.TestCase):
         self.assertEqual(held, [])
         self.assertEqual(self.found["unreadable"], {})
 
+    def test_the_fleet_tab_opens_on_the_sentence_and_the_processes(self) -> None:
+        from slipwai.bridge_page import page, read_only
+        from slipwai.fleet_page import headline
+
+        colour, sentence, under = headline(self.found, now=MORNING)
+        self.assertEqual(colour, "brass")
+        # One change on trunk, and four notes sessions left for the host that nobody has read.
+        self.assertEqual(sentence, "Stopped. 3 slices wait on you for 5 things.")
+        self.assertIn("8 slices more are paused until", under)
+        said = page(self.found, {"boilers": 3})
+        self.assertIn("library captain", said)
+        self.assertIn("catch-up captain", said)
+        self.assertIn("not lit", said)
+        self.assertIn("0 of 5 done", said)
+        self.assertIn("Landed, carry on", said)
+        self.assertIn("re-dispatch in the catch-up fairway at T001", said)
+        self.assertLess(said.index("Waiting on you"), said.index("Streams"))
+        still = read_only(self.found, {"boilers": 3})
+        self.assertNotIn("<button", still)
+        self.assertIn("Each park, in one line", still)
+
     def test_the_reasons_for_the_day_are_in_the_logs(self) -> None:
         """What the plan says happened is what the fixture says happened."""
         deck = logs.fold((recorded() / ".slipwai/logs/001-audiobook-recap/library.jsonl")

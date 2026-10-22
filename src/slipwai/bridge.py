@@ -54,7 +54,7 @@ from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
 from .decision_log import card as decision_card
 from .decision_log import mark as mark_decisions
-from .deck import dismiss, mark_read, tell
+from .deck import dismiss, mark_read, tell, tick_need
 from .dials import set_dial
 from .errors import GenerationError
 from .feedback_card import act as feedback_act
@@ -134,7 +134,8 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 840 — one server and every route the board answers, each a few lines handing off to a page
+# budget: 850 — one server and every route the board answers, the need tick among them,
+# each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
@@ -800,6 +801,14 @@ class Bridge(BaseHTTPRequestHandler):
                 said = mark_decisions(self.root, [str(one) for one in keys])
             elif where == "/dismiss":
                 said = dismiss(self.root, str(held.get("fairway", "")), str(held.get("told", "")))
+            # A person's tick of one need of a park, from its checklist: a `need-done` deck line, which the
+            # harbourmaster turns into the receipt that, with the rest, clears the park.
+            elif where == "/need":
+                try:
+                    index = int(held.get("need", -1))
+                except (TypeError, ValueError):
+                    raise ValueError("`need` is the index of the need in the park's list") from None
+                said = tick_need(self.root, str(held.get("fairway", "")), str(held.get("parked", "")), index)
             elif where == "/ring":
                 ring(self.root, str(held.get("position", "")))
                 said = f"rung to {held.get('position')}"

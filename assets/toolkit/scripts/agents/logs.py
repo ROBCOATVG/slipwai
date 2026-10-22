@@ -118,6 +118,9 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     # flight at once, one that meets a question it may not guess past must not stop the ones that did not.
     # A park with no `slice` is the fairway's, as every park was before, and holds everything in it.
     "parked": ("fairway", "why"),
+    # A person's tick of one need of a park, from the board: `parked` is the park's instant, `need` its
+    # index. Not a `told` — a `told` after a park clears the whole park, and a tick is one item of it.
+    "need-done": ("fairway", "parked", "need"),
 }
 
 #: Why a park stands, as one word a reader and a board can act on without parsing `why`. `limit`: the

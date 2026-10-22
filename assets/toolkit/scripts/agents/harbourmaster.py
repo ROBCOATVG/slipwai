@@ -975,6 +975,7 @@ def once() -> int:
     written += cleared_by_decisions(written)
     written += cleared_for_green(trunk_state, written)
     written += cleared_by_time(written)
+    written += needs_met(written)
     if written:
         append(written)
     write_cursors(cursors)
@@ -1182,6 +1183,109 @@ def cleared_by_time(already: list[logs.Entry]) -> list[logs.Entry]:
                 continue
             found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                     what=f"the time it waited for came: {until}"))
+    return found
+
+
+#: A `make` check may name a target that reads and never writes. `check-*` is that convention in a
+#: generated project (`check-model`, `check-chart`, `check-decisions`, `check-slice-scope`); anything else a
+#: project wants ticked by `make` is listed in `harbour.json` under `checks`.
+CHECK_TARGET = re.compile(r"^check-[a-z0-9-]+$")
+#: Where a `make` check runs: a worktree at trunk, made for the check and removed after it.
+NEEDS = ROOT / ".slipwai/needs"
+#: The checks this process has already run, per trunk commit: a failing `make` is not run again until trunk
+#: moves. In memory, because a restart running each once more costs one bounded `make` per need and
+#: nothing written.
+TRIED: set[tuple[str, str, int, str]] = set()
+
+
+def trunk_commit() -> str:
+    """The commit trunk is at, as this machine sees it — the remote's where there is one."""
+    return git("rev-parse", "--verify", "--quiet", base()).stdout.strip()
+
+
+def text_check(check: dict, commit: str) -> bool:
+    """Whether the file at `path` on trunk holds `has`. Read with `git show`, never from a checkout, so a
+    berth's uncommitted edit of the same file never ticks a need on trunk's behalf."""
+    shown = git("show", f"{commit}:{check.get('path', '')}")
+    return shown.returncode == 0 and str(check.get("has", "")) in shown.stdout
+
+
+def make_check(check: dict, commit: str) -> bool:
+    """Whether `make <target>` passes on trunk, in a worktree of its own, within `wait_bound`.
+
+    Only a `check-*` target or one `harbour.json` lists under `checks`: a need is written by a session, and
+    a session must not be able to have this process run `make deploy` on trunk by asking.
+    """
+    target = str(check.get("target", ""))
+    allowed = config().get("checks")
+    if not (CHECK_TARGET.match(target) or (isinstance(allowed, list) and target in allowed)):
+        return False
+    git("worktree", "remove", "--force", str(NEEDS))
+    NEEDS.parent.mkdir(parents=True, exist_ok=True)
+    made = git("worktree", "add", "--quiet", "--detach", str(NEEDS), commit)
+    if made.returncode != 0:
+        return False
+    try:
+        done = subprocess.run(["make", target], cwd=NEEDS, capture_output=True, text=True, check=False,
+                              timeout=merge_wait())
+        return done.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    finally:
+        git("worktree", "remove", "--force", str(NEEDS))
+
+
+def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
+    """A `need-met` receipt for every need of an open park that trunk now satisfies or a person has ticked,
+    and a `cleared` receipt for every park whose needs are all met.
+
+    A park that waits on a change to trunk is a list of needs, each with a check this process can run
+    against trunk — a file holding a string, a `check-*` target passing — or a person's word. recap's LB6,
+    LB7 and LB8 each waited on the same five things, written as three paragraphs a person had to read to
+    find out they were the same five things. The receipts are what lets the board draw them as one
+    checklist with the ticks on it, and what clears the park without anybody being asked once the last one
+    lands.
+    """
+    harbour = harbour_entries()
+    met = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")), int(e.fields.get("need", -1)))
+           for e in [*harbour, *already] if e.kind == "need-met"}
+    done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
+            for e in already if e.kind == "cleared"}
+    commit = trunk_commit()
+    found: list[logs.Entry] = []
+    for path in deck_logs():
+        fairway = path.stem
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        ticked = {(str(e.fields.get("parked", "")), int(e.fields.get("need", -1)))
+                  for e in deck if e.kind == "need-done" and str(e.fields.get("fairway", "")) == fairway}
+        for park in logs.open_parks(deck, harbour, fairway):
+            needs = park.fields.get("needs")
+            if not isinstance(needs, list) or not needs or (fairway, park.t) in done:
+                continue
+            for index, need in enumerate(needs):
+                if (fairway, park.t, index) in met:
+                    continue
+                how = ""
+                if (park.t, index) in ticked:
+                    how = "a person ticked it on the board"
+                elif commit and isinstance(need, dict) and isinstance(need.get("check"), dict):
+                    key = (fairway, park.t, index, commit)
+                    if key not in TRIED:
+                        TRIED.add(key)
+                        check = need["check"]
+                        passed = (text_check(check, commit) if check.get("kind") == "text"
+                                  else make_check(check, commit))
+                        how = f"trunk at {commit[:8]}" if passed else ""
+                if how:
+                    met.add((fairway, park.t, index))
+                    found.append(logs.entry("need-met", harbour=True, fairway=fairway, parked=park.t,
+                                            need=index, how=how))
+            if all((fairway, park.t, index) in met for index in range(len(needs))):
+                found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
+                                        what=f"every need of this park is met: {len(needs)} of {len(needs)}"))
     return found
 
 

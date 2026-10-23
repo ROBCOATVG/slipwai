@@ -89,7 +89,7 @@ def row_shaped(said: object) -> bool:
 
 def validated(package: str, directory: Path, said: object) -> Plan:
     """The probe's report as a `Plan`, or a `RuntimeError` where it is not the shape the probe writes: the backends
-    named once each, every row and image one of theirs, and each backend with rows and exactly one image — a plan
+    named once each, every row and image one of theirs, and each backend with rows and at most one image — a plan
     that names a backend and runs nothing for it is never read as a pass."""
     def malformed(why: str) -> RuntimeError:
         return RuntimeError(f"the matrix plan for {package} wrote a plan that is not one: {why}")
@@ -111,8 +111,10 @@ def validated(package: str, directory: Path, said: object) -> Plan:
     for backend in backends:
         if not any(row["backend"] == backend for row in rows):
             raise malformed(f"backend {backend} has no rows")
-        if sum(image["row"]["backend"] == backend for image in images) != 1:
-            raise malformed(f"backend {backend} has no image, or more than one")
+        # None is a plan too: with no managed target installed there is no production image to build, and
+        # `plan.py` says so by planning none. Two would be two answers to which image a backend ships.
+        if sum(image["row"]["backend"] == backend for image in images) > 1:
+            raise malformed(f"backend {backend} has more than one image")
     return Plan(package, directory, tuple(backends), tuple(row_of(row) for row in rows),
                 tuple(Image(row_of(image["row"]), image["tool"], image["ready"]) for image in images))
 

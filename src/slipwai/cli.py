@@ -28,6 +28,7 @@ from .cli_channel import channel_main
 from .cli_extension import extension_main, hooks_main
 from .cli_fleet import fleet_main
 from .cli_generate import interview, prd_files
+from .cli_install import install_main
 from .cli_language import (
     braced,
     language_main,
@@ -154,11 +155,10 @@ def dispatch(argv: list[str]) -> None:
         if argv[:1] == [verb]:
             run(argv[1:])
             return
-    # `slipwai install <name>` is `slipwai language install <name>`. The short form is what a reader
-    # types after a search result tells them a package exists; the long one stays, because `language
-    # upgrade` and `language remove` have no short form worth having.
+    # `slipwai install <name>` installs each name by its own kind's verb (`cli_install`). The short form is
+    # what a reader types after a search result; the long ones stay, for `upgrade` and `remove`.
     if argv[:1] == ["install"]:
-        language_main(["install", *argv[1:]])
+        install_main(argv[1:])
         return
     # No verb: the board, or — nobody there to see it — the usage message this always printed (`cli_start`).
     argv = board_or_usage(argv)

@@ -123,7 +123,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # The third kind of package. The experiment had clouds in the keel and so had no target package to
        # bring back: its declaration, the protocol its `TARGET` answers, and what `package new` writes.
        "target_shape", "target_protocol", "target_templates", "target_directory",
-       "target_install", "cli_target", "loaded_targets", "deployment_shapes", "shape_converge",
+       "target_install", "cli_target", "cli_install", "loaded_targets", "deployment_shapes", "shape_converge",
        "conformance.target", "conformance.target_probe", "page_shell", "interview_page", "adopt_page", "harbour",
        # The board's child gets a terminal's environment; the experiment's board was a terminal.
        "shell_environment",

@@ -105,13 +105,22 @@ class Console:
         self.begun = False
         self.busy = False
         self.child: subprocess.Popen[str] | None = None
+        self.login: dict[str, str] | None = None
         self.lock = threading.Lock()
+
+    def environment(self) -> dict[str, str]:
+        """The login shell's environment, asked once a conversation: a shell is started to answer it."""
+        if self.login is None:
+            self.login = login_environment(os.environ)
+        return self.login
 
     def argv(self, message: str) -> list[str] | None:
         """The command for one question, or nothing where this machine has no agent to ask."""
         if self.command:
             return [*self.command, message]
-        found = shutil.which("claude")
+        # On the login shell's `PATH`, not the board's: started at login, the board has `launchd`'s, which holds
+        # nothing a person installed, so `claude` was "not on this machine" on a machine that had it.
+        found = shutil.which("claude", path=self.environment().get("PATH"))
         if not found:
             return None
         system = f"{brief(self.root)}\n\n{ROLE}".strip()
@@ -161,7 +170,7 @@ class Console:
         thread does is say it is no longer busy, because a console stuck on `busy` is one nobody can type in."""
         try:
             self.child = subprocess.Popen(argv, cwd=self.root, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                          stderr=subprocess.STDOUT, text=True, env=login_environment(os.environ),
+                                          stderr=subprocess.STDOUT, text=True, env=self.environment(),
                                           start_new_session=True)
             timer = threading.Timer(LIMIT, self.child.kill)
             timer.start()

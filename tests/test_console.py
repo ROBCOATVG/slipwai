@@ -13,6 +13,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 from board_fixture import BoardTest
@@ -98,6 +99,10 @@ class AgentCommandTest(unittest.TestCase):
         held = os.environ["PATH"]
         os.environ["PATH"] = str(self.bin)
         self.addCleanup(os.environ.__setitem__, "PATH", held)
+        # The login shell is this machine's, which has a real `claude`; each test says what the shell answers.
+        self.login = mock.patch.object(console, "login_environment", lambda current: dict(current))
+        self.login.start()
+        self.addCleanup(self.login.stop)
 
     def stub(self) -> None:
         """A `claude` the path lookup finds: a script on POSIX, and on Windows a `.cmd` beside it, since
@@ -131,6 +136,18 @@ class AgentCommandTest(unittest.TestCase):
         (self.root / "agents/harbour-harbourmaster.md").write_text(
             "---\ndescription: x\n---\nYou are the harbourmaster.\n", encoding="utf-8")
         self.assertEqual(console.brief(self.root), "You are the harbourmaster.")
+
+    def test_an_agent_only_the_login_shell_can_see_is_found(self) -> None:
+        """Started at login, the board has `launchd`'s `PATH`, and `claude` is on the login shell's alone."""
+        self.stub()
+        self.login.stop()
+        os.environ["PATH"] = "/usr/bin:/bin"
+        with mock.patch.object(console, "login_environment",
+                               lambda current: {**current, "PATH": f"{self.bin}{os.pathsep}/usr/bin"}):
+            held = console.Console(self.root)
+            held.session = "abc"
+            self.assertIsNotNone(held.argv("hello"))
+        self.login.start()
 
     def test_a_machine_with_no_agent_says_so_rather_than_hanging(self) -> None:
         held = console.Console(self.root)

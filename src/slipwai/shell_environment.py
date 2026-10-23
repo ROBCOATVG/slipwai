@@ -13,11 +13,22 @@ import subprocess
 from collections.abc import Mapping
 
 
+def account_shell() -> str:
+    """The login shell the account record names, or `""` where there is no record to ask (Windows)."""
+    try:
+        import pwd
+        return pwd.getpwuid(os.getuid()).pw_shell or ""
+    except (ImportError, KeyError, OSError):
+        return ""
+
+
 def login_environment(current: Mapping[str, str] | None = None, shell: str | None = None) -> dict[str, str]:
     """This process's environment with the login shell's `PATH` and exports under it. A shell that cannot be
     asked — none named, or one that does not answer in time — leaves the environment as it was."""
     held = dict(os.environ if current is None else current)
-    command = shell or held.get("SHELL") or ""
+    # `SHELL` first; then the account's own shell, because a process `launchd` starts — the board at login —
+    # is given no `SHELL` at all, and without one it ran with `/usr/bin:/bin` and found nothing a person installs.
+    command = shell or held.get("SHELL") or account_shell()
     if not command or os.name == "nt":
         return held
     try:

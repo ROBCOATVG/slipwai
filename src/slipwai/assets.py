@@ -203,15 +203,18 @@ def asset_tree(root: Path, within: Path | None = None) -> dict[str, str]:
 
 
 def asset_files(root: Path) -> list[Path]:
-    """Every file under an asset directory, in path order, leaving the interpreter's caches out.
+    """Every file under an asset directory, in path order, leaving the interpreter's caches and Finder's out.
 
     A script under `assets/` that Python has imported or compiled leaves a `__pycache__` beside it — a test
     that imported the pruner, or `pip` byte-compiling the bundle when the package is installed — and a
     `.pyc` read as text is a UnicodeDecodeError on the first project. The one walker every reader of the
-    tree goes through is where that is excluded, so no reader has to remember to.
+    tree goes through is where that is excluded, so no reader has to remember to. Finder's `.DS_Store` is the
+    same fault from another tool: a checkout somebody has opened in a window carries one, it is binary, and
+    it is not an asset.
     """
     return sorted(
-        path for path in root.rglob("*") if path.is_file() and "__pycache__" not in path.parts
+        path for path in root.rglob("*")
+        if path.is_file() and "__pycache__" not in path.parts and path.name != ".DS_Store"
     )
 
 

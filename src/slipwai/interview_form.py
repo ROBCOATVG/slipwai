@@ -12,6 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from .errors import GenerationError
+from .folder_choice import asking as chooser
 from .interview_page import (
     DECLINE,
     WAS,
@@ -42,13 +43,16 @@ def field_html(question: Question) -> str:
             f"{esc(question.labels.get(name, name))}</option>" for name in question.choices)
         asking = f'<select id="{esc(question.name)}" name="{esc(question.name)}" data-asks>{options}</select>'
     elif question.kind == "path":
-        # A text field and a button, not a file input. A browser may not learn where anything is on the
-        # disk — that is the rule, not an oversight — so the path is typed, or the board asks the machine
-        # for it with the same dialog every other program on this computer opens.
+        # A button and the folder it chose, not a file input. A browser may not learn where anything is on
+        # the disk — that is the rule, not an oversight — so the board asks the machine for it with the same
+        # dialog every other program on this computer opens. Only where this machine has no such dialog is
+        # the path typed, and then the field is an ordinary one.
+        choosing = bool(chooser(Path.home()))
         asking = (f'<div class="path"><input id="{esc(question.name)}" name="{esc(question.name)}" '
-                  f'value="{esc(question.default)}" placeholder="a folder on this machine">'
-                  f'<button type="button" class="install" data-choose="{esc(question.name)}">'
-                  f"Choose\u2026</button></div>")
+                  f'value="{esc(question.default)}" placeholder="a folder on this machine"'
+                  + (f' readonly data-choose="{esc(question.name)}">'
+                     f'<button type="button" class="install" data-choose="{esc(question.name)}">'
+                     f"Choose folder\u2026</button></div>" if choosing else "></div>"))
     elif question.kind == "file":
         asking = (f'<input id="{esc(question.name)}" name="{esc(question.name)}" type="file" '
                   f'accept=".md,.markdown,.txt,text/markdown,text/plain">')
@@ -104,20 +108,22 @@ const answers = async (withFiles) => {
   return held;
 };
 
-// The machine's folder chooser, for the one answer that is a path. The board is on this machine, so it
+// The machine's folder chooser, for the answers that are a folder. The board is on this machine, so it
 // opens the dialog and hands back where it landed; a cancel comes back empty and the field keeps what it
 // had. Not `send`, which reloads the page: this fills a field in and the rest of the form stays put.
 document.addEventListener('click', async event => {
   const button = event.target.closest('[data-choose]');
   if (!button) return;
   const box = document.getElementById(button.dataset.choose);
-  button.disabled = true;
+  // The field itself is a way in too, and both are held while the dialog is open.
+  const doors = document.querySelectorAll(`[data-choose="${button.dataset.choose}"]`);
+  doors.forEach(door => { door.disabled = true; });
   try {
     const answer = await fetch('/choose', {method:'POST', headers:{'Content-Type':'application/json'},
-                                           body: JSON.stringify({start: box.value})});
+                                           body: JSON.stringify({start: box.value, field: box.id})});
     const picked = (await answer.text()).trim();
     if (picked) { box.value = picked; box.dispatchEvent(new Event('change', {bubbles: true})); }
-  } finally { button.disabled = false; }
+  } finally { doors.forEach(door => { door.disabled = false; }); }
 });
 
 async function post(path, withFiles){

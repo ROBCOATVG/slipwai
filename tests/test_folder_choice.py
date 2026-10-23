@@ -19,7 +19,7 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 from board_fixture import BoardTest
 
-from slipwai.folder_choice import PROMPT, asking, chosen
+from slipwai.folder_choice import PROMPT, PROMPTS, asking, chosen
 
 
 class ran(contextlib.ExitStack):  # noqa: N801 — it reads as the verb it is at every call site
@@ -122,6 +122,28 @@ class RouteTest(BoardTest):
 
     def test_the_form_carries_the_button_that_asks(self) -> None:
         self.assertIn('data-choose="brief"', self.get("/generate")[1])
+
+    def test_the_output_parent_is_chosen_rather_than_typed(self) -> None:
+        """Where the machine has a dialog, the field is the folder it chose and the button is the way in."""
+        with mock.patch("slipwai.interview_form.chooser", return_value=["osascript"]):
+            page = self.get("/generate")[1]
+        self.assertIn('data-choose="output"', page)
+        self.assertRegex(page, r'<input id="output"[^>]* readonly')
+
+    def test_with_no_dialog_on_the_machine_the_folder_is_typed(self) -> None:
+        with mock.patch("slipwai.interview_form.chooser", return_value=[]):
+            page = self.get("/generate")[1]
+        self.assertNotIn('data-choose="output"', page)
+        self.assertNotRegex(page, r'<input id="output"[^>]* readonly')
+
+    def test_the_dialog_says_which_folder_it_is_asking_for(self) -> None:
+        """The words come from the field's name and a fixed list, never from the request: they are run."""
+        with ran("", 1) as asked:
+            self.post("/choose", {"start": str(self.root), "field": "output"})
+            self.assertIn(PROMPTS["output"], asked.asked[-1])
+            self.post("/choose", {"start": str(self.root), "field": '"; do shell script "x'})
+            self.assertIn(PROMPT, asked.asked[-1])
+            self.assertNotIn("do shell script", asked.asked[-1])
 
 
 if __name__ == "__main__":

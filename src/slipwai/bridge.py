@@ -694,10 +694,11 @@ class Bridge(BaseHTTPRequestHandler):
                     out = self.land(answers, out)
                 self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
                 return
-            # The machine's own folder chooser, for the one answer on the form that is a path. A read,
+            # The machine's own folder chooser, for the answers on the form that are a folder. A read,
             # and 200 whatever came back: cancelling is an answer — it means the field keeps what it had.
             if where == "/choose":
-                self.send(200, chosen(Path(str(held.get("start") or "")).expanduser() or self.root),
+                self.send(200, chosen(Path(str(held.get("start") or "")).expanduser() or self.root,
+                                     str(held.get("field") or "brief")),
                           "text/plain; charset=utf-8")
                 return
             # Looking is a read and answers 200 whatever it found, refusal included: what it found is the

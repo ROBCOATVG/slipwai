@@ -28,9 +28,12 @@ from .shell_environment import login_environment
 PATIENCE = 300.0
 #: What the dialog says it is for, in the words the page beside it uses.
 PROMPT = "Choose the folder your brief is in"
+#: The same, for each field of the form that is a folder. Looked up by the field's name, never taken from
+#: the request: the words go into a script the dialog runs, so only these words can.
+PROMPTS = {"brief": PROMPT, "output": "Choose the folder the project is made in"}
 
 
-def asking(start: Path) -> list[str]:
+def asking(start: Path, prompt: str = PROMPT) -> list[str]:
     """The command that opens this machine's folder chooser at `start`, or `[]` where there is none.
 
     One per platform and each the one that platform already has: AppleScript's own `choose folder` on
@@ -40,15 +43,15 @@ def asking(start: Path) -> list[str]:
     where = str(start)
     if sys.platform == "darwin":
         return ["osascript", "-e", 'tell application "System Events" to activate',
-                "-e", f'POSIX path of (choose folder with prompt "{PROMPT}" '
+                "-e", f'POSIX path of (choose folder with prompt "{prompt}" '
                       f'default location POSIX file "{where}")']
     if sys.platform == "win32":  # pragma: no cover — read on the platform it is for
         return ["powershell", "-NoProfile", "-Command",
                 "Add-Type -AssemblyName System.Windows.Forms; "
                 "$one = New-Object System.Windows.Forms.FolderBrowserDialog; "
-                f"$one.Description = '{PROMPT}'; $one.SelectedPath = '{where}'; "
+                f"$one.Description = '{prompt}'; $one.SelectedPath = '{where}'; "
                 "if ($one.ShowDialog() -eq 'OK') { $one.SelectedPath }"]
-    for chooser in (["zenity", "--file-selection", "--directory", f"--title={PROMPT}",
+    for chooser in (["zenity", "--file-selection", "--directory", f"--title={prompt}",
                      f"--filename={where}/"], ["kdialog", "--getexistingdirectory", where]):
         if which(chooser[0]):
             return chooser
@@ -61,14 +64,14 @@ def which(command: str) -> str | None:
     return shutil.which(command)
 
 
-def chosen(start: Path) -> str:
+def chosen(start: Path, field: str = "brief") -> str:
     """The folder a person picked, or `""` where they cancelled or there was nothing to ask with.
 
     Cancelling is not a fault and neither is a machine with no chooser on it: both mean *no folder*, and
     the field keeps whatever it already held. The exit status is not read for that reason — every chooser
     here spells cancellation as a non-zero exit, and so does a chooser that could not start.
     """
-    command = asking(start if start.is_dir() else Path.home())
+    command = asking(start if start.is_dir() else Path.home(), PROMPTS.get(field, PROMPT))
     if not command:
         return ""
     try:

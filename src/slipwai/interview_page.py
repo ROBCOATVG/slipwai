@@ -217,7 +217,7 @@ def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question
         said.append(axis_asked(axis, answers, backend, target))
     said.append(Question("output", "Output parent",
                          answers.get("output") or str(root.resolve() if root is not None else DEFAULT_OUTPUT),
-                         why="the directory the project's own directory is made in"))
+                         kind="path", why="the directory the project's own directory is made in"))
     said.append(Question("prd", "Product requirements document", "", optional=True, kind="file",
                          why="optional: a PRD, copied into the project as docs/prd.md. After ./init the agent "
                              "drafts the constitution and the first specification from it and stops; the "

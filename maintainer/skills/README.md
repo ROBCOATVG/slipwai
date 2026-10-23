@@ -6,8 +6,8 @@ generated and ignored by git, so edit these and run `make skills`.
 
 | Skill | For |
 | --- | --- |
-| `add-language` | Publishing a language: a family and its first backend |
-| `add-framework` | Adding a framework to a family somebody already published |
+| `add-module` | Publishing a language package: services, browser apps or both, from deciding which to releasing |
+| `add-framework` | Adding a framework (a backend) to a family somebody already published |
 | `add-extension` | Publishing an extension: optional dev tooling a project elects at `./init` |
 | `add-target` | Adding somewhere a project can be deployed to |
 | `add-backing-service` | Adding an answer to an axis — where events live, who authenticates |

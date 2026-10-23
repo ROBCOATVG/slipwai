@@ -26,7 +26,7 @@ change a member's status, change both, or the gate is red.
 | Thing | Module | Tier (`scripts/check-structure.py`) |
 |---|---|---|
 | The protocol (`Member`, `PROTOCOL`), the objects (`Family`, `Backend`, `Language`), `Registry`, `load`, `check_catalog`, `registry`, `RegistryError` | `src/slipwai/registry.py` | **contract**. This tier lets `images.py`, `backends.py` (contract), `tooling.py` and `toolkit.py` (answers) and every `project/` part read it |
-| Each language's object, `LANGUAGE` | `src/slipwai/project/languages/<module>.py`: none today. `go`, `python`, `typescript`, `java` (the family, with no backend of its own), `java-quarkus` and `java-spring` are packages, at `packages/<name>/slipwai_language_<name>/` (the package contract) | parts |
+| Each language's object, `LANGUAGE` | `src/slipwai/project/languages/<module>.py`: none today. `go`, `python`, `typescript`, `java` (the family, with no backend of its own), `java-quarkus` and `java-spring` are packages, each its own repository (`slipwai-language-<name>`), installed into the package directory as `<name>/slipwai_language_<name>/`. The keel's `packages/` holds only the toy and the two targets its own suite tests against | parts |
 | A language's answers by group, merged into its `LANGUAGE` | one module per group inside the package: toolchain, deploy, layout, project, prune rows | the package's own, not the keel's |
 | The list of built-in languages, `LANGUAGES` | `src/slipwai/project/languages/__init__.py` | parts |
 
@@ -57,7 +57,7 @@ grammar, the merge and the refusals.
 ## The objects
 
 ```python
-Member[T](name: str, level: "family" | "backend", required: bool, kind: type, shape: str)
+Member[T](name: str, level: "family" | "backend", required: bool, kind: type, shape: str, was: str = "")
 Family(name: str, answers: Mapping[Member, object] = {})
 Backend(key: str, family: str, answers: Mapping[Member, object] = {})
 Language(families: tuple[Family, ...] = (), backends: tuple[Backend, ...] = ())
@@ -159,19 +159,21 @@ names each backend under its problem:
 - *in the registry but not in `catalog.json`*
 - *a family that differs between the two*
 
-`catalog.validate_catalog` calls `check_catalog` where the hard-coded set used to be. `cli.main` runs that
+`catalog_checks.validate_catalog` calls `check_catalog` where the hard-coded set used to be. `cli.main` runs that
 validation before every command. It turns a `RegistryError` into `slipwai: <message>` on stderr, with exit
 status 1. There is no traceback, and this happens before any command writes a file (scenario 8).
 
 These catalog fields stay in `catalog.json`: `label`, `framework`, `targets` and every per-option
-`backends` list. The naming rule (FR-005) is still `catalog.validate_backends`, which reads the catalog.
+`backends` list. The naming rule (FR-005) is still `catalog_checks.validate_backends`, which reads the catalog.
 
 ## The members
 
 Three of the columns need an explanation:
 
 - **Status** is the state at this contract's last edit. *Required* means that loading refuses without the
-  member. *Declared* means that the member is in `PROTOCOL` with `required=False`, and nothing reads it yet.
+  member. *Declared* means that the member is in `PROTOCOL` with `required=False`: a package may leave it out,
+  and the keel reads a fallback, or nothing, where it does. Its *kind* is checked only where the loader holds it
+  (`npm_workspace` and `browser_apps`, `loaded.py`); a required member's kind is checked by `registry.load`.
 - **Replaces** is the table whose answers moved into the member, and which its slice deleted (FR-002,
   `docs/backend-obligations.md` §3).
 - **Shape** is the value, and this page fixes it. If a slice finds that a shape cannot be kept, it changes
@@ -220,8 +222,8 @@ Three of the columns need an explanation:
 | `opt_in_flag_transports` | backend | required | `OPT_IN_TRANSPORT`'s reader set (`project/flag_route.py`) | `frozenset[str]`: the targets whose opt-in flag transport this backend's reader reads; `frozenset` where none. Every target named is a key of `flag_route.OPT_IN_TRANSPORT`, which keeps only target → transport name; `tests/test_project_part_answers.py` names a backend that names another |
 | `identity_outstanding` | family | declared, **never required** | `IDENTITY_OUTSTANDING` and `USERS_OUTSTANDING`' family rows (`project/backing_service_prose.py`) | `dict[str, str]`: identity feature (`keycloak`, `users-keycloak`, unique across the `auth` and `users` axes) → the README paragraph on what the project still owes. A feature absent, or the member absent, gets the keel's `IDENTITY_DEFAULT` for that feature (scenario 11). `java` answers both, byte for byte |
 | `mutation_scoping` | backend | declared, **never required** | `mutation_command`'s `"go" in backends` (`project/mutation.py`) | `str`: the paragraph `commands/mutation.md` carries after the tools, once per distinct answer; absence is the answer "nothing to say". `go` answers |
-| `npm_workspace` | family | declared, **never required** | the eleven npm-workspace checks spelling `typescript` (`services.py`, `project/shared_packages.py`, `ci_workflows.py`, `compose.py`, `agent_settings.py`, `gitignore.py`, `native_commands.py`, `guidance.py`, `frontend.py`, `biome.py`), `frontend.py`'s import of `typescript.py`, and the `typescript-backend*` workspace locks under the keel's `react-vite` (FR-034, D50) | `npm_workspace.NpmWorkspace(member_lock, workspace_lock, image, biome, biome_pins)`: a family that answers it has services that are npm packages in the project's one workspace; absence is the answer "not an npm package". A browser app is written in the first family in registry order that answers it. The npm-workspace contract states both sides |
-| `browser_apps` | family | declared, **never required** | nothing yet: `react-vite` is still the keel's, under `npm_workspace.KEEL_APPS` (17.1) | `dict[str, npm_workspace.BrowserApp]`: the browser apps this family writes, by the name `--frontend` is typed as, each one the directory its material is copied from. A family answering it answers `npm_workspace` too, because a browser app is an npm package in the workspace that answer declares, and it is refused at load otherwise. A family's name wins over the keel's: the family ships the lock that resolves the app it ships |
+| `npm_workspace` | family | declared, **never required** | the eleven npm-workspace checks spelling `typescript` (`services.py`, `project/shared_packages.py`, `ci_workflows.py`, `compose.py`, `agent_settings.py`, `gitignore.py`, `native_commands.py`, `guidance.py`, `frontend.py`, `biome.py`), `frontend.py`'s import of `typescript.py`, and the `typescript-backend*` workspace locks (FR-034, D50) | `npm_workspace.NpmWorkspace(member_lock, workspace_lock, image, biome, biome_pins)`: a family that answers it has services that are npm packages in the project's one workspace; absence is the answer "not an npm package". A browser app is written in the family that ships its frontend (`browser_apps`); `member_lock` and `workspace_lock` are asked only of a family with npm services. The npm-workspace contract states both sides |
+| `browser_apps` | family | declared, **never required** | the keel's own `react-vite` and `npm_workspace.KEEL_APPS` (phase 17): the keel ships no frontend | `dict[str, npm_workspace.BrowserApp]`: the browser apps this family ships, by the name `--frontend` is typed as, each one rooted at `assets/frontends/<name>` in the package. Exactly the names its `language.json` `frontends` block declares. A family answering it answers `npm_workspace` and `shared_code` too, and is refused at load otherwise. The whole contract is `docs/frontend-protocol.md` |
 
 `backing_service_service_files` (`project/backing_services.py`, FR-002) is not a member. It is the keel's
 own function over `write_side_files` and `read_side_files`.
@@ -256,11 +258,11 @@ and another thing to the next is worse than either shape.
 |---|---|---|
 | `expected_backends` | `catalog.py` | Gone. `check_catalog` compares the catalog with the registry instead |
 | `PACKAGE_ADDITIONS`, `FEATURE_REQUIREMENTS` | the `typescript` and `python` packages | They are inside the language that owns them, keyed by feature, and only that package reads them. They moved with the package |
-| `WEB_PACKAGE_ADDITIONS`, `web_package_json`, `web_lock_suffix`; `workspace_manifest`, `workspace_scripts` | `project/frontend.py`; `project/shared_packages.py` | The browser app's manifest and the workspace root's manifest. They are the keel's `react-vite` side of the npm-workspace contract, keyed by feature, and they name no language |
+| `web_package_json`, `web_lock_suffix`, `web_lock_features`; `workspace_manifest`, `workspace_scripts` | `project/frontend.py`; `project/shared_packages.py` | The browser app's manifest and the workspace root's manifest, written from the frontend's own `frontends` entry (its features' `dependencies`) and naming no frontend and no language. Data rather than members, because the pruner a project carries reads the same rows |
 | `WRAPPERS`, `UPGRADE_PATHS`, `TOOLING` (`programme.py`), `SETUP`/`GITLAB_IMAGES` (`adopted_ci.py`), `LANGUAGES` (`structure.py`) | adoption | Keyed by the ecosystem of a repository that the factory did not make. Adoption needs no language (FR-002), so they stay in the keel |
 | `label`, `framework`, `targets`, per-option `backends` | `catalog.json` | They belong to the catalog fragment |
 | The adoption modules' spellings: `ecosystems.py`, `platform.py`, `programme.py`, `structure.py`, `delivery_facts.py`, `convergence.py`, `wrappers.py`, `project/adopted_ci.py` | adoption | The same reason as the row above, for every backend or family name that these modules spell (scenario 10). The experiment exempted them by name in a names test; this keel has no such test |
-| `CANON` (`toolkit.py`) | the keel | The language that the toolkit's own prose and canonical snippets (`assets/languages/typescript/examples/`) are written in. This is the keel's own material. The keel reads it from its own root where no service speaks, so adoption needs no language. `tests/test_assets.py` holds `CANON` to `typescript`. The npm-workspace checks that spelled `typescript` are now the `npm_workspace` member |
+| `CANON` (`toolkit.py`) | the keel | The language that the toolkit's own prose and canonical snippets are written in. This is the keel's own material. The keel reads it from its own root where no service speaks, so adoption needs no language. `tests/test_assets.py` holds `CANON` to `typescript`. The npm-workspace checks that spelled `typescript` are now the `npm_workspace` member |
 | The catalog's default backend (`catalog.default_backend`) | the keel | Gone. The default is the first backend of the merged catalog, so the keel names none |
 | `DOCUMENTS`, `EXPORTERS` (`project/openapi.py`), `API_CONTRACTS` (`project/rules.py`), the five transports in `ENV_FEATURES` (`backends.py`) | the keel | Keyed by the feature that answered the `http` axis, and naming no backend. This is the shape that the experiment's gaps review left in the keel. **They would move** when the catalog's options move into each language's fragment (FR-019). A row keyed by an option that the keel no longer declares travels with the language that offers it, as `ENTRY_WIRING` and `FLAG_RESOURCES` did |
 | `IDENTITY_DEFAULT` (`project/backing_service_prose.py`), `OPT_IN_TRANSPORT` and `DEFAULT_TRANSPORT` (`project/flag_route.py`), `FIRST_GROUPS`/`LAST_GROUPS` (`project/renovate.py`), `.editorconfig` and `.nvmrc` (`project/pins.py`) | the keel | What the keel says where a language says nothing. Also what depends on the target, the forge or the npm workspace, not on a language |
@@ -278,3 +280,23 @@ and another thing to the next is worse than either shape.
 
 Slices merge in the order they were split. If two slices append answers to the same `answers={...}`
 literal, they conflict there. The host resolves the conflict by keeping both.
+
+## Compatibility
+
+This protocol and `docs/frontend-protocol.md` are one API, versioned by the keel's `schemaVersion`
+(`MAJOR.MINOR`) and held by each package's `core` range, which is `>=<the schema it was built on>,<next major>`.
+**From the 2.0.0 release on, it is kept like any other API:**
+
+- **A MINOR adds only what an existing package can ignore**: an optional member, an optional fragment field, a
+  new axis option. A new obligation applies only to a package that opts into the feature it comes with — a
+  check for `write-model: state` runs for a backend that offers `state`, never for one that does not.
+- **Anything else is a new MAJOR.** A member made required, a shape tightened, a field renamed without its old
+  name read for a release: the schema goes to the next major, and every package's `core: "<N+1"` refuses to load
+  on it with a line saying so — never a package that loads and then fails conformance, or a project.
+- **A package owns the proof, in its own CI.** Its `verify.yml` runs this keel's conformance suite against the
+  newest published keel its range takes and against the keel's `main`, on every push and every night — a
+  contract test from the consumer's side (`slipwai package new` writes it so). A package that goes red against
+  `main` with no change of its own has found a keel change that breaks the promise above, and that is a bug in
+  the keel.
+
+Before 2.0.0 the protocol is still being shaped and a MINOR may add an obligation; the packages are moved with it.

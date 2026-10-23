@@ -7,7 +7,7 @@ description: Publish a slipwai extension — optional dev tooling a project elec
 
 An extension is optional dev tooling a project elects at `./init`. It never changes generated code, which
 is the line between it and everything else: if what you are adding changes what the skeleton looks like,
-you want `add-language` or `add-target`.
+you want `add-module` or `add-target`.
 
 `docs/extensions.md` in the keel is the contract. This is how to get through it.
 

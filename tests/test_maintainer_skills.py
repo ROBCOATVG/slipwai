@@ -13,7 +13,7 @@ import checkout_packages  # noqa: F401
 from slipwai.assets import ROOT
 
 SKILLS = ROOT / "maintainer/skills"
-FIVE = ("add-language", "add-framework", "add-extension", "add-target", "add-backing-service")
+FIVE = ("add-module", "add-framework", "add-extension", "add-target", "add-backing-service")
 #: Things version 1 had and version 2 has not. A skill naming one is a skill written for the old factory.
 GONE = (
     "src/slipwai/project/languages/",   # a language is a package now
@@ -57,7 +57,7 @@ class ContentTest(unittest.TestCase):
                     self.assertNotIn(absent, body(name))
 
     def test_the_three_package_skills_name_the_verbs_that_do_the_work(self) -> None:
-        for name in ("add-language", "add-framework", "add-extension"):
+        for name in ("add-module", "add-framework", "add-extension"):
             with self.subTest(name=name):
                 said = body(name)
                 self.assertTrue(any(verb in said for verb in VERBS), name)

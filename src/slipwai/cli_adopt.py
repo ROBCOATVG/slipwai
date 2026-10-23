@@ -118,7 +118,7 @@ def adopt_parser() -> argparse.ArgumentParser:
         "infrastructure is none)",
     )
     parser.add_argument(
-        "--delivery", default="delivery", metavar="DIR", help="where the method's files go (default: %(default)s)"
+        "--delivery", default="adopt", metavar="DIR", help="where the method's files go (default: %(default)s)"
     )
     parser.add_argument("--why", default=None, metavar="TEXT", help="the business trigger behind this work")
     parser.add_argument("--skip", action="append", default=[], metavar="NAME", help="a found application not to wrap")

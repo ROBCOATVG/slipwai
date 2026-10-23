@@ -58,7 +58,7 @@ def name_of(root: Path) -> str:
     return root.name.lower()
 
 
-def found(root: Path, delivery: str = "delivery") -> dict:
+def found(root: Path, delivery: str = "adopt") -> dict:
     """What the survey read here, or the reason this is not a repository to adopt.
 
     The refusal comes first and before the survey, because that is where it belongs: finding out after
@@ -89,7 +89,7 @@ def found(root: Path, delivery: str = "delivery") -> dict:
     }
 
 
-def would_write(root: Path, delivery: str = "delivery") -> dict[str, list[str]]:
+def would_write(root: Path, delivery: str = "adopt") -> dict[str, list[str]]:
     """Every path adoption would add here, and every file of theirs it would add to. Nothing is written.
 
     Assembled by the same calls `adopt` makes — the layout, the record the survey proposes, and
@@ -137,11 +137,11 @@ def run(answers: Mapping[str, str], here: Path) -> tuple[bool, str]:
     `--yes` in a terminal.
     """
     root = Path(str(answers.get("root") or here)).expanduser()
-    seen = found(root, str(answers.get("delivery") or "delivery"))
+    seen = found(root, str(answers.get("delivery") or "adopt"))
     if seen["refused"]:
         return False, seen["refused"]
     done = subprocess.run([*relaunch(), "adopt", "--yes", "--no-init",
-                           "--delivery", str(answers.get("delivery") or "delivery")],
+                           "--delivery", str(answers.get("delivery") or "adopt")],
                           cwd=str(root), capture_output=True, text=True)
     return done.returncode == 0, (done.stdout + done.stderr).strip()
 
@@ -198,7 +198,7 @@ def picker(root: str) -> str:
         '<div class="why">A clean Git repository with no project.json of its own. Nothing in it is read '
         'until you press Look, and nothing is written until you press Adopt.</div></div>'
         '<div class="q"><label for="delivery">Where the method\'s files go</label>'
-        '<input name="delivery" id="delivery" value="delivery"></div></form>'
+        '<input name="delivery" id="delivery" value="adopt"></div></form>'
         '<div class="ask"><button class="go" id="look">Look</button></div></div>'
     )
 
@@ -239,7 +239,7 @@ def page(answers: Mapping[str, str], title: str = "Adopt a repository") -> str:
 def looked(answers: Mapping[str, str], here: Path) -> str:
     """One look at a directory: the findings and the list, rendered. Still nothing written."""
     root = Path(str(answers.get("root") or here)).expanduser()
-    delivery = str(answers.get("delivery") or "delivery")
+    delivery = str(answers.get("delivery") or "adopt")
     seen = found(root, delivery)
     if seen["refused"]:
         return report(seen, None)

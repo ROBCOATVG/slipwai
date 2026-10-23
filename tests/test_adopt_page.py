@@ -93,7 +93,7 @@ class LocaleEncodingTest(Fixture):
     def check_utf8(self) -> None:
         self.assertEqual((self.repo / "actors.py").read_text(encoding="utf-8"), self.actor)
         self.assertTrue((self.repo / "AGENTS.md").read_text(encoding="utf-8").startswith(self.guidance))
-        page = (self.repo / "delivery/survey/structure.md").read_text(encoding="utf-8")
+        page = (self.repo / "adopt/survey/structure.md").read_text(encoding="utf-8")
         self.assertIn("→", page)
         self.assertEqual(self.dirty(), "")
 

@@ -59,7 +59,7 @@ class Answers:
     profile: str = "standard"
     # `existing` wherever the repository deploys somewhere; `none` where its infrastructure is `none`.
     target: str = "existing"
-    delivery: str = "delivery"
+    delivery: str = "adopt"
     why: str | None = None
     # Per wrapped application, by name: the fields as recorded, and where each came from.
     applications: list[App] = field(default_factory=list)

@@ -60,7 +60,7 @@ same answers.
 
 This installs the method around code that already exists.
 
-1. Type the repository's directory, and where the method's files go (default `delivery`).
+1. Type the repository's directory, and where the method's files go (default `adopt`).
 2. Press **Look**. The board reads the repository and shows what it found. Nothing is written yet.
 3. Read **What would be written**: the new files, and your files that get text added between markers.
 4. Press **Adopt &lt;name&gt;** to write them.

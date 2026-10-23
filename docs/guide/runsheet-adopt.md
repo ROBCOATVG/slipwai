@@ -34,19 +34,19 @@ gate runs the commands that your build already has, so the gate needs what those
 | # | Where | Command | Done when |
 |---|---|---|---|
 | 1.1 | terminal | `git status` | nothing to commit. `adopt` refuses a tree that is not clean, and a directory that is not a Git repository |
-| 1.2 | terminal *or* board | `slipwai adopt --integration claude` — or `slipwai`, then *Adopt a repository* | it lists the directories that build, asks where your CI runs, commits, and runs `./delivery/init` |
+| 1.2 | terminal *or* board | `slipwai adopt --integration claude` — or `slipwai`, then *Adopt a repository* | it lists the directories that build, asks where your CI runs, commits, and runs `./adopt/init` |
 | 1.3 | terminal | `git add -A && git commit -m "Install Spec Kit"` | `git status` is clean |
 
 - **1.2: the one question.** Where CI runs is a fact about your forge, not about your code. So it is the
   only question. Each directory that builds is recorded as a **candidate**, not as an application. Which
   candidates the gate should hold is a question that the code answers, in Phase 2.
 - **1.2: the flags.** `--integration <agent>` names your coding agent. `--delivery <dir>` puts the method
-  somewhere other than `delivery/`. `--yes` asks nothing, confirms every candidate without looking at it,
-  and records each fact as `detected`. `--no-init` leaves `./delivery/init` for you to run.
-- **1.2: what it writes.** One commit, beside your code: the method under `delivery/`, one marked block in
+  somewhere other than `adopt/`. `--yes` asks nothing, confirms every candidate without looking at it,
+  and records each fact as `detected`. `--no-init` leaves `./adopt/init` for you to run.
+- **1.2: what it writes.** One commit, beside your code: the method under `adopt/`, one marked block in
   each of your `AGENTS.md` and `.gitignore`, and a `project.json` that holds the record. It never touches
   your code or your `README.md`. `git reset --hard HEAD^` undoes exactly that commit.
-- **1.3.** `./delivery/init` writes Spec Kit and the agent's commands and skills, but does not commit
+- **1.3.** `./adopt/init` writes Spec Kit and the agent's commands and skills, but does not commit
   them.
 
 ---
@@ -84,15 +84,15 @@ slipwai adopt --as admin=admin-ui
 | # | Where | Command | Done when |
 |---|---|---|---|
 | 3.1 | agent | `/verify` | it says `verify: all gates passed` |
-| 3.2 | terminal | `git add delivery/baseline.json && git commit -m "Gate baseline"` | the baseline is committed |
-| 3.3 | terminal | add `-include delivery/Makefile` to your root `Makefile` | `make verify` works as one word. Skip it if `adopt` wrote the root `Makefile` itself |
+| 3.2 | terminal | `git add adopt/baseline.json && git commit -m "Gate baseline"` | the baseline is committed |
+| 3.3 | terminal | add `-include adopt/Makefile` to your root `Makefile` | `make verify` works as one word. Skip it if `adopt` wrote the root `Makefile` itself |
 | 3.4 | agent | accept the strategy ADR: set its `Status` to `Accepted` and commit it | `slipwai adopt --next` shows the strategy as decided |
 
 - **3.1: the first run** records the lint and typecheck findings that are already in the code as the
   baseline. After that, only new findings fail. **A red test suite stops the run, and the run says so.**
   Fix the suite, or tell `/verify` to put it in quarantine on purpose, which it records with
   `make ratchet-tighten`. Until you do 3.3, `/verify`
-  runs the gate as `make -f delivery/Makefile verify`.
+  runs the gate as `make -f adopt/Makefile verify`.
 - **3.4: the strategy.** `/ground` writes the ADR (architecture decision record) at `Proposed`. It
   recommends one of `leave-it`, `in-place`, `modular-monolith`, `strangler-fig` or `rewrite`. `leave-it` is
   as valid an answer as the others. You accept the ADR. An agent never accepts it.

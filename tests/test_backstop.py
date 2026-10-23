@@ -232,7 +232,7 @@ class KeelSpecTest(unittest.TestCase):
         import tempfile
         from pathlib import Path as P
 
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
         from slipwai import package_new
         from slipwai.package_new import KEEL_REPO
@@ -266,7 +266,7 @@ class CallerPermissionTest(unittest.TestCase):
         return (area / "rust/.github/workflows/verify.yml").read_text(encoding="utf-8")
 
     def test_the_caller_grants_what_the_publish_job_needs(self) -> None:
-        import yaml  # type: ignore[import-untyped]
+        import yaml
         held = yaml.safe_load(self.caller())
         self.assertEqual((held.get("permissions") or {}).get("contents"), "write")
 

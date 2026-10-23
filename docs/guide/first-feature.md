@@ -231,8 +231,8 @@ sets, and the marks that it steers by.
 $ python3 scripts/agents/clearance.py
 clearance: 1 of 3 slices start now in booking (slots: 3)
   start  BOK-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for BookingHeld
-  blocked   BOK-02  — BOK-02 steers by BookingHeld (set by BOK-01), and none of those is set yet
-  blocked   AVA-01  — AVA-01 steers by BookingHeld (set by BOK-01), and none of those is set yet
+  blocked   BOK-02  — BOK-02 is a state-view steering by BookingHeld (set by BOK-01); none is set yet and its story gives none of them. It has clearance once one is set, or once its try-it.json gives the rest
+  blocked   AVA-01  — AVA-01 is an automation steering by BookingHeld (set by BOK-01); none is set yet and its story gives none of them. It has clearance once one is set, or once its try-it.json gives the rest
 ```
 
 **Cleared** means that every mark this slice steers by has been set. No mark is set yet, so only the slice
@@ -314,8 +314,8 @@ worktree, before anything merged. Run clearance again. The slice in the other fa
 ```console
 $ python3 scripts/agents/clearance.py
 clearance: 2 of 3 slices start now in booking (slots: 3)
-  start  BOK-02  implement  — cleared and sets nothing, so there is nothing to settle
-  start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken
+  start  BOK-02  implement  — cleared and sets nothing, so there is nothing to settle — a state-view folding 1 marks: 1 set (BookingHeld)
+  start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken — an automation folding 1 marks: 1 set (BookingHeld)
   done   BOK-01  — merged at a1b2c3d4
 ```
 

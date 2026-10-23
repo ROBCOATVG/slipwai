@@ -1,0 +1,16 @@
+{
+  "as": "ines",
+  "open": [],
+  "steps": [
+    {
+      "say": "Ines connects her Audiobookshelf server (the stub from LB1's quickstart, on 127.0.0.1:13378 with token demo-token). LB5 is an automation with no screen and no route: once a book is picked from this server (LB4's route, scripted in LB4's own try-it), the worker fetches its audio within one 30 s sweep and AudioFetched appears on the book's stream.",
+      "method": "POST",
+      "path": "/api/connection",
+      "body": {
+        "connectionId": "5e7a9b1c-3d5f-4a6b-8c7d-9e0f1a2b3c4e",
+        "url": "http://127.0.0.1:13378",
+        "token": "demo-token"
+      }
+    }
+  ]
+}

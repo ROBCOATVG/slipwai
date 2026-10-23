@@ -1,0 +1,27 @@
+{
+  "as": "customer@example.invalid",
+  "open": [
+    { "label": "Ask about The Cartographer's Silence at 4:03:17", "path": "/books/cs-1/ask?at=14597" }
+  ],
+  "steps": [
+    {
+      "say": "Ask 'Who is Marcus again?' about The Cartographer's Silence (cs-1) at 4:03:17, typed. Until the host lands the JWT library, the service refuses every bearer token by design (CU3 research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, and 200 { questionId, bookId, position, via, askedAt } after that — the question recorded on question-{questionId} with its words sealed, never in the clear.",
+      "method": "POST",
+      "path": "/api/books/cs-1/questions",
+      "body": { "questionId": "5f0c6a2e-1b7d-4c39-9e7a-2d5b8f1a0c11", "position": 14597, "question": "Who is Marcus again?", "via": "typing" },
+      "keep": { "askedAt": "askedAt" }
+    },
+    {
+      "say": "Send the same question id again, as a double tap or a retry would: it answers exactly as the first did, with the first askedAt ({askedAt}), and records nothing new — a question id names one question (R2).",
+      "method": "POST",
+      "path": "/api/books/cs-1/questions",
+      "body": { "questionId": "5f0c6a2e-1b7d-4c39-9e7a-2d5b8f1a0c11", "position": 14597, "question": "Who is Marcus again?", "via": "typing" }
+    },
+    {
+      "say": "Ask a second question by voice, as the screen sends it once the browser has recognised the words: a new question id, its own stream.",
+      "method": "POST",
+      "path": "/api/books/cs-1/questions",
+      "body": { "questionId": "0b6e9d4a-7c21-4f8e-a3b5-91c2d7e4f6a8", "position": 14597, "question": "Where did the ledger go?", "via": "voice" }
+    }
+  ]
+}

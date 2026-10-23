@@ -73,11 +73,11 @@ class CardTest(unittest.TestCase):
         self.assertIn('data-try="refresh"', shown, "trunk has moved, so it can be brought up to date")
         self.assertIn("2 newer commits on trunk", shown)
         self.assertIn("<code>amara@example.test</code>", shown)
-        self.assertIn('href="http://localhost:6173/leaver-records/r-1" target="try-it-app"', shown,
-                      "every link into the app opens in the one tab a person signed in to")
+        self.assertIn('href="http://localhost:6173/leaver-records/r-1?slice=L01&amp;trunk=d3c2e39" target="try-it-app"',
+                      shown, "every link into the app opens in the one tab a person signed in to, carrying its slice")
+        self.assertIn("1 dark — 422 late", shown)
         self.assertNotIn('target="_blank"', shown.split("Watch it work")[0])
-        self.assertIn("agree: 422 late", shown)
-        self.assertIn("New since the last update · 1", shown)
+        self.assertIn("New to try since the last update · 1", shown)
         self.assertIn("Press &lt;b&gt;Close&lt;/b&gt;", shown, "a quickstart's words are text, never markup")
         self.assertIn("1 of 2 switches on", shown)
         self.assertIn('data-key="leaver-record-withdrawal" data-value="off"', shown)
@@ -91,6 +91,7 @@ class CardTest(unittest.TestCase):
             "links": [{"slice": "001/L18", "label": "James's record", "path": "/r/1", "as": "amara@example.test"},
                       {"slice": "001/L02", "label": "Grace's record", "path": "/r/2", "as": "joel@example.test"},
                       {"slice": "001/L07", "label": "Sofia's record", "path": "/r/3", "as": "amara@example.test"}],
+            "seeded": ["001/L18"],
             "new": [{"slice": "L18", "title": "Close as withdrawn", "steps": [], "as": "amara@example.test"}]})
         amara = shown.index("Sign in as <b>Amara Shah</b> · <code>amara@example.test</code> · password "
                             "<code>amara</code>")
@@ -102,6 +103,39 @@ class CardTest(unittest.TestCase):
         self.assertIn("<b>Sam Lee</b>", shown.split("Also there to sign in as")[1])
         self.assertNotIn("<b>Amara Shah</b>", shown.split("Also there to sign in as")[1].split("</table>")[0])
         self.assertIn("Close as withdrawn</b> <span class=\"empty\">· sign in as Amara Shah</span>", shown)
+
+    def test_new_to_try_lists_what_seeded_and_merged_but_dark_says_why_the_rest_did_not(self) -> None:
+        """recap, 2026-10-22: *Merged so far · 15* over fifteen stories that every one answered 401."""
+        shown = card_html({
+            "state": "ready", "url": "http://localhost:6173", "commit": "4e150b8", "previous": "4456abe",
+            "seeded": ["001/CU8"], "given": {"001/CU8": 2},
+            "seed_failed": [{"slice": "001/LB1", "step": "Ines connects her server",
+                             "said": "no person ines in docker/keycloak/realms or specs/<feature>/people/"}],
+            "links": [{"slice": "001/CU8", "label": "Rate the recap", "path": "/books/cs-1/catch-up", "as": "ada",
+                       "given": True}],
+            "new": [{"slice": "CU8", "title": "Rate a recap", "steps": ["Press the star"], "as": "ada", "given": True},
+                    {"slice": "LB1", "title": "Connect a server", "steps": ["curl …"],
+                     "dark": "Ines connects her server: no person ines in docker/keycloak/realms or "
+                             "specs/<feature>/people/"},
+                    {"slice": "CU1", "title": "Choose a voice", "steps": [], "dark": "its story has not run yet"}]})
+        self.assertIn("New to try since the last update · 1", shown)
+        self.assertIn("Merged but dark since the last update · 2", shown)
+        lit, dark = shown.split("Merged but dark")
+        self.assertIn("Rate a recap", lit)
+        self.assertIn("given, not made", lit)
+        self.assertIn(">Rate the recap</a>", lit, "a seeded slice's links come first")
+        self.assertIn("its quickstart's steps", lit)
+        self.assertNotIn("curl", lit, "a dark slice's curl commands are not something to try")
+        self.assertIn("Connect a server</b> <span>— Ines connects her server: no person ines", dark)
+        self.assertIn("Choose a voice</b> <span>— its story has not run yet", dark)
+        self.assertIn("1 slices loaded, 1 dark — no person ines", shown)
+        self.assertIn("· given, not made: its upstream is not built", shown)
+
+    def test_an_older_state_with_no_seeded_list_shows_every_new_slice_as_dark(self) -> None:
+        shown = card_html({"state": "ready", "url": "http://localhost:6173", "commit": "abc1234",
+                           "new": [{"slice": "L18", "title": "Close as withdrawn", "steps": ["x"]}]})
+        self.assertIn("Merged but dark · 1", shown)
+        self.assertNotIn("New to try", shown)
 
     def test_ready_and_current_offers_no_update(self) -> None:
         shown = card_html({"state": "ready", "url": "http://localhost:6173", "commit": "d3c2e39", "behind": 0})

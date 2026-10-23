@@ -1,0 +1,1173 @@
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+# The global event model. One file, for the life of the project.
+#
+# This is the source of truth for the diagram, not the diagram itself: `make model` generates
+# model.mmd, model.svg, one view per slice, and model.html from what is here, and `make model-drawio`
+# writes model.drawio — the one rendering that is committed, and that `make check-drawio` holds
+# current on every commit. Never edit any of those.
+#
+# Read docs/event-model/README.md before an entry. The five-minute version:
+#
+#   • Slice order in this file is timeline order. Order within `frames` is causal order.
+#   • Frame numbers are derived. Never write one.
+#   • Every slice is exactly one of four patterns, and `make check-model` holds you to its shape:
+#       state-change   ui|pcr → cmd → evt+          the only way state changes
+#       state-view     rmo → ui?                    plus `reads`: the events it folds
+#       automation     rmo → pcr → cmd → evt+       plus `reads`: what triggers it
+#       translation    evt(external) → pcr → cmd → evt+
+#   • optional `depends_on: [OtherSlice]` — genuine build deps only; needing another
+#     slice's events is solved with synthetic fixtures, not by waiting for it. Cycles and
+#     "depends_on equals the producers of my reads" fail `make check-model`
+#   • status walks proposed → modelled → planned → implemented, and each step commits to more:
+#       planned      every slice must name the `capability` it is part of — the chunk of work a person's
+#                    demo is of, shared by several slices, because a demo of one slice is a demo of a
+#                    form that saves something and nobody can tell from it whether the thing works.
+#                    A state-change slice must also name what its append is guarded by — its `stream`,
+#                    or a `guard` drawn over tags; a state-view or automation slice must
+#                    name its `materialisation` — live, inline or async — and a `live` one the
+#                    `liveBudget` that bounds the fold it does on every query. An event may also name
+#                    its `attributes` here, marking which of them identify something (`identifies:
+#                    seat`), which is what a tagging function is transcribed from
+#       implemented  `gwt` and `code` must exist, and the events must appear in the source
+#
+# This model was written from specs/001-audiobook-recap/spec.md and the storyboard its mock-ups stage
+# approved (specs/001-audiobook-recap/mockups/). Every worked example below — The Cartographer's
+# Silence, Chapter 14 at 32:10, nine days away, Marcus at the Harbourmaster's door — is taken from
+# those drawings, so a reader can hold the diagram against the screen it came from. The copies under
+# docs/event-model/mockups/ are the same seven files, placed where the published page can serve them.
+#
+# `reads` names the earlier events that trigger or feed a slice; `folds` names the events on the
+# slice's own stream its decision is made from. The two are different questions (README, *reads and
+# folds are different questions*), and an automation's todo list is a persisted read model whichever
+# way it is invoked.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+
+version: 1
+
+render:
+  # What each band's swimlanes group by. A namespace is resolved per band, so these are independent —
+  # which is how the notation's own picture works: actors across the top, streams across the bottom.
+  #   ui      actor | context | none    the ui and pcr boxes; `actor` gives a processor its own lane too
+  #   data    context | none            the cmd and rmo boxes
+  #   events  stream | context | none   the evt boxes; `stream` names the lane after the slice's `stream`
+  #                                     with its placeholder removed, so order-{orderId} is the `order`
+  #                                     lane. A slice guarding with `guard` falls back to its `context`.
+  # `make model` patches mermaid-cli's copy of mermaid (mermaid-js/mermaid#7986) until it ships the fix
+  # for #7925; pasting model.mmd into mermaid.live duplicates lanes until then.
+  lanes:
+    ui: actor
+    data: context
+    events: stream
+  # How wide a README segment may get, in frames. The timeline grows sideways forever and the column it is
+  # read in does not, so the README embeds segments of whole slices rather than one image of everything.
+  # Six is about two slices, which renders at ~70–80% in a README column. Lower it to 3 for one slice per
+  # image; raise it if your readers always click through to full size. Only used while `page` is unset.
+  framesPerSegment: 6
+  # Where event-model.yml publishes the browsable page. Read it off the deploy job's environment URL after
+  # the first successful run; a README link that 404s is worse than no link.
+  page: http://localhost:3301/your-owner/recap/
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+# Streams. Each is one expected-version check, so everything on it is serialised for ever; `because`
+# names the decision that needs that, by requirement, after the interrogation nine-steps.md Step 9 asks
+# for (specs/001-audiobook-recap/decisions.md, D1, has the interrogation and the seam tests). Groups of
+# slices share a stream only where a decision reads them together, or a closure one sets and all must
+# check; where nothing spans two groups they are separate streams correlated by id.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+streams:
+  preparation:
+    because: "one transcription per content hash — a second import of identical audio must see that preparation for its hash has already started, so nothing is transcribed twice (FR-023, US2 #6); chapters are transcribed in order and the audio is discarded only once every chapter is transcribed, a closure the transcription group sets and the discard group checks (FR-020, FR-024)"
+  book:
+    because: "an EPUB is aligned against the chapters this import detected, by title and ordinal, in one decision over both (FR-021, FR-022); a server book's audio is fetched once (FR-029, FR-023)"
+  listening:
+    because: "the later-timed position wins — a report from the player, an entry by hand or the server's progress is adopted only if it is later than the position held, which needs that position still while deciding (FR-028, edge case: two devices); the gap an offer names is measured from the last-listened time held here (FR-011, US6 #2); progress is pushed to the server once per position it has not seen (US6 #3)"
+  connection:
+    because: "a listener has one Audiobookshelf connection at a time; renewing a rejected token replaces it rather than adding a second, and nothing is pushed through a connection that has lapsed (FR-029, US6 #5)"
+  settings:
+    because: "one settings record per listener, last write wins — a form the listener edits, with no decision made against it (FR-035, A3)"
+  catch-up:
+    because: "a recap at one tier and one position is generated at most once — two requests at the same key must not both generate, so the second must see the first (FR-008, US1 #7); an offer is answered, by a request or a decline, at most once (FR-011, SC-003); a recap is heard and rated against one that was generated (FR-007, FR-037); the voice chosen for a book applies to every later recap and answer for it (FR-034)"
+  question:
+    because: "a question is answered or refused exactly once, against the position it was asked at (FR-014, FR-015)"
+  spoiler-report:
+    because: "a report is recorded once and nothing decides against it afterwards (FR-038, SC-002) — a stream of one event, correlated by id to the recap, answer or entry it names"
+
+slices:
+
+  # ═══════════════════════════════════════════════════════════════════════════════════════════════════
+  # library — the listener's own books, where they are in each, their server and their settings
+  # ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+  - id: LB3
+    name: Import audio files
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: prepare-a-book
+    stream: book-{bookId}
+    folds: [BookImported]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/LB3/examples.md
+    code:
+      - apps/recap-api/src/domain/library/events.ts
+      - apps/recap-api/src/domain/library/book.ts
+      - apps/recap-api/src/domain/library/files.ts
+      - apps/recap-api/src/application/library/import-book.ts
+      - apps/recap-api/src/application/library/public.ts
+      - apps/recap-api/src/application/library/ports/audio-store.ts
+      - apps/recap-api/src/application/library/ports/audio-metadata.ts
+      - apps/recap-api/src/application/library/ports/authenticate.ts
+      - apps/recap-api/src/application/ports/clock.ts
+      - apps/recap-api/src/application/ports/ids.ts
+      - apps/recap-api/src/adapters/driving/http/bearer.ts
+      - apps/recap-api/src/adapters/driving/http/library/import-book.ts
+      - apps/recap-api/src/adapters/driven/audio-store-fs.ts
+      - apps/recap-api/src/adapters/driven/audio-metadata/index.ts
+      - apps/recap-api/src/adapters/driven/audio-metadata/mp4.ts
+      - apps/recap-api/src/adapters/driven/audio-metadata/id3.ts
+      - apps/recap-api/src/adapters/driven/authenticate-oidc-userinfo.ts
+      - apps/recap-api/src/adapters/driven/clock-system.ts
+      - apps/recap-api/src/adapters/driven/ids-crypto.ts
+      - apps/recap-api/src/config.ts
+      - apps/recap-api/src/main.ts
+      - apps/recap-web/src/routes/AddBook.tsx
+      - apps/recap-web/src/import-client.ts
+      - apps/recap-web/src/App.tsx
+      - apps/recap-web/src/styles/base.css
+      - apps/recap-web/src/styles/tokens.css
+    frames:
+      - type: ui
+        name: AddBook
+        data: "Import audio files — M4B, MP3 or M4A from this phone or a synced folder"
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/add-book.html }
+          - { state: importing, at: docs/event-model/mockups/add-book-importing.html }
+          - { state: imported, at: docs/event-model/mockups/add-book-imported.html }
+          - { state: refused, at: docs/event-model/mockups/add-book-refused.html }
+      - { type: cmd, name: ImportBook, data: "listenerId, bookId, 3 M4B files in the files' own order — tags, then names (D20); title and author from the file tags — the first tagged file's, the file's name where none is titled, no author where none is named (D21)" }
+      - { type: evt, name: BookImported, data: "bookId, listenerId, Nine Winters at Halvard, R. Okafor (optional), 31 chapters from the file metadata (or one segment when it has none; a chapter's title optional), 14h 20m, audioHash sha256:… over the files' bytes in that order, importedAt" }
+
+  - id: LB6
+    name: Resume listening
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    # D32 (decided by the person, 2026-10-21): positions belong to catch-up. `context` below still reads
+    # `library` because check-model's one-stream-one-context rule holds every writer of listening-{bookId}
+    # to one context, so LB6–LB10 move together on `main` — the host's change — and not one block at a time.
+    context: library
+    capability: track-position
+    stream: listening-{bookId}
+    folds: [ListeningResumed, ListeningStopped, PositionEntered, PositionSyncedFromServer]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/LB6/examples.md
+    code:
+      - apps/recap-api/src/adapters/driven/authenticate-oidc-userinfo.ts
+      - apps/recap-api/src/adapters/driven/clock-system.ts
+      - apps/recap-api/src/adapters/driven/ids-crypto.ts
+      - apps/recap-api/src/adapters/driving/http/bearer.ts
+      - apps/recap-api/src/adapters/driving/http/library/resumptions.ts
+      - apps/recap-api/src/application/library/book-owner.ts
+      - apps/recap-api/src/application/library/ports/authenticate.ts
+      - apps/recap-api/src/application/library/public.ts
+      - apps/recap-api/src/application/library/resume-listening.ts
+      - apps/recap-api/src/application/ports/book-ownership.ts
+      - apps/recap-api/src/application/ports/clock.ts
+      - apps/recap-api/src/application/ports/ids.ts
+      - apps/recap-api/src/domain/library/events.ts
+      - apps/recap-api/src/domain/library/events/listening-resumed.ts
+      - apps/recap-api/src/domain/library/events/listening-stopped.ts
+      - apps/recap-api/src/domain/library/events/listening-stream.ts
+      - apps/recap-api/src/domain/library/events/position-entered.ts
+      - apps/recap-api/src/domain/library/events/position-synced-from-server.ts
+      - apps/recap-api/src/domain/library/listening/decide.ts
+      - apps/recap-api/src/domain/library/listening/gap.ts
+      - apps/recap-api/src/domain/library/listening/state.ts
+      - apps/recap-api/src/domain/shared/instant.ts
+      - apps/recap-api/src/domain/shared/resumption-id.ts
+      - apps/recap-api/src/domain/shared/seconds.ts
+      - apps/recap-web/src/resume-client.ts
+      - apps/recap-web/src/routes/Player.tsx
+    frames:
+      - type: ui
+        name: Player
+        data: "The Cartographer's Silence · Chapter 14 · The Harbourmaster · 32:10 · Play; or, for a connected book played in Audiobookshelf, opening it in Recap — the return in companion mode (D7)"
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/player.html }
+          - { state: idle, at: docs/event-model/mockups/player-idle.html }
+          - { state: resuming, at: docs/event-model/mockups/player-resuming.html }
+          - { state: resumed, at: docs/event-model/mockups/player-resumed.html }
+          - { state: refused, at: docs/event-model/mockups/player-refused.html }
+      - { type: cmd, name: ResumeListening, data: "bookId, resumptionId (the idempotency key), position 4:03:17, at 2026-10-21T07:12:00Z, via the player | opening the book" }
+      # The contract LB6 sets (specs/001-audiobook-recap/slices/LB6/examples.md): position 4:03:17 is 14597 s;
+      # daysSinceLastListened is whole 24-hour periods from the latest instant the stream held (D13, D27) and
+      # absent on a first play; via is `player` or `opening` (the companion-mode return, D7).
+      - type: evt
+        name: ListeningResumed
+        attributes:
+          - { name: bookId, identifies: book }
+          - { name: resumptionId, identifies: resumption }
+          - { name: position, type: seconds }
+          - { name: resumedAt, type: instant }
+          - { name: daysSinceLastListened, type: "days, absent on a first play" }
+          - { name: via, type: "player | opening" }
+
+  - id: LB7
+    name: Stop listening
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: track-position
+    stream: listening-{bookId}
+    folds: [ListeningResumed, ListeningStopped, PositionEntered, PositionSyncedFromServer]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/LB7/examples.md
+    code:
+      - apps/recap-api/src/adapters/driving/http/bearer.ts
+      - apps/recap-api/src/adapters/driving/http/library/stops.ts
+      - apps/recap-api/src/application/library/book-owner.ts
+      - apps/recap-api/src/application/library/public.ts
+      - apps/recap-api/src/application/library/stop-listening.ts
+      - apps/recap-api/src/application/ports/book-ownership.ts
+      - apps/recap-api/src/application/ports/clock.ts
+      - apps/recap-api/src/domain/library/events/listening-stopped.ts
+      - apps/recap-api/src/domain/library/listening/state.ts
+      - apps/recap-api/src/domain/library/listening/stop.ts
+      - apps/recap-api/src/domain/shared/instant.ts
+      - apps/recap-api/src/domain/shared/seconds.ts
+      - apps/recap-api/src/domain/shared/stop-id.ts
+      - apps/recap-web/src/stop-client.ts
+      - apps/recap-web/src/routes/Player.tsx
+    frames:
+      - type: ui
+        name: Player
+        data: "pause, the sleep timer elapsing, the app closing — the player reports where it stopped"
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/player.html }
+          - { state: playing, at: docs/event-model/mockups/player-playing.html }
+          - { state: stopping, at: docs/event-model/mockups/player-stopping.html }
+          - { state: stopped, at: docs/event-model/mockups/player-stopped.html }
+          - { state: refused, at: docs/event-model/mockups/player-stop-refused.html }
+          - { state: unreachable, at: docs/event-model/mockups/player-stop-unreachable.html }
+      - { type: cmd, name: StopListening, data: "bookId, stopId (the idempotency key), position 2:14:09, at 2026-10-12T22:41:03Z; refused when an earlier-timed report arrives after a later one" }
+      # The contract LB7 sets (specs/001-audiobook-recap/slices/LB7/examples.md): position 2:14:09 is 8049 s;
+      # stoppedAt is the command's `at`, the book's last-listened time (FR-028, D27); the same shape as LB6's
+      # ListeningResumed — seconds, an instant, a caller-minted key — so every writer of the stream folds alike.
+      - type: evt
+        name: ListeningStopped
+        attributes:
+          - { name: bookId, identifies: book }
+          - { name: stopId, identifies: stop }
+          - { name: position, type: seconds }
+          - { name: stoppedAt, type: instant }
+
+  - id: LB8
+    name: Enter a position by hand
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: track-position
+    stream: listening-{bookId}
+    folds: [ListeningResumed, ListeningStopped, PositionEntered, PositionSyncedFromServer]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/LB8/examples.md
+    code:
+      - apps/recap-api/src/adapters/driving/http/bearer.ts
+      - apps/recap-api/src/adapters/driving/http/library/entries.ts
+      - apps/recap-api/src/adapters/driving/http/library/route-schemas.ts
+      - apps/recap-api/src/application/library/book-chapters.ts
+      - apps/recap-api/src/application/library/book-owner.ts
+      - apps/recap-api/src/application/library/enter-position.ts
+      - apps/recap-api/src/application/library/public.ts
+      - apps/recap-api/src/application/ports/book-chapters.ts
+      - apps/recap-api/src/application/ports/book-ownership.ts
+      - apps/recap-api/src/application/ports/clock.ts
+      - apps/recap-api/src/domain/library/events/position-entered.ts
+      - apps/recap-api/src/domain/library/listening/chapters.ts
+      - apps/recap-api/src/domain/library/listening/enter.ts
+      - apps/recap-api/src/domain/library/listening/state.ts
+      - apps/recap-api/src/domain/library/listening/timing.ts
+      - apps/recap-api/src/domain/shared/chapter-number.ts
+      - apps/recap-api/src/domain/shared/entry-id.ts
+      - apps/recap-api/src/domain/shared/instant.ts
+      - apps/recap-api/src/domain/shared/minutes.ts
+      - apps/recap-api/src/domain/shared/seconds.ts
+      - apps/recap-web/src/authorised-post.ts
+      - apps/recap-web/src/entry-client.ts
+      - apps/recap-web/src/routes/Player.tsx
+    frames:
+      - type: ui
+        name: ManualPosition
+        data: "chapter 12, 20 minutes in → Chapter 12 · 20:00 shown before confirming; Set position on the Player's control strip (D36); not drawn — the storyboard's manual-position gap card (FR-030, P1 follow-on)"
+        mockups:
+          - { state: closed, at: docs/event-model/mockups/lb8-closed.html }
+          - { state: form, at: docs/event-model/mockups/lb8-form.html }
+          - { state: setting, at: docs/event-model/mockups/lb8-setting.html }
+          - { state: set, at: docs/event-model/mockups/lb8-set.html }
+          - { state: refused, at: docs/event-model/mockups/lb8-refused.html }
+          - { state: unreachable, at: docs/event-model/mockups/lb8-unreachable.html }
+      - { type: cmd, name: EnterPosition, data: "bookId, entryId (the idempotency key), chapter 12, 20 whole minutes, at 2026-10-21T20:00:00Z — the moment the listener confirmed; refused beyond-chapter when the minutes exceed the chapter's length, no-such-chapter outside 1..N (D35)" }
+      # The contract LB8 sets (specs/001-audiobook-recap/slices/LB8/examples.md): position is the chapter's start plus
+      # the minutes, in seconds — chapter 12 at 3:21:00 plus 20:00 is 13260 s (3:41:00), read from the book's chapters
+      # on book-{bookId}; enteredAt is the command's `at`, the book's last-listened time (FR-028, D27); the same shape
+      # as LB6's ListeningResumed and LB7's ListeningStopped — seconds, an instant, a caller-minted key — so every
+      # writer of the stream folds alike. The chapter and minutes are not carried: every reader folds a position.
+      - type: evt
+        name: PositionEntered
+        attributes:
+          - { name: bookId, identifies: book }
+          - { name: entryId, identifies: entry }
+          - { name: position, type: seconds }
+          - { name: enteredAt, type: instant }
+
+  - id: LB1
+    name: Connect to an Audiobookshelf server
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: audiobookshelf-companion
+    stream: connection-{listenerId}
+    folds: [ServerConnected]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/LB1/examples.md
+    code:
+      - apps/recap-api/src/domain/library/events/server-connected.ts
+      - apps/recap-api/src/domain/library/server-url.ts
+      - apps/recap-api/src/domain/library/connection.ts
+      - apps/recap-api/src/application/library/connect-server.ts
+      - apps/recap-api/src/application/library/ports/book-server.ts
+      - apps/recap-api/src/application/library/ports/listener-credentials.ts
+      - apps/recap-api/src/application/library/public.ts
+      - apps/recap-api/src/adapters/driving/http/library/connection.ts
+      - apps/recap-api/src/adapters/driven/book-server-audiobookshelf.ts
+      - apps/recap-api/src/adapters/driven/listener-credentials-memory.ts
+      - apps/recap-api/src/adapters/driven/listener-credentials-postgres.ts
+      - apps/recap-api/migrations/202610221411_listener_credentials.js
+      - apps/recap-web/src/connection-client.ts
+      - apps/recap-web/src/routes/ConnectServer.tsx
+    frames:
+      - type: ui
+        name: ServerConnection
+        data: "URL https://books.home.lan, token pasted; not drawn — the storyboard's audiobookshelf-connect gap card"
+        mockups:
+          - { state: not-connected, at: docs/event-model/mockups/connect-server-not-connected.html }
+          - { state: connecting, at: docs/event-model/mockups/connect-server-connecting.html }
+          - { state: connected, at: docs/event-model/mockups/connect-server-connected.html }
+          - { state: refused, at: docs/event-model/mockups/connect-server-refused.html }
+          - { state: unreachable-service, at: docs/event-model/mockups/connect-server-unreachable-service.html }
+      - { type: cmd, name: ConnectServer, data: "listenerId, connectionId (the idempotency key), url https://books.home.lan, token — proved against the server before anything is recorded; refused token-rejected | server-unreachable | not-audiobookshelf with no events" }
+      # The contract LB1 sets (specs/001-audiobook-recap/slices/LB1/examples.md): the listener as the token's
+      # `sub` and nothing else about them (ADR 0004), a caller-minted key, the server's URL as given, and the
+      # instant from the command's `at`. No token — a credential is held behind a port, never in an event
+      # (constitution IX) — and no book count (D38: what the server lists is LB4's live read).
+      - type: evt
+        name: ServerConnected
+        attributes:
+          - { name: listenerId, identifies: listener }
+          - { name: connectionId, identifies: connection }
+          - { name: serverUrl, type: url }
+          - { name: connectedAt, type: instant }
+
+  - id: LB4
+    name: Pick a book from the server
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: audiobookshelf-companion
+    stream: book-{bookId}
+    folds: [ServerBookAdded]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/LB4/examples.md
+    code:
+      - apps/recap-api/src/domain/library/events/server-book-added.ts
+      - apps/recap-api/src/domain/library/server-book.ts
+      - apps/recap-api/src/domain/library/book.ts
+      - apps/recap-api/src/application/library/add-server-book.ts
+      - apps/recap-api/src/application/library/list-server-books.ts
+      - apps/recap-api/src/application/library/book-stream.ts
+      - apps/recap-api/src/application/library/held-items.ts
+      - apps/recap-api/src/application/library/import-book.ts
+      - apps/recap-api/src/application/library/public.ts
+      - apps/recap-api/src/application/library/ports/book-server.ts
+      - apps/recap-api/src/adapters/driven/book-server-audiobookshelf.ts
+      - apps/recap-api/src/adapters/driving/http/library/server-books.ts
+      - apps/recap-api/src/main.ts
+      - apps/recap-web/src/server-books-client.ts
+      - apps/recap-web/src/routes/ServerBooks.tsx
+      - apps/recap-web/src/format.ts
+    frames:
+      - type: ui
+        name: AddBook
+        data: "Audiobookshelf — Connected · books.home.lan · 2 new books in your library; the server's own list, fetched live, to pick from"
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/add-book.html }
+      - { type: cmd, name: AddServerBook, data: "listenerId, bookId, server item li_8x2, title, author, chapters as the server lists them" }
+      - { type: evt, name: ServerBookAdded, data: "bookId, listenerId, server item li_8x2, The Salt Ledger, Priya Anand, 24 chapters, addedAt" }
+
+  - id: LB5
+    name: Fetch a server book's audio
+    pattern: automation
+    status: implemented
+    service: recap-api
+    context: library
+    capability: audiobookshelf-companion
+    stream: book-{bookId}
+    reads: [ServerBookAdded, ServerConnected]
+    materialisation: async
+    folds: [ServerBookAdded, AudioFetched]
+    spec: specs/001-audiobook-recap/spec.md
+    code:
+      - apps/recap-api/migrations/202610221849_server_books_awaiting_audio.js
+      - apps/recap-api/src/domain/library/events/audio-fetched.ts
+      - apps/recap-api/src/domain/library/audio-fetch.ts
+      - apps/recap-api/src/application/library/ports/book-audio.ts
+      - apps/recap-api/src/application/library/ports/audio-fetch-todo.ts
+      - apps/recap-api/src/application/library/awaiting-audio-projection.ts
+      - apps/recap-api/src/application/library/fetch-audio.ts
+      - apps/recap-api/src/application/library/fetch-pending-audio.ts
+      - apps/recap-api/src/application/library/fetch-backoff.ts
+      - apps/recap-api/src/application/library/public.ts
+      - apps/recap-api/src/adapters/driven/book-audio-audiobookshelf.ts
+      - apps/recap-api/src/adapters/driven/awaiting-audio-memory.ts
+      - apps/recap-api/src/adapters/driven/awaiting-audio-postgres.ts
+      - apps/recap-api/src/adapters/driving/worker/audio-fetch-worker.ts
+      - apps/recap-api/src/main.ts
+    gwt: specs/001-audiobook-recap/slices/LB5/examples.md
+    frames:
+      - { type: rmo, name: ServerBooksAwaitingAudio, data: "server books whose audio has not been received, with the connection to fetch it through" }
+      - { type: pcr, name: FetchOnAdd, data: "downloads the item's audio through the connection; hashes it; skipped while the connection has lapsed" }
+      - { type: cmd, name: FetchAudio, data: "bookId, server item li_8x2" }
+      # The contract LB5 sets (specs/001-audiobook-recap/contracts/LB5-audio-fetch.md): the hash is the audio
+      # store's, the one an import of the same bytes has (D95); chapters are the fetched files' own (D94). No
+      # listener, server address, token, path or size.
+      - type: evt
+        name: AudioFetched
+        attributes:
+          - { name: bookId, identifies: book }
+          - { name: audioHash, type: hash }
+          - { name: chapters, type: list }
+          - { name: fetchedAt, type: instant }
+
+  - id: LB9
+    name: Adopt the server's progress
+    pattern: translation
+    status: implemented
+    service: recap-api
+    context: library
+    capability: audiobookshelf-companion
+    stream: listening-{bookId}
+    folds: [ListeningResumed, ListeningStopped, PositionEntered, PositionSyncedFromServer]
+    spec: specs/001-audiobook-recap/spec.md
+    code:
+      - apps/recap-api/src/domain/shared/sync-id.ts
+      - apps/recap-api/src/domain/library/events/position-synced-from-server.ts
+      - apps/recap-api/src/domain/library/listening/state.ts
+      - apps/recap-api/src/domain/library/listening/adopt.ts
+      - apps/recap-api/src/application/ports/book-server-item.ts
+      - apps/recap-api/src/application/library/book-server-item.ts
+      - apps/recap-api/src/application/library/sync-from-server.ts
+      - apps/recap-api/src/application/library/public.ts
+      - apps/recap-api/src/application/library/ports/book-server.ts
+      - apps/recap-api/src/adapters/driven/book-server-audiobookshelf.ts
+      - apps/recap-api/src/adapters/driving/http/library/server-syncs.ts
+      - apps/recap-api/src/main.ts
+      - apps/recap-api/src/openapi.ts
+      - apps/recap-web/src/sync-client.ts
+      - apps/recap-web/src/routes/Player.tsx
+      - apps/recap-web/src/styles/base.css
+    gwt: specs/001-audiobook-recap/slices/LB9/examples.md
+    frames:
+      - { type: evt, name: ServerProgressReported, external: true, data: "Audiobookshelf media progress for li_8x2 — currentTime 18600 s, lastUpdate 2026-10-20T19:02:11Z, read when the listener opens Recap" }
+      - { type: pcr, name: AdoptServerProgress, data: "maps the server's seconds and last update to a position with a time; skipped when the server is unreachable (the last synced position stands)" }
+      - { type: cmd, name: AdoptServerPosition, data: "bookId, position 5:10:00, at 2026-10-20T19:02:11Z; refused when older than the position held" }
+      # The contract LB9 sets (specs/001-audiobook-recap/contracts/LB9-server-syncs.md): position is the server's
+      # currentTime floored to the second; lastListened is the server's lastUpdate as given, the book's
+      # last-listened time (D27); syncedAt is the service's now (D33); syncId is the Player's key per open. No
+      # listener, server item, URL, token or isFinished (ADR 0004, IX, D44). A position equal to the one held is in
+      # step and records nothing (D43).
+      - type: evt
+        name: PositionSyncedFromServer
+        attributes:
+          - { name: bookId, identifies: book }
+          - { name: syncId, identifies: sync }
+          - { name: position, type: seconds }
+          - { name: lastListened, type: instant }
+          - { name: syncedAt, type: instant }
+
+  - id: LB10
+    name: Push progress to the server
+    pattern: automation
+    status: modelled
+    service: recap-api
+    context: library
+    capability: audiobookshelf-companion
+    stream: listening-{bookId}
+    reads: [ListeningStopped, PositionEntered, ServerBookAdded, ServerConnected]
+    folds: [ListeningStopped, PositionEntered, ProgressPushed, ServerSyncFailed]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: ProgressToPush, data: "server books whose position moved since the server last saw it, with the connection to push through" }
+      - { type: pcr, name: PushOnChange, data: "sends the position to the server; records the outcome either way so the listener is told unreachable or needs renewing" }
+      - { type: cmd, name: PushProgress, data: "bookId, position 2:14:09, server item li_8x2" }
+      - { type: evt, name: ProgressPushed, data: "bookId, position 2:14:09, pushedAt" }
+      - { type: evt, name: ServerSyncFailed, data: "bookId, reason unreachable | token rejected, failedAt" }
+
+  - id: LB2
+    name: Change settings
+    pattern: state-change
+    status: planned
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: voice-and-settings
+    stream: settings-{listenerId}
+    folds: [SettingsChanged]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/LB2/examples.md
+    frames:
+      - type: ui
+        name: Settings
+        data: "five labelled rows on one panel at /settings behind the voice-and-settings flag, each value readable without opening anything and saved at once with no save button, the controls held while it saves: default tier Quick | Standard | Full (Standard), gap threshold 3 days | 7 days | never (3 days), voice Tomas | Mira (Tomas), only prepare on Wi-Fi (on), prepare ahead of where I am (on); a status line says Saving…, Saved or Couldn't save that — try again; no voice sample and no per-book indicator (D24); built states: signed out, loading, ready, ready with the threshold off, saving, saved, save failed, read failed, session ended"
+        mockups:
+          - { state: loading, at: docs/event-model/mockups/settings-loading.html }
+          - { state: ready, at: docs/event-model/mockups/settings-ready.html }
+          - { state: ready-threshold-off, at: docs/event-model/mockups/settings-ready-threshold-off.html }
+          - { state: saving, at: docs/event-model/mockups/settings-saving.html }
+          - { state: saved, at: docs/event-model/mockups/settings-saved.html }
+          - { state: save-failed, at: docs/event-model/mockups/settings-save-failed.html }
+          - { state: read-failed, at: docs/event-model/mockups/settings-read-failed.html }
+          - { state: signed-out, at: docs/event-model/mockups/settings-signed-out.html }
+          - { state: unauthenticated, at: docs/event-model/mockups/settings-unauthenticated.html }
+      - { type: cmd, name: ChangeSettings, data: "listenerId, defaultTier Full, gapThreshold 7 days, voice Tomas, wifiOnly on, prepareAhead off" }
+      - type: evt
+        name: SettingsChanged
+        crud: true
+        because: "settings are a form the listener edits (FR-035); there is no business event under the save, and the rules that read a threshold or a tier live where they are applied"
+        data: "listenerId, defaultTier Full, gapThreshold 7 days, voice Tomas, wifiOnly on, prepareAhead off, changedAt"
+
+  - id: LB11
+    name: Attach an EPUB
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: prepare-a-book
+    stream: book-{bookId}
+    folds: [BookImported, ServerBookAdded, AudioFetched, EbookAttached, EbookAligned]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/LB11/examples.md
+    frames:
+      - type: ui
+        name: AddBook
+        data: "Add the EPUB for better accuracy"
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/add-book.html }
+          - { state: ebook-sending, at: docs/event-model/mockups/add-book-ebook-sending.html }
+          - { state: ebook-aligned, at: docs/event-model/mockups/add-book-ebook-aligned.html }
+          - { state: ebook-partly-aligned, at: docs/event-model/mockups/add-book-ebook-partly-aligned.html }
+          - { state: ebook-refused, at: docs/event-model/mockups/add-book-ebook-refused.html }
+      - { type: cmd, name: AttachEbook, data: "bookId, EPUB with 31 chapter titles; aligned to the audio chapters by title and ordinal in the same decision" }
+      - { type: evt, name: EbookAttached, data: "bookId, 31 ebook chapters with their titles, attachedAt" }
+      - { type: evt, name: EbookAligned, data: "bookId, 29 of 31 chapters matched by title and ordinal, chapters 7 and 22 unmatched and left to the transcript, falls back to position within the audio where the files had no chapter metadata" }
+    code:
+      - apps/recap-api/src/adapters/driven/ebook-reader/epub.ts
+      - apps/recap-api/src/adapters/driven/ebook-reader/index.ts
+      - apps/recap-api/src/adapters/driven/ebook-reader/xml.ts
+      - apps/recap-api/src/adapters/driven/ebook-reader/zip.ts
+      - apps/recap-api/src/adapters/driven/ebook-store-fs.ts
+      - apps/recap-api/src/adapters/driving/http/library/attach-ebook.ts
+      - apps/recap-api/src/application/library/attach-ebook.ts
+      - apps/recap-api/src/application/library/ports/ebook-reader.ts
+      - apps/recap-api/src/application/library/ports/ebook-store.ts
+      - apps/recap-api/src/domain/library/ebook-alignment.ts
+      - apps/recap-api/src/domain/library/ebook-attach.ts
+      - apps/recap-api/src/domain/library/events/ebook.ts
+      - apps/recap-web/src/ebook-client.ts
+      - apps/recap-web/src/routes/AddBook.tsx
+      - apps/recap-web/src/routes/EbookOffer.tsx
+      - apps/recap-web/src/styles/base.css
+
+  - id: LB15
+    name: Remove a book
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: prepare-a-book
+    stream: book-{bookId}
+    folds: [BookImported, ServerBookAdded, AudioFetched, EbookAttached, EbookAligned, BookRemoved]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/LB15/examples.md
+    frames:
+      - type: ui
+        name: RemoveBook
+        data: "Remove from library — a screen of the book's own at /books/{bookId}/remove behind the import-audio flag, reached by URL and from the imported card of Add a book until LB12's library row links it (D85, D90); built states: resting, confirming (Cancel focused first), removing, removed, failed (never queued), already gone (shown as removed), signed out"
+        mockups:
+          - { state: resting, at: docs/event-model/mockups/remove-book-resting.html }
+          - { state: confirming, at: docs/event-model/mockups/remove-book-confirming.html }
+          - { state: removing, at: docs/event-model/mockups/remove-book-removing.html }
+          - { state: removed, at: docs/event-model/mockups/remove-book-removed.html }
+          - { state: failed, at: docs/event-model/mockups/remove-book-failed.html }
+          - { state: already-gone, at: docs/event-model/mockups/remove-book-already-gone.html }
+          - { state: signed-out, at: docs/event-model/mockups/remove-book-signed-out.html }
+      - { type: cmd, name: RemoveBook, data: "listenerId, bookId; refused when the book is already removed" }
+      - { type: evt, name: BookRemoved, data: "bookId, listenerId, removedAt — the listener's position, last-listened time, recap cache, questions, answers, ratings and reports go with it; the transcription and index keyed by audioHash stay for other listeners (FR-023, FR-043)" }
+    code:
+      - apps/recap-api/src/adapters/driven/listeners-library-from-book-stream.ts
+      - apps/recap-api/src/adapters/driving/http/library/import-book.ts
+      - apps/recap-api/src/adapters/driving/http/library/remove-book.ts
+      - apps/recap-api/src/application/library/import-book.ts
+      - apps/recap-api/src/application/library/public.ts
+      - apps/recap-api/src/application/library/remove-book.ts
+      - apps/recap-api/src/domain/library/events/book-removed.ts
+      - apps/recap-api/src/domain/library/remove-book.ts
+      - apps/recap-api/src/main.ts
+      - apps/recap-web/src/App.tsx
+      - apps/recap-web/src/remove-client.ts
+      - apps/recap-web/src/routes/AddBook.tsx
+      - apps/recap-web/src/routes/RemoveBook.tsx
+      - apps/recap-web/src/styles/base.css
+
+  # ═══════════════════════════════════════════════════════════════════════════════════════════════════
+  # preparation — audio into timestamped text and a who's-who index, keyed by content hash, shared
+  # ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+  - id: PR1
+    name: Start preparation
+    pattern: automation
+    status: implemented
+    service: recap-api
+    context: preparation
+    capability: prepare-a-book
+    stream: preparation-{audioHash}
+    reads: [BookImported, AudioFetched]
+    materialisation: async
+    folds: [PreparationStarted]
+    gwt: specs/001-audiobook-recap/slices/PR1/examples.md
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: AudioAwaitingPreparation, data: "books whose audio hash has no preparation started — a second listener with identical files finds one already started" }
+      - { type: pcr, name: StartOnReceipt, data: "starts once per hash; skipped when the hash is already being prepared (US2 #6)" }
+      - { type: cmd, name: StartPreparation, data: "audioHash sha256:…, 31 chapters" }
+      - { type: evt, name: PreparationStarted, data: "audioHash sha256:…, 31 chapters in order, startedAt" }
+    code:
+      - apps/recap-api/migrations/202610222030_audio_awaiting_preparation.js
+      - apps/recap-api/src/adapters/driven/awaiting-preparation-memory.ts
+      - apps/recap-api/src/adapters/driven/event-store-postgres/awaiting-preparation-postgres.ts
+      - apps/recap-api/src/adapters/driving/workers/preparation-worker.ts
+      - apps/recap-api/src/application/preparation/awaiting-preparation.ts
+      - apps/recap-api/src/application/preparation/start-preparation.ts
+      - apps/recap-api/src/application/preparation/sweep.ts
+      - apps/recap-api/src/config.ts
+      - apps/recap-api/src/domain/preparation/awaiting.ts
+      - apps/recap-api/src/domain/preparation/events.ts
+      - apps/recap-api/src/domain/preparation/start-preparation.ts
+      - apps/recap-api/src/main.ts
+
+  - id: PR2
+    name: Transcribe the next chapter
+    pattern: automation
+    status: modelled
+    service: recap-api
+    context: preparation
+    capability: prepare-a-book
+    stream: preparation-{audioHash}
+    reads: [PreparationStarted, BookImported, AudioFetched, ListeningResumed, ListeningStopped, PositionEntered, PositionSyncedFromServer, SettingsChanged]
+    folds: [PreparationStarted, ChapterTranscribed, ChapterTranscriptionFailed, PreparationCompleted, AudioDiscarded]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: ChaptersToTranscribe, data: "per preparation, the next chapter in order; with prepare-ahead off, only up to a little past the furthest position any listener of this hash has reached (FR-027)" }
+      - { type: pcr, name: TranscribeInOrder, data: "word-level timestamps for one chapter; resumes from the next untranscribed chapter after a crash or a lost connection (US2 #3); after retries, a chapter that cannot be transcribed — or a first chapter not in English (D15, FR-044) — fails the preparation at that chapter (D10, FR-020)" }
+      - { type: cmd, name: TranscribeChapter, data: "audioHash sha256:…, chapter 9" }
+      - { type: evt, name: ChapterTranscribed, data: "audioHash, chapter 9 of 31, 4,812 words with timestamps, covers 3:58:40 to 4:27:05 — recap works up to chapter 9 so far" }
+      - { type: evt, name: PreparationCompleted, data: "audioHash, 31 of 31 chapters transcribed, completedAt — with the last chapter only" }
+      - { type: evt, name: ChapterTranscriptionFailed, data: "audioHash, chapter 9 of 31, reason: the transcription provider rejected the audio after 3 attempts | the book is not in English, failedAt — recap works up to chapter 8; retry from the library; audio discarded 7 days on (FR-020, FR-024)" }
+
+  - id: PR3
+    name: Index a chapter's who's who
+    pattern: automation
+    status: modelled
+    service: recap-api
+    context: preparation
+    capability: prepare-a-book
+    stream: preparation-{audioHash}
+    reads: [ChapterTranscribed]
+    folds: [ChapterTranscribed, ChapterIndexed]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: ChaptersAwaitingIndexing, data: "transcribed chapters with no index yet, in order" }
+      - { type: pcr, name: IndexOnTranscription, data: "extracts people, places and terms introduced or developed in the chapter; canonicalises speech-to-text variants of one name to one entry (FR-026); writes the chapter's digest (FR-010)" }
+      - { type: cmd, name: IndexChapter, data: "audioHash, chapter 13" }
+      - { type: evt, name: ChapterIndexed, data: "audioHash, chapter 13, entries: Father Oren (person, first appearance ch 13, keeps the chapel where Marcus confronted Ines), Ines Varga (developed: admitted taking the ledger; aliases Enys Varga), digest: Marcus confronts Ines at the chapel…" }
+
+  - id: PR4
+    name: Discard the audio
+    pattern: automation
+    status: modelled
+    service: recap-api
+    context: preparation
+    capability: prepare-a-book
+    stream: preparation-{audioHash}
+    reads: [PreparationCompleted, ChapterTranscriptionFailed]
+    folds: [PreparationStarted, PreparationCompleted, ChapterTranscriptionFailed, AudioDiscarded]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: AudioToDiscard, data: "preparations whose every chapter is transcribed, or whose last failed attempt is 7 days old (D10, FR-024), and whose audio is still held" }
+      - { type: pcr, name: DiscardOnCompletion, data: "deletes the stored audio; nothing is transcribed after this (FR-024)" }
+      - { type: cmd, name: DiscardAudio, data: "audioHash sha256:…" }
+      - { type: evt, name: AudioDiscarded, data: "audioHash, discardedAt" }
+
+  # ═══════════════════════════════════════════════════════════════════════════════════════════════════
+  # library — what the listener sees of their books, folded from the writes above
+  # ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+  - id: LB12
+    name: See the library
+    pattern: state-view
+    status: modelled
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: prepare-a-book
+    reads: [BookImported, ServerBookAdded, AudioFetched, ServerConnected, PreparationStarted, ChapterTranscribed, ChapterTranscriptionFailed, PreparationCompleted, BookRemoved, ListeningResumed, ListeningStopped, PositionEntered, PositionSyncedFromServer, ProgressPushed, ServerSyncFailed]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: Library, data: "3 books; continue listening: The Cartographer's Silence, Chapter 14 of 31, 6h 12m left, last listened 9 days ago, recap ready; Nine Winters at Halvard 12%, preparing · recap ready up to Ch. 8; The Salt Ledger not started; or Couldn't prepare past Ch. 8 — the audio was rejected · Retry (D10); a removed book is gone from the list (D11); Audiobookshelf synced 2 min ago | unreachable | needs renewing" }
+      - type: ui
+        name: Library
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/library.html }
+
+  - id: LB14
+    name: Watch preparation progress
+    pattern: state-view
+    status: modelled
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: prepare-a-book
+    reads: [BookImported, ServerBookAdded, AudioFetched, PreparationStarted, ChapterTranscribed, ChapterTranscriptionFailed, PreparationCompleted, EbookAttached, EbookAligned]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: PreparationProgress, data: "Nine Winters at Halvard · 31 chapters · 14h 20m; transcribing chapter 9 of 31, about 25 min left; you can start listening now, recap works up to chapter 8 so far; EPUB: none | 29 of 31 chapters aligned; or Couldn't prepare past chapter 8 — the reason, with Retry (D10)" }
+      - type: ui
+        name: AddBook
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/add-book.html }
+
+  - id: LB13
+    name: See now playing
+    pattern: state-view
+    status: modelled
+    actor: Listener
+    service: recap-api
+    context: library
+    capability: track-position
+    reads: [BookImported, ServerBookAdded, AudioFetched, ChapterTranscribed, PreparationCompleted, EbookAligned, ListeningResumed, ListeningStopped, PositionEntered, PositionSyncedFromServer]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: NowPlaying, data: "The Cartographer's Silence, Elin Marsh, Chapter 14 · The Harbourmaster, 32:10, -15:52, 1.2×; coverage reaches the position → Recap and answers cover up to this moment, nothing after; or: prepared to chapter 8, you are in chapter 9" }
+      - type: ui
+        name: Player
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/player.html }
+
+  # ═══════════════════════════════════════════════════════════════════════════════════════════════════
+  # catch-up — the offer, the recap, a question, the who's who, and a report; everything built from the
+  # window before the position and nothing after it (Principle I)
+  # ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+  - id: CU1
+    name: Choose a voice for a book
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: voice-and-settings
+    stream: catch-up-{bookId}
+    folds: [VoiceChosen]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/CU1/examples.md
+    code:
+      - apps/recap-api/src/domain/catch-up/decider.ts
+      - apps/recap-api/src/domain/catch-up/events.ts
+      - apps/recap-api/src/application/catch-up/choose-voice.ts
+      - apps/recap-api/src/application/catch-up/read-book-voice.ts
+      - apps/recap-api/src/adapters/driving/http/catch-up/book-voice-routes.ts
+      - apps/recap-web/src/routes/BookVoice.tsx
+    frames:
+      - type: ui
+        name: VoicePicker
+        data: "the stock voices (Tomas, Mira) as one labelled radio group on a screen of the book's own at /books/{bookId}/voice behind the voice-and-settings flag — reached by URL until LB13 links it from the player's More menu (D24); built states: signed out, loading, ready (none chosen or one chosen), saving, chosen, book not found, session refused, save failed (with Try again), load failed; the play-sample button waits for the speech provider (D25)"
+        mockups:
+          - { state: signed-out, at: docs/event-model/mockups/book-voice-signed-out.html }
+          - { state: loading, at: docs/event-model/mockups/book-voice-loading.html }
+          - { state: ready-none, at: docs/event-model/mockups/book-voice-ready-none.html }
+          - { state: ready-chosen, at: docs/event-model/mockups/book-voice-ready-chosen.html }
+          - { state: saving, at: docs/event-model/mockups/book-voice-saving.html }
+          - { state: chosen, at: docs/event-model/mockups/book-voice-chosen.html }
+          - { state: not-found, at: docs/event-model/mockups/book-voice-not-found.html }
+          - { state: unauthenticated, at: docs/event-model/mockups/book-voice-unauthenticated.html }
+          - { state: failed, at: docs/event-model/mockups/book-voice-failed.html }
+          - { state: read-failed, at: docs/event-model/mockups/book-voice-read-failed.html }
+      - { type: cmd, name: ChooseVoice, data: "bookId, voice Tomas" }
+      - { type: evt, name: VoiceChosen, data: "bookId, voice Tomas, chosenAt — another book keeps its own" }
+
+  - id: CU4
+    name: Request a recap
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: catch-me-up
+    stream: catch-up-{bookId}
+    folds: [RecapOffered, RecapOfferDeclined, RecapRequested, RecapGenerated, RecapRefused, RecapFailed]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/CU4/examples.md
+    code:
+      - apps/recap-api/src/domain/catch-up/recap.ts
+      - apps/recap-api/src/domain/catch-up/events.ts
+      - apps/recap-api/src/domain/catch-up/recap-requests.ts
+      - apps/recap-api/src/application/catch-up/request-recap.ts
+      - apps/recap-api/src/adapters/driving/http/catch-up/recap-request-routes.ts
+      - apps/recap-web/src/routes/CatchUp.tsx
+      - apps/recap-web/src/api/recap-request.ts
+      - apps/recap-web/src/catch-up/position.ts
+    frames:
+      - type: ui
+        name: CatchUpOffer
+        data: "Play 3 minute recap — a screen of the book's own at /books/{bookId}/catch-up behind the catch-me-up flag, the position in its URL as seconds and in a field the listener may correct as h:mm:ss or m:ss (D47, D48), Standard recommended until CU2/LB2 know the listener's default (D50), the outcome in words — being prepared, or ready — until CU6 plays it (D51): reached by URL now, from the player's always-there Catch me up button once LB13 draws it (FR-012), and as the offer sheet's second tap once CU2 offers (FR-013); built states: signed out, ready, no position, invalid position, asking, awaited, ready to play, book not found, request failed, session refused; phase 1's command line is the hand's HTTP rung (US1)"
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/catch-up-offer.html }
+          - { state: signed-out, at: docs/event-model/mockups/catch-up-signed-out.html }
+          - { state: ready, at: docs/event-model/mockups/catch-up-ready.html }
+          - { state: no-position, at: docs/event-model/mockups/catch-up-no-position.html }
+          - { state: invalid-position, at: docs/event-model/mockups/catch-up-invalid-position.html }
+          - { state: asking, at: docs/event-model/mockups/catch-up-asking.html }
+          - { state: awaited, at: docs/event-model/mockups/catch-up-awaited.html }
+          - { state: ready-to-play, at: docs/event-model/mockups/catch-up-ready-to-play.html }
+          - { state: not-found, at: docs/event-model/mockups/catch-up-not-found.html }
+          - { state: failed, at: docs/event-model/mockups/catch-up-failed.html }
+          - { state: unauthenticated, at: docs/event-model/mockups/catch-up-unauthenticated.html }
+      - { type: cmd, name: RequestRecap, data: "bookId, tier Standard, position 4:03:17, via the offer | the button" }
+      - { type: evt, name: RecapRequested, data: "bookId, tier Standard, position 4:03:17, via offer, requestedAt — a key already generated is served from the cache and nothing is regenerated (FR-008)" }
+
+  - id: CU5
+    name: Generate the recap
+    pattern: automation
+    status: modelled
+    service: recap-api
+    context: catch-up
+    capability: catch-me-up
+    stream: catch-up-{bookId}
+    reads: [RecapRequested, BookImported, ServerBookAdded, AudioFetched, ChapterTranscribed, ChapterIndexed, EbookAligned, PreparationCompleted, VoiceChosen, SettingsChanged]
+    folds: [RecapRequested, RecapGenerated, RecapRefused, RecapFailed, VoiceChosen]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: RecapsToGenerate, data: "requests with no recap at their tier, position and content — the transcript, or the aligned text once an EPUB is aligned (D6) — each with the window: the book's text where aligned, else the transcript, ending at the last complete word before 4:03:17 (FR-002), and how far coverage reaches" }
+      - { type: pcr, name: RecapWriter, data: "refuses when coverage falls short of the position (FR-009); drafts from the window alone, never given the title or author (FR-003), to the tier's length with the Just now 25% / Recent 35% / Middle 25% / Early 15% gradient (FR-005, FR-006), ending on the moment at the position (FR-007); a second pass strips every sentence naming a person, place or event absent from the window (FR-004) — what survives is spoken, never padded or redrafted (D5); speaks it in the book's voice; a provider error, timeout or rate limit fails the request rather than refusing it (FR-042)" }
+      - { type: cmd, name: GenerateRecap, data: "bookId, tier Standard, position 4:03:17; refused when that key is already generated, so two runs cannot both generate" }
+      - { type: evt, name: RecapGenerated, data: "bookId, tier Standard, position 4:03:17, 448 words, bands Early · Middle · Recent · Just now, 2 sentences stripped by the spoiler check, ends: Marcus is standing at the Harbourmaster's door and someone inside has just said his name, audio 3:00 in voice Tomas, generatedAt" }
+      - { type: evt, name: RecapRefused, data: "bookId, tier Standard, position 4:03:17, reason: prepared to chapter 8 and you are in chapter 9 | nothing to recap in the first minute | no transcript and no text for this book | nothing survived the spoiler check, refusedAt" }
+      - { type: evt, name: RecapFailed, data: "bookId, tier Standard, position 4:03:17, cause: the drafting provider timed out | the speech provider rate-limited, failedAt — Couldn't catch you up right now, Retry | Skip; nothing partial spoken or cached (FR-042)" }
+
+  - id: CU6
+    name: Hear the recap
+    pattern: state-view
+    status: modelled
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: catch-me-up
+    reads: [RecapRequested, RecapGenerated, RecapRefused, RecapFailed, VoiceChosen]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: RecapPlayback, data: "Catching you up — The Cartographer's Silence; band bar Early · Middle · Recent · Just now, now covering Recent · Chapters 12 to 13; the text as spoken with the current paragraph lit; 1:42 of 3:00; ends at Chapter 14, 32:10, then the book resumes — or, for a connected book played in Audiobookshelf, a Back to Audiobookshelf prompt naming the position (D18); spoken in the book's current voice, a voice changed since generation re-speaking the same text (D3); or the refusal and how far preparation has got; or Couldn't catch you up right now with Retry and Skip (FR-042)" }
+      - type: ui
+        name: RecapPlaying
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/recap-playing.html }
+
+  - id: CU7
+    name: Finish the recap
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: catch-me-up
+    stream: catch-up-{bookId}
+    folds: [RecapRequested, RecapGenerated, RecapHeard]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/CU7/examples.md
+    code:
+      - apps/recap-api/src/domain/catch-up/hearing.ts
+      - apps/recap-api/src/domain/catch-up/recap-hearings.ts
+      - apps/recap-api/src/domain/catch-up/events.ts
+      - apps/recap-api/src/application/catch-up/finish-recap.ts
+      - apps/recap-api/src/adapters/driving/http/catch-up/recap-hearing-routes.ts
+      - apps/recap-api/tests/acceptance/cu7-finish-recap.test.ts
+      - apps/recap-api/tests/domain/recap-hearings.test.ts
+      - apps/recap-api/tests/edge/recap-hearing-routes.test.ts
+    frames:
+      - type: ui
+        name: RecapPlaying
+        data: "the recap ends, or Skip to the book — either way the book resumes at 4:03:17 where Recap owns playback (FR-007), or the Back to Audiobookshelf prompt shows the position (D18); the screen is CU6's, and this slice publishes the call it makes at the audio's end and on Skip (D54)"
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/recap-playing.html }
+      - { type: cmd, name: FinishRecap, data: "bookId, recap at Standard / 4:03:17, heard to 3:00 | skipped at 1:42" }
+      - { type: evt, name: RecapHeard, data: "bookId, tier Standard, position 4:03:17, heardTo 3:00, skipped no, playback resumed at 4:03:17, heardAt" }
+
+  - id: CU2
+    name: Offer a recap on return
+    pattern: automation
+    status: modelled
+    service: recap-api
+    context: catch-up
+    capability: catch-me-up
+    stream: catch-up-{bookId}
+    reads: [ListeningResumed, SettingsChanged, ChapterTranscribed, PreparationCompleted]
+    folds: [RecapOffered, RecapOfferDeclined, RecapRequested]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: ReturnsAfterGap, data: "resumptions whose gap is at or over the listener's threshold (default 3 days; off makes no offer), not yet offered for, and whose position preparation covers — no offer while coverage falls short (D2); one offer per return (D4)" }
+      - { type: pcr, name: OfferOnReturn, data: "runs in the play request so the sheet comes up on the gesture; recommends the default tier; nothing when the threshold is off or the gap is under it (US3 #4, #5); the gap is whole 24-hour periods (D13)" }
+      - { type: cmd, name: OfferRecap, data: "bookId, resumption at 4:03:17, gap 9 days, recommended tier Standard" }
+      - { type: evt, name: RecapOffered, data: "bookId, It's been 9 days, position Chapter 14 · 32:10, tiers Quick 1 min / Standard 3 min / Full 8 min, Standard recommended, offeredAt" }
+
+  - id: CU3
+    name: Decline the offer
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: catch-me-up
+    stream: catch-up-{bookId}
+    folds: [RecapOffered, RecapOfferDeclined, RecapRequested]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/CU3/examples.md
+    code:
+      - apps/recap-api/src/domain/catch-up/recap-offer.ts
+      - apps/recap-api/src/domain/catch-up/events.ts
+      - apps/recap-api/src/application/catch-up/decline-recap-offer.ts
+      - apps/recap-api/src/adapters/driving/http/catch-up/recap-offer-routes.ts
+      - apps/recap-web/src/catch-up/DeclineOffer.tsx
+      - apps/recap-web/src/api/recap-offer.ts
+      - apps/recap-web/src/routes/CatchUp.tsx
+    frames:
+      - type: ui
+        name: CatchUpOffer
+        data: "No thanks, just play — a quiet button under Play 3 minute recap, the sheet's decline on CU4's page at /books/{bookId}/catch-up behind the catch-me-up flag (D62): the page sends no-thanks (dismissed is the sheet's gesture, CU2's); the outcome in words until the player exists — No recap this time, the book carries on from 4:03:17 — and, until CU2 offers, No recap was offered this time, so there's nothing to decline"
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/catch-up-offer.html }
+          - { state: declining, at: docs/event-model/mockups/catch-up-declining.html }
+          - { state: declined, at: docs/event-model/mockups/catch-up-declined.html }
+          - { state: no-open-offer, at: docs/event-model/mockups/catch-up-no-open-offer.html }
+      - { type: cmd, name: DeclineRecapOffer, data: "bookId, the open offer, how: no-thanks | dismissed without choosing (D14); a repeat of a decline is absorbed with the first answer, and refused when no offer is open — none made, or answered by a request (D61)" }
+      - { type: evt, name: RecapOfferDeclined, data: "bookId, position 4:03:17 and offeredAt of the offer it answers, how no-thanks | dismissed, declinedAt (D60) — playback resumes with no recap" }
+
+  - id: CU8
+    name: Rate the recap
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: catch-me-up
+    stream: catch-up-{bookId}
+    folds: [RecapGenerated, RecapRated]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/CU8/examples.md
+    code:
+      - apps/recap-api/src/domain/catch-up/recap.ts
+      - apps/recap-api/src/domain/catch-up/events.ts
+      - apps/recap-api/src/domain/catch-up/recap-ratings.ts
+      - apps/recap-api/src/application/catch-up/rate-recap.ts
+      - apps/recap-api/src/adapters/driving/http/catch-up/recap-rating-routes.ts
+      - apps/recap-web/src/catch-up/RecapFeedback.tsx
+      - apps/recap-web/src/api/recap-rating.ts
+      - apps/recap-web/src/routes/CatchUp.tsx
+    frames:
+      - type: ui
+        name: RecapFeedback
+        data: "Did it help? — Yes / No (aria-pressed) mounted under Your 3 minute recap is ready on /books/{bookId}/catch-up behind catch-me-up (D58); one tap, Thanks — glad it helped | Thanks — we'll make the next one better after it, a later thumb replaces and the same thumb is one thumb (D59); states idle, saving, rated-up, rated-down, no-recap, failed; CU6 mounts the same component at the end of its recap screen (FR-037, SC-005)"
+        mockups:
+          - { state: idle, at: docs/event-model/mockups/recap-feedback-idle.html }
+          - { state: saving, at: docs/event-model/mockups/recap-feedback-saving.html }
+          - { state: rated-up, at: docs/event-model/mockups/recap-feedback-rated-up.html }
+          - { state: rated-down, at: docs/event-model/mockups/recap-feedback-rated-down.html }
+          - { state: no-recap, at: docs/event-model/mockups/recap-feedback-no-recap.html }
+          - { state: failed, at: docs/event-model/mockups/recap-feedback-failed.html }
+      - { type: cmd, name: RateRecap, data: "bookId, recap at Standard / 4:03:17, thumb up" }
+      - { type: evt, name: RecapRated, data: "bookId, tier Standard, position 4:03:17, thumb up, ratedAt — a later thumb replaces it" }
+
+  - id: CU9
+    name: Read the recap as text
+    pattern: state-view
+    status: modelled
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: catch-me-up
+    reads: [RecapGenerated]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: RecapTranscript, data: "the recap's words, exactly as spoken, for Standard at 4:03:17 (FR-039, US10)" }
+      - type: ui
+        name: RecapTranscript
+        data: "Show as text, from the recap screen; not drawn — the storyboard's recap-transcript gap card (P4)"
+
+  - id: CU10
+    name: Ask a question
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: ask-about-the-book
+    stream: question-{questionId}
+    folds: [QuestionAsked]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/CU10/examples.md
+    code:
+      - apps/recap-api/src/domain/catch-up/question.ts
+      - apps/recap-api/src/domain/catch-up/events.ts
+      - apps/recap-api/src/application/ports/forgettable-words.ts
+      - apps/recap-api/src/application/catch-up/ask-question.ts
+      - apps/recap-api/src/adapters/driven/forgettable-words/index.ts
+      - apps/recap-api/src/adapters/driven/forgettable-words/keys-memory.ts
+      - apps/recap-api/src/adapters/driven/forgettable-words/keys-postgres.ts
+      - apps/recap-api/src/adapters/driving/http/catch-up/question-routes.ts
+      - apps/recap-web/src/ask/speech.ts
+      - apps/recap-web/src/api/questions.ts
+      - apps/recap-web/src/routes/Ask.tsx
+    frames:
+      - type: ui
+        name: Ask
+        data: "Who is Marcus again? — typed, or spoken and recognised by the browser's own recogniser on the device, no audio sent anywhere (CU10 Q2); answers use only what you've heard, up to 4:03:17; at /books/{bookId}/ask?at=<seconds> behind ask-about-the-book, seeded off (CU10 Q3); the conversation is page state, a refresh starts empty; the question is the listener's own line with Asked at 4:03:17 and Answers arrive with the next slice (Q5), the words 1 to 500 characters once trimmed (Q4); built states: idle, asked, listening, not-recognised, microphone-refused, failed (a retry reuses the questionId), empty, too-long, no-position, not-found, signed-out"
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/ask.html }
+          - { state: idle, at: docs/event-model/mockups/ask-idle.html }
+          - { state: asked, at: docs/event-model/mockups/ask-asked.html }
+          - { state: listening, at: docs/event-model/mockups/ask-listening.html }
+          - { state: not-recognised, at: docs/event-model/mockups/ask-not-recognised.html }
+          - { state: microphone-refused, at: docs/event-model/mockups/ask-microphone-refused.html }
+          - { state: failed, at: docs/event-model/mockups/ask-failed.html }
+          - { state: empty, at: docs/event-model/mockups/ask-empty.html }
+          - { state: too-long, at: docs/event-model/mockups/ask-too-long.html }
+          - { state: no-position, at: docs/event-model/mockups/ask-no-position.html }
+          - { state: not-found, at: docs/event-model/mockups/ask-not-found.html }
+          - { state: signed-out, at: docs/event-model/mockups/ask-signed-out.html }
+      - { type: cmd, name: AskQuestion, data: "questionId (a UUID the client mints), bookId, position 4:03:17, Who is Marcus again? (1-500 characters once trimmed), via voice | typing; a repeat of the questionId is absorbed with the first answer, and another listener's book or a questionId already used for another book is not found (CU10 R2, R3)" }
+      - { type: evt, name: QuestionAsked, data: "questionId, bookId, position 4:03:17, question sealed as { keyId, iv, ciphertext } under a key filed by listener and book so forgetting the book erases the words without touching the log (Principle IX, D11), via voice | typing, askedAt — the book pauses" }
+
+  - id: CU11
+    name: Answer the question
+    pattern: automation
+    status: modelled
+    service: recap-api
+    context: catch-up
+    capability: ask-about-the-book
+    stream: question-{questionId}
+    reads: [QuestionAsked, BookImported, ServerBookAdded, AudioFetched, ChapterTranscribed, ChapterIndexed, EbookAligned, VoiceChosen, SettingsChanged]
+    folds: [QuestionAsked, QuestionAnswered, QuestionRefused, AnswerFailed]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: QuestionsToAnswer, data: "questions with no answer or refusal, each with the window before its position and how far coverage reaches" }
+      - { type: pcr, name: Answerer, data: "the same window and two-pass check as a recap (FR-016): refuses when coverage falls short (FR-009); answers from the window, says it has not come up so far rather than speculating (US4 #4), answers only the part before the position and says not yet for the rest; refuses with a clear not yet and no hint when the answer lies past the position (FR-015); speaks it in the book's voice" }
+      - { type: cmd, name: AnswerQuestion, data: "questionId; refused when the question is already answered" }
+      - { type: evt, name: QuestionAnswered, data: "questionId, Marcus Hale is the surveyor who arrived in Saltmarsh in chapter three to redraw the harbour charts…, from Ch. 3, Ch. 9, Ch. 13, audio 0:21, answeredAt — then the book resumes" }
+      - { type: evt, name: QuestionRefused, data: "questionId, reason: not yet — that would mean going past where you are | prepared to chapter 8 and you are in chapter 9, refusedAt" }
+      - { type: evt, name: AnswerFailed, data: "questionId, cause: the drafting provider timed out | the speech provider rate-limited, failedAt — Couldn't answer right now, Retry | Skip (FR-042)" }
+
+  - id: CU12
+    name: Hear the answer
+    pattern: state-view
+    status: modelled
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: ask-about-the-book
+    reads: [QuestionAsked, QuestionAnswered, QuestionRefused, AnswerFailed]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: Conversation, data: "the questions asked at this position with their answers: Who is Marcus again? → playing answer, from Ch. 3 Ch. 9 Ch. 13; Does Ines ever find the real map? → Not yet; suggested: Where are we? What did the letter say? Who is the Harbourmaster?; or Couldn't answer right now with Retry and Skip (FR-042)" }
+      - type: ui
+        name: Ask
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/ask.html }
+
+  - id: CU13
+    name: Browse who's who
+    pattern: state-view
+    status: modelled
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: whos-who
+    reads: [ChapterIndexed, BookImported, ServerBookAdded, AudioFetched, ListeningResumed, ListeningStopped, PositionEntered, PositionSyncedFromServer]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: WhosWhoAtPosition, data: "The Cartographer's Silence · up to Chapter 14 · 11 entries, filtered to the position at display time (FR-018): Ines Varga Ch. 1, Marcus Hale Ch. 3, The Harbourmaster Ch. 2, Saltmarsh Ch. 1, The tide ledger Ch. 4, Father Oren New · Ch. 13; each description built from chapters up to 14 only (FR-017); empty in the first minute" }
+      - type: ui
+        name: WhosWho
+        mockups:
+          - { state: shown, at: docs/event-model/mockups/whos-who.html }
+
+  - id: CU14
+    name: Open a who's-who entry
+    pattern: state-view
+    status: modelled
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: whos-who
+    reads: [ChapterIndexed, BookImported, ServerBookAdded, AudioFetched, ListeningResumed, ListeningStopped, PositionEntered, PositionSyncedFromServer]
+    spec: specs/001-audiobook-recap/spec.md
+    frames:
+      - { type: rmo, name: WhosWhoEntry, data: "Marcus Hale — first appearance Ch. 3; a longer description from chapters 3 to 14 and nothing after (FR-019)" }
+      - type: ui
+        name: WhosWhoEntry
+        data: "tap an entry in the list; not drawn — the storyboard's whos-who-entry gap card (P1 follow-on)"
+
+  - id: CU15
+    name: Report a spoiler
+    pattern: state-change
+    status: implemented
+    actor: Listener
+    service: recap-api
+    context: catch-up
+    capability: report-a-spoiler
+    stream: spoiler-report-{reportId}
+    folds: [SpoilerReported]
+    spec: specs/001-audiobook-recap/spec.md
+    gwt: specs/001-audiobook-recap/slices/CU15/examples.md
+    code:
+      - apps/recap-api/src/domain/catch-up/spoiler-report.ts
+      - apps/recap-api/src/domain/catch-up/events.ts
+      - apps/recap-api/src/application/ports/spoiler-alert.ts
+      - apps/recap-api/src/application/catch-up/report-spoiler.ts
+      - apps/recap-api/src/adapters/driven/spoiler-alert/log.ts
+      - apps/recap-api/src/adapters/driving/http/catch-up/spoiler-report-routes.ts
+    frames:
+      - type: ui
+        name: SpoilerReport
+        data: "This gave something away — on a recap, an answer or a who's-who entry, optional note, one confirm; not drawn — the storyboard's recap-feedback gap card (FR-038)"
+      - { type: cmd, name: ReportSpoiler, data: "reportId, target recap Standard / 4:03:17 | answer q_17 | entry Father Oren, note: names the chapel before chapter 13" }
+      - { type: evt, name: SpoilerReported, data: "reportId, listenerId, bookId, target recap Standard / 4:03:17, note, reportedAt — recorded for investigation (SC-002)" }

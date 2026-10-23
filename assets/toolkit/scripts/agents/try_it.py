@@ -64,6 +64,15 @@ PUBLISHED = re.compile(r"\$\{([A-Z][A-Z0-9_]*):-(\d+)\}:(\d+)")
 #: How each browser framework's own reader is asked for a flag. The frameworks are the keel's own, so the
 #: shape of their reader is too; a service's flags are declared, and read from where they are declared.
 WEB_FLAG_CALLS = {"react-vite": re.compile(r"flagEnabled\(\s*['\"]([a-z0-9][a-z0-9-]*)['\"]")}
+#: How each browser framework mounts a route, so a story's `open` paths can be held to screens that exist:
+#: recap's hubs sat at rows 17 and 19 of 34 while every story opened on a path under them.
+WEB_ROUTE_CALLS = {"react-vite": re.compile(r"<Route\s[^>]*?\bpath=['\"]([^'\"]+)['\"]")}
+#: The people a feature declares, one JSON file each: `{"username", "name", "password", "realm"}`, with
+#: `email` and `roles` where the story needs them. A cumulative artifact a slice may write, where the realm
+#: file under `docker/` is not: recap's stories signed in as `ada` and `ines`, whom the plan stage invented
+#: for the quickstart, and the realm held one user nobody's story named.
+PEOPLE = "specs/*/people/*.json"
+PERSON_FIELDS = ("username", "name", "password", "realm")
 DECLARED_FLAGS = ROOT / "infra/service/flags.auto.tfvars"
 DECLARED = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\"", re.M)
 #: A line of a `KEY=value` settings file.
@@ -173,8 +182,8 @@ def realms(where: Path) -> list[dict]:
     return found
 
 
-def people(where: Path) -> list[dict]:
-    """Everyone a person can sign in as, from the local realms: a fixture, so its password is no secret."""
+def realm_people(where: Path) -> list[dict]:
+    """The realm files' users: a fixture, so its password is no secret."""
     found = []
     for realm in realms(where):
         for user in realm.get("users") or []:
@@ -183,7 +192,49 @@ def people(where: Path) -> list[dict]:
                 continue
             name = " ".join(part for part in (user.get("firstName"), user.get("lastName")) if part)
             found.append({"name": name or user.get("username", ""), "username": user.get("username", ""),
-                          "password": word, "realm": realm.get("realm", "")})
+                          "password": word, "realm": realm.get("realm", ""), "source": "realm"})
+    return found
+
+
+def declared_people(where: Path) -> list[dict]:
+    """The people the features declare under `specs/<feature>/people/`, in file order, each saying which
+    file it came from so a refusal can name it. A file that is not a person is kept with its fault, for
+    `check-try` to refuse by name rather than for `people()` to drop in silence."""
+    found = []
+    for path in sorted(where.glob(PEOPLE)):
+        where_said = path.relative_to(where).as_posix()
+        try:
+            body = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as fault:
+            found.append({"source": where_said, "fault": f"not JSON: {fault}"})
+            continue
+        if not isinstance(body, dict):
+            found.append({"source": where_said, "fault": "a person is one JSON object"})
+            continue
+        missing = [key for key in PERSON_FIELDS if not str(body.get(key) or "").strip()]
+        if missing:
+            found.append({"source": where_said, "fault": f"says no {', '.join(missing)}",
+                          "username": str(body.get("username") or "")})
+            continue
+        found.append({"name": str(body["name"]), "username": str(body["username"]), "password": str(body["password"]),
+                      "realm": str(body["realm"]), "email": str(body.get("email") or ""),
+                      "roles": [str(role) for role in body.get("roles") or []], "source": where_said})
+    return found
+
+
+def people(where: Path) -> list[dict]:
+    """Everyone a person can sign in as: the realms' users first, then every person a feature declares.
+
+    A declared person whose username a realm already has is the realm's, and `check-try` refuses the file:
+    two passwords for one name is a sign-in that works for whichever was read last.
+    """
+    found = realm_people(where)
+    known = {one["username"] for one in found}
+    for person in declared_people(where):
+        if "fault" in person or person["username"] in known:
+            continue
+        known.add(person["username"])
+        found.append({key: value for key, value in person.items() if key in (*PERSON_FIELDS, "email", "roles", "source")})
     return found
 
 
@@ -205,6 +256,38 @@ def flag_keys(where: Path) -> list[str]:
                                  .splitlines() if not line.lstrip().startswith(("*", "/*")))
                 keys |= set(call.findall(code))
     return sorted(keys)
+
+
+def routes(where: Path) -> list[str] | None:
+    """Every path the browser apps mount, or None where the project has no browser app to read.
+
+    None and not an empty list: a story's `open` is held to the routes only where there is a route table
+    to hold it to, and an API-only project's story opens nothing in a browser anyway.
+    """
+    call = WEB_ROUTE_CALLS.get(str(manifest().get("frontend", "")))
+    webs = [app for app in deployables() if app["kind"] == "web"]
+    if call is None or not webs:
+        return None
+    found: set[str] = set()
+    for app in webs:
+        for path in (where / app["path"] / "src").rglob("*"):
+            if path.is_file() and path.suffix in (".ts", ".tsx", ".js", ".jsx"):
+                found |= set(call.findall(path.read_text(encoding="utf-8", errors="replace")))
+    return sorted(found)
+
+
+def mounted(path: str, known: list[str]) -> bool:
+    """Whether a story's `open` path starts with a route the app mounts: `/books/nw-1/player` is under
+    `/books/:bookId/player`, a `*` matches the rest, and a query string is not part of the route."""
+    asked = [part for part in path.split("?", 1)[0].split("#", 1)[0].strip("/").split("/") if part]
+    for route in known:
+        parts = [part for part in route.strip("/").split("/") if part]
+        if len(parts) > len(asked) and "*" not in parts:
+            continue
+        if all(want == "*" or want.startswith(":") or want == got
+               for want, got in zip(parts, asked, strict=False)) and (len(parts) == len(asked) or "*" in parts):
+            return True
+    return False
 
 
 def flag_states(where: Path) -> dict[str, str]:
@@ -354,14 +437,36 @@ def things_to_try(commit: str, path: str) -> dict:
             "as": str(told.get("as", "")) if isinstance(told, dict) else ""}
 
 
-def whats_new(commit: str, previous: str) -> list[dict]:
+def whats_new(commit: str, previous: str, state: dict | None = None) -> list[dict]:
     """The slices whose quickstart arrived or changed between the commit Try it showed before and this one;
-    every merged slice the first time, when there is nothing before."""
+    every merged slice the first time, when there is nothing before.
+
+    With `state`, each is marked `dark` where its story did not seed — refused, or never run — with the step
+    that refused and what it said, so the card lists it under *Merged but dark* rather than as something to
+    try: recap's card said *Merged so far · 15* over fifteen stories that all answered 401.
+    """
     paths = slice_quickstarts(commit)
     if previous and previous != commit:
         changed = set(git("diff", "--name-only", previous, commit, "--", "specs").splitlines())
         paths = [path for path in paths if path in changed]
-    return [things_to_try(commit, path) for path in paths]
+    found = [things_to_try(commit, path) for path in paths]
+    if state is None:
+        return found
+    seeded = set(state.get("seeded") or [])
+    refused = {str(one.get("slice", "")): one for one in state.get("seed_failed") or []}
+    stories = {name for name, _ in scenarios(workspace())} if workspace().is_dir() else set()
+    for one in found:
+        name = f"{one['feature']}/{one['slice']}"
+        if name in seeded:
+            one["given"] = bool((state.get("given") or {}).get(name))
+            continue
+        if name in refused:
+            one.update(dark=f"{refused[name].get('step') or 'its story'}: {refused[name].get('said', '')}"[:300])
+        elif name in stories:
+            one.update(dark="its story has not run yet")
+        else:
+            one.update(dark="it has no try-it.json, so nothing seeds it")
+    return found
 
 
 # ---- the steps ------------------------------------------------------------------------------------------------
@@ -411,25 +516,57 @@ def place(commit: str) -> bool:
     return any(str(Path(path).parent) in tops for path in changed if not path.endswith(".md"))
 
 
+def admin_token(base: str, held: dict, patience: float = 90) -> str:
+    """The throwaway sign-in server's admin token, waited for: healthy is the management port listening,
+    and the admin realm answers a few seconds after."""
+    waited = time.monotonic()
+    while True:
+        try:
+            return post_form(f"{base}/realms/master/protocol/openid-connect/token",
+                             {"grant_type": "password", "client_id": "admin-cli", "username": held["user"],
+                              "password": held["password"]})["access_token"]
+        except (OSError, ValueError, KeyError):
+            if time.monotonic() - waited > patience:
+                raise RuntimeError(f"the sign-in server at {base} did not let its admin in") from None
+            time.sleep(2)
+
+
+def create_people(base: str, token: str, where: Path) -> int:
+    """Create, in the running sign-in server, every declared person its realm lacks; how many were made.
+
+    Through the admin API and never by editing a realm file, which is the host's and under `docker/`. Asked
+    by username first, so a second run makes nobody twice and the password a person already has stands.
+    """
+    made = 0
+    for person in people(where):
+        if person.get("source") == "realm":
+            continue
+        realm = person["realm"]
+        found = request("GET", f"{base}/admin/realms/{realm}/users?exact=true&username="
+                        + urllib.parse.quote(person["username"]), token=token) or []
+        if found:
+            continue
+        first, _, last = person["name"].partition(" ")
+        body = {"username": person["username"], "enabled": True, "emailVerified": True,
+                "firstName": first, "lastName": last,
+                "credentials": [{"type": "password", "value": person["password"], "temporary": False}]}
+        if person.get("email"):
+            body["email"] = person["email"]
+        request("POST", f"{base}/admin/realms/{realm}/users", body, token=token)
+        made += 1
+    return made
+
+
 def sign_in_server(where: Path, env: dict[str, str]) -> None:
     """Point the Try it sign-in server at the Try it ports: each client that sends a person back to a
     browser app sends them back to the moved one too, and allows a password grant so example data can be
-    loaded as a user. Only this throwaway server is changed; the realm files are not."""
+    loaded as a user. Then create every person the features declare and the realm lacks. Only this
+    throwaway server is changed; the realm files are not."""
     held = keycloak(where)
     if not held or not held["variable"]:
         return
     base = f"http://localhost:{env[held['variable']]}"
-    # Healthy is the management port listening; the admin realm answers a few seconds after.
-    waited, token = time.monotonic(), ""
-    while not token:
-        try:
-            token = post_form(f"{base}/realms/master/protocol/openid-connect/token",
-                              {"grant_type": "password", "client_id": "admin-cli", "username": held["user"],
-                               "password": held["password"]})["access_token"]
-        except (OSError, ValueError, KeyError):
-            if time.monotonic() - waited > 90:
-                raise RuntimeError(f"the sign-in server at {base} did not let its admin in") from None
-            time.sleep(2)
+    token = admin_token(base, held)
     webs = [(app["port"], app["port"] + offset()) for app in deployables() if app["kind"] == "web"]
     for realm in realms(where):
         name = realm.get("realm", "")
@@ -456,6 +593,9 @@ def sign_in_server(where: Path, env: dict[str, str]) -> None:
                 if basic:
                     request("PUT", f"{base}/admin/realms/{name}/clients/{client['id']}/default-client-scopes/"
                                    f"{basic}", token=token)
+    made = create_people(base, token, where)
+    if made:
+        print(f"created {made} declared {'person' if made == 1 else 'people'} in the sign-in server", flush=True)
 
 
 def start_apps(where: Path, env: dict[str, str], state: dict) -> None:
@@ -541,12 +681,80 @@ def scenarios(where: Path) -> list[tuple[str, Path]]:
     return [(f"{path.parts[-4]}/{path.parts[-2]}", path) for path in found]
 
 
+#: What a story may say, and what each step may. A key outside these is a typo the service would never see.
+STORY_KEYS = ("as", "open", "steps", "given")
+STEP_KEYS = ("say", "method", "path", "body", "keep", "headers", "as")
+METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
+
+
+def story_faults(name: str, story: object, known: set[str], mounted_routes: list[str] | None,
+                 sets: list[str], events: dict[str, list[dict]] | None) -> list[str]:
+    """Why this story could not seed, read off the files alone: the shape `TRY_STORY` describes, every `as`
+    a person somebody declared, every `open` a screen the app mounts, every `given` an event the model types.
+
+    `known` is every username a realm or a people file declares; `mounted_routes` is None where the project
+    has no browser app; `events` is each modelled event's attributes, or None on the standard profile, which
+    has no `given`. Each fault is one sentence a person can act on, prefixed by the story it is in.
+    """
+    said: list[str] = []
+    if not isinstance(story, dict):
+        return [f"{name}: try-it.json is not one JSON object"]
+    said += [f"{name}: says `{key}`, which a story has no use for (it has {', '.join(STORY_KEYS)})"
+             for key in story if key not in STORY_KEYS]
+    who = story.get("as", "")
+    if who and str(who) not in known:
+        said.append(f"{name}: `as` names {who}, whom no realm or people file declares")
+    for number, opened in enumerate(story.get("open") or [], start=1):
+        path = str(opened.get("path", "")) if isinstance(opened, dict) else ""
+        if not path.startswith("/"):
+            said.append(f"{name}: open {number} names no `path` starting with /")
+        elif mounted_routes is not None and not mounted(path, mounted_routes):
+            said.append(f"{name}: open {number} is at {path}, which no browser route mounts")
+    for number, step in enumerate(story.get("steps") or [], start=1):
+        if not isinstance(step, dict) or not str(step.get("path", "")).startswith("/"):
+            said.append(f"{name}: step {number} names no `path` starting with /")
+            continue
+        said += [f"{name}: step {number} says `{key}`, which a step has no use for" for key in step if key not in STEP_KEYS]
+        if step.get("method", "GET") not in METHODS:
+            said.append(f"{name}: step {number}'s method is one of {', '.join(METHODS)}, not {step.get('method')!r}")
+        if step.get("as") and str(step["as"]) not in known:
+            said.append(f"{name}: step {number} is `as` {step['as']}, whom no realm or people file declares")
+        if not isinstance(step.get("keep", {}), dict):
+            said.append(f"{name}: step {number}'s `keep` is a mapping of name to a field of the answer")
+    for number, given in enumerate(story.get("given") or [], start=1):
+        if events is None:
+            said.append(f"{name}: given {number}: the standard profile has no `given`; it is defined for events "
+                        f"a model types, and nothing here types a row")
+            continue
+        if not isinstance(given, dict) or not str(given.get("stream", "")).strip() or not given.get("event"):
+            said.append(f"{name}: given {number} names no `stream` and `event`")
+            continue
+        event, data = str(given["event"]), given.get("data")
+        if event not in events:
+            said.append(f"{name}: given {number} is a {event}, which the model has no event of")
+            continue
+        if event in sets:
+            said.append(f"{name}: given {number} is a {event}, which this slice itself sets — a story gives "
+                        f"what its unbuilt setters would, never its own")
+        if not isinstance(data, dict):
+            said.append(f"{name}: given {number}'s `data` is an object in the model's shape")
+            continue
+        named = [str(one.get("name")) for one in events[event] if isinstance(one, dict) and one.get("name")]
+        if named:
+            said += [f"{name}: given {number}: {event} has no attribute `{key}` (docs/event-model/model.yaml#{event})"
+                     for key in data if key not in named]
+            said += [f"{name}: given {number}: {event} identifies a {one.get('identifies')} by `{one['name']}`, "
+                     f"which the data leaves out" for one in events[event]
+                     if isinstance(one, dict) and one.get("identifies") and one.get("name") not in data]
+    return said
+
+
 def token_for(username: str, env: dict[str, str], where: Path) -> str:
     """A token for one of the fixture users, from the realm the service trusts, through the browser app's
     own client — so the token is the one that person would have had."""
     person = next((one for one in people(where) if one["username"] == username), None)
     if person is None:
-        raise RuntimeError(f"no fixture user {username} in docker/keycloak/realms")
+        raise RuntimeError(f"no person {username} in docker/keycloak/realms or specs/<feature>/people/")
     realm = next(r for r in realms(where) if r.get("realm") == person["realm"])
     issuer = next((value for name, value in env.items() if name.endswith("OIDC_ISSUER")
                    and value.rstrip("/").endswith(f"/realms/{person['realm']}")), "")
@@ -585,12 +793,39 @@ def picked(answer: object, path: str) -> object:
     return answer
 
 
+def seed_door(where: Path, env: dict[str, str], service: dict, given: list[dict], log: Path) -> str:
+    """Append the events the stories give, through the service's own seed door — `make seed-<service>
+    FILE=<json>` — before the first step. `""` where every event went in, else why not.
+
+    Never through an HTTP route: the door is a process with the store's credentials, appending at the
+    stream's current version with an id derived from the event, so a replay records nothing twice. A
+    language whose skeleton has no door yet is said so, which is a need on the language package rather than
+    on the project.
+    """
+    targets = make_targets(where)
+    target = f"seed-{service['name']}" if f"seed-{service['name']}" in targets else "seed" if "seed" in targets else ""
+    if not target:
+        return (f"no seed door yet: the Makefile has no seed-{service['name']} target. The {service['name']} "
+                f"language package's next release brings `scripts/seed.ts`; until then a story's given is "
+                f"validated by check-try and not applied")
+    HOME.mkdir(parents=True, exist_ok=True)
+    file = HOME / f"given-{service['name']}.json"
+    file.write_text(json.dumps(given, indent=2) + "\n", encoding="utf-8")
+    try:
+        run(["make", target, f"FILE={file}"], where, env, log)
+    except RuntimeError as fault:
+        return f"the seed door refused: {fault}"
+    return ""
+
+
 def seed(where: Path, env: dict[str, str], state: dict, only_new: bool, api: str = "", only: str = "") -> None:
     """Each slice's story, through the API, as the person it names. One that fails stops that slice's story
     and no other's: the rest of the data is still worth having, and the failure names what refused it.
 
     `api` and `only` are a slice checking its own story before it merges: against the app its berth runs,
-    not Try it's, which has none of its routes yet."""
+    not Try it's, which has none of its routes yet. What the stories *give* — events for marks whose
+    setters are not built — goes through the seed door first, once per service with every story's givens
+    in story order; a story whose givens were refused fails the way a refused step fails it."""
     service = next((app for app in deployables() if app["kind"] == "service"), None)
     if service is None:
         return
@@ -599,13 +834,26 @@ def seed(where: Path, env: dict[str, str], state: dict, only_new: bool, api: str
     failed = [] if not only_new else list(state.get("seed_failed", []))
     links = list(state.get("links", [])) if only_new else []
     tokens: dict[str, str] = {}
+    stories: list[tuple[str, dict]] = []
     for name, path in scenarios(where):
         if name in done or (only and name.rsplit("/", 1)[-1] != only):
             continue
         try:
-            story = json.loads(path.read_text(encoding="utf-8"))
+            stories.append((name, json.loads(path.read_text(encoding="utf-8"))))
         except ValueError as fault:
             failed.append({"slice": name, "step": "", "said": f"try-it.json is not JSON: {fault}"})
+    giving = [(name, story) for name, story in stories if isinstance(story, dict) and story.get("given")]
+    refused_given = ""
+    if giving:
+        events = [{**one, "slice": name} for name, story in giving for one in story["given"] if isinstance(one, dict)]
+        refused_given = seed_door(where, env, service, events, HOME / "seed-door.log")
+        state.setdefault("given", {}).update({name: len(story["given"]) for name, story in giving})
+    for name, story in stories:
+        if not isinstance(story, dict):
+            failed.append({"slice": name, "step": "", "said": "try-it.json is not one JSON object"})
+            continue
+        if story.get("given") and refused_given:
+            failed.append({"slice": name, "step": "given", "said": refused_given})
             continue
         kept: dict[str, object] = {}
         for number, one in enumerate(story.get("steps") or [], start=1):
@@ -629,16 +877,65 @@ def seed(where: Path, env: dict[str, str], state: dict, only_new: bool, api: str
                 kept[key] = picked(answer, at)
         else:
             done.add(name)
+            state.setdefault("records", {})[name] = len(story.get("steps") or [])
             # Where in the browser app the story's records are: an app with no list of them has no other way
             # to reach what was just made.
             for opened in story.get("open") or []:
                 links.append({"slice": name, "label": str(opened.get("label", "")),
                               "path": str(filled(opened.get("path", "/"), kept)),
-                              "as": str(opened.get("as") or story.get("as", ""))})
+                              "as": str(opened.get("as") or story.get("as", "")),
+                              # Given, not made: the person is looking at the slice, seeded to a state.
+                              **({"given": True} if story.get("given") else {})})
     state["seeded"] = sorted(done)
     state["seed_failed"] = failed
     state["links"] = links
     write_state(state)
+
+
+def fairway_of(feature: str, slice_id: str) -> str:
+    """Which fairway's deck log a slice's line belongs in: the captain says so in `SLIPWAI_FAIRWAY` for
+    every session it dispatches, and the chart says so for a session run by hand."""
+    named = os.environ.get("SLIPWAI_FAIRWAY", "")
+    if named:
+        return named
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import clearance  # type: ignore[import-not-found]  # noqa: PLC0415
+        charted, _ = clearance.chart(feature)
+        return str(((charted.get("slices") or {}).get(slice_id) or {}).get("fairway", ""))
+    except Exception:  # noqa: BLE001 — no chart is an answer, said below
+        return ""
+
+
+def write_seeded(name: str, records: int, given: int, api: str) -> str:
+    """The `seeded` deck line for one story that ran green from a berth, or why none could be written.
+
+    Written through `logs.entry`, the way a stage writes `mark-set`, into the fairway's own deck log: the
+    captain holds the slice to this line, so a run that could not write it says so loudly rather than
+    exiting 0 with the gate unmet.
+    """
+    feature, slice_id = name.split("/", 1)
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import logs  # type: ignore[import-not-found]  # noqa: PLC0415
+    except ImportError:
+        return f"no `seeded` line for {slice_id}: scripts/agents/logs.py is not beside this script"
+    fairway = fairway_of(feature, slice_id)
+    if not fairway:
+        return (f"no `seeded` line for {slice_id}: nothing says which fairway it is in — set SLIPWAI_FAIRWAY or "
+                f"put the slice on specs/{feature}/chart.yaml")
+    commit = git("rev-parse", "HEAD") or "unrecorded"
+    extra = {"api": api} if api else {}
+    if given:
+        extra["given"] = given
+    line = logs.entry("seeded", fairway=fairway, slice=slice_id, records=records, commit=commit,
+                      story=f"specs/{feature}/slices/{slice_id}/try-it.json", **extra)
+    path = ROOT / logs.deck_path(feature, fairway)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(line.line())
+    return f"seeded: {slice_id} — {records} step(s) answered" + (f", {given} given" if given else "") + \
+        f"; the line is in {path.relative_to(ROOT).as_posix()}"
 
 
 # ---- the verbs -----------------------------------------------------------------------------------------------
@@ -690,7 +987,7 @@ def up(state: dict, log: Path, fresh: bool, keep_data: bool) -> None:
         service = next((app for app in deployables() if app["kind"] == "service"), None)
         shown = web or service
         state.update(state="ready", step="ready", people=people(where), flags=flag_states(where),
-                     new=whats_new(commit, state.get("previous", "")),
+                     new=whats_new(commit, state.get("previous", ""), state),
                      url=f"http://localhost:{shown['port'] + offset()}" if shown else "")
         write_state(state)
     except (RuntimeError, OSError, subprocess.CalledProcessError, KeyError, ValueError) as fault:
@@ -711,20 +1008,47 @@ def down(state: dict, log: Path, forget: bool) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("verb", choices=("start", "refresh", "fresh", "stop", "status", "seed", "flag", "walks"))
+    parser.add_argument("verb", choices=("start", "refresh", "fresh", "stop", "status", "seed", "flag", "walks",
+                                         "people"))
     parser.add_argument("rest", nargs="*")
     parser.add_argument("--slice", default="", help="seed: only this slice's story, from this checkout")
     parser.add_argument("--api", default="", help="seed --slice: the service to load it into, e.g. a berth's")
+    parser.add_argument("--apply", action="store_true",
+                        help="people: create the declared people the running sign-in server lacks (a berth's)")
     asked = parser.parse_args(argv)
+    if asked.verb == "people":
+        # Who a story may sign in as, from this checkout; with `--apply`, made in whichever sign-in server
+        # the environment names — a berth's, before `seed --slice` — the way Try it makes them in its own.
+        env = {**os.environ, **settings_file(ROOT / ".env.example"), **settings_file(ROOT / ".env")}
+        for person in people(ROOT):
+            print(f"  {person['username']}  ({person['name']}, {person.get('source') or 'realm'})")
+        if asked.apply:
+            held = keycloak(ROOT)
+            if not held or not held.get("variable") or not env.get(held["variable"]):
+                raise SystemExit("people --apply: no sign-in server in docker-compose.yml, or its port is not set")
+            base = f"http://localhost:{env[held['variable']]}"
+            made = create_people(base, admin_token(base, held, patience=20), ROOT)
+            print(f"created {made} in the sign-in server at {base}")
+        return 0
     if asked.verb == "seed" and asked.slice:
         # A slice's own check, before it merges: its story from this checkout, into the app it runs, with
-        # the settings this checkout has — nothing moved, nothing recorded in Try it's state.
+        # the settings this checkout has — nothing moved, nothing recorded in Try it's state. What *is*
+        # recorded is the `seeded` deck line a green run earns, which is the gate the captain holds the
+        # slice to: a story that was never run reads exactly like one that was refused.
         held: dict = {}
         env = {**os.environ, **settings_file(ROOT / ".env.example"), **settings_file(ROOT / ".env")}
         seed(ROOT, env, held, only_new=False, api=asked.api, only=asked.slice)
         print(json.dumps({"seeded": held["seeded"], "failed": held["seed_failed"], "links": held["links"]},
                          indent=2))
-        return 1 if held["seed_failed"] or not held["seeded"] else 0
+        if held["seed_failed"] or not held["seeded"]:
+            return 1
+        for name in held["seeded"]:
+            said = write_seeded(name, held.get("records", {}).get(name, 0), held.get("given", {}).get(name, 0),
+                                asked.api)
+            print(said)
+            if said.startswith("no `seeded` line"):
+                return 1
+        return 0
     if asked.verb == "status":
         print(json.dumps(status(), indent=2))
         return 0

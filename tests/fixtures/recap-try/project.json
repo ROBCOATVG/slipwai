@@ -1,0 +1,9 @@
+{
+  "name": "recap",
+  "frontend": "react-vite",
+  "layout": {"delivery": "."},
+  "deployables": {
+    "recap-api": {"kind": "service", "path": "apps/recap-api", "port": 3000, "selection": {"http": "fastify"}},
+    "recap-web": {"kind": "web", "path": "apps/recap-web", "port": 5173, "api": "recap-api"}
+  }
+}

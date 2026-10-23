@@ -1,0 +1,48 @@
+{
+  "as": "ines",
+  "open": [
+    {
+      "label": "Settings",
+      "path": "/settings"
+    }
+  ],
+  "steps": [
+    {
+      "say": "Ines has never touched Settings: she reads the defaults (Standard, 3 days, Tomas, Wi-Fi only on, prepare-ahead on) and no changedAt.",
+      "method": "GET",
+      "path": "/api/settings"
+    },
+    {
+      "say": "She chooses the Full recap length, a 7 day gap, keeps Tomas, keeps Wi-Fi only and turns prepare-ahead off.",
+      "method": "PUT",
+      "path": "/api/settings",
+      "body": {
+        "defaultTier": "Full",
+        "gapThreshold": 7,
+        "voice": "Tomas",
+        "wifiOnly": true,
+        "prepareAhead": false
+      },
+      "keep": {
+        "changedAt": "changedAt"
+      }
+    },
+    {
+      "say": "She reads her settings back: the same five values, saved at {changedAt}.",
+      "method": "GET",
+      "path": "/api/settings"
+    },
+    {
+      "say": "She presses the same choices again: nothing new is recorded and changedAt is still {changedAt}.",
+      "method": "PUT",
+      "path": "/api/settings",
+      "body": {
+        "defaultTier": "Full",
+        "gapThreshold": 7,
+        "voice": "Tomas",
+        "wifiOnly": true,
+        "prepareAhead": false
+      }
+    }
+  ]
+}

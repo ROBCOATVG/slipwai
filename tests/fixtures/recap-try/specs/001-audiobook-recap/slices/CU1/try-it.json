@@ -1,0 +1,20 @@
+{
+  "as": "customer@example.invalid",
+  "open": [
+    { "label": "The voice Nine Winters at Halvard is read in", "path": "/books/nw-1/voice" }
+  ],
+  "steps": [
+    {
+      "say": "Pick Tomas for Nine Winters at Halvard (nw-1). Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-nw-1, and 200 { bookId, voice } after that.",
+      "method": "POST",
+      "path": "/api/books/nw-1/voice",
+      "body": { "voice": "Tomas" },
+      "keep": { "voice": "voice" }
+    },
+    {
+      "say": "Read the book's voice back: the same {voice} and the stock set.",
+      "method": "GET",
+      "path": "/api/books/nw-1/voice"
+    }
+  ]
+}

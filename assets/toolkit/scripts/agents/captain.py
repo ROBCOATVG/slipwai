@@ -711,6 +711,39 @@ def owed(fresh: list[logs.Entry], slice_id: str, promised: list[str]) -> tuple[l
     return [mark for mark in promised if mark not in done], (verdicts[-1] if verdicts else "")
 
 
+def story_of(slice_id: str, feature: str) -> Path | None:
+    """The slice's `try-it.json`, in its berth where it has one and in the checkout otherwise, or None.
+
+    The story is written at the Demo rung in the berth and is not on trunk until the slice merges, so the
+    berth is asked first; the checkout answers for a slice worked there.
+    """
+    held = FLIGHT.get(slice_id, {}).get("berth")
+    for where in ([held] if isinstance(held, Path) else []) + [ROOT]:
+        path = where / f"specs/{feature}/slices/{slice_id}/try-it.json"
+        if path.is_file():
+            return path
+    return None
+
+
+def unseeded(fresh: list[logs.Entry], slice_id: str, feature: str) -> bool:
+    """Whether this slice has a story and this turn wrote no `seeded` line for it.
+
+    The third thing a turn owes, beside its marks and its demo, and the one recap had no gate for: fifteen
+    slices merged with a story each and every story refused at its first call, each saying *this step
+    records 401*. A story the service refused is fixed at the Demo rung, and the line says it was.
+    """
+    if story_of(slice_id, feature) is None:
+        return False
+    return not any(e.kind == "seeded" and str(e.fields.get("slice", "")) == slice_id for e in fresh)
+
+
+def seed_need(slice_id: str, feature: str) -> list[dict]:
+    """The need a park on an unseeded story carries: the static half `check-try` can tick, the live half
+    the next run's."""
+    return [{"what": f"the story in specs/{feature}/slices/{slice_id}/try-it.json seeds green against the app "
+                     f"this berth runs", "by": "fleet", "check": {"kind": "make", "target": "check-try"}}]
+
+
 def open_questions(found: list[logs.Entry], slice_id: str) -> list[logs.Entry]:
     """The `question` lines against this slice no `decision` has answered: open until one carries the `id`."""
     answered = {str(e.fields.get("id", "")) for e in found if e.kind == "decision"}
@@ -1051,7 +1084,8 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             return True, ""
         if finished:
             missing, verdict = owed(fresh, slice_id, promised)
-            if not missing and verdict == ACCEPTED:
+            dark = unseeded(fresh, slice_id, feature)
+            if not missing and verdict == ACCEPTED and not dark:
                 return True, ""
             asked = open_questions(fresh, slice_id) if not asked else asked
             if asked:
@@ -1062,17 +1096,20 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
                 return False, (f"{slice_id} is awaiting a decision — {said}. A person answers with "
                                f"`/cruise-tell {fairway} <answer>`; the captain records the decision and "
                                f"resumes {slice_id}")
-            why = gate_missed(slice_id, promised, missing, verdict)
+            why = gate_missed(slice_id, promised, missing, verdict, dark)
         if tried <= bound:
             retry = why
             print(f"captain: {slice_id} run {tried} did not close its gate — {why}. Running it again",
                   flush=True)
             continue
-        record(slice_id, cause=cause_for(why))
+        carried: dict[str, object] = {"cause": cause_for(why)}
+        if "`seeded`" in why:
+            carried["needs"] = seed_need(slice_id, feature)
+        record(slice_id, **carried)
         return False, f"{why}. That was the last of {tried} run(s), which is what `attempts` allows"
 
 
-def gate_missed(slice_id: str, promised: list[str], missing: list[str], verdict: str) -> str:
+def gate_missed(slice_id: str, promised: list[str], missing: list[str], verdict: str, dark: bool = False) -> str:
     """Why a run that finished did not close the gate, in the words the park and the retry carry."""
     if verdict and verdict != ACCEPTED:
         return f"the demo came back {verdict!r}. The notes are in the slice; a person decides what happens next"
@@ -1080,9 +1117,15 @@ def gate_missed(slice_id: str, promised: list[str], missing: list[str], verdict:
         return (f"the chart says {slice_id} sets {', '.join(promised)}, and this turn wrote no `mark-set` "
                 f"for {', '.join(missing)}. A stage that wrote no line made no progress, so nothing here is "
                 f"evidence the slice was built")
-    return (f"this turn wrote no `demo` line for {slice_id}, so nothing says a person watched it work. "
-            f"`/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not "
-            f"read")
+    if not verdict:
+        return (f"this turn wrote no `demo` line for {slice_id}, so nothing says a person watched it work. "
+                f"`/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not "
+                f"read")
+    return (f"{slice_id} has a try-it.json and this turn wrote no `seeded` line for it, so nothing says its "
+            f"story seeded green against the app this berth runs — a story the service refused is what a "
+            f"person would have seen first. Fix the refused step at the Demo rung; `python3 "
+            f"scripts/agents/try_it.py seed --slice {slice_id} --api <the berth's service>` writes the line on "
+            f"a green run")
 
 
 def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool, str]:

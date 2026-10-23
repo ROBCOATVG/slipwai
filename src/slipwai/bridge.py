@@ -116,6 +116,7 @@ from .voyage import (
     SCREEN_ROUTE,
     SPEC_ROUTE,
     counts,
+    feedback_points,
     fleet_running,
     folded,
     mockup_file,
@@ -620,7 +621,8 @@ class Bridge(BaseHTTPRequestHandler):
                       screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable(),
                       try_card(self.root, self.named_seat()), strip_html(rows, folds),
                       feedback_card(self.root, rows, fleet, self.triaging(), trunk_head(self.root)),
-                      decision_card(self.root))
+                      decision_card(self.root),
+                      points=feedback_points(self.root))
 
     def triaging(self) -> bool:
         """Whether this board's child is the triage session, reading what a person said."""

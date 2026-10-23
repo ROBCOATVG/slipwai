@@ -1,0 +1,36 @@
+{
+  "as": "ada",
+  "open": [
+    { "label": "Ada's player for Nine Winters at Halvard", "path": "/books/nw-1/player?position=2:14:09" }
+  ],
+  "steps": [
+    {
+      "say": "Ada imports Nine Winters at Halvard (LB3's door; a book exists only through it)",
+      "method": "POST",
+      "path": "/api/books",
+      "body": { "bookId": "nw-1", "files": ["nine-winters-1.m4b", "nine-winters-2.m4b", "nine-winters-3.m4b"] },
+      "keep": { "bookId": "bookId" }
+    },
+    {
+      "say": "Ada presses play at 2:13:20 (LB6's return)",
+      "method": "POST",
+      "path": "/api/books/{bookId}/resumptions",
+      "body": {
+        "resumptionId": "7f3b2c10-5e4a-4d8b-9f21-0c6e3a1b2d44",
+        "position": 8000,
+        "at": "2026-10-12T22:30:00Z",
+        "via": "player"
+      }
+    },
+    {
+      "say": "Ada pauses at 2:14:09 — the book's last-listened time is 22:41:03",
+      "method": "POST",
+      "path": "/api/books/{bookId}/stops",
+      "body": {
+        "stopId": "c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+        "position": 8049,
+        "at": "2026-10-12T22:41:03Z"
+      }
+    }
+  ]
+}

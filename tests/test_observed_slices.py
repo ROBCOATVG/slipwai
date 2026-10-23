@@ -163,7 +163,9 @@ class ChartTest(unittest.TestCase):
     def test_the_rung_is_still_invisible_to_the_chart(self) -> None:
         """15.4's rule, which 15.10 must not break: the chart does not know what rung anything is on."""
         drawn = self.drawn("observed")
-        self.assertEqual(sorted(drawn), ["capability", "fairway", "observed", "sets", "steers_by"])
+        # `pattern` and `actor` joined the row for clearance and the feedback ranking (phase 20); neither
+        # is the rung, which stays the model's alone.
+        self.assertEqual(sorted(drawn), ["actor", "capability", "fairway", "observed", "pattern", "sets", "steers_by"])
 
 
 if __name__ == "__main__":  # pragma: no cover

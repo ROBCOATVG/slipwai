@@ -407,6 +407,73 @@ def already_set(charted: dict) -> set[str]:
             for mark in (charted.get("slices") or {}).get(slice_id, {}).get("sets") or []}
 
 
+#: The patterns that fold whatever exists: a view or an automation reads many events and renders — or
+#: acts on — the ones that have happened, so it has clearance when one mark it steers by is set, and a mark
+#: its story gives (feedback-points plan, D4) is not waited on at all. recap's LB12 steered by fifteen marks
+#: and sat at row 17 of 34 behind every one of them; PR1's two `reads` meant *either* and were read as
+#: *both*. A `state-change` and a `translation` are unchanged: what they read, they read whole.
+ANY_OF = ("state-view", "automation")
+#: Where each berth's worktrees are listed from, once per query: a story is written in the berth at the
+#: preparation band and is not on trunk until the slice merges, so it is read from wherever it is.
+CHECKOUTS: list[Path] = []
+
+
+def article(word: str) -> str:
+    return "an" if word[:1].lower() in "aeiou" else "a"
+
+
+def pattern_of(charted: dict, slice_id: str) -> str:
+    entry = (charted.get("slices") or {}).get(slice_id)
+    return str(entry.get("pattern") or "") if isinstance(entry, dict) else ""
+
+
+def checkouts() -> list[Path]:
+    """This checkout first, then every other worktree of the same repository — the berths."""
+    if not CHECKOUTS:
+        listed = git("worktree", "list", "--porcelain")
+        others = [Path(line[9:]) for line in listed.splitlines() if line.startswith("worktree ")]
+        CHECKOUTS.extend([ROOT, *(one for one in others if one.resolve() != ROOT.resolve())])
+    return CHECKOUTS
+
+
+def given_by(charted: dict, slice_id: str) -> set[str]:
+    """The marks this slice's story gives — `given[].event` in its `try-it.json`, read from the checkout or
+    from the berth that holds it — which it therefore does not wait for. A story not yet written gives
+    nothing, and a story that cannot be read gives nothing either: `check-try` is where that is refused."""
+    feature = feature_of(charted)
+    for where in checkouts():
+        path = where / f"specs/{feature}/slices/{slice_id}/try-it.json"
+        if not path.is_file():
+            continue
+        try:
+            story = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return set()
+        given = story.get("given") if isinstance(story, dict) else None
+        return {str(one.get("event")) for one in given if isinstance(one, dict) and one.get("event")} \
+            if isinstance(given, list) else set()
+    return set()
+
+
+def fold_note(charted: dict, settled: set[str], slice_id: str) -> str:
+    """For a view or an automation, which of its marks are set, given and unset — so a reader sees why the
+    slice may start before everything it folds exists. Empty for every other pattern."""
+    pattern = pattern_of(charted, slice_id)
+    if pattern not in ANY_OF:
+        return ""
+    marks = steered_by(charted, slice_id)
+    is_set = [mark for mark in marks if mark in settled]
+    given = [mark for mark in marks if mark not in settled and mark in given_by(charted, slice_id)]
+    unset = [mark for mark in marks if mark not in settled and mark not in given]
+    said = [f"{article(pattern)} {pattern} folding {len(marks)} marks: {len(is_set)} set"
+            + (f" ({said_list(is_set)})" if is_set else "")]
+    if given:
+        said.append(f"{len(given)} given by its story ({said_list(given)})")
+    if unset:
+        said.append(f"{len(unset)} unset and folded once they exist ({said_list(unset)})")
+    return "; ".join(said)
+
+
 def steered_by(charted: dict, slice_id: str) -> list[str]:
     entry = (charted.get("slices") or {}).get(slice_id)
     steers = entry.get("steers_by") if isinstance(entry, dict) else None
@@ -581,9 +648,21 @@ def cleared(charted: dict, settled: set[str], slice_id: str) -> bool | str:
     held = migration_hold(charted, slice_id)
     if held:
         return held
-    waiting = [mark for mark in steered_by(charted, slice_id) if mark not in settled]
+    marks = steered_by(charted, slice_id)
+    waiting = [mark for mark in marks if mark not in settled]
     if not waiting:
         return True
+    pattern = pattern_of(charted, slice_id)
+    if pattern in ANY_OF:
+        # One set, or every waiting one given: a view folds what exists and its story seeds the rest.
+        given = given_by(charted, slice_id)
+        if len(waiting) < len(marks) or all(mark in given for mark in waiting):
+            return True
+        owed = [f"{mark} (set by {setter_of(charted, mark)})" if setter_of(charted, mark)
+                else f"{mark} (no slice sets it — the chart is wrong)" for mark in waiting]
+        return (f"{slice_id} is {article(pattern)} {pattern} steering by {', '.join(owed)}; none is set yet and its story gives "
+                f"{said_list(sorted(given & set(waiting))) or 'none of them'}. It has clearance once one is set, "
+                f"or once its try-it.json gives the rest")
     owed = [f"{mark} (set by {setter_of(charted, mark)})" if setter_of(charted, mark)
             else f"{mark} (no slice sets it — the chart is wrong)" for mark in waiting]
     return f"{slice_id} steers by {', '.join(owed)}, and none of those is set yet"
@@ -667,7 +746,12 @@ def order_reasons(charted: dict) -> list[tuple[str, str]]:
         sets = [str(mark) for mark in body.get("sets") or []]
         waiting = sum(waited_on.get(mark, 0) for mark in sets)
         capability = str(body.get("capability") or "")
+        pattern = str(body.get("pattern") or "")
         said = [f"steers by {said_list(holds)}" if holds else "steers by nothing"]
+        if pattern in ANY_OF and holds:
+            said[0] = (f"{article(pattern)} {pattern} folding {len(holds)}: cleared when one is set or its story "
+                       f"gives the rest — "
+                       f"{said_list(holds)}")
         said.append(f"sets {said_list(sets)}, which "
                     f"{'nothing' if not waiting else f'{waiting} slice' + ('s' if waiting > 1 else '')} "
                     f"steers by" if sets else "sets nothing")
@@ -786,14 +870,16 @@ def position(charted: dict, folded_logs: Folded, slice_id: str,
         band = f"preparing — its own {', '.join(unset)} not set yet" if unset else "implementing — its own marks set"
         source = " by its dispatch ledger line" if slice_id in folded_logs.ledgered else ""
         return "running", f"claimed{source} at {folded_logs.claimed[slice_id] or 'an unrecorded instant'}; {band}"
+    folding = fold_note(charted, settled, slice_id)
+    folding = f" — {folding}" if folding else ""
     if unset:
         return ("preparation-ready",
                 f"cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits "
-                f"on its own mark-set for {', '.join(unset)}")
+                f"on its own mark-set for {', '.join(unset)}{folding}")
     provenance = [mark for mark in own if (folded_logs.set_by.get(mark) or {}).get("provenance") == BASELINE]
     said = f" ({', '.join(provenance)} recorded by baseline, not earned by a stage)" if provenance else ""
-    return "implementation-ready", (f"cleared and its own marks set{said}" if own
-                                    else "cleared and sets nothing, so there is nothing to settle")
+    return "implementation-ready", (f"cleared and its own marks set{said}{folding}" if own
+                                    else f"cleared and sets nothing, so there is nothing to settle{folding}")
 
 
 def positions(charted: dict, folded_logs: Folded,
@@ -970,22 +1056,52 @@ def numbers_line(numbers: dict[str, int | None]) -> str:
             f"running){inside}")
 
 
-def say_order(charted: dict, feature: str) -> int:
+def say_order(charted: dict, feature: str, ranked: list[dict] | None = None,
+              folded_logs: Folded | None = None) -> int:
     """The chart's running order with what each row is read off, for the split to propose from — 18.1.
 
-    Reads the chart and no log: this is asked before any slice has started, by the stage that is deciding
-    what the order should be. Everything else here answers *what may start now*, which is a question about
-    a run; this one is about the decision the run will then follow.
+    Reads the chart and the ranking `--feedback` makes: this is asked before any slice has started, by the
+    stage that is deciding what the order should be. Everything else here answers *what may start now*,
+    which is a question about a run; this one is about the decision the run will then follow. After the
+    rows it says where an observable scores above the rows placed over it that add nothing a person can
+    judge — recap's LB12 sat at row 17 behind twelve state-changes nothing on the chart read yet.
     """
+    import feedback  # noqa: PLC0415
+
     rows = order_reasons(charted)
+    scores = {row["slice"]: row for row in ranked or []}
     print(f"clearance: {feature} — {len(rows)} slices in the chart's order, "
           f"which is the order every captain takes them in")
     width = max((len(slice_id) for slice_id, _ in rows), default=0)
     for place, (slice_id, why) in enumerate(rows, start=1):
         fairway = str(((charted.get("slices") or {}).get(slice_id) or {}).get("fairway", ""))
+        through = feedback.seen_through(charted, slice_id)
+        if through and through != slice_id:
+            why += f"; seen through {through}"
+        elif not through and slice_id in scores:
+            pass
+        elif not through and not (charted.get("slices") or {}).get(slice_id, {}).get("observed"):
+            why += "; seen through nothing — no observable reads what it sets"
+        if slice_id in scores and scores[slice_id]["score"] is not None:
+            why += f"; feedback score {scores[slice_id]['score']:g}"
         print(f"  {place:>3}  {slice_id:<{width}}  {fairway}  — {why}")
+    order = [slice_id for slice_id, _ in rows]
+    merged = folded_logs.merged if folded_logs is not None else {}
+    for row in ranked or []:
+        if row["merged"] or row["score"] is None:
+            continue
+        # The unmerged rows placed over it that are not observables and are not seen through it: each is
+        # a slice built before anyone can judge anything, and this one could have gone first.
+        above = [one for one in order[:order.index(row["slice"])]
+                 if one not in merged and not feedback.is_observable(charted, one)
+                 and feedback.seen_through(charted, one) != row["slice"]]
+        if above:
+            print(f"  feedback: {row['slice']} scores {row['score']:g} at row {order.index(row['slice']) + 1}; "
+                  f"{len(above)} unmerged row{'s' if len(above) != 1 else ''} above it "
+                  f"({said_list(above[:6])}{'…' if len(above) > 6 else ''}) add{'s' if len(above) == 1 else ''} "
+                  f"nothing a person can judge before it")
     print("\nPropose this order or a better one, a reason per row, and write what the person confirms: the "
-          "`slices` block's order is the decision.")
+          "`slices` block's order is the decision. `--feedback` has every observable's score and its sources.")
     return 0
 
 
@@ -1023,8 +1139,14 @@ def main(argv: list[str]) -> int:
     if not charted:
         print("clearance: no chart yet, so nothing is waiting on anything")
         return 0
-    if "--order" in argv:
-        return say_order(charted, feature)
+    if "--order" in argv or "--feedback" in argv:
+        found = lines(feature)
+        folded_logs = with_evidence(charted, folded(found))
+        import feedback  # noqa: PLC0415 — beside this script, loaded only for the two questions it answers
+        rows = feedback.rank(feature, charted, folded_logs, folded_logs.marks | already_set(charted))
+        if "--feedback" in argv:
+            return feedback.say(feature, rows, charted, folded_logs)
+        return say_order(charted, feature, rows, folded_logs)
     found = lines(feature)
     done = done_marked(feature)
     if "--baseline-marks" in argv:
@@ -1064,13 +1186,21 @@ def main(argv: list[str]) -> int:
                                key=lambda one: order.index(of_fairway.get(one, ""))
                                if of_fairway.get(one, "") in order else len(order)):
             ready.setdefault(of_fairway.get(slice_id, ""), []).append(slice_id)
+        try:
+            import feedback  # noqa: PLC0415
+            points = [row for row in feedback.rank(feature, charted, folded_logs, settled) if not row["merged"]][:3]
+        except Exception:  # noqa: BLE001 — the board's read is never refused for a ranking it can do without
+            points = []
         print(json.dumps({"v": QUERY_VERSION, "feature": feature, "ready": ready, "fairways": order,
                           "states": {slice_id: {"state": state, "why": why, "band": BANDS.get(state),
                                                 "fairway": of_fairway.get(slice_id, "")}
                                      for slice_id, (state, why) in states.items()},
                           "slots": slots, "numbers": numbers, "held": held,
                           "claims": "unreadable" if claims is None else sorted(claims),
-                          "schedule": planned}))
+                          "schedule": planned,
+                          # The next three feedback points: the observables a person is asked to look at
+                          # first, by what delaying their judgement would cost (feedback-points plan, D6).
+                          "feedback": points}))
         return 0
     asked = [arg for arg in argv if not arg.startswith("--") and arg not in (requested,)
              and (argv.index(arg) == 0 or argv[argv.index(arg) - 1] not in ("--feature", "--claims", "--slots"))]

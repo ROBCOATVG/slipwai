@@ -158,9 +158,12 @@ def tick_need(root: Path, fairway: str, parked: str, need: int) -> str:
     found, fault = entries(root, fairway)
     if fault and not found:
         raise ValueError(fault)
-    park = next((e for e in found if e.kind == "parked" and e.t == parked), None)
+    # A `told` with needs is ticked the same way: `parked` is then the told's instant, which is what the
+    # harbourmaster's `need-met` carries for it too.
+    park = next((e for e in found if e.kind in ("parked", "told") and e.t == parked and e.fields.get("needs")),
+                None) or next((e for e in found if e.kind == "parked" and e.t == parked), None)
     if park is None:
-        raise ValueError(f"{fairway} has no park at {parked}")
+        raise ValueError(f"{fairway} has no park or hand-back with needs at {parked}")
     needs = park.fields.get("needs")
     if not isinstance(needs, list) or not 0 <= need < len(needs):
         raise ValueError(f"the park at {parked} has no need {need}")

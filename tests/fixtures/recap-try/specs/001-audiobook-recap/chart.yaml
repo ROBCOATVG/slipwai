@@ -1,0 +1,488 @@
+# Rendered from docs/event-model/model.yaml by `make chart`. Never edit by hand:
+# `make check-chart` refuses a chart that disagrees with the model.
+v: 1
+feature: 001-audiobook-recap
+fairways:
+  library:
+    context: library
+    service: apps/recap-api
+    owns:
+    - apps/recap-api/**
+  preparation:
+    context: preparation
+    service: apps/recap-api
+    owns:
+    - apps/recap-api/**
+  catch-up:
+    context: catch-up
+    service: apps/recap-api
+    owns:
+    - apps/recap-api/**
+marks:
+  AnswerFailed:
+    kind: event
+    schema: docs/event-model/model.yaml#AnswerFailed
+  AudioDiscarded:
+    kind: event
+    schema: docs/event-model/model.yaml#AudioDiscarded
+  AudioFetched:
+    kind: event
+    schema: docs/event-model/model.yaml#AudioFetched
+  BookImported:
+    kind: event
+    schema: docs/event-model/model.yaml#BookImported
+  BookRemoved:
+    kind: event
+    schema: docs/event-model/model.yaml#BookRemoved
+  ChapterIndexed:
+    kind: event
+    schema: docs/event-model/model.yaml#ChapterIndexed
+  ChapterTranscribed:
+    kind: event
+    schema: docs/event-model/model.yaml#ChapterTranscribed
+  ChapterTranscriptionFailed:
+    kind: event
+    schema: docs/event-model/model.yaml#ChapterTranscriptionFailed
+  EbookAligned:
+    kind: event
+    schema: docs/event-model/model.yaml#EbookAligned
+  EbookAttached:
+    kind: event
+    schema: docs/event-model/model.yaml#EbookAttached
+  ListeningResumed:
+    kind: event
+    schema: docs/event-model/model.yaml#ListeningResumed
+  ListeningStopped:
+    kind: event
+    schema: docs/event-model/model.yaml#ListeningStopped
+  PositionEntered:
+    kind: event
+    schema: docs/event-model/model.yaml#PositionEntered
+  PositionSyncedFromServer:
+    kind: event
+    schema: docs/event-model/model.yaml#PositionSyncedFromServer
+  PreparationCompleted:
+    kind: event
+    schema: docs/event-model/model.yaml#PreparationCompleted
+  PreparationStarted:
+    kind: event
+    schema: docs/event-model/model.yaml#PreparationStarted
+  ProgressPushed:
+    kind: event
+    schema: docs/event-model/model.yaml#ProgressPushed
+  QuestionAnswered:
+    kind: event
+    schema: docs/event-model/model.yaml#QuestionAnswered
+  QuestionAsked:
+    kind: event
+    schema: docs/event-model/model.yaml#QuestionAsked
+  QuestionRefused:
+    kind: event
+    schema: docs/event-model/model.yaml#QuestionRefused
+  RecapFailed:
+    kind: event
+    schema: docs/event-model/model.yaml#RecapFailed
+  RecapGenerated:
+    kind: event
+    schema: docs/event-model/model.yaml#RecapGenerated
+  RecapHeard:
+    kind: event
+    schema: docs/event-model/model.yaml#RecapHeard
+  RecapOfferDeclined:
+    kind: event
+    schema: docs/event-model/model.yaml#RecapOfferDeclined
+  RecapOffered:
+    kind: event
+    schema: docs/event-model/model.yaml#RecapOffered
+  RecapRated:
+    kind: event
+    schema: docs/event-model/model.yaml#RecapRated
+  RecapRefused:
+    kind: event
+    schema: docs/event-model/model.yaml#RecapRefused
+  RecapRequested:
+    kind: event
+    schema: docs/event-model/model.yaml#RecapRequested
+  ServerBookAdded:
+    kind: event
+    schema: docs/event-model/model.yaml#ServerBookAdded
+  ServerConnected:
+    kind: event
+    schema: docs/event-model/model.yaml#ServerConnected
+  ServerSyncFailed:
+    kind: event
+    schema: docs/event-model/model.yaml#ServerSyncFailed
+  SettingsChanged:
+    kind: event
+    schema: docs/event-model/model.yaml#SettingsChanged
+  SpoilerReported:
+    kind: event
+    schema: docs/event-model/model.yaml#SpoilerReported
+  VoiceChosen:
+    kind: event
+    schema: docs/event-model/model.yaml#VoiceChosen
+slices:
+  LB3:
+    fairway: library
+    capability: prepare-a-book
+    sets:
+    - BookImported
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  LB6:
+    fairway: library
+    capability: track-position
+    sets:
+    - ListeningResumed
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  LB7:
+    fairway: library
+    capability: track-position
+    sets:
+    - ListeningStopped
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  LB8:
+    fairway: library
+    capability: track-position
+    sets:
+    - PositionEntered
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  LB1:
+    fairway: library
+    capability: audiobookshelf-companion
+    sets:
+    - ServerConnected
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  LB4:
+    fairway: library
+    capability: audiobookshelf-companion
+    sets:
+    - ServerBookAdded
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  LB5:
+    fairway: library
+    capability: audiobookshelf-companion
+    sets:
+    - AudioFetched
+    steers_by:
+    - ServerBookAdded
+    - ServerConnected
+    pattern: automation
+  LB9:
+    fairway: library
+    capability: audiobookshelf-companion
+    sets:
+    - PositionSyncedFromServer
+    steers_by: []
+    pattern: translation
+  LB10:
+    fairway: library
+    capability: audiobookshelf-companion
+    sets:
+    - ProgressPushed
+    - ServerSyncFailed
+    steers_by:
+    - ListeningStopped
+    - PositionEntered
+    - ServerBookAdded
+    - ServerConnected
+    pattern: automation
+  LB2:
+    fairway: library
+    capability: voice-and-settings
+    sets:
+    - SettingsChanged
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  LB11:
+    fairway: library
+    capability: prepare-a-book
+    sets:
+    - EbookAligned
+    - EbookAttached
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  LB15:
+    fairway: library
+    capability: prepare-a-book
+    sets:
+    - BookRemoved
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  PR1:
+    fairway: preparation
+    capability: prepare-a-book
+    sets:
+    - PreparationStarted
+    steers_by:
+    - AudioFetched
+    - BookImported
+    pattern: automation
+  PR2:
+    fairway: preparation
+    capability: prepare-a-book
+    sets:
+    - ChapterTranscribed
+    - ChapterTranscriptionFailed
+    - PreparationCompleted
+    steers_by:
+    - AudioFetched
+    - BookImported
+    - ListeningResumed
+    - ListeningStopped
+    - PositionEntered
+    - PositionSyncedFromServer
+    - PreparationStarted
+    - SettingsChanged
+    pattern: automation
+  PR3:
+    fairway: preparation
+    capability: prepare-a-book
+    sets:
+    - ChapterIndexed
+    steers_by:
+    - ChapterTranscribed
+    pattern: automation
+  PR4:
+    fairway: preparation
+    capability: prepare-a-book
+    sets:
+    - AudioDiscarded
+    steers_by:
+    - ChapterTranscriptionFailed
+    - PreparationCompleted
+    pattern: automation
+  LB12:
+    fairway: library
+    capability: prepare-a-book
+    sets: []
+    steers_by:
+    - AudioFetched
+    - BookImported
+    - BookRemoved
+    - ChapterTranscribed
+    - ChapterTranscriptionFailed
+    - ListeningResumed
+    - ListeningStopped
+    - PositionEntered
+    - PositionSyncedFromServer
+    - PreparationCompleted
+    - PreparationStarted
+    - ProgressPushed
+    - ServerBookAdded
+    - ServerConnected
+    - ServerSyncFailed
+    pattern: state-view
+    actor: Listener
+  LB14:
+    fairway: library
+    capability: prepare-a-book
+    sets: []
+    steers_by:
+    - AudioFetched
+    - BookImported
+    - ChapterTranscribed
+    - ChapterTranscriptionFailed
+    - EbookAligned
+    - EbookAttached
+    - PreparationCompleted
+    - PreparationStarted
+    - ServerBookAdded
+    pattern: state-view
+    actor: Listener
+  LB13:
+    fairway: library
+    capability: track-position
+    sets: []
+    steers_by:
+    - AudioFetched
+    - BookImported
+    - ChapterTranscribed
+    - EbookAligned
+    - ListeningResumed
+    - ListeningStopped
+    - PositionEntered
+    - PositionSyncedFromServer
+    - PreparationCompleted
+    - ServerBookAdded
+    pattern: state-view
+    actor: Listener
+  CU1:
+    fairway: catch-up
+    capability: voice-and-settings
+    sets:
+    - VoiceChosen
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  CU4:
+    fairway: catch-up
+    capability: catch-me-up
+    sets:
+    - RecapRequested
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  CU5:
+    fairway: catch-up
+    capability: catch-me-up
+    sets:
+    - RecapFailed
+    - RecapGenerated
+    - RecapRefused
+    steers_by:
+    - AudioFetched
+    - BookImported
+    - ChapterIndexed
+    - ChapterTranscribed
+    - EbookAligned
+    - PreparationCompleted
+    - RecapRequested
+    - ServerBookAdded
+    - SettingsChanged
+    - VoiceChosen
+    pattern: automation
+  CU6:
+    fairway: catch-up
+    capability: catch-me-up
+    sets: []
+    steers_by:
+    - RecapFailed
+    - RecapGenerated
+    - RecapRefused
+    - RecapRequested
+    - VoiceChosen
+    pattern: state-view
+    actor: Listener
+  CU7:
+    fairway: catch-up
+    capability: catch-me-up
+    sets:
+    - RecapHeard
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  CU2:
+    fairway: catch-up
+    capability: catch-me-up
+    sets:
+    - RecapOffered
+    steers_by:
+    - ChapterTranscribed
+    - ListeningResumed
+    - PreparationCompleted
+    - SettingsChanged
+    pattern: automation
+  CU3:
+    fairway: catch-up
+    capability: catch-me-up
+    sets:
+    - RecapOfferDeclined
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  CU8:
+    fairway: catch-up
+    capability: catch-me-up
+    sets:
+    - RecapRated
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  CU9:
+    fairway: catch-up
+    capability: catch-me-up
+    sets: []
+    steers_by:
+    - RecapGenerated
+    pattern: state-view
+    actor: Listener
+  CU10:
+    fairway: catch-up
+    capability: ask-about-the-book
+    sets:
+    - QuestionAsked
+    steers_by: []
+    pattern: state-change
+    actor: Listener
+  CU11:
+    fairway: catch-up
+    capability: ask-about-the-book
+    sets:
+    - AnswerFailed
+    - QuestionAnswered
+    - QuestionRefused
+    steers_by:
+    - AudioFetched
+    - BookImported
+    - ChapterIndexed
+    - ChapterTranscribed
+    - EbookAligned
+    - QuestionAsked
+    - ServerBookAdded
+    - SettingsChanged
+    - VoiceChosen
+    pattern: automation
+  CU12:
+    fairway: catch-up
+    capability: ask-about-the-book
+    sets: []
+    steers_by:
+    - AnswerFailed
+    - QuestionAnswered
+    - QuestionAsked
+    - QuestionRefused
+    pattern: state-view
+    actor: Listener
+  CU13:
+    fairway: catch-up
+    capability: whos-who
+    sets: []
+    steers_by:
+    - AudioFetched
+    - BookImported
+    - ChapterIndexed
+    - ListeningResumed
+    - ListeningStopped
+    - PositionEntered
+    - PositionSyncedFromServer
+    - ServerBookAdded
+    pattern: state-view
+    actor: Listener
+  CU14:
+    fairway: catch-up
+    capability: whos-who
+    sets: []
+    steers_by:
+    - AudioFetched
+    - BookImported
+    - ChapterIndexed
+    - ListeningResumed
+    - ListeningStopped
+    - PositionEntered
+    - PositionSyncedFromServer
+    - ServerBookAdded
+    pattern: state-view
+    actor: Listener
+  CU15:
+    fairway: catch-up
+    capability: report-a-spoiler
+    sets:
+    - SpoilerReported
+    steers_by: []
+    pattern: state-change
+    actor: Listener

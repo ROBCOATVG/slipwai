@@ -105,7 +105,7 @@ def unread(written: list[dict]) -> list[dict]:
     a captain claiming work again after a `told` sent while the fairway was parked, answers it too — the
     board's `Fairway.unanswered` reads it the same way, because nothing wrote the receipt and every `go` a
     person sent stayed owed for ever."""
-    receipts = {str(line.get("told")) for line in written if line.get("kind") == "read"}
+    receipts = {str(line.get("told")) for line in written if line.get("kind") in ("read", "told-met")}
     found: list[dict] = []
     parked = False
     for index, line in enumerate(written):
@@ -115,6 +115,9 @@ def unread(written: list[dict]) -> list[dict]:
         elif kind == "claimed":
             parked = False
         if kind != "told" or str(line.get("t")) in receipts:
+            continue
+        if line.get("needs"):
+            found.append(line)  # open until trunk has the last need, whatever happens in the stream meanwhile
             continue
         later = written[index + 1:]
         if any(one.get("kind") == "decision" for one in later):

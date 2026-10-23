@@ -162,7 +162,7 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
     berths = found.get("berths") or []
     running, paused = int(counts.get("running") or 0), int(counts.get("paused") or 0)
     on_you = [g for g in groups if g.get("paused") != "yes"]
-    on_you += [row for row in inbox if row.get("kind") in ("told", "question")]
+    on_you += [row for row in inbox if row.get("kind") in ("told", "question") and row.get("grouped") != "yes"]
     limit = next((g for g in groups if g.get("cause") == "limit"), None)
     slots = counts.get("slots")
     stalled = [row["fairway"] for row in berths if row.get("state") == "stalled"]
@@ -209,7 +209,8 @@ def live_sub(found: dict) -> str:
     colour, _sentence, _under = headline(found)
     word = {"teal": "working", "brass": "stopped", "blue": "paused", "red": "stalled", "grey": "quiet"}[colour]
     on_you = len([g for g in found.get("groups") or [] if g.get("paused") != "yes"])
-    on_you += len([row for row in found.get("inbox") or [] if row.get("kind") in ("told", "question")])
+    on_you += len([row for row in found.get("inbox") or []
+                   if row.get("kind") in ("told", "question") and row.get("grouped") != "yes"])
     bits = [word, f"{on_you} waiting on you"]
     if counts.get("paused"):
         bits.append(f"{counts['paused']} paused")
@@ -279,7 +280,8 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
     if needs:
         meta.append(f"{met} of {len(needs)} done")
     buttons = ""
-    if controls:
+    if controls and group.get("source") != "told":
+        # A hand-back's needs are met by trunk or ticked one by one; nothing a person says carries it on.
         label = "I have landed it, carry on" if cause == "host" else "Sorted, carry on"
         buttons = (f'<button type="button" class="go" data-tell-each=\'{esc(parks)}\' '
                    f'data-message="{esc(label.lower())}: {esc(title)}">{esc(label)}</button>')
@@ -307,8 +309,9 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
     whole = (f'<details class="log"><summary>{esc(slices[-1] if slices else "Its")}&#8217;s own lines, and the park '
              f'in full</summary><ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}'
              f'</ol><p class="empty" style="white-space:pre-wrap">{esc(group.get("what") or "")}</p></details>')
+    chip = "a slice needs this on trunk" if group.get("source") == "told" else CAUSES.get(cause, cause)
     return (f'<div class="group"><div class="head"><div><h3><span class="chip" data-state="waiting on you">'
-            f'{esc(CAUSES.get(cause, cause))}</span> {esc(title)}</h3><div class="meta">'
+            f'{esc(chip)}</span> {esc(title)}</h3><div class="meta">'
             f'{esc(" · ".join(bit for bit in meta if bit))}</div></div>{buttons}</div>{bar}{listed}{then}{whole}</div>')
 
 

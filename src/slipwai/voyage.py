@@ -14,7 +14,7 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 545 — a paused slice as queued with the time it lifts, beside the fold, the model, the mock-ups and the
+# budget: 560 — a paused slice as queued with the time it lifts, beside the fold, the model, the mock-ups and the
 # screenshots one voyage is read from, and the
 # design files under `docs/design/` a storyboard links, served at the path they have in the project
 # and what a slice waiting on a person is held on: its park, its open questions, and where an answer goes
@@ -137,6 +137,17 @@ def held_on(owner: Fairway, slice_id: str) -> dict[str, str]:
     return {"park": own or owner.parked, "asked": "\n".join(asked), "aim": slice_id if own else ""}
 
 
+#: The next feedback points the last clearance query answered with, by project: `folded` fills it and
+#: `feedback_points` reads it, so the Voyage tab asks the project's script once per draw rather than twice.
+POINTS: dict[str, list[dict]] = {}
+
+
+def feedback_points(root: Path) -> list[dict]:
+    """The observables a person is asked to look at next, as `clearance.py --feedback` ranks them — the
+    three the last fold read, each with its score and the terms it was read from."""
+    return POINTS.get(str(root), [])
+
+
 def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[list[dict[str, str]], str]:
     """Every charted slice with its state, fairway, why, and marks — and a fault where the chart could not be
     read. Empty, and no fault, where there is no chart yet.
@@ -145,6 +156,8 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
     and `queued` while it waits for a slot: claimed, carried on when one frees, and writing nothing meanwhile."""
     feature, result, fault = clearance_query(root, feature)
     states = result.get("states") if isinstance(result.get("states"), dict) else {}
+    # The next feedback points ride on the same query, kept for the page that is about to ask for them.
+    POINTS[str(root)] = [row for row in result.get("feedback") or [] if isinstance(row, dict)]
     if fault or not states:
         return [], fault
     found, _ = fairways(root, harbour_log(root))

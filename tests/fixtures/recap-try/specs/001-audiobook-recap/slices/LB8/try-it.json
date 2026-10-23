@@ -1,0 +1,26 @@
+{
+  "as": "ada",
+  "open": [
+    { "label": "Ada's player for Nine Winters at Halvard", "path": "/books/nw-1/player" }
+  ],
+  "steps": [
+    {
+      "say": "Ada imports Nine Winters at Halvard (LB3's door; a book exists only through it, and its chapters come with it)",
+      "method": "POST",
+      "path": "/api/books",
+      "body": { "bookId": "nw-1", "files": ["nine-winters-1.m4b", "nine-winters-2.m4b", "nine-winters-3.m4b"] },
+      "keep": { "bookId": "bookId" }
+    },
+    {
+      "say": "Ada has been listening in the car and is ten minutes into chapter 13 — she enters it by hand; the position is chapter 13's start plus 10:00",
+      "method": "POST",
+      "path": "/api/books/{bookId}/entries",
+      "body": {
+        "entryId": "a9b8c7d6-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
+        "chapter": 13,
+        "minutes": 10,
+        "at": "2026-10-21T20:00:00Z"
+      }
+    }
+  ]
+}

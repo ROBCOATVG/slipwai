@@ -55,13 +55,24 @@ def rung_of_the_slice(apps: list[App]) -> str:
 #: the calls that make its records, so `make try` opens on them. Written here because the routes and their
 #: answers are settled by now, and the plan that wrote the quickstart knew neither.
 TRY_STORY = """Beside `quickstart.md` it writes `try-it.json`: the records that story needs, as the calls
-   a person's browser would make — `{"as": "<a fixture user>", "open": [{"label": "<whose record>", "path":
-   "<the screen it is on>"}], "steps": [{"say": "…", "method": "POST", "path": "/api/…", "body": {…},
-   "keep": {"<name>": "<field of the answer>"}}]}`, a kept `{name}` filling a later path or body. It makes its
-   own records rather than reaching for another slice's, and uses the quickstart's synthetic people.
-   `python3 scripts/agents/try_it.py seed --slice <id> --api <the service this berth runs>` loads it into
-   the app the demo runs, and one the service refuses is fixed here: it is the first thing a person sees of
-   this slice once it merges, when `make try` loads every slice's. """
+   a person's browser would make — `{"as": "<a declared person>", "open": [{"label": "<whose record>", "path":
+   "<the screen it is on>"}], "given": [{"stream": "<stream>", "event": "<Event>", "data": {…}}], "steps":
+   [{"say": "…", "method": "POST", "path": "/api/…", "body": {…}, "keep": {"<name>": "<field of the
+   answer>"}}]}`, a kept `{name}` filling a later path or body. It makes its own records rather than reaching
+   for another slice's. `as` names a person under `specs/<feature>/people/` or in the local realm, and a story
+   that needs someone new writes their file beside it — never the realm file, which is the host's. A mark
+   this slice steers by whose setter has not merged is **given, not waited for**: `given` is the events the
+   story needs, in the model's shape, appended through the service's seed door (`make seed-<service>
+   FILE=…`) before the first step, and the card marks those records *given, not made*; a story that gives
+   nothing and steers by an unset mark cannot seed, and says why in `plan.md`. `make check-try` holds the
+   file to all of that with no app running. Then the live half, against the app this berth runs: `python3
+   scripts/agents/try_it.py people --apply`, then `python3 scripts/agents/try_it.py seed --slice <id> --api
+   <that service>`. A refused step or a refused given is fixed here, and the slice does not reach the review
+   rung until the `seeded` deck line that command writes on a green run exists: the captain holds the slice
+   to it as it holds it to its `mark-set` lines, in every release mode. So this rung says one thing — the
+   examples proven by tests, the people declared, the story seeded green, the `seeded` line written — and
+   then the review. It is the first thing a person sees of this slice once it merges, when `make try` loads
+   every slice's. """
 
 
 def sail_ladder(
@@ -282,7 +293,10 @@ def sail_ladder(
         capability_gates_stage(bool(web)),
         """**Merge to main** — the slice is on trunk. Rebase first, run the full `make verify` on the
    rebased branch, and merge. This is the only rung that runs the full gate, and the only one a person
-   holds: until a captain enforces the stage boundaries, nothing here merges itself.""",
+   holds: until a captain enforces the stage boundaries, nothing here merges itself. In the same breath as
+   the push, `make try-update` where Try it is running: it moves to the trunk this merge made, keeps its
+   data, and seeds this slice's story, so whatever this slice made observable is reachable from the card
+   at once — under `/cruise` the harbourmaster does the same after every merge it grants.""",
     ]
     stages = with_design_rungs(stages, baseline) if web else stages
     if adoption is not None:

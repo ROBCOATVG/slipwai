@@ -17,7 +17,7 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 560 — every column of the board folded from the logs, including what waits on a person: a park,
+# budget: 580 — every column of the board folded from the logs, including what waits on a person: a park,
 # a told, the decisions nobody has read, and a question a headless stage posted and nobody has answered
 # yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
 # which `told` an answer or a claim has already taken up, which one is a session's note for another session
@@ -200,6 +200,9 @@ class Fairway:
         cruise-tell answers a park" while the fleet ran and nothing was parked.
         """
         receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read"}
+        # A hand-back with needs is answered by trunk, not by a reading: the harbourmaster's `told-met`.
+        receipts |= {str(e.fields.get("told", "")) for e in self.receipts
+                     if e.kind == "told-met" and str(e.fields.get("fairway", "")) == self.name}
         found: list[Entry] = []
         parked = False
         for index, entry in enumerate(self.entries):
@@ -208,6 +211,11 @@ class Fairway:
             elif entry.kind == "claimed":
                 parked = False
             if entry.kind != "told" or entry.t in receipts or for_someone_else(entry):
+                continue
+            if entry.fields.get("needs"):
+                # Open until the last need is met, whatever the stream does meanwhile: a slice that ships a
+                # stub around a missing dependency has not landed the dependency.
+                found.append(entry)
                 continue
             later = self.entries[index + 1:]
             if any(e.kind == "decision" for e in later):
@@ -388,8 +396,14 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
     the Slices step reads them that way."""
     waiting: list[dict[str, Any]] = []
     for one in found:
-        waiting += [{"fairway": one.name, "kind": "told", "what": str(e.fields.get("message", "")), "t": e.t}
-                    for e in one.unanswered]
+        for e in one.unanswered:
+            row: dict[str, Any] = {"fairway": one.name, "kind": "told", "what": str(e.fields.get("message", "")),
+                                   "t": e.t, "slice": str(e.fields.get("slice") or "")}
+            if e.fields.get("needs"):
+                # A hand-back with needs is a park's shape without the park: the board draws its checklist,
+                # groups it with the parks under *Waiting on you*, and offers Done only once trunk has it.
+                row.update(needs=need_rows(e, one.needs_met(e)), cause="host", grouped="yes", by="told")
+            waiting.append(row)
         waiting += [{"fairway": one.name, "kind": "question",
                      "what": f"{e.fields.get('id')} ({e.fields.get('slice')}): {e.fields.get('what')}", "t": e.t}
                     for e in one.asked]

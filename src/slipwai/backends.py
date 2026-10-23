@@ -8,7 +8,7 @@ and the README all have to give the same one.
 """
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 # One version each, everywhere: the CI images in each language's toolchain, `setup-node` and `setup-python` in
 # both generated workflows, `images.py`'s buildpacks, and the `.nvmrc` and `.python-version` a project is
@@ -55,6 +55,11 @@ class Tooling(TypedDict):
     ci_install: str
     container_setup: str
     container_environment: dict[str, str]
+    #: The seed door: how a service appends the events a slice's `try-it.json` *gives* — `make seed-<service>
+    #: FILE=<json>` runs it — through its own event-store port with a deterministic id, so a replay records
+    #: nothing twice. Optional: a language whose skeleton has no door yet answers nothing, and a story's
+    #: `given` is validated and not applied until it does (feedback-points plan, D4).
+    seed: NotRequired[str]
 
 
 # Where a toolchain writes what it installs, relative to the container: each backend's `compose_caches`

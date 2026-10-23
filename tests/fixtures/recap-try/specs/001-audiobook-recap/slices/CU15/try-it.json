@@ -1,0 +1,18 @@
+{
+  "as": "customer@example.invalid",
+  "open": [],
+  "steps": [
+    {
+      "say": "Report the Standard recap at 4:03:17 of The Cartographer's Silence (cs-1) as giving something away, with a note. Until the host lands the JWT library the service refuses every bearer token by design (CU3 research R-2) and this step records 401; once it does, 404 until LB3's import has written a BookImported for this listener, and 200 { reportId, bookId, target, reportedAt } after that, with the note sealed and an error-level log line naming the report (never the note) as the on-call alert.",
+      "method": "POST",
+      "path": "/api/books/cs-1/spoiler-reports",
+      "body": { "reportId": "7a1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d", "target": { "kind": "recap", "tier": "Standard", "position": 14597 }, "note": "names the chapel before chapter 13" }
+    },
+    {
+      "say": "Send the same report id again, as a retry would: it answers as the first did, records nothing new and raises the alert again (D77).",
+      "method": "POST",
+      "path": "/api/books/cs-1/spoiler-reports",
+      "body": { "reportId": "7a1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d", "target": { "kind": "recap", "tier": "Standard", "position": 14597 }, "note": "names the chapel before chapter 13" }
+    }
+  ]
+}

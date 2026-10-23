@@ -1,0 +1,25 @@
+{
+  "as": "ines",
+  "open": [
+    { "label": "Pick from your server", "path": "/server-books" }
+  ],
+  "steps": [
+    {
+      "say": "Ines connects her Audiobookshelf server (the stub from quickstart.md, listening on 127.0.0.1:13378 with token demo-token)",
+      "method": "POST",
+      "path": "/api/connection",
+      "body": {
+        "connectionId": "7d3e9a10-4b2c-4f58-8a61-0c9d2e5b7f31",
+        "url": "http://127.0.0.1:13378",
+        "token": "demo-token"
+      },
+      "keep": { "serverUrl": "serverUrl" }
+    },
+    {
+      "say": "Ines picks The Salt Ledger from the books her server lists; the other two stay on the list",
+      "method": "POST",
+      "path": "/api/books/5c2f8e14-9a3b-4d70-b6e1-3f4a7c8d9e02/server-book",
+      "body": { "itemId": "li_8x2" }
+    }
+  ]
+}

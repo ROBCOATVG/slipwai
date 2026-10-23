@@ -93,6 +93,28 @@ class NeedsTest(MergeFixture):
         self.assertEqual(self.receipts("cleared"), [])
         self.assertFalse((self.root / ".slipwai/needs").exists())
 
+    def test_a_told_with_needs_is_ticked_like_a_park_and_met_by_a_told_met_receipt(self) -> None:
+        """recap, 2026-10-21 11:01: LB3 told the host the catch-up routes needed one line at the composition
+        root and a JWT library in the manifest. Both were notes; both stayed undone for a day."""
+        told_at = "2026-10-21T11:01:00Z"
+        self.deck("ordering", "ORD", logs.entry(
+            "told", fairway="ORD", slice="LB3", by="session", t=told_at,
+            message="For the host: the catch-up routes refuse every token until jose is in the manifest",
+            needs=[{"what": "jose in apps/service/package.json", "by": "fleet",
+                    "check": {"kind": "text", "path": "service.txt", "has": "one"}},
+                   {"what": "the realm has ada", "by": "fleet",
+                    "check": {"kind": "text", "path": "service.txt", "has": "ada"}}]))
+        self.run_once()
+        self.assertEqual([(m["parked"], m["need"]) for m in self.receipts("need-met")], [(told_at, 0)])
+        self.assertEqual(self.receipts("told-met"), [])
+        (self.root / "service.txt").write_text("one ada\n", encoding="utf-8")
+        self.commit("ada on trunk")
+        self.run_once()
+        self.run_once()
+        self.assertEqual(sorted(m["need"] for m in self.receipts("need-met")), [0, 1])
+        self.assertEqual([(m["told"], m["what"]) for m in self.receipts("told-met")], [(told_at, "needs met: 2 of 2")])
+        self.assertEqual(self.receipts("cleared"), [], "a hand-back is not a park, so nothing is cleared by it")
+
     def test_a_person_s_tick_is_a_need_done_line_and_the_last_tick_clears_the_park(self) -> None:
         self.park({"what": "decide whether LB13 follows", "by": "person"},
                   {"what": "service.txt says one", "by": "fleet",

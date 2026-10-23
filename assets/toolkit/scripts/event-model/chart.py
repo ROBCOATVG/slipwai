@@ -181,6 +181,13 @@ def render(model: object, deployables: dict[str, dict], model_path: str = MODEL_
             "capability": str(item.get("capability") or ""),
             "sets": sorted(events_of(item)),
             "steers_by": sorted(str(event) for event in reads) if isinstance(reads, list) else [],
+            # The slice's pattern and actor, carried so clearance can read what a slice *is*: a
+            # `state-view` or an `automation` folds whatever exists and has clearance when one mark it
+            # steers by is set, where a `state-change` or a `translation` waits for all of them. And an
+            # observable — the thing a person can judge — is a view, an automation or a translation to an
+            # external actor, which `clearance.py --feedback` ranks (feedback-points plan, D1 and D5).
+            **({"pattern": str(item["pattern"])} if item.get("pattern") else {}),
+            **({"actor": str(item["actor"])} if item.get("actor") else {}),
             # An `observed` slice records behaviour that is already in the tree (15.10). It stays on the
             # chart because a later slice steers by what it sets — that is the join, and the reason the
             # model is global — but it is not work: its marks are set by the code existing, and `/sail`

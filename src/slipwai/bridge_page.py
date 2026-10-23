@@ -15,7 +15,7 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 380 — the waiting card now groups parks, questions and notes by what a person has to do, and
+# budget: 410 — the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
 # each group carries its own heading, count and the rows under it, so the page is a little longer than one
 # that listed them flat.
 from __future__ import annotations
@@ -187,9 +187,22 @@ def berth_rows(rows: list[dict], streams: dict, controls: bool = True) -> str:
 #: question needs an answer; unread decisions need reading; a told is only a note, and Done clears it.
 WAIT_GROUPS = (
     ("answer", "Needs an answer", ("question", "parked"), "Silence keeps the stream parked."),
+    ("need", "Needs", ("told",), "A slice handed these back: each ticks itself when trunk has it, and you tick "
+                                  "the ones only you can. It leaves when the last is met."),
     ("read", "Read and mark read", ("decisions",), "A stream over its decision ceiling is waiting on these."),
     ("note", "Notes", ("told",), "Nothing here blocks a stream; Done clears one."),
 )
+
+
+def wait_group_of(row: dict) -> str:
+    """Which group a waiting row sits in: a `told` with needs is a need, and one without is a note."""
+    for key, _title, kinds, _hint in WAIT_GROUPS:
+        if row["kind"] not in kinds:
+            continue
+        if row["kind"] == "told" and bool(row.get("needs")) != (key == "need"):
+            continue
+        return key
+    return ""
 
 
 def headline(detail: str, limit: int = 140) -> str:
@@ -208,15 +221,15 @@ def inbox_rows(rows: list[dict], controls: bool, streams: dict | None = None) ->
     if not rows:
         return '<p class="empty">Nothing is waiting on you.</p>'
     groups = []
-    for key, title, kinds, hint in WAIT_GROUPS:
-        mine = [(index, row) for index, row in enumerate(rows) if row["kind"] in kinds]
+    for key, title, _kinds, hint in WAIT_GROUPS:
+        mine = [(index, row) for index, row in enumerate(rows) if wait_group_of(row) == key]
         if not mine:
             continue
         said = "".join(inbox_row(index, row, controls, streams, key) for index, row in mine)
         groups.append(f'<div class="wait-group {key}"><h3>{esc(title)} <span class="count">{len(mine)}</span> '
                       f'<small>{esc(hint)}</small></h3>{said}</div>')
-    counts = " · ".join(f"{len([r for r in rows if r['kind'] in kinds])} {title.lower()}"
-                        for _, title, kinds, _ in WAIT_GROUPS if any(r["kind"] in kinds for r in rows))
+    counts = " · ".join(f"{len([r for r in rows if wait_group_of(r) == key])} {title.lower()}"
+                        for key, title, _, _ in WAIT_GROUPS if any(wait_group_of(r) == key for r in rows))
     return f'<p class="wait-sum">{esc(counts)}</p>' + "".join(groups)
 
 
@@ -227,16 +240,41 @@ def inbox_row(index: int, row: dict, controls: bool, streams: dict | None, group
     # A park brings its own slice's lines, without heartbeats; anything else shows the stream's tail.
     lines = row["lines"] if "lines" in row else (streams or {}).get(name) or []
     log = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines[-20:])
-    # A note needs no answer, only to be seen: Done writes its `read` receipt and it leaves the list.
+    # A note needs no answer, only to be seen: Done writes its `read` receipt and it leaves the list. A
+    # hand-back with needs is not done until trunk has them, so Done is not offered on one.
     done = (f'<button data-dismiss="{esc(name)}" data-told="{esc(row["t"])}">Done</button>'
-            if row["kind"] == "told" else "")
+            if row["kind"] == "told" and not row.get("needs") else "")
     box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
            f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button>{done}</div>'
            if controls else "")
     full = f'<p class="why">{esc(detail)}</p>' if headline(detail) != detail else ""
     return (f'<details class="log"><summary><b>{esc(headline(detail))}</b> '
             f'<span class="tag">{esc(name)}</span> <span class="mono">{esc(row["t"])}</span></summary>'
-            f'{full}<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}</ol>{box}</details>')
+            f'{full}{needs_list(row, controls)}<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}'
+            f'</ol>{box}</details>')
+
+
+def needs_list(row: dict, controls: bool) -> str:
+    """A hand-back's needs as the checklist the Fleet tab draws for a park: a box each, how it ticks, and a
+    Done for the ones only a person can say. The tick goes to `/need` with the told's instant as `parked`."""
+    needs = row.get("needs") or []
+    if not needs:
+        return ""
+    parks = esc(json.dumps([{"fairway": row["fairway"], "t": row["t"]}]))
+    items = []
+    for need in needs:
+        on = need.get("met") == "yes"
+        if on:
+            how = "done"
+        elif need.get("by") == "person":
+            how = (f'<button type="button" data-need="{esc(str(need.get("index", "")))}" data-parks=\'{parks}\'>Done'
+                   f"</button>" if controls else "only you can say")
+        else:
+            how = f"ticks itself when {esc(need.get('how') or 'trunk has it')}"
+        items.append(f'<li><span class="box{" on" if on else ""}"></span><span>{esc(need.get("what", ""))}</span>'
+                     f'<span class="how">{how}</span></li>')
+    met = sum(1 for need in needs if need.get("met") == "yes")
+    return f'<p class="why">{met} of {len(needs)} on trunk</p><ul class="needs">{"".join(items)}</ul>'
 
 
 def unread_decisions(row: dict, controls: bool) -> str:

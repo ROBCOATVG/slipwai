@@ -24,12 +24,15 @@ for a tool you have not got. Before a browser-driven check, take a `browsers` sl
 both where shipped; the gaps pass before planning reads `skills/find-gaps` and `skills/acceptance-review`, as
 the `/gaps` command does.
 
-Your commits touch this slice's own `specs/<feature>/slices/<id>/`, the feature's cumulative artifacts, its
-block of `model.yaml` and the canvas regenerated from it, the code and tests of the service that owns it, the
-context's events module *additively*, new timestamped migrations and the composition root. The shared-surface
-rule in `commands/sail.md` is exact and `{{make}} check-slice-scope` holds it on your branch; `Makefile`,
-`project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/` and the other docs are not a
-slice's to write, and needing one is a stop rather than a small exception.
+Your commits touch this slice's own `specs/<feature>/slices/<id>/`, the feature's cumulative artifacts — among
+them `specs/<feature>/people/`, one file per person your story signs in as — its block of `model.yaml` and the
+canvas regenerated from it, the code and tests of the service that owns it, the context's events module
+*additively*, new timestamped migrations and the composition root. The shared-surface rule in
+`commands/sail.md` is exact and `{{make}} check-slice-scope` holds it on your branch; `Makefile`,
+`project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/`, the realm files under `docker/`
+and the other docs are not a slice's to write, and needing one is a stop rather than a small exception: a
+`told` with `needs`, one per thing that has to land on trunk, each with a `check` where trunk can prove it,
+so the harbourmaster ticks it and the board shows it under *Waiting on you* rather than as a note.
 
 Return what the band ends at — the `mark-set` lines written, or the examples proven — what you built, and
 anything you left. A product question, an ambiguity the artifacts do not settle, or a need outside that scope

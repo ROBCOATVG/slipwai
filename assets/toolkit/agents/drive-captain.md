@@ -48,12 +48,13 @@ believed. Every line carries `fairway`.
 | `claimed` | you have taken this slice | `slice` |
 | `mark-set` | a contract a sibling steers by now exists | `slice`, `mark` |
 | `demo` | the demo was run, and its verdict | `slice`, `verdict` — `accepted`, `behaviour` or `implementation` |
+| `seeded` | the slice's `try-it.json` ran green against the app its berth runs; `try_it.py seed --slice` writes it, and a slice with a story and no `seeded` line this turn is parked at its gate | `slice`, `records` (steps that answered), `commit`; `given` where the story appended events first |
 | `accepted` | a person accepted a whole capability | `capability` |
 | `demo-due` | a capability is ready for a person to see | `capability` |
 | `merged` | the slice is on trunk | `slice`, `commit` |
 | `decision` | something another captain could contradict | `id`, `what` |
 | `question` | a product question this slice cannot be guessed past, for a person; open until a `decision` carries its `id` | `slice`, `id`, `what` |
-| `told` | something somebody needs to know now; it never answers a park, which only a person does | `message`, `by: session` |
+| `told` | something somebody needs to know now; it never answers a park, which only a person does. A hand-back that names a shared surface — a dependency, a realm user, a flag line — carries `needs` in the park's shape, one per item, with a `check` wherever trunk can prove it landed; the harbourmaster ticks them and the board groups them under *Waiting on you* | `message`, `by: session`; `slice`, `needs` |
 | `read` | a receipt for a `told` you have acted on | `told`, which is that line's `t` |
 | `heartbeat` | you are alive and still working | `slice`, where you are on one |
 | `request` | something outside your berth, asked for | `id`, `what`, `detail` |

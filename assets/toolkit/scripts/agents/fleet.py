@@ -387,8 +387,36 @@ def deck_of(stream: str) -> Path | None:
     return next((path for path in logs_root().glob(f"*/{stream}.jsonl")), None)
 
 
-def tell(streams: list[str], words: list[str]) -> int:
+#: How a need's check is spelled on the command line: `text:<path>:<has>` or `make:<target>`.
+CHECK_SPELLINGS = "text:<path>:<has> or make:<target>"
+
+
+def need_of(what: str, check: str, by: str) -> dict:
+    """One need in the park's shape, from the words `tell --need` and `--check` were given, or a refusal."""
+    found: dict = {"what": what.strip(), "by": by}
+    if not found["what"]:
+        raise SystemExit("--need says what has to change, in a sentence")
+    if check:
+        kind, _, rest = check.partition(":")
+        if kind == "text" and ":" in rest:
+            path, _, has = rest.partition(":")
+            found["check"] = {"kind": "text", "path": path, "has": has}
+        elif kind == "make" and rest:
+            found["check"] = {"kind": "make", "target": rest}
+        else:
+            raise SystemExit(f"--check is {CHECK_SPELLINGS}; {check!r} is neither")
+    elif by == "fleet":
+        raise SystemExit("a need the fleet ticks has a --check; without one it is a person's")
+    return found
+
+
+def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, slice_id: str = "") -> int:
     """Write one `told` line into each named stream's deck log, which its captain reads at its next boundary.
+
+    With `needs`, the line is a hand-back that names a shared surface — a dependency the slice may not add,
+    a realm user, a flag line — and carries each thing that has to land on trunk in the park's shape, so the
+    harbourmaster ticks it against trunk and the board lists it under *Waiting on you* rather than as a note
+    a person dismisses. recap's 59 notes held the four things that darkened every story.
 
     Into the deck log and nowhere else, which is the rule the bridge already keeps: the log is what a captain
     reads, so a message anywhere else is a message nothing is watching. Not the harbour log — that has one
@@ -413,9 +441,18 @@ def tell(streams: list[str], words: list[str]) -> int:
         if where is None:
             raise SystemExit(f"`{stream}` has no deck log here, so there is nowhere for this to go. A stream "
                              f"gets a log when its captain writes its first line.")
+        extra: dict = {}
+        if needs:
+            extra["needs"] = needs
+        if slice_id:
+            extra["slice"] = slice_id
         with where.open("a", encoding="utf-8") as handle:
-            handle.write(logs.entry("told", fairway=stream, message=message, by=by).line())
+            handle.write(logs.entry("told", fairway=stream, message=message, by=by, **extra).line())
         written.append(stream)
+    if needs:
+        print(f"told {', '.join(written)}, with {len(needs)} need(s). The harbourmaster ticks each against trunk, "
+              f"and the board lists them under Waiting on you until the last is met.")
+        return 0
     print(f"told {', '.join(written)}. Each reads it at its next boundary and answers with a `read` line; "
           f"`slipwai bridge` is where the answer comes back.")
     return 0
@@ -458,6 +495,12 @@ def main(argv: list[str]) -> int:
                         help="for `watch`: how long to sit before returning (default: 1.5)")
     parser.add_argument("--everyone", action="store_true",
                         help="for `tell`: the message goes to the harbour log, which every captain reads")
+    parser.add_argument("--need", action="append", default=[],
+                        help="for `tell`: one thing that has to land on trunk; repeat for several")
+    parser.add_argument("--check", action="append", default=[],
+                        help=f"for `tell --need`: how the fleet proves it landed, {CHECK_SPELLINGS}, one per --need "
+                             f"in order; a need with none is a person's to tick")
+    parser.add_argument("--slice", default="", help="for `tell`: the slice the message is about")
     parsed = parser.parse_args(argv)
     if parsed.verb == "stop":
         stop_all()
@@ -470,7 +513,9 @@ def main(argv: list[str]) -> int:
     if parsed.verb == "tell":
         words = list(parsed.words)
         named = words.pop(0) if words and not parsed.everyone else None
-        return tell(telling(named, parsed.everyone), words)
+        checks = list(parsed.check) + [""] * (len(parsed.need) - len(parsed.check))
+        needs = [need_of(what, check, "fleet" if check else "person") for what, check in zip(parsed.need, checks)]
+        return tell(telling(named, parsed.everyone), words, needs, parsed.slice)
     held = config()
     limit = parsed.boilers if parsed.boilers is not None else held.get("boilers")
     if isinstance(limit, int) and limit <= 0:

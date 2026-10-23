@@ -1,0 +1,31 @@
+{
+  "as": "ines",
+  "open": [
+    { "label": "Ines's player for Nine Winters at Halvard", "path": "/books/nw-9/player" }
+  ],
+  "steps": [
+    {
+      "say": "Ines connects her Audiobookshelf server (the stub from quickstart.md, on 127.0.0.1:13378 with token demo-token)",
+      "method": "POST",
+      "path": "/api/connection",
+      "body": {
+        "connectionId": "9b2c4d6e-8f0a-4b1c-9d3e-5f7a9b1c3d5e",
+        "url": "http://127.0.0.1:13378",
+        "token": "demo-token"
+      }
+    },
+    {
+      "say": "Ines imports Nine Winters at Halvard from her own files (LB3's door)",
+      "method": "POST",
+      "path": "/api/books",
+      "body": { "bookId": "nw-9", "files": ["nine-winters-1.m4b", "nine-winters-2.m4b", "nine-winters-3.m4b"] },
+      "keep": { "bookId": "bookId" }
+    },
+    {
+      "say": "She opens it in Recap: the Player asks for her server's progress first, and an imported book has none to sync",
+      "method": "POST",
+      "path": "/api/books/{bookId}/server-syncs",
+      "body": { "syncId": "5a1e2c3d-4b5f-4a6b-8c7d-9e0f1a2b3c4d" }
+    }
+  ]
+}

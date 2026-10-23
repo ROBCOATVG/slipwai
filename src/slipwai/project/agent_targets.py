@@ -7,14 +7,16 @@ interpreter a shell finds first decides whether they run: one older than the scr
 as whichever gate first uses a newer feature. `check-agents` is where every settings file the ladder reads is held to its shape — the models table,
 `sail.json` and `cruise.json` — so a hand edit that would leave `/sail` or `/cruise` reading nonsense fails
 the gate rather than the run. `check-decisions` holds the decision log and demo log `/cruise` writes to their
-shape, and sits on `verify` because a person overrides a decision by editing that file.
+shape, and sits on `verify` because a person overrides a decision by editing that file. `check-try` holds every
+slice's `try-it.json` to what it would need to seed — a declared person, a mounted screen, a modelled event —
+with no app running, because recap merged fifteen slices whose stories all failed at their first call.
 """
 from __future__ import annotations
 
 
 def agent_targets() -> str:
     """The `.PHONY` block between the npm workspace targets and the native gate targets."""
-    return """.PHONY: check-python preflight arrive depart dispatch hooks crossing agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft assess triage surfaces model-next launch check-decisions
+    return """.PHONY: check-python preflight arrive depart dispatch hooks crossing agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft assess triage surfaces model-next launch check-decisions check-try
 check-python: ## Fail, first, when python3 is older than the 3.10 every gate script is written for
 \t@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 'check-python: ' + sys.executable + ' is Python ' + sys.version.split()[0] + ', and the gate scripts need 3.10 or newer; put a newer python3 first on PATH (a non-interactive macOS shell finds /usr/bin/python3, which is 3.9, before Homebrew)')"
 preflight: ## Check once, in a fresh worktree, that an increment can run here: toolchains, caches, a socket, the index
@@ -73,6 +75,8 @@ launch: ## Continue the build from a drafted specification: chart and split it i
 \tpython3 scripts/agents/launch.py $(CRUISE_FLAGS)
 check-decisions: ## Fail when a decision log or demo log /cruise wrote has lost its shape
 \tpython3 scripts/check-decisions.py
+check-try: ## Fail when a slice's try-it.json names a person nobody declared, a screen nothing mounts, or an event the model does not type
+\tpython3 scripts/check-try.py
 """
 
 

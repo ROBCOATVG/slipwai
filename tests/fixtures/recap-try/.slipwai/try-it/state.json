@@ -1,0 +1,200 @@
+{
+  "state": "ready",
+  "runner": 81663,
+  "commit": "4e150b817f11641b2a02045b728ce26341a96755",
+  "steps": [
+    "workspace at 4e150b8",
+    "installing dependencies",
+    "starting the database and sign-in",
+    "applying migrations",
+    "starting the app",
+    "loading example data"
+  ],
+  "error": "",
+  "previous": "4456abe744922ffd327818693f7a1bffc3e170e9",
+  "started": "2026-10-22T18:29:05Z",
+  "step": "ready",
+  "pids": {
+    "recap-api": 82455,
+    "recap-web": 82456
+  },
+  "seeded": [],
+  "seed_failed": [
+    {
+      "slice": "001-audiobook-recap/CU1",
+      "step": "Pick Tomas for Nine Winters at Halvard (nw-1). Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-nw-1, and 200 { bookId, voice } after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU4",
+      "step": "Ask for a Standard recap of The Cartographer's Silence (cs-1) at 4:03:17 from the Catch me up button. Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, and 200 { bookId, tier, position, recap: { state: awaited }, answeredOffer: false } after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU1",
+      "step": "Pick Tomas for Nine Winters at Halvard (nw-1). Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-nw-1, and 200 { bookId, voice } after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU3",
+      "step": "Decline the recap offer on The Cartographer's Silence (cs-1) with No thanks, just play. Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, then 422 { error: noOpenOffer } until CU2's offer has written a RecapOffered on catch-up-cs-1, and 200 { bookId, position, offeredAt, declinedAt } after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU4",
+      "step": "Ask for a Standard recap of The Cartographer's Silence (cs-1) at 4:03:17 from the Catch me up button. Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, and 200 { bookId, tier, position, recap: { state: awaited }, answeredOffer: false } after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU7",
+      "step": "Finish the Standard recap of The Cartographer's Silence (cs-1) at 4:03:17, heard to its end (3:00). Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, then 422 { error: noRecapAtKey } until CU4's request and CU5's writer have put a RecapGenerated at Standard \u00b7 14597, and 200 { bookId, tier, position, resumeAt: 14597 } after that \u2014 the position the book resumes at.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU8",
+      "step": "Ask for a Standard recap of The Cartographer's Silence (cs-1) at 4:03:17, so the key Standard \u00b7 14597 exists on the book's catch-up stream. Until the host lands the JWT library the service refuses every bearer token by design (research R-2) and this step records 401; once it does, 404 until LB3's import has written a BookImported for this listener on book-cs-1, and 200 after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/LB6",
+      "step": "Ada imports Nine Winters at Halvard (LB3's door; a book exists only through it)",
+      "said": "no fixture user ada in docker/keycloak/realms"
+    },
+    {
+      "slice": "001-audiobook-recap/LB7",
+      "step": "Ada imports Nine Winters at Halvard (LB3's door; a book exists only through it)",
+      "said": "no fixture user ada in docker/keycloak/realms"
+    },
+    {
+      "slice": "001-audiobook-recap/LB8",
+      "step": "Ada imports Nine Winters at Halvard (LB3's door; a book exists only through it, and its chapters come with it)",
+      "said": "no fixture user ada in docker/keycloak/realms"
+    },
+    {
+      "slice": "001-audiobook-recap/CU1",
+      "step": "Pick Tomas for Nine Winters at Halvard (nw-1). Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-nw-1, and 200 { bookId, voice } after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU10",
+      "step": "Ask 'Who is Marcus again?' about The Cartographer's Silence (cs-1) at 4:03:17, typed. Until the host lands the JWT library, the service refuses every bearer token by design (CU3 research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, and 200 { questionId, bookId, position, via, askedAt } after that \u2014 the question recorded on question-{questionId} with its words sealed, never in the clear.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU15",
+      "step": "Report the Standard recap at 4:03:17 of The Cartographer's Silence (cs-1) as giving something away, with a note. Until the host lands the JWT library the service refuses every bearer token by design (CU3 research R-2) and this step records 401; once it does, 404 until LB3's import has written a BookImported for this listener, and 200 { reportId, bookId, target, reportedAt } after that, with the note sealed and an error-level log line naming the report (never the note) as the on-call alert.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU3",
+      "step": "Decline the recap offer on The Cartographer's Silence (cs-1) with No thanks, just play. Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, then 422 { error: noOpenOffer } until CU2's offer has written a RecapOffered on catch-up-cs-1, and 200 { bookId, position, offeredAt, declinedAt } after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU4",
+      "step": "Ask for a Standard recap of The Cartographer's Silence (cs-1) at 4:03:17 from the Catch me up button. Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, and 200 { bookId, tier, position, recap: { state: awaited }, answeredOffer: false } after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU7",
+      "step": "Finish the Standard recap of The Cartographer's Silence (cs-1) at 4:03:17, heard to its end (3:00). Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, then 422 { error: noRecapAtKey } until CU4's request and CU5's writer have put a RecapGenerated at Standard \u00b7 14597, and 200 { bookId, tier, position, resumeAt: 14597 } after that \u2014 the position the book resumes at.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/CU8",
+      "step": "Ask for a Standard recap of The Cartographer's Silence (cs-1) at 4:03:17, so the key Standard \u00b7 14597 exists on the book's catch-up stream. Until the host lands the JWT library the service refuses every bearer token by design (research R-2) and this step records 401; once it does, 404 until LB3's import has written a BookImported for this listener on book-cs-1, and 200 after that.",
+      "said": "401 {\"error\":\"unauthenticated\"}"
+    },
+    {
+      "slice": "001-audiobook-recap/LB1",
+      "step": "Ines connects her Audiobookshelf server (the stub from quickstart.md, listening on 127.0.0.1:13378 with token demo-token)",
+      "said": "no fixture user ines in docker/keycloak/realms"
+    },
+    {
+      "slice": "001-audiobook-recap/LB2",
+      "step": "Ines has never touched Settings: she reads the defaults (Standard, 3 days, Tomas, Wi-Fi only on, prepare-ahead on) and no changedAt.",
+      "said": "no fixture user ines in docker/keycloak/realms"
+    },
+    {
+      "slice": "001-audiobook-recap/LB6",
+      "step": "Ada imports Nine Winters at Halvard (LB3's door; a book exists only through it)",
+      "said": "no fixture user ada in docker/keycloak/realms"
+    },
+    {
+      "slice": "001-audiobook-recap/LB7",
+      "step": "Ada imports Nine Winters at Halvard (LB3's door; a book exists only through it)",
+      "said": "no fixture user ada in docker/keycloak/realms"
+    },
+    {
+      "slice": "001-audiobook-recap/LB8",
+      "step": "Ada imports Nine Winters at Halvard (LB3's door; a book exists only through it, and its chapters come with it)",
+      "said": "no fixture user ada in docker/keycloak/realms"
+    }
+  ],
+  "links": [],
+  "people": [
+    {
+      "name": "Casey Customer",
+      "username": "customer@example.invalid",
+      "password": "customer",
+      "realm": "customers"
+    }
+  ],
+  "flags": {
+    "ask-about-the-book": "on",
+    "audiobookshelf-companion": "on",
+    "catch-me-up": "on",
+    "import-audio": "on",
+    "track-position": "on",
+    "voice-and-settings": "on"
+  },
+  "new": [
+    {
+      "feature": "001-audiobook-recap",
+      "slice": "CU10",
+      "title": "CU10 Ask a question",
+      "steps": [],
+      "as": "customer@example.invalid"
+    },
+    {
+      "feature": "001-audiobook-recap",
+      "slice": "LB1",
+      "title": "LB1 Connect to an Audiobookshelf server",
+      "steps": [
+        "`make services-up` (Postgres and Keycloak), then `make dev`. The service needs `CREDENTIALS_KEY` (32 bytes base64: `openssl rand -base64 32`) beside `DATABASE_URL` to persist credentials; without it the in-memory store is wired and the start-up log says so. To reach the stub below on `127.0.0.1` it also needs `BOOK_SERVER_ALLOW_LOOPBACK=true` (D66): by default a loopback address answers `serverUnreachable`, as does a link-local or metadata address always.",
+        "A server to connect to: `npx --prefix apps/recap-api tsx apps/recap-api/tests/stubs/audiobookshelf.ts --port 13378 --token demo-token` prints `http://127.0.0.1:13378`. (Or a real Audiobookshelf the machine running the service can reach.)",
+        "A bearer token for a listener of the customers realm (the browser app's sign-in, or Keycloak's token endpoint for the synthetic listener `ines`).",
+        "Connect: ```sh curl -s -X POST http://localhost:3000/api/connection \\ -H \"Authorization: Bearer $TOKEN\" -H 'Content-Type: application/json' \\ -d '{\"connectionId\":\"'$(uuidgen | tr A-Z a-z)'\",\"url\":\"http://127.0.0.1:13378\",\"token\":\"demo-token\"}' ``` Expect `201 { \"connectionId\", \"serverUrl\": \"http://127.0.0.1:13378\", \"connectedAt\" }`. Send the same body again: `200`, the same answer, and the stub's log shows no second `/api/me`. Change the token to `wrong`: `422 { \"error\": \"tokenRejected\", \u2026 }`. Point `url` at a port nothing listens on: `422 serverUnreachable`. Point it at `http://localhost:3000` (this service): `422 notAudiobookshelf` with loopback allowed, `422 serverUnreachable` without. `http://169.254.169.254`: `422 serverUnreachable`, always."
+      ],
+      "as": "ines"
+    },
+    {
+      "feature": "001-audiobook-recap",
+      "slice": "LB11",
+      "title": "LB11 Attach an EPUB",
+      "steps": [
+        "Run `make demo` (or `make try`, which loads this slice's `try-it.json`).",
+        "Sign in as the fixture listener `ada`; the screen is behind the `import-audio` flag (`VITE_FLAG_IMPORT_AUDIO=on`).",
+        "Import the three Nine Winters M4B files from **Add a book** (LB3). The card shows *Imported to your library*.",
+        "Press **Add the EPUB for better accuracy** and choose an EPUB whose contents list titles the chapters (a sample is built by `apps/recap-api/tests/fixtures/epub.ts`).",
+        "Expect: *29 of 31 chapters lined up. Chapters 7 and 22 will use the transcript.* \u2014 and the button gone.",
+        "The API: `PUT /api/books/{bookId}/ebook` with the EPUB bytes and `Authorization: Bearer \u2026` answers 201 `{ bookId, ebookChapters, matched, unmatched, basis }`; the same bytes again answer 200."
+      ],
+      "as": ""
+    },
+    {
+      "feature": "001-audiobook-recap",
+      "slice": "LB2",
+      "title": "LB2 Change settings",
+      "steps": [
+        "`GET /api/settings` \u2192 the defaults: Standard, 3 days, Tomas, Wi-Fi only on, prepare-ahead on, `changedAt: null`.",
+        "`PUT /api/settings` with `{ \"defaultTier\": \"Full\", \"gapThreshold\": 7, \"voice\": \"Tomas\", \"wifiOnly\": true, \"prepareAhead\": false }` \u2192 200, the same five values with `changedAt` set.",
+        "`GET /api/settings` again \u2192 those values.",
+        "`PUT` the same body \u2192 200 and nothing new recorded.",
+        "In the browser, open `/settings`: five rows at those values; change the gap to *never*, and the status region reads \"Saving\u2026\" then \"Saved\"; reload and it still reads *never*."
+      ],
+      "as": "ines"
+    }
+  ],
+  "url": "http://localhost:6173"
+}

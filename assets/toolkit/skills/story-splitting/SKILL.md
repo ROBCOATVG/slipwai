@@ -302,9 +302,15 @@ captain reorders on its own — the chart is the one statement of what runs next
 fairways' logs agree about why something ran.
 
 Run `python3 scripts/agents/clearance.py --order`. It prints every row in the order the block currently
-holds with what that position is read off: what holds it, how many siblings steer by what it sets, and
-where it falls in its capability. **Then propose an order, with a reason per row** — the `/chart` rule,
-because this commits what the whole loop does next:
+holds with what that position is read off: what holds it, how many siblings steer by what it sets, where it
+falls in its capability, which observable it is *seen through*, and its feedback score. Then run
+`python3 scripts/agents/clearance.py --feedback`: every observable — a `state-view`, an `automation`, a
+`translation` facing an actor; the things a person can judge — ranked by what delaying that judgement costs
+(the agent-made decisions it would let a person test, weighted by confidence; the unmerged slices steering
+by its marks; the commitment points ahead of it) over what it costs to surface (a `given` in its story is
+cheap, a producer slice is dear), each term printed with the decisions, marks and slices it was read from.
+**Then propose an order, with a reason per row** — the `/chart` rule, because this commits what the whole
+loop does next:
 
 - **Every proposal carries what it was read off.** "ORD-02 above BIL-01 because two slices steer by
   `PricingPort` and nothing steers by `InvoiceRaised`" is a proposal a person can disagree with. A list is
@@ -316,15 +322,23 @@ because this commits what the whole loop does next:
   answer is which one somebody wants to see demoed, ask it. That is a product decision and this stage has a
   person in it.
 
-Three things the order is held to, which are not preferences:
+Four things the order is held to, which are not preferences:
 
 1. **Nothing goes above what sets the marks it steers by.** Not a style rule: a slice whose marks are unset
    is not cleared, so a row placed above its setters simply waits, and the fairway looks blocked for a
-   reason nobody wrote down.
+   reason nobody wrote down. A view or an automation steers by many marks and is cleared when one is set
+   or its story gives the rest, so this holds it to its *first* setter, not its last.
 2. **A capability's slices stay together** unless there is a reason to split them. A capability is what a
    person's demo is of, so scattering one defers its demo behind unrelated work.
-3. **The walking skeleton goes first** where the split cut one. It is the row that proves the path, and
-   proving the path late is the whole failure it exists to prevent.
+3. **The walking skeleton goes first: the first write and the observable that shows it.** It is the row
+   that proves the path, and proving the path late is the whole failure it exists to prevent — and a write
+   nothing reads proves nothing a person can see.
+4. **Observables in `--feedback` order, each before its producers where its story can give what they would
+   set, and a producer only as early as the observable that needs it.** recap built every slice that
+   steered by nothing first — decline, rate, ask, report, settings, stop — and the three screens and the
+   engine sat at rows 17 to 23 behind fifteen merges nobody could judge. The `## Order` table carries a
+   `Seen through` and a `Feedback score` column read off those two commands, so a person can see which rows
+   add nothing observable and argue with the number rather than the list.
 
 Write the confirmed order as the order of the `slices` block. On the event-modelling profile the block is
 rendered, so write the confirmed order as the order of `model.yaml`'s `slices` list and run `make chart`:

@@ -1,0 +1,19 @@
+{
+  "as": "customer@example.invalid",
+  "open": [],
+  "steps": [
+    {
+      "say": "Finish the Standard recap of The Cartographer's Silence (cs-1) at 4:03:17, heard to its end (3:00). Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, then 422 { error: noRecapAtKey } until CU4's request and CU5's writer have put a RecapGenerated at Standard · 14597, and 200 { bookId, tier, position, resumeAt: 14597 } after that — the position the book resumes at.",
+      "method": "POST",
+      "path": "/api/books/cs-1/recap-hearings",
+      "body": { "tier": "Standard", "position": 14597, "heardTo": 180, "skipped": false },
+      "keep": { "tier": "tier" }
+    },
+    {
+      "say": "Finish it again — a double tap, a retried call: the same {tier} hearing answers exactly as the first did and records nothing new, until the recap is asked for again (R4, D57).",
+      "method": "POST",
+      "path": "/api/books/cs-1/recap-hearings",
+      "body": { "tier": "Standard", "position": 14597, "heardTo": 180, "skipped": false }
+    }
+  ]
+}

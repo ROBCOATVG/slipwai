@@ -166,7 +166,63 @@ class TryItTest(Project):
 
     def test_the_people_are_the_enabled_fixture_users_with_a_password(self) -> None:
         self.assertEqual(self.module.people(self.root), [
-            {"name": "Amara Shah", "username": "amara@example.test", "password": "amara", "realm": "customers"}])
+            {"name": "Amara Shah", "username": "amara@example.test", "password": "amara", "realm": "customers",
+             "source": "realm"}])
+
+    def test_a_declared_person_joins_the_realm_s_and_a_doubled_one_is_the_realm_s(self) -> None:
+        place = self.root / "specs/001-shop/people"
+        place.mkdir(parents=True)
+        (place / "ada.json").write_text(json.dumps({"username": "ada", "name": "Ada Okoye", "password": "ada",
+                                                    "realm": "customers", "email": "ada@example.test"}),
+                                        encoding="utf-8")
+        (place / "twice.json").write_text(json.dumps({"username": "amara@example.test", "name": "Amara Twice",
+                                                      "password": "other", "realm": "customers"}), encoding="utf-8")
+        (place / "half.json").write_text(json.dumps({"username": "half"}), encoding="utf-8")
+        found = self.module.people(self.root)
+        self.assertEqual([one["username"] for one in found], ["amara@example.test", "ada"])
+        self.assertEqual(found[0]["password"], "amara", "the realm's password stands over a doubled file")
+        self.assertEqual(found[1]["source"], "specs/001-shop/people/ada.json")
+        faults = [one for one in self.module.declared_people(self.root) if "fault" in one]
+        self.assertEqual([one["source"] for one in faults], ["specs/001-shop/people/half.json"])
+        self.assertIn("says no name, password, realm", faults[0]["fault"])
+
+    def test_the_sign_in_server_creates_the_declared_people_it_lacks_once(self) -> None:
+        place = self.root / "specs/001-shop/people"
+        place.mkdir(parents=True)
+        for name in ("ada", "ines"):
+            (place / f"{name}.json").write_text(json.dumps({"username": name, "name": f"{name.title()} Person",
+                                                            "password": name, "realm": "customers"}), encoding="utf-8")
+        made: list[tuple] = []
+        users = {"ada"}  # the server already has one of them
+
+        def request(method, address, body=None, token="", headers=None):
+            made.append((method, address.split("/admin/realms/customers/")[-1], body))
+            if method == "GET":
+                asked = address.rsplit("username=", 1)[-1]
+                return [{"username": asked}] if asked in users else []
+            users.add(body["username"])
+            return None
+
+        self.module.request = request
+        self.assertEqual(self.module.create_people("http://localhost:9081", "t", self.root), 1)
+        posted = [body for method, _, body in made if method == "POST"]
+        self.assertEqual([one["username"] for one in posted], ["ines"])
+        self.assertEqual(posted[0]["credentials"], [{"type": "password", "value": "ines", "temporary": False}])
+        self.assertTrue(posted[0]["enabled"] and posted[0]["emailVerified"])
+        self.assertEqual(self.module.create_people("http://localhost:9081", "t", self.root), 0,
+                         "a second run makes nobody twice")
+
+    def test_a_story_s_faults_are_read_off_the_files(self) -> None:
+        faults = self.module.story_faults(
+            "001-shop/L02", {"as": "nobody", "open": [{"label": "x", "path": "/records/r-1"}, {"path": "/nowhere"}],
+                             "steps": [{"method": "POST", "path": "/api/records", "as": "amara@example.test"}]},
+            {"amara@example.test"}, ["/records/:id"], [], None)
+        self.assertEqual(faults, ["001-shop/L02: `as` names nobody, whom no realm or people file declares",
+                                  "001-shop/L02: open 2 is at /nowhere, which no browser route mounts"])
+        self.assertTrue(self.module.mounted("/books/nw-1/player?at=3", ["/books/:bookId/player"]))
+        self.assertTrue(self.module.mounted("/docs/a/b", ["/docs/*"]))
+        self.assertFalse(self.module.mounted("/books", ["/books/:bookId"]))
+        self.assertFalse(self.module.mounted("/books/nw-1/player/extra", ["/books/:bookId/player"]))
 
     def test_the_sign_in_server_and_its_admin_are_read_off_the_compose_file(self) -> None:
         self.assertEqual(self.module.keycloak(self.root),

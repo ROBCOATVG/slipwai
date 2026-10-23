@@ -845,6 +845,7 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
     # after it. An extension with something to do once the commit exists had no point to say so at, and
     # `before-merge` was the nearest wrong answer.
     fire("after-merge", slice=slice_id, fairway=fairway, commit=commit)
+    refresh_try_it(slice_id)
     # `ci` says what was known about trunk when this was granted. `unverified` is not `green`: a harbour
     # with no forge keeps working, and nobody reads the line later as a run that was checked.
     # `note` only where the person's checkout was touched to land it, so a reader who finds their branch
@@ -854,6 +855,33 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
         print(f"harbourmaster: {note}", flush=True)
     return [logs.entry("granted", harbour=True, fairway=fairway, request=request, what=what,
                        slice=slice_id, commit=commit, ci=trunk_state, **said, **spent)]
+
+
+#: Where Try it keeps what it is doing; `try_it.py` writes it and the board reads it.
+TRY_STATE = ROOT / ".slipwai/try-it/state.json"
+
+
+def refresh_try_it(slice_id: str) -> None:
+    """Move a running Try it to the trunk this merge made, keeping its data and seeding the new slice's
+    story — detached, so the merge never waits on an app starting, and only where Try it is `ready`: a
+    person starts it, and a stopped one is left stopped. Try it following trunk is what keeps every
+    observable reachable at any time (feedback-points plan, D8); which ones a person is asked to look at
+    is `clearance.py --feedback`'s."""
+    try:
+        state = json.loads(TRY_STATE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(state, dict) or state.get("state") != "ready":
+        return
+    script = HERE / "try_it.py"
+    if not script.is_file():
+        return
+    TRY_STATE.parent.mkdir(parents=True, exist_ok=True)
+    with (TRY_STATE.parent / "harbourmaster.log").open("a", encoding="utf-8") as out:
+        out.write(f"refresh after {slice_id} merged\n")
+        subprocess.Popen([sys.executable, "-B", str(script), "refresh"], cwd=ROOT, stdout=out,
+                         stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
+    print(f"harbourmaster: Try it is moving to trunk with {slice_id}", flush=True)
 
 
 def allocation(fairway: str, taken: list[str]) -> logs.Entry:
@@ -1235,9 +1263,25 @@ def make_check(check: dict, commit: str) -> bool:
         git("worktree", "remove", "--force", str(NEEDS))
 
 
+def open_tolds(deck: list[logs.Entry], harbour: list[logs.Entry], fairway: str) -> list[logs.Entry]:
+    """The `told` lines of this fairway that carry needs and have no `told-met` receipt yet.
+
+    A hand-back that names a shared surface — a dependency the slice may not add, a realm user, a flag line
+    — is a need the fleet ticks against trunk exactly as it ticks a park's. recap's 59 told lines held the
+    four things that darkened every story, as notes; the slice that wrote each shipped a stub around it,
+    and nothing said the need was still open once the note was dismissed.
+    """
+    met = {str(e.fields.get("told", "")) for e in harbour
+           if e.kind == "told-met" and str(e.fields.get("fairway", "")) == fairway}
+    return [e for e in deck if e.kind == "told" and str(e.fields.get("fairway", "")) == fairway
+            and isinstance(e.fields.get("needs"), list) and e.fields["needs"] and e.t not in met]
+
+
 def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
     """A `need-met` receipt for every need of an open park that trunk now satisfies or a person has ticked,
-    and a `cleared` receipt for every park whose needs are all met.
+    and a `cleared` receipt for every park whose needs are all met. A `told` with needs is walked beside
+    the parks, its receipt a `told-met`, so a hand-back lands on the board as a checklist and leaves it
+    when trunk has the last item.
 
     A park that waits on a change to trunk is a list of needs, each with a check this process can run
     against trunk — a file holding a string, a `check-*` target passing — or a person's word. recap's LB6,
@@ -1249,8 +1293,8 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
     harbour = harbour_entries()
     met = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")), int(e.fields.get("need", -1)))
            for e in [*harbour, *already] if e.kind == "need-met"}
-    done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
-            for e in already if e.kind == "cleared"}
+    done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "") or e.fields.get("told", "")))
+            for e in already if e.kind in ("cleared", "told-met")}
     commit = trunk_commit()
     found: list[logs.Entry] = []
     for path in deck_logs():
@@ -1261,7 +1305,7 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
             continue
         ticked = {(str(e.fields.get("parked", "")), int(e.fields.get("need", -1)))
                   for e in deck if e.kind == "need-done" and str(e.fields.get("fairway", "")) == fairway}
-        for park in logs.open_parks(deck, harbour, fairway):
+        for park in [*logs.open_parks(deck, harbour, fairway), *open_tolds(deck, harbour, fairway)]:
             needs = park.fields.get("needs")
             if not isinstance(needs, list) or not needs or (fairway, park.t) in done:
                 continue
@@ -1284,8 +1328,12 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
                     found.append(logs.entry("need-met", harbour=True, fairway=fairway, parked=park.t,
                                             need=index, how=how))
             if all((fairway, park.t, index) in met for index in range(len(needs))):
-                found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
-                                        what=f"needs met: {len(needs)} of {len(needs)}"))
+                if park.kind == "told":
+                    found.append(logs.entry("told-met", harbour=True, fairway=fairway, told=park.t,
+                                            what=f"needs met: {len(needs)} of {len(needs)}"))
+                else:
+                    found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
+                                            what=f"needs met: {len(needs)} of {len(needs)}"))
     return found
 
 

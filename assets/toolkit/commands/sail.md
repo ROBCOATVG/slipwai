@@ -274,7 +274,12 @@ and still ran one slice at a time.
 **It has clearance.** A ready slice runs alongside its siblings when every mark it steers by has
 been set, and a mark is set when some slice wrote a `mark-set` line for it at its own first stage, in its
 own worktree. So a sibling unblocks this slice by having **planned**, not by having merged — if a merge
-were the signal, every fairway would wait on every other one, which is what version 1 did.
+were the signal, every fairway would wait on every other one, which is what version 1 did. **A view or an
+automation steers by many marks and folds whatever exists**: it has clearance when one is set, and its
+story (`try-it.json`'s `given`) gives the rest, so the screens and the engines — the things a person can
+judge — are not the last rows of every fairway. On the event profile every mark is typed in `model.yaml`
+before any slice runs, which is what a mark being set is *for*. A `state-change` and a `translation` still
+wait for every mark they steer by.
 
 Ask, never assume:
 
@@ -412,7 +417,8 @@ own first stage.
 
 **The shared-surface rule**, which the delegates cannot infer and `{{make}} check-slice-scope` holds on
 every `slice/<id>` branch: a slice's commits touch its own `specs/<feature>/slices/<id>/`, the feature's
-cumulative artifacts (`spec.md`, `story-split.md`, `contracts/`, `checklists/`, `adversary-log.md`, and
+cumulative artifacts (`spec.md`, `story-split.md`, `contracts/`, `checklists/`, `adversary-log.md`,
+`people/` — one JSON file per person a story signs in as — and
 `decisions.md`, where `/cruise` records a decision taken during the slice), its own block of `model.yaml`
 with the committed canvas `model.drawio` regenerated from it (`{{make}} model-drawio` — `check-drawio`
 holds the canvas to the model, so a slice that advanced its block cannot pass `verify` without it), the
@@ -422,7 +428,15 @@ several — the context's events module *additively*, **new** migration files na
 `Proposed` (never an edit to one that stands), and the composition root. Nothing else —
 `Makefile`, `project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/`, the other docs —
 is a slice's to write: a delegate that needs one of them hands the need back here, and it lands on `main`
-before the fan-out or between merges. The canonical slot at the feature root is a link, never committed.
+before the fan-out or between merges. **A hand-back that names a shared surface is a need, not a note**:
+under `/cruise` it is a `told` with `needs`, one item per thing that has to change, each with a `check`
+wherever trunk can prove it landed — a dependency is `text:<manifest>:"<package>"`, a realm user is
+`text:<realm file>:"<username>"`, a flag line is `text:.env.example:<KEY>=` — written with
+`python3 scripts/agents/fleet.py tell <fairway> --need '<what>' --check <check> <message>`. The
+harbourmaster ticks each need against trunk as it ticks a park's, the board groups it under *Waiting on
+you* by need, and a slice that ships a stub around the need still ships with the need open against it,
+which is what keeps a merged slice's dark story from reading as finished. The canonical slot at the feature
+root is a link, never committed.
 
 **Prove on the slice branch, then verify, then push.** As delegates report their examples proven, check each slice's
 `## Examples proven` from its unpushed worktree in split order — never from `main`, never by pushing increment

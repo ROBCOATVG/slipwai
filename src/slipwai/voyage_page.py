@@ -27,7 +27,7 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 760 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# budget: 790 — the bands of one window: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
@@ -653,6 +653,30 @@ def intake_card(found: list) -> str:
             f'<div class="ask"><button class="go" id="intake-go">Continue the next feature</button></div></div>')
 
 
+def feedback_points_card(points: list[dict]) -> str:
+    """The next three feedback points: the observables a person is asked to look at first, by what delaying
+    their judgement would cost, each with the decisions it would let them test. From the project's own
+    `clearance.py --feedback`, so the number here is the number a captain's split would argue with."""
+    if not points:
+        return ""
+    items = []
+    for row in points:
+        sources = (row.get("uncertainty") or {}).get("sources") or []
+        said = "; ".join(str(one).split(" — ", 1)[0] for one in sources[:3])
+        reach = (row.get("blast_radius") or {}).get("score", 0)
+        cost = (row.get("cost_to_surface") or {}).get("score", 0)
+        actor = f" for {esc(str(row['actor']))}" if row.get("actor") else ""
+        score = row.get("score") or 0
+        items.append(f'<li><span class="sid">{esc(str(row.get("slice", "")))}</span>'
+                     f'<b>{esc(str(row.get("pattern", "")))}{actor}</b> · score {esc(f"{score:g}")}'
+                     f' · {esc(str(reach))} unmerged slice{"s" if reach != 1 else ""} build on its marks · '
+                     f'{esc(f"{cost:g}")} to surface'
+                     + (f'<div class="empty">would test {esc(said)}</div>' if said else "") + "</li>")
+    return ('<div class="card" id="feedback-points"><h2>Next feedback points</h2><p class="empty">What a person '
+            "could judge next, by what delaying the judgement would cost. From `clearance.py --feedback`; the split "
+            f'proposes its order from the same ranking.</p><ul class="new">{"".join(items)}</ul></div>')
+
+
 def work_card(rows: list[dict[str, str]], fault: str) -> str:
     if fault:
         return f'<div class="card"><h2>The work</h2><p class="empty">{esc(fault)}</p></div>'
@@ -673,7 +697,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
          ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
-         decisions: tuple[str, int] = ("", 0)) -> str:
+         decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None) -> str:
     now = current(found)
     sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
@@ -688,7 +712,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     left = [row for row in (mocks or []) if row["feature"] not in taken]
     # The count on the tab is what waits on a person: a park that lifts by itself is paused, not waiting.
     waiting = len([row for row in (fleet or {}).get("inbox") or [] if row.get("paused") != "yes"])
-    tabs = [("work", "Work", f"{strip}{work_card(rows, fault)}"),
+    tabs = [("work", "Work", f"{strip}{feedback_points_card(points or [])}{work_card(rows, fault)}"),
             ("try", "Try it & feedback" if trying else "Feedback", f"{trying}{feedback}"),
             ("screens", "Screens", screens_card(shots or [], mocks or [], "" if trying else app)
              + mockups_card(left, root)),

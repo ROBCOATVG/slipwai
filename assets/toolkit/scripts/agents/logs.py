@@ -25,7 +25,7 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 470 — the park record (cause, until, needs, then) and the shape each field is held to, beside
+# budget: 500 — the park record (cause, until, needs, then) and the shape each field is held to, beside
 # the whole vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once
 from __future__ import annotations
@@ -122,6 +122,13 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     # A person's tick of one need of a park, from the board: `parked` is the park's instant, `need` its
     # index. Not a `told` — a `told` after a park clears the whole park, and a tick is one item of it.
     "need-done": ("fairway", "parked", "need"),
+    # A slice's `try-it.json` ran green against the app its berth runs, at the Demo rung: `records` is how
+    # many steps answered, `commit` the berth's head the story was run from. Written by `try_it.py seed
+    # --slice` the way a stage writes `mark-set`, and held to by the captain the same way: a slice with a
+    # story whose turn wrote no `seeded` line made no progress at that rung and parks. recap merged
+    # fifteen slices whose stories every one failed at their first call, each saying *this step records
+    # 401*, because *one the service refuses is fixed here* was a sentence and not a line.
+    "seeded": ("fairway", "slice", "records", "commit"),
 }
 
 #: Why a park stands, as one word a reader and a board can act on without parsing `why`. `limit`: the
@@ -144,8 +151,15 @@ TICKERS = ("person", "fleet")
 #: lifts by itself; `needs`, one item per thing that has to change — `{"what", "by", "check"?, "path"?}` —
 #: ticked by the harbourmaster or a person; `then`, one sentence on what the fleet does once they are met.
 #: `why` stays, as the paragraph a reader without the board sees.
+#: A `told` may carry `needs` in the park's shape: a hand-back that names a shared surface — a dependency,
+#: a realm user, a flag line — is a need the harbourmaster ticks against trunk exactly as it ticks a
+#: park's, and the board groups under *Waiting on you* rather than filing as a note. recap's 59 told lines
+#: held the four things that darkened every story, as notes a person could dismiss. A `seeded` line may say
+#: how many `given` records the story appended first, the `api` it ran against and the `story` file.
 OPTIONAL: dict[str, tuple[str, ...]] = {
     "parked": ("slice", "waiting", "cause", "until", "needs", "then"),
+    "told": ("slice", "needs", "by"),
+    "seeded": ("given", "api", "story"),
 }
 #: The instant an `until` is written in: the log's own format, so two logs sort it with everything else.
 INSTANT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -176,8 +190,11 @@ HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
     "cleared": ("fairway", "parked", "what"),
     # One need of a park, met: `parked` is the park's instant, `need` its index in the park's `needs`,
     # `how` what saw it — the trunk commit a check passed at, or the person's word. A park whose every
-    # need has one of these gets its `cleared` receipt without anybody being asked.
+    # need has one of these gets its `cleared` receipt without anybody being asked. A `told` with needs is
+    # ticked by the same line, `parked` carrying the told's instant.
     "need-met": ("fairway", "parked", "need", "how"),
+    # Every need of a `told` met: the receipt that takes it off *Waiting on you*, as `cleared` takes a park.
+    "told-met": ("fairway", "told", "what"),
     "refused": ("fairway", "request", "why"),
     # Trunk's own CI, which is harbour-wide rather than one fairway's: the gate before a merge is `make
     # verify` and CI runs `make ci`, so trunk can go red from a check `verify` never ran. Written once per
@@ -271,7 +288,7 @@ def closed(kind: str, body: dict) -> None:
         if value is not None and value not in allowed:
             raise Unreadable(f"a {kind!r} line's {name} is one of {', '.join(allowed)}; this one says "
                              f"{value!r}, which no reader can act on")
-    if kind == "parked":
+    if kind in ("parked", "told"):
         shaped(body)
 
 

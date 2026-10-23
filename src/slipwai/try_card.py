@@ -24,7 +24,7 @@ from . import process_alive
 from .feedback_card import opener
 from .page_shell import esc
 
-# budget: 390 — one card in four states and the routes' half of it: what Try it is doing, the app and who to
+# budget: 440 — one card in four states and the routes' half of it: what Try it is doing, the app and who to
 # sign in as, its example records grouped by that person, what to try, its switches and its recorded walks.
 
 #: Where the demo hand's recordings are served from: `/walks/<feature>/<slice>/<example>.webm`.
@@ -207,11 +207,22 @@ def people_html(state: dict) -> str:
     return f"<h3>{heading}</h3><table>{rows}</table>"
 
 
+def into_app(url: str, path: str, slice_id: str, who: str, commit: str) -> str:
+    """A link into the app carrying its context — the slice, who the person is signed in as, trunk's commit
+    — so what a person types after clicking it lands with the slice it was about (`feedback.CONTEXT`)."""
+    held = {"slice": slice_id.rsplit("/", 1)[-1], "as": who, "trunk": commit[:7]}
+    query = "&".join(f"{key}={quote(value, safe='')}" for key, value in held.items() if value)
+    joiner = "&" if "?" in path else "?"
+    return esc(f"{url}{path}{joiner}{query}" if query else f"{url}{path}")
+
+
 def links_html(state: dict) -> str:
     """The records the example data made, grouped by who to sign in as to see them — the person each
     slice's story was told as, since a record one person owns may be refused to another — each a link into
-    the app, which is the only way to reach a record in an app with no list of them yet."""
-    url = str(state.get("url", ""))
+    the app, which is the only way to reach a record in an app with no list of them yet. A record the story
+    *gave* rather than made says so: the upstream slice is not built, and what the person is looking at is
+    this slice seeded to a state."""
+    url, commit = str(state.get("url", "")), str(state.get("commit", ""))
     people = {str(one.get("username", "")): one for one in state.get("people") or []}
     groups: dict[str, list[dict]] = {}
     for one in state.get("links") or []:
@@ -222,38 +233,72 @@ def links_html(state: dict) -> str:
         head = (f'<p class="as">Sign in as <b>{esc(person.get("name") or who)}</b> · {credentials(person)}</p>'
                 if who else '<p class="as">Signed in as the person the slice\'s story names</p>')
         rows = "".join(f'<li><span class="sid">{esc(str(one.get("slice", "")).rsplit("/", 1)[-1])}</span>'
-                       f'<a href="{esc(url + str(one.get("path", "")))}" target="{APP_TAB}">'
-                       f'{esc(one.get("label") or one.get("path", ""))}</a></li>' for one in links)
+                       f'<a href="{into_app(url, str(one.get("path", "")), str(one.get("slice", "")), who, commit)}" '
+                       f'target="{APP_TAB}">{esc(one.get("label") or one.get("path", ""))}</a>'
+                       + (' <span class="empty">· given, not made: its upstream is not built</span>'
+                          if one.get("given") else "") + "</li>" for one in links)
         blocks += f'<div class="as-group">{head}<ul class="new">{rows}</ul></div>'
-    failed = "".join(f'<li class="warn"><span class="sid">{esc(str(one.get("slice", "")).rsplit("/", 1)[-1])}</span>'
-                     f'{esc(one.get("step", ""))}: {esc(one.get("said", ""))}</li>'
-                     for one in state.get("seed_failed") or [])
-    if not blocks and not failed:
+    if not blocks:
         return ""
     return ('<h3>Example data, by who to sign in as</h3><p class="empty">Sign in once, in the app\'s tab: every '
-            "link on this card opens in that same tab, which keeps the sign-in.</p>"
-            + blocks + (f'<ul class="new">{failed}</ul>' if failed else ""))
+            "link on this card opens in that same tab, which keeps the sign-in.</p>" + blocks)
 
 
 def new_html(state: dict) -> str:
-    """What to try, from each new slice's quickstart: the steps it already wrote for a person."""
+    """What to try, and what merged dark. *New to try* lists the slices whose story seeded — each with its
+    links first and its quickstart steps under a disclosure; *Merged but dark* lists the rest, each with
+    the one line that says why: the step that refused and what it said, or the need that keeps it dark. A
+    card that listed fifteen slices' curl commands over fifteen stories answering 401 was telling a person
+    there was something to try (recap, 2026-10-22)."""
     found = state.get("new") or []
     if not found:
         return ""
     first = not state.get("previous")
     people = {str(one.get("username", "")): one for one in state.get("people") or []}
+    url, commit = str(state.get("url", "")), str(state.get("commit", ""))
+    links: dict[str, list[dict]] = {}
+    for one in state.get("links") or []:
+        links.setdefault(str(one.get("slice", "")).rsplit("/", 1)[-1], []).append(one)
+    # An older state.json has no `dark` on its rows and no `seeded` list: every new slice reads as dark then,
+    # until the next `make try-update` writes a state that says which seeded.
+    lit = [one for one in found if not one.get("dark") and (state.get("seeded") is not None or "dark" in one)]
+    dark = [one for one in found if one not in lit]
 
     def who(one: dict) -> str:
         person = people.get(str(one.get("as", "")))
         return (f' <span class="empty">· sign in as {esc(person.get("name") or person.get("username", ""))}'
                 f"</span>") if person else ""
-    items = "".join(
+
+    def steps(one: dict) -> str:
+        listed = "".join(f"<li>{esc(step)}</li>" for step in one.get("steps") or [])
+        return (f'<details><summary class="empty">its quickstart\'s steps</summary><ol class="steps">{listed}</ol>'
+                f"</details>") if listed else ""
+
+    def opens(one: dict) -> str:
+        mine = links.get(str(one.get("slice", "")), [])
+        slice_id = str(one.get("slice", ""))
+        return "".join(
+            f' <a href="{into_app(url, str(link.get("path", "")), slice_id, str(link.get("as", "")), commit)}"'
+            f' target="{APP_TAB}">{esc(link.get("label") or link.get("path", ""))}</a>' for link in mine)
+
+    lit_items = "".join(
         f'<li><span class="sid">{esc(one.get("slice", ""))}</span><b>{esc(one.get("title", ""))}</b>{who(one)}'
-        f'<ol class="steps">{"".join(f"<li>{esc(step)}</li>" for step in one.get("steps") or [])}</ol></li>'
-        for one in found)
-    heading = f"Merged so far · {len(found)}" if first else f"New since the last update · {len(found)}"
-    return (f'<details id="try-new"{"" if first else " open"}><summary><h3 style="display:inline">'
-            f'{esc(heading)}</h3></summary><ul class="new">{items}</ul></details>')
+        + (' <span class="empty">· given, not made</span>' if one.get("given") else "")
+        + opens(one) + steps(one) + "</li>" for one in lit)
+    dark_items = "".join(
+        f'<li class="warn"><span class="sid">{esc(one.get("slice", ""))}</span><b>{esc(one.get("title", ""))}</b> '
+        f'<span>— {esc(one.get("dark") or "its story did not seed")}</span></li>' for one in dark)
+    when = "" if first else " since the last update"
+    shown = ""
+    if lit:
+        shown += (f'<details id="try-new" open><summary><h3 style="display:inline">New to try{esc(when)} · {len(lit)}'
+                  f'</h3></summary><ul class="new">{lit_items}</ul></details>')
+    if dark:
+        shown += (f'<details id="try-dark"{" open" if not lit else ""}><summary><h3 style="display:inline">Merged but '
+                  f'dark{esc(when)} · {len(dark)}</h3></summary><p class="empty">Merged, and nothing a person can '
+                  f'try yet: each line says what refused its story, or what it still needs on trunk.</p>'
+                  f'<ul class="new">{dark_items}</ul></details>')
+    return shown
 
 
 def flags_html(state: dict) -> str:
@@ -348,15 +393,19 @@ def card_html(state: dict, walks: list[dict] | None = None) -> str:
         url = str(state.get("url", ""))
         behind = int(state.get("behind", 0) or 0)
         newer = f"{behind} newer commit{'s' if behind != 1 else ''} on trunk" if behind else "up to date"
+        failed = state.get("seed_failed") or []
+        first_reason = f" — {failed[0].get('said', '')}"[:80] if failed else ""
         facts = (("Showing", f"trunk at {commit}"), ("Trunk", newer), ("Address", url.removeprefix("http://")),
                  ("Example data", f"{len(state.get('seeded') or [])} slices loaded"
-                  + (f", {len(state.get('seed_failed') or [])} refused" if state.get("seed_failed") else "")))
+                  + (f", {len(failed)} dark{first_reason}" if failed else "")))
         body = ('<div class="grid">'
                 + "".join(f'<div class="fact"><b>{esc(a)}</b><span>{esc(b)}</span></div>' for a, b in facts)
                 + "</div>" + links_html(state) + people_html(state) + new_html(state)
                 + flags_html(state))
         buttons = (f'<a class="quiet" href="{esc(url)}" target="{APP_TAB}">Open the app ↗</a>'
-                   + opener("What did using it show?", {"from": "try-it", "trunk": commit}, primary=True)
+                   + opener("What did using it show?", {"from": "try-it", "trunk": commit,
+                                                       "slice": str((state.get("new") or [{}])[0].get("slice", ""))
+                                                       if len(state.get("new") or []) == 1 else ""}, primary=True)
                    + (button("refresh", "Update to newest") if behind else "")
                    + button("fresh", "Start over with fresh data") + button("stop", "Stop"))
     said = said_of(state, walks or [])

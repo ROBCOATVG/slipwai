@@ -18,6 +18,8 @@ from captain_fixture import SLICES, WORKS, Fixture, fake_drive  # noqa: F401
 from slipwai import fleet, logs
 from slipwai.bridge_page import page
 
+# budget: 400 — the gate has three things a turn owes now: its marks, its demo and its story seeded green
+
 
 class GateTest(Fixture):
     """What closes a slice: every mark the chart says it sets, and a demo, written during this turn.
@@ -48,6 +50,39 @@ class GateTest(Fixture):
         done = self.captain("ORD", self.sail(fake_drive(demo=False)))
         parked = [str(e.fields["why"]) for e in self.read("ORD") if e.kind == "parked"]
         self.assertIn("no `demo` line", parked[0], done.stdout)
+
+    def story(self, slice_id: str = "ORD-01") -> None:
+        place = self.root / f"specs/ordering/slices/{slice_id}"
+        place.mkdir(parents=True, exist_ok=True)
+        (place / "try-it.json").write_text('{"as": "ada", "steps": [{"method": "GET", "path": "/api/x"}]}',
+                                           encoding="utf-8")
+
+    def test_a_slice_with_a_story_and_no_seeded_line_parks_at_its_gate_with_the_need(self) -> None:
+        """recap, 2026-10-22: fifteen slices merged with a story each, and every story was refused at its
+        first call. The seed is the third thing a turn owes, and a turn that did not write it did not run it."""
+        self.story()
+        done = self.captain("ORD", self.sail(WORKS))
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "request"], [], done.stdout)
+        parks = [e for e in self.read("ORD") if e.kind == "parked"]
+        self.assertEqual(len(parks), 1)
+        self.assertIn("no `seeded` line", str(parks[0].fields["why"]), done.stdout)
+        self.assertIn("try_it.py seed --slice ORD-01", str(parks[0].fields["why"]))
+        self.assertEqual(parks[0].fields.get("cause"), "gate")
+        self.assertEqual(parks[0].fields.get("needs"), [
+            {"what": "the story in specs/ordering/slices/ORD-01/try-it.json seeds green against the app this berth "
+                     "runs", "by": "fleet", "check": {"kind": "make", "target": "check-try"}}])
+
+    def test_a_slice_with_a_story_whose_turn_wrote_seeded_is_through_its_gate(self) -> None:
+        self.story()
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(fake_drive(seeded=True)))
+        self.assertEqual([e.kind for e in self.read("ORD") if e.kind in ("parked", "request", "merged")],
+                         ["request", "merged"], done.stdout)
+
+    def test_a_slice_with_no_story_owes_no_seeded_line(self) -> None:
+        self.grant("ORD-01")
+        done = self.captain("ORD", self.sail(WORKS))
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "parked"], [], done.stdout)
 
     def test_a_slice_a_session_merged_itself_is_never_driven_again(self) -> None:
         """hr-test-2: a session asked for its own merge, and the captain judged the run by its gate, found no

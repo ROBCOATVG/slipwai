@@ -127,8 +127,12 @@ slices reads as fifty-eight features to somebody who did not write them.
 
 - the literal command or URL that runs it — the exact text to paste, not a description of where to look.
   Where the project has `make try`, that is the command: trunk on its own ports, every merged slice switched
-  on, signed-in users listed, and each slice's `try-it.json` loaded as its example data
-- the seed data it needs, or that it needs none — under `make try`, the records its `try-it.json` made
+  on, signed-in users listed, and each slice's `try-it.json` loaded as its example data. **Where Try it is
+  already running** (`.slipwai/try-it/state.json` says `ready`), the URL is Try it's and the links are the
+  capability's `links[]` from that file — nothing starts a second app for a demo where one is up, and
+  `make try-update` has already moved it to the merge that made the capability whole
+- the seed data it needs, or that it needs none — under `make try`, the records its `try-it.json` made,
+  and which of them were *given* rather than made, because the upstream slice is not built
 - the result to expect, in the actor's vocabulary rather than a test name
 
 **When "the thing the actor uses" is a long-lived process** — a dev server, a container — starting it to

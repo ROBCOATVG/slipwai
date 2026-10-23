@@ -36,6 +36,8 @@ from .production import deploy_role_gate, production_targets
 from .shared_packages import npm_dependency, npm_workspace_targets
 from .unit_targets import unit_targets
 
+# budget: 400 — the generated Makefile's every block, the seed door's target now beside the migrations' it needs
+
 
 def dev_targets(project_name: str, services: list[App], apps: list[App]) -> str:
     """One foreground target per service that has a transport, each inside its own transport's marked
@@ -122,6 +124,34 @@ migrate: $(MIGRATE_TARGETS) ## Apply every service's migrations (needs services-
 """
 
 
+def seed_targets(services: list[App], apps: list[App]) -> str:
+    """`seed-<service> FILE=<json>`: the seed door, where the language's tooling has one.
+
+    A slice's `try-it.json` may *give* the events its unbuilt upstream would have written, and they go in
+    through the service's own store port — a process with the store's credentials, never a route the app
+    serves. Inside the migrating feature's marked region for the same reason `migrate` is: the door needs
+    the durable store, and a project that prunes the store prunes the door with it.
+    """
+    text = ""
+    for service in services:
+        feature = service.selection.migrating_feature
+        if feature is None:
+            continue
+        tooling = app_tooling(service, apps, feature)
+        door = tooling.get("seed")
+        if not door:
+            continue
+        needs, install = install_step(service, tooling)
+        text += f"""
+# backing-service:{feature}:begin
+.PHONY: seed-{service.name}
+seed-{service.name}:{needs} ## Append the events a slice's try-it.json gives, through {service.name}'s store port (FILE=<json>; needs services-up)
+{install}	{door}
+# backing-service:{feature}:end
+"""
+    return text
+
+
 def web_targets(web: list[App], apps: list[App]) -> str:
     """One foreground target per browser app: `dev-web` for the first, `dev-<name>` after.
 
@@ -175,7 +205,7 @@ def makefile(
         formatting = f"format: ## Rewrite this project's own code the way `make lint` expects to find it\n\t{formatting}\n"
     verify_dependencies = (
         "check-python lint typecheck check-imports check-migrations check-chart check-dispatch check-rendered check-surfaces check-slice-scope check-extensions check-agents check-speckit "
-        "check-constitution check-benchmark check-decisions test"
+        "check-constitution check-benchmark check-decisions check-try test"
     )
     style_target = ""
     if web:
@@ -267,7 +297,7 @@ demo-down: ## Stop the demo, keeping any volume
             if present
         )
         run_targets = f"\n.PHONY: {phony}{dev_target}{dev_web_target}{demo_targets}{TRY_TARGETS if dev_target or dev_web_target else ''}"
-    service_targets = compose_targets + migrate_targets(services, apps) + run_targets
+    service_targets = compose_targets + migrate_targets(services, apps) + seed_targets(services, apps) + run_targets
     mutation_note = mutation_notes(apps)
     # `$(CI_DATABASE)` expands to nothing once its definition is pruned, which is exactly the difference
     # between the two CI gates. Under a production target the extended gate also builds every image and

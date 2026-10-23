@@ -13,8 +13,11 @@ branches — so the point is the capability: whole when its last slice has merge
 `scripts/agents/capabilities.py` already computes, and before the person's demo stop walks it.
 
 What stays per slice is what only a slice can answer, scoped to what the slice added or changed: screen design
-for its own screens, one review of its own diff, its examples proven by its own tests, and the record of which
-attack-surface triggers it widened — a record, not an attack. Convergence is not one of them since 2026-10-17: it is the
+for its own screens, one review of its own diff, its examples proven by its own tests, its story seeded green
+against the app its berth runs, and the record of which attack-surface triggers it widened — a record, not an
+attack. **The showing is per slice and the readings are per capability**: a slice's story seeding green and
+Try it following trunk are what make each observable reachable the moment it merges, and these readings are
+what make the whole fit to accept; neither stands in for the other (feedback-points plan, D1). Convergence is not one of them since 2026-10-17: it is the
 first capability gate, because what it asks — does the code do what the specification requires — has its
 answer only once the slices that share the requirement are all built. **Under the `open` release mode four
 readings do not wait**: where a merge reaches the actor at once, code nobody has looked at would be in front

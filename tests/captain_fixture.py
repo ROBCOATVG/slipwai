@@ -49,11 +49,12 @@ CHART = "slices:\n" + "".join(
     for slice_id, (fairway, sets, steers) in SLICES.items())
 
 
-def fake_drive(verdict: str = "accepted", marks: bool = True, demo: bool = True) -> str:
+def fake_drive(verdict: str = "accepted", marks: bool = True, demo: bool = True, seeded: bool = False) -> str:
     """A fake `/sail`, as the real one is seen from here: a process that writes lines and exits.
 
     Its argv is `<slice> <fairway>`. What it writes is what the chart says that slice publishes, so a fake
-    that is right about one slice is right about all of them.
+    that is right about one slice is right about all of them. `seeded` is the line `try_it.py seed --slice`
+    writes on a green run, owed only by a slice with a `try-it.json`.
     """
     table = {slice_id: sets for slice_id, (_f, sets, _s) in SLICES.items()}
     return f"""import sys, json, pathlib, datetime
@@ -67,6 +68,8 @@ if {marks!r}:
               for mark in {table!r}[slice_id]]
 if {demo!r}:
     lines.append({{"kind": "demo", "fairway": fairway, "slice": slice_id, "verdict": {verdict!r}}})
+if {seeded!r}:
+    lines.append({{"kind": "seeded", "fairway": fairway, "slice": slice_id, "records": 2, "commit": "f00d"}})
 with path.open("a", encoding="utf-8") as handle:
     for body in lines:
         handle.write(json.dumps({{"v": 1, "t": now, **body}}) + "\\n")

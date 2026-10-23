@@ -25,6 +25,16 @@ class NeedRouteTest(BoardTest):
         self.assertEqual(code, 400)
         self.assertIn("no need 4", said)
 
+    def test_a_hand_back_s_need_is_ticked_the_same_way_by_the_told_s_instant(self) -> None:
+        at = "2026-10-21T11:01:00Z"
+        self.deck("ORD", logs.entry("told", fairway="ORD", slice="ORD-01", by="session", t=at,
+                                    message="For the host: add ada to the realm",
+                                    needs=[{"what": "ada in the realm", "by": "person"}]))
+        code, said = self.post("/need", {"fairway": "ORD", "parked": at, "need": 0})
+        self.assertEqual(code, 200, said)
+        self.assertEqual([(e.fields["parked"], e.fields["need"]) for e in self.read("ORD") if e.kind == "need-done"],
+                         [(at, 0)])
+
 
 if __name__ == "__main__":
     unittest.main()

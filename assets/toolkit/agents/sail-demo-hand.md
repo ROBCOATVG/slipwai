@@ -24,8 +24,12 @@ accessibility tree with refs, `click @ref`, `fill @ref <text>`, `screenshot --if
 tool the harness exposes; where there is none, say so and drive the API over HTTP with `curl` — a screen
 judged from its API alone is recorded as such. Under `http` start there, and under `cli` at the CLI, saying
 which rung the setting named. Where the slice has no screen, HTTP or the CLI is the demo whatever the setting.
-Leave the app the brief started running when you finish and say that it is up: the session that delegated
-you stops it once your verdict is recorded, since no person is coming to use it.
+Where the brief hands you Try it's address — trunk's newest merge, already running for a person, with the
+capability's example records loaded and their links — walk there, signed in as the person each link names,
+rather than starting an app of your own; a record the card marks *given* was seeded by the story because its
+upstream slice is not built, and you say so where it shapes what you saw. Leave the app the brief started
+running when you finish and say that it is up: the session that delegated you stops it once your verdict is
+recorded, since no person is coming to use it — and never stops Try it, which a person has open.
 
 Your verdict is one of three words, the ones `scripts/agents/benchmark.py end` accepts for `outcome=`:
 `accepted` — every example did what the actor expects and every screen holds to what this project already

@@ -1,0 +1,19 @@
+{
+  "as": "ines",
+  "open": [
+    { "label": "Connect a server", "path": "/connect-server" }
+  ],
+  "steps": [
+    {
+      "say": "Ines connects her Audiobookshelf server (the stub from quickstart.md, listening on 127.0.0.1:13378 with token demo-token)",
+      "method": "POST",
+      "path": "/api/connection",
+      "body": {
+        "connectionId": "c0a1e3f2-6b7d-4c8e-9f01-2a3b4c5d6e7f",
+        "url": "http://127.0.0.1:13378",
+        "token": "demo-token"
+      },
+      "keep": { "serverUrl": "serverUrl", "connectedAt": "connectedAt" }
+    }
+  ]
+}

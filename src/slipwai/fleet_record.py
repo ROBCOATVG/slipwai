@@ -97,18 +97,23 @@ def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     keyed: dict[tuple, dict[str, Any]] = {}
     for row in rows:
-        if row.get("kind") != "parked":
+        if row.get("kind") != "parked" and not (row.get("kind") == "told" and row.get("needs")):
             continue
         cause = str(row.get("cause") or "other")
-        if cause not in GROUPED:
-            key: tuple = (cause, row["fairway"], row["t"], str(row.get("slice") or ""))
+        key: tuple
+        if row.get("kind") == "told":
+            # A hand-back with needs: one change on trunk, grouped by what it asks for, like a host park.
+            key = ("told", tuple(need["what"] for need in row.get("needs") or []))
+        elif cause not in GROUPED:
+            key = (cause, row["fairway"], row["t"], str(row.get("slice") or ""))
         elif cause == "limit":
             key = ("limit",)
         else:
             key = (cause, tuple(need["what"] for need in row.get("needs") or []))
         held = keyed.setdefault(key, {"kind": "group", "cause": cause, "slices": [], "fairways": [], "parks": [],
                                       "needs": [dict(need) for need in row.get("needs") or []],
-                                      "t": row["t"], "until": "", "then": "", "what": "", "paused": "yes"})
+                                      "t": row["t"], "until": "", "then": "", "what": "", "paused": "yes",
+                                      "source": str(row.get("kind"))})
         held["slices"].append(str(row.get("slice") or row["fairway"]))
         if row["fairway"] not in held["fairways"]:
             held["fairways"].append(row["fairway"])

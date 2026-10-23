@@ -1,0 +1,21 @@
+{
+  "as": "customer@example.invalid",
+  "open": [
+    { "label": "Ask for a recap of The Cartographer's Silence at 4:03:17", "path": "/books/cs-1/catch-up?at=14597" }
+  ],
+  "steps": [
+    {
+      "say": "Ask for a Standard recap of The Cartographer's Silence (cs-1) at 4:03:17 from the Catch me up button. Until the host lands the JWT library, the service refuses every bearer token by design (research R-2) and this step records 401; once it does, the step records 404 until LB3's import has written a BookImported for this listener on book-cs-1, and 200 { bookId, tier, position, recap: { state: awaited }, answeredOffer: false } after that.",
+      "method": "POST",
+      "path": "/api/books/cs-1/recap-requests",
+      "body": { "tier": "Standard", "position": 14597, "via": "button" },
+      "keep": { "tier": "tier" }
+    },
+    {
+      "say": "Ask again without having moved: the same {tier} at 4:03:17 answers exactly as the first did and records nothing new — the request stands until CU5 drafts it (R4).",
+      "method": "POST",
+      "path": "/api/books/cs-1/recap-requests",
+      "body": { "tier": "Standard", "position": 14597, "via": "button" }
+    }
+  ]
+}

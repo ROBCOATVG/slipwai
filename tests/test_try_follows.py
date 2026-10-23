@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -110,14 +111,16 @@ class SeedDoorRunTest(unittest.TestCase):
         self.assertEqual(state["seed_failed"][0]["step"], "given")
         self.assertIn("no seed door yet: the Makefile has no seed-service target", state["seed_failed"][0]["said"])
 
-    @unittest.skipIf(shutil.which("make") is None, "the door is a Make target, and the Windows gate runs without make "
-                     "on purpose (`.github/workflows/verify.yml`)")
+    @unittest.skipIf(shutil.which("make") is None, "the door is a Make target, and this machine has no make")
     def test_the_door_is_run_once_with_the_givens_and_a_green_story_s_links_say_given(self) -> None:
         # The door says which file it was handed, and the test reads the givens from that file. `echo` rather
-        # than `cat`: `make` runs a recipe in `cmd.exe` on Windows, which has the one and not the other.
+        # than `cat`: `make` may run a recipe in `cmd.exe` on Windows, which has the one and not the other.
+        # The door is run with the environment Try it hands it, which is always this process's plus the
+        # project's settings: an empty one leaves Windows' make no PATH or COMSPEC to find a shell by, so
+        # every recipe fails there.
         (self.root / "Makefile").write_text("seed-service:\n\t@echo $(FILE)> seeded-from.txt\n", encoding="utf-8")
         state: dict = {}
-        self.module.seed(self.root, {}, state, only_new=False)
+        self.module.seed(self.root, dict(os.environ), state, only_new=False)
         self.assertEqual(state["seeded"], ["001-shop/CU5"], state.get("seed_failed"))
         handed = Path((self.root / "seeded-from.txt").read_text(encoding="utf-8").strip())
         given = json.loads(handed.read_text(encoding="utf-8"))

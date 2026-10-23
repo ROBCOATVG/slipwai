@@ -68,21 +68,21 @@ kept. Every slice adds an assertion against them. A design drawn from one day is
 Each is one pull request, sized S (a session), M (a day) or L (two to three days). Order matters: 19.1 to
 19.4 stop the bleeding and could ship alone; 19.5 to 19.8 make the needs real; 19.9 to 19.12 are the page.
 
-| Slice | What lands | Size |
-|---|---|---|
-| 19.1 | The park record in the log schema | S |
-| 19.2 | The harness reads what the refusal said | S |
-| 19.3 | The captain pauses on a limit instead of spending attempts | M |
-| 19.4 | The harbourmaster clears a park whose time has come, and the fleet says "paused until" | S |
-| 19.5 | A session's own park is a record | S |
-| 19.6 | The harbourmaster ticks needs against trunk | M |
-| 19.7 | The board folds parks into groups with a cause | M |
-| 19.8 | Processes on the board, with why each one left | M |
-| 19.9 | The Fleet tab: headline, processes, needs | L |
-| 19.10 | The timeline fold and its endpoint | M |
-| 19.11 | The timeline on the page: scroll and scale | M |
-| 19.12 | Paused in clearance, the work columns, the terminal and the agent inbox | S |
-| 19.13 | Words, mockup, catch-up notes | S |
+| Slice | What lands | Size | Status |
+|---|---|---|---|
+| 19.1 | The park record in the log schema | S | done |
+| 19.2 | The harness reads what the refusal said | S | done |
+| 19.3 | The captain pauses on a limit instead of spending attempts | M | partial: no paragraph in `commands/sail.md` saying a limit is paused, not retried |
+| 19.4 | The harbourmaster clears a park whose time has come, and the fleet says "paused until" | S | partial: `fleet list` does not say paused |
+| 19.5 | A session's own park is a record | S | partial: written in `drive-captain.md`, not `sail.md`; no LB6 five-need example; no test that it parses |
+| 19.6 | The harbourmaster ticks needs against trunk | M | partial: no tests for two needs met one at a time, a failing `make` target, or no rerun per commit |
+| 19.7 | The board folds parks into groups with a cause | M | done |
+| 19.8 | Processes on the board, with why each one left | M | partial: harbourmaster writes no `.exit` file |
+| 19.9 | The Fleet tab: headline, processes, needs | L | partial: no Questions card; Streams and Last lines not under `<details>`; no tile or decision test |
+| 19.10 | The timeline fold and its endpoint | M | partial: `/timeline.json` ignores `from`/`to`; no lit/exited marks |
+| 19.11 | The timeline on the page: scroll and scale | M | partial: the page never asks `/timeline.json`; the published copy has no scale select |
+| 19.12 | Paused in clearance, the work columns, the terminal and the agent inbox | S | partial: `mcp.py` inbox lists parks, not groups |
+| 19.13 | Words, mockup, catch-up notes | S | partial: no pause paragraph in `cruise.md` or `where-are-we.md`; no 19.11 changelog fragment |
 
 ### 19.1 The park record in the log schema — S
 

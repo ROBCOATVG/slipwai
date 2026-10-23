@@ -160,18 +160,18 @@ Each is one commit on a branch, sized S (a session), M (a day) or L (two to thre
 20.1 to 20.4 stop the bleeding — a seed is checked, people exist, a failure is a stop — and could ship
 alone; 20.5 to 20.7 bring the middle forward; 20.8 to 20.10 put it in front of a person.
 
-| Slice | What lands | Size |
-|---|---|---|
-| 20.1 | `make check-try`: every story parses, every `as` names somebody, every `open` path is mounted | S |
-| 20.2 | People under `specs/<feature>/people/`, created in the sign-in server | M |
-| 20.3 | The `seeded` deck line, and the Demo rung's seed as a gate in both modes | M |
-| 20.4 | Hand-backs carry needs: `told` with `needs`, ticked and grouped | M |
-| 20.5 | `given` in a story, the seed door, and the schema check | L |
-| 20.6 | Clearance: `reads` any-of, a given mark does not block | M |
-| 20.7 | `clearance.py --feedback`: observables ranked by cost of delay, and the order proposed from it | L |
-| 20.8 | Try it follows trunk; the demo stop and the hand are handed it | S |
-| 20.9 | The card: new, dark, and feedback with context | M |
-| 20.10 | Words, ladder text, catch-up notes | S |
+| Slice | What lands | Size | Status |
+|---|---|---|---|
+| 20.1 | `make check-try`: every story parses, every `as` names somebody, every `open` path is mounted | S | done |
+| 20.2 | People under `specs/<feature>/people/`, created in the sign-in server | M | done |
+| 20.3 | The `seeded` deck line, and the Demo rung's seed as a gate in both modes | M | partial: no test of the `seeded` line `try_it.py seed --slice` writes |
+| 20.4 | Hand-backs carry needs: `told` with `needs`, ticked and grouped | M | done |
+| 20.5 | `given` in a story, the seed door, and the schema check | L | partial: `seed.ts` is the TypeScript package's, not here; no CU5 test with three given events |
+| 20.6 | Clearance: `reads` any-of, a given mark does not block | M | partial: `check-chart` does not check `pattern`; the LB5 case is not on recap's chart |
+| 20.7 | `clearance.py --feedback`: observables ranked by cost of delay, and the order proposed from it | L | partial: the chart does not record `seen_through`; the Voyage card is untested |
+| 20.8 | Try it follows trunk; the demo stop and the hand are handed it | S | done |
+| 20.9 | The card: new, dark, and feedback with context | M | partial: dark rows carry no needs; no test over recap's `state.json` |
+| 20.10 | Words, ladder text, catch-up notes | S | partial: no paragraph in `docs/whats-new.md` |
 
 ### 20.1 `make check-try` — S
 

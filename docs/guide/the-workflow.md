@@ -19,12 +19,12 @@ the "Writes" column exists. Nobody types a status. [The board](the-board.md) des
 |---|---|---|---|---|---|
 | 1 | Requirements | You | `slipwai generate --prd <file>`, or the brief field on the board's form | `docs/prd.md` | No |
 | 2 | Init | `./init` | The interview, when it ends | `.specify/integration.json` | No |
-| 3 | Constitution | The agent, in a headless session | `make draft`, or `/speckit-constitution` | `.specify/memory/constitution.md` | No. Read it afterwards |
-| 4 | Specification | The agent, in the same draft | `make draft`, or `/sail` with the next feature | `specs/<feature>/spec.md` | Yes, by default. See [the upstream setting](#the-upstream-setting) |
+| 3 | Constitution | The agent, in a headless session | `/draft`, or `/speckit-constitution` | `.specify/memory/constitution.md` | No. Read it afterwards |
+| 4 | Specification | The agent, in the same draft | `/draft`, or `/sail` with the next feature | `specs/<feature>/spec.md` | Yes, by default. See [the upstream setting](#the-upstream-setting) |
 | 5 | Storyboard | The agent draws. You give the verdict | **Draw the surfaces** (`make surfaces`), or `/mockups` | `specs/<feature>/mockups/*.html`, then `mock-states.md` | Yes, by default |
 | 6 | Event model | The agent, on the event-modelling profile only | Approving the storyboard (`make model-next`), or the modelling skill | `docs/event-model/model.yaml` | Yes, by default |
-| 7 | Chart and split | The agent, in a headless session | **Continue the build** (`make launch`) | `specs/<feature>/chart.yaml` and the slices | No |
-| 8 | Slices | The fleet: one captain per fairway, and one harbourmaster per machine | `make launch` casts off. **Cast off the fleet** is `make cruise` | Deck logs and the harbour log | Only when a captain parks |
+| 7 | Chart and split | The agent, in a headless session | **Continue the build** (`make launch`), or `/launch` | `specs/<feature>/chart.yaml` and the slices | No |
+| 8 | Slices | The fleet: one captain per fairway, and one harbourmaster per machine | `/launch` casts off. **Cast off the fleet** (`make cruise`), or `/cruise` | Deck logs and the harbour log | Only when a captain parks |
 | 9 | Accepted | You, as the actor | A demo, when a capability's last slice merges | An `accepted` line | Yes, at every demo |
 
 On the standard profile, step 6 is skipped. The chart comes from the specification instead, and approving
@@ -37,9 +37,9 @@ the storyboard starts step 7.
 1. Give `slipwai generate` a requirements document. It copies the document in as `docs/prd.md`.
 2. The interview runs `./init` when it ends. `./init` installs Spec Kit for your coding agent. It reaches
    the network once, here.
-3. Run `make draft`. The board runs it for you when the project starts from a document. One headless session
-   writes the constitution and the first specification. The specification lists every decision that the
-   document did not settle under `## Assumptions`.
+3. Type `/draft`, which runs `make draft`. The board runs it for you when the project starts from a
+   document. One headless session writes the constitution and the first specification. The specification
+   lists every decision that the document did not settle under `## Assumptions`.
 4. Read the specification. On the board, press **Open specs/&lt;feature&gt;/spec.md**.
 
 A further feature goes to `/sail`. `/sail` writes a record under `docs/intake/` and asks whether the idea
@@ -121,18 +121,14 @@ board shows every open park under **Waiting on you**, with how long it has waite
 Tell the fairway something. Use one of these:
 
 - the answer box under **Waiting on you**, or **Say something to a stream**, on the board;
-- `/cruise-tell` in the agent;
-- `make cruise-tell MSG="…"` in the terminal.
+- `/cruise-tell <fairway> <the answer>` in the agent.
 
-Each one writes a `told` line in the fairway's deck log. On its next pass, the harbourmaster writes a
+Each writes a `told` line in the fairway's deck log. On its next pass, the harbourmaster writes a
 `cleared` receipt in the harbour log for every open park that the message came after. The receipt keeps
 your message as the answer. On the pass after that, the harbourmaster lights the captain again.
 
-`python3 scripts/agents/harbourmaster.py --clear <fairway>` clears one park from the terminal. It does the
-same job.
-
 A project generated before this change has older copies of `scripts/agents/`. In that project a message
-does not clear a park. Upgrade the project with `slipwai migrate`, or use `--clear`.
+does not clear a park. Upgrade the project with `slipwai migrate`.
 
 ## Step 9: the demo and acceptance
 
@@ -155,11 +151,11 @@ Steps 4, 5 and 6 each end at a stop for a person, by default. The setting `upstr
 **Set it on the board.** Open **Settings**, then the **Who answers** tab. Find the row *The specification,
 storyboard and model*. Press **stop for me at each** or **advance on their own**.
 
-**Or set it in the terminal:**
+**Or set it in the agent:**
 
-```sh
-python3 scripts/agents/cruise.py --set upstream=advance
-python3 scripts/agents/cruise.py --set upstream=park
+```text
+/cruise-settings upstream=advance
+/cruise-settings upstream=park
 ```
 
 Read these limits before you set `advance`:

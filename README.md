@@ -26,8 +26,9 @@ Use Event Modeling? [Y/n]:
 Product requirements document (a path; Enter for none): ~/briefs/bookings.md
 created: /Users/you/code/bookings
 
-$ cd bookings && make verify   # ./init ran where the project was made
+$ cd bookings   # ./init ran where the project was made; start your coding agent here
 
+> /verify
 verify: all gates passed
 ```
 
@@ -83,7 +84,7 @@ There are three ways to drive it. All three run the same stages.
 | | |
 | --- | --- |
 | `/sail` in your coding agent | One person, one session. It runs the stage you are at, then takes the next ready slice without being asked |
-| The **Voyage** tab | A button for each stop. Each button runs a `make` target, so you can type it instead |
+| The **Voyage** tab | A button for each stop. Each button runs a `make` target, and where the stop has a slash command, that command runs the same one |
 | `/cruise` in your coding agent | Casts off the fleet: one captain per fairway, working in parallel, until something needs a person. `/cruise-status`, `/cruise-tell` and `/cruise-stop` watch, steer and stop it |
 
 By default the specification, the storyboard and the model each wait for you. Set **Who answers** to
@@ -161,8 +162,8 @@ berths: 2, 2 working
 telegraph: half-ahead  boilers 3  fanout 2  bunker 126/10000k today
 ```
 
-- `slipwai fleet` prints the view above.
-- `slipwai fleet <fairway>` prints the log of one fairway, one line at a time.
+- `/cruise-status` in your coding agent shows the view above. It runs `slipwai fleet`.
+- `/cruise-status <fairway>` shows the log of one fairway, one line at a time.
 - `slipwai bridge` shows the same information as a page, and you can answer questions from that page.
 
 [docs/captures](docs/captures/) has more examples. They come from real runs. Nobody drew them by hand.
@@ -190,8 +191,8 @@ The **Voyage** tab shows:
 - **One Settings box**, with tabs for speed, fine tune, who answers, delegation and models. The project's
   own scripts write these settings. The board never writes them itself.
 
-Each button runs a `make` target that you could type instead. `slipwai bridge install` starts the board
-each time you log in. [Your first feature](docs/guide/first-feature.md#from-the-board) goes through the
+Each button runs a `make` target, and where the stop has a slash command, that command runs the same one.
+`slipwai bridge install` starts the board each time you log in. [Your first feature](docs/guide/first-feature.md#from-the-board) goes through the
 page, and [the board](docs/guide/the-board.md) describes every control on it.
 
 ## Languages, and everything else

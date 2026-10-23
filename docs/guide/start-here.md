@@ -252,10 +252,9 @@ does not need root. It also opens the board, so that your browser can put it in 
 
 ```sh
 cd bookings
-make verify
 ```
 
-`./init` has already run. The interview runs it at the end, in the project that it has just made, because
+Start your coding agent there. `./init` has already run. The interview runs it at the end, in the project that it has just made, because
 nothing in the tree works until `./init` has run. `./init` installs Spec Kit for your coding agent. It also
 adds the skills, commands and agent types that the profile needs. It uses the network once, at that point,
 and never again.
@@ -264,17 +263,17 @@ and never again.
 also does not run it, unless you give `--init`. You can run `./init` again later safely. This is also how
 you change the agent: `./init --integration <agent>`.
 
-`make verify` is the whole gate: lint, types, tests, the architecture checks, the model and the chart. CI
-runs the same gate. It passes on a repository where nobody has written any code yet:
+In the agent, type `/verify`. It runs `make verify`, the whole gate: lint, types, tests, the architecture
+checks, the model and the chart. CI runs the same gate. It passes on a repository where nobody has written any
+code yet:
 
 ```console
-$ make verify
-
+> /verify
 verify: all gates passed
 ```
 
-In your coding agent, `/verify` runs the same gate and reads the result back. Where something fails, it names
-every gate that fails in one run, with the line each printed, and says what was skipped rather than passed.
+Where something fails, `/verify` names every gate that fails in one run, with the line each printed, and says
+what was skipped rather than passed.
 
 **That passing gate is the purpose of the first ten minutes.** The gate is now a fact, not a hope. "Keep the
 main branch releasable" only means something when the gate is a fact.

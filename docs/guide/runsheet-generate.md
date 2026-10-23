@@ -102,8 +102,8 @@ where no command covers the step.
 **Where am I?** None of these commands changes anything:
 
 - `/where-are-we` in the agent, or the board's **Voyage** tab: which stage you are at, and what proves it
-- `python3 scripts/agents/clearance.py`: which slices can start now, and what each blocked slice waits for
-- `slipwai fleet`: the state of every fairway, calculated from the logs
+- `/clearance`: which slices can start now, and what each blocked slice waits for
+- `/cruise-status`: the state of every fairway, calculated from the logs
 
 ---
 
@@ -138,7 +138,7 @@ that owns the mark sets it at its first stage, in its own worktree. See
 | # | Where | Command | Done when |
 |---|---|---|---|
 | 5.1 | agent | `/cruise-settings enabled=true` | `.specify/cruise.json` says `enabled: true` |
-| 5.2 | terminal | `slipwai telegraph slow-ahead` | `slipwai telegraph` shows the position; start slow |
+| 5.2 | terminal *or* board | `slipwai telegraph slow-ahead` — or **Slow ahead** on the Speed tab | `slipwai telegraph` shows the position; start slow |
 | 5.3 | agent *or* board | `/cruise` — or **Cast off the fleet** | a harbourmaster and a captain per fairway are running, and the command has exited |
 | 5.4 | agent *or* board | `/cruise-status`, `/cruise-watch` — or the Voyage tab | lines arrive in the deck logs |
 | 5.5 | agent *or* board | `/cruise-tell <fairway> <what it should know>` — or the answer box on the waiting line | the captain writes a `read` line at its next boundary. A message to a parked fairway also clears the park |

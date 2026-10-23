@@ -131,7 +131,7 @@ BASE_COMMANDS = ("drive", "mockups", "chart", "example-map", "careen", "where-ar
                  "model-delegation-settings", "sail-settings", "benchmark", "cruise", "cruise-settings",
                  "cruise-status", "cruise-stop", "cruise-tell", "cruise-watch", "draft", "launch", "add-service",
                  "add-frontend",
-                 "verify", "catch-up")
+                 "verify", "clearance", "claim", "catch-up")
 # Copied whole from `assets/profiles/event-modelling/commands/`; listed because the documentation names them in order.
 # `example-map` left this list in slice 5.17: it is a stage of both profiles now and ships from the toolkit.
 EVENT_COMMANDS = ("validate-code-against-model",)
@@ -182,6 +182,10 @@ def command_files(
         "commands/launch.md": page(COMMANDS, "launch.md", {"make": layout.make}),
         # The gate, read back: one run that names every gate that fails, and what was skipped.
         "commands/verify.md": page(COMMANDS, "verify.md", {"make": layout.make}),
+        # What a person asks by hand that a captain asks for itself: which slices may start, and who holds a
+        # fairway. Each runs one script and reads it back, so nobody leaves the session for a shell.
+        "commands/clearance.md": page(COMMANDS, "clearance.md", {}),
+        "commands/claim.md": page(COMMANDS, "claim.md", {}),
         "commands/where-are-we.md": where_are_we_command(event, target),
         "commands/whats-next.md": whats_next_command(event),
         "commands/gaps.md": gaps_command(event, apps),

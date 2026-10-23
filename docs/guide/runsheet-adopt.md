@@ -83,15 +83,15 @@ slipwai adopt --as admin=admin-ui
 
 | # | Where | Command | Done when |
 |---|---|---|---|
-| 3.1 | terminal | `make verify` | it ends with `verify: all gates passed` |
+| 3.1 | agent | `/verify` | it says `verify: all gates passed` |
 | 3.2 | terminal | `git add delivery/baseline.json && git commit -m "Gate baseline"` | the baseline is committed |
 | 3.3 | terminal | add `-include delivery/Makefile` to your root `Makefile` | `make verify` works as one word. Skip it if `adopt` wrote the root `Makefile` itself |
 | 3.4 | agent | accept the strategy ADR: set its `Status` to `Accepted` and commit it | `slipwai adopt --next` shows the strategy as decided |
 
 - **3.1: the first run** records the lint and typecheck findings that are already in the code as the
   baseline. After that, only new findings fail. **A red test suite stops the run, and the run says so.**
-  Fix the suite, or put it in quarantine on purpose with `make ratchet-tighten`. Until you do 3.3, the gate
-  is `make -f delivery/Makefile verify`.
+  Fix the suite, or put it in quarantine on purpose with `make ratchet-tighten`. Until you do 3.3, `/verify`
+  runs the gate as `make -f delivery/Makefile verify`.
 - **3.4: the strategy.** `/ground` writes the ADR (architecture decision record) at `Proposed`. It
   recommends one of `leave-it`, `in-place`, `modular-monolith`, `strangler-fig` or `rewrite`. `leave-it` is
   as valid an answer as the others. You accept the ADR. An agent never accepts it.

@@ -12,11 +12,11 @@ decision is expensive.
 
 ## Cast off
 
-Type `/cruise` in your coding agent. It runs `make cruise`, then takes the watch seat in your session and
-prints each stream's lines as they arrive. This is what `make cruise` itself prints:
+Type `/cruise` in your coding agent. It runs `make cruise`, repeats what that printed, and then takes the
+watch seat in your session and prints each stream's lines as they arrive:
 
 ```console
-$ make cruise
+> /cruise
 harbourmaster started, pid 48021
 booking: captain started, pid 48023
 availability: captain started, pid 48024
@@ -29,7 +29,7 @@ terminal or end the session. Nothing that `make cruise` started holds the state 
 This matters because of the first attempt. In the first attempt, the runner *was* the state of the run. It
 stopped at iteration two. The seventeen iterations after it ran from interactive sessions and wrote
 nothing, so the checkpoint still said "iteration 2" while twenty slices merged. In version 2, no process
-holds the state. If you stop every process, `slipwai fleet` still tells you exactly where the run got to,
+holds the state. If you stop every process, `/cruise-status` still tells you exactly where the run got to,
 because it reads the logs.
 
 ## The captain
@@ -133,10 +133,8 @@ brake: running captains finish the stage that they are in, and then park.
 ```
 
 The first word is the stream, and the rest is the message. `/cruise-tell` refuses a message with no stream,
-and lists the streams that there are. `--everyone` as the first word sends the message to every stream.
-
-With no agent open, the same thing from a terminal is
-`make cruise-tell STREAM=booking MSG="…"`, with `CRUISE_FLAGS=--everyone` for every stream.
+and lists the streams that there are. `--everyone` as the first word sends the message to every stream. The
+board's answer box writes the same line.
 
 The message goes into that fairway's inbox. The captain reads the inbox **at every boundary**, not only at
 the start of a slice. When the captain has read the message, it writes a `read` line with the timestamp of

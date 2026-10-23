@@ -25,8 +25,11 @@ fairways:
     owns: ["apps/bookings/**/availability/**"]
 ```
 
+The scope gate is `make check-slice-scope`, and it is part of `make verify`. `/verify` with a gate's name runs
+that gate alone:
+
 ```console
-$ make check-slice-scope
+> /verify check-slice-scope
 check-slice-scope: slice/BOK-01 touches only what one slice may
 ```
 
@@ -43,10 +46,11 @@ Read this part slowly. It is the thing that version 2 changed.
 
 - The old rule: `AVA-01` waits for `BOK-01` to merge.
 - The new rule: **`AVA-01` is cleared as soon as the mark is set.** `BOK-01` sets the mark at its first
-  stage, in its own worktree, before anything has merged anywhere:
+  stage, in its own worktree, before anything has merged anywhere. `/cruise-status booking` shows the
+  fairway's log, and `/clearance` shows what it cleared:
 
 ```console
-$ slipwai fleet booking
+> /cruise-status booking
 booking: the last 6 line(s) its captain wrote
   2026-10-08T09:14:48Z  claimed BOK-01
   2026-10-08T09:14:48Z  set BookingHeld — BOK-01
@@ -55,7 +59,7 @@ booking: the last 6 line(s) its captain wrote
   2026-10-08T09:14:50Z  asked to merge: merge slice/BOK-01 into trunk after the full gate
   2026-10-08T09:14:58Z  merged BOK-01 as a1b2c3d4
 
-$ python3 scripts/agents/clearance.py
+> /clearance
 clearance: 2 of 3 slices start now in booking (slots: 3)
   start  BOK-02  implement  — cleared and sets nothing, so there is nothing to settle — a state-view folding 1 marks: 1 set (BookingHeld)
   start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken — an automation folding 1 marks: 1 set (BookingHeld)
@@ -74,10 +78,10 @@ chart before either slice started.
 ## Berths: how a worker is given a place to work
 
 A **berth** is a worktree with a branch and a name. The second person does not clone anything and does not
-negotiate anything:
+negotiate anything. `/cruise-status` lists the berths:
 
 ```console
-$ slipwai fleet
+> /cruise-status
 berths: 2
   fairway       feature  slice   queued  state    waiting  last line  tokens  merged  marks
   ------------  -------  ------  ------  -------  -------  ---------  ------  ------  -----
@@ -104,9 +108,12 @@ If you do want to divide the fairways between you, name one:
 This limits the ready set to `booking`. `/sail` names the ready slices of the other fairways as another
 fairway's, and leaves them. To make the division last, take the fairway:
 
-```sh
-python3 scripts/agents/claims.py --take booking    # and --release when you are done with it
+```console
+> /claim booking
 ```
+
+`/claim release booking` gives it back when you are done with it, and `/claim` on its own says who holds each
+fairway.
 
 This pushes `refs/slipwai/claims/booking`. A second person cannot win that push. So the second machine that
 tries is told who holds the fairway and since when. Without this, both of you would append to one deck log.
@@ -121,9 +128,12 @@ tries is told who holds the fairway and since when. Without this, both of you wo
 
 ## The board
 
-```sh
-slipwai fleet          # once
-slipwai fleet watch    # redrawn every few seconds
+`/cruise-status` draws the board once. `/cruise-watch` then sits on the logs and prints each line as it is
+written:
+
+```console
+> /cruise-status
+> /cruise-watch
 ```
 
 ```
@@ -167,10 +177,10 @@ says so. It does not guess.
 ## One stream's log
 
 The board always makes people ask the same question: *what is `billing` actually doing?* The board cannot
-answer it, because the answer is forty lines of one file. So use this:
+answer it, because the answer is forty lines of one file. So name the stream:
 
 ```console
-$ slipwai fleet ordering
+> /cruise-status ordering
 ordering: the last 9 line(s) its captain wrote
   2026-10-07T16:11:48Z  claimed ORD-01
   2026-10-07T16:11:48Z  set OrderPlaced — ORD-01

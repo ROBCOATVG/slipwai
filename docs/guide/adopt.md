@@ -103,10 +103,10 @@ that nobody runs.
 
 Your repository has lint findings and type errors in it today. The gate does not make you fix them before
 you can use it. Its first run records what is there as the **baseline**. After that, it refuses anything
-*new*:
+*new*. Type `/verify` in the agent; it runs the gate and reads it back:
 
 ```console
-$ make verify
+> /verify
 verify: baseline.json written — 412 lint findings and 86 type errors recorded as the starting line
 verify: all gates passed
 ```

@@ -12,6 +12,12 @@ order the programme has them: a command added to a page, removed from one, or mo
 programme is changed with it. That closure rule is the point — a gate that silently covers less than it
 claims is the failure this whole file is about.
 
+**A page shows what a person types.** Where that is a harness command, a `console` block shows it on a
+`> /command` line, and the lines after it are what the command reads back. The programme says what the
+command runs underneath (`runs=`), runs *that*, and holds the page's lines to its output — and holds the
+command's own page in the generated project to running it, so a slash command cannot be shown printing what
+it never runs.
+
 Each command is checked the strongest way it can be:
 
   run      The command is run here and every output line the page prints must appear in what it printed.
@@ -107,15 +113,15 @@ def blocks(text: str) -> list[tuple[str, str, int]]:
 def said(text: str) -> list[Said]:
     """Every command the page shows being run, in the order the page shows them.
 
-    A `console` block is a transcript: `$ ` starts a command and what follows is its output. An `sh` block
-    is a command with nothing shown printing. Any other block is something a person types into an agent, or
-    a tree, or a file — not a shell.
+    A `console` block is a transcript: `$ ` starts a shell command, `> ` a command typed into the coding
+    agent, and what follows either is its output. An `sh` block is a command with nothing shown printing. Any
+    other block is something a person types into an agent, or a tree, or a file, and is not run.
     """
     found: list[Said] = []
     for info, body, line in blocks(text):
         if info == "console":
             for one in body.splitlines():
-                if one.startswith("$ "):
+                if one.startswith(("$ ", "> /")):
                     found.append(Said(one[2:].strip(), [], line))
                 elif found and one.strip():
                     found[-1].output.append(one)
@@ -128,7 +134,7 @@ def said(text: str) -> list[Said]:
 def names(text: str) -> list[str]:
     """Every thing the page names as a command: inline code spans, and the lines of its blocks."""
     spans = CODE.findall(re.sub(BLOCK, "", text))
-    lines = [one.strip().removeprefix("$ ").strip()
+    lines = [one.strip().removeprefix("$ ").removeprefix("> ").strip()
              for _info, body, _line in blocks(text) for one in body.splitlines()]
     return spans + lines + SKILL.findall(text)
 
@@ -304,9 +310,18 @@ KEEL, FRESH, BOOKING = "keel", "fresh", "booking"
 
 @dataclass
 class Shown:
-    """One command a page shows, however this gate goes on to check it."""
+    """One command a page shows, however this gate goes on to check it.
+
+    `runs` is what a `/command` runs underneath, with the command's arguments in it: that is what is run,
+    captured or named in its place, and the command's own page must say it runs it.
+    """
     page: str
     command: str
+    runs: str = field(default="", kw_only=True)
+
+    @property
+    def shell(self) -> str:
+        return self.runs or self.command
 
 
 @dataclass
@@ -363,29 +378,30 @@ PROGRAMME: list[Step] = [
     # `./init` is no longer a command on this page: `generate` runs it in the project it has just made, so
     # it is part of the interview's transcript rather than a step a reader types. The gate still never runs
     # it — see `interview`, which declines it — and `make verify` below is green without it, as it always was.
-    Run("start-here.md", "make verify", FRESH),
-    Run("start-here.md", "make verify", FRESH),
+    Run("start-here.md", "/verify", FRESH, runs="make verify"),
 
     Seed(model_it, "the modelling conversation writes docs/event-model/model.yaml"),
     Run("first-feature.md", "make model"),
     Run("first-feature.md", "make chart"),
     Run("first-feature.md", "make check-chart"),
-    Run("first-feature.md", "python3 scripts/agents/clearance.py"),
+    Run("first-feature.md", "/clearance", runs="python3 scripts/agents/clearance.py"),
     Seed(sail_bok01, "/sail BOK-01 claims the slice and sets its mark"),
-    Run("first-feature.md", "slipwai fleet booking"),
-    Run("first-feature.md", "python3 scripts/agents/clearance.py"),
+    Run("first-feature.md", "/cruise-status booking", runs="slipwai fleet booking"),
+    Run("first-feature.md", "/clearance", runs="python3 scripts/agents/clearance.py"),
 
-    Run("a-second-person.md", "make check-slice-scope"),
-    Run("a-second-person.md", "slipwai fleet booking"),
-    Run("a-second-person.md", "python3 scripts/agents/clearance.py"),
+    Run("a-second-person.md", "/verify check-slice-scope", runs="make check-slice-scope"),
+    Run("a-second-person.md", "/cruise-status booking", runs="slipwai fleet booking"),
+    Run("a-second-person.md", "/clearance", runs="python3 scripts/agents/clearance.py"),
     Seed(second_worker, "a second person claims AVA-01, and BOK-01 is merged"),
-    Run("a-second-person.md", "slipwai fleet"),
+    Run("a-second-person.md", "/cruise-status", runs="slipwai fleet"),
     Seed(with_forge, "the second person has a bare forge to publish the hand-taken claim to"),
-    Run("a-second-person.md", "python3 scripts/agents/claims.py --take booking"),
+    Run("a-second-person.md", "/claim booking", runs="python3 scripts/agents/claims.py --take booking"),
     Seed(claim_pushed, "the booking claim exists on the forge, rather than only on this machine"),
-    Named("a-second-person.md", "slipwai fleet", "the same board, shown once more as a figure"),
-    Named("a-second-person.md", "slipwai fleet watch", "redraws until it is interrupted"),
-    Captured("a-second-person.md", "slipwai fleet ordering", "stream-log.txt"),
+    Named("a-second-person.md", "/cruise-status", "the same board, shown once more as a figure",
+          runs="slipwai fleet"),
+    Named("a-second-person.md", "/cruise-watch", "sits on the logs until it is interrupted",
+          runs="python3 scripts/agents/fleet.py watch"),
+    Captured("a-second-person.md", "/cruise-status ordering", "stream-log.txt", runs="slipwai fleet ordering"),
     Pinned("a-second-person.md", "slipwai bridge", "src/slipwai/bridge.py"),
 ]
 
@@ -550,6 +566,29 @@ def check_names(page: str, text: str, project: Path, targets: set[str], verbs: s
     return findings
 
 
+def check_runs(step: Shown, project: Path) -> list[str]:
+    """A `/command` shown in place of what it runs must be one whose page runs it.
+
+    The page is the command's whole behaviour, so it is the one place to check this against. The command's
+    arguments are `$ARGUMENTS` there: `/cruise-status booking`, run as `slipwai fleet booking`, is held to a
+    page that says `slipwai fleet $ARGUMENTS`.
+    """
+    if not step.runs:
+        return []
+    name, *arguments = step.command.removeprefix("/").split()
+    spelled = step.runs
+    if arguments and spelled.endswith(" " + " ".join(arguments)):
+        spelled = spelled.removesuffix(" ".join(arguments)) + "$ARGUMENTS"
+    file = project / "commands" / f"{name}.md"
+    if not file.is_file():
+        return [f"{step.page}: `{step.command}` is shown in place of `{step.runs}`, and the generation has no "
+                f"commands/{name}.md to run it"]
+    if spelled not in file.read_text(encoding="utf-8"):
+        return [f"{step.page}: `{step.command}` is shown in place of `{step.runs}`, and commands/{name}.md "
+                f"never runs `{spelled}`"]
+    return []
+
+
 def check_chart_block(page: str, text: str, project: Path) -> list[str]:
     """A `yaml` block quoting the chart must quote the chart that is rendered."""
     chart = (project / "specs/booking/chart.yaml")
@@ -617,6 +656,9 @@ def main(argv: list[str]) -> int:
 
         for page, text in pages.items():
             findings += check_names(page, text, booking, targets, verbs)
+        for step in PROGRAMME:
+            if isinstance(step, Shown):
+                findings += check_runs(step, booking)
 
         # The page's commands must be the programme's commands, in order. Checked before anything runs, so a
         # page that has grown past the gate says so rather than failing somewhere in the middle.
@@ -667,15 +709,16 @@ def main(argv: list[str]) -> int:
                 done.append("ran      slipwai generate (the interview, question by question)")
                 continue
             assert isinstance(step, Run)
-            output = run(step.command, where[step.where])
-            if (why := refused_here(step.command, output)) is not None:
+            output = run(step.shell, where[step.where])
+            if (why := refused_here(step.shell, output)) is not None:
                 skipped.append(f"{step.command} — {why}")
                 continue
-            compare = same_release if step.command == "slipwai --version" else missing
+            compare = same_release if step.shell == "slipwai --version" else missing
             if gone := compare(one.output, output):
-                findings.append(f"{page}:{one.line}: `{step.command}` does not print {gone.strip()!r}. It "
+                named = f"`{step.shell}`, which `{step.command}` runs," if step.runs else f"`{step.command}`"
+                findings.append(f"{page}:{one.line}: {named} does not print {gone.strip()!r}. It "
                                 "printed:\n" + "\n".join("      " + line for line in output.splitlines()[-14:]))
-            done.append(f"ran      {step.command}  ({step.where})")
+            done.append(f"ran      {step.command}" + (f" — {step.runs}" if step.runs else "") + f"  ({step.where})")
 
         findings += check_chart_block("a-second-person.md", pages["a-second-person.md"], booking)
 

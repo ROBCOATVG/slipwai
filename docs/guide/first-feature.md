@@ -1,8 +1,8 @@
 # Your first feature
 
 **In about five minutes, you go from a passing gate to one slice demoed.** You have a repository, and
-`make verify` passes. This page takes one feature from a sentence that you type to a working thing that a
-person watches and accepts.
+`/verify` says every gate passes. This page takes one feature from a sentence that you type to a working
+thing that a person watches and accepts.
 
 You run the commands that start with a slash — `/sail`, `/speckit-specify`, `/mockups` — inside your coding
 agent, not in the shell. `./init` installed them.
@@ -65,8 +65,9 @@ Below the strip, the page shows:
 - one **Settings** box, with a tab each for speed, fine tune, who answers at each stop, delegation and
   models
 
-Each button runs a `make` target that you could type instead. The project's own scripts write every
-setting. The board never writes a setting itself.
+Each button runs a `make` target. Where the same stop has a slash command — `/launch`, `/cruise`,
+`/cruise-stop` — the command runs the same target, so the board and the agent cannot disagree. The project's
+own scripts write every setting. The board never writes a setting itself.
 
 By default, the specification, the storyboard and the model each stop for you. To change this, open the
 **Who answers** tab and set the row *The specification, storyboard and model* to **advance on their own**.
@@ -166,8 +167,8 @@ events and read models together. On the event-modelling profile, the skill write
 - the read models that the screens are built from
 - the slice that each one belongs to
 
-It is one file, and everything after it is rendered from it. The modelling skill renders it with `make model`;
-run by hand, that prints:
+It is one file, and everything after it is rendered from it. The modelling skill renders it with `make model`,
+which prints:
 
 ```console
 $ make model
@@ -193,8 +194,8 @@ through the timeline, and every command, event and read model is in its place:
   way that you divide the work depends on the chart.
 
 On the event-modelling profile, you do not write the chart. The model already gives each slice's context,
-the events that it produces and what it reads. So the chart is rendered from the model. `/sail` does this
-when it reaches the chart; run by hand, it prints:
+the events that it produces and what it reads. So the chart is rendered from the model. `/sail` renders it
+with `make chart` when it reaches the chart, and checks it with `make check-chart`:
 
 ```console
 $ make chart
@@ -227,8 +228,10 @@ This divides one feature into slices. Each slice is a thin vertical cut that you
 slice writes its own row into the chart: its fairway, the capability that it is part of, the marks that it
 sets, and the marks that it steers by.
 
+`/sail` then asks clearance which slices can start. To ask it yourself, type `/clearance`:
+
 ```console
-$ python3 scripts/agents/clearance.py
+> /clearance
 clearance: 1 of 3 slices start now in booking (slots: 3)
   start  BOK-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for BookingHeld
   blocked   BOK-02  — BOK-02 is a state-view steering by BookingHeld (set by BOK-01); none is set yet and its story gives none of them. It has clearance once one is set, or once its try-it.json gives the rest
@@ -282,10 +285,10 @@ You see a capability when its last slice has merged and its gates have passed. T
 
 Under the `open` release mode, a merge reaches the actor at once. So in that mode, converge, the gaps trace,
 the design review and the walk also run for each slice. A slice that widened authorisation, identity or
-money is also attacked before its push.
+money is also attacked before its push. `/cruise-status booking` shows what the fairway's log says:
 
 ```console
-$ slipwai fleet booking
+> /cruise-status booking
 booking: the last 6 line(s) its captain wrote
   2026-10-08T09:14:48Z  claimed BOK-01
   2026-10-08T09:14:48Z  set BookingHeld — BOK-01
@@ -308,11 +311,11 @@ who watched it work. `/sail` has already taken the next ready slice.
 ## The one thing worth understanding before you go further
 
 Look at the second line of that log. The slice wrote `set BookingHeld` when it **started**, in its own
-worktree, before anything merged. Run clearance again. The slice in the other fairway that steers by
+worktree, before anything merged. Type `/clearance` again. The slice in the other fairway that steers by
 `BookingHeld` is now cleared:
 
 ```console
-$ python3 scripts/agents/clearance.py
+> /clearance
 clearance: 2 of 3 slices start now in booking (slots: 3)
   start  BOK-02  implement  — cleared and sets nothing, so there is nothing to settle — a state-view folding 1 marks: 1 set (BookingHeld)
   start  AVA-01  prepare  — cleared; may prepare now — example map, the contract it sets, gaps — and implementation waits on its own mark-set for TableTaken — an automation folding 1 marks: 1 set (BookingHeld)

@@ -328,3 +328,22 @@ c35645f7f766c9dd9d316045bd74f1e09b147e6be90ec4ade9c3a9695f08699c  standard-manag
 c35645f7f766c9dd9d316045bd74f1e09b147e6be90ec4ade9c3a9695f08699c  no-applications  commands/verify.md
 8353e69e2e1b8ee5d54f5568882af3976a3aae919472aa05dd7aaac251ea04a5  adopted  commands/verify.md
 c35645f7f766c9dd9d316045bd74f1e09b147e6be90ec4ade9c3a9695f08699c  adopted-settled  commands/verify.md
+#
+# Added for /clearance and /claim (`changelog.d/the-guides-type-in-the-harness.md`): two new pages,
+# `commands/clearance.md` and `commands/claim.md`, a row per project. No other row moved.
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  standard  commands/claim.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  event  commands/claim.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  event-state  commands/claim.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  event-two-services  commands/claim.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  standard-managed  commands/claim.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  no-applications  commands/claim.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  adopted  commands/claim.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  adopted-settled  commands/claim.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  standard  commands/clearance.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  event  commands/clearance.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  event-state  commands/clearance.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  event-two-services  commands/clearance.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  standard-managed  commands/clearance.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  no-applications  commands/clearance.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  adopted  commands/clearance.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  adopted-settled  commands/clearance.md

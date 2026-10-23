@@ -50,22 +50,21 @@ way an environment costs money from the moment it exists;
 
 ```sh
 ./init{{start-here-production}}
-make verify
 ```
 
-`./init` installs Spec Kit for the selected agent; it is not vendored in this repository.{{init-production}} `make verify` is
-the repository's local and CI quality gate. Add one small vertical slice at a time and keep the main branch
-releasable.
+`./init` installs Spec Kit for the selected agent; it is not vendored in this repository.{{init-production}} Then,
+in the agent, type `/verify`. It runs `make verify`, the repository's local and CI quality gate, and reads the
+result back. Add one small vertical slice at a time and keep the main branch releasable.
 
 <!-- section: services-none -->
 ## Services
 
 No service here was made by the keel. The applications this repository already had are recorded in
 `project.json` as `"generated": false`, each with how its own build answers the Make targets; `apps/` is
-where a service the keel adds would go, with the keel that installed this method:
+where a service the keel adds would go. In the agent, `/add-service` runs the keel that installed this method:
 
-```sh
-path/to/slipwai/slipwai add-service <name> --language python  # the language is required: nothing here to inherit
+```text
+/add-service <name> --language python    the language is required: nothing here to inherit
 ```
 <!-- end section -->
 <!-- section: services -->
@@ -79,11 +78,11 @@ and keeps the hexagonal layout `make check-imports` enforces. Which services exi
 `project.json`'s `deployables`; the Makefile, `docker-compose.yml`, the CI workflow,
 `scripts/check-imports.py` and `scripts/backing-services.py` read that list, and none keeps a copy.
 
-Add one with the factory that generated this repository, from this directory:
+Add one in the agent, with `/add-service`. It runs the factory that generated this repository:
 
-```sh
-path/to/slipwai/slipwai add-service <name>                  # the first service's language and answers
-path/to/slipwai/slipwai add-service <name> --language python  # another language, its own answers
+```text
+/add-service <name>                      the first service's language and answers
+/add-service <name> --language python    another language, its own answers
 ```
 
 It scaffolds `apps/<name>` with the walking skeleton, adapters and tests a service of that language starts
@@ -93,7 +92,7 @@ Say what the service is for while adding it — `--purpose "<what it owns>"` and
 context>`, repeated for each context it holds — because that is what the delivery loop reads when it decides
 which service a slice belongs to; `describe-service <name>` takes the same flags for a service already there.
 `docs/architecture.md` has the contexts as recorded, and says when a context should become a service.
-`add-frontend <name> [--api <service>]` does the same for a browser app, proxying `/api` to the service it
+`/add-frontend <name> [--api <service>]` does the same for a browser app, proxying `/api` to the service it
 names. Code shared between services goes under `packages/`, and the hexagonal rule applies inside it too;
 `docs/architecture.md` says what a shared package is in each language and what each service owes.
 <!-- end section -->

@@ -7,8 +7,8 @@ integration explicitly, for example `./init --integration claude` or
 `./init --integration cursor-agent`. All additional arguments pass through to
 `specify init --here --force`.
 
-{{first-slice}}{{browser-paths}} Run `make verify`
-before and after each increment; it is the same gate CI runs.
+{{first-slice}}{{browser-paths}} Run `/verify`
+before and after each increment; it runs `make verify`, the same gate CI runs.
 
 Use `/sail` for the complete delivery loop and `/where-are-we` for the progress board at any point; both read
 artifacts on disk rather than memory, so one resumes safely and the other changes nothing. See `commands/`, `skills/` and `agents/`.

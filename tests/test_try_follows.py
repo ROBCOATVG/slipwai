@@ -110,11 +110,14 @@ class SeedDoorRunTest(unittest.TestCase):
         self.assertIn("no seed door yet: the Makefile has no seed-service target", state["seed_failed"][0]["said"])
 
     def test_the_door_is_run_once_with_the_givens_and_a_green_story_s_links_say_given(self) -> None:
-        (self.root / "Makefile").write_text("seed-service:\n\t@cat $(FILE) > seeded.json\n", encoding="utf-8")
+        # The door says which file it was handed, and the test reads the givens from that file. `echo` rather
+        # than `cat`: `make` runs a recipe in `cmd.exe` on Windows, which has the one and not the other.
+        (self.root / "Makefile").write_text("seed-service:\n\t@echo $(FILE)> seeded-from.txt\n", encoding="utf-8")
         state: dict = {}
         self.module.seed(self.root, {}, state, only_new=False)
         self.assertEqual(state["seeded"], ["001-shop/CU5"], state.get("seed_failed"))
-        given = json.loads((self.root / "seeded.json").read_text(encoding="utf-8"))
+        handed = Path((self.root / "seeded-from.txt").read_text(encoding="utf-8").strip())
+        given = json.loads(handed.read_text(encoding="utf-8"))
         self.assertEqual(given, [{"stream": "book-cs-1", "event": "BookImported", "data": {"bookId": "cs-1"},
                                   "slice": "001-shop/CU5"}])
         self.assertEqual(state["given"], {"001-shop/CU5": 1})

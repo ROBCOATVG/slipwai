@@ -125,13 +125,19 @@ class RouteTest(BoardTest):
 
     def test_the_output_parent_is_chosen_rather_than_typed(self) -> None:
         """Where the machine has a dialog, the field is the folder it chose and the button is the way in."""
-        with mock.patch("slipwai.interview_form.chooser", return_value=["osascript"]):
+        with mock.patch("slipwai.folder_field.asking", return_value=["osascript"]):
             page = self.get("/generate")[1]
         self.assertIn('data-choose="output"', page)
         self.assertRegex(page, r'<input id="output"[^>]* readonly')
 
+    def test_the_repository_to_adopt_is_chosen_the_same_way(self) -> None:
+        with mock.patch("slipwai.folder_field.asking", return_value=["osascript"]):
+            page = self.get("/adopt")[1]
+        self.assertIn('data-choose="root"', page)
+        self.assertIn("fetch('/choose'", page)
+
     def test_with_no_dialog_on_the_machine_the_folder_is_typed(self) -> None:
-        with mock.patch("slipwai.interview_form.chooser", return_value=[]):
+        with mock.patch("slipwai.folder_field.asking", return_value=[]):
             page = self.get("/generate")[1]
         self.assertNotIn('data-choose="output"', page)
         self.assertNotRegex(page, r'<input id="output"[^>]* readonly')

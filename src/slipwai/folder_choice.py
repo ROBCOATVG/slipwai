@@ -30,7 +30,8 @@ PATIENCE = 300.0
 PROMPT = "Choose the folder your brief is in"
 #: The same, for each field of the form that is a folder. Looked up by the field's name, never taken from
 #: the request: the words go into a script the dialog runs, so only these words can.
-PROMPTS = {"brief": PROMPT, "output": "Choose the folder the project is made in"}
+PROMPTS = {"brief": PROMPT, "output": "Choose the folder the project is made in",
+           "root": "Choose the repository to adopt"}
 
 
 def asking(start: Path, prompt: str = PROMPT) -> list[str]:

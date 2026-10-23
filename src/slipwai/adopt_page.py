@@ -35,6 +35,8 @@ from .assets import relaunch
 from .big_picture import big_picture
 from .ecosystems import prefixed
 from .errors import GenerationError
+from .folder_field import SCRIPT as CHOOSING
+from .folder_field import folder_field
 from .layout import Layout
 from .page_shell import document, esc
 from .platform import with_platform
@@ -188,20 +190,20 @@ def report(seen: dict, plan: dict[str, list[str]] | None, fault: str = "") -> st
 
 
 def picker(root: str) -> str:
-    """The directory, asked for. A path rather than a file dialogue: a browser cannot give a server one."""
+    """The directory, asked for with this machine's folder dialog, where it has one."""
     return (
-        f'<div class="card" id="pick"><h2>Adopt a repository you already have</h2>'
-        f'<form class="ask-page"><div class="q"><label for="root">The repository\'s directory</label>'
-        f'<input name="root" id="root" value="{esc(root)}" required>'
-        f'<div class="why">A clean Git repository with no project.json of its own. Nothing in it is read '
-        f'until you press Look, and nothing is written until you press Adopt.</div></div>'
-        f'<div class="q"><label for="delivery">Where the method\'s files go</label>'
-        f'<input name="delivery" id="delivery" value="delivery"></div></form>'
-        f'<div class="ask"><button class="go" id="look">Look</button></div></div>'
+        '<div class="card" id="pick"><h2>Adopt a repository you already have</h2>'
+        '<form class="ask-page"><div class="q"><label for="root">The repository\'s directory</label>'
+        + folder_field("root", root, required=True) +
+        '<div class="why">A clean Git repository with no project.json of its own. Nothing in it is read '
+        'until you press Look, and nothing is written until you press Adopt.</div></div>'
+        '<div class="q"><label for="delivery">Where the method\'s files go</label>'
+        '<input name="delivery" id="delivery" value="delivery"></div></form>'
+        '<div class="ask"><button class="go" id="look">Look</button></div></div>'
     )
 
 
-SCRIPT = """
+SCRIPT = CHOOSING + """
 const answers = () => Object.fromEntries(
   new FormData(document.querySelector('#pick form.ask-page')).entries());
 

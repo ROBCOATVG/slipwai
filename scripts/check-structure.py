@@ -131,8 +131,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # The interview's rows, split from its questions at the seam that module's budget names:
               # which control a question gets depends on its kind, never on which flag it becomes.
               "interview_form", "adopt_page",
-              # The machine's own folder chooser, which a browser may not be and never could be.
-              "folder_choice",
+              # The machine's own folder chooser, which a browser may not be and never could be, and the
+              # one control every page that asks for a folder shows.
+              "folder_choice", "folder_field",
               # Where the project stands, read for the board's Voyage window: the stages, the slices, the
               # model, and who answers at each stop of the run.
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",

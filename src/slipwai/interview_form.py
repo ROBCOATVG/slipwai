@@ -12,7 +12,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from .errors import GenerationError
-from .folder_choice import asking as chooser
+from .folder_field import SCRIPT as CHOOSING
+from .folder_field import folder_field
 from .interview_page import (
     DECLINE,
     WAS,
@@ -43,16 +44,7 @@ def field_html(question: Question) -> str:
             f"{esc(question.labels.get(name, name))}</option>" for name in question.choices)
         asking = f'<select id="{esc(question.name)}" name="{esc(question.name)}" data-asks>{options}</select>'
     elif question.kind == "path":
-        # A button and the folder it chose, not a file input. A browser may not learn where anything is on
-        # the disk — that is the rule, not an oversight — so the board asks the machine for it with the same
-        # dialog every other program on this computer opens. Only where this machine has no such dialog is
-        # the path typed, and then the field is an ordinary one.
-        choosing = bool(chooser(Path.home()))
-        asking = (f'<div class="path"><input id="{esc(question.name)}" name="{esc(question.name)}" '
-                  f'value="{esc(question.default)}" placeholder="a folder on this machine"'
-                  + (f' readonly data-choose="{esc(question.name)}">'
-                     f'<button type="button" class="install" data-choose="{esc(question.name)}">'
-                     f"Choose folder\u2026</button></div>" if choosing else "></div>"))
+        asking = folder_field(question.name, question.default)
     elif question.kind == "file":
         asking = (f'<input id="{esc(question.name)}" name="{esc(question.name)}" type="file" '
                   f'accept=".md,.markdown,.txt,text/markdown,text/plain">')
@@ -87,7 +79,7 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
 #: — the target decides which languages are offered, the backend decides which axes apply — is asked again
 #: rather than patched, because deciding in the browser which questions follow would be the second reading
 #: of the catalogue this slice exists to avoid.
-SCRIPT = WORKS + """
+SCRIPT = WORKS + CHOOSING + """
 // A file input's entry is a File, which JSON would render as `{}`: it is read here and sent as its text,
 // with its name beside it, and only when it is about to be used — a re-ask of the questions is sent the
 // name alone.
@@ -107,24 +99,6 @@ const answers = async (withFiles) => {
   }
   return held;
 };
-
-// The machine's folder chooser, for the answers that are a folder. The board is on this machine, so it
-// opens the dialog and hands back where it landed; a cancel comes back empty and the field keeps what it
-// had. Not `send`, which reloads the page: this fills a field in and the rest of the form stays put.
-document.addEventListener('click', async event => {
-  const button = event.target.closest('[data-choose]');
-  if (!button) return;
-  const box = document.getElementById(button.dataset.choose);
-  // The field itself is a way in too, and both are held while the dialog is open.
-  const doors = document.querySelectorAll(`[data-choose="${button.dataset.choose}"]`);
-  doors.forEach(door => { door.disabled = true; });
-  try {
-    const answer = await fetch('/choose', {method:'POST', headers:{'Content-Type':'application/json'},
-                                           body: JSON.stringify({start: box.value, field: box.id})});
-    const picked = (await answer.text()).trim();
-    if (picked) { box.value = picked; box.dispatchEvent(new Event('change', {bubbles: true})); }
-  } finally { doors.forEach(door => { door.disabled = false; }); }
-});
 
 async function post(path, withFiles){
   return fetch(path, {method:'POST', headers:{'Content-Type':'application/json'},

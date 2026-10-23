@@ -37,6 +37,8 @@ from .ecosystems import prefixed
 from .errors import GenerationError
 from .folder_field import SCRIPT as CHOOSING
 from .folder_field import folder_field
+from .interview_form import field_html
+from .interview_page import init_asked
 from .layout import Layout
 from .page_shell import document, esc
 from .platform import with_platform
@@ -189,7 +191,7 @@ def report(seen: dict, plan: dict[str, list[str]] | None, fault: str = "") -> st
     )
 
 
-def picker(root: str) -> str:
+def picker(root: str, answers: Mapping[str, str] | None = None) -> str:
     """The directory, asked for with this machine's folder dialog, where it has one."""
     return (
         '<div class="card" id="pick"><h2>Adopt a repository you already have</h2>'
@@ -198,7 +200,8 @@ def picker(root: str) -> str:
         '<div class="why">A clean Git repository with no project.json of its own. Nothing in it is read '
         'until you press Look, and nothing is written until you press Adopt.</div></div>'
         '<div class="q"><label for="delivery">Where the method\'s files go</label>'
-        '<input name="delivery" id="delivery" value="adopt"></div></form>'
+        '<input name="delivery" id="delivery" value="adopt"></div>'
+        + field_html(init_asked(answers or {}, Path(root or "."))) + '</form>'
         '<div class="ask"><button class="go" id="look">Look</button></div></div>'
     )
 
@@ -223,7 +226,11 @@ document.addEventListener('click', async event => {
     const answer = await fetch('/adopt/run', {method:'POST',
       headers:{'Content-Type':'application/json'}, body: JSON.stringify(answers())});
     said.textContent = await answer.text();
-    if (!answer.ok) said.className = 'said bad';
+    if (!answer.ok) { said.className = 'said bad'; return; }
+    // Adopted: the board now looks at the repository, and its voyage opens beside this window, where
+    // `./init` is followed — the same landing a generated project gets.
+    const receipt = await (await fetch('/init.json')).json();
+    window.open('/voyage?look=' + encodeURIComponent(receipt.root), '_blank', 'noopener');
   }
 });
 """
@@ -231,7 +238,7 @@ document.addEventListener('click', async event => {
 
 def page(answers: Mapping[str, str], title: str = "Adopt a repository") -> str:
     """The adoption tab: pick a directory, look at it, and only then adopt it."""
-    body = picker(str(answers.get("root") or "")) + '<div id="report"></div>'
+    body = picker(str(answers.get("root") or ""), answers) + '<div id="report"></div>'
     return document(title, "what it found, and what it would write, before it writes it",
                     body, SCRIPT, now="/adopt")
 

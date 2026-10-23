@@ -17,7 +17,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai.init_run import DECLINED, Fitting, command, ended, launch, start
+from slipwai.init_run import DECLINED, Fitting, adopted, command, ended, launch, start
 from slipwai.session_log import folded_line
 
 
@@ -70,6 +70,21 @@ class CommandTest(unittest.TestCase):
 
 @unittest.skipIf(sys.platform == "win32",
                  "the board's children run through a pty and `sh`, which Windows has neither of")
+class AdoptedTest(unittest.TestCase):
+    """An adoption made on the board runs the repository's own copy of `./init`, under its delivery directory."""
+
+    def test_the_adopted_copy_is_the_one_run_with_the_agent_named(self) -> None:
+        with mock.patch.object(Fitting, "run"):
+            fitting = adopted(Path(tempfile.mkdtemp()), "adopt", "claude")
+        self.assertEqual(fitting.steps[0].argv, ["./adopt/init", "--integration", "claude"])
+
+    def test_with_no_agent_named_it_is_left_as_the_next_step(self) -> None:
+        with mock.patch.object(Fitting, "run"):
+            fitting = adopted(Path(tempfile.mkdtemp()), "adopt", None, ["adopted"])
+        self.assertEqual(fitting.steps, [])
+        self.assertEqual(fitting.lines, ["adopted", DECLINED])
+
+
 class BackgroundTest(unittest.TestCase):
     """The board's face: a child that outlives the request, read by polling."""
 

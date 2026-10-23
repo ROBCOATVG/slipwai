@@ -32,7 +32,8 @@ from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 510 — one runner for every child the board starts, including assessment of a feature handed to /sail
+# budget: 525 — one runner for every child the board starts, including assessment of a feature handed to /sail
+# and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
 # step they would be five modules of twelve lines and one import list each.
@@ -361,6 +362,25 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
     steps = [init_step(where, harness, repository, extensions)] if harness else []
     if steps and prd:
         steps.append(Step(DRAFT, DRAFTING, drafted, "draft"))
+    fitting = Fitting(where, steps, said)
+    fitting.thread.start()
+    return fitting
+
+
+def adopted(where: Path, delivery: str, harness: str | None, said: list[str] | None = None) -> Fitting:
+    """`./<delivery>/init` begun in a repository the board has just adopted, as `start` begins a generated
+    project's: the adoption is committed already, and this is the step after it that needs the network."""
+    script = f"./{delivery}/{SCRIPT}" if delivery not in ("", ".") else f"./{SCRIPT}"
+    steps = []
+    if harness:
+        argv = [script, "--integration", harness]
+        steps.append(Step(argv, f"Running {' '.join(argv)} in {where} — it installs Spec Kit for the coding "
+                                "agent, so it reaches the network once, here.",
+                          lambda code: (f"`{' '.join(argv)}` is done; what it wrote is uncommitted, and yours to "
+                                        "read and commit. `slipwai adopt --next` says what is left."
+                                        if code == 0 else
+                                        f"`{' '.join(argv)}` exited {code}, and the adoption is committed and "
+                                        "unaffected. Run it again when whatever stopped it is fixed."), "init"))
     fitting = Fitting(where, steps, said)
     fitting.thread.start()
     return fitting

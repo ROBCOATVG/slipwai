@@ -65,6 +65,7 @@ from .fleet import board
 from .folder_choice import chosen
 from .harbour import config
 from .init_run import Fitting, begin_model, outside_session
+from .init_run import adopted as adopted_init
 from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
 from .init_run import draw as draw_surfaces
@@ -136,7 +137,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 870 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 885 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -706,8 +707,19 @@ class Bridge(BaseHTTPRequestHandler):
             if where == "/adopt/look":
                 self.send(200, looked({str(a): str(b) for a, b in held.items()}, self.root))
                 return
+            # Adopted, the board lands in the repository and starts its `./init`, as it does a generated
+            # project's: a report that ended the page left the person to find both for themselves.
             if where == "/adopt/run":
-                worked, out = adopt({str(a): str(b) for a, b in held.items()}, self.root)
+                answers = {str(a): str(b) for a, b in held.items()}
+                worked, out = adopt(answers, self.root)
+                if worked:
+                    landed = Path(answers.get("root") or self.root).expanduser().resolve()
+                    named = answers.get("init") or NO_INIT
+                    self.look(landed)
+                    self.launched = False
+                    self.fitting = adopted_init(landed, answers.get("delivery") or "adopt",
+                                                None if named == NO_INIT else named, out.splitlines())
+                    out = "\n".join(self.fitting.said()["lines"])
                 self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
                 return
             # Installing is the one control here that reaches a network, and it is still a call rather than

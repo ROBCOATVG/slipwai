@@ -4,7 +4,7 @@ A plan for the combined design agreed on 2026-10-22, drawn as artboard D of the 
 <https://claude.ai/artifact/XZYqPMtXaztPD9qXSYsy8e> ("Fleet status mockups"). The design was taken from one
 real day: the `recap` voyage of 2026-10-21, whose logs are the fixture every slice below is checked against.
 
-**Status, 2026-10-22:** slices 19.1 to 19.13 are built on the `fleet-status` branch, one commit each, with `tests/test_recap_day.py` and `tests/test_timeline.py` holding the board to the day. Section 5's open points stand.
+**Status, 2026-10-23:** on `main`. Seven slices are done and the rest partial, each slice's gap named in its row's Status cell — read off the code and its tests on 2026-10-23, not off the commits, because no commit carries a `Slice-done` trailer for phase 19 or 20 and `scripts/progress.py` reads only the main plan.
 
 ## 1. What went wrong, in the words of the logs
 

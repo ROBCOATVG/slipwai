@@ -21,7 +21,7 @@ from .feedback_card import opener
 from .live_page import STRIP_SCRIPT
 from .live_page import STYLE as LIVE_STYLE
 from .page_shell import document, esc
-from .passage import Stage, current
+from .passage import Stage, current, surface_pages
 from .settings_card import project_tabs
 from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
@@ -590,8 +590,18 @@ def screens_card(shots: list[dict[str, str]], mocks: list[dict[str, str]], app: 
 
 
 def verdict_form(root: Path, feature: str) -> str:
-    """Approve marks every drawn state approved. Disapprove parks them, and has to say why."""
-    path = root / "specs" / feature / "mockups" / "mock-states.md"
+    """Approve marks every drawn state approved. Disapprove parks them, and has to say why.
+
+    Only where there is a page per surface to mark: a storyboard with the surfaces drawn inside it has no state
+    a verdict can name, and buttons for one were buttons the server refused. That feature is told what is
+    missing and what draws it, instead.
+    """
+    home = root / "specs" / feature / "mockups"
+    if not surface_pages(home):
+        return ('<p class="empty">This storyboard has no page per surface, so there is nothing to approve: '
+                "each surface is drawn as its own page, which the storyboard links. Draw the surfaces draws it "
+                "again.</p>")
+    path = home / "mock-states.md"
     note = "Nothing on this storyboard is approved yet."
     text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
     parked = next((line.split("parked:", 1)[1].strip()

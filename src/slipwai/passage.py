@@ -101,10 +101,9 @@ def _surface_name(title: str, stem: str) -> str:
 
 
 def surface_pages(home: Path) -> list[Path]:
-    """The drawn surfaces in one feature's mock-ups directory: every page but the storyboard and the contents
-    page, which show the surfaces and are not one. The one reading of "drawn", for every question that asks it
-    — whether there is a storyboard to look at, and what a verdict marks — because the two disagreeing is a
-    storyboard on its own that the board offered to approve and then could not."""
+    """The drawn surfaces in one feature's mock-ups: every page but the storyboard and the contents page. The one
+    reading of "drawn" for every question that asks it, because two readings were a storyboard on its own that
+    the board offered to approve and then could not."""
     return sorted(page for page in home.glob("*.html") if page.name not in _NOT_A_SURFACE)
 
 

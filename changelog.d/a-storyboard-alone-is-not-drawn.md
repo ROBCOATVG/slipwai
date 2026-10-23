@@ -5,7 +5,8 @@ at a time from a page per surface, and the drawing stage and the board counted t
 surface. So a session that drew the surfaces inside `storyboard.html` reported `drawn`, the board offered Approve
 and Disapprove and refused both, and with something "drawn" it never offered Draw the surfaces again. All three
 now read the same thing: a surface page is any page but the storyboard and the contents page. A storyboard on its
-own is nothing drawn — the stage says so and fails, and the board offers the drawing again — and `/mockups` says
+own is nothing drawn — the stage says so and fails, the Storyboard card says there is nothing to approve
+rather than offering buttons the board refuses, and the board offers the drawing again — and `/mockups` says
 what each surface page holds.
 
 **Catch-up:** `slipwai migrate` brings the new `scripts/agents/surfaces.py` and `commands/mockups.md`. A project

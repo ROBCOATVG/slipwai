@@ -316,6 +316,7 @@ class BuiltScreensPageTest(unittest.TestCase):
         root = Path(tempfile.mkdtemp())
         home = root / "specs/001-demo/mockups"
         home.mkdir(parents=True)
+        (home / "discover.html").write_text('<article class="state"><h2>Populated</h2></article>', encoding="utf-8")
         open_form = verdict_form(root, "001-demo")
         self.assertNotIn("disabled", open_form)
         self.assertIn("dataset.storyboard === story", SCRIPT)
@@ -326,6 +327,18 @@ class BuiltScreensPageTest(unittest.TestCase):
             closed = verdict_form(root, "001-demo")
             self.assertIn('data-verdict="approved" disabled', closed, mark)
             self.assertIn('data-verdict="parked" disabled', closed, mark)
+
+    def test_a_storyboard_with_no_surface_pages_offers_no_verdict_and_says_why(self) -> None:
+        """Approve on a storyboard alone was a button the server refused: there is no state on it to mark."""
+        from slipwai.voyage_page import verdict_form
+        root = Path(tempfile.mkdtemp())
+        home = root / "specs/001-demo/mockups"
+        home.mkdir(parents=True)
+        (home / "storyboard.html").write_text("<section>Discover</section>", encoding="utf-8")
+        said = verdict_form(root, "001-demo")
+        self.assertNotIn("data-verdict", said)
+        self.assertIn("no page per surface", said)
+        self.assertIn("Draw the surfaces", said)
 
     def test_a_locked_verdict_button_looks_locked(self) -> None:
         """A disabled control keeps the attribute and loses the teal of a button that can be pressed."""

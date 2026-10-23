@@ -52,6 +52,8 @@
   --radius: 6px;
   --radius-large: 10px;
   --border: 1px solid var(--colour-border);
+  /* The one thicker line: the mark under the current page in the nav. */
+  --mark-width: 2px;
   --shadow: 0 1px 2px rgb(22 25 29 / 8%);
   /* The one ring every focusable element shows: a token so no rule below carries a literal width. */
   --focus-ring: 2px solid var(--colour-accent);

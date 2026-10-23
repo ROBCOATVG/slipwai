@@ -55,7 +55,8 @@ import {
   type UserManagerSettings,
   WebStorageStateStore,
 } from 'oidc-client-ts';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AuthProvider, type AuthProviderProps } from 'react-oidc-context';
 
 import { Account } from './Account';
@@ -126,18 +127,27 @@ export class ReturningUserManager extends UserManager {
 }
 
 /**
- * Wraps the app in the sign-in context and puts the account controls in a header above it.
+ * Puts the account controls in the shell's header, wherever `App.tsx` left the slot for them.
  *
- * The header lives here rather than in `App.tsx` on purpose: `useAuth()` throws when rendered outside an
- * `AuthProvider`, so keeping every consumer inside this component means `App` and its test never need to
- * know that sign-in exists.
+ * `useAuth()` throws when rendered outside an `AuthProvider`, so every consumer has to live inside this
+ * provider's tree — but the controls belong in the page's own header, not in a second one above it. A
+ * portal gives both: `Account` is rendered here, inside the provider, and lands in the empty
+ * `#app-account` element the shell carries. `App` and its test never need to know sign-in exists, and
+ * a shell with no slot simply shows no account controls.
  */
+function AccountSlot() {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  // After the first commit: the shell is a child of this provider, so its slot is not in the document
+  // until the render that contains this component has finished.
+  useEffect(() => setSlot(document.getElementById('app-account')), []);
+  return slot === null ? null : createPortal(<Account />, slot);
+}
+
+/** Wraps the app in the sign-in context and puts the account controls in the shell's header. */
 export function UsersProvider({ children }: { children: ReactNode }) {
   return (
     <AuthProvider userManager={useManager()} onSigninCallback={backToWhereSignInStarted}>
-      <header>
-        <Account />
-      </header>
+      <AccountSlot />
       {children}
     </AuthProvider>
   );

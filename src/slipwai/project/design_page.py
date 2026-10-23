@@ -100,7 +100,9 @@ have to reverse-engineer it from hex codes:
   where the element does not exist.
 - **Use the tokens.** A literal colour or pixel value in a slice's CSS is a value nobody can change
   centrally, and the first place a redesign gets stuck.
-- **Keep the shell.** Header, main and footer are the page; a screen is what goes inside `main`.
+- **Keep the shell.** Header, main and footer are the page; a screen is what goes inside `main`. The
+  header's nav and the footer's line are this project's to fill in: add a slice's link to the nav, and
+  put real footer content in or leave it as the project name — never a note about the skeleton.
 - **No framework, no runtime dependency.** Plain CSS files. A CSS framework decides far more than colour
   for a project that has not decided anything, and it is the first dependency spent on what a stylesheet
   already does.

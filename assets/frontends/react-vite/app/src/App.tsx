@@ -18,7 +18,7 @@
  * routed content waits. `loadFlags` never rejects, so the wait is bounded by one request either way.
  */
 import { useEffect, useState } from 'react';
-import { Link, Route, Routes } from 'react-router';
+import { NavLink, Route, Routes } from 'react-router';
 
 import { loadFlags, setFlagSource } from './flags';
 // backing-service:__TRANSPORT__:begin
@@ -58,8 +58,12 @@ export function App() {
       <header className="app-header">
         <h1>__PROJECT_NAME__</h1>
         <nav className="app-nav" aria-label="Sections">
-          <Link to="/">Overview</Link>
+          <NavLink to="/" end>
+            Overview
+          </NavLink>
         </nav>
+        {/* Empty on purpose: a feature that has account controls (sign-in) renders them here. */}
+        <div id="app-account" className="app-account" />
       </header>
       <main className="app-main">
         {flagsLoaded ? (
@@ -78,8 +82,7 @@ export function App() {
         )}
       </main>
       <footer className="app-footer">
-        <span>Replace this walking skeleton with the first actor-visible slice.</span>
-        <span className="muted">docs/design.md — what this project looks like, and why</span>
+        <span>__PROJECT_NAME__</span>
       </footer>
     </div>
   );

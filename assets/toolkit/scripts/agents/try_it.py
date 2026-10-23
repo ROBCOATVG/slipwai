@@ -806,13 +806,15 @@ def seed_door(where: Path, env: dict[str, str], service: dict, given: list[dict]
     target = f"seed-{service['name']}" if f"seed-{service['name']}" in targets else "seed" if "seed" in targets else ""
     if not target:
         return (f"no seed door yet: the Makefile has no seed-{service['name']} target. The {service['name']} "
-                f"language package's next release brings `scripts/seed.ts`; until then a story's given is "
+                f"language package's next release brings its seed door; until then a story's given is "
                 f"validated by check-try and not applied")
     HOME.mkdir(parents=True, exist_ok=True)
     file = HOME / f"given-{service['name']}.json"
     file.write_text(json.dumps(given, indent=2) + "\n", encoding="utf-8")
     try:
-        run(["make", target, f"FILE={file}"], where, env, log)
+        # Forward slashes whatever the platform: `make` hands the value to a POSIX shell, which reads a Windows
+        # path's backslashes as escapes, so the door was handed a file that is not there and always refused.
+        run(["make", target, f"FILE={file.as_posix()}"], where, env, log)
     except RuntimeError as fault:
         return f"the seed door refused: {fault}"
     return ""

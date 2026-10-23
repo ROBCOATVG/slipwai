@@ -100,9 +100,13 @@ class AgentCommandTest(unittest.TestCase):
         self.addCleanup(os.environ.__setitem__, "PATH", held)
 
     def stub(self) -> None:
+        """A `claude` the path lookup finds: a script on POSIX, and on Windows a `.cmd` beside it, since
+        `shutil.which` there finds only names with an extension `PATHEXT` lists. Nothing runs it."""
         path = self.bin / "claude"
         path.write_text("#!/bin/sh\n", encoding="utf-8")
         path.chmod(path.stat().st_mode | stat.S_IXUSR)
+        if os.name == "nt":
+            (self.bin / "claude.cmd").write_text("@echo off\r\n", encoding="utf-8")
 
     def test_the_session_can_read_and_search_and_nothing_else(self) -> None:
         self.stub()

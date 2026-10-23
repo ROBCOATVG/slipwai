@@ -1,9 +1,9 @@
 """`slipwai install <name>...`: install whatever the index says each name is, by that kind's own verb.
 
 The short form is what a reader types after a search result tells them a package exists, and what a package's CI
-types to put its siblings beside it — and a sibling is not always a language. A language proved against a cloud
-needs the cloud's target package beside it, and the verb refused it with `aws is a target, not a language`, which
-named the right command and left the reader to type it. The index already says what each name is (every release
+types to put its siblings beside it — and a sibling is not always a language. A language proved against a target
+needs that target's package beside it, and the verb refused it as a target and not a language, which named the
+right command and left the reader to type it. The index already says what each name is (every release
 entry has its `kind`), so this asks it and hands each name to its own verb: targets to `target install`, the rest
 to `language install`, which keeps its own refusals for a name the index has under another kind, or not at all.
 """

@@ -23,10 +23,6 @@ OFF_PROFILE = {
         "the rung is a reading of the write side of a model, and the standard profile has no model to "
         "read — its services keep current state"
     ),
-    "persistence": (
-        "the store behind this axis is the driven port the modelled profile's write side is written "
-        "against, and the standard profile has no such port"
-    ),
 }
 
 
@@ -161,6 +157,14 @@ class Selection:
     def summary(self) -> dict[str, str]:
         """What project.json records: the answer to every axis that was asked."""
         return {axis: self.choices[axis] for axis in self.axes}
+
+
+def asks(flag: str, profile: str | None) -> bool:
+    """Whether the profile in force — the person's where they gave one — asks this answer at all. One it does
+    not is not the quickstart's to give either: carried over, it ends the run on a refusal of a question nobody
+    was asked, which is what a quickstart's store did to `--profile standard` before standard asked for one."""
+    axis = CATALOG["axes"].get(flag)
+    return axis is None or not profile or profile in axis["profiles"]
 
 
 def resolve_selection(

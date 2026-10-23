@@ -43,8 +43,8 @@ SETTINGS_IMPORTS = "__SETTINGS_IMPORTS__"
 def wire_store(files: dict[str, str], selection: Selection, backend: str) -> dict[str, str]:
     """Resolve a transport entry point's store placeholders, in place, and hand the files back.
 
-    A project with no transport has no entry point and nothing to wire; a project with no event store —
-    every project on the standard profile — has its placeholders *removed* rather than left in the file,
+    A project with no transport has no entry point and nothing to wire; a project with no store — one
+    whose services were never asked the persistence axis — has its placeholders *removed* rather than left in the file,
     which is the direction `wire_entry` takes for the same reason: an unresolved placeholder is the one
     failure here that would reach a generated project looking like the keel forgot something.
     """
@@ -53,12 +53,12 @@ def wire_store(files: dict[str, str], selection: Selection, backend: str) -> dic
     if wiring is None or wiring.entry not in files:
         return files
     # `has("memory")` is the question "was the persistence axis asked at all": the in-memory adapter
-    # arrives with every answer to it and with no other axis, so a project without it — every project on
-    # the standard profile — is one with no store to open and no port to probe.
+    # arrives with every answer to it and with no other axis, so a project without it — a service recorded
+    # before the standard profile was asked it — is one with no store to open and no port to probe.
     stored = selection.has("memory")
     store = selection.feature_of("persistence") if stored else None
     opened = wiring.open[store].rstrip("\n") + "\n" + wiring.gap if stored else ""
-    # `"none"` is a project with no persistence axis at all (the standard profile). The adapter
+    # `"none"` is a project with no persistence axis at all (a standard service recorded before it was asked). The adapter
     # import of `buildApp` / `readiness` still has to land: emptying the placeholder drops the
     # line, and TypeScript keeps that import in this table rather than as a static line, so Biome
     # can sort it with the adapter imports when a store is present. Python names the same symbols

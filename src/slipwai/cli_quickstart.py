@@ -12,6 +12,7 @@ catalogue is read once, when this process starts, so a language fetched halfway 
 single question asked after it. A quickstart that names a package this machine has not got is therefore
 refused — by `generate`, with every missing name in one line and the one command that fetches them all.
 """
+# budget: 360 — what a quickstart answers, what is yours, and what your profile does not ask, each said
 from __future__ import annotations
 
 import argparse
@@ -29,6 +30,7 @@ from .guards import REGISTRY as GUARD_REGISTRY
 from .language_directory import directory as package_directory
 from .package_new import core_range
 from .quickstart import Quickstart
+from .selection import asks
 from .versions import parse
 
 #: The election record `./init` and an extension's own `init.py` keep, read here to say what this project
@@ -279,6 +281,9 @@ def applied(args: Any, named: dict[str, str | None], argv: list[str]) -> Quickst
         if attribute in already or attribute in spoken_for:
             said = getattr(args, attribute, None) or named.get(flag) or getattr(args, "backend", "")
             print(f"  {flag:<13} {said}  (yours, not the quickstart's)")
+            continue
+        if not asks(flag, getattr(args, "profile", None)):
+            print(f"  {flag:<13} {value}  (not given: the {args.profile} profile does not ask it)")
             continue
         if flag in named:
             named[flag] = value

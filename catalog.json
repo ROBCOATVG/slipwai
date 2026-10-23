@@ -70,6 +70,7 @@
       "prompt": "Persistence",
       "description": "How this service keeps its data. Every answer is one store behind one port, and the in-memory adapter ships with all of them, so `make verify` needs no Docker whichever store is chosen",
       "profiles": [
+        "standard",
         "event-modelling"
       ],
       "absent": "memory",

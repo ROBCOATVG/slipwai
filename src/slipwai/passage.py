@@ -100,6 +100,14 @@ def _surface_name(title: str, stem: str) -> str:
     return title or stem
 
 
+def surface_pages(home: Path) -> list[Path]:
+    """The drawn surfaces in one feature's mock-ups directory: every page but the storyboard and the contents
+    page, which show the surfaces and are not one. The one reading of "drawn", for every question that asks it
+    — whether there is a storyboard to look at, and what a verdict marks — because the two disagreeing is a
+    storyboard on its own that the board offered to approve and then could not."""
+    return sorted(page for page in home.glob("*.html") if page.name not in _NOT_A_SURFACE)
+
+
 def drawn_states(root: Path, feature: str) -> list[tuple[str, list[str]]]:
     """Each drawn surface and the states on its page. The storyboard and the contents page are not surfaces."""
     if not _FEATURE.fullmatch(feature):
@@ -108,9 +116,7 @@ def drawn_states(root: Path, feature: str) -> list[tuple[str, list[str]]]:
     if not home.is_dir() or not home.is_relative_to((root / "specs").resolve()):
         raise ValueError(f"nothing drawn under specs/{feature}/mockups")
     found: list[tuple[str, list[str]]] = []
-    for page in sorted(home.glob("*.html")):
-        if page.name in _NOT_A_SURFACE:
-            continue
+    for page in surface_pages(home):
         html = page.read_text(encoding="utf-8", errors="replace")
         title = _TITLE.search(html)
         name = _surface_name(title.group(1) if title else "", page.stem)
@@ -189,7 +195,9 @@ def drawn(root: Path) -> bool:
     as *to do*.
     """
     specs = root / "specs"
-    return bool(specs.is_dir() and next(specs.glob("*/mockups/*.html"), None))
+    # Surface pages, not any page: a storyboard on its own has nothing to approve, and reading it as drawn
+    # left the board offering Approve, which then refused, and no Draw the surfaces to get out of it.
+    return bool(specs.is_dir() and any(surface_pages(home) for home in specs.glob("*/mockups")))
 
 
 def drawing_clock(root: Path, now: float | None = None) -> str:

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.passage import current, modelled, record_verdict, stages
+from slipwai.passage import current, drawn, modelled, record_verdict, stages
 
 CONSTITUTION = ".specify/memory/constitution.md"
 
@@ -127,6 +127,15 @@ class StagesTest(unittest.TestCase):
         self.assertEqual(states(tree(**{**made, "specs__001-demo__mockups__mock-states.md":
                                         "## Surface: Basket\n- empty \u2014 approved\n"}))["storyboard"],
                          "done", "and the verdicts settle it")
+
+    def test_a_storyboard_with_no_surface_pages_is_not_drawn_so_the_board_can_draw_again(self) -> None:
+        """The board reads a page per surface. A storyboard on its own read as drawn, so Approve was offered and
+        refused, and Draw the surfaces — which waits for nothing drawn — never came back."""
+        made = {**INIT, "specs__001-demo__spec.md": "# Demo\n",
+                "specs__001-demo__mockups__storyboard.html": "<title>Storyboard</title><section>Basket</section>\n"}
+        root = tree(**made)
+        self.assertFalse(drawn(root))
+        self.assertNotEqual(states(root)["storyboard"], "waiting")
 
     def test_a_feature_with_no_surfaces_has_run_the_stage_rather_than_skipped_it(self) -> None:
         """A written answer, not an absence."""

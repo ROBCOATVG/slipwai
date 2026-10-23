@@ -88,6 +88,12 @@ Then one of two things, depending on what was in the directory.
   against a standard, and these are not code yet — it runs later, before the demo of any slice that builds
   one of these.
 
+  **Each surface is its own page, and the storyboard is not one.** `<surface>.html` per surface, its
+  `<title>` naming it, and each state an `<article class="state">` headed by an `<h2>` naming the state — that
+  is what the board reads when a person approves the drawing, one verdict per state. The storyboard
+  (`storyboard.html`) embeds or links those pages. A storyboard with the surfaces drawn inside it and no page
+  per surface is nothing anybody can approve, and the stage refuses it as nothing drawn.
+
   **The first drawing is styled.** Where `docs/design/` held a direction, follow it, as above. Where it was
   empty, set a short one before the first surface: a handful of tokens (a type scale, four to six colours, a
   spacing step), one shared stylesheet every surface links — `specs/<feature>/mockups/mockups.css` — and

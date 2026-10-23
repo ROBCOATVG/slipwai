@@ -92,9 +92,15 @@ def specifications() -> list[Path]:
     return sorted(SPECS.glob("*/spec.md")) if SPECS.is_dir() else []
 
 
+#: The pages that show the surfaces and are not one: the board reads every other page as a surface to approve.
+NOT_A_SURFACE = ("storyboard.html", "index.html")
+
+
 def drawn(feature: str) -> list[Path]:
-    """Every surface drawn for that feature, which is what the session is expected to leave some of."""
-    return sorted((SPECS / feature / MOCKUPS).glob("*.html"))
+    """Every surface drawn for that feature, which is what the session is expected to leave some of. Not the
+    storyboard: a storyboard with no surface pages beside it is nothing a person can approve, and counting it
+    reported `drawn: 1 surface(s)` for a drawing the board then refused."""
+    return sorted(page for page in (SPECS / feature / MOCKUPS).glob("*.html") if page.name not in NOT_A_SURFACE)
 
 
 def touched(feature: str, since: float) -> bool:
@@ -189,8 +195,11 @@ def main(argv: list[str]) -> int:
         return exited
     written = [path for path in drawn(feature) if path not in before]
     if not written and not drawn(feature):
-        print(f"surfaces: the session ended with nothing under specs/{feature}/{MOCKUPS}/, so there is no "
-              f"storyboard to approve; read its last lines above", file=sys.stderr)
+        alone = (SPECS / feature / MOCKUPS / "storyboard.html").is_file()
+        print(f"surfaces: the session ended with no surface pages under specs/{feature}/{MOCKUPS}/"
+              + (" — a storyboard.html and no page per surface, which is nothing a person can approve" if alone
+                 else "") + f", so there is no storyboard to approve; Draw the surfaces again, and read its last "
+              f"lines above", file=sys.stderr)
         return 1
     if redraw:
         if not touched(feature, started):

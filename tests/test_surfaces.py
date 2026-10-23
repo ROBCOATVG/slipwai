@@ -265,7 +265,24 @@ class BudgetTest(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
             code = self.module.main(["001-orders"])
         self.assertEqual(code, 1)
-        self.assertIn("nothing under specs/001-orders/mockups/", err.getvalue())
+        self.assertIn("no surface pages under specs/001-orders/mockups/", err.getvalue())
+
+    def test_a_storyboard_with_no_page_per_surface_is_nothing_drawn(self) -> None:
+        """The surfaces drawn inside the storyboard and no page each: the board reads a page per surface, so
+        it offered Approve and then could not, and with something "drawn" it offered no redraw either."""
+        home = self.tree / "specs/001-orders/mockups"
+        board = "import pathlib, sys; p = pathlib.Path(sys.argv[1]); p.mkdir(parents=True); " \
+                "(p / 'storyboard.html').write_text('<section>Basket</section>')"
+        command = f"{shlex.quote(sys.executable)} -c {shlex.quote(board)} {shlex.quote(str(home))} {{prompt}}"
+        harness = self.module.harness
+        err = io.StringIO()
+        with mock.patch.object(harness, "choose", return_value=({}, "drawing with a stand-in")), \
+                mock.patch.object(harness, "template", return_value=(command, "a test")), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            code = self.module.main(["001-orders"])
+        self.assertEqual(code, 1)
+        self.assertIn("a storyboard.html and no page per surface", err.getvalue())
+        self.assertIn("Draw the surfaces again", err.getvalue())
 
     def test_the_session_is_told_its_budget(self) -> None:
         """It plans to the clock only if it knows the clock."""

@@ -183,6 +183,21 @@ class StoryboardVerdictTest(unittest.TestCase):
         self.assertIn("- Populated \u2014 parked: the map shows the street", text)
         self.assertEqual(states(root)["storyboard"], "waiting")
 
+    def test_handed_over_mock_ups_the_storyboard_shows_are_the_surfaces_approved(self) -> None:
+        """A person handed the mock-ups over in `docs/design/`, and the stage storyboarded those rather than
+        redrawing them. The surfaces are the pages the storyboard shows; one outside the project is not one."""
+        root = tree(**{
+            "docs__design__mockups__01-discover.html": "<title>Game Finder \u2014 Discover tables near you</title>",
+            "specs__001-demo__mockups__storyboard.html": (
+                '<iframe src="../../../docs/design/mockups/01-discover.html"></iframe>'
+                '<a href="../../../../elsewhere/secret.html">x</a>'),
+        })
+        self.assertTrue(drawn(root))
+        self.assertEqual(record_verdict(root, "001-demo", "approved"), "approved")
+        text = (root / "specs/001-demo/mockups/mock-states.md").read_text(encoding="utf-8")
+        self.assertIn("## Surface: Discover tables near you\n- shown \u2014 approved\n", text)
+        self.assertNotIn("secret", text)
+
     def test_a_feature_that_was_not_drawn_cannot_be_approved(self) -> None:
         with self.assertRaises(ValueError):
             record_verdict(tree(), "../secret", "approved")

@@ -17,11 +17,12 @@ stage that stops for a person *by design* is indistinguishable, from the outside
 `Stage.expect` is that sentence: roughly how long, and whether it will stop for you. It is written here
 beside the state rather than in the page, because the stage is what knows it.
 """
-# budget: 425 — the stages, and the storyboard read both ways: states waiting on a person, and a drawing
-# turned down whole that waits on being drawn again
+# budget: 445 — the stages, the surfaces a storyboard shows when they were handed over, and the storyboard read
+# both ways: states waiting on a person, and a drawing turned down whole that waits on being drawn again
 # and the Slices step's two kinds of wanting a person: attention while work goes on, and stopped
 from __future__ import annotations
 
+import html
 import json
 import re
 import time
@@ -87,8 +88,7 @@ def harness_of(root: Path) -> str:
 
 def _plain(text: str) -> str:
     text = re.sub(r"<[^>]+>", "", text)
-    text = (text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
-            .replace("&quot;", '"').replace("&#39;", "'"))
+    text = html.unescape(text)
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -100,11 +100,30 @@ def _surface_name(title: str, stem: str) -> str:
     return title or stem
 
 
+#: A page the storyboard embeds or links: where the surfaces are when they were handed over rather than drawn.
+_EMBEDDED = re.compile(r"""(?:src|href)=["']([^"'#?]+\.html)["']""", re.IGNORECASE)
+
+
 def surface_pages(home: Path) -> list[Path]:
-    """The drawn surfaces in one feature's mock-ups: every page but the storyboard and the contents page. The one
-    reading of "drawn" for every question that asks it, because two readings were a storyboard on its own that
-    the board offered to approve and then could not."""
-    return sorted(page for page in home.glob("*.html") if page.name not in _NOT_A_SURFACE)
+    """The surfaces of one feature's mock-ups: the pages beside the storyboard, else the pages it embeds or links.
+
+    Every page but the storyboard and the contents page, where the stage drew them. Where it drew none, because
+    a person handed the mock-ups over (`docs/design/`) and the stage storyboarded those instead of redrawing
+    them, the surfaces are the pages the storyboard shows — inside the project, and there. The one reading of
+    "drawn" for every question that asks it: two readings were a storyboard the board offered to approve and
+    then could not.
+    """
+    beside = sorted(page for page in home.glob("*.html") if page.name not in _NOT_A_SURFACE)
+    board = home / "storyboard.html"
+    if beside or not board.is_file():
+        return beside
+    project, shown = home.parents[2].resolve(), []
+    for target in _EMBEDDED.findall(board.read_text(encoding="utf-8", errors="replace")):
+        page = (home / target).resolve()
+        if page.is_file() and page.is_relative_to(project) and page.name not in _NOT_A_SURFACE \
+                and page not in shown:
+            shown.append(page)
+    return shown
 
 
 def drawn_states(root: Path, feature: str) -> list[tuple[str, list[str]]]:
@@ -116,11 +135,11 @@ def drawn_states(root: Path, feature: str) -> list[tuple[str, list[str]]]:
         raise ValueError(f"nothing drawn under specs/{feature}/mockups")
     found: list[tuple[str, list[str]]] = []
     for page in surface_pages(home):
-        html = page.read_text(encoding="utf-8", errors="replace")
-        title = _TITLE.search(html)
+        text = page.read_text(encoding="utf-8", errors="replace")
+        title = _TITLE.search(text)
         name = _surface_name(title.group(1) if title else "", page.stem)
         states: list[str] = []
-        for article in _ARTICLE.finditer(html):
+        for article in _ARTICLE.finditer(text):
             heading = _HEADING.search(article.group(1))
             label = _plain(heading.group(1)) if heading else ""
             if label and label not in states:

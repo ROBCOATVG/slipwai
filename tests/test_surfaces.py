@@ -281,8 +281,18 @@ class BudgetTest(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
             code = self.module.main(["001-orders"])
         self.assertEqual(code, 1)
-        self.assertIn("a storyboard.html and no page per surface", err.getvalue())
+        self.assertIn("neither has a page per surface beside it nor shows one", err.getvalue())
         self.assertIn("Draw the surfaces again", err.getvalue())
+
+    def test_mock_ups_the_storyboard_shows_from_docs_design_are_drawn(self) -> None:
+        """Handed-over mock-ups storyboarded rather than redrawn are the surfaces, as the board reads them."""
+        home = self.tree / "specs/001-orders/mockups"
+        home.mkdir(parents=True)
+        (self.tree / "docs/design/mockups").mkdir(parents=True)
+        (self.tree / "docs/design/mockups/basket.html").write_text("<title>Basket</title>", encoding="utf-8")
+        (home / "storyboard.html").write_text('<iframe src="../../../docs/design/mockups/basket.html">',
+                                              encoding="utf-8")
+        self.assertEqual([page.name for page in self.module.drawn("001-orders")], ["basket.html"])
 
     def test_the_session_is_told_its_budget(self) -> None:
         """It plans to the clock only if it knows the clock."""

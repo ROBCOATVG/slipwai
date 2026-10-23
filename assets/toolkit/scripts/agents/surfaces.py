@@ -96,11 +96,27 @@ def specifications() -> list[Path]:
 NOT_A_SURFACE = ("storyboard.html", "index.html")
 
 
+#: A page the storyboard embeds or links: where the surfaces are when a person handed them over.
+EMBEDDED = re.compile(r"""(?:src|href)=["']([^"'#?]+\.html)["']""", re.IGNORECASE)
+
+
 def drawn(feature: str) -> list[Path]:
-    """Every surface drawn for that feature, which is what the session is expected to leave some of. Not the
-    storyboard: a storyboard with no surface pages beside it is nothing a person can approve, and counting it
-    reported `drawn: 1 surface(s)` for a drawing the board then refused."""
-    return sorted(page for page in (SPECS / feature / MOCKUPS).glob("*.html") if page.name not in NOT_A_SURFACE)
+    """Every surface of that feature, as the board reads them: the pages beside the storyboard, or — where the
+    mock-ups were handed over (`docs/design/`) and the session storyboarded those instead of redrawing them —
+    the pages inside the project the storyboard shows. Never the storyboard itself: counting it reported
+    `drawn: 1 surface(s)` for a drawing the board then had nothing in to approve."""
+    home = SPECS / feature / MOCKUPS
+    beside = sorted(page for page in home.glob("*.html") if page.name not in NOT_A_SURFACE)
+    board = home / "storyboard.html"
+    if beside or not board.is_file():
+        return beside
+    shown: list[Path] = []
+    for target in EMBEDDED.findall(board.read_text(encoding="utf-8", errors="replace")):
+        page = (home / target).resolve()
+        if page.is_file() and page.is_relative_to(ROOT.resolve()) and page.name not in NOT_A_SURFACE \
+                and page not in shown:
+            shown.append(page)
+    return shown
 
 
 def touched(feature: str, since: float) -> bool:
@@ -197,8 +213,8 @@ def main(argv: list[str]) -> int:
     if not written and not drawn(feature):
         alone = (SPECS / feature / MOCKUPS / "storyboard.html").is_file()
         print(f"surfaces: the session ended with no surface pages under specs/{feature}/{MOCKUPS}/"
-              + (" — a storyboard.html and no page per surface, which is nothing a person can approve" if alone
-                 else "") + f", so there is no storyboard to approve; Draw the surfaces again, and read its last "
+              + (" — a storyboard.html that neither has a page per surface beside it nor shows one, which is "
+                 "nothing a person can approve" if alone else "") + f", so there is no storyboard to approve; Draw the surfaces again, and read its last "
               f"lines above", file=sys.stderr)
         return 1
     if redraw:

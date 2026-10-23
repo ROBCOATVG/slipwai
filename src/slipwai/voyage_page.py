@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card, live_cards, live_sub
+from .console_page import console_card
 from .decision_log import SCRIPT as DECISIONS_SCRIPT
 from .decision_log import STYLE as DECISIONS_STYLE
 from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
@@ -698,7 +699,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("next", "Next features", intake_card(ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}</style>"
-            f"{where}{landed}{expect_card(found)}{tabs_html(tabs)}")
+            f"{where}{landed}{expect_card(found)}{tabs_html(tabs)}{console_card()}")
     script = SCRIPT + (TRY_SCRIPT if trying else "") + (FEEDBACK_SCRIPT if feedback else "") \
         + (STRIP_SCRIPT if strip else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
         + ("" if viewer_fault or not xml else "\n")

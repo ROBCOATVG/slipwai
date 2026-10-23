@@ -125,7 +125,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # The board, as a page a person answers from: the render, the server and the verb — and
               # what bare `slipwai` does, which is open that same board. `seats` is the one piece of state
               # that server has, which is a window each: every route beside it is a fold of files on disk.
-              "page_shell", "seats", "bridge", "bridge_page", "fleet_page", "timeline_page", "cli_bridge", "cli_start",
+              "page_shell", "seats", "console", "console_page", "bridge", "bridge_page", "fleet_page", "timeline_page", "cli_bridge", "cli_start",
               "interview_page",
               # The interview's rows, split from its questions at the seam that module's budget names:
               # which control a question gets depends on its kind, never on which flag it becomes.

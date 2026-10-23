@@ -24,6 +24,7 @@ import json
 from pathlib import Path
 from urllib.parse import quote
 
+from .console_page import SCRIPT as CONSOLE_SCRIPT
 from .fleet import NOTHING, inbox_detail  # noqa: F401 - NOTHING is read by name by the pages built on this
 from .fleet_page import SCRIPT as FLEET_SCRIPT
 from .fleet_page import STYLE as FLEET_STYLE
@@ -130,7 +131,7 @@ document.addEventListener('click', event => {
     send('/set', {pairs});
   }
 });
-""" + FLEET_SCRIPT + TIMELINE_SCRIPT
+""" + FLEET_SCRIPT + TIMELINE_SCRIPT + CONSOLE_SCRIPT
 
 
 def stream_log(fairway: str, lines: list) -> str:

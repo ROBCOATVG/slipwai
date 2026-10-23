@@ -52,6 +52,7 @@ from .captain_page import payload as captain_json
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
+from .console import for_root as console_for
 from .decision_log import card as decision_card
 from .decision_log import mark as mark_decisions
 from .deck import dismiss, mark_read, tell, tick_need
@@ -134,7 +135,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 860 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 870 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -143,6 +144,8 @@ from .wheel import set_stop
 # And Feedback's, `/feedback.json` and `/feedback`, handing to `feedback_card.py`, and the triage it starts.
 # And what each slice is doing now: `/now.json`, `/slice` and `/slice.json`, handing to `live_page.py`.
 # Mark read writes the receipts the decision ceiling counts.
+# And the console's three routes — `/console.json`, `/console/ask`, `/console/reset` — each a line or two handing
+# to `console.py`, which holds the conversation.
 # The number is the route count rather than any one route's length: a control a person can press is ten
 # lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
 # board has gained the surfaces, the settings dials and the rendered specification since this was 560.
@@ -290,6 +293,9 @@ class Bridge(BaseHTTPRequestHandler):
             advance(self)  # the poll is the board's clock: `upstream.py` says why, and what it presses
         if where == "/init.json" and self.controls:
             self.send(200, json.dumps(self.receipt(since(query))), "application/json; charset=utf-8")
+            return
+        if where == "/console.json" and self.controls:
+            self.send(200, json.dumps(console_for(self.root).said(since(query))), "application/json; charset=utf-8")
             return
         if where == "/voyage" and self.controls:
             self.send(200, self.voyage())
@@ -793,6 +799,12 @@ class Bridge(BaseHTTPRequestHandler):
                 self.launched = True
                 self.fitting = continue_build(self.root, self.fitting.said()["lines"] if self.fitting else None)
                 said = "continuing the build"
+            # The console: a question for the harbourmaster, answered by a read-only session in the background
+            # and polled for at `/console.json`; `console.py` says why it can read and cannot do.
+            elif where == "/console/ask":
+                said = console_for(self.root).ask(str(held.get("message", "")))
+            elif where == "/console/reset":
+                said = console_for(self.root).reset()
             elif where == "/tell":
                 said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")),
                             str(held.get("slice", "")))

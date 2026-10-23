@@ -322,7 +322,7 @@ def clock(seconds: float) -> str:
     return f"{whole // 60}:{whole % 60:02d}"
 
 
-def fitting_card(made: dict) -> str:
+def fitting_card(made: dict, verb: str = "Made") -> str:
     """What the board made and what `./init` is saying in it — the receipt the board lands with.
 
     It is on the board rather than left on the interview page because the board is where landing *is*: the
@@ -340,7 +340,7 @@ def fitting_card(made: dict) -> str:
     # The button is on the card whether or not it can be pressed yet, hidden until the poll says the draft
     # has ended well; a specification a person has read is what pressing it means.
     launch = f'<button class="go" id="launch"{"" if made.get("launchable") else " hidden"}>Continue the build</button>'
-    return (f'<div class="card" id="fitting"><h2>Made {esc(Path(str(made["where"])).name)}</h2>'
+    return (f'<div class="card" id="fitting"><h2>{esc(verb)} {esc(Path(str(made["where"])).name)}</h2>'
             f'<p class="empty">{esc(made["where"])} — {chip}</p>'
             f'<pre class="said" id="fitting-said" data-tail data-at="{esc(made["at"])}">'
             f'{esc(said)}\n</pre><div class="ask">{launch}</div></div>')

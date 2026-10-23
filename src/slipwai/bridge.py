@@ -45,6 +45,7 @@ from .activity import caption, live
 from .adopt_page import looked
 from .adopt_page import page as adoption
 from .adopt_page import run as adopt
+from .adoption_card import adoption_card
 from .bridge_page import page, payload
 from .captain_page import number
 from .captain_page import page as captain
@@ -623,7 +624,7 @@ class Bridge(BaseHTTPRequestHandler):
                       try_card(self.root, self.named_seat()), strip_html(rows, folds),
                       feedback_card(self.root, rows, fleet, self.triaging(), trunk_head(self.root)),
                       decision_card(self.root),
-                      points=feedback_points(self.root))
+                      points=feedback_points(self.root), adopting=adoption_card(self.root))
 
     def triaging(self) -> bool:
         """Whether this board's child is the triage session, reading what a person said."""

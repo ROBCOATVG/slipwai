@@ -707,16 +707,19 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
          ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
-         decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None) -> str:
+         decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "") -> str:
     now = current(found)
-    sub = (f"now: {now.title.lower()}" if now else "complete") + (f" · {live_sub(fleet)}" if fleet else "")
+    # An adopted repository walks its own steps until its first specification, and the strip a generated
+    # project has would name a stage it is not on: the adoption's card stands where the strip does.
+    sub = ("adopting" if adopting else f"now: {now.title.lower()}" if now else "complete") \
+        + (f" · {live_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
-    landed = fitting_card(made) if made else ""
+    landed = fitting_card(made, "Adopted" if adopting else "Made") if made else ""
     # The live cards, with their controls, under the model: how the work is going belongs on the page that
     # says what the work is.
     live = live_cards(fleet, config or {}, True, project_tabs(root, True)) if fleet else ""
-    where = passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable, feature,
-                         drawable, shape, modelable)
+    where = adopting or passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
+                                     feature, drawable, shape, modelable)
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]
@@ -733,7 +736,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("next", "Next features", intake_card(ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}</style>"
-            f"{where}{landed}{expect_card(found)}{tabs_html(tabs)}{console_card()}")
+            f"{where}{landed}{'' if adopting else expect_card(found)}{tabs_html(tabs)}{console_card()}")
     script = SCRIPT + (TRY_SCRIPT if trying else "") + (FEEDBACK_SCRIPT if feedback else "") \
         + (STRIP_SCRIPT if strip else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
         + ("" if viewer_fault or not xml else "\n")

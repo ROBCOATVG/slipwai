@@ -112,7 +112,8 @@ verify: all gates passed
 ```
 
 Commit the baseline. After that, the numbers can go down but cannot go up. To put a red test suite in
-quarantine on purpose, use `make ratchet-tighten`. Then the suite is not ignored without anybody knowing.
+quarantine on purpose, tell `/verify` so when it shows you the failures: it records them with
+`make ratchet-tighten`. Then the suite is not ignored without anybody knowing.
 
 **A red test suite stops the run, and the run says so.** The baseline does not hide it. Tests that already
 fail when you arrive are the thing that a brownfield adoption most often inherits without noticing, and

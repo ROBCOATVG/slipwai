@@ -161,9 +161,9 @@ def makefile_step(adoption: Adoption, layout: Layout) -> str:
     """
     return (
         f"Offer the targets as the repository's own: add `-include {where(layout)}Makefile` to the root `Makefile`,\n"
-        "   and `make verify` is one word again."
+        "   so the gate runs from the root again."
         if adoption.survey.get("makefile")
-        else f"`make verify` is one word: the repository had no `Makefile`, so `adopt` wrote one that includes\n"
+        else f"The gate runs from the root: the repository had no `Makefile`, so `adopt` wrote one that includes\n"
         f"   `{where(layout)}Makefile`, in a marked block. Targets of the repository's own go around it."
     )
 

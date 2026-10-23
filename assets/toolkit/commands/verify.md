@@ -33,6 +33,13 @@ for them to say yes to; running it is a change to the tree.
 next migration brings them back, and a gate that has been edited to pass is a project nobody can say anything
 about. A gate that is wrong is a report to the factory, not a local fix.
 
+**A red test suite in an adopted repository is the one decision this records.** Where the repository was
+adopted, its own lint, type and test findings are held to a committed baseline, and a suite that was red before
+the method arrived stops the gate and says so. Say what quarantining means: the failures it lists are recorded
+as known, the gate passes on them, and any *new* failure still fails it, until the suite is green and the entry
+clears. If the person says to quarantine it, run `{{make}} ratchet-tighten` and say what it recorded — it is
+their decision written down, not a gate edited to pass, which is why it waits for them.
+
 Where `.slipwai/catch-up.md` exists and the failures look like gates that arrived with a migration — code that
 was correct when it was written, refused by a rule it never had to meet — say `/catch-up` is the command for
 that and stop.

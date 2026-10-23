@@ -231,7 +231,7 @@ def report(done: Adopted, running_init: bool = False) -> str:
     if done.makefile_written:
         lines.append(
             f"Wrote {MAKEFILE} with `-include {done.layout.delivery}/Makefile`, since there was none: "
-            "`make verify` is one word."
+            "the gate runs from the root, as it does in a generated project."
         )
     lines += wrapper_lines(done.wrappers, wrapped)
     lines += missing_tools(wrapped, done.layout)
@@ -268,9 +268,10 @@ def report(done: Adopted, running_init: bool = False) -> str:
             if done.adoption.candidates else ""
         ) + ". Its first run records the lint and typecheck findings that are there as "
         f"the baseline; commit {done.layout.delivery}/baseline.json with what init wrote. A test suite that is red "
-        "stops that run and says so: read the failures, then `make ratchet-tighten` quarantines it deliberately.",
+        "stops that run and says so: `/verify` shows the failures, and quarantines the suite deliberately if you tell "
+        "it to.",
         *([] if done.makefile_written else [
-            f"Then: add `-include {done.layout.delivery}/Makefile` to the root Makefile, and `make verify` is one word"
+            f"Then: add `-include {done.layout.delivery}/Makefile` to the root Makefile, so the gate runs from the root"
         ]),
         f"Read {done.layout.delivery}/docs/adoption.md — what was wrapped, what that forfeits, and where each fact "
         f"came from — and {done.layout.delivery}/docs/convergence.md, where this repository stands and what is next; "

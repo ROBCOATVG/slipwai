@@ -90,7 +90,8 @@ slipwai adopt --as admin=admin-ui
 
 - **3.1: the first run** records the lint and typecheck findings that are already in the code as the
   baseline. After that, only new findings fail. **A red test suite stops the run, and the run says so.**
-  Fix the suite, or put it in quarantine on purpose with `make ratchet-tighten`. Until you do 3.3, `/verify`
+  Fix the suite, or tell `/verify` to put it in quarantine on purpose, which it records with
+  `make ratchet-tighten`. Until you do 3.3, `/verify`
   runs the gate as `make -f delivery/Makefile verify`.
 - **3.4: the strategy.** `/ground` writes the ADR (architecture decision record) at `Proposed`. It
   recommends one of `leave-it`, `in-place`, `modular-monolith`, `strangler-fig` or `rewrite`. `leave-it` is

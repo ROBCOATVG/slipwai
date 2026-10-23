@@ -97,10 +97,10 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
             open_rows == 0,
         ),
         Step(
-            f"{layout.make} verify",
-            f"the gate. Its first run records the lint and typecheck findings that are there as the baseline; "
-            f"commit {layout.under(BASELINE)}. A red test suite stops the run and says so — read the failures, then "
-            f"`{layout.make} ratchet-tighten` quarantines it deliberately",
+            "/verify",
+            f"the gate, `{layout.make} verify`. Its first run records the lint and typecheck findings that are there "
+            f"as the baseline; commit {layout.under(BASELINE)}. A red test suite stops the run and says so — `/verify` "
+            f"shows the failures, and quarantines the suite deliberately if you tell it to",
             baseline,
         ),
     ]
@@ -109,7 +109,7 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
         makefile = root / "Makefile"
         found.append(Step(
             f"add `{include}` to the root Makefile",
-            "and `make verify` is one word",
+            "so the gate runs from the root, as it does in a generated project",
             makefile.is_file() and include in makefile.read_text(encoding="utf-8"),
         ))
     found.append(Step(

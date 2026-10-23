@@ -121,7 +121,8 @@ class RouteTest(BoardTest):
             self.assertEqual(self.post("/choose", {"start": str(self.root)}), (200, ""))
 
     def test_the_form_carries_the_button_that_asks(self) -> None:
-        self.assertIn('data-choose="brief"', self.get("/generate")[1])
+        with mock.patch("slipwai.folder_field.asking", return_value=["osascript"]):
+            self.assertIn('data-choose="brief"', self.get("/generate")[1])
 
     def test_the_output_parent_is_chosen_rather_than_typed(self) -> None:
         """Where the machine has a dialog, the field is the folder it chose and the button is the way in."""

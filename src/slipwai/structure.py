@@ -174,8 +174,8 @@ def entry_points(root: Path, directory: str, ecosystem: str) -> tuple[EntryPoint
     return tuple(found)
 
 
-def modules(root: Path, directory: str) -> tuple[Module, ...]:
-    """The top-level directories of an application, with how many files each holds and in what."""
+def modules(root: Path, directory: str, delivery: str = ".") -> tuple[Module, ...]:
+    """An application's top-level directories, each with how many files it holds and in what; never `delivery`."""
     here = root if directory == "." else root / directory
     found = []
     try:
@@ -183,7 +183,7 @@ def modules(root: Path, directory: str) -> tuple[Module, ...]:
     except OSError:
         children = []
     for child in children:
-        if child.name in SKIPPED or child.name.startswith("."):
+        if child.name in SKIPPED or child.name.startswith(".") or prefixed(directory, child.name) == delivery:
             continue
         files = code_files(child)
         if not files:
@@ -343,8 +343,8 @@ def structure(root: Path, apps: list[App], delivery: str = ".", ignoring: str = 
         theirs = [files for files in commits if any(owned(path, app.path, skipped) for path in files)]
         declared, manifest = dependencies(root, app.path, ecosystem)
         views.append(AppStructure(
-            app.name, app.path, entry_points(root, app.path, ecosystem), modules(root, app.path), declared, manifest,
-            len(theirs), top(dict(touched), app.path, skipped), top(found.dependants, app.path, skipped),
+            app.name, app.path, entry_points(root, app.path, ecosystem), modules(root, app.path, delivery), declared,
+            manifest, len(theirs), top(dict(touched), app.path, skipped), top(found.dependants, app.path, skipped),
             top(found.dependencies, app.path, skipped),
         ))
     return Structure(tuple(views), len(commits), len(authors), since, found)

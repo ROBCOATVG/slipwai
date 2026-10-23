@@ -49,7 +49,7 @@ class AdoptionTest(unittest.TestCase):
         adopt(self.root, answers, found)
 
     def path(self, relative: str) -> Path:
-        return self.root / "delivery" / relative
+        return self.root / "adopt" / relative
 
     def test_both_profiles_write_evidenced_actors_without_model_events(self) -> None:
         for profile in ("standard", "event-modelling"):
@@ -63,8 +63,8 @@ class AdoptionTest(unittest.TestCase):
                 self.assertEqual(clerk["does"], ["GET /orders/:id (routes.js:1)"])
                 self.assertEqual(clerk["cannot"], ["POST /refunds (routes.js:2)"])
                 listing = self.path(".written").read_text()
-                self.assertIn("delivery/" + BIG_PICTURE, listing)
-                self.assertIn("delivery/" + ACTORS, listing)
+                self.assertIn("adopt/" + BIG_PICTURE, listing)
+                self.assertIn("adopt/" + ACTORS, listing)
                 self.assertNotIn("`evt`", page)
                 model = self.path("docs/event-model/model.yaml")
                 if model.exists():
@@ -77,7 +77,7 @@ class AdoptionTest(unittest.TestCase):
         (self.root / "routes.js").write_text("app.get('/orders', requireRole('auditor'), listOrders);\n")
         self.commit()
         done = refresh(self.root)
-        self.assertIn("delivery/" + ACTORS, done.rewritten)
+        self.assertIn("adopt/" + ACTORS, done.rewritten)
         self.assertIn("auditor", self.path(ACTORS).read_text())
         self.commit()
         (self.root / "routes.js").write_text("app.get('/health', health);\n")
@@ -85,18 +85,18 @@ class AdoptionTest(unittest.TestCase):
         done = refresh(self.root)
         self.assertFalse(self.path(ACTORS).exists())
         self.assertTrue(any(ACTORS in removed for removed in done.removed))
-        self.assertNotIn("delivery/" + ACTORS, self.path(".written").read_text())
+        self.assertNotIn("adopt/" + ACTORS, self.path(".written").read_text())
 
     def test_catalogue_taken_over_by_person_survives_refresh_and_disappearing_roles(self) -> None:
         self.adopt()
         listing = self.path(".written")
-        listing.write_text(listing.read_text().replace("delivery/" + ACTORS + "\n", ""))
+        listing.write_text(listing.read_text().replace("adopt/" + ACTORS + "\n", ""))
         self.path(ACTORS).write_text("version: 1\nactors: []\n# confirmed by person\n")
         (self.root / "routes.js").write_text("app.get('/health', health);\n")
         self.commit()
         self.path(ACTORS).write_text("version: 1\nactors: []\n# confirmed by person, edited again\n")
         done = refresh(self.root)
-        self.assertIn("delivery/" + ACTORS, done.owned)
+        self.assertIn("adopt/" + ACTORS, done.owned)
         self.assertIn("confirmed by person", self.path(ACTORS).read_text())
 
     def test_adoption_before_candidate_confirmation_still_writes_an_honest_page(self) -> None:

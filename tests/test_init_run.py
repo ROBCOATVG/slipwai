@@ -68,8 +68,6 @@ class CommandTest(unittest.TestCase):
         self.assertIn("written and committed either way", said)
 
 
-@unittest.skipIf(sys.platform == "win32",
-                 "the board's children run through a pty and `sh`, which Windows has neither of")
 class AdoptedTest(unittest.TestCase):
     """An adoption made on the board runs the repository's own copy of `./init`, under its delivery directory."""
 
@@ -85,6 +83,8 @@ class AdoptedTest(unittest.TestCase):
         self.assertEqual(fitting.lines, ["adopted", DECLINED])
 
 
+@unittest.skipIf(sys.platform == "win32",
+                 "the board's children run through a pty and `sh`, which Windows has neither of")
 class BackgroundTest(unittest.TestCase):
     """The board's face: a child that outlives the request, read by polling."""
 

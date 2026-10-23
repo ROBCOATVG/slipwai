@@ -175,7 +175,9 @@ class QuestionsTest(unittest.TestCase):
         document, brief = asked({"name": "demo"})[-2:]
         self.assertEqual((document.name, document.kind, document.optional), ("prd", "file", True))
         self.assertEqual((brief.name, brief.kind, brief.optional), ("brief", "path", True))
-        said = form({"name": "demo"})
+        # A machine with a dialog: where there is none, the field is typed, and there is no button to press.
+        with mock.patch("slipwai.folder_field.asking", return_value=["osascript"]):
+            said = form({"name": "demo"})
         self.assertIn('id="prd"', said)
         self.assertIn('type="file"', said, "a document is small and a browser can hand over its text")
         self.assertIn('id="brief"', said)

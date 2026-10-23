@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -109,6 +110,8 @@ class SeedDoorRunTest(unittest.TestCase):
         self.assertEqual(state["seed_failed"][0]["step"], "given")
         self.assertIn("no seed door yet: the Makefile has no seed-service target", state["seed_failed"][0]["said"])
 
+    @unittest.skipIf(shutil.which("make") is None, "the door is a Make target, and the Windows gate runs without make "
+                     "on purpose (`.github/workflows/verify.yml`)")
     def test_the_door_is_run_once_with_the_givens_and_a_green_story_s_links_say_given(self) -> None:
         # The door says which file it was handed, and the test reads the givens from that file. `echo` rather
         # than `cat`: `make` runs a recipe in `cmd.exe` on Windows, which has the one and not the other.

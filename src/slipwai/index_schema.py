@@ -54,7 +54,7 @@ KINDS = (LANGUAGE, EXTENSION, TARGET, QUICKSTART)
 DIGEST = re.compile(r"[0-9a-f]{64}")
 #: The declared-never-required family members an entry's `answers` may name: what a verb needs to know a
 #: release answers before it is installed (D122, ADR 0010). A value a reader does not know is ignored.
-ANSWERS = ("npm_workspace",)
+ANSWERS = ("npm_workspace", "browser_apps")
 #: How long a field a person wrote may be before the index is not describing a package any more. A tag is a
 #: word; a description is a sentence. Held here rather than where they are printed, because a line that
 #: wraps a terminal is a cosmetic fault and a field that is a megabyte is a document nobody should have read.

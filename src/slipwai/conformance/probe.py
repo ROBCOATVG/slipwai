@@ -20,13 +20,16 @@ from ..errors import GenerationError
 from ..examples import markers, snippet
 from ..language_directory import named
 from ..loaded import refusals
-from ..registry import PROTOCOL, Registry, registry
+from ..registry import BROWSER_APPS, PROTOCOL, Registry, registry
+from .frontends import SHIPS_NONE, frontend_findings
 from .generation import profile_findings, read_by, runs, stopped, target_findings
 from .rows import row_findings
 
 # Why the checks after `protocol` did not run, as `protocol` decided it: each says what the package did.
 UNLOADED = "the package did not load, so nothing it answers can be read"
 ALONE = "{family} loaded, but it has no backend of its own and none of its family beside it to check it through"
+# Why the backend checks did not run for a package of browser apps alone: there is no backend to read.
+FRONTENDS_ONLY = "does not apply: {family} ships browser apps and no backend, and these checks read one"
 MISANSWERED = "{package} loaded, but protocol found what it answers wrong, so nothing else it answers is read"
 BESIDE_REFUSED = "{family} loaded, but every framework of it beside it was refused, as protocol says, so none checks it"
 # Why a check that reads generations claims nothing over them: each stopped on a snippet `markers` named (P001, A62).
@@ -105,6 +108,8 @@ def protocol(directory: Path, package: str) -> tuple[list[str], list[str] | str]
         return [f"language {package} did not load from {located}"], UNLOADED
     if not backends:
         backends = [key for key, backend in loaded.backends.items() if backend.family in families]
+    if not backends and any(BROWSER_APPS in loaded.families[name].answers for name in families):
+        return [], FRONTENDS_ONLY.format(family=", ".join(families))
     if not backends:
         family = ", ".join(families)
         beside = [line for sibling in sorted(directory.iterdir()) if sibling.name != package
@@ -171,6 +176,14 @@ def probe(directory: Path, package: str) -> dict[str, dict]:
     findings: dict[str, list[str]] = {}
     not_run: dict[str, str] = {}
     findings["protocol"], backends = protocol(directory, package)
+    loaded_families = owned(registry(), (directory / package).resolve())[1] if not findings["protocol"] else []
+    with tempfile.TemporaryDirectory(prefix="slipwai-frontends-") as output:
+        found, why = (frontend_findings(registry(), loaded_families, Path(output)) if loaded_families
+                      else ([], backends if isinstance(backends, str) else SHIPS_NONE))
+    if why is None:
+        findings["frontends"] = found
+    else:
+        not_run["frontends"] = why
     if isinstance(backends, str):
         not_run.update(dict.fromkeys(("markers", "profiles", "targets", "prune rows"), backends))
     else:

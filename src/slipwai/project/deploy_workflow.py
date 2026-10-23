@@ -93,8 +93,8 @@ def pipeline(target: str) -> dict[str, str]:
 def deploy_job(
     environment: str, needs: str, web: bool, target: str, condition: str = "", *, registry: bool = False,
 ) -> str:
-    # The site is built in the deploy job rather than the build job because Vite bakes VITE_* values into the
-    # bundle, and where there is a customer login those are the environment's.
+    # The site is built in the deploy job rather than the build job because the bundler bakes the build's
+    # environment into the bundle, and where there is a customer login those are the environment's.
     #
     # `registry` is the deployment row's `registry_at_deploy`: whether this shape's `make deploy` itself
     # reaches the image registry. A liner's does not — it applies, and the migration is a task the stack
@@ -197,7 +197,7 @@ def promotion_workflow(web: bool, target: str, auth0: bool) -> str:
     staging has no release record for, so this cannot be the way an unproved commit reaches production.
 
     No build job and no image builder, for the reason `rollback.yml` has none: the images already exist. The
-    site is rebuilt because a bundle is not an image — Vite bakes this environment's values into it — which
+    site is rebuilt because a bundle is not an image — the bundler bakes this environment's values into it — which
     is why Node is set up here where there is a browser app.
     """
     cloud = pipeline(target)

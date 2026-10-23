@@ -73,6 +73,12 @@ def documentation_files(
     return files
 
 
+def frontend_said(apps: list[App], field: str) -> str:
+    """What the project's frontend says of itself in `field` — `stack`, the words its stack is named in, or
+    `gate`, what its native gate runs — from its family's `language.json`; the keel names no frontend."""
+    return str(CATALOG["frontends"].get(frontend_of(apps), {}).get(field, ""))
+
+
 def values(project_name: str, profile: str, apps: list[App], target: str = "none") -> dict[str, str]:
     """Every value these four pages may name, and the whole of what they may name.
 
@@ -92,7 +98,7 @@ def values(project_name: str, profile: str, apps: list[App], target: str = "none
         "browser-paths": (f" Connect it through {web_paths} without sharing backend implementation types."
                           if web else ""),
         "gate": "; ".join(dict.fromkeys(registry().answer(backend, GATE_DESCRIPTION) for backend in backends)),
-        "web-gate": (f" plus Biome, TypeScript and React component tests for {web_paths}" if web else ""),
+        "web-gate": (f" plus {frontend_said(apps, 'gate')} for {web_paths}" if web else ""),
         "coverage-scope": coverage_scope(profile == "event-modelling", apps),
         # The note ends on a line break of its own, and the page supplies that one: a value is substituted
         # into the line it sits on, so a note carrying its own would leave the section a blank line longer.
@@ -102,7 +108,7 @@ def values(project_name: str, profile: str, apps: list[App], target: str = "none
             for service in services
         ),
         "frontend-items": "".join(
-            f"- A separate TypeScript/React/Vite browser application under `{app.path}`, with a styled baseline"
+            f"- A separate {frontend_said(apps, 'stack')} browser application under `{app.path}`, with a styled baseline"
             f" (`docs/design.md`), one route, a typed client generated from the service's published contract,"
             f" and Testing Library component tests\n"
             for app in web

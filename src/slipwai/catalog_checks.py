@@ -62,16 +62,17 @@ def _check_catalog(catalog: dict, loaded: Registry | None = None) -> None:
     # rows it cannot read would fail at the first prune, inside generation, naming nothing a reader would
     # connect to the language that wrote them. So they are held to the script up front.
     check_prune_rows(registered, PRUNER, catalog)
-    if set(catalog.get("frontends", {})) != {"none", "react-vite"}:
-        raise ValueError("catalog must define the none and react-vite frontend capabilities")
+    check_frontends(catalog)
     default = catalog["default"]
     # `.get` because `validate_axes` is what reports a malformed axis block, further down: a missing one
     # should reach its message rather than raise a KeyError here.
     # No backend: the default is the first of the merged catalog (`default_backend`), which no language names.
     if set(default) != {"profile", "target", "framework", "frontend", *catalog.get("axes", {})}:
         raise ValueError("default must answer the profile, target, framework, frontend and every axis")
-    if (default["profile"], default["frontend"]) != ("event-modelling", "react-vite"):
-        raise ValueError("default must be event-modelling with the react-vite frontend")
+    if default["profile"] != "event-modelling":
+        raise ValueError("default must be the event-modelling profile")
+    if default["frontend"] not in catalog["frontends"]:
+        raise ValueError(f"default frontend {default['frontend']} is not one the catalog offers")
     profiles = catalog["profiles"]
     event = profiles["event-modelling"]
     if event.get("extends") != "standard":
@@ -87,6 +88,23 @@ def _check_catalog(catalog: dict, loaded: Registry | None = None) -> None:
     validate_targets(catalog, packaged)
     validate_axes(catalog, packaged)
     validate_extensions(catalog)
+
+
+def check_frontends(catalog: dict) -> None:
+    """The keel's `none` and every frontend a package brought, each with the capabilities it gives a project.
+
+    The keel declares `none` and nothing else; a frontend named after a framework is a family's, folded in by
+    `catalog_options.declare_frontends` with the family that ships it, and its shape held at load
+    (`language_shape.frontend_shape_fault`). What is held here is what every reader assumes of the merge.
+    """
+    frontends = catalog.get("frontends", {})
+    if not isinstance(frontends.get("none"), dict):
+        raise ValueError("catalog must define the none frontend")
+    for name, entry in frontends.items():
+        if not isinstance(entry.get("capabilities"), list):
+            raise ValueError(f"frontend {name} must list its capabilities")
+        if name != "none" and not isinstance(entry.get("family"), str):
+            raise ValueError(f"frontend {name} must name the family that ships it")
 
 
 def check_rung(catalog: dict) -> None:

@@ -281,14 +281,10 @@ MARKED_FILES: tuple[str, ...] = (
 # a service's because a browser app is the same whatever its service is written in. Its
 # dev-server proxy is marked with the transport it forwards to, so dropping the transport drops it, and
 # its entry point wraps the app in the external login when the project has one.
-# `src/App.tsx` carries the route that shows this project's own API answering, marked with the transport
-# it calls — a project with no transport has no API to show.
-MARKED_FILES_PER_WEB_APP: tuple[str, ...] = (
-    "vite.config.ts",
-    "src/main.tsx",
-    "src/App.tsx",
-    "tests/App.test.tsx",
-)
+# The shell carries the route that shows this project's own API answering, marked with the transport it
+# calls — a project with no transport has no API to show. Which files those are is written in the browser
+# app's framework, so it is the frontend's to say: empty here, folded in from `WEB_FEATURES` below.
+MARKED_FILES_PER_WEB_APP: tuple[str, ...] = ()
 
 # Files that exist only because a feature was selected, at the repository level and relative to the root —
 # the typed API client a browser app generates from the transport's published document, and a realm's import.
@@ -315,9 +311,9 @@ SHARED_FILES: dict[str, tuple[str, ...]] = {
 #
 # The route that calls this project's own API goes with the transport that answers it, for the same
 # reason: what it shows is a service answering, and a project with no transport has no service to ask.
-OWNED_FILES_PER_WEB_APP: dict[str, tuple[str, ...]] = {
-    "users-keycloak": ("src/auth", "tests/auth"),
-}
+# Empty here: which files a feature owns in a browser app is written in that app's framework, so it is the
+# frontend's to say, and it is folded in from `WEB_FEATURES` below with what each transport brings.
+OWNED_FILES_PER_WEB_APP: dict[str, tuple[str, ...]] = {}
 
 # Compose services a feature needs. A feature absent from here needs no container at all, which is what
 # lets a SQLite project have no docker-compose.yml — unless the app is in there too, see below.
@@ -330,11 +326,15 @@ CONTAINERS: dict[str, str] = {"postgres": "postgres", "keycloak": "keycloak", "u
 # the package that implements it. Filled from the brought options below.
 APP_SERVICE_FEATURES: tuple[str, ...] = ()
 
-# The npm packages a feature adds to every browser app, removed the same way as a service's. The factory's
-# test suite asserts this agrees with what the generator adds to the browser app's manifest.
-WEB_PACKAGE_EDITS: dict[str, tuple[str, ...]] = {
-    "users-keycloak": ("react-oidc-context", "oidc-client-ts"),
-}
+# The npm packages a feature adds to every browser app, removed the same way as a service's. Empty here for
+# the reason the table above is: folded in from `WEB_FEATURES`, the same rows the generator adds them from.
+WEB_PACKAGE_EDITS: dict[str, tuple[str, ...]] = {}
+
+# What each installed frontend says about pruning a browser app, as its family's `language.json` declares it:
+# the files carrying a marked region (`frontends.<name>.marked`), and per feature (`features`) the paths it owns
+# and the npm packages it adds. Written into a project's copy by the factory, as the rows and the options are;
+# this copy carries none, because the keel ships no frontend.
+WEB_FEATURES: dict[str, dict] = {}
 
 # Environment keys a feature gives the *app's own* Compose service — the address its composition root opens
 # the backing service from, which `/ready` then reports on.
@@ -380,6 +380,14 @@ for _axis, _options in AXIS_OPTIONS.items():
                 REPOSITORY_OWNED_FILES[_feature] = tuple(_option["repository-owned"])
             if _option.get("web-app-owned"):
                 OWNED_FILES_PER_WEB_APP[_feature] = tuple(_option["web-app-owned"])
+
+for _frontend in WEB_FEATURES.values():
+    MARKED_FILES_PER_WEB_APP = tuple(dict.fromkeys((*MARKED_FILES_PER_WEB_APP, *_frontend.get("marked", ()))))
+    for _feature, _row in _frontend.get("features", {}).items():
+        OWNED_FILES_PER_WEB_APP[_feature] = tuple(dict.fromkeys(
+            (*OWNED_FILES_PER_WEB_APP.get(_feature, ()), *_row.get("owned", ()))))
+        WEB_PACKAGE_EDITS[_feature] = tuple(dict.fromkeys(
+            (*WEB_PACKAGE_EDITS.get(_feature, ()), *_row.get("packages", ()))))
 
 # Every feature there is: the keel's, and each one a package's option brought with it.
 FEATURES = tuple(sorted({

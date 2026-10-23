@@ -127,8 +127,9 @@ def format_command(apps: list[App]) -> str:
     one is not owed: `make verify` *checks* the formatting, and a family whose gate has no formatter answers
     `None`, contributes no line and needs no placeholder. A family that has one contributes exactly one recipe
     however many services it has; a family whose tool takes paths names them through its `makefile_variables`
-    answer (Go's `GO_MODULES`), once for `lint` and `format` alike. A browser app is an npm workspace member, so a
-    project with one formats it with TypeScript's formatter whatever its services are written in.
+    answer (Go's `GO_MODULES`), once for `lint` and `format` alike. A browser app is formatted by its own family's
+    formatter whatever its services are written in — the family that ships its frontend — and by none where that
+    family answers `None`.
     """
     services = services_of(apps)
     answer = registry().answer
@@ -142,7 +143,7 @@ def format_command(apps: list[App]) -> str:
             if line not in lines:
                 lines.append(line)
     browser = web_apps(apps)
-    if browser and (web := registry().family_answer(browser[0].language, FORMATTER)) not in lines:
+    if browser and (web := registry().family_answer(browser[0].language, FORMATTER)) is not None and web not in lines:
         lines.append(web)
     return STEP.join(lines)
 

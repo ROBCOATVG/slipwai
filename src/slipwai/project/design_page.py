@@ -10,6 +10,9 @@ and a page describing one would be a page that never becomes true.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
+from ..catalog import CATALOG
 from ..services import App, services_of, web_apps
 from .openapi import document_of
 
@@ -37,11 +40,14 @@ themselves. So a field a screen reads is a field the contract declares, and a ro
 stops the browser app compiling instead of failing in front of somebody. Never edit the generated
 `packages/api-client/src/schema.ts`; it is a build output and `.gitignore` refuses it.
 """
+    web = web_apps(apps)
+    design = starter_design(web[0].framework) if web else None
+    route = f"{web[0].path}/{design['route']}" if web and design else "the route"
     return f"""
 ## Talking to this project's API — by hand, and why
 
 `{api.path}` publishes no API document, so there is nothing to generate a client from and this project has
-no `packages/api-client`. `{web_apps(apps)[0].path}/src/routes/Home.tsx` fetches by hand, and the response
+no `packages/api-client`. `{route}` fetches by hand, and the response
 is typed `Record<string, unknown>` — the honest thing to say about a shape nobody declared. A field read
 off it is a field the compiler cannot check.
 
@@ -52,12 +58,33 @@ counterpart in a project that has one describes what replaces the hand-written f
 """
 
 
+#: What a frontend's `design` block names, each relative to the app: the two stylesheets the baseline is made of,
+#: the file holding the shell, the entry point importing both, the import lines it does so with, and the one
+#: route's file, which is where the page says a hand-written fetch lives.
+DESIGN_KEYS = ("tokens", "base", "shell", "entry", "imports", "route")
+
+
+def starter_design(frontend: str | None) -> dict | None:
+    """Where `frontend`'s styled baseline lives, from its family's `language.json`, or None where it ships none.
+
+    A frontend's to say rather than the keel's, because the files are written in its framework: the keel
+    knows a baseline is two stylesheets, a shell and the entry that imports them, and nothing of their names.
+    """
+    design = CATALOG["frontends"].get(frontend or "none", {}).get("design")
+    if not isinstance(design, dict) or any(key not in design for key in DESIGN_KEYS):
+        return None
+    return design
+
+
 def design_page(apps: list[App]) -> dict[str, str]:
     """The page, or nothing at all where this project has no browser surface."""
     web = web_apps(apps)
-    if not web:
+    design = starter_design(web[0].framework) if web else None
+    if design is None:
         return {}
     app = web[0].path
+    tokens, base, shell, entry = (design[key] for key in ("tokens", "base", "shell", "entry"))
+    tokens_name, base_name = Path(tokens).name, Path(base).name
     return {DESIGN: f"""# Design
 
 What this project's screens look like, and where each of those decisions lives. **Every slice with a
@@ -72,16 +99,16 @@ feedback about the slice.
 
 | File | What it holds |
 |---|---|
-| `{app}/src/styles/tokens.css` | Every value the look is made of: colour by role, a type scale, a spacing scale, radii, the reading measure. Light and dark. |
-| `{app}/src/styles/base.css` | The page built out of those tokens: the shell, and element styles for headings, links, buttons, form controls and tables. |
-| `{app}/src/App.tsx` | The shell itself — header, main, footer — and the routing table. |
+| `{app}/{tokens}` | Every value the look is made of: colour by role, a type scale, a spacing scale, radii, the reading measure. Light and dark. |
+| `{app}/{base}` | The page built out of those tokens: the shell, and element styles for headings, links, buttons, form controls and tables. |
+| `{app}/{shell}` | The shell itself — header, main, footer — and the routing table. |
 
-Both stylesheets are imported once, from `{app}/src/main.tsx`. Nothing else imports them.
+Both stylesheets are imported once, from `{app}/{entry}`. Nothing else imports them.
 {data_layer(apps)}
 ## Replace these with the brand's values
 
 The palette is one neutral ramp and one accent, chosen to be unobjectionable and to be replaced. Change
-the values in `tokens.css` — not the names — and every screen follows, because nothing below the tokens
+the values in `{tokens_name}` — not the names — and every screen follows, because nothing below the tokens
 holds a literal colour or size. Then write down here what was chosen and why, so the next person does not
 have to reverse-engineer it from hex codes:
 
@@ -107,11 +134,11 @@ have to reverse-engineer it from hex codes:
   for a project that has not decided anything, and it is the first dependency spent on what a stylesheet
   already does.
 - **Accessibility is part of the design, not a pass afterwards.** Real landmarks (`header`, `main`,
-  `footer`, `nav`), a visible focus ring — `base.css` sets one — labels on controls, and a status message
+  `footer`, `nav`), a visible focus ring — `{base_name}` sets one — labels on controls, and a status message
   in a `role="status"` region so a change is announced rather than only seen.
 - **Decide before you build.** The first screen of a slice that this page has no decision for starts with
   `skills/frontend-design`: a compact plan — palette, type, layout, principles — reviewed against the brief
-  for generic defaults before any code, then written into `tokens.css` and recorded here in the same commit.
+  for generic defaults before any code, then written into `{tokens_name}` and recorded here in the same commit.
 - **Review before you demo.** Every file the slice added or changed under the browser app is read against
   `skills/web-interface-guidelines` — labels, focus, forms, motion, typography, the anti-patterns — and what
   it finds is fixed before the demo stop, not carried as a note. Where the rules and this page disagree,

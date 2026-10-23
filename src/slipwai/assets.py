@@ -84,7 +84,6 @@ MODEL_PAGE_ROOT = ROOT / "assets/event-model"
 # markers nobody asked for.
 CRUISE_ROOT = ROOT / "assets/cruise"
 PROFILE_ROOT = ROOT / "assets/profiles"
-FRONTEND_ROOT = ROOT / "assets/frontends"
 BACKING_SERVICE_ROOT = ROOT / "assets/backing-services"
 # Where this machine keeps what it has installed, and what a package directory is called inside it. Not
 # `languages/`, as the experiment's was: a directory of that name holding `codegraph` is a small lie that

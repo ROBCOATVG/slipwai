@@ -30,6 +30,7 @@ import unittest
 from pathlib import Path
 
 import checkout_packages
+import frontend_entry
 
 from slipwai.assets import VERSION
 from slipwai.layout import Layout
@@ -39,6 +40,15 @@ from slipwai.project.readme import readme
 from slipwai.project.run_skill import RUNNING, run_skill, running_ledger
 from slipwai.selection import Selection
 from slipwai.services import App, service_app
+
+
+def setUpModule() -> None:  # noqa: N802 - unittest's name
+    """A browser app here is `react-vite`, whose catalogue entry is the TypeScript family's (`frontend_entry`)."""
+    frontend_entry.install()
+
+
+def tearDownModule() -> None:  # noqa: N802 - unittest's name
+    frontend_entry.remove()
 
 RECORD = Path(__file__).resolve().parent / "fixtures/project-pages.sha256"
 PROJECT = "harbour-shop"

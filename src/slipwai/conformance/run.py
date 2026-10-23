@@ -18,7 +18,20 @@ from . import child
 from .version_rule import problems
 
 # The checks, in the order they run and are reported. Each one's findings name what is missing.
-CHECKS = ("protocol", "markers", "profiles", "targets", "prune rows", "version")
+#: How a reason says the check does not apply to this package at all, rather than that it could not run.
+INAPPLICABLE = "does not apply: "
+
+
+def inapplicable(reason: str) -> bool:
+    return reason.startswith(INAPPLICABLE)
+
+
+def shown(name: str, reason: str) -> str:
+    """A check that did not run, as the report prints it."""
+    return f"  {name:<11} {reason}" if inapplicable(reason) else f"  {name:<11} not run: {reason}"
+
+
+CHECKS = ("protocol", "markers", "profiles", "targets", "prune rows", "frontends", "version")
 # The ones the probe runs: `version` is read in the parent, where no package code can answer it.
 PROBED = tuple(name for name in CHECKS if name != "version")
 # Where this `slipwai` is imported from, put first on the probe's path so it checks against this keel.
@@ -36,8 +49,11 @@ class Report:
 
     @property
     def passed(self) -> bool:
-        """Every check ran and found nothing."""
-        return not self.not_run and not any(self.findings.values())
+        """Every check that applies ran and found nothing. A check that does not apply — the frontend checks of a
+        package that ships no browser app, the backend checks of one that ships browser apps alone — is not one
+        that could not run, and fails nothing (`INAPPLICABLE`)."""
+        return not any(not inapplicable(reason) for reason in self.not_run.values()) and not any(
+            self.findings.values())
 
     def count(self) -> int:
         """How many findings there are across every check."""

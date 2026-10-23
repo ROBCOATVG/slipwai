@@ -26,10 +26,9 @@ from typing import Any
 
 from ..axes import catalog_axis_default
 
-# The two diagonals cover every profile and every frontend only while there are exactly these.
+# The diagonals cover every profile only while there are exactly these. Frontends are whatever the installed
+# languages ship, so their diagonals are read off the catalogue (`diagonals`) rather than written down here.
 PROFILES = {"standard", "event-modelling"}
-FRONTENDS = {"none", "react-vite"}
-DIAGONALS = (("standard", "none"), ("event-modelling", "react-vite"))
 STORES = ("sqlite", "postgres")
 
 
@@ -85,11 +84,26 @@ def plannable(catalog: Mapping[str, Any], row: Row) -> bool:
 
 
 def covered(catalog: Mapping[str, Any]) -> None:
-    """A `ValueError` unless the diagonals still cover every profile and every frontend the catalog has."""
-    for what, expected in (("profiles", PROFILES), ("frontends", FRONTENDS)):
-        if set(catalog[what]) != expected:
-            raise ValueError(f"the matrix's diagonals cover {', '.join(sorted(expected))}, and the catalog has "
-                             f"{what} {', '.join(sorted(catalog[what]))}: add the rows that cover them")
+    """A `ValueError` unless the diagonals still cover every profile the catalog has."""
+    if set(catalog["profiles"]) != PROFILES:
+        raise ValueError(f"the matrix's diagonals cover {', '.join(sorted(PROFILES))}, and the catalog has "
+                         f"profiles {', '.join(sorted(catalog['profiles']))}: add the rows that cover them")
+
+
+def diagonals(catalog: Mapping[str, Any], backend: str) -> list[tuple[str, str]]:
+    """`standard` with no browser app, and `event-modelling` beside each frontend `backend` can be generated
+    with — or with none, where no installed language ships one.
+
+    Each frontend rather than the default, because a frontend is a package's answer like an axis option and
+    one no row generates is one nothing proves. Not one of another npm family's beside an npm backend:
+    generation refuses that pair (`project/frontend.frontend_files`), and a planned row it refuses is a matrix
+    written down wrong. Which families are npm is the catalogue's to say, by the frontends they ship.
+    """
+    family = catalog["backends"][backend].get("family")
+    npm = {entry.get("family") for entry in catalog["frontends"].values()}
+    offered = [name for name, entry in catalog["frontends"].items() if name != "none"
+               and (family not in npm or entry.get("family") == family)]
+    return [("standard", "none"), *(("event-modelling", name) for name in offered or ["none"])]
 
 
 def native_rows(catalog: Mapping[str, Any], backend: str) -> list[Row]:
@@ -107,7 +121,7 @@ def native_rows(catalog: Mapping[str, Any], backend: str) -> list[Row]:
             f"(`python -m slipwai.conformance`) is what holds one that does not"
         )
     rows = [Row(f"verify-{profile}-{backend}-{frontend}", profile, backend, frontend)
-            for profile, frontend in DIAGONALS]
+            for profile, frontend in diagonals(catalog, backend)]
     every = (("http", transport), ("auth", "keycloak"), ("users", "keycloak"))
     rows += [Row(f"verify-{backend}-{store}", "event-modelling", backend, "none", (("persistence", store), *every))
              for store in STORES]

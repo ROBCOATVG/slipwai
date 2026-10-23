@@ -15,6 +15,7 @@ import json
 import unittest
 
 import checkout_packages
+import frontend_entry
 
 from slipwai.adopt import wrapped_app
 from slipwai.project.backing_services import backing_service_service_files, service_layout
@@ -22,6 +23,15 @@ from slipwai.project.metadata import metadata, sourced
 from slipwai.rungs import EVENTS, STATE, every_rung, rung_rows
 from slipwai.selection import Selection
 from slipwai.services import App, service_app
+
+
+def setUpModule() -> None:  # noqa: N802 - unittest's name
+    """A browser app here is `react-vite`, whose catalogue entry is the TypeScript family's (`frontend_entry`)."""
+    frontend_entry.install()
+
+
+def tearDownModule() -> None:  # noqa: N802 - unittest's name
+    frontend_entry.remove()
 
 TOY = "toy-plain"  # the backend key; `toy` is the family, and the package that answers for both
 EVENT_SOURCED = Selection({"write-model": "events", "persistence": "postgres"})

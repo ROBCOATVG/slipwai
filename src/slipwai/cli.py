@@ -215,7 +215,7 @@ def generate_main(argv: list[str]) -> None:
         help="the framework that owns startup, for a language that offers more than one",
     )
     parser.add_argument("--backend", default=None, metavar=braced(CATALOG["backends"]))
-    parser.add_argument("--frontend", choices=CATALOG["frontends"], default=CATALOG["default"]["frontend"])
+    parser.add_argument("--frontend", default=CATALOG["default"]["frontend"], metavar=braced(CATALOG["frontends"]))
     # What the first service and the first browser app are called: `apps/<name>`, the Compose service, the
     # package. Asked, because a project with several services has no service called "service" — and once
     # `add-service` names every later one, the first one being unnameable would be the odd one out.

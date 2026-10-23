@@ -149,6 +149,11 @@ def entry_for(root: Path, archive: Path, publisher: str = "", file_url: str = ""
     for field in ("description", "tags"):
         if manifest.get(field):
             entry[field] = manifest[field]
+    # What a verb needs to know a release answers before it is installed (`index_schema.ANSWERS`): a release
+    # that ships a browser app answers both members a browser app is written through, and its `frontends`
+    # block is what says it ships one. Written here so no publisher has to remember to, which nobody did.
+    if kind == "language" and manifest.get("frontends"):
+        entry["answers"] = ["npm_workspace", "browser_apps"]
     return entry
 
 

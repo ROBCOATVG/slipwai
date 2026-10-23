@@ -14,8 +14,18 @@ import unittest
 from pathlib import Path
 
 import checkout_packages  # noqa: F401
+import frontend_entry
 
 from slipwai.project import biome, event_model, frontend, gitignore, stage_models
+
+
+def setUpModule() -> None:  # noqa: N802 - unittest's name
+    """A browser app here is `react-vite`, whose catalogue entry is the TypeScript family's (`frontend_entry`)."""
+    frontend_entry.install()
+
+
+def tearDownModule() -> None:  # noqa: N802 - unittest's name
+    frontend_entry.remove()
 
 #: The toolkit's own copy of the ladder's stage names, which runs inside a generated project where
 #: there is no slipwai to import. Read as text rather than imported: it sits outside the keel's
@@ -120,14 +130,18 @@ class GitignoreTest(unittest.TestCase):
 
 class FrontendTest(unittest.TestCase):
     def test_a_browser_app_with_no_feature_still_gets_a_manifest(self) -> None:
-        written = frontend.web_package_json('{"name": "web", "dependencies": {}}', set())
+        written = frontend.web_package_json('{"name": "web", "dependencies": {}}', set(), "react-vite")
         self.assertIn("web", written)
 
     def test_a_feature_adds_to_the_manifest_and_to_the_lock_suffix(self) -> None:
-        """The two move together: a dependency in one and not the other is an install that drifts."""
-        features = set(frontend.WEB_LOCK_FEATURES[:1])
-        if features:
-            self.assertNotEqual(frontend.web_lock_suffix(features), frontend.web_lock_suffix(set()))
+        """The two move together: a dependency in one and not the other is an install that drifts. Both are the
+        frontend's own rows (`frontends.<name>.features`), so they cannot be written down apart."""
+        features = set(frontend.web_lock_features("react-vite")[:1])
+        self.assertTrue(features)
+        self.assertNotEqual(frontend.web_lock_suffix(features, "react-vite"),
+                            frontend.web_lock_suffix(set(), "react-vite"))
+        written = frontend.web_package_json('{"name": "web", "dependencies": {}}', features, "react-vite")
+        self.assertIn("react-oidc-context", written)
 
 
 class BiomeTest(unittest.TestCase):

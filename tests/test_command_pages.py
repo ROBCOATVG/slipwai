@@ -24,8 +24,18 @@ import unittest
 from pathlib import Path
 
 import command_pages
+import frontend_entry
 
 from slipwai.project import commands, ground_command
+
+
+def setUpModule() -> None:  # noqa: N802 - unittest's name
+    """A browser app here is `react-vite`, whose catalogue entry is the TypeScript family's (`frontend_entry`)."""
+    frontend_entry.install()
+
+
+def tearDownModule() -> None:  # noqa: N802 - unittest's name
+    frontend_entry.remove()
 
 RECORD = Path(__file__).resolve().parent / "fixtures/command-pages.sha256"
 

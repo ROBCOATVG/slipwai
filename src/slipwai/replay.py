@@ -42,13 +42,12 @@ from .layout import Layout, layout_of
 from .manifest import apps_from_manifest, check_known, read_manifest, recorded_languages, refuse_older, wrote_here
 from .origin import adoption_of
 from .project.adopted import WRITTEN
-from .project.design_page import DESIGN, existing_design_page
+from .project.design_page import DESIGN, existing_design_page, starter_design
 from .project.docs_index import docs_index
 from .project.pruner import pruner
 from .scaffold import FACTORY_EMAIL, FACTORY_IDENTITY, NO_MAINTENANCE, project_files, write_project
 from .services import App, web_apps
 
-STARTER_STYLES = ("src/styles/tokens.css", "src/styles/base.css")
 #: What `generate` wrote that no answer regenerates: the requirements document a person handed over, the
 #: design material it stood on or `--design` carried, and the record of which quickstart the project came
 #: from. All three sit in the base commit beside the factory's files, so a replay that left them out read,
@@ -60,7 +59,6 @@ PRD = "docs/prd.md"
 # not read that one; `tests/test_replay_handed_over.py` holds the two in step.
 HANDED_DESIGN = "docs/design"
 QUICKSTART_RECORD = ".slipwai/quickstart.json"
-STARTER_IMPORTS = ("import './styles/tokens.css';\n", "import './styles/base.css';\n")
 
 
 @dataclass(frozen=True)
@@ -226,8 +224,14 @@ def preserve_project_styles(
     token_paths: list[str] = []
     styled_apps: list[str] = []
     for web in web_apps(apps):
+        # Which files the baseline is, and the lines importing them, are the frontend's to say
+        # (`design_page.starter_design`); a frontend that names none has no baseline to keep or drop.
+        baseline = starter_design(web.framework)
+        if baseline is None:
+            continue
+        starter_styles = (baseline["tokens"], baseline["base"])
         app = root / web.path
-        starter = {(app / relative).resolve() for relative in STARTER_STYLES}
+        starter = {(app / relative).resolve() for relative in starter_styles}
         project_tokens = [
             path for path in STYLE_CHECKER.token_files(app) if path not in starter
         ]
@@ -235,7 +239,7 @@ def preserve_project_styles(
             continue
         changed = [
             f"{web.path}/{relative}"
-            for relative in STARTER_STYLES
+            for relative in starter_styles
             if (root / web.path / relative).exists()
             and not unchanged_from(root, parent, f"{web.path}/{relative}")
         ]
@@ -247,10 +251,10 @@ def preserve_project_styles(
                 f"baseline at {listed}. Refusing to choose which design system owns the bundle: remove the "
                 "obsolete starter files and imports, or consolidate the tokens before replaying."
             )
-        for relative in STARTER_STYLES:
+        for relative in starter_styles:
             files.pop(f"{web.path}/{relative}", None)
-        entry = f"{web.path}/src/main.tsx"
-        for imported in STARTER_IMPORTS:
+        entry = f"{web.path}/{baseline['entry']}"
+        for imported in baseline["imports"]:
             files[entry] = files[entry].replace(imported, "")
         token_paths.extend(path.relative_to(here).as_posix() for path in project_tokens)
         styled_apps.append(web.path)

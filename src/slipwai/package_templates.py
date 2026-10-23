@@ -120,22 +120,6 @@ Then, in a project:
 {obligations}
 '''
 
-LANGUAGE_MODULE = '''"""{title}: the backend protocol, as this keel's registry asks it.
-
-The loader imports this module from the package directory and reads `LANGUAGE`. Every member the registry
-declares `required` has to be answered here; the rest are optional and fall back to the keel's own.
-"""
-from __future__ import annotations
-
-from slipwai.registry import Backend, Family, Language
-
-#: TODO: answer the required members. `slipwai conformance --language {name}` lists what is missing and what
-#: each one is for, and refuses an answer the generated project would not build with.
-BACKEND = Backend(key="{name}", answers={{}})
-FAMILY = Family(name="{name}")
-LANGUAGE = Language(families=(FAMILY,), backends=(BACKEND,))
-'''
-
 LANGUAGE_README = '''# {title}
 
 A slipwai language package: it answers the backend protocol, and `slipwai generate --backend {name}` writes a
@@ -152,7 +136,7 @@ TODO: what this language and framework are, in two sentences.
 ## Checking it
 
 ```sh
-{command} conformance --language {name}
+{command} package check .
 ```
 
 Every required member answered, and the generated project built and tested.
@@ -209,8 +193,10 @@ register: check ## Build it and write it into a channel checkout (CHANNEL=<direc
 """
 
 #: The package's CI: the keel's reusable workflow, called rather than copied, so a fix to it reaches every
-#: package. Pinned to no keel version here — the package declares the range in its manifest, and the workflow
-#: takes a version when a publisher wants one.
+#: package. **It is the package's contract test**, so it runs from the package's side against both ends of the
+#: contract: the newest published keel its `core` range takes, and the keel's `main` — on every push, and
+#: every night, so a keel change that breaks this package is a red run here the next morning rather than a
+#: surprise in somebody's generation (`docs/backend-protocol.md`, *Compatibility*).
 WORKFLOW = """name: verify
 
 on:
@@ -221,6 +207,10 @@ on:
     # chose. `git tag v1.1.0 && git push --follow-tags` is the whole of releasing.
     tags: ['v*']
   pull_request:
+  # Every night, against the keel's `main`, whether or not this package changed: the keel moves without
+  # telling anybody, and this is how a package hears that it did.
+  schedule:
+    - cron: '23 4 * * *'
   # Asking for the matrix on a branch nobody has merged yet. On `main` and on a tag it runs anyway —
   # see the `matrix:` line below — so this is for checking a change before it gets there.
   #
@@ -240,6 +230,12 @@ permissions:
 
 jobs:
   conformance:
+    strategy:
+      fail-fast: false
+      matrix:
+        # '' is the newest published keel this package's `core` range takes; the second is the keel's `main`,
+        # the side of the contract that has not been released yet.
+        keel: ['', 'git+https://github.com/{keel}@main']
     uses: {keel}/.github/workflows/package.yml@main
     with:
       package: {name}
@@ -251,7 +247,8 @@ jobs:
       # to opt in was a person typing `gh workflow run`, which is the same as off.
       # One line, not a folded block: this feeds a `type: boolean` input, and a folded scalar is one more
       # thing between the expression and the value that could hand it a string with a newline on the end.
-      matrix: ${{{{ inputs.matrix || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}}}
+      # Against the published keel only: the keel's `main` is held to the contract, which conformance is.
+      matrix: ${{{{ matrix.keel == '' && (inputs.matrix || github.ref_name == 'main' || github.ref_type == 'tag') }}}}
       # What the runner needs installed before the matrix runs: `go`, `node`, `java`, `uv`, `pack`. The
       # matrix generates a project per row and runs *that project's* own `make verify`, so the runner needs
       # this language's toolchain — and this package is the only thing that knows which.
@@ -260,11 +257,12 @@ jobs:
       # worked out from its own `requires` and does not go here. This is for a *family*, which declares no
       # backend of its own and is proved through one of its frameworks — `java` names `java-spring`.
       beside: ''
-      # Where a tag publishes to. Empty publishes nowhere, which is right for a fork.
-      channel: ''
-      # Which keel to prove against: a bare version is one on PyPI, anything else is passed to pip as it
-      # stands. Empty installs `slipwai`, which is right once the version you need is published.
-      keel: ''
+      # Where a tag publishes to: put the channel in the first quotes. Empty publishes nowhere, which is right
+      # for a fork, and only the published-keel row ever publishes, so a tag publishes once.
+      channel: ${{{{ matrix.keel == '' && '' || '' }}}}
+      # Which keel to prove against: the row's. A bare version is one on PyPI, anything else is passed to pip
+      # as it stands, and empty installs the newest `slipwai`.
+      keel: ${{{{ matrix.keel }}}}
     # A token that may open a pull request on that channel. Without it a tag still builds the release
     # and attaches it to itself, and `slipwai package register` finishes the job by hand — so a fork
     # needs no credential and a package nobody owns can still be proved.

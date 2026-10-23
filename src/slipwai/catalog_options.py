@@ -71,3 +71,61 @@ def declare_options(merged: dict[str, Any], packages: list[Package]) -> dict[str
         option["targets"] = [one for one in option.get("targets", []) if one in merged["targets"]]
         merged["axes"][axis]["options"][name] = option
     return refused
+
+
+def declare_frontends(merged: dict[str, Any], packages: list[Package]) -> dict[str, str]:
+    """Fold each package's `frontends` block into the catalogue, and refuse the ones that cannot be.
+
+    A browser app is a family's, the way an axis option is a package's: the keel carries `none` and no other,
+    and a frontend, named after its framework, belongs to the family that ships its files and
+    the lock that resolves them (`docs/frontend-protocol.md`). The two rules are `declare_options`' own: a
+    name belongs to one package, and none may be declared over the keel's. A framework package adds a backend
+    to a family and is refused one, because `browser_apps` is a family's answer and a framework has none.
+
+    The default follows: where the keel's default is `none` and a package brings a browser app, the default
+    is the first such app in package order — the order the catalogue lists backends in — so a person who
+    installs a language that ships one is offered it first, and a person who installs none is offered `none`.
+    """
+    refused: dict[str, str] = {}
+    by_name: dict[str, list[Package]] = {}
+    for package in packages:
+        for name in package.fragment.get("frontends", {}):
+            by_name.setdefault(name, []).append(package)
+    for name, claimants in sorted(by_name.items()):
+        for package in claimants:
+            if "requires" in package.fragment:
+                refused.setdefault(package.name, refusal(
+                    package.name, package.root,
+                    f"declares frontend {name}, and a package that requires its family adds backends: a "
+                    f"browser app is its family's to ship"))
+        claimants = [package for package in claimants if package.name not in refused]
+        if name in merged["frontends"]:
+            for package in claimants:
+                refused.setdefault(package.name, refusal(
+                    package.name, package.root, f"declares frontend {name}, which the keel already declares"))
+        elif len(claimants) > 1:
+            named = ", ".join(sorted(package.name for package in claimants))
+            for package in claimants:
+                refused.setdefault(package.name, refusal(
+                    package.name, package.root,
+                    f"declares frontend {name}, which {named} declare between them; a frontend belongs to one "
+                    f"package, and nothing here chooses between them"))
+    kept = sorted((package for package in packages if package.name not in refused),
+                  key=lambda package: package.fragment.get("order", 0))
+    brought = [name for package in kept for name in package.fragment.get("frontends", {})]
+    for package in kept:
+        for name, entry in package.fragment.get("frontends", {}).items():
+            merged["frontends"][name] = {**copy.deepcopy(entry), "family": package.fragment["family"]}
+    if merged["default"].get("frontend") == "none" and brought:
+        merged["default"]["frontend"] = brought[0]
+    return refused
+
+
+def retract_frontends(catalog: dict[str, Any], package: Package) -> None:
+    """Take a refused package's browser apps back out of a merged catalogue, and the default with them where it
+    was one: a default pointing at a frontend nothing ships is a choice nobody can take. The next brought one, or
+    `none`, takes its place."""
+    for name in package.fragment.get("frontends", {}):
+        catalog["frontends"].pop(name, None)
+        if catalog["default"].get("frontend") == name:
+            catalog["default"]["frontend"] = next((one for one in catalog["frontends"] if one != "none"), "none")

@@ -44,7 +44,7 @@ class ConformanceCase(unittest.TestCase):
     def verdict(self, name: str) -> None:
         """Fail with every finding `name` made, or skip where it could not run."""
         if name in self.report.not_run:
-            self.skipTest(f"{name} not run: {self.report.not_run[name]}")
+            self.skipTest(f"{name}: {self.report.not_run[name]}")
         found = self.report.findings.get(name, [])
         if found:
             self.fail(f"{self.report.package} fails {name}:\n" + "\n".join(f"  {finding}" for finding in found))
@@ -63,6 +63,9 @@ class ConformanceCase(unittest.TestCase):
 
     def test_prune_rows(self) -> None:
         self.verdict("prune rows")
+
+    def test_frontends(self) -> None:
+        self.verdict("frontends")
 
     def test_version(self) -> None:
         self.verdict("version")

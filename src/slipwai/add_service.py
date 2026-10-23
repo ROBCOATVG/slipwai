@@ -131,12 +131,19 @@ def add_service_to(
     return grow(root, document, apps, with_new, asked)
 
 
-def add_frontend_to(root: Path, name: str, api: str | None = None) -> tuple[App, list[str], list[str]]:
-    """Write a new browser app — proxying `/api` to `api`, the first service by default — and what it drives."""
+def add_frontend_to(
+    root: Path, name: str, api: str | None = None, frontend: str | None = None
+) -> tuple[App, list[str], list[str]]:
+    """Write a new browser app — proxying `/api` to `api`, the first service by default — and what it drives.
+
+    Of the project's frontend where it has one; the first browser app is `frontend`, or the catalogue's
+    default — the first an installed language ships (`catalog_options.declare_frontends`)."""
     document = read_manifest(root)
     apps = apps_from_manifest(document)
     check_known(apps)
-    return grow(root, document, apps, add_web(apps, name, api), set())
+    if frontend is None and frontend_of(apps) == "none":
+        frontend = CATALOG["default"]["frontend"]
+    return grow(root, document, apps, add_web(apps, name, api, frontend), set())
 
 
 def grow(

@@ -1,6 +1,6 @@
 """`/api/flags`: how a browser app learns what this environment's flags are set to.
 
-A browser cannot read this environment. Vite inlines a `VITE_`-prefixed value while the bundle is *built*,
+A browser cannot read this environment. A bundler inlines the values it is given while the bundle is *built*,
 so a flag compiled into a bundle is a property of that build and not of the environment it runs in — which
 is why a flag the browser read used to move only when the environment was deployed again, while the same
 flag reached the service in a restart. Two clocks for one flag, and an ordering rule to keep them from
@@ -9,7 +9,7 @@ contradicting each other.
 The service already holds the answer, and `Source.snapshot()` is it. So the service serves it, the bundle
 asks, and the two halves of one flag finally move together.
 
-Under `/api` because that is the service's product surface: `vite.config.ts` forwards `/api` with the prefix
+Under `/api` because that is the service's product surface: the dev server forwards `/api` with the prefix
 intact, and the edge's `/api/*` behaviour has no origin path and no rewrite function, so the path is the
 same in both places. `/health` stays outside it, being a probe rather than something a browser calls.
 

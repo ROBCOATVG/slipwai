@@ -1,0 +1,16 @@
+{
+  "name": "toy-web",
+  "core": ">=9.0,<10",
+  "order": 95,
+  "family": "toy-web",
+  "backends": {},
+  "frontends": {
+    "toy-vite": {
+      "label": "Toy web — the frontend template's inert placeholder; not a real browser app",
+      "stack": "toy",
+      "gate": "the toy frontend's placeholder checks",
+      "capabilities": ["frontend"],
+      "features": {}
+    }
+  }
+}

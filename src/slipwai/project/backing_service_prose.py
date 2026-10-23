@@ -21,9 +21,11 @@ from ..services import (
     axes_of,
     containers_of,
     features_of,
+    frontend_of,
     prunable_features_of,
     services_of,
     transports_of,
+    web_features,
 )
 from ..toolkit import spoken_for
 from .metadata import sourced
@@ -211,10 +213,10 @@ USERS_README = {
 
 The same Keycloak imports `docker/keycloak/realms/customers.json`: a second realm, `customers`, at
 `http://localhost:8081/realms/customers`, with self-registration and password reset on and a public PKCE client
-for the browser app. The login lives in `apps/web` (`src/auth/users.tsx`, react-oidc-context over
-oidc-client-ts): sign in, session, silent renewal and sign out are real, and a signed-in external user's access
-token carries `api` as its audience for the service. A user `customer@example.invalid` / `customer` exists
-before anyone registers. __OUTSTANDING__
+for the browser app. The login lives in `apps/web`__WHERE__.
+Sign in, session, silent renewal and sign out are real, and a signed-in external user's access token carries
+`api` as its audience for the service. A user `customer@example.invalid` / `customer` exists before anyone
+registers. __OUTSTANDING__
 <!-- backing-service:users-keycloak:end -->
 """,
 }
@@ -277,7 +279,11 @@ make services-down     # stop them, keeping any volume
                     if s.selection.feature_of(axis) == identity
                 )
             )
-            sections.append(readme[identity].replace("__OUTSTANDING__", owed))
+            # Where in the browser app the login is, and what it is built on, is the frontend's to say: the
+            # feature's `where` in its family's `language.json` (`docs/frontend-protocol.md`).
+            where = web_features(frontend_of(apps)).get(identity, {}).get("where")
+            sections.append(readme[identity].replace("__OUTSTANDING__", owed)
+                            .replace("__WHERE__", f" ({where})" if where else ""))
     if not sections:
         return ""
     if prunable_features_of(apps):

@@ -71,7 +71,7 @@ def architecture(profile: str, apps: list[App]) -> str:
     web = web_apps(apps)
     families = families_of(apps)
     # A browser app shares code the same way a service does, and it is the npm family whether or not any
-    # service is: without this, a React app beside a Go service is told nothing about `packages/` at all.
+    # service is: without this, a browser app beside a Go service is told nothing about `packages/` at all.
     if web and not any(npm(family) for family in families):
         families = [*families, web[0].language]
     contexts = "\n".join(

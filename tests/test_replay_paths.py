@@ -17,17 +17,28 @@ import unittest
 from pathlib import Path
 
 import checkout_packages  # noqa: F401
+import frontend_entry
 
 from slipwai.errors import GenerationError
 from slipwai.layout import AT_ROOT
 from slipwai.replay import preserve_project_styles
 from slipwai.services import App
 
+
+def setUpModule() -> None:  # noqa: N802 - unittest's name
+    """Which files are the baseline is the frontend's to say (`design`), and this one is `react-vite`'s."""
+    frontend_entry.install()
+
+
+def tearDownModule() -> None:  # noqa: N802 - unittest's name
+    frontend_entry.remove()
+
+
 MAIN = "import './styles/tokens.css';\nimport './theme.css';\ncreateRoot();\n"
 
 
 def web(path: str = "apps/web") -> App:
-    return App(name="web", path=path, kind="browser", language="typescript", framework=None, port=5173)
+    return App(name="web", path=path, kind="browser", language="typescript", framework="react-vite", port=5173)
 
 
 class SymlinkedRootTest(unittest.TestCase):

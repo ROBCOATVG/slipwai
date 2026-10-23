@@ -4,7 +4,7 @@
     "profile": "event-modelling",
     "target": "none",
     "framework": {},
-    "frontend": "react-vite",
+    "frontend": "none",
     "write-model": "events",
     "persistence": "postgres",
     "http": {},
@@ -23,14 +23,6 @@
   "frontends": {
     "none": {
       "capabilities": []
-    },
-    "react-vite": {
-      "capabilities": [
-        "frontend",
-        "typescript",
-        "react",
-        "vite"
-      ]
     }
   },
   "axes": {

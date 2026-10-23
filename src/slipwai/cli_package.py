@@ -37,7 +37,8 @@ from .package_version import cut
 
 
 def new_package(parsed: argparse.Namespace) -> None:
-    written = write(parsed.kind, parsed.name, Path(parsed.into).expanduser(), CORE["schemaVersion"])
+    parts = tuple(part.strip() for part in parsed.parts.split(",") if part.strip())
+    written = write(parsed.kind, parsed.name, Path(parsed.into).expanduser(), CORE["schemaVersion"], parts)
     place = Path(parsed.into) / parsed.name
     print(f"{parsed.kind} {parsed.name}:")
     for path in written:
@@ -182,7 +183,10 @@ def package_main(argv: list[str]) -> None:
     parser.add_argument("name", help="the package's key for `new`; its directory for the others")
     parser.add_argument("--kind", choices=KINDS, default="extension",
                         help="`new` only: what the package is (default: extension) — a language, an "
-                             "extension or a quickstart. The others read the manifest")
+                             "extension, a target or a quickstart. The others read the manifest")
+    parser.add_argument("--parts", default="backend", metavar="backend|frontend|backend,frontend",
+                        help="`new --kind language` only: whether it ships services, browser apps, or both "
+                             "(default: backend). See docs/frontend-protocol.md in the keel")
     parser.add_argument("--into", default=".", metavar="<directory>",
                         help="`new` only: where the package directory is written (default: here)")
     parser.add_argument("--out", default="dist", metavar="<directory>",

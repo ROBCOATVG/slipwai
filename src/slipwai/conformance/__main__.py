@@ -14,7 +14,7 @@ from pathlib import Path
 from ..assets import VERSION
 from ..extension_shape import OBLIGATIONS
 from .extension import check as check_extension
-from .run import CHECKS, Report, check, require_package_name
+from .run import CHECKS, Report, check, require_package_name, shown
 from .target import CHECKS as TARGET_CHECKS
 from .target import MANIFEST as TARGET_MANIFEST
 from .target import check as check_target
@@ -25,7 +25,7 @@ def lines(report: Report) -> list[str]:
     said = [f"conformance: {report.package} in {report.directory}, against slipwai {VERSION}"]
     for name in CHECKS:
         if name in report.not_run:
-            said.append(f"  {name:<11} not run: {report.not_run[name]}")
+            said.append(shown(name, report.not_run[name]))
         elif name in report.findings:
             found = report.findings[name]
             said += [f"  {name:<11} {'FAILED' if found else 'ok'}", *(f"    {finding}" for finding in found)]
@@ -46,7 +46,7 @@ def extension_report(parser: argparse.ArgumentParser, package: Path) -> int:
     print(f"conformance: extension {report.key} in {package}, against slipwai {VERSION}")
     for name, said in OBLIGATIONS:
         if name in report.not_run:
-            print(f"  {name:<11} not run: {report.not_run[name]}")
+            print(shown(name, report.not_run[name]))
             continue
         found = report.findings.get(name, [])
         print(f"  {name:<11} {'FAILED' if found else 'ok'}  — {said}")
@@ -70,7 +70,7 @@ def target_report(parser: argparse.ArgumentParser, package: Path) -> int:
     print(f"conformance: target {report.name} in {package}, against slipwai {VERSION}")
     for name in TARGET_CHECKS:
         if name in report.not_run:
-            print(f"  {name:<11} not run: {report.not_run[name]}")
+            print(shown(name, report.not_run[name]))
             continue
         found = report.findings.get(name, [])
         print(f"  {name:<11} {'FAILED' if found else 'ok'}")

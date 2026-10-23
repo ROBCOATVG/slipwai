@@ -188,7 +188,9 @@ class TagPublishTest(unittest.TestCase):
         said = (area / "lens/.github/workflows/verify.yml").read_text(encoding="utf-8")
         self.assertIn("tags: ['v*']", said)
         self.assertIn("chandlery_token", said)
-        self.assertIn("channel: ''", said)
+        # Publishing nowhere until the publisher names a channel, and only ever from the published-keel row,
+        # so a tag run against two keels publishes once.
+        self.assertIn("channel: ${{ matrix.keel == '' && '' || '' }}", said)
 
 
 class KeelSpecTest(unittest.TestCase):
@@ -221,7 +223,26 @@ class KeelSpecTest(unittest.TestCase):
         from slipwai import package_new
         area = P(tempfile.mkdtemp())
         package_new.write("language", "rust", area, "9.0")
-        self.assertIn("keel: ''", (area / "rust/.github/workflows/verify.yml").read_text(encoding="utf-8"))
+        said = (area / "rust/.github/workflows/verify.yml").read_text(encoding="utf-8")
+        self.assertIn("keel: ${{ matrix.keel }}", said)
+
+    def test_the_scaffold_proves_against_the_published_keel_and_the_keels_main_every_night(self) -> None:
+        """The package's CI is its contract test: the keel it was built against, and the keel that is moving,
+        every night whether or not the package changed (`docs/backend-protocol.md`, *Compatibility*)."""
+        import tempfile
+        from pathlib import Path as P
+
+        import yaml
+
+        from slipwai import package_new
+        from slipwai.package_new import KEEL_REPO
+        area = P(tempfile.mkdtemp())
+        package_new.write("language", "rust", area, "9.0")
+        held = yaml.safe_load((area / "rust/.github/workflows/verify.yml").read_text(encoding="utf-8"))
+        on = held.get("on") or held.get(True)
+        self.assertIn("schedule", on)
+        self.assertEqual(held["jobs"]["conformance"]["strategy"]["matrix"]["keel"],
+                         ["", f"git+https://github.com/{KEEL_REPO}@main"])
 
     def test_it_points_at_the_repository_that_has_this_workflow(self) -> None:
         """Version 1's repository has a `package.yml` too, with inputs this one has never heard of."""
@@ -291,8 +312,8 @@ class MatrixOptInTest(unittest.TestCase):
         """The two-gate split, for a package. A check whose only way in is a person typing
         `gh workflow run` is a check that is off — which is what it was."""
         passed = self.caller()
-        self.assertIn("github.ref == 'refs/heads/main'", passed)
-        self.assertIn("startsWith(github.ref, 'refs/tags/v')", passed)
+        self.assertIn("github.ref_name == 'main'", passed)
+        self.assertIn("github.ref_type == 'tag'", passed)
 
     def test_a_pull_request_gets_conformance_and_not_the_matrix(self) -> None:
         """The fast half, which is the one an author runs over and over. The matrix builds images and

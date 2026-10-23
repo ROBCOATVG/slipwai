@@ -169,9 +169,15 @@ def add_frontend_main(argv: list[str]) -> None:
     )
     parser.add_argument("name", help="the new browser app's name: apps/<name>, and its Compose service")
     parser.add_argument("--api", default=None, help="the service its /api calls go to (default: the first)")
+    offered = [name for name in CATALOG["frontends"] if name != "none"]
+    parser.add_argument(
+        "--frontend", default=None, choices=offered or None, metavar=braced(offered) if offered else "FRONTEND",
+        help="which browser app, for a project that has none yet: one an installed language ships (default: "
+             f"{CATALOG['default']['frontend']}). A project's later browser apps are the frontend it already has",
+    )
     args = parser.parse_args(argv)
     try:
-        app, added, rewritten = add_frontend_to(Path.cwd(), args.name, args.api)
+        app, added, rewritten = add_frontend_to(Path.cwd(), args.name, args.api, args.frontend)
     except NoBrowserLanguage:
         refuse(parser.prog, browser_app.refusal("a browser app", generate=False))
     except GenerationError as error:

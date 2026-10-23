@@ -93,7 +93,7 @@ class NpmWorkspaceTest(unittest.TestCase):
 
         with self.assertRaises(NoBrowserLanguage) as raised:
             browser_language()
-        self.assertIn("npm workspace", str(raised.exception))
+        self.assertIn("ships a browser app", str(raised.exception))
         self.assertIsInstance(raised.exception, GenerationError)
 
 

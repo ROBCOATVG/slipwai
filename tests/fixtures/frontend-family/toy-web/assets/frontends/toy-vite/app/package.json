@@ -1,0 +1,7 @@
+{
+  "name": "web",
+  "private": true,
+  "scripts": { "verify": "echo toy-web: a real browser app runs its gate here" },
+  "dependencies": {},
+  "devDependencies": { "@biomejs/biome": "2.0.0" }
+}

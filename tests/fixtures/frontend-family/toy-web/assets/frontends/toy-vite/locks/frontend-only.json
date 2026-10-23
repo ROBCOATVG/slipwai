@@ -1,0 +1,12 @@
+{
+  "name": "delivery-starter",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": { "name": "delivery-starter", "workspaces": ["apps/web", "packages/api-client"] },
+    "apps/web": { "name": "delivery-starter-web" },
+    "packages/api-client": { "name": "api-client" },
+    "node_modules/delivery-starter-web": { "resolved": "apps/web", "link": true },
+    "node_modules/api-client": { "resolved": "packages/api-client", "link": true }
+  }
+}

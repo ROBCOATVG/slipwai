@@ -29,18 +29,16 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 from .backends import ENV_FEATURES, SERVICE_PORT, WEB_PORT
-from .catalog import family_of, framework_of, resolve_backend
+from .catalog import CATALOG, family_of, framework_of, resolve_backend
 from .errors import GenerationError
 from .naming import check_name, checked_contexts
-from .npm_workspace import browser_language
+from .npm_workspace import BROWSER, NoBrowserLanguage, browser_language
 from .selection import Selection, transport_feature
 
 # The names the first service and the first browser app are given unless the generation asks for others.
 FIRST_SERVICE = "service"
 FIRST_WEB = "web"
 APPLICATIONS = "apps"
-# The one browser framework this keel offers; a second would arrive through `add-framework`.
-WEB_FRAMEWORK = "react-vite"
 
 
 @dataclass(frozen=True, eq=False)
@@ -166,8 +164,10 @@ def service_app(
     )
 
 
-def web_app(name: str, port: int, api: str, first: bool = False) -> App:
-    return App(name, f"{APPLICATIONS}/{name}", "web", browser_language(), WEB_FRAMEWORK, port, api=api, first=first)
+def web_app(name: str, port: int, api: str, frontend: str, first: bool = False) -> App:
+    """A browser app of `frontend`, written in the family that ships it: its framework is the frontend's name,
+    as `project.json` records it, and its language that family's (`npm_workspace.frontend`)."""
+    return App(name, f"{APPLICATIONS}/{name}", "web", browser_language(frontend), frontend, port, api=api, first=first)
 
 
 def default_apps(
@@ -187,7 +187,7 @@ def default_apps(
     ]
     if frontend != "none":
         check_name((app.name for app in apps), web_name)
-        apps.append(web_app(web_name, WEB_PORT, service_name, first=True))
+        apps.append(web_app(web_name, WEB_PORT, service_name, frontend, first=True))
     return apps
 
 
@@ -209,7 +209,14 @@ def wrapped_of(apps: list[App]) -> list[App]:
 def frontend_of(apps: list[App]) -> str:
     """The browser framework this project uses, or `none` — derived from the list, never asked separately."""
     web = web_apps(apps)
-    return (web[0].framework or WEB_FRAMEWORK) if web else "none"
+    return (web[0].framework or "none") if web else "none"
+
+
+def web_features(frontend: str) -> dict[str, dict]:
+    """What each feature does to a `frontend` browser app — the files it adds, the paths it owns, the npm
+    dependencies it brings, where the result lives — in the order its family's `language.json` lists them
+    (`docs/frontend-protocol.md`). Nothing for `none`, or a frontend no installed language ships."""
+    return dict(CATALOG["frontends"].get(frontend, {}).get("features", {}))
 
 
 def backends_of(apps: list[App]) -> list[str]:
@@ -293,8 +300,11 @@ def next_web_port(apps: list[App]) -> int:
     return max((app.port for app in web_apps(apps)), default=WEB_PORT - 1) + 1
 
 
-def add_web(apps: list[App], name: str, api: str | None) -> list[App]:
-    """The list with one more browser app on it, proxying `/api` to `api` (the first service by default)."""
+def add_web(apps: list[App], name: str, api: str | None, frontend: str | None = None) -> list[App]:
+    """The list with one more browser app on it, proxying `/api` to `api` (the first service by default).
+
+    Of the frontend the project already has, because a project's browser apps share one workspace, one lock
+    and one Biome; `frontend` is only for the first, and is refused where it names another."""
     check_name((app.name for app in apps), name)
     services = services_of(apps)
     if not services:
@@ -307,7 +317,14 @@ def add_web(apps: list[App], name: str, api: str | None) -> list[App]:
             f"'{api}' is not a service of this project; the browser app can proxy to "
             f"{', '.join(service.name for service in services)}"
         )
-    return [*apps, web_app(name, next_web_port(apps), api)]
+    had = frontend_of(apps)
+    if had != "none" and frontend not in (None, had):
+        raise GenerationError(f"this project's browser apps are {had}, and a project's browser apps share one "
+                              f"workspace and one lock: add another {had}, or leave --frontend out")
+    chosen = had if had != "none" else frontend
+    if chosen in (None, "none"):
+        raise NoBrowserLanguage(f"a browser app {BROWSER}")
+    return [*apps, web_app(name, next_web_port(apps), api, chosen)]
 
 
 def add_service(

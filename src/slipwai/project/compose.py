@@ -89,14 +89,14 @@ def web_block(web: App, apps: list[App]) -> str:
       API_ORIGIN: http://{api.name}:{api.port}
       # backing-service:{api.transport}:end
 """ if api is not None else ""
-    return f"""  # The browser app, served by Vite over the mounted checkout, so an edit is visible on save.
+    return f"""  # The browser app, served by its dev server over the mounted checkout, so an edit is visible on save.
   {web.name}:
     image: {workspace(web.language).image}
     profiles: ['app']
     working_dir: /workspace
     command: ['make', '{web.dev_target}']
     environment:
-{proxy_environment}      # Vite binds localhost by default, on purpose — a dev server should not be on the LAN. In here
+{proxy_environment}      # A dev server binds localhost by default, on purpose — it should not be on the LAN. In here
       # localhost is the container, so the published port would reach nothing.
       WEB_HOST: '0.0.0.0'
     ports:

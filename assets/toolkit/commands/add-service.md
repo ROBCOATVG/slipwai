@@ -21,10 +21,12 @@ files that name it, and misses the tenth.
 - **Language and framework** — {{default-language}}
   Another language beside it is
   `--language {{languages}}`; a language with more than one framework also takes
-  `--framework {{frameworks}}`.
+  `--framework {{frameworks}}`, which is refused without `--language`. `--backend <key>` names both at once,
+  and is refused beside either.
 - **Answers** — one flag per question: {{axes}}.
-  An axis without a flag {{inherits}} `add-service --help` lists the
-  options this project's target allows.
+  An axis without a flag {{inherits}} `add-service --help` lists every
+  option an installed language answers; one this project's target does not offer, or this service's language
+  does not answer, is refused when the command runs, naming one it would take.
 - **Purpose and contexts** — `--purpose "<what it owns, in a sentence or two>"` and `--context <name>`, once
   per bounded context the service holds. The purpose is what `/sail` reads when it decides which service a
   slice belongs to: a service added without one is a directory the loop cannot place work in, and it will

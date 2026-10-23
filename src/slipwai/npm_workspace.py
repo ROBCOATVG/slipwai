@@ -1,7 +1,7 @@
 """The project's one npm workspace, as the keel asks about it: which languages are in it, and what a browser app is.
 
-A browser app is an npm package, and so is every service of a language whose code npm installs. The keel's `react-vite`
-frontend owns the browser app and the workspace's root; a language joins the workspace by answering
+A browser app is an npm package, and so is every service of a language whose code npm installs. The family that ships
+the project's frontend owns the browser app and the workspace's root; a language joins the workspace by answering
 `npm_workspace` on its family, with what only it knows: its services' committed locks, the lock of a workspace
 that holds one of them beside a browser app, the image a browser app's dev server runs in, and the lint and format
 configuration every package in the workspace shares. The keel never names the language: it asks the registry
@@ -10,25 +10,25 @@ configuration every package in the workspace shares. The keel never names the la
 A browser app is written in the first family, in registry order, that answers the member. With none loaded there
 is no language to write one in, and asking for one is refused in a line (S09's Q1).
 
-**And so the browser app's own material is the same family's.** A family that answers `npm_workspace` already
-commits the lock that resolves a browser app's dependencies and already pins the Biome it must agree with, so
-`browser_apps` is where it says which browser apps it writes and hands over each one's directory (`BrowserApp`).
-The keel still carries one, under `KEEL_APPS`, and that is the last answer of any kind shipped inside it.
+**And so the browser app's own material is a family's too.** A family that answers `npm_workspace` commits the
+lock that resolves a browser app's dependencies and pins the Biome it must agree with, so `browser_apps` is where it
+says which browser apps it writes and hands over each one's directory (`BrowserApp`). The keel carries none: a
+package may ship services, browser apps or both, and `docs/frontend-protocol.md` says what each shape answers.
 """
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, NamedTuple, cast
 
-from .assets import FRONTEND_ROOT, inside
+from .assets import inside
 from .errors import GenerationError
 from .registry import BROWSER_APPS, NPM_WORKSPACE, Registry, registry
 
 # What a refusal for a browser app with no language to write it in says first. Each verb says what it was asked, and
 # `browser_app` how it ends: the language the index says answers, and its install line (D122, over D63).
-BROWSER = "needs a language that answers the npm workspace, and none is loaded"
+BROWSER = "needs a language that ships a browser app, and none installed does"
 
 
 class NoBrowserLanguage(GenerationError):
@@ -77,6 +77,10 @@ class BrowserApp:
 
     name: str
     root: Path
+    family: str = ""
+    """The family that answered it, filled in by `frontends`: the language a browser app is written in, whose
+    workspace, Biome and family answers its project is given. Empty on a record a package builds, which
+    never has to say whose it is — the registry knows."""
 
     def at(self, relative: str) -> Path:
         """One of its trees or files, refused where that path leaves the root.
@@ -91,26 +95,22 @@ class BrowserApp:
             raise GenerationError(f"frontend {self.name} {error}") from error
 
 
-#: The one browser app the keel still carries, and the last answer of any kind that ships inside it: every
-#: language, extension, target and quickstart is a package already. Named here — in one place, rather than at
-#: each of the paths that read it — so that the slice which moves it into the family that writes it is a
-#: change of this dictionary and of nothing else.
-KEEL_APPS: dict[str, BrowserApp] = {"react-vite": BrowserApp("react-vite", FRONTEND_ROOT / "react-vite")}
+#: Where a package keeps a browser app: one directory per frontend, beside `languages/` and
+#: `backing-services/`, so a package that ships services, browser apps or both is laid out the same way
+#: and its reviewer can see which is which. The loader refuses a `BrowserApp` whose root is anywhere else.
+FRONTENDS_DIRECTORY = "assets/frontends"
 
 
 def frontends(held: Registry | None = None) -> dict[str, BrowserApp]:
-    """Every browser app this keel can write, by name: each family's own in registry order, the keel's last.
+    """Every browser app this keel can write, by name, each with the family that answered it, in registry order.
 
-    A family wins a name the keel also carries, because a family that ships a browser app ships the lock
-    that resolves it — and a project given the keel's files under a family's lock is a project whose
-    `npm ci` refuses the tree it was handed.
+    The keel carries none. Two families answering one name cannot both load — the catalogue's `frontends`
+    block is one package's per name (`catalog_options.declare_frontends`) — so the first is the only one.
     """
     found: dict[str, BrowserApp] = {}
-    for family in (registry() if held is None else held).families.values():
-        for name, app in cast(dict, family.answers.get(BROWSER_APPS, {})).items():
-            found.setdefault(name, app)
-    for name, app in KEEL_APPS.items():
-        found.setdefault(name, app)
+    for name, family in (registry() if held is None else held).families.items():
+        for key, app in cast(dict, family.answers.get(BROWSER_APPS, {})).items():
+            found.setdefault(key, replace(app, family=name))
     return found
 
 
@@ -124,7 +124,7 @@ def frontend(name: str) -> BrowserApp:
     offered = frontends()
     if name not in offered:
         raise GenerationError(f"no loaded language writes a {name} browser app; this keel offers "
-                              f"{', '.join(sorted(offered)) or 'none'}")
+                              f"{', '.join(sorted(offered)) or 'none — install a language that ships one'}")
     return offered[name]
 
 
@@ -133,8 +133,11 @@ def npm(language: str) -> bool:
     return language in workspaces()
 
 
-def browser_language() -> str:
-    """The family a browser app is written in: the first that answers `npm_workspace`."""
+def browser_language(name: str | None = None) -> str:
+    """The family a browser app is written in: the one that ships frontend `name`, or with no name the first
+    family that answers `npm_workspace`."""
+    if name is not None and name != "none":
+        return frontend(name).family
     found = next(iter(workspaces()), None)
     if found is None:
         raise NoBrowserLanguage(f"a browser app {BROWSER}")

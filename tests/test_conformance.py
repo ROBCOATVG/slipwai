@@ -69,7 +69,7 @@ class EntryPointTest(unittest.TestCase):
         done = entry_point("slipwai.matrix", TOY, "--list")
         printed = done.stdout + done.stderr
         self.assertEqual(done.returncode, 0, printed)
-        for row in ("verify-standard-toy-plain-none", "verify-event-modelling-toy-plain-react-vite"):
+        for row in ("verify-standard-toy-plain-none", "verify-event-modelling-toy-plain-none"):
             with self.subTest(row=row):
                 self.assertIn(row, printed)
         for refused in ("verify-toy-plain-postgres", "verify-toy-plain-sqlite",
@@ -111,8 +111,9 @@ class PlannableTest(unittest.TestCase):
 
     def test_a_backend_that_implements_nothing_gets_the_two_rows_that_name_nothing(self) -> None:
         planned = [row.name for row in rows.native_rows(CATALOG, "toy-plain")]
+        # No installed language ships a browser app, so the event-modelling diagonal has none either.
         self.assertEqual(planned, ["verify-standard-toy-plain-none",
-                                   "verify-event-modelling-toy-plain-react-vite"])
+                                   "verify-event-modelling-toy-plain-none"])
 
     def test_a_row_naming_an_option_this_backend_has_not_got_is_not_plannable(self) -> None:
         row = rows.Row("x", "event-modelling", "toy-plain", "none", (("persistence", "sqlite"),))

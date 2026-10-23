@@ -36,7 +36,7 @@ LEDGER = ROOT / "docs/bring-back.tsv"
 TREES = {
     "TOOLKIT_ROOT": "toolkit",
     "PROFILE_ROOT": "profiles",
-    "FRONTEND_ROOT": "frontends",
+    "FRONTEND_ROOT": None,  # nor any frontend: a browser app lives in the family that ships it
     "ADOPTION_ROOT": "adoption",
     "BACKING_SERVICE_ROOT": "backing-services",
     "PRUNER": "backing-services",
@@ -66,7 +66,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "project.ladder", "project.capability_gates", "project.careen", "project.harbour", "project.unit_targets",
        "project.release", "project.domain", "logs", "berths", "hooks", "project.events_index",
        "project.wiring", "project.berth_commands", "extension_shape", "extension_directory", "extension_tools",
-       "extension_install", "package_new", "package_templates", "package_release",
+       "extension_install", "package_new", "package_templates", "language_templates", "package_release",
        "package_version", "package_sources", "cli_extension", "cli_package",
        "conformance.extension", "index_schema", "trust", "cli_trust", "ed25519", "rungs", "renamed",
        "channel", "channel_new", "channel_page", "cli_channel", "telegraph", "cli_telegraph", "fleet", "cli_fleet",
@@ -75,7 +75,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "fleet_page", "fleet_record", "timeline", "timeline_page",
        # The console on the Voyage window: a read-only session of the project's agent, briefed as the
        # harbourmaster, and the dock that talks to it. Version 2's; version 1 had no board to put it on.
-       "console", "console_page",
+       "console", "console_page", "conformance.frontends",
        # Pointing a checkout at the hooks it carries. Version 2's: version 1 had no hook that held a push,
        # and `core.hooksPath` is per-checkout, so nothing about it could have been brought back.
        "githooks",

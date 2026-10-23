@@ -1,6 +1,6 @@
 ---
 description: Add a browser app to this project with the factory's add-frontend, and leave it green
-argument-hint: <name> [--api <service>]
+argument-hint: <name> [--api <service>] [--frontend <frontend>]
 ---
 
 # Add frontend
@@ -26,8 +26,14 @@ No browser app yet; this command adds the first.
   server in the foreground and by `API_ORIGIN` inside Compose. {{default-api}} A browser app
   talks to one service through that boundary and never reads a store directly.
 
-The framework is not a question: every browser app is the one the project was generated with, and the
-dev-server port is the command's own decision — the next one free.
+- **Which frontend** — only for the first browser app. A frontend is shipped by an installed language
+  package, never by the factory: `slipwai list` shows each one with the language it is written in, and
+  `--frontend <name>` picks one (the default is the first installed). Every later browser app is the
+  frontend the project already has, because a project's browser apps share one npm workspace, one lock and
+  one linter; naming another is refused. Where no installed language ships one, the command says which to
+  install — a person's decision, not this session's.
+
+The dev-server port is the command's own decision — the next one free.
 
 ## Find the keel
 
@@ -42,7 +48,7 @@ the application by hand is the thing this command exists to prevent.
 1. `git status --porcelain` prints nothing. The command refuses an unclean tree so that `git checkout . &&
    git clean -fd` undoes exactly what it wrote and nothing else; commit or stash first rather than working
    around the refusal.
-2. `<factory> add-frontend <name> [--api <service>]`, from this directory.
+2. `<factory> add-frontend <name> [--api <service>] [--frontend <frontend>]`, from this directory.
 3. Read its report: what it added under `apps/<name>`, and which files it regenerated from the list.
 
 ## Then

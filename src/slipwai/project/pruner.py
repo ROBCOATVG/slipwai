@@ -33,6 +33,7 @@ ROWS_LINE = "ROWS: dict[str, dict] = {}\n"
 OPTIONS_LINE = "AXIS_OPTIONS: dict[str, dict] = {}\n"
 TARGETS_LINE = "AXIS_TARGETS: dict[str, dict] = {}\n"
 REQUIRES_LINE = "TARGET_REQUIRES: dict[str, tuple[str, ...]] = {}\n"
+FEATURES_LINE = "WEB_FEATURES: dict[str, dict] = {}\n"
 
 
 def family_rows(loaded: Registry, family: str) -> dict | None:
@@ -104,11 +105,26 @@ def target_requires(catalog: dict[str, Any] | None = None) -> dict[str, list[str
             if target.get("requires")}
 
 
+def web_features(catalog: dict[str, Any] | None = None) -> dict[str, dict]:
+    """What each frontend says about pruning a browser app, as the merged catalogue says it: the files carrying a
+    marked region, and what each feature owns in the app and adds to its manifest — the rows `project/frontend.py`
+    writes a browser app from, in the shape the pruner takes them out by."""
+    merged = CATALOG if catalog is None else catalog
+    return {
+        name: {
+            "marked": list(entry.get("marked", ())),
+            "features": {feature: {"owned": list(row.get("owned", ())), "packages": list(row.get("dependencies", {}))}
+                         for feature, row in entry.get("features", {}).items()},
+        }
+        for name, entry in merged["frontends"].items() if name != "none"
+    }
+
+
 def emitted(families: Iterable[str], source: str | None = None) -> str:
     """The keel's pruning script carrying the rows of these families, the options their packages brought,
     and where the installed targets offer each answer — nothing of any other, as the project's copy."""
     text = SOURCE.read_text(encoding="utf-8") if source is None else source
-    for line in (ROWS_LINE, OPTIONS_LINE, TARGETS_LINE, REQUIRES_LINE):
+    for line in (ROWS_LINE, OPTIONS_LINE, TARGETS_LINE, REQUIRES_LINE, FEATURES_LINE):
         if text.count(line) != 1:
             raise RuntimeError(f"the pruning script must carry exactly one `{line.strip()}` line to write into")
     written = {
@@ -116,6 +132,7 @@ def emitted(families: Iterable[str], source: str | None = None) -> str:
         OPTIONS_LINE: ("AXIS_OPTIONS: dict[str, dict]", axis_options()),
         TARGETS_LINE: ("AXIS_TARGETS: dict[str, dict]", axis_targets()),
         REQUIRES_LINE: ("TARGET_REQUIRES: dict[str, tuple[str, ...]]", target_requires()),
+        FEATURES_LINE: ("WEB_FEATURES: dict[str, dict]", web_features()),
     }
     for line, (declared, value) in written.items():
         text = text.replace(line, f'{declared} = json.loads(r"""\n{json.dumps(value, indent=2)}\n""")\n')

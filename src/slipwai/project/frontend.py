@@ -5,62 +5,70 @@ import json
 from pathlib import Path
 
 from ..assets import PRUNER, asset_tree
-from ..backends import WEB_PORT
+from ..backends import SERVICE_PORT
 from ..catalog import CATALOG
 from ..errors import GenerationError
 from ..npm_workspace import BrowserApp, frontend, held_lock, npm, workspace
 from ..probes import HEALTH_PATH
-from ..services import App, features_of, frontend_of, prunable_features_of, services_of, web_apps
+from ..services import (
+    App,
+    features_of,
+    frontend_of,
+    prunable_features_of,
+    services_of,
+    web_apps,
+    web_features,
+)
 from ..targets import managed
 from ..tooling import package_name
 from .openapi import API_CLIENT, API_CLIENT_NAME, api_client_package, document_of
 from .shared_packages import WORKSPACE, workspace_manifest, workspace_scripts
 
-# What a feature adds to every browser app, keyed by feature: a directory inside the frontend's own material,
-# laid out like the app and copied in whole. The browser-app counterpart of a backend's `write_side_files`, and
-# the reason the external login needs no branch — a second provider is a row here. Kept in step with
-# `OWNED_FILES_PER_WEB_APP` in assets/backing-services/prune.py, which removes them again. The paths are
-# relative to the frontend, never to the keel: which directory that is is the frontend's to say
-# (`npm_workspace.BrowserApp`), so that the same feature row reads whether the material ships in a language
-# package or, as `react-vite` still does, in the keel.
-WEB_FEATURE_FILES: dict[str, str] = {
-    "users-keycloak": "features/users-keycloak",
-}
-
-# What a feature adds to a *browser app's* manifest — the external login's OIDC client. Keyed by feature, and kept in
-# step with `WEB_PACKAGE_EDITS` in assets/backing-services/prune.py the same way. A browser app gets a feature's
-# dependencies when any service in the project has the feature, because that is when the pruner would keep them.
-WEB_PACKAGE_ADDITIONS: dict[str, dict[str, str]] = {
-    "users-keycloak": {"oidc-client-ts": "3.5.0", "react-oidc-context": "3.3.1"},
-}
-# The only features that add an npm dependency to a browser app, and so the part of a workspace lock's name that is
-# the browser app's: a lock is committed per dependency set, because `npm ci` refuses one that disagrees with its
-# manifest. `scripts/regenerate-locks.py` builds each from the same manifests the generator emits.
-WEB_LOCK_FEATURES = tuple(WEB_PACKAGE_ADDITIONS)
+# What a feature does to a browser app is the frontend's to say, because it is written in the frontend's
+# framework: the files it adds (a directory inside the frontend's own material, laid out like the app and copied
+# in whole), the paths in the app it owns, and the npm dependencies it adds to the app's manifest. The
+# browser-app counterpart of a backend's `write_side_files`, and the reason the external login needs no branch
+# here. They are the catalogue's `frontends.<name>.features`, declared in the family's `language.json` beside its
+# backends (`docs/frontend-protocol.md`), so the pruner a generated project carries reads the same rows to take
+# a feature back out (`project/pruner.py`). A browser app gets a feature's when any service in the project has
+# the feature, because that is when the pruner would keep them.
 
 
-def web_package_json(source: str, features: set[str]) -> str:
-    """The browser app's manifest with the dependencies its project's features need, from `WEB_PACKAGE_ADDITIONS`."""
+def web_package_json(source: str, features: set[str], frontend: str) -> str:
+    """The browser app's manifest with the dependencies its project's features need, as the frontend lists them."""
     package = json.loads(source)
     dependencies = dict(package.get("dependencies", {}))
-    for feature, additions in WEB_PACKAGE_ADDITIONS.items():
+    for feature, row in web_features(frontend).items():
         if feature in features:
-            dependencies.update(additions)
+            dependencies.update(row.get("dependencies", {}))
     package["dependencies"] = dict(sorted(dependencies.items()))
     return json.dumps(package, indent=2) + "\n"
 
 
-def web_lock_suffix(features: set[str]) -> str:
-    """The part of a workspace lock's name that is the browser app's: '' or '-users-keycloak'."""
-    return "".join(f"-{feature}" for feature in WEB_LOCK_FEATURES if feature in features)
+def web_lock_features(frontend: str) -> tuple[str, ...]:
+    """The features that add an npm dependency to `frontend`'s apps, and so the part of a workspace lock's name
+    that is the browser app's: a lock is committed per dependency set, because `npm ci` refuses one that
+    disagrees with its manifest."""
+    return tuple(feature for feature, row in web_features(frontend).items() if row.get("dependencies"))
+
+
+def web_lock_suffix(features: set[str], frontend: str) -> str:
+    """The part of a workspace lock's name that is the browser app's: its `lock-name`, where its family ships
+    more than one frontend and their locks need telling apart, then each dependency-adding feature —
+    '' or '-users-keycloak' for a family's first frontend."""
+    named = CATALOG["frontends"].get(frontend, {}).get("lock-name")
+    return (f"-{named}" if named else "") + "".join(
+        f"-{feature}" for feature in web_lock_features(frontend) if feature in features)
 
 
 def web_files(project_name: str, web: App, apps: list[App], target: str, found: BrowserApp) -> dict[str, str]:
     """One browser app's files from the committed skeleton, named and addressed for itself.
 
-    `found` is where that skeleton is: the frontend `--frontend <name>` named, as the family that writes it —
-    or, for the one the keel still carries, the keel — hands it over. Nothing here spells a directory under
-    `assets/`, so the material can move without this function changing.
+    `found` is where that skeleton is: the frontend `--frontend <name>` named, as the family that ships it hands
+    it over. Nothing here names a file inside it. Each tree — the skeleton, the flag reader and the route this
+    project can use, each feature it has — is laid out like the app and copied whole, and every file in it has
+    the same tokens resolved (`TOKENS`), so a frontend in another framework is a different tree and the same
+    code (`docs/frontend-protocol.md`).
 
     The skeleton is written for the first browser app on 5173 talking to a service on 3000; a later one is
     given its own dev-server port and the address of the service it proxies to, and the proxy sits in that
@@ -80,35 +88,13 @@ def web_files(project_name: str, web: App, apps: list[App], target: str, found: 
     # forwards and a deployment routes — and the probe otherwise, which is the only path a project with
     # nowhere to deploy publishes at all.
     status_path = "/api/flags" if managed(CATALOG, target) else HEALTH_PATH
-    files: dict[str, str] = {}
-    for relative, content in asset_tree(found.at("app")).items():
-        if relative == "package.json":
-            package = json.loads(web_package_json(content, features))
-            package["name"] = package_name(project_name, web)
-            content = json.dumps(package, indent=2) + "\n"
-        elif relative == "index.html":
-            content = content.replace("<title>Product</title>", f"<title>{project_name}</title>")
-        elif relative == "vite.config.ts":
-            content = content.replace(f"|| {WEB_PORT},", f"|| {web.port},")
-            content = content.replace("process.env.WEB_PORT ", f"process.env.{web.port_variable} ")
-            transport = api.transport if api is not None else None
-            content = content.replace("__TRANSPORT__", transport or "none")
-            if api is not None:
-                content = content.replace("'http://localhost:3000'", f"'http://localhost:{api.port}'")
-        elif relative in ("src/App.tsx", "tests/App.test.tsx"):
-            content = spoken_for_app(content, project_name, api, status_path)
-        if PRUNER.MARKER.search(content):
-            content = PRUNER.strip_markers(content, keep, set())
-        files[f"{web.path}/{relative}"] = content
+    tokens = app_tokens(project_name, web, api, status_path)
     # The flag reader, in the one shape this project can actually use. With somewhere to deploy the flag
     # lives in an environment and the service enforcing it answers for it, so the bundle asks over
     # `GET /api/flags`; with nowhere to deploy there is no environment and no reader on the service, so the
     # value comes from `.env` through the bundle — which is still the only way to hide a half-built screen.
-    # Both export the same things, so `main.tsx` and every slice are identical either way.
-    variant = "app-flags-target" if managed(CATALOG, target) else "app-flags-local"
-    for relative, destination in (("flags.ts", "src/flags.ts"), ("flags.test.ts", "tests/flags.test.ts")):
-        content = found.at(f"{variant}/{relative}").read_text(encoding="utf-8")
-        files[f"{web.path}/{destination}"] = content
+    # Both export the same things, so the skeleton and every slice are identical either way.
+    trees = ["app", "app-flags-target" if managed(CATALOG, target) else "app-flags-local"]
     # The one route, in the shape this project can actually write it. A service that publishes an API
     # document gets a client generated from it and calls through that; one whose framework publishes
     # nothing — both Java backends today — fetches by hand and says so on the page, because a type
@@ -116,36 +102,52 @@ def web_files(project_name: str, web: App, apps: list[App], target: str, found: 
     # a marked region cut from a file leaves an empty file rather than no file, and the project-wide
     # prune that would delete it does not run for a project with nothing prunable.
     if api is not None:
-        variant = "app-route-client" if document_of(api) is not None else "app-route-plain"
-        for relative, destination in (
-            ("Home.tsx", "src/routes/Home.tsx"),
-            ("Home.test.tsx", "tests/routes/Home.test.tsx"),
-        ):
-            content = found.at(f"{variant}/{relative}").read_text(encoding="utf-8")
-            files[f"{web.path}/{destination}"] = spoken_for_app(content, project_name, api, status_path)
-    for feature, source in WEB_FEATURE_FILES.items():
-        if feature not in features:
-            continue
-        for relative, content in asset_tree(found.at(source)).items():
+        trees.append("app-route-client" if document_of(api) is not None else "app-route-plain")
+    trees += [row["files"] for feature, row in web_features(found.name).items() if feature in features]
+    files: dict[str, str] = {}
+    for tree in trees:
+        for relative, content in asset_tree(found.at(tree)).items():
+            if tree == "app" and relative == "package.json":
+                package = json.loads(web_package_json(content, features, found.name))
+                package["name"] = package_name(project_name, web)
+                content = json.dumps(package, indent=2) + "\n"
+            content = resolved(content, tokens)
+            if PRUNER.MARKER.search(content):
+                content = PRUNER.strip_markers(content, keep, set())
             files[f"{web.path}/{relative}"] = content
     return files
+
+
+#: The tokens a frontend's trees may carry, each resolved in every file of them: the project's name, the
+#: dev server's port and the variable that moves it, the transport whose marked region the proxy sits in,
+#: the port of the service it proxies to, the one path its route calls, and the typed client's package name.
+TOKENS = ("__PROJECT_NAME__", "__WEB_PORT__", "__WEB_PORT_VARIABLE__", "__TRANSPORT__", "__API_PORT__",
+          "__STATUS_PATH__", "__API_CLIENT__")
+
+
+def app_tokens(project_name: str, web: App, api: App | None, status_path: str) -> dict[str, str]:
+    """What each of `TOKENS` is for this browser app. `__TRANSPORT__` is `none` where there is nothing to call
+    — a name no feature has, so the marked region goes — and the API's port the first service's otherwise."""
+    return {
+        "__PROJECT_NAME__": project_name,
+        "__WEB_PORT_VARIABLE__": web.port_variable,
+        "__WEB_PORT__": str(web.port),
+        "__TRANSPORT__": (api.transport if api is not None else None) or "none",
+        "__API_PORT__": str(api.port if api is not None else SERVICE_PORT),
+        "__STATUS_PATH__": status_path,
+        "__API_CLIENT__": api_client_package(project_name),
+    }
+
+
+def resolved(content: str, tokens: dict[str, str]) -> str:
+    for token, value in tokens.items():
+        content = content.replace(token, value)
+    return content
 
 
 def member_lock(service: App) -> Path:
     """A workspace member service's own committed lock, as its language answers for its selection."""
     return held_lock(service.language, "member_lock", workspace(service.language).member_lock(service.selection))
-
-
-def spoken_for_app(content: str, project_name: str, api: App | None, status_path: str) -> str:
-    """The browser app's tokens, resolved: its project's name, its API's transport, and the one path it
-    calls. `__TRANSPORT__` becomes `none` where there is nothing to call — a name no feature has, so the
-    marked region goes — and the client's package name is only ever written where there is a client."""
-    return (
-        content.replace("__TRANSPORT__", (api.transport if api is not None else None) or "none")
-        .replace("__PROJECT_NAME__", project_name)
-        .replace("__STATUS_PATH__", status_path)
-        .replace("__API_CLIENT__", api_client_package(project_name))
-    )
 
 
 def api_client_files(project_name: str, apps: list[App], found: BrowserApp) -> dict[str, str]:
@@ -188,8 +190,8 @@ def frontend_files(project_name: str, apps: list[App], target: str) -> dict[str,
         return {}
     # One frontend per project, and it is named rather than assumed. The browser apps share a workspace, a
     # lock and one Biome, so two frontends in a project would be two dependency trees npm hoists into one.
-    # Which frontend it is, and where its material lives, is `npm_workspace.frontend`'s to answer: the keel
-    # carries `react-vite` and a language family may carry others, and this module knows neither name.
+    # Which frontend it is, and where its material lives, is `npm_workspace.frontend`'s to answer: a family
+    # ships each one, and this module knows no frontend's name.
     asked = {app.framework or frontend_of(apps) for app in web}
     if len(asked) > 1:
         raise GenerationError("a project's browser apps are all one frontend, and this one asks for "
@@ -208,7 +210,16 @@ def frontend_files(project_name: str, apps: list[App], target: str) -> dict[str,
     # member service's language's, for its dependency set and then the browser apps', which every browser app in a
     # project shares; with no member service it is the frontend's own, the browser apps' alone.
     node = [service for service in services_of(apps) if npm(service.language)]
-    web_suffix = web_lock_suffix(set(features_of(apps)))
+    # The lock is one file resolved with every member at once, and the family that commits it can only have
+    # resolved its own services beside its own browser apps. A service of one npm family beside a browser app
+    # of another has no lock anybody committed, so it is refused here, naming both, rather than at `npm ci`.
+    strangers = sorted({service.language for service in node if service.language != found.family})
+    if strangers:
+        raise GenerationError(
+            f"{', '.join(strangers)} services share one npm workspace and one lock with the browser apps, and the "
+            f"{found.name} browser app is {found.family}'s: no package resolves the two together. Use a frontend "
+            f"{strangers[0]} ships, or a service in a language outside the npm workspace")
+    web_suffix = web_lock_suffix(set(features_of(apps)), found.name)
     lock_path = (
         held_lock(node[0].language, "workspace_lock",
                   workspace(node[0].language).workspace_lock(node[0].selection, web_suffix))

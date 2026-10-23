@@ -98,8 +98,8 @@
 #
 # Re-taken for feedback from the board (`changelog.d/feedback-from-the-board.md`): one new page,
 # `commands/triage.md`, a row per project. No other row moved.
-0cef2fd0ce2492fd8e97ce83fb424d12995945ff7b319bf9084aa23960552a85  standard  commands/add-frontend.md
-62b5c15263c6eebbd9960b9eb17ffc0b2641c8658905af8d3c271742bf84704a  standard  commands/add-service.md
+66d331cb3c5ef22e660804383367ffcd7602a2b9c64b91fe8dfd8c9398f8cbfd  standard  commands/add-frontend.md
+0c5d6f3c16243ec7a2c928dab9502e52ae7ed8d97352c8f188764854f6cec241  standard  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  standard  commands/adversary.md
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  standard  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  standard  commands/benchmark.md
@@ -125,8 +125,8 @@ d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard  comm
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  standard  commands/triage.md
 5c956492240d2fdd2636c5c0aa1bd5f8cb86e53d78049f1a365b5f396b14d894  standard  commands/whats-next.md
 9470792eee29419647d1054a4cc8548f86fd6ed19f93deed7827ed8c6a1f4252  standard  commands/where-are-we.md
-0cef2fd0ce2492fd8e97ce83fb424d12995945ff7b319bf9084aa23960552a85  event  commands/add-frontend.md
-62b5c15263c6eebbd9960b9eb17ffc0b2641c8658905af8d3c271742bf84704a  event  commands/add-service.md
+66d331cb3c5ef22e660804383367ffcd7602a2b9c64b91fe8dfd8c9398f8cbfd  event  commands/add-frontend.md
+0c5d6f3c16243ec7a2c928dab9502e52ae7ed8d97352c8f188764854f6cec241  event  commands/add-service.md
 0e1e1c65fbb0e8977445d3228d732ac04f58c765b2b55d6940d7f1576a0aec33  event  commands/adversary.md
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  event  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  event  commands/benchmark.md
@@ -153,8 +153,8 @@ b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event  command
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  event  commands/triage.md
 13d412a77e7e84622caaa6dd8316cbb31f67af240bae3e93cfad2fc9f175203f  event  commands/whats-next.md
 b79c5fa0effe9b7df563b82afb5abcfc01214f4abf8fc8539a0cc3841a8ee20d  event  commands/where-are-we.md
-33adc6001f8734fa856c7452345fdbddb90ac5481ac56cbe1714ba7971277801  event-state  commands/add-frontend.md
-169f7b703f6bdf835c39ddd91c7b9d55e7e873d69bebe31fb20d5b7b5bb40b1b  event-state  commands/add-service.md
+3885b44ab45ec02ffa31ab2c1c0c041f008090a432d2d22d7d78021174c46e34  event-state  commands/add-frontend.md
+5b2f34a69ea8c2630790eea86d1fdf39e0d28f8da2ed2e60f36d60a2adbcd801  event-state  commands/add-service.md
 b8aabd88fc694aa85488ab21112a6df9f9d2531372d05ad6f8a154bdc86296d1  event-state  commands/adversary.md
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  event-state  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  event-state  commands/benchmark.md
@@ -181,8 +181,8 @@ b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event-state  c
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  event-state  commands/triage.md
 13d412a77e7e84622caaa6dd8316cbb31f67af240bae3e93cfad2fc9f175203f  event-state  commands/whats-next.md
 b79c5fa0effe9b7df563b82afb5abcfc01214f4abf8fc8539a0cc3841a8ee20d  event-state  commands/where-are-we.md
-1d2f129c23f96626bab0692f2d3cada93b5b9253b5b8271e19c234750cc36de2  event-two-services  commands/add-frontend.md
-0dd0cebe59e3986c41bde0cb550718a54ce13ecc922ae06625039a868ade8509  event-two-services  commands/add-service.md
+eab3e2e0ac64c91b66f5abfeacdeaa27b1d852151cd4a89b1098f258dc50119d  event-two-services  commands/add-frontend.md
+e60913528935923ee2f1af9916ef04030ac9c62c2946f6989d1eef21360fc48f  event-two-services  commands/add-service.md
 091c28c19ea9a7ebcbdedf7b3025b82d5d3cd877ac6cac47cf3ea5b4af0398aa  event-two-services  commands/adversary.md
 feeb81564a22b7000bd370769244df72ed0f661b2d7c34347509ac8e937b828a  event-two-services  commands/assess.md
 466ddb0c6315dedb85b595d840210ed8fd1dee6216b2d74d25c53794aca6c8f6  event-two-services  commands/benchmark.md
@@ -209,8 +209,8 @@ a0317f0ffc046b6b69d5373cf2466bc3f9936c7154da47ac25f2df8934edc7cd  event-two-serv
 40cc0634d1851740e9cc8d2ff94e8e1fab4a0f667803f41d3da5ac364c1ff7f3  event-two-services  commands/triage.md
 13d412a77e7e84622caaa6dd8316cbb31f67af240bae3e93cfad2fc9f175203f  event-two-services  commands/whats-next.md
 c8d8b61badcaeec5a15d5a7018f3802f75b9a471f1406d9e59552e0c4e3efac6  event-two-services  commands/where-are-we.md
-d197a22ca61016540773cdd92acb63323db80d37ef8438abeab2a0a790eee311  standard-managed  commands/add-frontend.md
-578ace6176147945a3f297f8b9725f27a3a49aa1eae3650619a045111b2af234  standard-managed  commands/add-service.md
+2f6d7f001f15beeeb4cbad10a95f7d6452dc1921841d5988158aa58b23ab0689  standard-managed  commands/add-frontend.md
+64681f4e5684568b798379719345eb3354c5dc63dc0ee3f63a5394eb53f2ed99  standard-managed  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  standard-managed  commands/adversary.md
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  standard-managed  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  standard-managed  commands/benchmark.md
@@ -236,8 +236,8 @@ d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard-manag
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  standard-managed  commands/triage.md
 5c956492240d2fdd2636c5c0aa1bd5f8cb86e53d78049f1a365b5f396b14d894  standard-managed  commands/whats-next.md
 7b605fef54eda098bd018a5fa6c2782b7bd40fd2cb9c7e491c06f7031736c7d5  standard-managed  commands/where-are-we.md
-57ff532151fb63427fe10ed60988980741686ccac8f5ce454a47949d69b540e0  no-applications  commands/add-frontend.md
-cf9431cb8cd6a9f7d6fc1fcd3ca27fb81870882b59295ed055cdc9fb2745304b  no-applications  commands/add-service.md
+858f9d87f1c790b8383c5bcd230b6a65f795ce69a814fbc6abb88ca78d380dd4  no-applications  commands/add-frontend.md
+aa3d14bd7510b81316e9485f0f7ebc595dbc8ad6fc967abb0442bd0c2c290aab  no-applications  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  no-applications  commands/adversary.md
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  no-applications  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  no-applications  commands/benchmark.md
@@ -263,8 +263,8 @@ d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  no-application
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  no-applications  commands/triage.md
 5c956492240d2fdd2636c5c0aa1bd5f8cb86e53d78049f1a365b5f396b14d894  no-applications  commands/whats-next.md
 9470792eee29419647d1054a4cc8548f86fd6ed19f93deed7827ed8c6a1f4252  no-applications  commands/where-are-we.md
-672edaecd35f98820cf343f57c2a83c1ea204ef2269998fb2580c147d950d58a  adopted  commands/add-frontend.md
-648f734fe5124c7b4680fdf23b90ae93c5f59fd5ae03bb76d698cf1ed1a0a73d  adopted  commands/add-service.md
+c42be3f2264e76f7178979abab0e352eea948931f81e77ec49fbec331dc8baa1  adopted  commands/add-frontend.md
+3d4aa14cbc1f2ca1e5e81bd5a0da6fba9d013baba6da26b3c9c64745b1e8617e  adopted  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  adopted  commands/adversary.md
 feeb81564a22b7000bd370769244df72ed0f661b2d7c34347509ac8e937b828a  adopted  commands/assess.md
 466ddb0c6315dedb85b595d840210ed8fd1dee6216b2d74d25c53794aca6c8f6  adopted  commands/benchmark.md
@@ -292,8 +292,8 @@ e8e942716dd4d871f37a49dbba2b2b04aa51ec4a61c6e74e1279495509c50113  adopted  comma
 40cc0634d1851740e9cc8d2ff94e8e1fab4a0f667803f41d3da5ac364c1ff7f3  adopted  commands/triage.md
 13d412a77e7e84622caaa6dd8316cbb31f67af240bae3e93cfad2fc9f175203f  adopted  commands/whats-next.md
 b79c5fa0effe9b7df563b82afb5abcfc01214f4abf8fc8539a0cc3841a8ee20d  adopted  commands/where-are-we.md
-672edaecd35f98820cf343f57c2a83c1ea204ef2269998fb2580c147d950d58a  adopted-settled  commands/add-frontend.md
-80ce114e1a95ccf2443de7cba454eba997e2c3003c0098110f057267987f8ba9  adopted-settled  commands/add-service.md
+c42be3f2264e76f7178979abab0e352eea948931f81e77ec49fbec331dc8baa1  adopted-settled  commands/add-frontend.md
+2530be878014b7cd8a4b8b832ecffaaa00ce578a36b1629ab28fba18b8431480  adopted-settled  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  adopted-settled  commands/adversary.md
 006b8320121a8ddc9d555e3c1716e0ef4f1bd49d990aaaceea086dc82ff20428  adopted-settled  commands/assess.md
 a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  adopted-settled  commands/benchmark.md

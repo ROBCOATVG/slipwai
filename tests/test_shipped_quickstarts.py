@@ -169,12 +169,15 @@ class DocumentTest(unittest.TestCase):
 class AnswersTest(unittest.TestCase):
     """That every answer is one the catalogue actually offers, to the project this quickstart describes."""
 
-    def test_the_profile_and_the_frontend_are_ones_the_catalogue_has(self) -> None:
+    def test_the_profile_is_the_catalogues_and_the_frontend_the_keels_or_a_languages(self) -> None:
+        """`none` is the keel's; every other frontend is shipped by a language (`docs/frontend-protocol.md`), so
+        a quickstart answering one has to name a language to install, or it offers a browser app nobody can.
+        Which language ships it is that language's to say, and no language is installed here to ask."""
         for root, one in loaded():
             with self.subTest(quickstart=root.name):
                 self.assertIn(one.profile, CATALOG["profiles"])
-                if one.frontend:
-                    self.assertIn(one.frontend, CATALOG["frontends"])
+                if one.frontend and one.frontend not in CATALOG["frontends"]:
+                    self.assertTrue(one.languages, f"{one.frontend} is a language's, and this names none")
 
     def test_the_target_is_the_keels_own_or_a_target_package(self) -> None:
         """`none` and `existing` are the keel's; a cloud is a package. A quickstart answering a target

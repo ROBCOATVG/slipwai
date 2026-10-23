@@ -6,10 +6,14 @@ own, a `LANGUAGE` the fragment has to agree with, an entry point meeting six obl
 answering every member a managed target owes. Version 1 had no scaffold for any of them, and every package
 anyone wrote started as a copy of one that already worked, carrying whatever was wrong with it.
 
-**So the keel writes the skeleton, and the skeleton is one the keel loads.** What `package new` emits passes
-`extension check` or installs as a language the moment it is written, with the parts a publisher has to fill
-marked `TODO` rather than left out. A scaffold that does not load is a scaffold whose first lesson is that
-the tool is broken.
+**So the keel writes the skeleton, and the skeleton is one the keel reads.** An extension, a target or a
+quickstart passes `package check` the moment it is written, with the parts a publisher has to fill marked
+`TODO` rather than left out. A language is the one kind that cannot: a backend owes some thirty answers that
+are its language's and nobody else's, so its scaffold is a valid shape answering none of them, and the loader's
+refusal — one line naming every member still missing — is the publisher's worklist. Its browser-app half has
+four answers and a tree, every one with a placeholder that is not wrong, so a frontend scaffold
+(`--parts frontend`) loads and generates as written. A scaffold that fails for a reason it does not name is a
+scaffold whose first lesson is that the tool is broken.
 
 **The manifest is written from this keel's schema, not from a constant.** A package scaffolded today declares
 the range this copy speaks, so it is current by construction and nobody has to know what to put there.
@@ -23,12 +27,21 @@ from .assets import this_command
 from .errors import GenerationError
 from .extension_shape import OBLIGATIONS
 from .language_shape import name_fault
+from .language_templates import (
+    BIOME_TREE,
+    FRONTEND_TREE,
+    LANGUAGE_BACKEND,
+    LANGUAGE_FRONTEND_ANSWERS,
+    LANGUAGE_FRONTEND_ENTRIES,
+    LANGUAGE_FRONTEND_IMPORTS,
+    LANGUAGE_MODULE,
+    LANGUAGE_NO_BACKEND,
+)
 from .package_templates import (
     CHANGELOG,
     ENTRY_POINT,
     FIRST,
     FRAGMENTS,
-    LANGUAGE_MODULE,
     LANGUAGE_README,
     MAKEFILE,
     QUICKSTART_README,
@@ -111,21 +124,63 @@ def extension_files(name: str, schema: str) -> dict[str, str]:
     }
 
 
-def language_files(name: str, schema: str) -> dict[str, str]:
-    """A language package: its fragment, its `VERSION`, and the Python module the loader imports."""
-    fragment = {
+#: What a language package may ship: services, browser apps, or both (`docs/frontend-protocol.md`).
+PARTS = ("backend", "frontend")
+
+
+def language_module(name: str, parts: tuple[str, ...], frontend: str) -> str:
+    """The package's Python: the family, a backend answering nothing yet where it ships services, and a browser
+    app that loads as written where it ships one."""
+    front = "frontend" in parts
+    filled = {
+        "@IMPORTS@": LANGUAGE_FRONTEND_IMPORTS if front else "",
+        "@ANSWERS@": LANGUAGE_FRONTEND_ANSWERS if front else "",
+        "@ENTRIES@": LANGUAGE_FRONTEND_ENTRIES if front else "",
+        "@BACKENDS@": LANGUAGE_BACKEND if "backend" in parts else LANGUAGE_NO_BACKEND,
+    }
+    text = LANGUAGE_MODULE
+    for token, value in filled.items():
+        text = text.replace(token, value)
+    for token, value in (("@NAME@", name), ("@TITLE@", title_of(name)), ("@FRONTEND@", frontend)):
+        text = text.replace(token, value)
+    return text
+
+
+def language_files(name: str, schema: str, parts: tuple[str, ...] = ("backend",)) -> dict[str, str]:
+    """A language package of `parts`: its fragment, its `VERSION`, the Python the loader imports, and — where it
+    ships a browser app — the app's trees under `assets/frontends/<name>-web/` and the Biome they are linted with.
+
+    A backend loads as far as the members it has not answered, and the loader's refusal names each one: that
+    list is the work. A frontend loads and generates as written, beside any backend, because what a browser app's
+    family is asked is four answers and a tree, and every one of them has a placeholder that is not wrong.
+    """
+    unknown = [part for part in parts if part not in PARTS]
+    if unknown or not parts:
+        raise GenerationError(f"a language ships {' and/or '.join(PARTS)}; {', '.join(unknown) or 'nothing'} "
+                              "is not one of them")
+    frontend = f"{name}-web"
+    fragment: dict = {
         "name": name,
         "core": core_range(schema),
         "order": 100,
         "family": name,
+        # `targets` is required of a row, and `none` is the one every backend can be generated under.
         "backends": {name: {"label": f"{title_of(name)} — TODO: the framework, in a few words",
-                            "family": name}},
+                            "targets": ["none"]}} if "backend" in parts else {},
     }
+    if "frontend" in parts:
+        fragment["frontends"] = {frontend: {
+            "label": f"{title_of(name)} web — TODO: the framework and bundler, in a few words",
+            "stack": "TODO: the stack, as a project's docs name it",
+            "gate": "TODO: what the app's own gate runs",
+            "capabilities": ["frontend"],
+            "features": {},
+        }}
     module = module_of(name)
-    return {
+    files = {
         "language.json": json.dumps(fragment, indent=2, ensure_ascii=False) + "\n",
         "VERSION": f"{FIRST_RELEASE}.dev0\n",
-        f"{module}/__init__.py": LANGUAGE_MODULE.format(name=name, module=module, title=title_of(name)),
+        f"{module}/__init__.py": language_module(name, parts, frontend),
         "README.md": LANGUAGE_README.format(name=name, title=title_of(name), command=this_command()),
         "Makefile": MAKEFILE.format(name=name, kind="language"),
         ".github/workflows/verify.yml": WORKFLOW.format(name=name, kind="language", keel=KEEL_REPO),
@@ -133,6 +188,10 @@ def language_files(name: str, schema: str) -> dict[str, str]:
         "changelog.d/README.md": FRAGMENTS,
         f"changelog.d/first-{name}.md": FIRST.format(name=name, kind="language"),
     }
+    if "frontend" in parts:
+        files.update({f"assets/frontends/{frontend}/{path}": text for path, text in FRONTEND_TREE.items()})
+        files.update(BIOME_TREE)
+    return files
 
 
 def target_files(name: str, schema: str) -> dict[str, str]:
@@ -220,14 +279,15 @@ SCAFFOLDS = {"extension": extension_files, "language": language_files, "target":
 EXECUTABLE = {"extension": ("init.py",), "target": ("scripts/bootstrap.py", "scripts/deploy.py")}
 
 
-def write(kind: str, name: str, into: Path, schema: str) -> list[str]:
-    """Write the package under `into/<name>`, or refuse a directory that already holds something."""
+def write(kind: str, name: str, into: Path, schema: str, parts: tuple[str, ...] = ("backend",)) -> list[str]:
+    """Write the package under `into/<name>`, or refuse a directory that already holds something. `parts` is a
+    language's: whether it ships services, browser apps or both."""
     checked(kind, name)
     root = into / name
     if root.exists() and any(root.iterdir()):
         raise GenerationError(f"{root} already holds something. A scaffold writes a whole package, so it "
                               f"writes into an empty directory or none at all")
-    files = SCAFFOLDS[kind](name, schema)
+    files = language_files(name, schema, parts) if kind == "language" else SCAFFOLDS[kind](name, schema)
     for path, text in files.items():
         target = root / path
         target.parent.mkdir(parents=True, exist_ok=True)

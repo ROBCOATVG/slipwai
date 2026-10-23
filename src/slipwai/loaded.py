@@ -24,13 +24,14 @@ from .catalog_checks import outside, validate_catalog
 from .catalog_merge import family_missing, is_framework, retract
 from .errors import blame, said
 from .language_directory import Package, Refused, forget, import_package, module_name, refusal, reinstall
-from .npm_workspace import BrowserApp
+from .npm_workspace import FRONTENDS_DIRECTORY, BrowserApp
 from .registry import (
     BROWSER_APPS,
     FLAG_READER,
     FLAG_RESOURCE,
     NPM_WORKSPACE,
     READ_SIDE_FILES,
+    SHARED_CODE,
     WRITE_SIDE_FILES,
     Language,
     Registry,
@@ -42,7 +43,7 @@ from .rungs import every_rung
 PHASE_TWO: list[str] = []
 
 
-def reaches(language: Language, registry: Registry) -> list[str]:
+def reaches(language: Language, registry: Registry, declared: Mapping[str, Any] | None = None) -> list[str]:
     """Every source a package's backends read that is not a file (or, for a tree, a directory) inside the package's
     root or, for a framework, its family's, and every destination they write that is not a path inside the service:
     one fault each."""
@@ -63,9 +64,15 @@ def reaches(language: Language, registry: Registry) -> list[str]:
     for family in language.families:
         if NPM_WORKSPACE in family.answers:
             faults += held(family.name, registry.root(family.name), family.answers[NPM_WORKSPACE])
-        if BROWSER_APPS in family.answers:
-            faults += writes(family.name, registry.root(family.name), family.answers[BROWSER_APPS],
-                             NPM_WORKSPACE in family.answers)
+        if BROWSER_APPS in family.answers or declared:
+            faults += writes(family.name, registry.root(family.name), family.answers.get(BROWSER_APPS, {}),
+                             NPM_WORKSPACE in family.answers, declared)
+            # What a project asks of the family its browser app is written in, beyond the two answers above:
+            # the architecture page's paragraph on shared code (`formatter` may be None). A family of services
+            # is held to it through each backend; one shipping browser apps alone has no backend to hold it.
+            if family.answers.get(BROWSER_APPS) and not isinstance(family.answers.get(SHARED_CODE), str):
+                faults.append(f"family {family.name} ships a browser app and answers no shared_code, which the "
+                              f"architecture page of a project with that browser app reads")
     return list(dict.fromkeys(faults))
 
 
@@ -101,8 +108,16 @@ def held(family: str, root: Path, answer: Any) -> list[str]:
     return faults
 
 
-def writes(family: str, root: Path, answer: Any, workspace: bool) -> list[str]:
+def writes(
+    family: str, root: Path, answer: Any, workspace: bool, declared: Mapping[str, Any] | None = None
+) -> list[str]:
     """A fault for each way a family's `browser_apps` answer could not be read, all of them at once.
+
+    `declared` is the package's `frontends` block, where it is known: the catalogue's half of the same answer.
+    The two name the same browser apps, because `--frontend` offers the block's names and generation copies
+    the answer's material, and a name in one and not the other is a menu entry with nothing behind it or a
+    tree nobody can ask for. And each root is `assets/frontends/<name>` exactly, the one place a reviewer of
+    a package that ships services, browser apps or both looks for a browser app.
 
     Four things are held, and each is a project somebody would otherwise only find out about at generation.
     The answer is a mapping of name to `BrowserApp`, because that is what `npm_workspace.frontends` iterates.
@@ -135,6 +150,17 @@ def writes(family: str, root: Path, answer: Any, workspace: bool) -> list[str]:
         elif not app.root.is_dir():
             faults.append(f"family {family} reaches for browser app {name}, which is not a directory in its "
                           f"directory")
+        elif declared is not None and app.root.resolve() != (root / FRONTENDS_DIRECTORY / name).resolve():
+            faults.append(f"family {family} keeps browser app {name} outside {FRONTENDS_DIRECTORY}/{name}, where "
+                          f"a package keeps each browser app it ships")
+    if declared is not None:
+        answered = set(answer) if isinstance(answer, dict) else set()
+        for name in sorted(set(declared) - answered):
+            faults.append(f"language.json declares frontend {name}, and family {family} answers no browser_apps "
+                          f"for it")
+        for name in sorted(answered - set(declared)):
+            faults.append(f"family {family} answers browser_apps[{name}], and language.json's frontends block "
+                          f"does not declare it, so `--frontend` could never offer it")
     return faults
 
 
@@ -187,7 +213,7 @@ def kept(
         beside = load([*known, language])
         # The roots of the packages kept before it too: a framework's sources are found in its family's (6a).
         registry_ = Registry(beside.families, beside.backends, {**(roots or {}), **roots_of(package, language)})
-        faults = reaches(language, registry_)
+        faults = reaches(language, registry_, package.fragment.get("frontends", {}))
         if faults:
             return refused("; ".join(faults))
         if catalog is not None:

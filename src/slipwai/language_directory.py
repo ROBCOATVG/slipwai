@@ -32,7 +32,7 @@ from typing import Any
 from .assets import moved_home, this_command
 from .axes import under_current_names
 from .errors import blame, one_line
-from .language_shape import family_fault, name_fault, row_shape_fault
+from .language_shape import family_fault, frontend_shape_fault, name_fault, row_shape_fault
 from .registry import Family, Language
 from .versions import below, satisfies
 
@@ -224,6 +224,12 @@ def shape_fault(name: str, fragment: dict[str, Any]) -> str | None:
     for key, row in fragment["backends"].items():
         shape = row_shape_fault(key, row)
         if shape is not None:
+            return shape
+    frontends = fragment.get("frontends", {})
+    if not isinstance(frontends, dict):
+        return "language.json's frontends is not an object"
+    for key, entry in frontends.items():
+        if (shape := frontend_shape_fault(key, entry)) is not None:
             return shape
     return None
 

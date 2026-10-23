@@ -20,7 +20,6 @@ import checkout_packages  # noqa: F401
 from slipwai import harness, toolkit
 from slipwai.assets import (
     ADOPTION_ROOT,
-    FRONTEND_ROOT,
     GUIDANCE_ROOT,
     MODEL_PAGE_ROOT,
     PAGE_ROOT,
@@ -38,7 +37,7 @@ class TreesTest(unittest.TestCase):
     def test_every_tree_the_keel_names_is_there(self) -> None:
         """A root naming a directory that does not exist is a generation that fails halfway through."""
         for name, root in (("toolkit", TOOLKIT_ROOT), ("profiles", PROFILE_ROOT),
-                           ("frontends", FRONTEND_ROOT), ("adoption", ADOPTION_ROOT),
+                           ("adoption", ADOPTION_ROOT),
                            ("guidance", GUIDANCE_ROOT), ("pages", PAGE_ROOT),
                            ("event-model", MODEL_PAGE_ROOT)):
             with self.subTest(tree=name):

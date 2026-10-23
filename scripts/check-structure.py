@@ -116,7 +116,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "language_upkeep", "browser_app",
               # The other kind of package: its install, its scaffold, and the two verbs over them.
               "extension_install", "target_install", "cli_target",
-              "package_new", "package_templates", "target_templates", "package_release",
+              "package_new", "package_templates", "language_templates", "target_templates", "package_release",
               "package_version", "package_sources", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",
               "cli_telegraph", "harbour", "cli_fleet",

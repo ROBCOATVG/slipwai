@@ -14,6 +14,7 @@ family package's `VERSION`, read as the release a snapshot is heading for (ADR 0
 its own names the framework it defaults to, which becomes `default.framework` only where two or more of the
 family's backends merged and one of them answers it.
 """
+# budget: 360 — the merge folds each package's frontends beside its options and its backends, in that order
 from __future__ import annotations
 
 import copy
@@ -23,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from .assets import this_command
-from .catalog_options import declare_options
+from .catalog_options import declare_frontends, declare_options, retract_frontends
 from .language_directory import (
     NO_FRAGMENT,
     VARIABLE,
@@ -280,10 +281,12 @@ def merge(
             refused[package.name] = refusal(package.name, package.root, fault)
     kept = [package for package in packages if package.name not in refused]
     merged = copy.deepcopy(core)
-    declared = declare_options(merged, kept)
-    for name, fault in declared.items():
-        refused.setdefault(name, fault)
+    # Frontends judged first, on a copy, and written last, so a package refused for either block leaves neither.
+    declared = declare_frontends(copy.deepcopy(merged), kept)
+    declared.update(declare_options(merged, [package for package in kept if package.name not in declared]))
+    refused.update({name: fault for name, fault in declared.items() if name not in refused})
     kept = [package for package in kept if package.name not in declared]
+    declare_frontends(merged, kept)
     rows: list[tuple[str, dict[str, Any], int]] = [
         (key, row, row.get("order", 0)) for key, row in merged["backends"].items()
     ]
@@ -331,6 +334,7 @@ def retract(catalog: dict[str, Any], package: Package) -> None:
     keys = set(package.fragment["backends"])
     for key in keys:
         catalog["backends"].pop(key, None)
+    retract_frontends(catalog, package)
     for axis in catalog["axes"].values():
         for option in axis["options"].values():
             option["backends"] = [key for key in option["backends"] if key not in keys]

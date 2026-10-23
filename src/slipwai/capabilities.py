@@ -1,7 +1,7 @@
 """What a project can do, and what that earns it.
 
 A capability is what an answer *gives* a project, named for the thing rather than for the answer that
-brought it: `frontend`, `react`, `typescript`, `event-sourcing`, `auth-keycloak`. `catalog.json` declares
+brought it: `frontend`, `typescript`, `event-sourcing`, `auth-keycloak`. `catalog.json` declares
 them per profile, per frontend and per axis option; `project.json` records them per deployable, and the
 union across the deployables is what the whole project can do.
 
@@ -56,7 +56,7 @@ def pruning_capabilities(profile: str, apps: list[App]) -> set[str] | None:
 
     None where nothing here was generated — an adopted repository, whose applications claim
     no capability because nobody answered an axis for them. Withholding a skill then would be pruning on
-    ignorance rather than on a fact: a repository the keel did not make may well have a React frontend
+    ignorance rather than on a fact: a repository the keel did not make may well have a browser app
     and a login, and the survey records what it is built from without claiming to have decided it. The
     moment such a repository gains an application the keel made, its answers decide as they do anywhere.
     """

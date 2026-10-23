@@ -79,7 +79,7 @@ def consumers(apps: list[App], target: str) -> list[str]:
     an npm workspace at all. That distinction is not cosmetic: the integration job runs in that service's
     `ci_image` (`golang:1.26-bookworm`, `python:3.13-bookworm`, …), which ships no node, so an `npm ci`
     reached through a prerequisite there dies with `npm: command not found` before a test runs. Found in a
-    generated Go-plus-React project, whose `integration` job failed on exactly that while `verify` — which
+    generated Go project with a browser app, whose `integration` job failed on exactly that while `verify` — which
     does set Node up — passed.
     """
     services = services_of(apps)

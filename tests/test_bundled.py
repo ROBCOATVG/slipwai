@@ -26,6 +26,11 @@ SPEC = (ROOT / "slipwai.spec").read_text(encoding="utf-8")
 
 
 class BundledTest(unittest.TestCase):
+    def test_no_frontend_ships_inside_the_keel(self) -> None:
+        """A browser app is its family's, like a language's skeleton: a wheel carrying one would carry files
+        nobody can generate from without the language that resolves them (`docs/frontend-protocol.md`)."""
+        self.assertFalse((ROOT / "assets/frontends").exists())
+
     def test_everything_named_is_in_the_checkout(self) -> None:
         """A list naming a file that is not there would carry nothing and say it carried it."""
         for name in BUNDLED:

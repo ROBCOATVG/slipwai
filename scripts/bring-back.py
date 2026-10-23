@@ -100,7 +100,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # A window each. The experiment's board served one directory, so it had no table of who is looking
        # at what to bring back. `wheel` is the other half of a board that is answered from: who answers at
        # each stop of a run, which the experiment left to a file somebody edited.
-       "seats", "wheel", "dials", "settings_card", "interview_form", "folder_choice", "folder_field", "adoption_card",
+       "seats", "wheel", "dials", "settings_card", "interview_form", "folder_choice", "folder_field",
+       "adoption_card", "ground_card", "adoption_flow",
        # Carrying in what a PRD cites. The experiment had no PRD to start from.
        "design_docs",
        # Reading a drafted document on the board. The experiment had no board to read one on.

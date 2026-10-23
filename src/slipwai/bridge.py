@@ -46,6 +46,7 @@ from .adopt_page import looked
 from .adopt_page import page as adoption
 from .adopt_page import run as adopt
 from .adoption_card import adoption_card
+from .adoption_flow import gate_when_grounded, take_step
 from .bridge_page import page, payload
 from .captain_page import number
 from .captain_page import page as captain
@@ -64,6 +65,8 @@ from .feedback_card import card as feedback_card
 from .feedback_card import payload as feedback_payload
 from .fleet import board
 from .folder_choice import chosen
+from .ground_card import card as ground_card
+from .ground_card import record as record_ground
 from .harbour import config
 from .init_run import Fitting, begin_model, outside_session
 from .init_run import adopted as adopted_init
@@ -138,7 +141,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 885 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 910 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -707,6 +710,24 @@ class Bridge(BaseHTTPRequestHandler):
             # page's content, and a repository that cannot be adopted is a finding rather than a fault.
             if where == "/adopt/look":
                 self.send(200, looked({str(a): str(b) for a, b in held.items()}, self.root))
+                return
+            # One row of an adopted repository's map, answered on the voyage: `ground_card` says what it writes.
+            if where == "/adopt/ground":
+                try:
+                    record_ground(self.root, {str(a): str(b) for a, b in held.items()})
+                except GenerationError as unrecorded:
+                    self.send(400, ground_card(self.root, str(unrecorded)))
+                    return
+                # The last row answered leaves nothing to ask before the gate, so the board runs it.
+                self.fitting = gate_when_grounded(self.root, self.fitting) or self.fitting
+                self.send(200, "recorded", "text/plain; charset=utf-8")
+                return
+            # A step of the adoption the board takes itself: `adoption_flow` says which, and what each does.
+            if where == "/adopt/step":
+                code, said, started = take_step(self.root, {str(a): str(b) for a, b in held.items()},
+                                                self.fitting)
+                self.fitting = started or self.fitting
+                self.send(code, said, "text/plain; charset=utf-8")
                 return
             # Adopted, the board lands in the repository and starts its `./init`, as it does a generated
             # project's: a report that ended the page left the person to find both for themselves.

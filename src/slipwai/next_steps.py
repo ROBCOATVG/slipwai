@@ -50,9 +50,10 @@ class Step:
 
 def rows_open(adoption: Adoption) -> int:
     """How many rows of the convergence map are still nobody's word."""
+    # Asked and not known is answered too: the row stays `unrecorded`, and asking it again here would be a loop.
     spoken = {
         row.get("axis") for row in (adoption.convergence or [])
-        if isinstance(row, dict) and row.get("provenance") in SAID
+        if isinstance(row, dict) and (row.get("provenance") in SAID or row.get("asked"))
     }
     return sum(1 for axis in AXES if axis.key not in spoken)
 

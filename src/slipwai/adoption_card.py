@@ -14,7 +14,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from . import next_steps
+from .adoption_flow import GROUND, control, key_of
+from .adoption_flow import SCRIPT as STEPPING
 from .errors import GenerationError
+from .ground_card import SCRIPT as GROUNDING
+from .ground_card import card as ground_card
+from .harness import detect, keys, name_of
 from .layout import layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import adoption_of
@@ -38,13 +43,25 @@ def adoption_card(root: Path) -> str:
     # takes over, and this card has said all it has to say.
     if any(step.done and step.action.startswith("/speckit-specify") for step in found):
         return ""
-    rows, seen = [], False
+    rows, seen, now = [], False, None
     for step in found:
+        now = now or (None if step.done else step)
         mark = "done" if step.done else ("then" if seen else "now")
         seen = seen or not step.done
         rows.append(f'<li class="{mark}"><b>{esc(mark)}</b> {esc(step.action)} — {esc(step.why)}</li>')
+    key = key_of(now.action) if now else ""
+    harness = detect(root).harness
+    agents = "".join(f'<option value="{esc(one)}"{" selected" if one == harness else ""}>{esc(name_of(one))}</option>'
+                     for one in keys())
+    # The step the board can take itself, under the checklist: `/ground`'s questions one row at a time, or the
+    # control that runs or records the step. The rest happen in the agent, and the card says which.
+    here = (ground_card(root) + f"<script>{GROUNDING}</script>" if key == GROUND else
+            control(key, (adoption.strategy or {}).get("recommended"), agents))
     return ('<div class="card" id="adoption"><h2>Where this adoption stands</h2>'
-            '<p class="empty">The steps after the adoption happen in the coding agent, opened in '
-            f'{esc(root.resolve())}; this card reads the tree, so it moves as they are done. '
+            '<p class="empty">Read off the tree, so it moves as each step is done — on this board where it can '
+            f'be, and in the coding agent opened in {esc(root.resolve())} where it cannot. '
             '<code>slipwai adopt --next</code> says the same in a terminal.</p>'
-            f'<ol class="lines">{"".join(rows)}</ol></div>')
+            f'<ol class="lines">{"".join(rows)}</ol>'
+            + (f'{here}<pre class="said bad" id="step-said" hidden></pre><script>{STEPPING}</script>'
+               if here and key != GROUND else "")
+            + "</div>" + (here if key == GROUND else ""))

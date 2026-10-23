@@ -251,13 +251,21 @@ def reconciled(recorded: list[Row], fresh: list[Row], refreshed: list[str]) -> l
             # `/survey`, and recorded it as the bug it was.
             result.append({
                 **new, "rung": old["rung"], "provenance": old["provenance"], "planned": old.get("planned"),
-                "evidence": old.get("evidence") or new["evidence"],
+                "evidence": old.get("evidence") or new["evidence"], **asked_of(old),
             })
             continue
         if old.get("rung") != new["rung"]:
             refreshed.append(f"convergence: {new['axis']} refreshed from `{old.get('rung')}` to `{new['rung']}`")
-        result.append({**new, "planned": old.get("planned")})
+        # A row asked on the board and not known keeps the asking and what was said, while the tree's reading
+        # stays the same: the checklist would otherwise ask it again on every refresh.
+        kept_words = {"evidence": old["evidence"]} if old.get("asked") and old.get("rung") == new["rung"] else {}
+        result.append({**new, "planned": old.get("planned"), **kept_words, **asked_of(old)})
     return result
+
+
+def asked_of(row: Row) -> Row:
+    """The date a person was asked about the row, where one was — kept across every refresh."""
+    return {"asked": row["asked"]} if row.get("asked") else {}
 
 
 def summary(rows: list[Row]) -> tuple[int, int, int]:

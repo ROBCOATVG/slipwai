@@ -12,6 +12,7 @@ from ..catalog import CATALOG
 from ..layout import AT_ROOT, Layout
 from ..probes import HEALTH_PATH
 from ..registry import DEV_COMMAND, registry
+from ..rungs import STATE
 from ..services import App, containers_of, services_of, web_apps, wrapped_of
 from ..targets import managed
 from ..tooling import app_tooling, service_qualifier, verify_path
@@ -130,12 +131,14 @@ def seed_targets(services: list[App], apps: list[App]) -> str:
     A slice's `try-it.json` may *give* the events its unbuilt upstream would have written, and they go in
     through the service's own store port — a process with the store's credentials, never a route the app
     serves. Inside the migrating feature's marked region for the same reason `migrate` is: the door needs
-    the durable store, and a project that prunes the store prunes the door with it.
+    the durable store, and a project that prunes the store prunes the door with it. Only on the event-sourced
+    rung: a given is an event appended to a log, and a state-stored service keeps no log to append it to, so
+    it gets no target rather than one with nothing behind it.
     """
     text = ""
     for service in services:
         feature = service.selection.migrating_feature
-        if feature is None:
+        if feature is None or service.selection.write_model == STATE:
             continue
         tooling = app_tooling(service, apps, feature)
         door = tooling.get("seed")
@@ -158,15 +161,15 @@ def web_targets(web: list[App], apps: list[App]) -> str:
     `WEB_HOST` sits outside any transport's markers because it describes the dev servers rather than a
     service — `./init --http none` keeps `dev-web`, and a default pruned away underneath it would leave the
     target reading a variable nothing defines. `?=` so the environment and command line win over it, and
-    `export` because Vite reads the environment, not anything Make would pass a recipe."""
+    `export` because a dev server reads the environment, not anything Make would pass a recipe."""
     if not web:
         return ""
     targets = """
-# Where the dev servers listen. Vite binds loopback by default, and on a laptop that is right: the browser
+# Where the dev servers listen. A dev server binds loopback by default, and on a laptop that is right: the browser
 # is on this machine, and a dev server does not belong on the LAN. Anywhere the browser is somewhere else —
 # a VM, a container, a remote sandbox — loopback is a boundary it sits on the far side of, and the symptom
 # is a forwarded port that connects to nothing while the startup banner below looks perfectly healthy.
-# `make dev-web WEB_HOST=0.0.0.0` opens it. Exported because Vite reads the environment, not Make, and the
+# `make dev-web WEB_HOST=0.0.0.0` opens it. Exported because the dev server reads the environment, not Make, and the
 # service needs no equivalent: it already defaults HOST to 0.0.0.0.
 WEB_HOST ?= localhost
 export WEB_HOST

@@ -273,6 +273,9 @@ $ make verify
 verify: all gates passed
 ```
 
+In your coding agent, `/verify` runs the same gate and reads the result back. Where something fails, it names
+every gate that fails in one run, with the line each printed, and says what was skipped rather than passed.
+
 **That passing gate is the purpose of the first ten minutes.** The gate is now a fact, not a hope. "Keep the
 main branch releasable" only means something when the gate is a fact.
 

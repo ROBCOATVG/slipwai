@@ -131,7 +131,7 @@ BASE_COMMANDS = ("drive", "mockups", "chart", "example-map", "careen", "where-ar
                  "model-delegation-settings", "sail-settings", "benchmark", "cruise", "cruise-settings",
                  "cruise-status", "cruise-stop", "cruise-tell", "cruise-watch", "draft", "launch", "add-service",
                  "add-frontend",
-                 "catch-up")
+                 "verify", "catch-up")
 # Copied whole from `assets/profiles/event-modelling/commands/`; listed because the documentation names them in order.
 # `example-map` left this list in slice 5.17: it is a stage of both profiles now and ships from the toolkit.
 EVENT_COMMANDS = ("validate-code-against-model",)
@@ -180,6 +180,8 @@ def command_files(
         # method rather than as a bug in the keel.
         "commands/mockups.md": page(COMMANDS, "mockups.md", {"make": layout.make}),
         "commands/launch.md": page(COMMANDS, "launch.md", {"make": layout.make}),
+        # The gate, read back: one run that names every gate that fails, and what was skipped.
+        "commands/verify.md": page(COMMANDS, "verify.md", {"make": layout.make}),
         "commands/where-are-we.md": where_are_we_command(event, target),
         "commands/whats-next.md": whats_next_command(event),
         "commands/gaps.md": gaps_command(event, apps),

@@ -166,7 +166,8 @@ events and read models together. On the event-modelling profile, the skill write
 - the read models that the screens are built from
 - the slice that each one belongs to
 
-It is one file, and everything after it is rendered from it.
+It is one file, and everything after it is rendered from it. The modelling skill renders it with `make model`;
+run by hand, that prints:
 
 ```console
 $ make model
@@ -192,7 +193,8 @@ through the timeline, and every command, event and read model is in its place:
   way that you divide the work depends on the chart.
 
 On the event-modelling profile, you do not write the chart. The model already gives each slice's context,
-the events that it produces and what it reads. So the chart is rendered from the model:
+the events that it produces and what it reads. So the chart is rendered from the model. `/sail` does this
+when it reaches the chart; run by hand, it prints:
 
 ```console
 $ make chart

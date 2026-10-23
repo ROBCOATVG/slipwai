@@ -14,6 +14,11 @@ Where you type each command:
 Slash commands are written as Claude Code spells them. Codex takes them as skills, so in Codex `/sail` is
 `$sail`.
 
+**Where a step has a slash command, type that.** `/cruise`, `/cruise-tell`, `/cruise-stop`, `/launch` and the
+rest run the project's `make` target for you and read the result back, so you stay in the session you are
+already working in. The `make` target of the same name is what they run underneath, and is named here only
+where no command covers the step.
+
 ---
 
 ## Phase 0: once per machine
@@ -42,7 +47,7 @@ Slash commands are written as Claude Code spells them. Codex takes them as skill
 | 1.1 | terminal *or* board | `slipwai generate` — or `slipwai`, then *Start a project* | it prints `created: <path>` and runs `./init` in the new project |
 | 1.2 | terminal | `cd <name>` | you are at the project's root; start your coding agent here |
 | 1.3 | terminal | `./init`, only if 1.1 did not run it | Spec Kit, the skills and the commands are installed for your agent |
-| 1.4 | terminal | `make verify` | it ends with `verify: all gates passed` |
+| 1.4 | agent | `/verify` | it says `verify: all gates passed` |
 | 1.5 | terminal | `git add -A && git commit -m "Install Spec Kit"` | `git status` is clean |
 
 - **1.1: the questions.** The questions come in this order: a quickstart (six are included, and
@@ -72,8 +77,8 @@ Slash commands are written as Claude Code spells them. Codex takes them as skill
 | 2.2 | agent | `/speckit-specify <the feature, in a sentence or two>` | `specs/<feature>/spec.md` exists |
 | 2.3 | agent *or* board | `/sail` — or **Open spec**, then read it | the specification is clarified, checked and its gaps answered |
 | 2.4 | agent *or* board | `/mockups` — or **Draw the surfaces**, then **Approve storyboard** | every surface state is approved, parked with its question, or `n/a` with a reason |
-| 2.5 | agent *or* board | the event-modeling skill, then `make model` | `docs/event-model/model.yaml` names the commands, events and read models; standard profile: skip |
-| 2.6 | terminal *or* board | `make chart && make check-chart` — or **Continue the build** | `check-chart` passes: every mark typed, one setter each |
+| 2.5 | agent *or* board | the event-modeling skill | `docs/event-model/model.yaml` names the commands, events and read models; standard profile: skip |
+| 2.6 | agent *or* board | `/sail` — it writes the chart on the standard profile and renders it from the model on the event-modelling profile — or **Continue the build**, which in the agent is `/launch` | `check-chart` passes: every mark typed, one setter each |
 | 2.7 | agent | `/sail` | the first slice reaches its demo and asks you to accept it |
 
 - **2.1: why it starts here.** `/sail` finds the stage from the files on disk. An unratified constitution
@@ -118,9 +123,9 @@ A further feature uses the profile that the project already has.
 
 | # | Where | Command | Done when |
 |---|---|---|---|
-| 4.1 | terminal | `git pull`, then `make arrive` | every deck log and in-flight branch from other machines is here |
-| 4.2 | agent | `/sail fairway=<name>` | you hold one fairway, and the others' ready slices are named and left |
-| 4.3 | terminal | `slipwai fleet` | both fairways are listed, each with its own slice |
+| 4.1 | terminal | `git pull` | the other machines' commits are here |
+| 4.2 | agent | `/sail fairway=<name>` | it has landed every deck log and in-flight branch from the other machines (`make arrive`, which it runs itself), you hold one fairway, and the others' ready slices are named and left |
+| 4.3 | agent | `/cruise-status` | both fairways are listed, each with its own slice |
 
 A slice is cleared as soon as the mark that it steers by is **set**, not when that mark merges. The slice
 that owns the mark sets it at its first stage, in its own worktree. See
@@ -134,10 +139,10 @@ that owns the mark sets it at its first stage, in its own worktree. See
 |---|---|---|---|
 | 5.1 | agent | `/cruise-settings enabled=true` | `.specify/cruise.json` says `enabled: true` |
 | 5.2 | terminal | `slipwai telegraph slow-ahead` | `slipwai telegraph` shows the position; start slow |
-| 5.3 | terminal *or* board | `make cruise` — or **Cast off the fleet** | a harbourmaster and a captain per fairway are running, and the command has exited |
-| 5.4 | terminal *or* board | `slipwai fleet`, `make cruise-watch` — or the Voyage tab | lines arrive in the deck logs |
-| 5.5 | terminal *or* board | `make cruise-tell STREAM=<fairway> MSG="…"` — or the answer box on the waiting line | the captain writes a `read` line at its next boundary. A message to a parked fairway also clears the park |
-| 5.6 | terminal *or* board | `make cruise-stop` — or **Stop the fleet** | every captain parks at the end of the stage it is in |
+| 5.3 | agent *or* board | `/cruise` — or **Cast off the fleet** | a harbourmaster and a captain per fairway are running, and the command has exited |
+| 5.4 | agent *or* board | `/cruise-status`, `/cruise-watch` — or the Voyage tab | lines arrive in the deck logs |
+| 5.5 | agent *or* board | `/cruise-tell <fairway> <what it should know>` — or the answer box on the waiting line | the captain writes a `read` line at its next boundary. A message to a parked fairway also clears the park |
+| 5.6 | agent *or* board | `/cruise-stop` — or **Stop the fleet** | every captain parks at the end of the stage it is in |
 
 Three things still stop for a person: mock-up approval, the demo, and the decision ceiling. The board's
 **Settings** box has a tab each for speed, fine tune, who answers at each stop, delegation and models. The
@@ -174,7 +179,7 @@ project's own scripts write each setting. See [let it cruise](let-it-cruise.md).
 | `slipwai generate` | Delete the directory. Nothing else was touched |
 | `slipwai migrate` (clean) | `git reset --hard ORIG_HEAD` |
 | `slipwai migrate` (conflicted) | `git merge --abort` |
-| `make cruise` | `make cruise-stop` — captains finish the stage they are in |
+| `/cruise` | `/cruise-stop` — captains finish the stage they are in |
 | `slipwai bridge install` | `slipwai bridge uninstall` |
 | A decision a cruising run took | Change its `Status` in `specs/<feature>/decisions.md` and write your answer into the artefact it names |
 

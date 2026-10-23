@@ -12,6 +12,9 @@ decision is expensive.
 
 ## Cast off
 
+Type `/cruise` in your coding agent. It runs `make cruise`, then takes the watch seat in your session and
+prints each stream's lines as they arrive. This is what `make cruise` itself prints:
+
 ```console
 $ make cruise
 harbourmaster started, pid 48021
@@ -21,7 +24,7 @@ availability: captain started, pid 48024
 ```
 
 `make cruise` starts the harbourmaster and one captain for each fairway, and then exits. You can close the
-terminal. Nothing that `make cruise` started holds the state of the run.
+terminal or end the session. Nothing that `make cruise` started holds the state of the run.
 
 This matters because of the first attempt. In the first attempt, the runner *was* the state of the run. It
 stopped at iteration two. The seventeen iterations after it ran from interactive sessions and wrote
@@ -125,12 +128,15 @@ brake: running captains finish the stage that they are in, and then park.
 
 ## Saying something to a run that is going
 
-```sh
-make cruise-tell STREAM=booking MSG="the hold should expire after 15 minutes, not 45"
+```text
+/cruise-tell booking the hold should expire after 15 minutes, not 45
 ```
 
-Name the stream. `make cruise-tell` refuses a message with no stream, and lists the streams that there are.
-`CRUISE_FLAGS=--everyone` sends the message to every stream.
+The first word is the stream, and the rest is the message. `/cruise-tell` refuses a message with no stream,
+and lists the streams that there are. `--everyone` as the first word sends the message to every stream.
+
+With no agent open, the same thing from a terminal is
+`make cruise-tell STREAM=booking MSG="…"`, with `CRUISE_FLAGS=--everyone` for every stream.
 
 The message goes into that fairway's inbox. The captain reads the inbox **at every boundary**, not only at
 the start of a slice. When the captain has read the message, it writes a `read` line with the timestamp of

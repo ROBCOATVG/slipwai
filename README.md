@@ -84,7 +84,7 @@ There are three ways to drive it. All three run the same stages.
 | --- | --- |
 | `/sail` in your coding agent | One person, one session. It runs the stage you are at, then takes the next ready slice without being asked |
 | The **Voyage** tab | A button for each stop. Each button runs a `make` target, so you can type it instead |
-| `make cruise` | Casts off the fleet: one captain per fairway, working in parallel, until something needs a person |
+| `/cruise` in your coding agent | Casts off the fleet: one captain per fairway, working in parallel, until something needs a person. `/cruise-status`, `/cruise-tell` and `/cruise-stop` watch, steer and stop it |
 
 By default the specification, the storyboard and the model each wait for you. Set **Who answers** to
 *advance on their own* and the board starts each of those steps when the one before it ends well. The demo

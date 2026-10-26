@@ -63,7 +63,7 @@ class DecideTest(unittest.TestCase):
         (self.root / "adopt/docs/adr/0001-record-architecture-decisions.md").write_text("# 0001\n")
         path = flow.decide(self.root, self.layout, {**STRANGLER, "why": "the old app must go"}, today="2026-10-23")
         self.assertEqual(path, "adopt/docs/adr/0002-change-strategy.md")
-        text = (self.root / path).read_text()
+        text = (self.root / path).read_text(encoding="utf-8")
         self.assertRegex(text, r"## Status\s*\n+\s*Accepted")
         self.assertIn("\nStrategy: strangler-fig\n", text)
         self.assertIn("the old app must go", text)

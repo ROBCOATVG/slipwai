@@ -111,7 +111,7 @@ class ToolTest(unittest.TestCase):
         root = Path(tempfile.mkdtemp())
         (root / "scripts").mkdir()
         (root / "scripts/check-imports.py").write_text(
-            (TOOLKIT_ROOT / "scripts/check-imports.py").read_text(encoding="utf-8"))
+            (TOOLKIT_ROOT / "scripts/check-imports.py").read_text(encoding="utf-8"), encoding="utf-8")
         (root / "project.json").write_text(json.dumps({"deployables": {"shop": {
             "path": "web", "kind": "service", "generated": False, "layout": "modular",
             "contexts": ["orders", "billing"]}}}))

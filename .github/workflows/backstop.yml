@@ -97,8 +97,12 @@ jobs:
         run: |
           set -eu
           directory="${{ needs.listed.outputs.directory }}"
+          # Each kind by its own manifest: a target package (aws, azure) checked as a language holds no
+          # `language.json`, and failed every backstop since the targets were published.
           if [ -f "$directory/${{ matrix.package }}/extension.json" ]; then
             python -m slipwai.conformance --extension "$directory/${{ matrix.package }}"
+          elif [ -f "$directory/${{ matrix.package }}/target.json" ]; then
+            python -m slipwai.conformance --target "$directory/${{ matrix.package }}"
           else
             python -m slipwai.conformance "$directory" "${{ matrix.package }}"
           fi

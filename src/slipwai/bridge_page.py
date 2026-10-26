@@ -93,6 +93,8 @@ if (fitting) {
       tail.scrollTop = tail.scrollHeight;   // the last line, which is the one being waited on
     }
     if (said.done) {
+      // An adoption's step ended: the checklist above it has moved, and its next control is drawn fresh.
+      if (running && document.getElementById('step-running')) { location.reload(); return; }
       running = false;
       chip.dataset.state = said.code ? 'stopped' : 'done';
       chip.className = said.code ? 'chip stalled' : 'chip';

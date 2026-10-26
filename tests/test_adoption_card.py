@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +13,7 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 
 from slipwai import adoption_card as card
+from slipwai.assets import TOOLKIT_ROOT
 from slipwai.next_steps import Step
 
 
@@ -45,6 +49,32 @@ class AdoptionCardTest(unittest.TestCase):
                 mock.patch.object(card, "layout_of"), mock.patch.object(card, "apps_from_manifest"), \
                 mock.patch.object(card.next_steps, "steps", return_value=said):
             self.assertEqual(card.adoption_card(root), "")
+
+    def test_while_a_step_runs_there_is_nothing_to_press_a_second_time(self) -> None:
+        """A control drawn while `./init` ran was still there when it ended, and pressed, ran it again."""
+        root = Path(tempfile.mkdtemp())
+        (root / "project.json").write_text(json.dumps({"name": "kept"}))
+        said = [Step("./adopt/init", "installs", False), Step("/verify", "the gate", False)]
+        with mock.patch.object(card, "read_manifest", return_value={}), \
+                mock.patch.object(card, "adoption_of", return_value=mock.Mock(strategy={})), \
+                mock.patch.object(card, "layout_of"), mock.patch.object(card, "apps_from_manifest"), \
+                mock.patch.object(card.next_steps, "steps", return_value=said):
+            idle, running = card.adoption_card(root), card.adoption_card(root, running=True)
+        self.assertIn('data-step="init"', idle)
+        self.assertNotIn("data-step=", running)
+        self.assertIn('id="step-running"', running)
+
+
+class DraftTest(unittest.TestCase):
+    def test_an_adopted_repository_drafts_from_the_prd_under_its_delivery_folder(self) -> None:
+        """The board writes `adopt/docs/prd.md`; the draft looked for `docs/prd.md` at the root, and stopped."""
+        root = Path(tempfile.mkdtemp())
+        (root / "project.json").write_text("{}")
+        shutil.copytree(TOOLKIT_ROOT / "scripts/agents", root / "adopt/scripts/agents")
+        ran = subprocess.run([sys.executable, str(root / "adopt/scripts/agents/draft.py")], cwd=root,
+                             capture_output=True, text=True, check=False)
+        self.assertEqual(ran.returncode, 2)
+        self.assertIn("adopt/docs/prd.md is not a file", ran.stderr)
 
 
 if __name__ == "__main__":

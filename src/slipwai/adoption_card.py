@@ -26,9 +26,10 @@ from .origin import adoption_of
 from .page_shell import esc
 
 
-def adoption_card(root: Path) -> str:
+def adoption_card(root: Path, running: bool = False) -> str:
     """The sequence, each step marked, the first unfinished one as the one to do now; nothing where the
-    project was generated, or has no manifest to read."""
+    project was generated, or has no manifest to read. While a step is `running`, nothing to press: the
+    card below follows it, and the voyage is drawn again when it ends."""
     if not (root / "project.json").is_file():
         return ""
     try:
@@ -55,7 +56,9 @@ def adoption_card(root: Path) -> str:
                      for one in keys())
     # The step the board can take itself, under the checklist: `/ground`'s questions one row at a time, or the
     # control that runs or records the step. The rest happen in the agent, and the card says which.
-    here = (ground_card(root) + f"<script>{GROUNDING}</script>" if key == GROUND else
+    here = ('<p class="empty" id="step-running">Running — the card below follows it, and this moves on when it '
+            "ends.</p>" if running else
+            ground_card(root) + f"<script>{GROUNDING}</script>" if key == GROUND else
             control(key, (adoption.strategy or {}).get("recommended"), agents))
     return ('<div class="card" id="adoption"><h2>Where this adoption stands</h2>'
             '<p class="empty">Read off the tree, so it moves as each step is done — on this board where it can '
@@ -63,5 +66,5 @@ def adoption_card(root: Path) -> str:
             '<code>slipwai adopt --next</code> says the same in a terminal.</p>'
             f'<ol class="lines">{"".join(rows)}</ol>'
             + (f'{here}<pre class="said bad" id="step-said" hidden></pre><script>{STEPPING}</script>'
-               if here and key != GROUND else "")
-            + "</div>" + (here if key == GROUND else ""))
+               if here and (running or key != GROUND) else "")
+            + "</div>" + (here if key == GROUND and not running else ""))

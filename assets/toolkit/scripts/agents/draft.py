@@ -22,8 +22,11 @@ sys.path.insert(0, str(HERE))
 import harness  # noqa: E402
 
 ROOT = harness.ROOT
-COMMAND = ROOT / "commands/draft.md"
-DEFAULT = "docs/prd.md"
+#: The method's own folder: the root of a generated project, and `layout.delivery` of an adopted one, where
+#: `commands/` and `docs/` are while `specs/` stays at the repository's root.
+DELIVERY = HERE.parent.parent
+COMMAND = DELIVERY / "commands/draft.md"
+DEFAULT = DELIVERY / "docs/prd.md"
 SPECS = ROOT / "specs"
 
 
@@ -33,7 +36,7 @@ def specifications() -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
-    named = argv[0] if argv else DEFAULT
+    named = argv[0] if argv else DEFAULT.relative_to(ROOT).as_posix()
     document = Path(named) if Path(named).is_absolute() else ROOT / named
     if not document.is_file():
         print(f"draft: {named} is not a file; a product requirements document is the one thing this reads",

@@ -104,7 +104,9 @@ def draft(root: Path, layout: Layout, answers: Mapping[str, str], said: list[str
     elif not prd.is_file():
         raise GenerationError("say what the first feature is: the drafting session writes the constitution and "
                               "its specification from it")
-    argv = [*make(layout), "draft"]
+    # Named rather than left to the default, which a copy adopted before it was read under the delivery folder
+    # looked for at the root.
+    argv = [*make(layout), "draft", f"PRD={layout.under(PRD)}"]
     step = Step(argv, f"Drafting the constitution and the first specification from {layout.under(PRD)} — "
                       f"{' '.join(argv)}, a headless session. It stops for you to read the specification.",
                 lambda code: ("Drafted. Read the specification, and Continue the build when it says what you mean."

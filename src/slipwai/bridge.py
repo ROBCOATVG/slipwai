@@ -627,7 +627,8 @@ class Bridge(BaseHTTPRequestHandler):
                       try_card(self.root, self.named_seat()), strip_html(rows, folds),
                       feedback_card(self.root, rows, fleet, self.triaging(), trunk_head(self.root)),
                       decision_card(self.root),
-                      points=feedback_points(self.root), adopting=adoption_card(self.root))
+                      points=feedback_points(self.root), adopting=adoption_card(
+                          self.root, bool(self.fitting and not self.fitting.said()["done"])))
 
     def triaging(self) -> bool:
         """Whether this board's child is the triage session, reading what a person said."""

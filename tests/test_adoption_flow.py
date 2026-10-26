@@ -60,7 +60,7 @@ class DecideTest(unittest.TestCase):
         with mock.patch.object(flow.Fitting, "run"):
             fitting = flow.draft(self.root, self.layout, {"feature": "Members can export their tree"})
         self.assertIn("Members can export their tree", (self.root / "adopt/docs/prd.md").read_text())
-        self.assertEqual(fitting.steps[0].argv[-1], "draft")
+        self.assertEqual(fitting.steps[0].argv[-2:], ["draft", "PRD=adopt/docs/prd.md"])
         with self.assertRaises(GenerationError):
             flow.draft(Path(tempfile.mkdtemp()), self.layout, {})
 

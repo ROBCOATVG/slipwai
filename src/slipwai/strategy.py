@@ -24,13 +24,13 @@ from .layout import Layout
 from .origin import STRATEGIES, Adoption, current
 from .programme import option, phrase, programme
 from .services import App
+from .strategy_record import lines_of, missing, review_in_date
 
 # How each strategy reads in a sentence: a hyphenated key is a value, not English, and `in-place` on its own says
 # nothing at all. Used wherever a recommendation or a decision is written out in prose.
 SAYS: dict[str, str] = {
     "leave-it": "leave the architecture where it is",
     "in-place": "change it in place",
-    "modular-monolith": "a modular monolith in place",
     "strangler-fig": "a strangler fig",
     "rewrite": "a rewrite",
 }
@@ -53,9 +53,9 @@ TRIGGERS: tuple[tuple[str, str, str, str], ...] = (
      "after rungs 3 to 5 — packaging, runtime, host — with the architecture unchanged"),
     ("change", r"cannot change|can'?t change|hard to change|coupl|spaghetti|no tests|untest|nobody understands|"
                r"fragile|afraid|big ball|legacy code|technical debt",
-     "modular-monolith",
-     "when the contexts are found and each is behind its own `public` module under the import gate — no second "
-     "deployable, no routing seam"),
+     "in-place",
+     "when the code is reshaped into the target's modules, each pinned by `/characterise` before it moves and behind "
+     "its own published module under the import gate — no second deployable, no routing seam"),
     ("capability", r"new (feature|capabilit|product|market|customer)|scal(e|ing)|split|teams?\b|extract|"
                    r"microservice|separate|independent|multi.?tenan",
      "strangler-fig",
@@ -91,7 +91,7 @@ def preconditions(rows: list[dict], strategy: str) -> list[str]:
     if strategy == "strangler-fig":
         found.append("a seam requests enter through — an entry point in `survey/structure.md` with little of the "
                      "shared core behind it — and the data question answered (`docs/change-strategy.md`, *Data*)")
-    if strategy in ("strangler-fig", "modular-monolith"):
+    if strategy == "strangler-fig":
         found.append("`/characterise` pinning each seam before it moves — the `pinned` rung, held per slice")
     return found
 
@@ -161,7 +161,7 @@ def recommend(why: str | None, rows: list[dict], products: list[dict] = ()) -> d
         f" (and also: {', '.join(k for k, _, _ in named[1:])})" if len(named) > 1 else ""
     ) + f", for which `docs/change-strategy.md` says {SAYS[strategy]}"]
     because += tree_says
-    if strategy in ("strangler-fig", "modular-monolith"):
+    if strategy == "strangler-fig" or kind == "change":
         because.append("the architecture rung is last on the ladder: every rung below it is cheaper with a green gate "
                        "and pinned seams, and none of them needs an architectural decision")
     return {"recommended": strategy, "trigger": kind, "because": because,
@@ -183,16 +183,20 @@ def decision_of(root: Path, layout: Layout) -> dict:
     legacy system's side: a strangler is a strangler only while the old system is standing still, and the
     one place both halves can be held together is the document a person accepted.
     """
-    decided: dict = {"decided": None, "adr": None, "freeze": None}
+    decided: dict = {"decided": None, "adr": None, "freeze": None, "lines": {}, "missing": []}
     for path in sorted((root / layout.under("docs/adr")).glob("*.md")):
         text = path.read_text(errors="replace", encoding="utf-8")
         # An ADR accepted under an older factory's spelling still decides — `Strategy: modernise-in-place` is read
         # as `in-place` — because the decision is the person's and a rename here is not a reason to lose it.
-        named = [current(match.group(1).lower()) for match in ADR_STRATEGY.finditer(text)]
-        strategy = next((name for name in named if name in STRATEGIES), None)
+        spelled = [match.group(1).lower() for match in ADR_STRATEGY.finditer(text)]
+        named = [(current(name), name) for name in spelled]
+        strategy, said = next(((name, was) for name, was in named if name in STRATEGIES), (None, None))
         if strategy and ADR_ACCEPTED.search(text):
+            # The rest of the decision rides on the same ADR: where a new home lives, the shape it heads for, the
+            # freeze. What the strategy cannot start without and nobody has written is said, never filled in.
+            lines = lines_of(text, said)
             decided = {"decided": strategy, "adr": layout.under(f"docs/adr/{path.name}"),
-                       "freeze": freeze_of(text)}
+                       "freeze": freeze_of(text), "lines": lines, "missing": missing(strategy, lines)}
     return decided
 
 
@@ -216,7 +220,10 @@ def with_recommendation(root: Path, layout: Layout, adoption: Adoption, apps: li
     decided = decision_of(root, layout)
     record = {
         **recommend(adoption.why, rows, (adoption.platform or {}).get("products") or []), **decided,
-        "finished": bool(decided["decided"]) and (decided["decided"] == "leave-it" or ledger_finished(root, layout)),
+        # A system left as it is is finished only while its review is ahead of it: a leave-it nobody reviews is a
+        # decision that has been forgotten, not one that holds.
+        "finished": bool(decided["decided"]) and (review_in_date(decided["lines"]) if decided["decided"] == "leave-it"
+                                                  else ledger_finished(root, layout)),
         # Every improvement the record shows, in order, paced by the decided strategy — none while nothing is decided.
         "programme": programme(adoption, apps, decided["decided"]),
         "provenance": "detected",

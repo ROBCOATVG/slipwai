@@ -88,7 +88,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("answers", ("selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
                  "fleet_record", "timeline", "deck",
                  "toolkit", "platform", "convergence", "delivery_facts", "programme", "quick_wins",
-                 "uncommitted", "wrappers", "strategy", "survey", "structure", "big_picture", "deployment_shapes",
+                 "uncommitted", "wrappers", "strategy_record", "strategy", "survey", "structure", "big_picture",
+                 "deployment_shapes",
                  # Whether a project's stacks still parse — a reading of a tree, like the survey beside it.
                  "infra_check",
                  "big_picture_guards", "manifest")),

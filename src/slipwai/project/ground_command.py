@@ -82,8 +82,8 @@ QUESTIONS: dict[str, tuple[str, str]] = {
     "strategy": (
         "Two questions, asked apart. First: why is this work happening — what is the business trigger — in their "
         "words, not yours (a slice being built is not a trigger). Second, once `/survey` has re-made the recommendation "
-        "from that: which strategy — `leave-it`, `in-place`, `modular-monolith`, `strangler-fig` or "
-        "`rewrite` — with all five named, the recommendation read out as one of them with its reasons and what has to "
+        "from that: which strategy — `leave-it`, `in-place`, `strangler-fig` or "
+        "`rewrite` — with all four named, the recommendation read out as one of them with its reasons and what has to "
         "hold `before`, and *not yet* an answer. A strategy the map only *recommends* is this question, every time, "
         "never a default you decide for them",
         "`why` in `project.json`, in their words. The strategy is an accepted ADR under `docs/adr/` with a `Strategy:` "

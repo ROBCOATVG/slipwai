@@ -31,9 +31,11 @@ WRAPPED_KINDS = ("service", "library", "tool", "tests", "application")
 # How this repository changes, recommended by `strategy.py` and decided by an ADR. `in-place` climbs the ladder's
 # rungs without moving the architecture; the two beside it are Fowler's patterns; *leave it* is an answer like any
 # other. Named here rather than in `strategy.py`, which reads this module.
-STRATEGIES = ("leave-it", "in-place", "modular-monolith", "strangler-fig", "rewrite")
+STRATEGIES = ("leave-it", "in-place", "strangler-fig", "rewrite")
 # What the same strategies were called up to 1.12, when the axis was `modernisation`: read, never written.
-OLD_STRATEGIES = {"modernise-in-place": "in-place"}
+# A modular monolith is a shape, not a way of changing: it grew new modules inside the one deployable, which is a
+# strangler fig with its new home `inside` (`strategy_record.IMPLIED` carries the rest of what it meant).
+OLD_STRATEGIES = {"modernise-in-place": "in-place", "modular-monolith": "strangler-fig"}
 # What an axis was called by an older factory, mapped forward as the manifest is read so that everything which
 # writes the manifest again — `replay`, `add-service`, `migrate`, not only `/survey` — writes the current name.
 # A row left under the old name would fail the shipped `check-convergence`, which knows only the current rungs.

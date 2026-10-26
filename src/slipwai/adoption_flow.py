@@ -87,7 +87,7 @@ def decide(root: Path, layout: Layout, answers: Mapping[str, str], today: str | 
     """The strategy, written as the accepted ADR the gate reads, and committed. Returns the ADR's path."""
     strategy = str(answers.get("strategy") or "")
     if strategy not in SAYS:
-        raise GenerationError(f"pick one of the five strategies: {', '.join(SAYS)}")
+        raise GenerationError(f"pick one of the four strategies: {', '.join(SAYS)}")
     why = str(answers.get("why") or "").strip() or "Decided on the board, from the map and its recommendation."
     refuse_foreign(root, resurvey.writes(root, layout), "deciding the strategy")
     folder = root / layout.under("docs/adr")

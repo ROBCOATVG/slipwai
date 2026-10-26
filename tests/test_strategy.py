@@ -68,7 +68,9 @@ class StrategyTest(unittest.TestCase):
         host = recommend("hosting costs; move to AWS", top())
         self.assertEqual(host["trigger"], "host")
         change = recommend("nobody understands it and it is too coupled to change safely", top())
-        self.assertEqual(change["recommended"], "modular-monolith")
+        self.assertEqual(change["recommended"], "in-place",
+                         "cannot change it safely is reshaping where it stands: a modular monolith is a shape")
+        self.assertIn("target's modules", change["stop"])
         capability = recommend("a new market needs the ordering capability split out so two teams can move", top())
         self.assertEqual(capability["recommended"], "strangler-fig")
         self.assertIn("architecture rung is last", capability["because"][1])
@@ -107,16 +109,18 @@ class StrategyTest(unittest.TestCase):
             adr.mkdir(parents=True)
             # `freeze` rides on the same ADR and is read with the decision, because it is that decision seen
             # from the legacy system's side (`tests/test_freeze.py`); None is nothing recorded either way.
-            self.assertEqual(decision_of(root, DELIVERY), {"decided": None, "adr": None, "freeze": None})
+            self.assertEqual(decision_of(root, DELIVERY),
+                             {"decided": None, "adr": None, "freeze": None, "lines": {}, "missing": []})
             (adr / "0002-change-strategy.md").write_text(
                 ADR.format(status="Proposed", strategy="strangler-fig"), encoding="utf-8")
             self.assertIsNone(decision_of(root, DELIVERY)["decided"], "proposed is not decided")
             (adr / "0002-change-strategy.md").write_text(
                 ADR.format(status="Accepted", strategy="strangler-fig"), encoding="utf-8")
-            self.assertEqual(
-                decision_of(root, DELIVERY),
-                {"decided": "strangler-fig", "adr": "delivery/docs/adr/0002-change-strategy.md", "freeze": None},
-            )
+            decided = decision_of(root, DELIVERY)
+            self.assertEqual((decided["decided"], decided["adr"], decided["freeze"]),
+                             ("strangler-fig", "delivery/docs/adr/0002-change-strategy.md", None))
+            self.assertEqual(decided["missing"], ["Freeze", "New home", "End", "Target"],
+                             "decided, and saying what it cannot start without")
             (adr / "0003-leave-it.md").write_text(ADR.format(status="Accepted", strategy="**leave-it**"),
                 encoding="utf-8")
             self.assertEqual(decision_of(root, DELIVERY)["decided"], "leave-it", "the later ADR supersedes")
@@ -179,8 +183,13 @@ class StrategyTest(unittest.TestCase):
             (root / "delivery/docs/adr/0003-leave.md").write_text(ADR.format(status="Accepted", strategy="leave-it"),
                 encoding="utf-8")
             left = with_recommendation(root, DELIVERY, Adoption(why="Python 2 is end of life"), apps)
+            self.assertEqual(next(r for r in left.convergence if r["axis"] == "strategy")["rung"], "decided",
+                             "left with no review date is a decision nobody will come back to")
+            (root / "delivery/docs/adr/0003-leave.md").write_text(
+                ADR.format(status="Accepted", strategy="leave-it") + "\nReview: 2999-01-01\n", encoding="utf-8")
+            left = with_recommendation(root, DELIVERY, Adoption(why="Python 2 is end of life"), apps)
             self.assertEqual(next(r for r in left.convergence if r["axis"] == "strategy")["rung"], "done",
-                             "leaving it finishes the axis")
+                             "leaving it finishes the axis while its review is ahead of it")
             # No trigger: the row stays open — the rung's meaning — while the page still recommends leaving it.
             quiet = with_recommendation(root / "nowhere", DELIVERY, Adoption(), apps)
             self.assertEqual(next(r for r in quiet.convergence if r["axis"] == "strategy")["rung"], "open")

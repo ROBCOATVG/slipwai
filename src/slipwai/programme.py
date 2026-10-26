@@ -84,8 +84,6 @@ PACING: dict[str, dict[str | None, str]] = {
         None: "depends on the strategy — decide it first (`/ground`); the platform comes before any strategy",
         "in-place": "big bang per rung: one slice per product across the whole application, the gate green "
                     "between, rungs 1 and 2 of the ladder first",
-        "modular-monolith": "big bang per rung, before the restructuring: one slice per product, the gate green "
-                            "between",
         "strangler-fig": "over time, or first: the new home starts on the current platform; the old home is upgraded "
                          "first only where it must keep shipping for long — the ADR says which",
         "leave-it": "only what security requires; recorded so it is not forgotten, not scheduled",
@@ -94,7 +92,6 @@ PACING: dict[str, dict[str | None, str]] = {
     "rung": {
         None: "depends on the strategy — decide it first (`/ground`)",
         "in-place": "big bang per rung, in ladder order, after the platform",
-        "modular-monolith": "big bang per rung, in ladder order, before the restructuring",
         "strangler-fig": "over time: the new home has it from day one; the old home only if it stays",
         "leave-it": "not scheduled; recorded so it is not forgotten",
         "rewrite": "the new system has it from day one; recorded for the cut-over plan",

@@ -71,11 +71,11 @@ def recommendation_section(adoption: Adoption, layout: Layout) -> str:
         decided = (
             f"**Nothing is decided yet.** A recommendation is the factory's reading; the decision is a person's, written "
             f"as an accepted ADR under `{adr}/` (Nygard's five sections, as `0001` shows) carrying one line "
-            f"`Strategy: <leave-it | in-place | modular-monolith | strangler-fig | rewrite>`. `/survey` reads "
+            f"`Strategy: <leave-it | in-place | strangler-fig | rewrite>` and the lines its playbook (`docs/strategies/`) says it needs. `/survey` reads "
             "it, the map's Strategy row moves to `decided`, and `/strangle` will not move a capability until that "
             "line says `strangler-fig`. *Leave it* is a decision like any other and finishes the axis; rewrite is never "
             "recommended here, and an ADR that chooses it says why the other two cannot work. The word `Accepted` is "
-            "the person's: an agent drafts the ADR at `Proposed`, puts the five strategies and this recommendation to "
+            "the person's: an agent drafts the ADR at `Proposed`, puts the four strategies and this recommendation to "
             "them as a question, and changes the Status only after they have said, of that text, that they accept it."
         )
     return f"""## Recommended for this repository
@@ -171,7 +171,7 @@ def new_home(apps: list[App]) -> str:
             + ", so the team keeps one language while the architecture changes."
         )
     lines.append(
-        "- **A module inside the existing code**, where the strategy is the modular monolith in place: a context "
+        "- **A module inside the existing code**, where the ADR's `New home:` is `inside`: a context "
         "directory with its own `public` module, held to the import gate by declaring `\"layout\": \"hexagonal\"` on "
         "the application's record in `project.json`."
     )

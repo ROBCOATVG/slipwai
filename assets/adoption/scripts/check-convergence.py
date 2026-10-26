@@ -35,10 +35,10 @@ CONSTITUTION = ROOT / ".specify/memory/constitution.md"
 PLACEHOLDER = re.compile(r"\[[A-Z][A-Z0-9_]{2,}[^\]]*\]")
 # A whole line, as `slipwai.strategy` reads it; a sentence mentioning the `Strategy:` line is not the line.
 ADR_STRATEGY = re.compile(r"^\W*strategy\W*:\W*([a-z-]+)\W*$", re.IGNORECASE | re.MULTILINE)
-STRATEGIES = ("leave-it", "in-place", "modular-monolith", "strangler-fig", "rewrite")
+STRATEGIES = ("leave-it", "in-place", "strangler-fig", "rewrite")
 # What a strategy was called before the axis was `strategy`: an ADR accepted under the older spelling still
 # decides, and the record is written under the current name by the next `/survey`.
-OLD_STRATEGIES = {"modernise-in-place": "in-place"}
+OLD_STRATEGIES = {"modernise-in-place": "in-place", "modular-monolith": "strangler-fig"}
 ADR_ACCEPTED = re.compile(r"^## Status\s*\n+\s*Accepted\b", re.MULTILINE)
 LEDGER = DELIVERY / "retirement.md"
 MARKER = re.compile(r"<!-- convergence: ([0-9a-f]+) -->")
@@ -204,6 +204,15 @@ def main() -> int:
             "reads *removed* for nothing, and every deployable is one that was here — nothing has moved to a new "
             "home. A product slice under a strangler lands in a new home (`add-service`, then `/strangle`); the "
             "Plan stage of /sail has the rule."
+        )
+    # Said, not failed: a strategy decided without the lines its playbook cannot start without. The decision is the
+    # person's and stands; what follows from it waits on these.
+    record = document.get("strategy") or {}
+    if record.get("decided") and record.get("missing"):
+        print(
+            f"  strategy: `{record['decided']}` is decided, and its ADR does not yet say "
+            + ", ".join(f"`{name}:`" for name in record["missing"])
+            + f" — docs/strategies/{record['decided']}.md, *What the ADR records*, says what each line holds"
         )
     at = sum(1 for r in rows if r.get("rung") == r.get("target"))
     print(f"check-convergence: {at} of {len(rows)} axes at target; the map is {PAGE.relative_to(ROOT)}")

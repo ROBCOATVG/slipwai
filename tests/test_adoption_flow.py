@@ -105,5 +105,31 @@ class StepTest(unittest.TestCase):
         self.assertEqual((code, started), (409, None))
 
 
+class ToolingTest(unittest.TestCase):
+    """The dev tooling a generated project is offered beside `./init`, offered to an adopted one too."""
+
+    OFFERED = [("codegraph", "CodeGraph", "a code index"), ("uipro", "UI/UX Pro Max", "design rules")]
+
+    def test_the_adopt_page_asks_beside_init(self) -> None:
+        from slipwai.adopt_page import picker
+        with mock.patch("slipwai.interview_page.extensions_offered", return_value=self.OFFERED):
+            page = picker("/kept")
+        self.assertIn('type="checkbox" name="extensions" value="codegraph"', page)
+        with mock.patch("slipwai.interview_page.extensions_offered", return_value=[]):
+            self.assertNotIn('name="extensions"', picker("/kept"), "none installed is no question")
+
+    def test_the_voyage_init_step_elects_the_ones_checked_and_only_ones_installed(self) -> None:
+        root = Path(tempfile.mkdtemp())
+        with mock.patch.object(flow, "read_manifest", return_value={}), \
+                mock.patch.object(flow, "layout_of", return_value=Layout("adopt")), \
+                mock.patch.object(flow, "adopted") as started, \
+                mock.patch("slipwai.interview_page.extensions_offered", return_value=self.OFFERED):
+            flow.take_step(root, {"step": "init", "harness": "claude", "extensions": "codegraph,madeup"}, None)
+        self.assertEqual(started.call_args.args[-1], ("codegraph",))
+
+    def test_the_init_control_carries_the_checkboxes(self) -> None:
+        self.assertIn("<b>tooling</b>", flow.control(flow.INIT, None, "", tooling="<b>tooling</b>"))
+
+
 if __name__ == "__main__":
     unittest.main()

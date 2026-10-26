@@ -21,6 +21,8 @@ from .folder_field import SCRIPT as CHOOSING
 from .ground_card import SCRIPT as GROUNDING
 from .ground_card import card as ground_card
 from .harness import detect, keys, name_of
+from .interview_form import field_html
+from .interview_page import extensions_asked
 from .layout import layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import adoption_of
@@ -62,7 +64,8 @@ def adoption_card(root: Path, running: bool = False) -> str:
             "ends.</p>" if running else
             ground_card(root) + f"<script>{GROUNDING}</script>" if key == GROUND else
             control(key, (adoption.strategy or {}).get("recommended"), agents,
-                    str((root / layout.under(PRD)).resolve()) if (root / layout.under(PRD)).is_file() else ""))
+                    str((root / layout.under(PRD)).resolve()) if (root / layout.under(PRD)).is_file() else "",
+                    field_html(tooling) if (tooling := extensions_asked({})) else ""))
     return ('<div class="card" id="adoption"><h2>Where this adoption stands</h2>'
             '<p class="empty">Read off the tree, so it moves as each step is done — on this board where it can '
             f'be, and in the coding agent opened in {esc(root.resolve())} where it cannot. '

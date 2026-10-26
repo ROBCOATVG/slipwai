@@ -741,7 +741,8 @@ class Bridge(BaseHTTPRequestHandler):
                     self.look(landed)
                     self.launched = False
                     self.fitting = adopted_init(landed, answers.get("delivery") or "adopt",
-                                                None if named == NO_INIT else named, out.splitlines())
+                                                None if named == NO_INIT else named, out.splitlines(),
+                                                elected_in(answers))
                     out = "\n".join(self.fitting.said()["lines"])
                 self.send(200 if worked else 400, out, "text/plain; charset=utf-8")
                 return

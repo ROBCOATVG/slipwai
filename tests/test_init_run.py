@@ -76,6 +76,13 @@ class AdoptedTest(unittest.TestCase):
             fitting = adopted(Path(tempfile.mkdtemp()), "adopt", "claude")
         self.assertEqual(fitting.steps[0].argv, ["./adopt/init", "--integration", "claude"])
 
+    def test_the_extensions_checked_are_elected_by_it(self) -> None:
+        """`./init`'s own menu reads a terminal the board's child has none of, so they are named instead."""
+        with mock.patch.object(Fitting, "run"):
+            fitting = adopted(Path(tempfile.mkdtemp()), "adopt", "claude", None, ("codegraph", "uipro"))
+        self.assertEqual(fitting.steps[0].argv, ["./adopt/init", "--integration", "claude",
+                                                 "--extension", "codegraph", "--extension", "uipro"])
+
     def test_with_no_agent_named_it_is_left_as_the_next_step(self) -> None:
         with mock.patch.object(Fitting, "run"):
             fitting = adopted(Path(tempfile.mkdtemp()), "adopt", None, ["adopted"])

@@ -367,13 +367,15 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
     return fitting
 
 
-def adopted(where: Path, delivery: str, harness: str | None, said: list[str] | None = None) -> Fitting:
+def adopted(where: Path, delivery: str, harness: str | None, said: list[str] | None = None,
+            extensions: tuple[str, ...] = ()) -> Fitting:
     """`./<delivery>/init` begun in a repository the board has just adopted, as `start` begins a generated
-    project's: the adoption is committed already, and this is the step after it that needs the network."""
+    project's: the adoption is committed already, and this is the step after it that needs the network. The
+    `extensions` checked are elected here, because `./init`'s own menu reads a terminal a child has none of."""
     script = f"./{delivery}/{SCRIPT}" if delivery not in ("", ".") else f"./{SCRIPT}"
     steps = []
     if harness:
-        argv = [script, "--integration", harness]
+        argv = [script, "--integration", harness, *(word for key in extensions for word in ("--extension", key))]
         steps.append(Step(argv, f"Running {' '.join(argv)} in {where} — it installs Spec Kit for the coding "
                                 "agent, so it reaches the network once, here.",
                           lambda code: (f"`{' '.join(argv)}` is done; what it wrote is uncommitted, and yours to "

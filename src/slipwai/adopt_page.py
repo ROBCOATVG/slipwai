@@ -38,7 +38,7 @@ from .errors import GenerationError
 from .folder_field import SCRIPT as CHOOSING
 from .folder_field import folder_field
 from .interview_form import field_html
-from .interview_page import init_asked
+from .interview_page import extensions_asked, init_asked
 from .layout import Layout
 from .page_shell import document, esc
 from .platform import with_platform
@@ -201,14 +201,23 @@ def picker(root: str, answers: Mapping[str, str] | None = None) -> str:
         'until you press Look, and nothing is written until you press Adopt.</div></div>'
         '<div class="q"><label for="delivery">Where the method\'s files go</label>'
         '<input name="delivery" id="delivery" value="adopt"></div>'
-        + field_html(init_asked(answers or {}, Path(root or "."))) + '</form>'
+        + field_html(init_asked(answers or {}, Path(root or ".")))
+        + (field_html(tooling) if (tooling := extensions_asked(answers or {})) else "") + '</form>'
         '<div class="ask"><button class="go" id="look">Look</button></div></div>'
     )
 
 
 SCRIPT = CHOOSING + """
-const answers = () => Object.fromEntries(
-  new FormData(document.querySelector('#pick form.ask-page')).entries());
+const answers = () => {
+  const form = document.querySelector('#pick form.ask-page');
+  const held = Object.fromEntries(new FormData(form).entries());
+  // Checked boxes arrive as one entry each under one name; joined, as the interview joins them.
+  for (const group of form.querySelectorAll('.checks')) {
+    const name = group.querySelector('input').name;
+    held[name] = [...group.querySelectorAll('input:checked')].map(one => one.value).join(',');
+  }
+  return held;
+};
 
 document.addEventListener('click', async event => {
   if (event.target.id === 'look') {

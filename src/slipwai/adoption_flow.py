@@ -30,6 +30,7 @@ from .errors import GenerationError
 from .folder_field import folder_field
 from .ground_card import asked
 from .init_run import Fitting, Step, adopted
+from .interview_page import elected_in
 from .layout import Layout, layout_of
 from .manifest import read_manifest
 from .next_steps import BASELINE
@@ -152,7 +153,8 @@ def take_step(root: Path, answers: Mapping[str, str], running: Fitting | None) -
     said = running.said()["lines"] if running else None
     try:
         if step == "init":
-            return 200, "started", adopted(root, layout.delivery, answers.get("harness") or None, said)
+            return 200, "started", adopted(root, layout.delivery, answers.get("harness") or None, said,
+                                           elected_in(answers))
         if step == "verify":
             return 200, "started", gate(root, layout, said)
         if step == "strategy":
@@ -172,12 +174,12 @@ def gate_when_grounded(root: Path, running: Fitting | None) -> Fitting | None:
     return gate(root, layout_of(document), running.said()["lines"] if running else None)
 
 
-def control(key: str, recommended: str | None, agents: str, prd: str = "") -> str:
+def control(key: str, recommended: str | None, agents: str, prd: str = "", tooling: str = "") -> str:
     """The control on the step that is now, or nothing where only the agent can take it; `prd` is the PRD
-    already written, offered again."""
+    already written, offered again, and `tooling` the extensions `./init` can elect, as their checkboxes."""
     if key == INIT:
         return (f'<form class="ask-page" id="step-form"><div class="q"><label for="harness">Hand it to</label>'
-                f'<select id="harness" name="harness">{agents}</select></div></form>'
+                f'<select id="harness" name="harness">{agents}</select></div>{tooling}</form>'
                 '<div class="ask"><button class="go" data-step="init">Run ./init</button></div>')
     if key == VERIFY:
         return '<div class="ask"><button class="go" data-step="verify">Run the gate</button></div>'
@@ -211,6 +213,11 @@ document.addEventListener('click', async event => {
   if (!button) return;
   const form = document.getElementById('step-form');
   const held = form ? Object.fromEntries(new FormData(form).entries()) : {};
+  // Checked boxes arrive as one entry each under one name; joined, as `./init` takes a list.
+  for (const group of form ? form.querySelectorAll('.checks') : []) {
+    const boxes = group.querySelectorAll('input[type=checkbox]');
+    if (boxes.length) held[boxes[0].name] = [...boxes].filter(one => one.checked).map(one => one.value).join(',');
+  }
   button.disabled = true;
   const answer = await fetch('/adopt/step', {method:'POST', headers:{'Content-Type':'application/json'},
                                             body: JSON.stringify({step: button.dataset.step, ...held})});

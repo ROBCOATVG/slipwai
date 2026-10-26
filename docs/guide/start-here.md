@@ -36,7 +36,7 @@ Make sure that the command is installed:
 
 ```console
 $ slipwai --version
-slipwai 2.0.0
+slipwai 2.0.1
 ```
 
 ## 2. Get a language

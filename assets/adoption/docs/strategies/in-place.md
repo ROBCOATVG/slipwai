@@ -28,7 +28,7 @@ The unit of work is the **rung**. A rung moves one layer of the stack to one new
 
 ## 2. What the ADR records
 
-The accepted ADR carries `Strategy: in-place` plus these lines. The method reads them and they are checkable in the tree.
+The accepted ADR carries `Strategy: in-place` plus these lines. The method requires only `Target:`; the rest are for the team and the agents to hold the rungs to, and each can be checked against the tree by hand.
 
 ```
 Strategy: in-place
@@ -54,18 +54,18 @@ Owner of rung windows: <person who may pause features in an area>
 
 Why each line matters:
 - **Deployable** names the one artefact every rung must keep producing; smoke runs against it.
-- **Ladder** is the ordered list of rungs and the recipe for each. The plan orders rung slices from it, and the board shows it as a column of rungs. Rung 6 (`shape`) comes last and only once the finish line holds.
-- **Coupled rungs** lists the tuples that must move together. The gate checks the dependency tree against the tuple for the current rung, which stops rungs being skipped.
+- **Ladder** is the ordered list of rungs and the recipe for each. Order rung slices from it. Rung 6 (`shape`) comes last and only once the finish line holds.
+- **Coupled rungs** lists the tuples that must move together. Check the dependency tree against the tuple for the current rung before a rung slice merges, which stops rungs being skipped; the method does not check this yet.
 - **Stepping stones** names the intermediate versions that exist only to be passed through, so no one mistakes one for a target.
 - **Feature interleave** sets the default rule for features that meet a rung: wait for the rung window, fence away from the doomed layer, or either, decided per feature.
-- **Banned on entry** seeds the banned-API ratchet: what new code may not use from day one.
+- **Banned on entry** lists what new code may not use from day one. Reviewers hold new code to it; the method has no banned-API ratchet yet.
 - **Security clock** sets pacing. It is why a security rung can jump ahead of ladder order and ahead of features.
 - **Target** is the shape this code is reshaped toward in the last rung (`target-shape.md`). `as-is` means the ladder ends at the finish line.
 - **Data** names the migration tool and the baseline date. Every schema change after it is a numbered migration.
 - **Finish line** defines "done", so a rung cannot be finished on paper.
 - **Owner of rung windows** names the person who may pause features in an area while a rung is open.
 
-The method should refuse to plan rung slices when any of these are missing: `Ladder`, `Feature interleave`, `Data`, `Finish line`. `Coupled rungs` may be stated as `none`.
+Do not plan rung slices while any of these are missing (the method itself requires only `Target:`): `Ladder`, `Feature interleave`, `Data`, `Finish line`. `Coupled rungs` may be stated as `none`.
 
 ### Decision criteria
 Write the answers into the ADR.
@@ -97,19 +97,19 @@ Every rung slice in phases 1 to 6 has the same shape:
 1. Point the agent at the **recipe**, not the files. Run the recipe in dry-run mode, then for real (e.g. OpenRewrite `rewrite:dryRun` then `rewrite:run`; `pyupgrade --py3X-plus`; the .NET Upgrade Assistant). Commit the recipe output as its own commit, then commit the hand-fixes separately. Generated diffs are cattle: if the slice goes wrong, regenerate rather than patch by hand.
 2. `make verify` green, with characterisation `.approved` files **unchanged**. Any approved-file change must be justified in the slice notes and approved by a person.
 3. Run smoke on the new tuple.
-4. Cleanup: add the old target or API to the banned list so it cannot creep back.
-5. Bump the platform axis in the convergence map.
+4. Cleanup: add the old target or API to the constitution's banned list so reviewers keep it from creeping back.
+5. Confirm the Platform row of the convergence map has moved; it is read off the tree.
 
 ### Phase 0: make the old system safe
 
 **0.1 Quick wins: secrets and committed build output.** Move committed secrets to environment or untracked config, with a `.env.example`. Rotate them, because history still holds the old values. Remove committed build output (`build/`, `target/`, `dist/`, compiled binaries) and `.gitignore` it. Turn hard-coded absolute paths into config keys with defaults.
 - Who: agent does the edits. A person rotates the credentials, because only they can.
-- Evidence: `git grep` for known secret patterns returns nothing outside `*.example`. No build output is tracked. A `secrets` check runs in `make verify` (gitleaks or a regex list). The rotation is recorded as a board item ticked by a person.
+- Evidence: `git grep` for known secret patterns returns nothing outside `*.example`. No build output is tracked. A `secrets` check (gitleaks or a regex list) is added to `make verify`. The rotation is recorded and ticked by a person.
 - Unblocks: everything. It also makes the repo safe to hand to the agent fleet.
 
 **0.2 Build floor, up to date** (`build-floor.md`). The build meets the floor's eight criteria, and the toolset — build tool, wrapper, plugins, the runtime the build runs on — is brought fully current; the target is raised as high as the code allows today, and the ceiling and the rung that lifts it are recorded on the ADR's `Build:` line. Replace a hand-rolled build with vendored libraries by the ecosystem's standard dependency manager, invoked through a committed **wrapper** or lockfile (e.g. `mvnw`/`gradlew`, a Poetry or uv lockfile, a pinned SDK via `global.json`). Map each vendored library to a published coordinate and version, using checksums or the tool's analysis command to find the match. Anything with no coordinate goes into a local repository with a TODO. Keep the *same* library versions in this step and change only how they are resolved. Fix any module whose language level no current toolchain accepts: current compilers and interpreters drop very old targets, so such a module moves to the lowest level the current toolchain still supports. Caveat: moving to a current toolchain can **silently change the runtime target**. A build floor that compiles for a newer language level, or runs on a newer interpreter, is already a language rung for the code and libraries that run on it, and old libraries may fail to load or start. Treat this as the first coupled-rung decision and record it in the slice notes.
 - Who: agent, with a `/survey` of the vendored libraries first.
-- Evidence: the wrapper build succeeds on a clean checkout. The vendored library directory is gone. The produced artefact matches the old one (a diff of the bundled dependency list is empty except for intended changes). A `build-floor` line in the convergence map moves to `supported`.
+- Evidence: the wrapper build succeeds on a clean checkout. The vendored library directory is gone. The produced artefact matches the old one (a diff of the bundled dependency list is empty except for intended changes). The convergence map's Build row reaches at least `pinned`.
 - Unblocks: every recipe tool. Most recipe tools run as build plugins or against a resolvable dependency graph, so no build floor means no recipes.
 
 **0.3 Prove it starts (smoke).** Add a `smoke` command that starts the deployable headless and checks that it comes up. Use an embedded server or a throwaway container. The database comes from Testcontainers, a docker-compose service, or a seeded copy. The check is an HTTP 200 on the landing page, a login, and one read of a known record.
@@ -119,16 +119,16 @@ Every rung slice in phases 1 to 6 has the same shape:
 
 **0.4 Characterise (safety net).** Use Feathers-style characterisation tests, which pin what the code *does*, not what it should do. Write them around the areas the ladder will disturb (request handlers, persistence mappings, date and locale handling, anything reflective or dynamically loaded) and around the first feature's area. Prefer approval or golden-master tests (ApprovalTests: `.received` vs `.approved` files) over hand-written assertions. Scrub volatile values such as timestamps and IDs. Feathers' heuristic: characterise the area you will change, then the specific things you will change.
 - Who: agent via `/characterise`. A person approves the first `.approved` files; approving is the act of agreeing "this is current behaviour, warts and all".
-- Evidence: characterisation tests exist under the test tree. The `.approved` files are committed. The convergence map's `safety net` axis is at least `inventoried` for every area a rung touches.
+- Evidence: characterisation tests exist under the test tree. The `.approved` files are committed. Every area a rung touches is pinned, so the convergence map's Safety net row can reach `pinned`.
 - Unblocks: platform rungs. A rung's diff is judged by "characterisation unchanged".
 
 **0.5 Data baseline.** Introduce a migration tool (Flyway, Liquibase, Alembic, EF Core migrations or similar). Generate a baseline migration from the **production schema as it is**, using the database's own schema-export tooling. Mark each existing environment as baselined so the history table records the baseline without executing it (`flyway baseline` in Flyway terms). Use automatic baselining only deliberately: Redgate warns that `baselineOnMigrate` removes the guard against migrating the wrong database. Fresh test databases run the baseline for real, so smoke and characterisation start from the same schema as prod. Turn off any ORM setting that alters the schema at startup (`validate` at most).
 - Who: agent writes it. A person runs the baseline on the shared and prod databases.
-- Evidence: the baseline migration file exists. CI builds a DB from it and smoke passes. No ORM auto-update or auto-create setting is enabled. The `data` axis is `supported`.
+- Evidence: the baseline migration file exists. CI builds a DB from it and smoke passes. No ORM auto-update or auto-create setting is enabled. The `data` axis is `settled`.
 - Unblocks: any feature that changes the schema. Also the ORM upgrade in the framework rung, because the new version's schema validation is checked against a known schema.
 
-**0.6 Gate and ratchet.** `make verify` = build, unit and characterisation tests, smoke (or the slow lane), lint/typecheck with a **ratchet** baselining existing findings, the secrets check, and a **banned-API ratchet** (seeded from `Banned on entry`; see "fence" in section 4). Work is trunk-based: rung slices land on main behind the gate, with no long-lived upgrade branches. DORA's Capital One case found weak test automation was what pushed teams back to long branches; the gate is what keeps trunk viable.
-- Who: agent installs it.
+**0.6 Gate and ratchet.** `make verify` = build, unit and characterisation tests, smoke (or the slow lane), lint/typecheck with a **ratchet** baselining existing findings, the secrets check, and a **banned-API check** seeded from `Banned on entry` (see "fence" in section 4); the method ships no banned-API ratchet yet, so the team adds one or reviewers hold the list. Work is trunk-based: rung slices land on main behind the gate, with no long-lived upgrade branches. DORA's Capital One case found weak test automation was what pushed teams back to long branches; the gate is what keeps trunk viable.
+- Who: `slipwai adopt` installs the gate and ratchet; the agent adds the secrets and banned-API checks.
 - Evidence: `make verify` is green on main. The ratchet baseline file is committed. CI runs it on every PR.
 - Unblocks: fleet slices (`/sail`, `/cruise`), and the first feature once its area is characterised.
 
@@ -136,7 +136,7 @@ Every rung slice in phases 1 to 6 has the same shape:
 
 **1.1 Read the security clock.** Find every layer with a known exploited CVE, or a library still on an EOL branch. Check the framework's own security bulletins and EOL page, and the dependency scanner's output, rather than assuming a version is safe because it is old enough to predate a famous CVE. Check vendor support tables, not community lore: dates differ by vendor for the same version.
 - Who: agent runs the scanner and reads the bulletins; a person confirms the `Security clock` line.
-- Evidence: the ADR's `Security clock` line names the CVEs/EOLs. A dependency CVE count ratchet is in the gate.
+- Evidence: the ADR's `Security clock` line names the CVEs/EOLs. A dependency CVE count ratchet is added to the gate (the method does not ship one).
 - Unblocks: the decision of which rung is promoted ahead of ladder order.
 
 **1.2 Patch on the first stepping-stone tuple.** Run the rung (or rungs) that patch the security clock **before** the first feature, regardless of ladder order, because features add attack surface on an unpatched framework. Usually this is the first stepping-stone tuple: the runtime to its stepping stone, the web framework to its last patched major, the ORM to its last compatible major, as separate slices in one rung window, each with the rung slice shape above.
@@ -153,7 +153,7 @@ Every rung slice in phases 1 to 6 has the same shape:
 
 **2.2 Raise the language level.** Raise the declared language level to the target, a current LTS.
 - Who: agent runs the recipe.
-- Evidence: the build declares the target level. Characterisation is unchanged and smoke passes. The old level is banned in the ratchet.
+- Evidence: the build declares the target level. Characterisation is unchanged and smoke passes. The old level is on the banned list.
 - Unblocks: the framework-generation tuple.
 
 ### Phase 3: framework
@@ -165,7 +165,7 @@ Every rung slice in phases 1 to 6 has the same shape:
 
 **3.2 The generation jump, together.** A single concentrated window moves the web framework, DI/container and ORM together to the new generation (in Java, the javax→jakarta jump that Spring Boot 3, current ORMs and current web frameworks all require; OpenRewrite's maintainers recommend running `JavaxMigrationToJakarta` first for non-Boot code). Adopt a new application framework without changing packaging first: wrap, then repackage. For example, Spring Boot's docs recommend producing a deployable WAR with `SpringBootServletInitializer` and the old XML config imported, then moving to an executable jar later.
 - Who: agent runs the recipes; the owner of rung windows holds features whose area overlaps.
-- Evidence: the dependency tree shows nothing below the target versions. No old-namespace imports after the jump (banned-API ratchet). Smoke passes.
+- Evidence: the dependency tree shows nothing below the target versions. No old-namespace imports after the jump (a search of the tree finds none). Smoke passes.
 - Unblocks: packaging.
 
 **3.3 Replace a framework with no successor.** This is a **refactor inside in-place**. Do it handler by handler with branch by abstraction: mount the new framework on a sub-path alongside the old one, move handlers over one at a time with characterisation per handler, and delete the old framework's entry point at the end.
@@ -191,7 +191,7 @@ Every rung slice in phases 1 to 6 has the same shape:
 
 **6.1 Move to the target host.** Move the image to the target host (VM with compose, ECS, App Service, k8s). This is the rehost "R", and it is cheap now because the earlier rungs made the artefact portable. Run the DB migration as a pipeline step before rollout.
 - Who: agent builds the pipeline; a person signs off the prod cutover.
-- Evidence: the pipeline deploys main to staging automatically. The `path to production` and `infrastructure` axes move to `supported`.
+- Evidence: the pipeline deploys main to staging automatically. The `path to production` row reaches at least `pipeline` and the `infrastructure` row is `settled`.
 - Unblocks: the finish line.
 
 ### Phase 7: shape toward the target
@@ -207,7 +207,7 @@ Every rung slice in phases 1 to 6 has the same shape:
 - Unblocks: the code matching `Target`.
 
 ### Finish line
-Done when the ADR's `Finish line` holds and every rung is `audited`. Audited means the old target is banned in the ratchet, the recipe is re-runnable with no diff (its dry run is empty), and smoke and characterisation are green on the final tuple. The pipeline deploys the image, and the `release mode` axis reflects actual practice. At that point the shape phase (7.2) starts if `Target` is not `as-is`, or a new ADR keeps the strategy in-place for maintenance (re-run recipes each LTS).
+Done when the ADR's `Finish line` holds and the Platform row reads `audited`. Count a rung as finished only when the old target is on the banned list, the recipe is re-runnable with no diff (its dry run is empty), and smoke and characterisation are green on the final tuple; the method does not check these per rung yet. The pipeline deploys the image, and the `release mode` axis reflects actual practice. At that point the shape phase (7.2) starts if `Target` is not `as-is`, or a new ADR keeps the strategy in-place for maintenance (re-run recipes each LTS).
 
 ---
 
@@ -218,7 +218,7 @@ These are the in-place rules the spec and plan must state per feature.
 1. **Floor before features.** No feature slice starts until Phase 0 is green: secrets gone, build floor, smoke, characterisation of the feature's area, data baseline if the feature touches the schema, and the gate.
 2. **Security rungs jump the queue.** If a layer has a known exploited CVE, or a library is still on an EOL branch, the rung that patches it (Phase 1) comes **before** the first feature, regardless of ladder order.
 3. **Wait for a rung that would rewrite the area.** A feature touching area X waits for any rung that would rewrite X within the next rung window. Otherwise the feature is written twice, for example a new handler in a framework weeks before that framework is removed. Either schedule the rung first, or fence the feature (rule 4).
-4. **Fence, if not waiting.** A feature that goes ahead of a rung must keep its logic out of the doomed layer. Put the domain service and query in plain code with no framework imports, test them, and keep a thin adapter in the old framework. The banned-API ratchet enforces this: new files may not import the doomed framework beyond adapters, or the old namespace once its jump is scheduled.
+4. **Fence, if not waiting.** A feature that goes ahead of a rung must keep its logic out of the doomed layer. Put the domain service and query in plain code with no framework imports, test them, and keep a thin adapter in the old framework. Reviewers enforce this, since the method has no banned-API ratchet yet: new files may not import the doomed framework beyond adapters, or the old namespace once its jump is scheduled.
 5. **Rung windows freeze the area, not the team.** While a rung slice is open, feature slices that touch files in the rung's blast radius are held. Features elsewhere proceed. For whole-app rungs such as the language version, keep the window short (one slice, hours to days) and rebase features after it.
 6. **Recipe rungs run on a quiet trunk.** Merge open feature slices first, run the recipe, merge, then release features again. Recipes are re-runnable, so a conflict means regenerating, not hand-merging.
 7. **A feature never carries a rung.** Do not bump the runtime "while I'm in there". The rung is its own slice with its own evidence.
@@ -283,17 +283,17 @@ There is no retirement ledger, because nothing is retired route by route: the on
 
 | Anti-pattern | Detection |
 |---|---|
-| **Upgrade branch**: a months-long runtime-upgrade branch | Branch age check in `/survey` or cruise. Rung slices must merge to main. The board flags rung cards open for more than N days. |
-| **Hand-migrating what a recipe does** (agent edits 300 files manually) | The plan names a recipe ID. The slice evidence must include the recipe commit, and the recipe's dry run must be empty afterwards. |
-| **Skipping rungs** (oldest runtime straight to newest, with the old framework still in place) | Coupled-rung tuples in the ADR. The gate checks the dependency tree against the declared tuple for the current rung. |
-| **Feature written into the doomed layer** | Banned-API ratchet on new files. `Fence:` in the spec. |
-| **Feature carrying an upgrade** | The slice diff touches the language level, a framework version or a recipe together with feature code. The gate rejects it via a "rung files" path list. |
-| **Changing approved files to make it green** | `.approved` diffs require a person's sign-off line in the slice notes. The gate counts approved-file changes. |
-| **Code before smoke** | The floor lane blocks feature and rung cards until `make smoke` has passed in CI. |
-| **Schema drift via ORM auto-update** | A config grep in verify. The data axis cannot reach `supported` while it is set. |
-| **Rung that is really a rewrite** | A rung red for more than 3 attempts, or diff size far above the recipe's output. That prompts a `/wdyt`-style question to the person: "re-strategise?" |
-| **Security rung deferred behind features** | A known-CVE dependency (dependency scanner) with a feature card ahead of its rung on the board. The board warns. |
-| **Finishing on paper** (rung marked done, old API still present) | `audited` requires the banned count to be 0 and the recipe dry-run to be empty. |
+| **Upgrade branch**: a months-long runtime-upgrade branch | Not detected yet. Rung slices merge to main, and a reviewer flags any rung open for more than a few days. |
+| **Hand-migrating what a recipe does** (agent edits 300 files manually) | The plan names a recipe ID. A reviewer requires the recipe commit in the slice evidence and an empty dry run afterwards. |
+| **Skipping rungs** (oldest runtime straight to newest, with the old framework still in place) | Coupled-rung tuples in the ADR. A reviewer checks the dependency tree against the declared tuple for the current rung; the gate does not yet. |
+| **Feature written into the doomed layer** | `Fence:` in the spec, held by the plan stage; a reviewer checks new files against the banned list. |
+| **Feature carrying an upgrade** | The slice diff touches the language level, a framework version or a recipe together with feature code. A reviewer rejects it; no gate checks this yet. |
+| **Changing approved files to make it green** | `.approved` diffs require a person's sign-off line in the slice notes; a reviewer checks for it. |
+| **Code before smoke** | The adoption sequence runs the build floor and smoke before the constitution; a reviewer holds feature and rung slices until `make smoke` has passed in CI. |
+| **Schema drift via ORM auto-update** | A config grep, added to verify by the team. |
+| **Rung that is really a rewrite** | A rung red for more than 3 attempts, or diff size far above the recipe's output. The agent asks the person "re-strategise?"; nothing counts attempts yet. |
+| **Security rung deferred behind features** | The programme schedules the security fix first. A reviewer holds features behind a known-CVE dependency's rung; the board does not warn. |
+| **Finishing on paper** (rung marked done, old API still present) | A reviewer requires the banned count to be 0 and the recipe dry-run to be empty before calling a rung done. |
 
 ---
 
@@ -322,7 +322,7 @@ Finish line: current LTS runtime, supported framework majors, executable artefac
 3. **Smoke.** Start the app headless with an embedded server or container, against a docker-compose database seeded from the baseline (step 4) and a small fixture set. `make smoke` checks: landing page returns 200, login as a fixture user, one known booking is shown. *Evidence:* the smoke job is green in CI. *Unblocks:* code changes.
 4. **Data baseline.** Export the prod schema to `V1__baseline.sql`. A person baselines prod and shared databases. ORM schema auto-update is set to `validate`. *Evidence:* the CI DB is built from migrations and smoke passes. *Unblocks:* a future index migration if the panel needs one.
 5. **Characterise.** Approval tests for: the dashboard HTML (scrub dates and session IDs), the booking handlers (golden-master their rendered output against fixtures), the ORM mappings (load each entity and dump it to JSON), and existing date handling (the panel will rely on it: time zones, day boundaries, recurring bookings). A person approves the `.approved` files. *Evidence:* approved files are committed and the safety-net axis is `inventoried`. *Unblocks:* rungs and the panel.
-6. **Gate.** `make verify` runs build, tests, characterisation, smoke, the secrets check and a banned-API ratchet that baselines current uses of the EOL framework. *Evidence:* green on main, ratchet baseline committed. *Unblocks:* fleet slices.
+6. **Gate.** `make verify` runs build, tests, characterisation, smoke, the secrets check and a banned-API check the team adds, which baselines current uses of the EOL framework. *Evidence:* green on main, ratchet baseline committed. *Unblocks:* fleet slices.
 7. **Security rung: the first stepping-stone tuple.** Run the runtime recipe to the stepping stone, then move the web framework to its last patched major and the ORM to its last compatible major. These are separate slices in one rung window, each gated by characterisation and smoke. Section 4 rule 2 puts this **before** the feature, because the panel adds a new surface to an app whose web layer has known advisories. *Evidence:* the dependency tree shows the patched majors, the dependency scanner shows no critical CVEs (or they are ratcheted), and characterisation is unchanged.
 8. **Feature: reminders panel (fenced).** Spec says `Requires rungs: language≥<stepping stone>, web-framework≥<patched major>, data:baselined (read-only)`. `Fence: no logic in the web framework; no old-namespace imports outside adapters; standard-library date/time only`. It is split into slices:
     - 8a A plain `UpcomingBookings` service with unit tests for day boundaries, time zones and the week wrapping across a month or year end.

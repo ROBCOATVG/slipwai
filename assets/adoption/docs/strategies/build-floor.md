@@ -36,16 +36,16 @@ toolset be modernised on day one while the target waits for its rung.
 
 ## 3. Detecting what the build needs
 
-The survey works it out from the tree, then checks this machine.
+Work it out from the tree, then check this machine. The method reads Java targets and Ant builds today; for other ecosystems the agent reads the rest by hand.
 
 | What is needed | Where the tree says it |
 |---|---|
 | The runtime and compiler level | the build file's compiler settings (`source`/`target`/`release`, an enforcer's required version, Ant's `javac` attributes, an IDE project's properties); `.java-version`, `.sdkmanrc`, `.tool-versions`, `.nvmrc`, `.node-version`; `engines`; `requires-python`; `go.mod`; `global.json` |
 | The build tool and its version | a wrapper's properties (the distribution URL carries the version); `packageManager`; the lockfile's own format version; for a build tool with no wrapper, the IDE or CI configuration that runs it |
 | What it has been built with before | CI files (`setup-java`, `setup-node` and the like); a `Dockerfile`'s `FROM` image |
-| What this machine has | the tools on `PATH` and their versions, read when the survey runs — so a missing tool is named as the tool (`ant` is not installed), never as the application |
+| What this machine has | the tools on `PATH` and their versions, checked by the agent before building — a missing tool is named as the tool (`ant` is not installed), never as the application, as the ratchet already does |
 
-From these it says three things:
+From these, say three things:
 
 1. **The toolchain the build needs as it is**, e.g. "a JDK that can still compile for Java 5, the build tool's
    1.x line, and Maven 3.9".
@@ -82,11 +82,11 @@ taken silently by the build step.
 
 ## 5. Steps
 
-**B.1 Read what the build needs.** `/survey` records, per deployable, the build tool and its version, the target,
+**B.1 Read what the build needs.** Record, per deployable, the build tool and its version, the target,
 the toolchain this needs, whether a current one can build it, and what is missing on this machine.
-- Who: agent (the survey).
-- Evidence: `project.json` carries each deployable's `toolchain` with the needed versions and a `buildable-today`
-  yes or no.
+- Who: agent, from the survey's `toolchain` record and its own reading of the tree.
+- Evidence: the needed versions and whether a current toolchain can build it, written down per deployable; the
+  method records only part of this in `project.json` today.
 - Unblocks: the decision below.
 
 **B.2 Decide: up to date, or pinned as it is.** Read off the strategy (section 4); a person confirms where the
@@ -128,7 +128,7 @@ written *no*; the SBOM produced by the build.
 
 A convergence-map row, measured like the others and read off the tree, so the floor is a fact on the map and not a
 hope: `undeclared` → `declared` (criteria 1, 3) → `pinned` (2, 4, 5) → `reproducible` (6, 7: built in CI from a
-clean checkout) → `inventoried` (8). Under *up to date*, `reproducible` additionally needs the toolset current.
+clean checkout) → `inventoried` (8). Under *up to date*, hold `reproducible` until the toolset is current as well; the row does not check that yet.
 
 ## 7. How the method carries it
 
@@ -152,9 +152,9 @@ clean checkout) → `inventoried` (8). Under *up to date*, `reproducible` additi
 | Anti-pattern | How it is detected |
 |---|---|
 | The build works only on one machine (an IDE build, a global install, a path baked in) | the gate's clean-checkout build in CI fails |
-| The build floor quietly raises the target, and an old framework stops loading | the target in the build file changes without an ADR `Build:` line owning it; `smoke` fails |
-| Modernising the old build of a system that is being replaced | the ADR says `beside` or rewrite, and the old build's toolset moves |
-| Pinning as-is under in place or strangler `inside`, so new work is built on an old toolchain | the ADR says `pinned` while the strategy is in place or the new home is `inside` |
+| The build floor quietly raises the target, and an old framework stops loading | a reviewer sees the target in the build file change without an ADR `Build:` line owning it; `smoke` fails |
+| Modernising the old build of a system that is being replaced | a reviewer sees the old build's toolset move while the ADR says `beside` or rewrite; nothing checks this yet |
+| Pinning as-is under in place or strangler `inside`, so new work is built on an old toolchain | a reviewer sees `pinned` on the ADR while the strategy is in place or the new home is `inside`; the derived `Build:` line says `up-to-date` there |
 | Generated code edited by hand because it is committed | generated sources tracked; criterion 6 fails |
 
 ## 9. Worked example: an internal booking app

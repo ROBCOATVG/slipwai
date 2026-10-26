@@ -53,7 +53,7 @@ Signs that it is going wrong:
 
 ## 2. What the ADR records
 
-The ADR is accepted before any product slice is drafted. slipwai should refuse `Status: accepted` unless every line below is present.
+The ADR is accepted before any product slice is drafted. The method requires `Freeze:`, `New home:`, `End:` and `Target:`, plus `Parity:` and `Checkpoint:` when `End: all`; a decision missing one is reported incomplete and nothing after it starts. Fill in the other lines below before work starts too.
 
 ```
 Strategy: strangler-fig
@@ -147,8 +147,8 @@ Quick wins and safety, in days.
 
 **1.2 Announce the freeze.** Add a `CODEOWNERS` or PR template note on the old-home paths: "bug/security/seam only".
 - Who: A, P agrees.
-- Evidence: the old-home paths are listed in `.slipwai/homes.yml` as `role: legacy`.
-- Unblocks: the home guard has paths to guard.
+- Evidence: the `CODEOWNERS` entry or PR template note is committed on the old-home paths.
+- Unblocks: reviewers see the freeze where they work; the home guard already covers the old apps.
 
 ### Phase 2: find the seams and the routing point
 
@@ -161,7 +161,7 @@ Quick wins and safety, in days.
 - the **read seam** (views or queries the new home may use).
 
 - Who: A runs `/survey`, P confirms.
-- Evidence: a `seams` section in the convergence map naming files and lines.
+- Evidence: a seams note, written by the agent beside the survey, naming files and lines.
 - Unblocks: placing the routing point.
 
 **2.2 Put the routing point in place with zero behaviour change.** The proxy sends 100% to legacy. Characterisation tests run *through the proxy*. Watch that the proxy does not become a single point of failure or bottleneck (Azure, AWS): give it health checks and keep it dumb.
@@ -171,9 +171,9 @@ Quick wins and safety, in days.
 
 **Inside path** (replaces 2.1–2.2 when `New home: inside`).
 
-**2.1i Declare modules and freeze the violation baseline.** From the module map ([target-shape.md](target-shape.md)), give each module a published `<module>/api` (and `api/events`) and a private remainder. Run the boundary checker once and record every existing violation as a ratcheted baseline, plus a `check-data-ownership` baseline for SQL, ORM mappings and wiring the import scan cannot see. Mark the old code's packages `role: legacy` in `homes.yml` and the new modules `role: new`, strict.
+**2.1i Declare modules and freeze the violation baseline.** From the module map ([target-shape.md](target-shape.md)), give each module a published `<module>/api` (and `api/events`) and a private remainder. Run `check-imports` once and record every existing violation as a ratcheted baseline (with `"layout": "modular"`, only its context-boundary rule applies). List by hand the SQL, ORM mappings and wiring the import scan cannot see; the method has no data-ownership check or `homes.yml` yet. Keep the new modules free of baseline entries by review.
 - Who: A; P reviews the baseline.
-- Evidence: both baselines committed and in `make verify`.
+- Evidence: the import baseline committed and run by `make verify`; the hand list committed beside the module map.
 - Unblocks: the routing point.
 
 **2.2i Make the god facade and base class the in-code routing point, with zero behaviour change.** By branch by abstraction: put an interface in front of each capability's entry (the facade method, or the concern the base controller provides), implemented first by delegation to the existing code. The front controller or facade then chooses old or new per capability through a flag (`C.route = legacy|shadow|new|cohort:N%`), default `legacy`. Freeze "no new callers of the facade" and "no new subclasses of the base".
@@ -193,7 +193,7 @@ Quick wins and safety, in days.
 **3.2 Deploy it behind the seam.** The proxy routes `/next/health` (or similar) to the new home.
 - Who: A.
 - Evidence: a characterisation or smoke test hits `/next/health` *through the proxy* in CI; the ledger gets a transitional row "proxy route /next/* → new home".
-- Unblocks: **the first product slice.** Until 3.1 and 3.2 pass, slipwai refuses to `/sail` any product slice.
+- Unblocks: **the first product slice.** Until 3.1 passes, `check-convergence` fails any spec; hold product slices until 3.2 passes too.
 
 **3.3 Build the anti-corruption layer stub** in the new home: a module (`legacy/`) that is the only code allowed to know legacy table names, message formats or database procedure names.
 - Who: A.
@@ -205,11 +205,11 @@ Quick wins and safety, in days.
 **3.1i Generate the first new module in the target shape** (strict, and hexagonal inside if `Target:` says so) with its tests in the gate.
 - Who: A.
 - Evidence: the module exists under the `New home:` path; a smoke test reaches it through the routing point.
-- Unblocks: **the first product slice**; the same new-home readiness gate applies.
+- Unblocks: **the first product slice**; `check-convergence` fails any spec until the module map exists.
 
-**3.2i Per-module data ownership.** Each table and DB routine has one owning module in `homes.yml`. New modules own new tables from day one. Old tables are read through adapters in the new module (its anti-corruption layer) until the capability moves; then ownership transfers, cross-module JOINs are replaced by API calls or read models, and only the owner writes.
+**3.2i Per-module data ownership.** Each table and DB routine has one owning module, recorded in the module map. New modules own new tables from day one. Old tables are read through adapters in the new module (its anti-corruption layer) until the capability moves; then ownership transfers, cross-module JOINs are replaced by API calls or read models, and only the owner writes.
 - Who: A; P approves ownership transfers.
-- Evidence: the `check-data-ownership` baseline falls.
+- Evidence: the hand-kept list of cross-module table uses falls.
 - Unblocks: moving write capabilities.
 
 **3.3i In-process events between modules.** Where a new module reacts to something the old code does, the old path publishes a past-tense domain event through an in-process publisher (one added at the abstraction layer, not scattered through legacy code) and the new module subscribes. The new module never calls back into legacy internals.
@@ -222,8 +222,8 @@ Quick wins and safety, in days.
 Under `End: all` nothing may be left behind, so the whole system's behaviour is listed and decided before the capability order is fixed. This runs after the new home is routed, so the first feature slices do not wait for it. Under `End: partial`, skip this phase: each capability is characterised in 6.1 when it moves, and usage evidence is gathered per capability in 5.1.
 
 **4.1 Behaviour inventory** (`docs/parity.md`). One row per behaviour: entry point (URL / action / database routine / batch job / report / outbound integration), observed usage, owner, decision (*preserve / preserve-quirk / fix / drop*), the capability it belongs to, its characterisation tag, and its status in the new home.
-- Who: A drafts from the survey (route or action mappings, page templates, database routines the app calls, scheduled jobs, outbound integrations, plus access logs where they exist); P marks each decision via `/ground` questions on the board.
-- Evidence: every entry point the survey finds appears in `parity.md`, and none has a blank decision. A convergence check compares the survey's route list with the table.
+- Who: A drafts from the survey (route or action mappings, page templates, database routines the app calls, scheduled jobs, outbound integrations, plus access logs where they exist); P marks each decision in the file.
+- Evidence: every entry point the survey finds appears in `parity.md`, and none has a blank decision. Compare the survey's route list with the table by hand; the method does not check this yet.
 - Unblocks: the capability order (5.1) and the `legacy app` ledger row. This is where *drop* earns its keep: Fowler's logistics example spent effort on package types the business had already decided to stop.
 
 **4.2 Usage evidence.** Turn on or collect access logs, and count hits per action for a few weeks where possible.
@@ -310,10 +310,10 @@ This runs alongside Phase 6.
 - Evidence: reconciliation report; a migration that drops the legacy objects.
 - Unblocks: 6.7 for that capability.
 
-**7.5 Record schema ownership** in `homes.yml`: each table is `owner: legacy|new-home` and `readers: [...]`. The gate refuses migrations from a non-owner.
+**7.5 Record schema ownership** beside the module map (the method reads no `homes.yml` yet): each table is `owner: legacy|new-home` and `readers: [...]`. A reviewer refuses migrations from a non-owner.
 - Who: A; P approves changes of owner.
-- Evidence: `homes.yml` ownership entries; the ownership check in `make verify`.
-- Unblocks: the single-writer rule being enforced rather than hoped for.
+- Evidence: the ownership entries, cited in each migration's review.
+- Unblocks: the single-writer rule being held by review rather than hoped for.
 
 **Event-modelling honesty:** legacy is an *external system* on the board. The requests its write entry point receives are *commands*, not domain events. The ACL translates a *successfully processed* legacy change into new-home events. Do not rename tables into events, and do not model write-model state as events.
 
@@ -328,10 +328,10 @@ The finish line is the one the ADR's `End:` line chose.
 
 **F.2 `End: all` — delete the old app.** Every capability row is `removed` or `removed (not rebuilt)`, and the last row, `legacy app`, reaches `removed`: the legacy deployable is deleted from the tree with its build and the characterisation tests that only target legacy. Legacy-only database objects are dropped after the retention window. The proxy is reduced to plain ingress or deleted (Azure step 4). The parity suite stays, `TARGET=new` only, as the new home's regression net.
 - Who: A deletes; P decides retention.
-- Evidence: the survey no longer finds the legacy app; `homes.yml` lists no legacy home, so the home guard and strategy checks retire with it; the ADR gets `Finished: <date>`.
+- Evidence: the survey no longer finds the legacy app, so the home guard has nothing left to guard; the ADR gets `Finished: <date>`.
 - Unblocks: nothing further; the strategy is complete.
 
-**F.3 `End: partial` — record what stays.** Every capability that needed to change has moved and been removed from the old home. What remains is recorded in `retirement.md` as `staying (frozen)`, each row with an owner and a review date, and the old home keeps its freeze, its home guard and its legacy-size ratchet.
+**F.3 `End: partial` — record what stays.** Every capability that needed to change has moved and been removed from the old home. What remains is recorded in `retirement.md` as `staying (frozen)`, each row with an owner and a review date, and the old home keeps its freeze and its home guard.
 - Who: P names the owners and the review date; A writes the rows.
 - Evidence: no capability row sits between `routed` and `retired`; every remaining capability has a `staying (frozen)` row with an owner and review date; the ADR gets `Finished: <date> (partial)`.
 - Unblocks: the review, which may reopen the strategy (a superseding ADR, for example `End: all`) if a staying capability needs to change.
@@ -433,21 +433,21 @@ Refuse before, do not warn after. `check-convergence`, run by `make verify`, hol
 
 | Anti-pattern | What it looks like | Detection |
 |---|---|---|
-| Old home with a new label | Product slices committed into legacy paths | Home guard trailer check; `Lands in` refusal; legacy-size ratchet |
-| No new home | Strategy accepted, slices drafted, `services/` empty | Draft card blocked until the New-home card has three ticks |
-| Seam never built | New home deployed separately, users never reach it | Seam smoke test through the proxy required; "traffic to new home = 0" flagged on the board |
-| Feature parity | The spec lists every legacy screen to rebuild | The drafter needs usage evidence per rebuilt capability; parity wording in specs is flagged |
-| Dual-write | Both homes write a table | `homes.yml` single-owner check; scan for legacy-table writes outside the ACL wrapping path |
+| Old home with a new label | Product slices committed into legacy paths | Home guard trailer check in `check-convergence`; `/draft` lands the feature in the new home |
+| No new home | Strategy accepted, slices drafted, `services/` empty | `check-convergence` fails a spec before the new home exists (`beside`) or before the module map (`inside`) |
+| Seam never built | New home deployed separately, users never reach it | A seam smoke test through the proxy, added to CI by the team; a reviewer checks traffic reaches the new home, which the board does not count |
+| Feature parity | The spec lists every legacy screen to rebuild | A reviewer asks for usage evidence per rebuilt capability and questions parity wording in specs |
+| Dual-write | Both homes write a table | A reviewer checks one writer per table and looks for legacy-table writes outside the ACL wrapping path; no check does this yet |
 | Legacy model leaks | `TblOrder` names in domain code | ACL architecture test |
 | Tables renamed into events | `CustomerUpdated` mapped 1:1 from a row change | Event-model review on the board: legacy is an external system; events come from the ACL translation of processed commands |
-| Smart proxy | Business rules in nginx or gateway config | Proxy config lint: only `map`, `location`, `include`, `auth_request` allowed |
-| Forever transitional | Includes, mimics and views outlive their capability | Transitional rows with `remove when:`; ledger consistency fails when the condition is met but the row is not `removed` |
-| Stalled at routed | Flags exist, never flipped | Pacing check: rows unchanged for N cycles |
-| Big-bang cutover in disguise | One capability called "everything" | `/strangle` caps capability size (routes/tables) and asks for a split |
-| Upgrading the old home | Effort spent bumping the old framework or runtime | Platform-rung rule: legacy dependency changes need `Legacy-change: security` |
-| Silent bug-fixing or bug-porting (`End: all`) | The new home quietly differs from, or copies, legacy behaviour | Parity gate: a difference from approved legacy output fails unless the row is *fix* with an owner |
-| End drifting unrecorded | `End: all` quietly becomes "we'll leave the rest", or `End: partial` keeps moving untouched capabilities | `End:` is an ADR line; the checkpoint review is the only way to switch, and it supersedes the ADR. Moves of `staying (frozen)` rows are refused |
-| Old app never actually deleted (`End: all`) | Everything moved, legacy still deployed "just in case" | The axis is complete only when the survey no longer finds the legacy app and its `legacy app` row reads `removed` |
+| Smart proxy | Business rules in nginx or gateway config | A proxy config lint the team adds, or review: only `map`, `location`, `include`, `auth_request` allowed |
+| Forever transitional | Includes, mimics and views outlive their capability | Transitional rows with `remove when:`; the programme is not finished while any piece is live |
+| Stalled at routed | Flags exist, never flipped | The ledger review looks for rows unchanged for N cycles; nothing counts this yet |
+| Big-bang cutover in disguise | One capability called "everything" | Ask for a split when one capability covers many routes or tables; nothing caps capability size yet |
+| Upgrading the old home | Effort spent bumping the old framework or runtime | Home guard: a commit touching the old app needs a `Legacy-change:` trailer, and a reviewer accepts a dependency change only as `security` or `build` |
+| Silent bug-fixing or bug-porting (`End: all`) | The new home quietly differs from, or copies, legacy behaviour | The parity suite against both targets: a reviewer refuses a difference from approved legacy output unless the row is *fix* with an owner; no parity gate is built yet |
+| End drifting unrecorded | `End: all` quietly becomes "we'll leave the rest", or `End: partial` keeps moving untouched capabilities | `End:` is an ADR line; the checkpoint review is the only way to switch, and it supersedes the ADR. A reviewer refuses moves of `staying (frozen)` rows |
+| Old app never actually deleted (`End: all`) | Everything moved, legacy still deployed "just in case" | The Strategy row is done only when every ledger row, `legacy app` included, reads `removed` |
 
 ---
 
@@ -467,16 +467,16 @@ The app here is invented and stands for any brownfield web app of this shape.
 
 1. **Secrets out.** Rotate the committed credentials, read them from environment variables, add a secret scan to the gate. Evidence: the scan is green and `.env.example` is committed.
 2. **Legacy runnable.** Containers for the old runtime, the old app server and the database (schema and seed data scripted), using the existing build as-is. `make legacy-up`. The old platform is *not* upgraded.
-3. **Gate and ratchet.** `make verify` runs the secret scan, the legacy build and the ratchet baseline (legacy LOC, route count, template count).
+3. **Gate and ratchet.** `make verify` runs the secret scan, the legacy build and the ratchet baseline; the team counts legacy LOC, routes and templates by hand.
 4. **Strategy ADR accepted.** `Strategy: strangler-fig`. `Why: the runtime and framework are end-of-life and unpatchable; features wanted monthly`. `Not chosen: in-place — the platform cannot be climbed; rewrite — the app sits behind one path prefix and its pages can move one at a time, so a single cut-over would hold every gain back to the end`. `End: all — the old app is deleted by <date, about nine months out>` (an incremental rewrite: the business wants the old platform gone, not part of it). `Freeze: agreed — <owner>, <date>`. `New home: beside services/booking-next` (the platform is dead, so new code inside it would inherit the dead end). `Seam: reverse proxy in front of the old app server; SSI for fragments; auth_request to a legacy session check`. `New home stack: <from survey> (override: none)`. `Target: modules in one deployable, hexagonal inside each — module map: docs/architecture/module-map.md` (bookings, resources, accounts, reminders; see [target-shape.md](target-shape.md)). `Data approach: D1 contract views over bookings; D3 CDC when write capabilities move; legacy sole writer until then`. `Parity: every row on docs/parity.md decided and passing against both targets before its capability moves`. `Checkpoint: <date, six weeks out> — reminders panel live from the new home, inventory fully decided, dashboard moved; if nothing has moved, review: continue, End: partial, or stop`.
 5. **Characterise the boundary.** `/characterise` pins login, the dashboard, booking view and create-booking at HTTP level, and for writes the resulting rows. The tests use the new stack's tooling and run against the proxy URL.
 6. **Seam live, pass-through.** Proxy config in `infra/proxy/` sends everything to legacy; characterisation points at the proxy. Ledger, transitional: `proxy pass-through | remove when: legacy deployable retired`.
 7. **New home generated and routed.** `slipwai add-service booking-next --backend <stack>`. Its tests join `make verify`. The proxy routes `/next/*` to it, and a CI smoke test hits `/next/health` through the proxy. The ACL module gets its architecture test. **Draft unlocks here.**
-8. **Contract view (D1).** A legacy-owned migration adds a view such as `contract.v_bookings_due (booking_id, owner_id, starts_at, title)` and a read-only login granted SELECT on `contract` only. `homes.yml` records the booking tables as `owner: legacy, readers: [booking-next via contract views]`. Ledger transitional row: `contract views | remove when: bookings capability moved`.
+8. **Contract view (D1).** A legacy-owned migration adds a view such as `contract.v_bookings_due (booking_id, owner_id, starts_at, title)` and a read-only login granted SELECT on `contract` only. The module map records the booking tables as `owner: legacy, readers: [booking-next via contract views]`. Ledger transitional row: `contract views | remove when: bookings capability moved`.
 9. **The reminders slice is built in the new home.** `Lands in: services/booking-next`. The ACL maps view rows to new-home types; the domain picks what is due. Open product questions (what counts as "due", time zones) are posted as QUESTION comments. `GET /fragments/reminders` returns an HTML fragment using the old pages' CSS classes. On the event model, legacy is an external system and the panel is a read model fed from it; no events are invented from table rows.
 10. **Judge Visibility, then compose.** The dashboard carries many characterised behaviours and owns the layout and navigation, so the spec records `Visibility: seam` (a panel inside the old page; moving the whole dashboard now would pull all of that into the slice as parity). The *only* old-home change is a seam change: the dashboard template gets one include line, `<!--# include virtual="/next/fragments/reminders" -->`, with the trailer `Legacy-change: seam (retirement.md#reminders-include)`. The proxy turns SSI on for the dashboard path with silent errors, so if the new home is down the panel renders empty and the page is unchanged. Fragment requests are authorised by `auth_request` to a small legacy session-check endpoint, a second seam change. A config flag can switch the include off without a deploy. Ledger rows: transitional `reminders include | remove when: dashboard moves to booking-next` and transitional `session-check auth bridge | remove when: login capability moved`. Characterisation of the dashboard is updated deliberately to accept the new panel region, and only that.
 
-**What follows:** because `End: all`, the behaviour inventory comes next (Phase 4): the agent lists every route, scheduled job and database routine in `docs/parity.md`, usage logs show the bulk-import screen unused, and the person marks it *drop* and every other row *preserve*, *preserve-quirk* or *fix*. The parity suite runs with `TARGET=legacy|new`, and a `legacy app` ledger row is opened. The capability order is then ranked from the inventory and the survey. A likely order: (a) the dashboard as a whole page, now that part of it is already new, routed at the proxy with legacy fallback; (b) the other read-only views; (c) booking writes, moved one request type at a time, with the new home as single writer publishing through an outbox and a sync agent applying changes to legacy tables still read by unmoved capabilities, shadow-compared via CDC during dual-run; (d) login last, which retires the auth bridge. Each step is `/strangle`, with ledger rows moving routed → moved → retired → removed, and the legacy-size ratchet falling. At the six-week checkpoint the reminders panel and the dashboard already serve real traffic from the new stack, so even a decision to stop there leaves value behind. The strategy finishes at F.2, when the `legacy app` row reaches `removed` and the old app is gone from the tree.
+**What follows:** because `End: all`, the behaviour inventory comes next (Phase 4): the agent lists every route, scheduled job and database routine in `docs/parity.md`, usage logs show the bulk-import screen unused, and the person marks it *drop* and every other row *preserve*, *preserve-quirk* or *fix*. The parity suite runs with `TARGET=legacy|new`, and a `legacy app` ledger row is opened. The capability order is then ranked from the inventory and the survey. A likely order: (a) the dashboard as a whole page, now that part of it is already new, routed at the proxy with legacy fallback; (b) the other read-only views; (c) booking writes, moved one request type at a time, with the new home as single writer publishing through an outbox and a sync agent applying changes to legacy tables still read by unmoved capabilities, shadow-compared via CDC during dual-run; (d) login last, which retires the auth bridge. Each step is `/strangle`, with ledger rows moving routed → moved → retired → removed, and the legacy line count falling. At the six-week checkpoint the reminders panel and the dashboard already serve real traffic from the new stack, so even a decision to stop there leaves value behind. The strategy finishes at F.2, when the `legacy app` row reaches `removed` and the old app is gone from the tree.
 
 ---
 

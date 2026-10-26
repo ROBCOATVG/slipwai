@@ -50,7 +50,7 @@ The honest prior is that **most rewrites are cancelled or overrun**. The playboo
 
 ## 2. What the ADR records
 
-The strategy ADR (`docs/adr/NNNN-strategy.md`, status Accepted) carries these lines. `Strategy:` and `Freeze:` are read today. The rest are proposed; each must be a whole line so the tree can read it.
+The strategy ADR (`docs/adr/NNNN-strategy.md`, status Accepted) carries these lines. The method requires `Freeze:`, `Home:`, `Stack:`, `Why single cut-over:`, `Cut-over:`, `Rollback:`, `Parity:`, `Checkpoint:` and `Target:`; a decision missing one is reported incomplete and nothing after it starts. Write `Why:` and `Data:` too; each is a whole `Name: value` line so the tree can read it.
 
 ```
 Strategy: rewrite
@@ -70,9 +70,9 @@ Checkpoint: <date> — <what is reviewed; what makes us stop, or switch to a str
 Why each line matters:
 
 - **`Why:`** forces the trigger into the business's words and makes the author say why `in-place` cannot meet it. A "why" that reads "it is ugly" or "no tests" is a warning sign (§1).
-- **`Why single cut-over:`** is what separates a rewrite from a strangler fig with `End: all`, which reaches the same end with less risk. It names one of the four reasons in §1 and its evidence. "We want a new stack" is not one of them; the board refuses the ADR without this line.
-- **`Freeze:`** should not finish the axis under a rewrite as `absent`. For a strangler, `absent` with a substitute is a legitimate answer. For a rewrite, an unfrozen legacy is a moving parity target. If it is absent, the "what instead" must be a *double-entry rule*: every legacy change also lands as a parity row and a slice in the new system in the same week. The gate checks that.
-- **`Home:`** and **`Stack:`** say where new behaviour is built and in what; every spec and the `new-system-first` gate read them (see the subsections below).
+- **`Why single cut-over:`** is what separates a rewrite from a strangler fig with `End: all`, which reaches the same end with less risk. It names one of the four reasons in §1 and its evidence. "We want a new stack" is not one of them; a decision without this line is reported incomplete and nothing after it starts.
+- **`Freeze:`** should not finish the axis under a rewrite as `absent`. For a strangler, `absent` with a substitute is a legitimate answer. For a rewrite, an unfrozen legacy is a moving parity target. If it is absent, the "what instead" must be a *double-entry rule*: every legacy change also lands as a parity row and a slice in the new system in the same week. A reviewer checks that; no gate does yet.
+- **`Home:`** and **`Stack:`** say where new behaviour is built and in what; every spec reads them, and `check-convergence` fails a spec before the new home exists (see the subsections below).
 - **`Target:`** names the shape the new system is generated in, so the first service does not set the architecture by accident (`target-shape.md`).
 - **`Parity:`** is the single most important line. "Port the behaviour, not the bugs": parity is defined per behaviour for the whole system, and each behaviour is marked *preserve*, *preserve-including-quirk*, *fix* or *drop*. The person who owns the product decides; an agent cannot.
 - **`Data:`** fixes how the new system reaches data before and during migration, and who owns reconciliation, so migration is planned and rehearsed rather than left to the cut-over weekend.
@@ -82,7 +82,7 @@ Why each line matters:
 
 ### Where the new system lives
 
-`Home: beside` puts the new system in the same repository, as `services/<name>`, generated with `slipwai add-service`. `Home: new-repo` puts it in its own repository, generated with `slipwai generate`. The board proposes a default from the survey and the person confirms it. Either way the new system has its own gate, current runtime, container and IaC from the first commit.
+`Home: beside` puts the new system in the same repository, as `services/<name>`, generated with `slipwai add-service`. `Home: new-repo` puts it in its own repository, generated with `slipwai generate`. The person chooses it in the board's decide form. Either way the new system has its own gate, current runtime, container and IaC from the first commit.
 
 ### Its stack
 
@@ -100,7 +100,7 @@ Whatever the strategy, the old system is first made safe and observable.
 
 **0.1 Quick wins on the old system.** Remove committed secrets and rotate them. Remove committed build output and jars. Replace hard-coded paths with config.
 - Who: A does it, P rotates credentials.
-- Evidence: the survey finds no secrets or committed binaries; the convergence map `safety` rows are green; the ledger is untouched (this is not a capability move).
+- Evidence: the survey finds no secrets or committed binaries; the convergence map's Build row no longer stops on committed build output; the ledger is untouched (this is not a capability move).
 - Unblocks: everything. These fixes are allowed in legacy under any freeze.
 
 **0.2 Build floor, pinned** (`build-floor.md`). A hand-run, IDE-only or script-glued build moves to a declared build tool, with dependencies fetched rather than committed, run inside a build container pinned to the old toolchain. Under rewrite, keep this minimal: the old build only has to be reproducible, not modern — the new system is generated with its own current toolchain and meets the floor on day one. Platform, packaging, container and IaC rungs for the old app are "not in place: the new system starts current".
@@ -116,20 +116,20 @@ Whatever the strategy, the old system is first made safe and observable.
 ### Phase 1: decide and freeze
 
 **1.1 Strategy ADR accepted.** The ADR is accepted with the lines in §2, including `Why single cut-over:`.
-- Who: P decides; B shows the strategy control with rewrite *not* preselected, first offers a strangler fig with `End: all`, and requires the single-cut-over justification.
+- Who: P decides; B's decide form offers "Use a strangler fig instead" when rewrite is picked, and asks for `Why single cut-over:` with the other required lines.
 - Evidence: an accepted ADR with `Strategy: rewrite`, `Why single cut-over:`, `Freeze:`, `Home:`, `Stack:`, `Parity:`, `Cut-over: single`, `Rollback:`, `Checkpoint:`.
 - Unblocks: the drafting stage, and generating the new system.
 
 **1.2 Freeze in force.** Legacy accepts only the change classes the freeze allows.
-- Who: P agrees it; the gate enforces it.
-- Evidence: the `legacy-frozen` check (§5, Gates) is on in `make verify`.
+- Who: P agrees it; `check-convergence` holds it through the `Legacy-change:` trailer.
+- Evidence: the legacy-frozen check (§5, Gates) runs in `make verify`.
 - Unblocks: a stable parity target.
 
 ### Phase 2: know what to preserve
 
 **2.1 Behaviour inventory** (`docs/parity.md`) for the **whole** system. One row per behaviour: entry point (URL / action / database routine / batch job / report / outbound integration), observed usage, owner, decision (*preserve / preserve-quirk / fix / drop*), test id, and status in new. Nothing is left in the old system after cut-over, so nothing may be missing from this table.
-- Who: A drafts from the survey: route or action mappings, page templates, database routines the app calls, scheduled jobs, outbound integrations, plus access logs where they exist. P marks each decision via `/ground` questions on the board.
-- Evidence: every entry point the survey finds appears in `parity.md`, and none has a blank decision. A convergence check can compare the survey's route list with the table.
+- Who: A drafts from the survey: route or action mappings, page templates, database routines the app calls, scheduled jobs, outbound integrations, plus access logs where they exist. P marks each decision in the file.
+- Evidence: every entry point the survey finds appears in `parity.md`, and none has a blank decision. Compare the survey's route list with the table by hand; the method does not check this yet.
 - Unblocks: characterisation scope and the build order. This is where *drop* earns its keep: Fowler's logistics example spent effort on package types the business had already decided to stop.
 
 **2.2 Usage evidence.** Turn on or collect access logs. Count hits per action for a few weeks if possible.
@@ -180,7 +180,7 @@ From here on, new feature requests go to the new system (§4).
 The new system is built capability by capability **inside the new system**, each proven against the parity suite. None of it is released to users until cut-over, except through a transitional route recorded in the ledger (§4, 4.2).
 
 **5.1 Order the build.** Order by risk and dependency, not by release: the hardest and most coupled behaviours (writes into shared tables, the database rules, the reports and exports that aggregate everything) come early, because they decide whether the cut-over date is real.
-- Who: A proposes, P orders on the board.
+- Who: A proposes, P sets the order.
 - Evidence: the `parity.md` order column; the fleet backlog.
 - Unblocks: the build of each capability, in that order.
 
@@ -248,7 +248,7 @@ The rewrite is finished when the old system and every piece of transitional arch
 
 **F.2 Delete the old app from the tree**, along with its build, jars and the characterisation tests that only target legacy. Keep the parity suite, now `TARGET=new` only, as the new system's regression net. Archive the final database backup, and decide the fate of the legacy database routines (drop after the retention window).
 - Who: A deletes, P decides retention.
-- Evidence: the survey no longer finds the legacy app; every ledger row reads `removed`; the strategy axis on the convergence map is complete.
+- Evidence: the survey no longer finds the legacy app; every ledger row reads `removed`; the convergence map's Strategy row reads `done`.
 - Unblocks: nothing further; the strategy is complete.
 
 ---
@@ -256,7 +256,7 @@ The rewrite is finished when the old system and every piece of transitional arch
 ## 4. How a feature request is handled
 
 **4.1 Every new feature is specified against the new system.** If the PRD says "add X to the dashboard" and the dashboard is legacy, the spec targets the new service. A PRD line that contradicts the strategy is **overridden and said in the spec**. Examples: "add a panel to the existing dashboard page", "add a column to the customers table", "use the existing web framework". The spec opens with a short *Strategy constraints* block that quotes the PRD line and states the override, e.g. "Strategy: rewrite — this feature is built in `services/<name>`; the PRD's placement in the legacy app is overridden. It reaches users at cut-over. The legacy page is not changed except by any transitional seam recorded in `retirement.md`."
-- Who: A at draft, P approves the spec on the board.
+- Who: A at draft, P approves the spec.
 - Evidence: the spec names the new service and only touches paths under it. `legacy-frozen` stays green.
 
 **4.2 Decide when the feature becomes visible.** A feature built only in the new system reaches nobody until something routes to it. Under a single cut-over the default is that it waits for the cut-over; anything earlier is an exception with a removal condition. The spec records `Visibility: cut-over | seam | page` with the reason:
@@ -271,7 +271,7 @@ The person decides, when the spec is approved. The draft proposes `cut-over` unl
 4. **How it looks.** A new-look page among old-look pages, or a new-look panel inside an old-look page. Only a person can judge this, so `/mockups` draws the chosen option, and both where the choice is close; the storyboard's verdict decides.
 5. **The freeze.** A seam is a change to the frozen system, and every early route is infrastructure built to be thrown away, so, other things being equal, the draft prefers `cut-over`, which leaves the legacy code alone.
 
-If exceptions keep being taken, the work is moving capability by capability in practice: the board flags it and offers to supersede the ADR with a strangler fig, `End: all`.
+If exceptions keep being taken, the work is moving capability by capability in practice: a reviewer flags it and proposes superseding the ADR with a strangler fig, `End: all`; the board does not count exceptions yet.
 
 - Evidence: `Visibility:` and its reason are in the spec; a `page` brings the page's parity rows into the acceptance criteria and a route-back rehearsal; any seam, routed page and auth bridge are in the ledger with `remove when: cut-over`.
 
@@ -356,20 +356,20 @@ The rewrite is complete when **every** row reads `removed`, including the last o
 
 | Anti-pattern | Detection |
 |---|---|
-| A rewrite chosen only to get a new stack | The ADR is refused without `Why single cut-over:`; the board offers a strangler fig with `End: all` first. |
-| New features added to legacy "just this once" | `legacy-frozen` gate: a legacy diff without a valid `Legacy-change:` trailer fails. |
-| Feature parity by default (porting unused screens) | `parity.md` rows with usage of 0 and decision *preserve* are flagged; undecided rows block the draft step. |
-| Silent bug-fixing (or silent bug-porting) | A behaviour whose new output differs from approved legacy output fails parity unless the row is *fix* with an owner. |
+| A rewrite chosen only to get a new stack | A decision without `Why single cut-over:` is reported incomplete and nothing after it starts; picking rewrite on the board offers "Use a strangler fig instead". |
+| New features added to legacy "just this once" | Legacy-frozen check in `check-convergence`: a commit touching the old app without a valid `Legacy-change:` trailer fails. |
+| Feature parity by default (porting unused screens) | A reviewer questions `parity.md` rows with usage of 0 and decision *preserve*, and holds the draft while rows are undecided; nothing checks this yet. |
+| Silent bug-fixing (or silent bug-porting) | A behaviour whose new output differs from approved legacy output fails the parity suite the team runs against both targets, unless the row is *fix* with an owner. |
 | Second-system effect (v2 wishlist) | The spec must trace each requirement to a parity row or a PRD feature; untraced scope is listed in review. |
-| No visible progress until the end | Checkpoint lines; the board shows the share of `parity.md` passing on new and the date of the last migration rehearsal. |
-| A strangler in disguise (transitional routes piling up) | `no-early-routing` keeps each early route in the ledger; the board flags repeated `Visibility:` exceptions and offers to supersede the ADR with a strangler fig, `End: all`. |
-| Building the feature first, the platform later | The `new-system-first` step order: no spec is drafted until the walking skeleton deploy is evidenced. |
-| Data migration left to the cut-over weekend | Cut-over stays locked until `docs/rehearsals/` holds a run inside the window with no manual steps and explained diffs. |
-| A rollback that ignores post-switch writes | The `cutover.md` template requires a "writes after switch" section; a rollback rehearsal record is required. |
-| Transitional scaffolding left in forever | Ledger rows for transitional components; the strategy axis stays incomplete until they read `removed`. |
-| The old system never actually switched off | The axis is complete only when the legacy app is absent from the survey and its row reads `removed`. |
-| Shadow writes double-applying | Shadow mode must target a copy or a dry-run path; the comparator spec template requires this. |
-| Unfrozen legacy drifting from the parity target | `Freeze: absent` requires the double-entry rule; legacy commits without a matching parity row are flagged. |
+| No visible progress until the end | Checkpoint lines; the board shows the `Checkpoint:` date and re-asks the decision once it passes. The share of `parity.md` passing on new and the last rehearsal date are reported by hand. |
+| A strangler in disguise (transitional routes piling up) | Each early route is a ledger row; a reviewer counts repeated `Visibility:` exceptions and proposes superseding the ADR with a strangler fig, `End: all`. No gate or board flag does this yet. |
+| Building the feature first, the platform later | `check-convergence` fails a spec before the new home exists (or any spec in the old repo under `new-repo`); hold features until the walking skeleton deploy is evidenced. |
+| Data migration left to the cut-over weekend | No go until `docs/rehearsals/` holds a run inside the window with no manual steps and explained diffs; the board does not lock cut-over yet. |
+| A rollback that ignores post-switch writes | `cutover.md` carries a "writes after switch" section, and the decider requires a rollback rehearsal record before go. |
+| Transitional scaffolding left in forever | Ledger rows for transitional components; the programme is not finished while any is live. |
+| The old system never actually switched off | The Strategy row reads `done` only when every ledger row, `legacy app` included, reads `removed`. |
+| Shadow writes double-applying | Shadow mode must target a copy or a dry-run path; the comparator's spec says so. |
+| Unfrozen legacy drifting from the parity target | `Freeze: absent` requires the double-entry rule; a reviewer flags legacy commits without a matching parity row. |
 
 ---
 
@@ -386,7 +386,7 @@ The context: an internal booking web app of about 10k lines, on an end-of-life r
 7. **Generate the new system** with `slipwai add-service <name> --backend <stack>`: a current runtime, its own store and its own gate. It is developed against a nightly anonymised copy of the legacy data, migrated by the first version of the migration scripts (ledger row `transitional: dev-data-copy`). *Evidence:* the service's gate is green.
 8. **Walking skeleton.** A reverse proxy in front, with every user path routed to the old app; the new system's health check is reachable only to the team. Both deploy through one pipeline, to the replacement platform. *Evidence:* routing config, a deployed health check, ledger row `transitional: router`.
 9. **Draft the reminders feature against the new system.** The PRD says "add a panel to the dashboard"; the spec overrides the placement and builds it in the new service's dashboard. For visibility, the draft weighs §4, 4.2. Cut-over is about four months away and the business agrees reminders can wait for it, so it proposes `Visibility: cut-over`. Had the business needed reminders sooner, the route would have been `Visibility: seam`: one include line in the legacy dashboard (`Legacy-change: transitional`), an auth bridge at the router, and both recorded as ledger rows with `remove when: cut-over`. `/mockups` shows the panel in the new-look dashboard and the person accepts it. The legacy code is not touched. *Evidence:* `Visibility: cut-over` and its reason in the spec, `legacy-frozen` green.
-10. **Build the system, capability by capability, inside the new system.** The booking writes and the database rules come first, because they decide whether the date is real; then the dashboard (with the reminders panel), the other pages and the reports. Each capability's parity rows pass against both targets and are shadowed against real requests; each ledger row reaches `built`. *Evidence:* the completeness bar on the board, and `docs/shadow/<capability>.md` reports.
+10. **Build the system, capability by capability, inside the new system.** The booking writes and the database rules come first, because they decide whether the date is real; then the dashboard (with the reminders panel), the other pages and the reports. Each capability's parity rows pass against both targets and are shadowed against real requests; each ledger row reaches `built`. *Evidence:* parity rows passing on new, and `docs/shadow/<capability>.md` reports.
 
 That reaches the checkpoint: half of the traffic-weighted *preserve* rows pass on new and the first migration rehearsal has run. What follows is Phases 5.4 to 8: the system is complete, migration rehearsals run until one fits the weekend with no manual steps, a two-week parallel run reconciles daily, the rollback is rehearsed in staging, and the single cut-over moves every row to `moved`, with the reminders panel reaching users with everything else. After the rollback window the old app is switched off before the host date and deleted from the tree.
 

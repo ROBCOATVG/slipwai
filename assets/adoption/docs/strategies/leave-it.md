@@ -53,8 +53,9 @@ review is the main thing the method adds to leave-it.
 
 ## 2. What the ADR records
 
-The strategy ADR (`Strategy: leave-it`, accepted by a human) must carry these lines before work starts. slipwai
-already parses `Freeze:` this way: "both are answers; only silence is not". The leave-it equivalents are:
+The strategy ADR (`Strategy: leave-it`, accepted by a human) carries these lines. The method requires
+`Variant:`, `Risk-owner:` and `Review:`; a decision missing one is reported incomplete and nothing after it starts.
+The team fills in the rest before work starts:
 
 ```
 Strategy: leave-it
@@ -103,11 +104,11 @@ feature request (section 4) is itself a trigger, because it is evidence of risin
 ### Phase 0: make the old system safe
 
 **0.1 Survey and characterise the system's exposure.** `slipwai adopt` and `/survey` build the convergence map.
-They also record exposure: whether the app is internet-facing, who uses it, what data classes it holds, and which
+The agent also records exposure: whether the app is internet-facing, who uses it, what data classes it holds, and which
 components are end-of-life with which CVEs.
 - Who: agent drafts it. A human confirms the exposure facts, because only a human knows the network.
-- Evidence: `survey/` holds the platform record (products, versions, end-of-life status) and an `exposure` note
-  covering ingress, users and data classes.
+- Evidence: `survey/` holds the platform record (products, versions, end-of-life status) and an `exposure` note the
+  agent writes, covering ingress, users and data classes.
 - Unblocks: the risk lines in the ADR (Phase 1). Nobody can accept a risk that has not been named.
 
 **0.2 Quick win: secrets out of the tree.** Done now, whatever the strategy. Rotate every committed credential
@@ -137,8 +138,9 @@ a given change touches. Characterisation tests capture current behaviour, includ
 
 ### Phase 1: decide and record the risk
 
-**1.1 Decide and accept the ADR.** `/ground` proposes the strategy. A human edits it to `leave-it`, fills in the
-section 2 lines, and accepts it. An agent never accepts it.
+**1.1 Decide and accept the ADR.** `/ground` proposes the strategy. A human picks `leave-it` in the board's decide
+form, which asks `Variant:`, `Risk-owner:` and `Review:`, fills in the other section 2 lines, and accepts it. An
+agent never accepts it.
 - Who: human (the risk owner, or someone acting for them).
 - Evidence: the ADR has `## Status Accepted`, `Strategy: leave-it`, and non-empty `Risk-owner:`, `Review:` and
   `Variant:` lines.
@@ -148,7 +150,7 @@ section 2 lines, and accepts it. An agent never accepts it.
 section 5, Ledgers).
 - Who: agent drafts the rows from the ADR and the survey; the risk owner confirms them.
 - Evidence: `adopt/risk-register.md` (or `docs/risks.md`) exists with a row for every `Accepts:` line.
-- Unblocks: the security-floor slices in Phase 2, which are generated from these rows.
+- Unblocks: the security-floor slices in Phase 2, which the agent plans from these rows.
 
 ### Phase 2: security floor
 
@@ -173,9 +175,9 @@ the following that actually closes the exposure:
   `accepted`), control reference, and date verified.
 - Unblocks: the risk owner can honestly sign each `Accepts:` line.
 
-**2.2 Ratcheted dependency audit in the gate.** The dependency audit (for example OWASP Dependency-Check, or the
-ecosystem's own audit tool) runs in `make verify` with a ratchet baseline: known CVEs are listed, and new ones
-fail the gate.
+**2.2 Ratcheted dependency audit in the gate.** Add the dependency audit (for example OWASP Dependency-Check, or
+the ecosystem's own audit tool) to `make verify` with a ratchet baseline: known CVEs are listed, and new ones fail
+the gate. The method does not ship this audit yet.
 - Who: agent.
 - Evidence: the audit step in `make verify` and its baseline file.
 - Unblocks: detection of the "new critical CVE" review trigger.
@@ -263,8 +265,8 @@ Every feature request is first classified against the ADR's `Features:` line.
 - `Pins:` the code paths `/characterise` must cover before the slice changes them.
 
 **Redirected, not silently enlarged.** A request that fails the bar is not quietly shrunk or grown to fit. The
-spec is written as "out of scope under leave-it", and the request counts as a review trigger. The board posts a
-question to the risk owner: change strategy, or decline the request.
+spec is written as "out of scope under leave-it", and the request counts as a review trigger. The agent asks the
+risk owner: change strategy, or decline the request.
 
 **Sunset variants: declined.** Except for what is needed to export data or tell users about the switch-off. The
 request is logged against the replacement (for sunset-to-product, the product's backlog).
@@ -348,14 +350,14 @@ verify, communicate, switch off). Nothing checks these files beyond the `Review:
 
 | Anti-pattern | Detection |
 |---|---|
-| **Leave-it as neglect**: no owner, no date | ADR acceptance refused without `Risk-owner:`/`Review:`; strategy record is unfinished when the review is overdue |
-| **Leaving live secrets** | Secret scan in gate; quick-win slice is first in the programme whatever the strategy |
-| **Accepting a CVE with no control** | Register row `accepted` without `Compensating:`/`none — why`, so convergence is unfinished |
-| **Feature creep**: leave-it in name, invest in practice | Count of feature specs per review period; `Strategy-fit:` redirects; more than one slice per feature fails the bar |
-| **Stealth modernisation**: "while we're here" framework bumps inside a feature slice | Diff check: a dependency-manifest version change in a slice whose spec is `Strategy-fit: within bar` fails review |
+| **Leave-it as neglect**: no owner, no date | A decision without `Risk-owner:`/`Review:` is reported incomplete and nothing after it starts; `check-convergence` fails and the strategy is unfinished once the review is overdue |
+| **Leaving live secrets** | A secret scan the team adds to the gate; the quick-win slice goes first whatever the strategy |
+| **Accepting a CVE with no control** | A reviewer refuses a register row `accepted` without `Compensating:`/`none — why`; nothing checks the register yet |
+| **Feature creep**: leave-it in name, invest in practice | `/draft` refuses a request past the bar and writes the redirect; more than one slice per feature fails the bar; the review counts feature specs per period by hand |
+| **Stealth modernisation**: "while we're here" framework bumps inside a feature slice | A reviewer fails a slice whose spec is `Strategy-fit: within bar` if its diff changes a dependency-manifest version; no check does this yet |
 | **Virtual patch rot**: WAF rule removed or the proxy bypassed | Probe test in the gate or a scheduled job proving the exploit shape is blocked; register has a `last-verified` date |
-| **Unverified archive** before switch-off | Sunset ledger requires a reconciliation report before the `switch-off` row can be ticked |
-| **Sunset date slips silently** | Date passed with the system still live is a review trigger; the board flags it |
+| **Unverified archive** before switch-off | The `switch-off` row is not ticked until the sunset ledger holds a reconciliation report |
+| **Sunset date slips silently** | Date passed with the system still live is a review trigger; the risk owner watches for it, since the board does not flag it yet |
 | **Knowledge loss** | Pins plus `survey/structure.md` stand in for tribal knowledge; a "last maintainer leaves" trigger |
 
 ---

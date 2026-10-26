@@ -84,7 +84,7 @@ Use three independent lenses, then reconcile:
 A shape nobody checks decays. These findings hold whatever the strategy.
 
 - **Declare modules with a published `api` package** (`<module>/api`, plus `<module>/api/events`) and a private remainder. Record the modules in project config so the boundary checker applies the context rule.
-- **Freeze every existing violation as a ratcheted baseline before the first feature** (Packwerk's `package_todo.yml`, ArchUnit's `FreezingArchRule` store, an import-linter or dependency-cruiser known-violations file). From then on the gate fails on any *new* violation, and the baseline can only shrink. Report its total on every slice. It is a todo list, not a permission slip. A module pair becomes `strict` once its count reaches zero; a new module is born strict.
+- **Freeze every existing violation as a ratcheted baseline before the first feature** (Packwerk's `package_todo.yml`, ArchUnit's `FreezingArchRule` store, an import-linter or dependency-cruiser known-violations file). From then on the gate fails on any *new* violation, and the baseline can only shrink. Report its total on every slice. It is a todo list, not a permission slip. Treat a module pair as `strict` once its count reaches zero, and keep a new module free of baseline entries from its first line; the method has no per-module strict mode yet, so review holds this.
 - **Dependency rules before privacy rules.** Start with who may call whom. Shopify's Packwerk retrospective removed the privacy checks because they turned the tool into "an API design tool", and found "fixes" that silenced a violation by inversion of control and made the code harder to understand.
 - **A data-ownership check**, because import scanning cannot see much of the real coupling:
   - framework wiring in XML, YAML or annotations that injects one module's component into another;
@@ -93,7 +93,7 @@ A shape nobody checks decays. These findings hold whatever the strategy.
   - same-package references, inline fully-qualified names, dynamic loading by string;
   - **raw SQL**: a query in `billing` with `JOIN ORDERS`, or a call to a DB routine another module owns.
 
-  `check-data-ownership` scans SQL strings, ORM mappings and routine names against the module map's owned objects and emits `path:line: billing uses orders table ORDERS`, baselined by the same ratchet. Only the owner's data-access code writes a table. No new cross-module foreign keys.
+  The method has no `check-data-ownership` yet. Until it does, the agent searches SQL strings, ORM mappings and routine names against the module map's owned objects and lists each hit (`path:line: billing uses orders table ORDERS`) as a hand-kept baseline. Only the owner's data-access code writes a table. No new cross-module foreign keys.
 - **Hexagonal import rules per module** (when `Inside each: hexagonal`): the module's domain imports nothing from its adapters, the framework or the database driver; adapters depend inward on ports. ArchUnit's onion rule, jMolecules annotations, import-linter layer contracts or dependency-cruiser rules express this. Adopt it module by module, each with its own baseline.
 - **Events between modules are past-tense facts.** Where A reacts to something in B, B publishes an event and A subscribes; B never calls A. A listener that needs a reply is a disguised RPC; use the API. In one deployable, an in-process publisher is enough; a module framework with durable events (for example Spring Modulith's event publication registry) adds after-commit and async delivery.
 - **"The module builds and tests alone"** is a finish-line check. Packwerk found "zero violations" packages that crashed at runtime because wiring hid a dependency. Boot each module's tests with only that module and `framework` loaded.
@@ -110,7 +110,7 @@ The existing code is reshaped behind characterisation tests at the system bounda
 - **Break the god facade by branch by abstraction.** For each facade method, decide its module from the map. Create `<module>/api` with an interface, and an `internal` implementation that first *delegates to the existing facade code*; then move the body across and switch callers one at a time. The facade becomes a delegating shell (frozen: "no new callers") and is deleted when no caller is left.
 - **Break the god base class the same way.** Inventory what the shared base controller does (session lookup, auth, flash messages, service accessors, error mapping). Move each concern to the framework's native seam (middleware, filters, interceptors, decorators) and inject collaborators instead of inheriting accessors. Controllers stop extending the base one by one (frozen: "no new subclasses").
 - **Move tables to module ownership.** A schema per module where the database supports it, or a prefix convention with views while code moves. Replace each cross-module JOIN with a call to the owner's API or a read model fed from its events. Splitting data is never step 1 (Newman: "far from a simple endeavour").
-- **One baseline entry removed per slice** that touches legacy code (the `Leaves better:` field). About one structural card per 1–2 feature slices; platform rungs as their own slices, never in the same slice as a module move. One module per structural slice, `git mv` only, never a big-bang reorganisation.
+- **One baseline entry removed per slice** that touches legacy code (say which in the spec; there is no `Leaves better:` field yet). About one structural card per 1–2 feature slices; platform rungs as their own slices, never in the same slice as a module move. One module per structural slice, `git mv` only, never a big-bang reorganisation.
 
 ### Strangler fig, inside
 The new home is a set of new modules in the same deployable. They are grown in the target shape from their first line (strict, hexagonal if chosen), and old paths are retired capability by capability through the ledger. The god facade and base class become the in-code routing point. See [strangler-fig.md](strangler-fig.md) for the seam steps.
@@ -157,17 +157,17 @@ strangler fig `inside`, the gate fails a spec before `docs/module-map.md` exists
 | Anti-pattern | Symptom | Detection |
 |---|---|---|
 | **Big-bang reorganisation** | Lost history, untestable diff; Shopify's single PR lost git history | One module per structural slice; diff size budget; `git mv` only |
-| **Package by layer, renamed** (`orders/dao`, `orders/web`, data access still shared) | Checker green, coupling unchanged | Data-ownership check; change-coupling report |
-| **Baseline as a permission slip** | Count flat or rising | Ratchet never grows; burn-down on the board; `Leaves better:` required |
+| **Package by layer, renamed** (`orders/dao`, `orders/web`, data access still shared) | Checker green, coupling unchanged | A hand review of data access against the module map; a change-coupling run (code-maat); neither is built in |
+| **Baseline as a permission slip** | Count flat or rising | The ratchet never lets the baseline grow; a reviewer tracks the count and asks which entries each slice removes (no burn-down on the board yet) |
 | **Indirection to silence the checker** (interfaces in `framework`, reflection, a "shared" module everyone uses) | Violations fall, readability falls; `framework`/`common` grows | Size budget on `framework`; `framework` may not import any module; review question "developer-level or graph-level violation?" (Packwerk) |
-| **Shared entities across modules** | Cross-module joins through the ORM | Data-ownership check scans mappings; no field of another module's entity type |
-| **Cross-module JOIN or DB routine** | Invisible to import checks | `check-data-ownership` over SQL strings and routine bodies |
+| **Shared entities across modules** | Cross-module joins through the ORM | A reviewer checks ORM mappings against the module map; no field of another module's entity type |
+| **Cross-module JOIN or DB routine** | Invisible to import checks | A hand search of SQL strings and routine bodies against the module map; `check-data-ownership` is not built yet |
 | **Events as RPC** | Hidden synchronous coupling, ordering bugs | Listeners return nothing; event names past tense |
-| **Cycles between modules** | A depends on B depends on A | Cycle check in the boundary checker |
+| **Cycles between modules** | A depends on B depends on A | A cycle check the team adds (for example dependency-cruiser or ArchUnit slices); `check-imports` does not look for cycles |
 | **Checker green, module not runnable alone** | Runtime wiring hides the dependency | Per-module test run with only that module loaded |
 | **Premature services** ("let's make billing a service") | Network, dual-write, ops for a one-person team | `Target:` changes need an ADR amendment with a reason |
-| **Boundaries drawn from nouns, not behaviour** | Every feature touches 3+ modules | Change-coupling report; `/wdyt` on a spec with more than two `Consumes:` |
-| **Hexagonal in name only** | `domain/` imports the ORM or the web framework | Per-module layer rule, ratcheted |
+| **Boundaries drawn from nouns, not behaviour** | Every feature touches 3+ modules | A change-coupling run; a reviewer questions a spec with more than two `Consumes:` |
+| **Hexagonal in name only** | `domain/` imports the ORM or the web framework | A layer rule per module, ratcheted; `check-imports` holds hexagonal layers per application, not per module |
 
 ---
 
@@ -182,7 +182,7 @@ The app is invented and stands for any brownfield web app of this shape.
 1. **Discover.** Event storming gives BookingMade, BookingCancelled, ResourceAdded, ResourceRetired, AccountCreated. Static analysis shows `bookings` reaching into `resources` data access through the facade. Change coupling shows the dashboard controller and the bookings queries changing together most of the time. Every class, table and DB routine is assigned in `module-map.md`.
 2. **Decide the shape.** One person, one database that must stay consistent, no scaling pressure: services would be premature. The ADR records
    `Target: modules in one deployable, hexagonal inside each — module map: docs/architecture/module-map.md`, with hexagonal adopted per module as each is touched (existing modules start `as-is` inside).
-3. **Declare and freeze.** `bookings`, `resources`, `accounts` and (new) `reminders` are declared with empty `api` packages. The boundary checker runs once and its violations become the baseline; `check-data-ownership` is written and baselined too. Frozen: "no new callers of the facade", "no new subclass of the base controller". `reminders` is strict.
+3. **Declare and freeze.** `bookings`, `resources`, `accounts` and (new) `reminders` are declared with empty `api` packages. `check-imports` runs once and its violations become the baseline; the cross-module SQL is listed by hand against the module map. Frozen: "no new callers of the facade", "no new subclass of the base controller". `reminders` starts with no baseline entries.
 4. **The first feature, as the first new module.**
 
    | Field | Value |
@@ -197,7 +197,7 @@ The app is invented and stands for any brownfield web app of this shape.
 
    *How it got there depends on the strategy:* in place, `bookings/api` delegates to the existing queries by branch by abstraction and the dashboard sprouts one call into `reminders`; strangling inside, the dashboard's routing point picks the new module's panel behind a flag and a ledger row tracks the old query's retirement; beside, the new home is generated with the same modules and the panel reaches the old dashboard through the seam.
 
-   *Evidence:* characterisation green, the dashboard snapshot changed only in the new panel region; `reminders` has no baseline entries; the PR prints the baseline delta per checker.
+   *Evidence:* characterisation green, the dashboard snapshot changed only in the new panel region; `reminders` has no baseline entries; the PR description states the baseline delta.
 5. **Next.** "Detach base class: bookings" and "Decompose facade: bookings" ride as `Leaves better:` items on the next two specs. `accounts` moves its tables into its own schema and replaces its one cross-module JOIN with a call to `bookings/api`. `BookingMade` becomes an in-process event that `reminders` subscribes to when it needs its own projection. A platform rung later enables a stronger checker; its extra findings are baselined in a reviewed commit.
 
 **Finish line for the shape:** every baseline zero and every module strict; the god facade and base class deleted; no SQL names another module's table; each module's tests run with only that module loaded; module documentation (a C4 component view or a module framework's generated docs) matches the code; hexagonal layering present in each module the ADR named.

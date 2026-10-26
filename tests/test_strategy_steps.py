@@ -53,7 +53,8 @@ class StepsTest(unittest.TestCase):
                                 ("leave-it", {"Variant": "retain", "Risk-owner": "me", "Review": "2999-01-01"})):
             with self.subTest(strategy=strategy):
                 self.assertEqual(actions(self.root, decided(strategy, lines), [old()])[:2],
-                                 ["the build floor, in the agent", "prove each application starts (`smoke`), in the agent"])
+                                 ["the build floor, in the agent",
+                                  "prove each application starts (`smoke`), in the agent"])
 
     def test_a_strangler_beside_generates_its_home_and_owes_the_parity_list_when_everything_moves(self) -> None:
         found = actions(self.root, decided("strangler-fig", STRANGLER), [old(smoke="make smoke")])

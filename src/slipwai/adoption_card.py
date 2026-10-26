@@ -17,6 +17,7 @@ from . import next_steps
 from .adoption_flow import GROUND, PRD, control, key_of
 from .adoption_flow import SCRIPT as STEPPING
 from .errors import GenerationError
+from .folder_field import SCRIPT as CHOOSING
 from .ground_card import SCRIPT as GROUNDING
 from .ground_card import card as ground_card
 from .harness import detect, keys, name_of
@@ -61,12 +62,13 @@ def adoption_card(root: Path, running: bool = False) -> str:
             "ends.</p>" if running else
             ground_card(root) + f"<script>{GROUNDING}</script>" if key == GROUND else
             control(key, (adoption.strategy or {}).get("recommended"), agents,
-                    layout.under(PRD) if (root / layout.under(PRD)).is_file() else ""))
+                    str((root / layout.under(PRD)).resolve()) if (root / layout.under(PRD)).is_file() else ""))
     return ('<div class="card" id="adoption"><h2>Where this adoption stands</h2>'
             '<p class="empty">Read off the tree, so it moves as each step is done — on this board where it can '
             f'be, and in the coding agent opened in {esc(root.resolve())} where it cannot. '
             '<code>slipwai adopt --next</code> says the same in a terminal.</p>'
             f'<ol class="lines">{"".join(rows)}</ol>'
             + (f'{here}<pre class="said bad" id="step-said" hidden></pre><script>{STEPPING}</script>'
+               f"<script>{CHOOSING}</script>"
                if here and (running or key != GROUND) else "")
             + "</div>" + (here if key == GROUND and not running else ""))

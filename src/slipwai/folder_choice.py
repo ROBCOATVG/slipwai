@@ -31,11 +31,14 @@ PROMPT = "Choose the folder your brief is in"
 #: The same, for each field of the form that is a folder. Looked up by the field's name, never taken from
 #: the request: the words go into a script the dialog runs, so only these words can.
 PROMPTS = {"brief": PROMPT, "output": "Choose the folder the project is made in",
-           "root": "Choose the repository to adopt"}
+           "root": "Choose the repository to adopt", "prd": "Choose the PRD to draft from"}
+#: The fields whose answer is a file rather than a folder: the same dialog, asked for a file.
+FILES = frozenset({"prd"})
 
 
-def asking(start: Path, prompt: str = PROMPT) -> list[str]:
-    """The command that opens this machine's folder chooser at `start`, or `[]` where there is none.
+def asking(start: Path, prompt: str = PROMPT, file: bool = False) -> list[str]:
+    """The command that opens this machine's folder chooser at `start` — its file chooser, for a `file` —
+    or `[]` where there is none.
 
     One per platform and each the one that platform already has: AppleScript's own `choose folder` on
     macOS, `zenity` or `kdialog` on a Linux desktop, and the folder browser in .NET's forms on Windows,
@@ -44,16 +47,19 @@ def asking(start: Path, prompt: str = PROMPT) -> list[str]:
     where = str(start)
     if sys.platform == "darwin":
         return ["osascript", "-e", 'tell application "System Events" to activate',
-                "-e", f'POSIX path of (choose folder with prompt "{prompt}" '
+                "-e", f'POSIX path of (choose {"file" if file else "folder"} with prompt "{prompt}" '
                       f'default location POSIX file "{where}")']
     if sys.platform == "win32":  # pragma: no cover — read on the platform it is for
-        return ["powershell", "-NoProfile", "-Command",
-                "Add-Type -AssemblyName System.Windows.Forms; "
-                "$one = New-Object System.Windows.Forms.FolderBrowserDialog; "
-                f"$one.Description = '{prompt}'; $one.SelectedPath = '{where}'; "
-                "if ($one.ShowDialog() -eq 'OK') { $one.SelectedPath }"]
-    for chooser in (["zenity", "--file-selection", "--directory", f"--title={prompt}",
-                     f"--filename={where}/"], ["kdialog", "--getexistingdirectory", where]):
+        dialog = (f"$one = New-Object System.Windows.Forms.OpenFileDialog; $one.Title = '{prompt}'; "
+                  f"$one.InitialDirectory = '{where}'; if ($one.ShowDialog() -eq 'OK') {{ $one.FileName }}"
+                  if file else
+                  "$one = New-Object System.Windows.Forms.FolderBrowserDialog; "
+                  f"$one.Description = '{prompt}'; $one.SelectedPath = '{where}'; "
+                  "if ($one.ShowDialog() -eq 'OK') { $one.SelectedPath }")
+        return ["powershell", "-NoProfile", "-Command", "Add-Type -AssemblyName System.Windows.Forms; " + dialog]
+    zenity = ["zenity", "--file-selection", *([] if file else ["--directory"]), f"--title={prompt}",
+              f"--filename={where}/"]
+    for chooser in (zenity, ["kdialog", "--getopenfilename" if file else "--getexistingdirectory", where]):
         if which(chooser[0]):
             return chooser
     return []
@@ -72,7 +78,9 @@ def chosen(start: Path, field: str = "brief") -> str:
     the field keeps whatever it already held. The exit status is not read for that reason — every chooser
     here spells cancellation as a non-zero exit, and so does a chooser that could not start.
     """
-    command = asking(start if start.is_dir() else Path.home(), PROMPTS.get(field, PROMPT))
+    file = field in FILES
+    start = start.parent if file and start.is_file() else start
+    command = asking(start if start.is_dir() else Path.home(), PROMPTS.get(field, PROMPT), file)
     if not command:
         return ""
     try:
@@ -81,4 +89,4 @@ def chosen(start: Path, field: str = "brief") -> str:
     except (OSError, subprocess.SubprocessError):
         return ""
     picked = done.stdout.strip()
-    return picked if picked and Path(picked).is_dir() else ""
+    return picked if picked and (Path(picked).is_file() if file else Path(picked).is_dir()) else ""

@@ -12,17 +12,18 @@ from .folder_choice import asking
 from .page_shell import esc
 
 
-def folder_field(name: str, value: str, required: bool = False) -> str:
+def folder_field(name: str, value: str, required: bool = False, file: bool = False) -> str:
     """A button and the folder it chose, not a file input. A browser may not learn where anything is on the
     disk — that is the rule, not an oversight — so the board asks the machine for it with the same dialog
     every other program on this computer opens. Only where this machine has no such dialog is the path
-    typed, and then the field is an ordinary one."""
+    typed, and then the field is an ordinary one. A `file` is chosen the same way."""
+    kind = "file" if file else "folder"
     field = (f'<input id="{esc(name)}" name="{esc(name)}" value="{esc(value)}" '
-             f'placeholder="a folder on this machine"{" required" if required else ""}')
+             f'placeholder="a {kind} on this machine"{" required" if required else ""}')
     if not asking(Path.home()):
         return f'<div class="path">{field}></div>'
     return (f'<div class="path">{field} readonly data-choose="{esc(name)}">'
-            f'<button type="button" class="install" data-choose="{esc(name)}">Choose folder…</button></div>')
+            f'<button type="button" class="install" data-choose="{esc(name)}">Choose {kind}…</button></div>')
 
 
 #: The page half. The board is on this machine, so it opens the dialog and hands back where it landed; a

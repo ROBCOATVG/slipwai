@@ -89,8 +89,11 @@ class DecideTest(unittest.TestCase):
         self.assertIn("Family historians", (self.root / "adopt/docs/prd.md").read_text())
 
     def test_the_form_offers_the_prd_already_written(self) -> None:
-        page = flow.control(flow.SPECIFY, None, "", "adopt/docs/prd.md")
-        self.assertIn('value="adopt/docs/prd.md"', page)
+        with mock.patch("slipwai.folder_field.asking", return_value=["osascript"]):
+            page = flow.control(flow.SPECIFY, None, "", "/kept/adopt/docs/prd.md")
+        self.assertIn('value="/kept/adopt/docs/prd.md"', page)
+        self.assertIn('data-choose="prd"', page, "chosen with the machine's dialog, not typed")
+        self.assertIn("Choose file…", page)
         self.assertEqual(page.count("<textarea"), 4)
 
 

@@ -27,6 +27,7 @@ from pathlib import Path
 
 from . import resurvey
 from .errors import GenerationError
+from .folder_field import folder_field
 from .ground_card import asked
 from .init_run import Fitting, Step, adopted
 from .layout import Layout, layout_of
@@ -194,8 +195,8 @@ def control(key: str, recommended: str | None, agents: str, prd: str = "") -> st
             f'<textarea id="{name}" name="{name}" rows="3" placeholder="{esc(hint)}"></textarea></div>'
             for name, heading, hint, needed in QUESTIONS)
         return ('<form class="ask-page" id="step-form"><div class="q"><label for="prd">A PRD you already have'
-                f'</label><input id="prd" name="prd" value="{esc(prd)}" placeholder="its path — copied into the '
-                'repository, and the questions below left empty"></div><p class="empty">or, without one, '
+                f'</label>{folder_field("prd", prd, file=True)}<p class="empty">copied into the repository; the '
+                "questions below win where they are answered.</p></div><p class=\"empty\">or, without one, "
                 f"answer these and they are written as the PRD:</p>{boxes}</form>"
                 '<div class="ask"><button class="go" data-step="draft">Draft the constitution and the '
                 "specification</button></div>")

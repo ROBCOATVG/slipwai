@@ -100,6 +100,18 @@ class AnswerTest(unittest.TestCase):
             with self.subTest(why=why), ran(stdout, code):
                 self.assertEqual(chosen(Path(tempfile.mkdtemp())), "")
 
+    def test_the_prd_is_a_file_chosen_with_the_same_dialog(self) -> None:
+        """A PRD is a file: asked for with `choose file`, opened beside the one named, and a folder is no answer."""
+        here = Path(tempfile.mkdtemp())
+        prd = here / "prd.md"
+        prd.write_text("# A product\n")
+        with ran(f"{prd}\n") as asked:
+            self.assertEqual(chosen(prd, "prd"), str(prd))
+        self.assertIn("choose file", asked.asked[-1])
+        self.assertIn(f'POSIX file "{here}"', asked.asked[-1])
+        with ran(f"{here}\n"):
+            self.assertEqual(chosen(prd, "prd"), "")
+
     def test_a_chooser_that_will_not_run_is_not_a_traceback(self) -> None:
         for fault in (OSError("no such thing"), subprocess.TimeoutExpired([], 1)):
             with self.subTest(fault=type(fault).__name__), \

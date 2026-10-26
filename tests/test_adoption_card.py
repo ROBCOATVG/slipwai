@@ -51,6 +51,25 @@ class AdoptionCardTest(unittest.TestCase):
                 mock.patch.object(card.next_steps, "steps", return_value=said):
             self.assertEqual(card.adoption_card(root), "")
 
+    def test_a_checkpoint_after_the_first_specification_stands_above_the_strip_not_in_its_place(self) -> None:
+        """A card in the adoption's place is drawn instead of the strip, and the page's script wires no button
+        without the strip: a rewrite's storyboard could not be approved while its checkpoint was shown there."""
+        from slipwai.voyage_page import page as voyage
+        root = Path(tempfile.mkdtemp())
+        (root / "project.json").write_text(json.dumps({"name": "kept"}))
+        said = [Step("/speckit-specify, in the agent", "the first feature", True)]
+        checkpoint = mock.Mock(strategy={"decided": "rewrite", "lines": {"Checkpoint": "2999-01-01"}})
+        with mock.patch.object(card, "read_manifest", return_value={}), \
+                mock.patch.object(card, "adoption_of", return_value=checkpoint), \
+                mock.patch.object(card, "layout_of"), mock.patch.object(card, "apps_from_manifest"), \
+                mock.patch.object(card.next_steps, "steps", return_value=said):
+            self.assertEqual(card.adoption_card(root), "")
+            dates = card.strategy_dates(root)
+        self.assertIn('id="strategy-dates"', dates)
+        page = voyage(root, [], [], "", "", "", "", None, False, dates=dates)
+        self.assertIn('class="passage"', page)
+        self.assertLess(page.index('id="strategy-dates"'), page.index('class="passage"'))
+
     def test_while_a_step_runs_there_is_nothing_to_press_a_second_time(self) -> None:
         """A control drawn while `./init` ran was still there when it ended, and pressed, ran it again."""
         root = Path(tempfile.mkdtemp())

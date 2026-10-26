@@ -49,10 +49,11 @@ def adoption_card(root: Path, running: bool = False) -> str:
     layout = layout_of(document)
     found = next_steps.steps(root, layout, adoption, apps_from_manifest(document, True))
     # From the first specification on, an adopted repository's voyage is a generated project's: the strip
-    # takes over, and this card has said all it has to say — but for the strategy's dates, which run the length
-    # of the programme.
+    # takes over, and this card has said all it has to say. The strategy's dates run the length of the
+    # programme, and stand above the strip (`strategy_dates`) rather than in its place: a card here is what the
+    # page draws instead of the strip, and without the strip its script never wired a button below it.
     if any(step.done and step.action.startswith("/speckit-specify") for step in found):
-        return dates_card(root, document, adoption.strategy or {})
+        return ""
     rows, seen, now = [], False, None
     for step in found:
         now = now or (None if step.done else step)
@@ -83,6 +84,19 @@ def adoption_card(root: Path, running: bool = False) -> str:
                f"<script>{CHOOSING}</script>"
                if here and (running or key != GROUND) else "")
             + "</div>" + (here if key == GROUND and not running else ""))
+
+
+def strategy_dates(root: Path) -> str:
+    """The decided strategy's checkpoint or review, for the voyage of an adopted repository whatever stage it is
+    on; nothing for a generated project, or one with no date to hold it to."""
+    if not (root / "project.json").is_file():
+        return ""
+    try:
+        document = read_manifest(root, "the board")
+    except GenerationError:
+        return ""
+    adoption = adoption_of(document)
+    return dates_card(root, document, adoption.strategy or {}) if adoption else ""
 
 
 def dates_card(root: Path, document: dict, record: dict, today: datetime.date | None = None) -> str:

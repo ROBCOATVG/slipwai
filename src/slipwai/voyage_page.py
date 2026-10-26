@@ -707,7 +707,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
          ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
-         decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "") -> str:
+         decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "",
+         dates: str = "") -> str:
     now = current(found)
     # An adopted repository walks its own steps until its first specification, and the strip a generated
     # project has would name a stage it is not on: the adoption's card stands where the strip does.
@@ -718,7 +719,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     # The live cards, with their controls, under the model: how the work is going belongs on the page that
     # says what the work is.
     live = live_cards(fleet, config or {}, True, project_tabs(root, True)) if fleet else ""
-    where = adopting or passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
+    # Past it, the strategy's checkpoint stands above the strip, never in its place.
+    where = adopting or dates + passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
                                      feature, drawable, shape, modelable)
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.

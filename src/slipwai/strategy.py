@@ -206,11 +206,17 @@ def ledger_finished(root: Path, layout: Layout) -> bool:
     text = (root / layout.under("retirement.md")).read_text(errors="replace", encoding="utf-8") if (
         root / layout.under("retirement.md")).is_file() else ""
     last: dict[str, str] = {}
+    pieces: dict[str, str] = {}
     for line in text.splitlines():
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) == 7 and cells[0] not in ("Date", "---") and not cells[0].startswith("-"):
+        if not line.strip().startswith("|") or cells[0] in ("Date", "") or cells[0].startswith("-"):
+            continue
+        if len(cells) == 7:
             last[cells[1]] = cells[6].strip("*").lower()
-    return bool(last) and all(status == "removed" for status in last.values())
+        elif len(cells) == 5:
+            # A transitional piece — a proxy rule, an include — still live is the old home still serving.
+            pieces[cells[1]] = cells[4].strip("*").lower()
+    return bool(last) and all(status == "removed" for status in (*last.values(), *pieces.values()))
 
 
 def with_recommendation(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> Adoption:

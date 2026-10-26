@@ -40,6 +40,14 @@ from .unit_targets import unit_targets
 # budget: 400 — the generated Makefile's every block, the seed door's target now beside the migrations' it needs
 
 
+
+def imports_recipe(apps: list[App]) -> str:
+    """`check-imports`, through the ratchet where there is code that was here: a context boundary declared over old
+    code (`"layout": "modular"`) starts with violations, and they are its baseline, not a red gate."""
+    if wrapped_of(apps):
+        return "python3 scripts/ratchet.py repository imports -- 'python3 scripts/check-imports.py'"
+    return "python3 scripts/check-imports.py"
+
 def dev_targets(project_name: str, services: list[App], apps: list[App]) -> str:
     """One foreground target per service that has a transport, each inside its own transport's marked
     region: `dev` for the first service, `dev-<name>` for the rest.
@@ -343,7 +351,7 @@ lint: ## Run the native formatting and static-analysis gate
 \t{native['lint']}
 {formatting}
 check-imports: ## Fail when domain code imports an outer architecture layer
-\tpython3 scripts/check-imports.py
+\t{imports_recipe(apps)}
 check-migrations: ## Fail when a migration contracts the schema without naming the earlier expand it completes
 \tpython3 scripts/check-migrations.py
 check-chart: ## Fail when the chart's marks are untyped, double-set, withdrawn, or a slice names no capability

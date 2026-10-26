@@ -12,9 +12,11 @@ a gap. A page rendered from other rows than the record now holds is stale, and f
 """
 from __future__ import annotations
 
+import datetime
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -143,13 +145,104 @@ def decided_strategy() -> str | None:
     return decided
 
 
-def ledger_finished() -> bool:
-    last: dict[str, str] = {}
+#: What a capability passes through, in order. `shadowed` is the evidence `moved` stands on: the new home served
+#: reads beside the old one, reconciled, before it served anyone.
+STATUSES = ("routed", "shadowed", "moved", "retired", "removed")
+#: Why a commit may change the code that was here once a strangler fig or a rewrite is decided — the freeze's
+#: own exceptions, and the work the method does to the old code to make it safe to replace.
+LEGACY_CHANGE = re.compile(r"^Legacy-change:\s*(security|bugfix|seam|quick-win|build|characterise)\b",
+                           re.IGNORECASE | re.MULTILINE)
+
+
+def ledger_rows() -> tuple[dict[str, list[str]], dict[str, str]]:
+    """Every capability's statuses in order, and every transitional piece's last status, from the ledger's two
+    tables: capabilities (seven columns) and the transitional pieces the seam needs (five)."""
+    capabilities: dict[str, list[str]] = {}
+    pieces: dict[str, str] = {}
     for line in (LEDGER.read_text(errors="replace", encoding="utf-8") if LEDGER.is_file() else "").splitlines():
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) == 7 and cells[0] not in ("Date", "---") and not cells[0].startswith("-"):
-            last[cells[1]] = cells[6].strip("*").lower()
-    return bool(last) and all(status == "removed" for status in last.values())
+        if not line.strip().startswith("|") or cells[0] in ("Date", "") or cells[0].startswith("-"):
+            continue
+        if len(cells) == 7:
+            capabilities.setdefault(cells[1], []).append(cells[6].strip("*").lower())
+        elif len(cells) == 5:
+            pieces[cells[1]] = cells[4].strip("*").lower()
+    return capabilities, pieces
+
+
+def ledger_finished() -> bool:
+    """Every capability *removed*, and every transitional piece with it: an include left behind is the old home
+    still serving."""
+    capabilities, pieces = ledger_rows()
+    return bool(capabilities) and all(statuses[-1] == "removed" for statuses in capabilities.values()) and all(
+        status == "removed" for status in pieces.values())
+
+
+def ledger_gaps() -> list[str]:
+    """A status the ledger does not know, or a capability *moved* with no *shadowed* row before it."""
+    capabilities, _ = ledger_rows()
+    gaps = []
+    for capability, statuses in capabilities.items():
+        unknown = [status for status in statuses if status not in STATUSES]
+        if unknown:
+            gaps.append(f"the ledger gives `{capability}` the status `{unknown[0]}`; it is one of {', '.join(STATUSES)}")
+        if "moved" in statuses and "shadowed" not in statuses[:statuses.index("moved")]:
+            gaps.append(f"the ledger says `{capability}` moved with no `shadowed` row before it — the new home serves "
+                        "reads beside the old one, reconciled, before it serves anyone")
+    return gaps
+
+
+def legacy_changes(document: dict, record: dict) -> list[str]:
+    """Commits since the strategy was decided that changed the code that was here without saying why it could."""
+    adr = record.get("adr")
+    old = [str(r.get("path")) for r in (document.get("deployables") or {}).values()
+           if isinstance(r, dict) and r.get("generated") is False and r.get("path") not in (None, ".")]
+    if not adr or not old:
+        return []
+    git = ["git", "-C", str(ROOT)]
+    since = subprocess.run([*git, "log", "-1", "--format=%H", "--", adr], capture_output=True, text=True)
+    if since.returncode or not since.stdout.strip():
+        return []  # a shallow clone, or an ADR nobody committed: nothing to measure from
+    log = subprocess.run([*git, "log", f"{since.stdout.strip()}..HEAD", "--format=%h%x1f%s%x1f%B%x1e", "--", *old],
+                         capture_output=True, text=True).stdout
+    unsaid = [entry.split("\x1f") for entry in log.split("\x1e") if entry.strip()]
+    unsaid = [(sha.strip(), subject) for sha, subject, body in unsaid if not LEGACY_CHANGE.search(body)]
+    return [f"commit {sha} changed the code that was here ({', '.join(old)}) without a `Legacy-change:` trailer — "
+            f"\"{subject}\". Under `{record['decided']}` the old code takes security, bugfix, seam, quick-win, build "
+            "and characterise changes only, and says which" for sha, subject in unsaid[:5]]
+
+
+def strategy_gaps(document: dict) -> list[str]:
+    """What the decided strategy refuses before it happens, rather than warns about after: a feature specified
+    before its new home exists, the old code changed without saying why, a left system past its review."""
+    record = document.get("strategy") or {}
+    strategy, lines = record.get("decided"), record.get("lines") or {}
+    if not strategy or record.get("missing"):
+        return []
+    gaps: list[str] = []
+    specified = sorted(path.parent.name for path in (ROOT / "specs").glob("*/spec.md"))
+    if strategy in ("strangler-fig", "rewrite") and specified:
+        place = str(lines.get("New home" if strategy == "strangler-fig" else "Home") or "").split(" ")[0].lower()
+        # A generated deployable carries no `generated` key; only the code that was here is marked `false`.
+        generated = any(isinstance(r, dict) and r.get("generated") is not False
+                        for r in (document.get("deployables") or {}).values())
+        if place == "new-repo":
+            gaps.append(f"specs/{specified[0]} is specified here, but the rewrite is built in a new repository: the "
+                        "constitution and every feature are that project's")
+        elif place == "inside" and not (DELIVERY / "docs/module-map.md").is_file():
+            gaps.append(f"specs/{specified[0]} is specified before the new home's modules are declared — "
+                        f"{(DELIVERY / 'docs/module-map.md').relative_to(ROOT)} first")
+        elif place != "inside" and not generated:
+            gaps.append(f"specs/{specified[0]} is specified before the new home exists: under `{strategy}` a feature "
+                        "is built in the new home, so it is generated first (`slipwai adopt --next` says how)")
+    if strategy in ("strangler-fig", "rewrite"):
+        gaps += legacy_changes(document, record)
+    if strategy == "leave-it":
+        due = re.search(r"\d{4}-\d{2}-\d{2}", str(lines.get("Review") or ""))
+        if due and datetime.date.fromisoformat(due.group(0)) < datetime.date.today():
+            gaps.append(f"the system was left as it is to be reviewed by {due.group(0)}, and that date has passed: "
+                        "review it, and record the outcome as a new ADR")
+    return gaps + ledger_gaps()
 
 
 def main() -> int:
@@ -192,11 +285,14 @@ def main() -> int:
             continue
         mark = "at target" if rung == row.get("target") else f"below `{row.get('target')}`"
         print(f"  {axis}: `{rung}` — {mark}" + (f"; planned as {row['planned']}" if row.get("planned") else ""))
+    for gap in strategy_gaps(document):
+        print(f"check-convergence: strategy: {gap}", file=sys.stderr)
+        failures += 1
     # Said, not failed: a strangler fig decided with nowhere for a capability to move to. The first strangler
     # adoption archived five product slices, all built in the WAR it had decided to strangle, with an empty ledger.
     deployables = document.get("deployables") or {}
     if decided_strategy() == "strangler-fig" and not ledger_finished() and deployables and all(
-        not (record or {}).get("generated") for record in deployables.values()
+        (record or {}).get("generated") is False for record in deployables.values()
     ):
         archived = len([path for path in (ROOT / "specs").glob("*/slices/*") if path.is_dir()])
         print(

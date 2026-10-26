@@ -88,7 +88,9 @@ def context_holders() -> dict[str, list[str]]:
     return {
         record["path"]: record["contexts"]
         for record in deployables("service")
-        if (record.get("generated") is not False or record.get("layout") == "hexagonal")
+        # `modular` is the context rule alone, for code that was here and is being reshaped into modules: it
+        # keeps the boundaries between contexts without the layer rules `hexagonal` brings with it.
+        if (record.get("generated") is not False or record.get("layout") in ("hexagonal", "modular"))
         and isinstance(record.get("contexts"), list) and len(record["contexts"]) > 1
         and all(isinstance(name, str) for name in record["contexts"])
     }

@@ -177,6 +177,24 @@ def relative(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
 
 
+def tool_of(shell: str) -> str:
+    """The program a recorded command runs: the first word that is not `cd` and its directory, a separator, `env`
+    or an assignment. The directory after `cd` was being named as the missing tool — "`MyTree_WebApp` is not on
+    this machine", for an `ant` that was not."""
+    words, skip = shlex.split(shell), False
+    for word in words:
+        if skip:
+            skip = False
+            continue
+        if word == "cd":
+            skip = True
+            continue
+        if word in ("&&", ";", "env") or "=" in word:
+            continue
+        return word
+    return shell
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 4 or argv[2] != "--":
         print(__doc__.strip().splitlines()[2].strip(), file=sys.stderr)
@@ -186,8 +204,7 @@ def main(argv: list[str]) -> int:
     # `cd apps/shop && npm run lint` included. Several words are an older recipe's, and are re-quoted rather than
     # joined with spaces so that a recorded `sh -c 'test -n "$HOME"'` reaches the second shell as three words.
     shell = command[0] if len(command) == 1 else shlex.join(command)
-    tool = next((word for word in shlex.split(shell) if word not in ("cd", "&&", ";", "env") and "/" not in word
-                 and "=" not in word), shell) if shell.startswith("cd ") else shlex.split(shell)[0]
+    tool = tool_of(shell)
     run = subprocess.run(["sh", "-c", shell], cwd=ROOT, text=True, capture_output=True)
     output = run.stdout + run.stderr
     sys.stdout.write(output)

@@ -4,21 +4,46 @@ The delivery method is installed. The survey says what is here, `/characterise` 
 it changes, and `make verify` runs the build's own commands — green on the day it arrives where the ratchet
 has a baseline to hold them to, and saying plainly what is red where it does not. Nothing on this page had to
 be decided for that to happen, and that was the point: the method makes every later step safe for an agent to
-attempt, and only now is the question *which* step. This page is the Choose and Slice stages — three strategies, the order to change in, what
+attempt, and only now is the question *which* step. This page is the Choose and Slice stages — four strategies, the order to change in, what
 to do about data and infrastructure, and the one rule that holds all of it together.
 
-## Three strategies, not two
+## Four strategies, and the three decisions an ADR records
 
-| Strategy | What it is | When it is right | What it needs |
+The strategy ADR records three separate decisions, and each strategy has a playbook under `__DELIVERY__/docs/strategies/`
+that says what follows from it — where a new feature is built, what the spec and the mock-ups show, what the gate
+refuses, and the order of the steps:
+
+1. **Strategy** — how the change happens: *leave it*, *in place*, *strangler fig* or *rewrite*.
+2. **Where the new home lives** — for the two that build one: a strangler fig grows it `inside` (new modules in the
+   same deployable, the seam in code) or `beside` (a new deployable, the seam at the network); a rewrite builds it
+   `beside` or in a `new-repo`.
+3. **Target shape** — what the system becomes, whichever way it gets there: modules, in one deployable or as
+   services, and the layering inside each (`docs/strategies/target-shape.md`).
+
+| Strategy | What it is | When it is right | Playbook |
 |---|---|---|---|
-| **Strangler fig** | New capability grows beside the old system and takes its traffic one capability at a time, until the old system serves nothing and is removed | The system is large, alive and cannot stop; there is a seam requests enter through; the business trigger (`project.json`'s `why`) is a capability that has to change, not a platform that has to go | A **freeze** on the old system (below), a routing seam, a data strategy that is not dual-write, and the retirement ledger |
-| **Modular monolith in place** | The code is restructured behind its characterisation tests — contexts found, seams made, layers separated — without a second deployable or a routing seam | The system is one deployable that mostly works, the trigger is "cannot change it safely" rather than "cannot run it", and the team is small | `/characterise` before every move, `refactoring` and `improve-codebase-architecture`, and patience; the import gate's rule can be adopted context by context (`"layout": "hexagonal"`) |
-| **Rewrite** | A new system replaces the old one, and the old one is switched off | The system is small enough to hold in one head; there is no seam to strangle through; the platform is dead and cannot be upgraded in place | Characterisation of everything the rewrite claims to preserve, a cut-over plan with a rollback, and the honesty that most rewrites are cancelled halfway |
+| **Leave it** | Keep the system as it is — retain, or sunset by a date — doing what security requires, with the decision reviewed rather than forgotten | The value of change is below its cost; a replacement is coming; the risk is owned by a named person | `docs/strategies/leave-it.md` |
+| **In place** | Change the existing code where it stands: the platform ladder one compatible step at a time, then reshaped toward the target | One deployable that mostly works; the trigger is a platform, a delivery path or "cannot change it safely", not a capability that has to live somewhere else | `docs/strategies/in-place.md` |
+| **Strangler fig** | A new home grows beside or inside the old system, frozen meanwhile (*The freeze*, below), and takes its traffic one capability at a time; `End: all` deletes the old app, `End: partial` keeps it, frozen, for the rest | The system is alive and cannot stop; there is a seam requests enter through; the old system has to go (`End: all` — the incremental rewrite) or only some capabilities have to change | `docs/strategies/strangler-fig.md` |
+| **Rewrite** | A new system is built complete and replaces the old one in one rehearsed cut-over | Coexistence is impossible or costs more than it saves: no seam at all, data that cannot be split by capability, a fixed switch-off date | `docs/strategies/rewrite.md` |
 
-Rewrite is the exception, chosen when the other two cannot work, not the default because it is cleaner.
-A programme is allowed to change its mind: a strangler that finds one context is the whole system may
-become a rewrite of that context, and a rewrite that turns out to have a seam after all may become a
-strangler. What is not allowed is to do neither and call the refactoring a strategy.
+Two of the four replace code, and they differ in two independent ways — how traffic moves (one capability at a
+time, both systems live; or all at once) and how much moves (everything; or only what has to change):
+
+| | One capability at a time | All at once |
+|---|---|---|
+| **Everything moves** | Strangler fig, `End: all` | Rewrite |
+| **Only what has to change** | Strangler fig, `End: partial` | — |
+
+**Wanting a new stack is not, on its own, a reason for a rewrite:** a strangler fig with its new home `beside` and
+`End: all` gets the same outcome, with the risk going down one capability at a time. A rewrite's ADR says why one
+cut-over is right. A programme is allowed to change its mind — a strangler that finds one context is the whole
+system may become a rewrite of it — but not to do neither and call the refactoring a strategy.
+
+**First under every strategy: the build floor** (`docs/strategies/build-floor.md`). Each deployable builds from a
+clean clone, through one declared build, with every dependency and tool version written down. In place and a
+strangler fig `inside` bring the old toolset fully up to date, because new work is built with it; a rewrite and a
+strangler fig `beside` pin the old build as it is, because it is being replaced.
 
 ## The freeze, which the strangler is not a strangler without
 

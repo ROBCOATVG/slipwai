@@ -16,7 +16,7 @@ import checkout_packages  # noqa: F401
 from slipwai.convergence import detected, reconciled
 from slipwai.layout import Layout
 from slipwai.origin import Adoption, adoption_of
-from slipwai.project.strangle_command import strangle_files
+from slipwai.project.strangle_command import STRATEGIES_HEADING, strangle_files
 from slipwai.services import App
 from slipwai.strategy import STRATEGIES, decision_of, ledger_finished, recommend, with_recommendation
 
@@ -158,7 +158,7 @@ class StrategyTest(unittest.TestCase):
             files = strangle_files(apps, DELIVERY, "existing", adoption)
             essay = files["docs/change-strategy.md"]
             self.assertLess(essay.index("## Recommended for this repository"),
-                            essay.index("## Three strategies, not two"))
+                            essay.index(STRATEGIES_HEADING))
             self.assertIn("**`in-place`**", essay)
             self.assertIn("**Nothing is decided yet.**", essay)
             self.assertIn("The word `Accepted` is the person's", essay)
@@ -224,6 +224,19 @@ class StrategyTest(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+class PlaybookTest(unittest.TestCase):
+    """The decided strategy informs every step after it, so an adoption is given what each one means."""
+
+    def test_an_adoption_is_given_a_playbook_per_strategy_and_the_floor_they_start_with(self) -> None:
+        files = strangle_files([wrapped()], DELIVERY, "existing", None)
+        pages = {path for path in files if path.startswith("docs/strategies/")}
+        self.assertEqual(pages, {f"docs/strategies/{name}.md" for name in (
+            "README", "leave-it", "in-place", "strangler-fig", "rewrite", "build-floor", "target-shape")})
+        self.assertFalse([path for path in pages if "__DELIVERY__" in files[path]])
+        essay = files["docs/change-strategy.md"]
+        for strategy in ("leave-it", "in-place", "strangler-fig", "rewrite", "build-floor"):
+            self.assertIn(f"docs/strategies/{strategy}.md", essay, "the essay points at each playbook")
 
 class OneProductOneLineTest(unittest.TestCase):
     """The platform record holds a row per application per product, so a repository whose four npm packages

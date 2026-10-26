@@ -3,9 +3,11 @@
 Only an adopted repository (brownfield adoption) gets these. `/strangle <capability>` moves one capability out of the
 code that was here into a new home, behind a routing seam, with the data strategy decided and a row written in the
 retirement ledger — and it refuses to move a behaviour nothing has pinned. `docs/change-strategy.md` is the essay behind
-it: the three strategies, the order to change in, what to do about data and infrastructure. It is an asset of the
+it: the four strategies, the order to change in, what to do about data and infrastructure. It is an asset of the
 adoption (`assets/adoption/docs/change-strategy.md`) rather than of the toolkit, because a generated greenfield project
-has nothing that was here to change; `__DELIVERY__/` in it is spelled for the project's layout on the way in.
+has nothing that was here to change; `__DELIVERY__/` in it is spelled for the project's layout on the way in. Beside
+it go the playbooks, one per strategy plus the build floor and the target shape, under `docs/strategies/`: what each
+decided strategy means for every step after it.
 """
 from __future__ import annotations
 
@@ -33,14 +35,23 @@ sign that a programme has quietly become a second system beside the first.
 """
 
 
+#: Where `strategy_page` puts what is recommended for this repository: ahead of the four strategies it chose from.
+STRATEGIES_HEADING = "## Four strategies, and the three decisions an ADR records"
+PLAYBOOKS = ADOPTION_ROOT / "docs/strategies"
+
+
+def spelled(text: str, layout: Layout) -> str:
+    """An adoption page's one layout-dependent path, spelled for this project."""
+    return text.replace("__DELIVERY__/", f"{layout.delivery}/" if layout.moved else "")
+
+
 def strategy_page(layout: Layout, adoption: Adoption | None = None) -> str:
     """`docs/change-strategy.md`, opening with what is recommended for this repository, its one layout-dependent path
     spelled for this project."""
-    text = (ADOPTION_ROOT / "docs/change-strategy.md").read_text(encoding="utf-8")
-    text = text.replace("__DELIVERY__/", f"{layout.delivery}/" if layout.moved else "")
+    text = spelled((ADOPTION_ROOT / "docs/change-strategy.md").read_text(encoding="utf-8"), layout)
     if adoption is None or not adoption.strategy:
         return text
-    marker = "## Three strategies, not two"
+    marker = STRATEGIES_HEADING
     return text.replace(marker, recommendation_section(adoption, layout) + marker, 1)
 
 
@@ -204,7 +215,7 @@ argument-hint: <the capability to move, and where its requests enter>
 
 # Strangle
 
-Read `docs/change-strategy.md` first — the three strategies, the order to change in, and why dual-write is a
+Read `docs/change-strategy.md` first — the four strategies, the order to change in, and why dual-write is a
 trap — and `skills/finding-seams/SKILL.md`. This command is one turn of the strangler fig: one capability, one
 seam, one row in `{ledger}`. It is the Slice stage of adopting the method around code that existed before it.
 
@@ -279,8 +290,15 @@ row the ledger now ends on. The programme is finished when every row reads *remo
 """
 
 
+def playbooks(layout: Layout) -> dict[str, str]:
+    """`docs/strategies/`: a playbook per strategy, the build floor every one starts with, and the target shape."""
+    return {f"docs/strategies/{page.name}": spelled(page.read_text(encoding="utf-8"), layout)
+            for page in sorted(PLAYBOOKS.glob("*.md"))}
+
+
 def strangle_files(apps: list[App], layout: Layout, target: str, adoption: Adoption | None = None) -> dict[str, str]:
     return {
         "commands/strangle.md": strangle_command(apps, layout, target, adoption),
         "docs/change-strategy.md": strategy_page(layout, adoption),
+        **playbooks(layout),
     }

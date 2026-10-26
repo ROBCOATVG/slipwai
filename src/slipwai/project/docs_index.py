@@ -42,7 +42,10 @@ DOC_HOOKS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
     ("Adopted here", (
         ("adoption.md", "how the method was installed around the code that was here, what that forfeits, and where each fact came from"),
         ("convergence.md", "where this repository stands on every ladder a generated project sits at the top of, and what is planned to move it"),
-        ("change-strategy.md", "strangler fig, modular monolith in place or rewrite — and when to leave it"),
+        ("change-strategy.md", "leave it, in place, strangler fig or rewrite — how to choose, and the order to change in"),
+        ("strategies/README.md", "a playbook per strategy: what the decided one means for every step after it"),
+        ("strategies/build-floor.md", "the build every strategy starts with, and how far each takes it"),
+        ("strategies/target-shape.md", "what the system becomes — modules and the layering inside each — and how it is enforced"),
     )),
 )
 

@@ -103,7 +103,7 @@ has a target of its own. {{ci}}
    How each application is *run* is written, once proven, in `{{where}}survey/running.md` — the
    repository's own file, which the `run-the-app` skill points to and the factory never rewrites.
    When the code is ready to move, `{{where}}docs/change-strategy.md` opens with the strategy `why` and
-   the map recommend for this repository — *leave it* included — then the three strategies and the order to
+   the map recommend for this repository — *leave it* included — then the four strategies and the order to
    change in; an accepted ADR with a `Strategy:` line is the decision, and `/strangle` moves one capability
    at a time only under a decision that says `strangler-fig`, writing `{{where}}retirement.md` as it goes.
 6. Merge this adoption alone, before the first slice, and from then on one pull request per slice — a slice's

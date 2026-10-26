@@ -1,5 +1,0 @@
-MINOR
-
-**A generated browser app's shell is a page, not a skeleton with a stray button.** Sign-in used to render in a bare `<header>` above the app, outside the styled shell, so the button sat unstyled in the corner with the real header pushed below it. The account controls now land in the shell's own header, at its right edge, through an empty `#app-account` slot the shell carries — `App` still needs no auth provider. Nav links are quiet until pointed at and mark the current page, and the footer says the project's name rather than describing the skeleton. The one thicker line is a `--mark-width` token, and the nav and account rules sit below the element rules they would otherwise be flagged against. `docs/design.md`'s *Keep the shell* now says the nav and footer are the project's to fill in.
-
-**Catch-up:** `slipwai migrate` merges `App.tsx`, `base.css`, `tokens.css` and `auth/users.tsx`. A project that customised `App.tsx` conflicts at its nav links: keep your links, make them `NavLink` (with `end` on `/`), and keep `<div id="app-account" className="app-account" />` inside the header. If `tokens.css` is yours, add `--mark-width: 2px`.

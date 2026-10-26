@@ -8,6 +8,599 @@ between the version you had and the version you got, so this file and that comma
 
 Each entry's level — `PATCH`, `MINOR` or `MAJOR` — is the highest any of its changes claimed.
 
+## 2.0.0 — MINOR
+
+**A park is a record, not a paragraph.** A `parked` line may now carry a `cause` (one of `limit`, `host`,
+`question`, `demo`, `gate`, `silence`, `exit`, `ceiling`, `trunk`, `budget`), an `until` after which it lifts
+by itself, a list of `needs` the fleet or a person ticks, and a `then` saying what happens once they are met.
+Every old park still reads, as `other`. The harbour log gains `need-met`, the receipt for one ticked need.
+The board, the captain and the harbourmaster learn to write and read these in the slices that follow.
+
+**Catch-up:** `slipwai upgrade` carries the new `scripts/agents/logs.py` into the project.
+
+**The Fleet tab draws the voyage as a timeline.** One row per slot per stream, a bar for every session
+from its claim to the line that ended it, a dashed bar for every pause with the time it lifts, a thin bar for
+every park on you, and marks where the harness refused the fleet, where you cleared a park by hand, where
+now is, and when an open pause lifts. A dropdown sets how many hours fill the window — 4, 8, 24, or the whole
+voyage — and the track scrolls under fixed row names. `/timeline.json` serves the same fold. The published
+copy draws the whole voyage with nothing to press.
+
+**Catch-up:** nothing; the fold and the page are the keel's.
+
+**Paused is a state wherever a park used to be read as waiting on you.** `clearance.py` answers `paused`
+for a slice, or a whole stream, held by a park that lifts by itself, with the time it lifts; the Voyage tab's
+work columns put such a slice in *Queued* with `Paused · lifts 21:40` on its chip; `slipwai fleet` and the
+agent's `inbox` tool lead with the fleet's one sentence, count only what waits on you, and list the paused
+slices apart.
+
+**Catch-up:** `slipwai upgrade` carries the new `scripts/agents/clearance.py`.
+
+**Pause and Need are in the glossary, and the Fleet tab's design is in the repository.** The plan's
+vocabulary gains the two words the fleet-status work added, the deck log's row names `need-done` and the park
+record, and `docs/mockups/fleet-tab.html` is the agreed artboard as a still, beside the ledger mock-up it
+replaces as the board's reference. `docs/fleet-status-plan.md` says what landed.
+
+**Catch-up:** nothing.
+
+**The Fleet tab's words are the ones a person would use.** "Nothing is running and nothing needs you",
+"paused, nothing for you to do", "ticks itself when…", "Then, on its own:", "I have landed it, carry on",
+"something becomes startable", and the harbourmaster's receipts read "its time came: …" and "needs met: 5
+of 5". No wording changed what anything does.
+
+**Catch-up:** `slipwai upgrade` carries the harbourmaster's and captain's new wording.
+
+**A migration no longer offers to delete the PRD and design material you handed over at generate time.**
+The replay wrote only what the recorded answers regenerate, and the scaffold commit held `docs/prd.md`, the
+files under `docs/design/` and `.slipwai/quickstart.json` beside the factory's, so git read the factory's side
+as having deleted them and a clean merge took the deletion. The replay now carries those files from the base
+commit as they were there, and lists them in `docs/README.md` as generate did, so the merge sees the factory
+leaving them alone and keeps whatever the project has made of them since.
+
+**Catch-up:** if a migration already took the deletion, `git checkout <commit before it> -- docs/prd.md
+docs/design .slipwai/quickstart.json` brings them back; commit them and the next migration leaves them alone.
+
+**The captain's log, a slice's live window and the specification lead back to the voyage, not the board.**
+Every page off the board's tab bar carried the same "The board ↗" link, so a window opened from the voyage
+offered a way past it to the board and none to the voyage it came from. Those pages now carry "← The voyage",
+in the same window, and the seat on the address keeps it this project's voyage. The voyage's own home still
+carries the one link to the board.
+
+**A bar too narrow to read on the live window or the Fleet timeline says its whole label when hovered.**
+A sub-agent that ran a few seconds was a sliver with one letter in it, and the only way to read it was to
+wait for the browser's own tooltip. Hovered, a live-window bar now widens to its words, and a timeline bar
+shows its title over itself at once. A sub-agent with no task of its own is also named once by its role,
+with only the model under it, instead of the same role on both lines.
+
+**A park with needs is headed by the first of them, not by the first sentence of its paragraph.**
+recap's three host parks each opened with the slice's rungs — *LB6 is planned and tasked (plan, tasks,
+Designed line committed on slice/LB6) and waits at the implementation rung on a host change…* — and the
+move they asked for came 300 characters later. The group card's title is now the first need and how many
+more there are, *context: catch-up on LB6, LB7, LB8, LB9, LB10 in docs/event-model/model.yaml and 4 more*,
+with the paragraph kept whole in the drawer under it. The typecheck gate is green again: the ten errors the
+feedback, try-it and recap-day work left on main are cleared.
+
+**A sub-agent the harness runs in the background has a lane as long as its work, not a sliver.**
+The harness answered each delegating call the second it was made, so the window read `done` in the same
+second as `start` and drew LB8's four implementing sub-agents as one-letter slivers while they wrote a
+hundred and thirty lines between them, and the person reading it saw very little implementing going on.
+A `done` that soon after its `start`, before the harness has named the sub-agent, is now the launch, and
+the harness's own stop event — `SubagentStop`, a new hook — writes the `done` that ends the lane under the
+sub-agent's own name. A log with no stop line, written before the hook existed, ends a launched sub-agent
+at its last line once it has gone quiet, and keeps one still writing as running.
+
+**A session the harness refused to run is told from one that ran and failed.** The headless session's
+last `result` is kept, and a session limit, a rate limit or an overloaded answer reads as a refusal with the
+time it lifts: the named reset time in the named zone, or fifteen minutes where none is given, or an hour
+for a session limit whose time could not be read, said as a guess. The captain acts on this in the next slice.
+
+**Catch-up:** `slipwai upgrade` carries the new `scripts/agents/harness.py`.
+
+**Asking whether the try-it app is still running no longer sends a Ctrl-C to the console on Windows.**
+The Try it card and the toolkit's `try_it.py` asked with `os.kill(pid, 0)`, which on Windows is
+`CTRL_C_EVENT` to every process sharing the console: the board asking after the app interrupted the session
+that asked, and the gate's own suite with it. Both ask through the process handle now, as the fleet already
+asks after a captain.
+
+**On Windows, git output is read as UTF-8, a session's result line is decoded before it is parsed, and
+the session-limit reset is placed in its named zone.** A decisions heading's em dash and a quickstart's
+title came back as mojibake from `git show` decoded in the console's code page, so sibling branches' decision
+numbers were handed out twice and the Try it card lost its titles. A result line with one byte in the
+console's encoding was dropped whole by `json.loads`, so a refusal to run read as three failed runs. And
+`zoneinfo` has no database on Windows, so `resets 9:40pm (Europe/London)` paused an hour out: the gate's
+tooling now carries `tzdata`. The captain's output is read with its `\r\n` folded, and the timeline's day
+tick no longer uses a glibc-only `strftime` flag.
+
+**The plan's progress script and the two other history readers decode git as UTF-8, and a captain on Windows
+says its line whatever character is in it.** On Windows a pipe is read on a thread, and a commit message with
+one byte cp1252 has not got — the `←` in a body here — killed that thread and left the output `None`, so the
+progress gate fell over on every Windows run. And a captain whose words carried the harness's replacement
+mark ended in a traceback at `print`; its streams replace what the console cannot show.
+
+**A session limit pauses a slice instead of spending its attempts.** When the harness refuses to run a
+session — a session limit, a rate limit, an overloaded answer — the captain no longer runs the slice twice
+more in a second and parks it as "`/sail` exited 1". It writes one park with `cause: limit` and the time the
+limit lifts, spends no attempt, and says `paused at LB3 until 21:40`. A captain lit while its stream is
+paused says `is paused until 21:40` and runs nothing. Every other park the captain writes now carries its
+cause too: `gate`, `demo`, `silence`, `exit`, `question`, `ceiling` or `trunk`.
+
+**Catch-up:** `slipwai upgrade` carries the new `scripts/agents/captain.py`. The harbourmaster learns to
+clear a pause when its time comes in the next slice; until then `/cruise-tell` clears one as it clears any park.
+
+**A pause lifts by itself when its time comes.** The harbourmaster writes the `cleared` receipt for any
+park whose `until` has passed, on the pass after the time, and lights the captain on the same pass. A person's
+`/cruise-tell` still clears one early. `fleet relight` and `fleet list` say `paused until 21:40, so not lit`
+for a stream waiting on the harness, instead of `parked`, which read as waiting on you.
+
+**Catch-up:** `slipwai upgrade` carries the new `scripts/agents/harbourmaster.py` and `fleet.py`.
+
+**A session that stops for a change on trunk writes what it needs, not only why.** The drive brief now asks
+a session that parks for the host to write `cause: host`, one need per thing that has to change on trunk —
+each with a `text` or `make` check the harbourmaster can run, or `by: person` where only you can tell — and
+`then`, one sentence on what the fleet does once they are met. A park written the old way still stands.
+
+**Catch-up:** `slipwai upgrade` carries the new `agents/drive-captain.md`; run `make agents` where the
+project projects its briefs.
+
+**The harbourmaster ticks a park's needs against trunk, and clears the park when the last one lands.** On
+every pass it reads each open park's `needs`: a `text` check is a file on trunk holding a string, read with
+`git show` so a berth's uncommitted edit never counts; a `make` check is a `check-*` target (or one listed
+under `checks` in `harbour.json`) passing in a worktree at trunk, bounded by `wait_bound` and run once per
+trunk commit. Each tick is a `need-met` receipt in the harbour log. A need only a person can tell is ticked
+from the board, which writes a `need-done` deck line. When every need has its receipt the park is cleared
+with nobody asked.
+
+**Catch-up:** `slipwai upgrade` carries the new `scripts/agents/harbourmaster.py` and `logs.py`.
+
+**The board folds parks by what they wait on.** `slipwai fleet` and the board's JSON now carry `groups`:
+every park on one session limit is one row, paused until the time it lifts; every park on the same change to
+trunk is one checklist with the slices standing on it and the ticks the harbourmaster has written. A stream
+whose parks all lift by themselves is `paused`, not `waiting on you`, and the `counts` under the headline say
+how many slices are running, queued, paused, parked on a person and merged. A park written before parks had
+a cause is listed on its own, as before.
+
+**Catch-up:** nothing; the fold is the keel's.
+
+**The board shows each process, why it left, and what would start it.** A captain now writes
+`.slipwai/running/captain-<fairway>.exit` on its way out, with the last line it said. `slipwai fleet` and the
+board's JSON carry `processes`: the harbourmaster and one row per stream, each `running`, `exited` or
+`not lit`, with the captain's own word on its exit and one sentence on what starts it again — a park cleared,
+a pause ending at a time, a slice becoming startable. A restart that lights two captains for a second each
+is now visible as exactly that.
+
+**Catch-up:** `slipwai upgrade` carries the new `scripts/agents/captain.py` and `fleet.py`.
+
+**The Fleet tab opens on one sentence: what the fleet is doing, what it needs from you, and when it moves
+again.** Under it, each process — the harbourmaster and a captain per stream — with its own word on why it
+left and what would start it, and the counts. *Waiting on you* is now grouped by what it waits on: every
+slice parked on one change to trunk is one checklist, with the ticks the harbourmaster has written, a Done
+button for the needs only you can tell, the sentence on what the fleet does next, and one button that
+answers all of them. A session limit shows in the headline as paused, with the time it lifts, and a button
+to try sooner. Every park is still there in one line each, and the streams table and the last lines follow.
+
+**Catch-up:** nothing; the page is the keel's.
+
+**`make check-try` holds every slice's `try-it.json` to what it would need to seed, with no app running.**
+Every story parses into the shape the Demo rung describes; every `as` names a person a realm or a
+`specs/<feature>/people/` file declares; every `open` path starts with a route the browser app mounts; every
+`given` event is one the model types. On recap's second day 22 of 22 stories failed at their first call —
+seven as people nobody had declared, the rest on screens two unbuilt hubs would mount — and nothing had said
+so before the merge. `verify` runs it.
+
+**Catch-up:** `slipwai migrate` brings `scripts/check-try.py` and the `verify` line. A project whose stories
+already name people nobody declared goes red at `check-try` on the first `make verify` after, and the
+refusal prints the names: write each under `specs/<feature>/people/` and run `make verify` again. Never
+soften the gate; the next migration brings it back.
+
+**Four words: observable, feedback point, given, seeded.** The glossary gains them, the Demo rung says one
+thing — examples proven by tests, people declared, the story seeded green, the `seeded` line written, then
+the review — and the capability gates' docstring says why the showing is per slice and the readings per
+capability. A merge is an engineering event; a feedback point is a product one, and the two are never
+assumed to coincide.
+
+**Catch-up:** `slipwai migrate` brings the ladder's words; `make agents` projects them.
+
+**The people a story signs in as are the feature's to declare.** `specs/<feature>/people/<username>.json` —
+`{"username", "name", "password", "realm"}`, with `email` and `roles` where needed — joins the cumulative
+artifacts a slice may write; the realm file under `docker/` stays the host's. Try it reads them beside the
+realm's users and creates the ones its throwaway sign-in server lacks; `try_it.py people --apply` does the
+same for a berth's. A file doubling a realm user, or missing a field, is refused by `check-try` by name.
+
+**Catch-up:** `slipwai migrate` brings `try_it.py` and the ladder's words; run `make agents`. Stories that
+name people nobody declared fail `check-try` until the files are written — which is the point.
+
+**A story that fails to seed is a stop at the Demo rung, in every release mode.** `try_it.py seed --slice
+<id> --api <url>` writes a `seeded` deck line — the steps that answered, the commit, the givens — when every
+step answers, and nothing on a refusal. The captain holds a slice with a `try-it.json` to that line as it
+holds it to its `mark-set` lines: a turn that wrote none parks with `cause: gate` and a need `check-try` can
+tick. *One the service refuses is fixed here* is checked rather than said.
+
+**Catch-up:** `slipwai upgrade` carries `logs.py` and `captain.py`; run `make agents`. A slice in flight at
+the upgrade owes a `seeded` line at its next turn.
+
+**A hand-back that names a shared surface is a need, not a note.** A `told` may carry `needs` in the park's
+shape — `what`, `by`, `check` — written with `fleet.py tell <fairway> --need '<what>' --check
+text:<path>:<has>|make:<target>`. The harbourmaster ticks each against trunk as it ticks a park's, with a
+`need-met` receipt per item and a `told-met` once all are met; the Fleet and bridge pages group it under
+*Waiting on you* with its ticks, and offer Done only once trunk has it. recap's 59 notes held the four things
+that darkened every story, dismissable.
+
+**Catch-up:** `slipwai upgrade` carries the scripts; `make agents` the briefs. Old told lines stay notes.
+
+**A story may be given its inputs.** `try-it.json` gains `given`: events to append to named streams before
+the steps run, for marks the slice steers by whose setters are not built. They go through the service's seed
+door — `make seed-<service> FILE=…`, which a language package provides and the generated Makefile writes
+where its tooling answers `seed` — never through an HTTP route. `check-try` validates each against the
+model's event and its attributes and refuses one this slice itself sets; the card marks such records *given,
+not made*.
+
+**Catch-up:** the door comes with the TypeScript package's next release (`slipwai language upgrade
+typescript`, then `slipwai migrate`); until then a story's `given` is validated and not applied, and Try it
+says *no seed door yet*. The standard profile has no `given`; a story on it that carries one is refused.
+
+**A view or an automation has clearance when one mark it steers by is set, and a mark its story gives is not
+waited on.** `make chart` carries each slice's `pattern` and `actor` onto the chart; `clearance.py` reads
+them. A `state-view` or `automation` folds whatever exists, so it is cleared on its first setter rather than
+its last, and the sentence says which marks are set, given and unset. A `state-change` and a `translation`
+still wait for every mark. recap's library view steered by fifteen and sat at row 17 of 34.
+
+**Catch-up:** nothing to write; `make chart` regenerates the chart with `pattern` on it, and `check-chart`
+asks for that regeneration once.
+
+**`clearance.py --feedback` ranks the observables by what delaying a person's judgement costs.** An
+observable — a view, an automation, an actor-facing translation — scores by the agent-made decisions it
+would let a person test (weighted by confidence), times the unmerged slices steering by its marks, times the
+commitment points ahead of it, over what it costs to surface (a `given` is cheap, a producer is dear), every
+term printed with its sources. `--order` says what each row is *seen through* and where an observable sits
+below rows that add nothing a person can judge; the split's rules ask for observables in that order; the
+Voyage tab shows the next three.
+
+**Catch-up:** a project's existing order is not rewritten; `--feedback` and `--order` say what the next
+`/story-splitting` would propose and the person decides. Under `/cruise` with `decide: recommended-first`
+the next split run records the reorder as a decision, citing the scores.
+
+**Try it follows trunk, and the demo is handed it.** After a granted merge the harbourmaster refreshes a
+running Try it, keeping its data and seeding the new slice's story; the `/sail` merge rung says `make
+try-update` in the same breath as the push. The demo stop's *thing the actor uses* is Try it's URL with the
+capability's links where it is running, and the hand walks there rather than starting an app of its own.
+
+**Catch-up:** `slipwai migrate` brings the harbourmaster and the ladder's words; `make agents` projects the
+hand's brief. A Try it already running keeps its data; `make try-update` moves it to trunk once by hand.
+
+**The Try it card says what is new to try and what merged dark.** *New to try* lists the slices whose story
+seeded, each with its links first and its quickstart under a disclosure; *Merged but dark* lists the rest
+with the step that refused and what it said, or that the story has not run. Every link into the app carries
+the slice, who the person is signed in as and trunk's commit, so what they type afterwards lands with its
+context. A record the story gave rather than made says so.
+
+**Catch-up:** nothing in the project; the card is the keel's and reads `state.json` as it stands. A card on
+an older `state.json` with no `seeded` list shows every new slice as dark until the next `make try-update`.
+
+**A berth in the way says to fix it and then answer the park.** The message ended "and the slice is carried on", but nothing re-checks the berth and a slice with an open park is skipped, so moving the berth alone did nothing, and saying go without moving it parked the slice again. It now says to check the branch out in it, then answer the park.
+
+**A slice's berth is brought up to date before every run, Spec Kit's skills included.** The captain used to furnish a berth once, when it made it, so a toolkit upgrade that reached the slice through a rebase left the berth's ignored agent projection behind and `check-agents` refused the slice; and nothing ever copied in Spec Kit's `speckit-*` skills, so `check-speckit` refused it too. Both parked the slice for a person to run a command a session may not. Now the projection runs before each session in a berth, and every skill the project's checkout has and the berth lacks is copied in.
+
+**Restarting the board no longer stops the fleet it cast off.** The login service had launchd (and systemd) end every process the board ever started whenever the board stopped, detached or not, so each restart or upgrade of the board stopped every captain mid-slice. The launchd agent now says `AbandonProcessGroup` and the systemd unit `KillMode=process`; run `slipwai bridge install` once to write the new file.
+
+**A decision log you can read, and read receipts against it.** The Voyage tab has a Decisions tab: every decision the project took, newest first, each shown as its question, the decision, and, behind one click, the options, why, what it was read against, confidence and what would reverse it. It combines each checkout's `decisions.md` (trunk and every berth, so a slice still in flight shows its decisions too), the deck log's `decision` lines, and the `question` lines your own answers replied to. It opens on the unread ones and filters by slice. Mark read writes the same `read` receipt the decision ceiling counts, so reading here is what lets a stream parked at its ceiling go on; decisions taken before the fleet existed keep theirs in `.slipwai/logs/decisions-read.json`. The "decisions nobody has read" row under Waiting on you links to the log.
+
+**`slipwai package new --kind language` writes a package the loader can read, and points at commands that
+exist.** Its backend row has the `targets` a row needs and its module builds a `Backend` with its family, so the
+loader's refusal is the one line naming every member still to answer — the worklist — rather than a
+`TypeError`; the README and module say `slipwai package check .` where they named a `conformance` verb there
+is not; `--kind`'s help names targets; and the scaffolded CI runs conformance against the keel's `main` as well
+as the published keel, every night, as the package's contract test.
+
+**Catch-up:** nothing for an existing package; a package scaffolded before this can take the new
+`.github/workflows/verify.yml` from a fresh `slipwai package new` beside it.
+
+**A package's matrix runs with no managed target installed.** The matrix plans no production image where no
+target is installed to deploy one to, and the run read that plan back as malformed — so every package CI
+that installed no target ended its tag run on `backend <key> has no image, or more than one` before it
+generated a row. A plan may now carry no image for a backend, and still not two.
+
+**Catch-up:** nothing; a package's next CI run against the keel's `main` picks it up.
+
+**A slice whose park is cleared while its siblings run takes the next free slot.** The captain carried on claimed slices only where a turn began, and refilled a free slot only with slices nobody had claimed, so a park cleared mid-turn waited until every slice in flight had ended: hr-test-2 ran two slots of three for an hour with nine cleared slices waiting, and every unclaimed slice was steering by marks those nine set. The refill now takes cleared claims first, nearest its merge first, as a turn's start does. The board and `clearance.py` also read the harbourmaster's `cleared` receipt, so a cleared slice no longer shows as "parked on its own".
+
+**A park reads "waiting on you", not "waiting on harbourmaster".** The harbourmaster only writes the receipt once a person has answered, so naming it blamed the wrong party for a wait only a person can end. The board, the MCP inbox and `inbox.py` all say it now.
+
+**The drawer under a park shows that slice's own lines, without heartbeats.** It showed the last twenty lines of the whole stream, which with three slices running were other slices' heartbeats, each reading "still going", so a parked slice looked as if it were running. A park of the whole fairway shows the stream's lines, without heartbeats.
+
+**A browser's sign-in carries a subject.** Keycloak 25 moved `sub` into the `basic` client scope, and the `customers` realm's browser client listed its scopes without it, so every token it issued had no `sub` and a service keyed on it refused every signed-in request. The realm now lists `basic`; Try it adds it to its own sign-in server for a project whose realm predates this, and that project's own realm needs the same one-word fix.
+
+**A slice card on the voyage is its number, its title and how far it has got, and the rest opens on a click.** A slice at work carries a chip naming its rung — Example mapping, Planning, `Implementing · 14/22`, Review, Demo, Merging — read off its branch's artifacts and its stream's log by the same rungs the captain ranks slices by, and a queued slice says `Queued` with its rung. Its stream, clearance, reason, artifacts, last line and last commit, and for a slice waiting on a person the park, its questions and the answer box, are inside the card, opened in place. A slice is called what the model names it — the name its drawio caption carries — for any slice-shaped id, so `L04` has a title as well as `S10`.
+
+**A slice the captain claims again after it parked is no longer listed as waiting on you.** A park was open until the harbourmaster wrote its receipt, but the captain resumes a slice whose questions are all decided without one, so hr-test-2's L13 sat under *Waiting on you* for hours while it was being worked, and the board left it out of the slices in flight. A later `claimed` of the same slice now closes its park on the board, in `inbox.py` and in the toolkit's `logs.py`, as `clearance` already had it. A park of the whole fairway still waits for its receipt.
+
+**A claimed slice no session is on is queued, not working.** A fairway runs only as many slices at once as the harbour gives it, and every other claimed slice waits for a slot writing nothing. The voyage drew them all as working; now a slice is working only while a line naming it is inside the stall bound, and the rest stand in a Queued column, dashed on the model. The board's stream table says which slices are queued beside the ones at work, and so does `slipwai fleet`.
+
+**A state-stored service gets no `seed-<service>` target.** A given is an event appended to a log, and a
+service on the state rung keeps none, so the languages ship no seed script there; the Makefile wrote the target
+anyway, and Try it ran it and reported a broken door rather than none.
+
+**Catch-up:** `slipwai migrate`; the target leaves a state-stored service's Makefile.
+
+**A storyboard of the mock-ups you handed over can be approved.** Where a person hands mock-ups over in
+`docs/design/`, the drawing stage storyboards them rather than redrawing them, so its storyboard embeds pages that
+are not beside it. The board read only the pages beside the storyboard as surfaces: it offered Approve, refused
+it, and then sent the person round to Draw the surfaces for a drawing that was done. The surfaces are now the pages
+beside the storyboard, or else the pages inside the project it embeds or links — one reading, shared by the
+drawing stage, the board's strip and the verdict — and a storyboard with no page at all to show is nothing drawn:
+the stage says so, the Storyboard card says there is nothing to approve instead of offering buttons, and the
+board offers the drawing again. `/mockups` says what a surface page holds, and where the board finds one.
+
+**Catch-up:** `slipwai migrate` brings the new `scripts/agents/surfaces.py` and `commands/mockups.md`.
+
+**The live activity log is ignored by Git.** `.slipwai/activity/`, where each slice's activity is written for the board's Now strip, is now in the project's `.gitignore` with the rest of the run state. Before, it was an untracked folder, and `slipwai migrate` refused to run until it was moved.
+
+**An adoption drafts its first specification from the board, and each of its steps runs once.** The draft
+read `docs/prd.md` and `commands/draft.md` from the repository root, where an adopted one has neither, so
+it stopped; it reads them from the delivery folder now. While a step runs the voyage offers nothing to press,
+and it draws the next step itself when the run ends, instead of leaving a stale button that ran it again.
+
+**An adoption made on the board elects the dev tooling a generated project is offered.** The Adopt page and
+the voyage's Run ./init step ask which installed extensions to add, as the new-project form does, and pass
+them to `./adopt/init` as `--extension`: its own menu reads a terminal the board's child has none of, so an
+adoption from the board elected nothing and said nothing about it.
+
+**Once the strategy is decided, the board takes every step that needs nobody on its own.** The build floor, `smoke`, the new home and the parity list ask a person nothing, and each had its own button; now deciding starts them, one after another, until the step that is now needs a person — the PRD, at the constitution — or one ends without the tree showing it done, which says why and offers the button again. And the board's `./init` commits what it installs as one change: left uncommitted, as it was, generating the new home refused the tree every time, because `add-service` will not run over files nobody committed. The gate's baseline is committed for the same reason when its first run is red, as an old repository's usually is; and a first run with nothing to hold writes an empty one, where before it wrote none and the board waited at `/verify` for good.
+
+**The board no longer stops at an adoption step only the agent can take.** After the strategy was decided, the voyage reached "the build floor, in the agent" and had nothing to press. Each such step — the build floor, `smoke`, the parity list, the module map, the risk register — now has *Hand it to the agent*, which starts a headless session (`scripts/agents/step.py`) that reads the strategy's playbook, takes that step, commits it with its `Legacy-change:` trailer and stops. A build pinned as it is (a strangler fig beside the old code, a rewrite, leave it) is done once each old application records the one command that builds it in its container, `commands.build`, rather than by moving an Ant build to Maven, which the strategy throws away. And a strategy decided on the board records its reason as `why` when `/ground` did not, so the gate no longer holds the decision at `open`.
+
+**An adopted repository's voyage shows the adoption's own steps.** Until its first specification exists, the
+voyage of an adopted repository shows where the adoption stands in place of a generated project's strip, read
+off the tree as `slipwai adopt --next` reads it: `./init`, the survey's candidates, `/ground`, `/verify`, the
+root Makefile, the strategy, the constitution and the first specification. From there the strip takes over, as
+the two flows are one. The `./init` card it lands with says "Adopted", not "Made".
+
+**An adoption puts the method under `adopt/` by default, not `delivery/`.** The adoption tab's "Where the
+method's files go" and `slipwai adopt --delivery` both default to `adopt`. A repository adopted before keeps
+the directory its `project.json` records; `--delivery delivery` still puts a new one where it used to go.
+
+**An adoption made on the board is carried forward on the board.** The voyage of an adopted repository takes
+each step it can itself, on the step that is now:
+
+- `./adopt/init`, where the adoption left it, run for the agent picked;
+- `/ground`'s questions, one row of the map at a time, with the evidence and each rung's meaning shown first
+  and *I don't know* always on offer. Each answer is written where the record keeps it — the rung in the
+  person's words, or the release path, a schema's or the infrastructure's home, the release mode or why the
+  work is happening — refreshed, and committed with the files it rewrote. A row the tree reads is only asked
+  whether the reading is right, and never held at today's rung;
+- the gate, started once the last row is answered, with its first baseline committed when it is green;
+- the strategy, the five on offer with the recommendation picked, written as the accepted ADR the gate reads;
+- the constitution and the first specification, drafted by `make draft` from the first feature in the
+  person's words.
+
+From the first specification on, the voyage's own strip and Continue the build carry it, as for a generated
+project. A row answered *I don't know* stays `unrecorded` and is marked asked, so `adopt --next` moves past it
+and `/sail` still asks about it before a slice that touches it.
+
+**An adoption made on the board carries on, as a generated project does.** The adoption tab asks which coding
+agent the repository is handed to. Once the adoption is committed, the board looks at that repository, starts
+`./adopt/init` for that agent in the background, and opens its voyage. Before, the page printed the report and
+stopped there.
+
+**The board decides a strategy by asking every line it cannot start without.** Picking a strategy on an
+adoption's voyage shows only that strategy's questions — the risk owner and review date for leaving it; the
+freeze, where the new home lives, how much moves and the checkpoint for a strangler fig; for a rewrite, its case
+for one cut-over, who decides it and how it rolls back — and the ADR it commits carries each answer as its line,
+so nothing after it has to guess. A new home's stack is proposed from the survey (the old language, a browser app
+where the old one served pages, Postgres where there is a database) and can be changed; a language this machine
+has no package for is said with the command that installs it. Picking a rewrite offers the strangler fig that
+reaches the same place one capability at a time.
+
+**The convergence map has a Build row, and the programme brings any build up to the floor.** The row reads
+the build floor off the tree — `undeclared` while committed jars or an Ant build remain, `declared` until every
+compile target is stated and every lockfile committed, `pinned` until nothing built is tracked and CI runs the gate,
+`reproducible`, and `inventoried` once every application records an `sbom` command — and `check-convergence` holds
+it there. The programme's build steps are no longer only for Ant: an application with no stated compile target, and
+a Java target no current JDK accepts (naming the newest JDK that still can, and the `--release 8` stepping stone),
+come first whatever the strategy. `/ground` asks whether the reading is right.
+
+**The draft, the mock-ups and `/sail` place a feature where the decided strategy says.** In an adopted
+repository the drafting session reads the strategy and its playbook first: the constitution carries the
+strategy's clause, the feature is specified where the strategy lands it — the new home under a strangler fig or
+a rewrite, never the old stack — a line in the PRD that contradicts the strategy is overridden and quoted beside
+the ADR line that overrides it, and every specification ends with `## Strategy fit` (where it lands, how it
+becomes visible, and the fields its strategy names). The mock-ups take the new home's look where the feature
+lands there, and `/sail`'s plan stage holds a slice to each of the four strategies' rules.
+
+**The board drafts an adoption's first specification from a PRD you name, or from four answers.** One box
+for "the first feature" got one word, and the drafting session rightly refused to invent a product from it.
+The step now takes the path of a PRD you already have, copied into the repository, or asks who it is for,
+what it must do, how you will know it is done and what is fixed, and writes those as the PRD.
+
+**Each captain has a window of its own on the board.** The Streams card has an **Open log ↗** link on every
+row. It opens that fairway's whole history in one timeline: its deck log, and the harbour's answers to it
+beside what they answer, so a merge request shows its grant or refusal and where the time went. A second tab
+shows what the captain process printed, which until now only a terminal could show. Both follow new lines as
+they are written, and the window lists what is waiting on you from that captain, with a box to answer it.
+
+**Catch-up:** nothing to do. `slipwai bridge --serve` has the window as soon as slipwai is upgraded.
+
+**`browsers` bounds something.** It was on the telegraph and the board and nothing read it. A captain now tells every session it starts its share, `SLIPWAI_BROWSERS` (`browsers` over `boilers`, never below one), and the trunk its work is measured against, `SLIPWAI_TRUNK`, for an extension that drives a browser to read as its defaults — the ux-gates extension does. A value a person set already stands.
+
+**Several slices testing at once no longer each ask for the whole machine.** A captain with more than one boiler tells every session it starts its share of the cores, `SLIPWAI_TEST_WORKERS` (cores ÷ `boilers`), and the react-vite app's test configuration reads it into vitest's `maxWorkers`; a language package's own test configuration does the same for its deployables. hr-test-2 at three berths on eighteen cores sat at a load of eighty, a 20-second test run took 280, and a guard check that outran the tool timeout was polled with `pgrep vitest` for minutes — which also matched the sibling slice's runs. The implementer's brief now says to wait on its own run and never on a test runner by name. A value a person set already stands.
+
+**Catch-up.** `slipwai migrate` brings the web app's configuration; the service's comes with the TypeScript package's next release.
+
+**Each slice leaves the data a person needs to see it.** At its Demo rung a slice with a service now writes `try-it.json` beside its `quickstart.md`: the records its story needs, as the calls a browser would make, as a fixture user, with what an answer returned filling a later call. `make try` loads every slice's through the API — so a seeded record is one the app would have accepted — and the Try it card links each record it made, which is the only way into an app that has no list of them yet. One the service refuses is named on the card with what it said.
+
+**Feedback from the board, back into the work.** After using the built app, a person says what it showed them from the Voyage tab: from the new Feedback card, from Try it's "What did using it show?", or from any slice's card, with that slice, trunk's commit and the page attached. Each message is kept as `docs/feedback/NNNN-<slug>.md`, and the board starts `make triage`, a headless session on any harness that splits it into items and proposes a route for each: a defect, a change to what was specified, new scope, something already planned, or a design note. Nothing moves until the person confirms, routes it differently, or drops it. Confirming hands the item to what already exists: new scope becomes an intake idea, a note goes under `## From feedback` in `docs/design.md`, and a defect, change or planned item is told to the slice's captain as `by: feedback`, which answers no park. A change to a slice still in flight asks whether to park it now or leave it until it merges. A capability waiting for its demo now has Accept and "Not yet: say why" on the card, and both are told to its stream as the person's verdict. `slipwai migrate` brings in `scripts/agents/triage.py`, `commands/triage.md` and the `make triage` target.
+
+**`slipwai install` installs a target as readily as a language.** It asks the index what each name is and hands
+it to that kind's own verb, so `slipwai install aws typescript` installs both — where it refused `aws is a
+target, not a language` and named the command to type instead. A package's CI puts its siblings beside it with
+this verb, so a language proved against a cloud can now take the cloud's released target package from the
+chandlery.
+
+**Catch-up:** nothing; `slipwai target install` is unchanged.
+
+**Decisions clear only a park that was waiting on them.** The harbourmaster cleared any park of a slice whose questions were all decided, so a slice that had its answers and then parked on something else — waiting for another slice to reach trunk — was cleared two seconds later and run again too soon. A park is cleared by decisions now only where one of the slice's questions was still open when it was written.
+
+**The strategy playbooks no longer say the method enforces what it does not.** Outside *How the method
+carries it*, a sentence that claimed a check, a refusal or a field the method does not have now says what the team
+or the agent does instead, or that the method does not check it yet; the map's rung names match the map.
+
+**The strategy playbooks say what the method does, and what it does not do yet.** Each playbook's *How the
+method carries it* describes the board, the draft, the gate and the programme as they now work, and closes with a
+short list of what is not built. A strangler fig past its checkpoint is offered what it can change — a new
+checkpoint, `End: partial`, or stopping — rather than a switch to itself.
+
+**The PRD for an adoption's draft is chosen with the machine's file dialog.** The board's folder chooser
+asks for a file where the answer is one, and the draft step's PRD field is that button rather than a path to type.
+
+**Signing in brings a person back to the page they were on.** Keycloak returns the browser to the app's root, so opening a link to a record, being asked to sign in and doing so landed on the home page with the record gone. Every sign-in now carries the page it started from in OAuth's own `state`, set once in the manager `UsersProvider` gives the provider, so a screen that calls `auth.signinRedirect()` itself gets it too; the callback returns only to a path on the app's own origin, never to an address `state` names elsewhere.
+
+**A standard project has a database: the standard profile asks `persistence` like the modelled one, and defaults
+to Postgres.** A standard service was already on the state rung, the one that keeps current state, and every
+language answers that rung with a repository port and memory, SQLite and PostgreSQL adapters — but the axis was
+the modelled profile's alone, so a standard project could not have a store at all, and `--persistence postgres`
+with `--profile standard` was refused. It is asked now, with Postgres preselected; `make verify` still needs no
+Docker. And a quickstart answer for an axis your chosen profile does not ask is left out and said, rather than
+ending the run on a refusal of a question nobody was asked.
+
+**Catch-up:** nothing for an existing project: `migrate` replays the answers `project.json` recorded, and a
+standard service recorded without one stays storeless. `/add-service` or a new project gets the question.
+
+**The gate refuses what a decided strategy forbids, before it happens.** In an adopted repository
+`check-convergence` now fails a feature specified before its strategy's new home exists (or, for a rewrite in a
+new repository, specified in the old one), a commit that changes the code that was here after a strangler fig or a
+rewrite was decided without a `Legacy-change: security|bugfix|seam|quick-win|build|characterise` trailer, a system
+left as it is past its review date, and a capability the retirement ledger says *moved* with no *shadowed* row
+before it. The ledger gains a table of transitional pieces — proxy rules, includes, bridges — and the programme is
+not finished while one is live. A `"layout": "modular"` holds the boundaries between contexts in code that was
+here without the layer rules, and the import gate runs through the ratchet there, so existing violations are a
+baseline. The ratchet names the missing tool, not the directory the command ran in.
+
+**Each strategy paces the programme its own way, and the board holds a strategy to its checkpoint.** In
+place, a security fix comes ahead of ladder order and the platform moves one compatible combination per slice
+(the runtime with the framework, ORM and namespace that must move with it); a strangler fig whose new home is
+inside the deployable brings the old platform up as in place does; a system left as it is has its security floor
+scheduled rather than only recorded. A rewrite gets the new-home step a strangler fig has, and a strangler fig
+grown inside gets its modules-declared step. The voyage shows a strangler fig's or a rewrite's checkpoint, or a
+left system's review, for the length of the programme, and once the date has passed puts the decision again:
+carry on with a new date, switch to a strangler fig, or stop.
+
+**An adopted repository is given a playbook for each change strategy.** `docs/strategies/` holds one per
+strategy — leave it, in place, strangler fig, rewrite — saying what the decided one means for every step after it:
+where a new feature is built, what the specification and the mock-ups show, what the gate refuses and the order of
+the work. Beside them are the build floor every strategy starts with, and the target shape the system is moving
+towards. `docs/change-strategy.md` now chooses between four strategies rather than three, and separates how traffic
+moves from how much of the system moves.
+
+**A strategy is decided with the lines its playbook cannot start without, and a modular monolith is a shape, not
+a strategy.** Four strategies remain: leave it, in place, strangler fig and rewrite. An accepted ADR that names one
+still decides, and now also says which of its required lines it is missing — where a new home lives, the target
+shape, the freeze, and for a rewrite its case for one cut-over — and `check-convergence` says so. An ADR that decided
+`modular-monolith` reads as a strangler fig whose new home is `inside` and whose target is modules in one deployable.
+A system left as it is counts as finished only while its `Review:` date is ahead of it.
+
+**An adoption takes its strategy's own steps before the first feature, and the board generates the new home.**
+After the decision, the sequence on the voyage and in `slipwai adopt --next` now has the build floor and `smoke`
+first, whatever the strategy, then what that strategy needs: for a strangler fig beside the old code or a rewrite,
+the new home generated on the stack its ADR records — which the board does itself, `add-service` and
+`add-frontend` each committed — or for a rewrite in a new repository the new project generated, after which the
+voyage hands over to it; modules declared for a strangler fig grown inside; the behaviour to keep, `parity.md`,
+where everything moves; and a risk register where the system is left. An ADR missing a line its strategy needs
+keeps the decision as the step to take.
+
+**The structure page leaves the method's own folder out, whatever it is called.** Only a folder named
+`delivery/` was kept out of an application's module table, so a repository adopted under `adopt/` listed it
+as code and `adopt --refresh` rewrote `survey/structure.md` every time.
+
+**A Finder `.DS_Store` in the keel's `assets/` no longer breaks `generate`.** The walker every reader of the asset trees goes through already left out Python's `__pycache__`; a macOS checkout that has been opened in a Finder window carries a binary `.DS_Store` beside the toolkit's scripts, and reading it as text stopped `generate`, the conformance suite and fifty of the keel's own tests with a `UnicodeDecodeError`. It is left out the same way.
+
+**Catch-up:** nothing. This is the keel's own tree and reaches no generated project.
+
+**A slice's chip names the stage it is on, not the last one to leave a file.** The voyage read a slice's stage off what stages leave behind — `tasks.md`, `review.md`, a demo or merge line — and those move when a stage ends, so a slice through its tasks said `Implementing · 18/18` through its whole demo and review: twenty-seven minutes on hr-test-2's L18. The board now reads the stage its berth has open in `benchmark.json`, which `benchmark.py start` writes the moment a stage begins: `Demo`, `Review`, `Attack review`, `Mutation testing`. Between stages the evidence speaks, as before, and the order the captain carries slices on in is unchanged.
+
+**The Voyage window has a console for asking the harbourmaster.** A button at the bottom-right of every tab opens a chat panel: ask why a fairway is waiting on you, what the fleet is doing, or what happened in the last hour, and a read-only session of your coding agent answers from the project's logs and the board's own fold of them. It can read and search files and nothing else — it cannot change a log, grant a request or clear a park, and it names the control on the board that does. The conversation is kept by the session, so a reload shows it again; `New conversation` starts another.
+
+It needs Claude Code (`claude`) on the `PATH` of the shell that started the board, and says so where it is not. Each question is one agent call.
+
+**Catch-up:** nothing in the project: the console is the board's, which is the keel's. Restart a running `slipwai bridge` after `slipwai upgrade` to get it.
+
+**The board's console finds `claude` when the board was started at login.** Started by launchd, the board has
+launchd's bare `PATH` and no `SHELL`, so the console looked for `claude` there, did not find it, and said there was
+no `claude` on this machine. It now asks the account's login shell for its environment, once a conversation,
+looks `claude` up on that `PATH` and runs it with that environment.
+
+**Watch it work.** The demo hand records each example it walks in a browser, one WebM per example under `.slipwai/walks/<feature>/<slice>/` in the main checkout (`python3 scripts/agents/try_it.py walks` prints where), and the Try it card lists them by slice to open and watch. They are what a person sees before they have time to use the thing, and not evidence: the demo log still cites its screenshots.
+
+**`/clearance` and `/claim` ask from the session what a person used to ask from a shell, and the guides show the slash command wherever a person types the step.** `/clearance` runs `scripts/agents/clearance.py` and reads back which slices may start and what each blocked one waits on. `/claim <fairway>` takes a fairway's claim for this machine, `/claim release <fairway>` gives it back, and `/claim` alone says who holds each. Both read and report; a refused claim is repeated, never forced.
+
+The guides and the generated README now show `/verify`, `/verify <gate>`, `/cruise-status`, `/cruise-status <fairway>`, `/clearance`, `/claim`, `/draft`, `/cruise-settings` and `/add-service` where they used to show `make verify`, `slipwai fleet`, `python3 scripts/agents/…` or a terminal `make cruise-tell` as a step to type. A `make` target that a command, a stage or the board runs is still named as what runs underneath. `make test-docs` reads a `> /command` line in a transcript as a command typed into the agent: it runs what the command runs, holds the page's output to it, and holds the command's own page to running it.
+
+**Catch-up:** `slipwai migrate` brings `commands/clearance.md` and `commands/claim.md`; run `make agents` so the harness projects them.
+
+**The keel ships no browser app: a language package ships each frontend, and may ship frontends alone.**
+`react-vite` moved into the TypeScript language package, and a language's `language.json` now declares the
+frontends it ships in a `frontends` block — label, capabilities, what each feature adds, owns and depends on,
+the files carrying a marked region, the styled baseline — which the keel and a project's pruner both read, so the
+keel names no frontend and no file inside one. A package may ship services, browser apps or both: a
+frontend-only family has `"backends": {}` and answers `browser_apps`, `npm_workspace`, `shared_code` and
+`formatter`, and its browser app can be generated beside any backend outside the npm workspace. `--frontend`
+offers what the installed languages ship, the first of them by default, and `none` where nothing does; a
+frontend nobody ships is refused naming the language that would. `add-frontend` takes `--frontend` for a
+project's first browser app. The contract is `docs/frontend-protocol.md`; conformance checks every frontend a
+package ships, and `slipwai package new --kind language --parts frontend` scaffolds one that loads and generates.
+
+**Catch-up:** `slipwai language upgrade typescript` before generating with `--frontend react-vite`; an existing
+project's browser app is unchanged, and `slipwai migrate` gives its `scripts/backing-services.py` the frontend's
+rows in place of the keel's.
+
+**Folders on the board are chosen, not typed.** The interview's "Output parent" and the adoption tab's
+repository open this machine's folder dialog, as the brief's folder already did, and the field shows the folder
+it chose. Where the machine
+has no such dialog, the field is typed as before. The dialog says which folder it is asking for, in words picked
+from a fixed list by the field's name.
+
+**A generated browser app's shell is a page, not a skeleton with a stray button.** Sign-in used to render in a bare `<header>` above the app, outside the styled shell, so the button sat unstyled in the corner with the real header pushed below it. The account controls now land in the shell's own header, at its right edge, through an empty `#app-account` slot the shell carries — `App` still needs no auth provider. Nav links are quiet until pointed at and mark the current page, and the footer says the project's name rather than describing the skeleton. The one thicker line is a `--mark-width` token, and the nav and account rules sit below the element rules they would otherwise be flagged against. `docs/design.md`'s *Keep the shell* now says the nav and footer are the project's to fill in.
+
+**Catch-up:** `slipwai migrate` merges `App.tsx`, `base.css`, `tokens.css` and `auth/users.tsx`. A project that customised `App.tsx` conflicts at its nav links: keep your links, make them `NavLink` (with `end` on `/`), and keep `<div id="app-account" className="app-account" />` inside the header. If `tokens.css` is yours, add `--mark-width: 2px`.
+
+**The claimed slice furthest along is carried on first.** When a captain has more claimed slices than slots, it ranks them by how far each got — a merge asked for, a demo, a review run, then the plan's artifacts on its branch — and the one nearest its merge takes the first slot. They went in claim order, and a slice one step from its merge request sat idle behind slices still planning.
+
+**The browser app's dev server listens where it is told.** `vite.config.ts` reads its port from the app's own variable — `WEB_PORT`, or `WEB_PORT_<NAME>` for a second app — and is still pinned, with a clash still an error, on the port it was generated with otherwise. Try it is what tells it.
+
+**Try it: the voyage's work, running, from one button.** The Voyage tab linked to `localhost:5173` whether or not anything answered, and `make demo` started an app nobody could use: the slices' flags off, the containerised service never told who may sign in, an empty database, and an agent's leftover stack already holding the ports. `make try` — and the **Try it** card that replaces the link — runs trunk's newest merge in a worktree of its own (`<project>-try`), on ports and containers of its own beside the fleet, with every flag the code reads switched on, the app on the host so a browser and the service agree on the sign-in server's address, and the local realm's users listed to sign in as. `make try-update` moves it to the newest merge keeping its data, `make try-fresh` starts its data over, `make try-stop` stops it; the card shows each, which flags are on with a switch for each, how far trunk has moved, and the merged slices' quickstart steps as what to try. The app outlives the board, as the fleet does. A project from before this has the old link until `slipwai migrate`.
+
+**Try it says who to be for each example.** The card's example records are grouped under the person each slice's story signs in as, with their username and password beside the name; the fixture users no story uses are listed after them, for trying a refusal; each "what to try" entry says who to sign in as; and every link into the app opens in one tab, so the sign-in an app keeps per tab carries from one link to the next.
+
+**Try it opens the seed door on Windows.** It handed `make` the given events' file as a Windows path, and the
+shell `make` runs read each backslash as an escape, so the door was given a file that was not there and every
+story with a `given` failed before its first step. And when a project has no door yet, Try it no longer promises
+a TypeScript file whatever the service's language.
+
+**Catch-up:** `slipwai migrate` brings the new `scripts/agents/try_it.py`.
+
+**`/verify` runs the project's gates from the session and reads the result back.** It runs `make -k verify`, so one run names every gate that fails and not just the first, then says the verdict, quotes each failing gate's own line and what it asks for, and says what was skipped rather than passed. It reads and does not repair, and never edits a gate or a pinned record to make one pass.
+
+The guides now lead with the slash commands wherever a person types the step — `/cruise`, `/cruise-status`, `/cruise-watch`, `/cruise-tell`, `/cruise-stop`, `/verify` — and no longer show a `make` target that `/sail` or the board runs for itself (`make arrive`, `make chart`, `make model`) as something to type. The generated README says `/cruise-stop`.
+
+**Catch-up:** `slipwai migrate` brings `commands/verify.md`; run `make agents` so the harness projects it.
+
+**In an adopted repository, `/verify` is where a red test suite is quarantined.** It says what quarantining
+means — the failures listed are recorded as known, any new one still fails — and runs `make ratchet-tighten`
+only when the person says to, so the decision is theirs and written down. `slipwai adopt`, its `--next` steps and
+the adoption guides point there instead of at `make ratchet-tighten`, and say what the root `Makefile` include
+gives — the gate from the root — rather than that `make verify` is one word.
+
+**Catch-up:** `slipwai migrate` brings the new `commands/verify.md` and `docs/adoption.md`.
+
+**The Voyage tab's bands are tabs.** The progress strip, what the board is running and what to expect stay at the top, and everything below them sits in its own tab: Work, Try it & feedback, Screens, Model, Fleet (showing how many things are waiting on you) and Next features. A band with nothing in it has no tab. The tab you had open is remembered in this browser and in the address, and a link into another tab, such as the strip's "Waiting on you", opens that tab first.
+
+**The Waiting on you card is grouped by what a person has to do, and each row opens on its first sentence.** Everything waiting sat in one list of identical `stream · kind · long text` lines, so a question to answer looked like a note to dismiss. The card now opens with a one-line count and groups the rows as *Needs an answer* (questions and parks), *Read and mark read* (unread decisions) and *Notes* (a `told`, cleared with Done). Each row leads with its first sentence and the stream's name as a tag; the full text and the stream's lines are in the drawer as before. Nothing is asked of a person that a stream or the merge step can do itself.
+
+**What each slice is doing, live.** The Voyage tab opens on a **Now** strip: a row per working slice with its stage, the sub-agent on it and its model, how long it has been at it, the last thing the slice said, and how long it has been quiet — the slice a person should look at first at the top. A working slice's card carries the same in one line, and its id opens a window of its own: a lane per sub-agent over the last hour, the feed in plain words, and what it has handed back. Four warnings say when to step in: a task far past the slice's usual, the same command failing three times running, nothing for eight minutes, and two slices waiting at once.
+
+It is read from one log per slice, `.slipwai/activity/<fairway>/<slice>.jsonl` in the main checkout, never from a harness's transcript. `scripts/agents/session.py` writes it from the hooks it already answers — a sub-agent's brief as it starts and its commit as it ends, each command by the description its agent gave it, a command that failed — and `benchmark.py` a line as each stage opens and closes. What only the session can say, it says itself: `session.py say "<sentence>"` as it moves on and `session.py waiting "<on what>"` before a long wait, which is a command and so the same on every harness. Claude Code gets the whole set (`PreToolUse`/`PostToolUse` on Agent, `PostToolUseFailure`, `SubagentStart`); a harness whose hooks the registry has not verified gets the stage lines and the session's own sentences.
+
+**Catch-up:** `slipwai migrate`. A slice session the captain starts after it writes the log; one already running shows "no activity log yet" until its next stage.
+
+**Decision numbers, headless sessions and their servers work on Windows.** Reserving decision numbers locked with `fcntl`, which Windows does not have, so `ids.py` would not even import there; it now takes `msvcrt`'s lock on Windows. A session that has finished is ended with its whole process tree on Windows too (`taskkill /T`), where before only the session went and the servers it started kept running. Session logs show a file relative to the project whichever slash the path was written with. A stream's `because` in a model is written quoted in every example and hint, because a comma in an unquoted flow value starts a new key and the model stops parsing. And after a release candidate, the next release is still the candidate's number: a fix after `2.0.0rc1` is on its way to `2.0.0`, not `2.0.1`.
+
 ## 2.0.0rc1 — MAJOR
 
 **A place a project is deployed to is a package now, the way a language and an extension already are.**

@@ -1,3 +1,0 @@
-PATCH
-
-**A slice card on the voyage is its number, its title and how far it has got, and the rest opens on a click.** A slice at work carries a chip naming its rung — Example mapping, Planning, `Implementing · 14/22`, Review, Demo, Merging — read off its branch's artifacts and its stream's log by the same rungs the captain ranks slices by, and a queued slice says `Queued` with its rung. Its stream, clearance, reason, artifacts, last line and last commit, and for a slice waiting on a person the park, its questions and the answer box, are inside the card, opened in place. A slice is called what the model names it — the name its drawio caption carries — for any slice-shaped id, so `L04` has a title as well as `S10`.

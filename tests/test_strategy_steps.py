@@ -108,5 +108,27 @@ class HomeTest(unittest.TestCase):
         self.assertIn("commit or stash", str(refused.exception))
 
 
+class PagesTest(unittest.TestCase):
+    """The draft, the mock-ups and `/sail` each read the decided strategy before they place a feature."""
+
+    def test_the_draft_specifies_where_the_strategy_says_and_overrides_a_contradiction(self) -> None:
+        import command_pages
+        draft = command_pages.pages("adopted")["commands/draft.md"]
+        self.assertIn("the decided\n   strategy governs everything below", draft)
+        self.assertIn("is overridden, and said", draft)
+        self.assertIn("## Strategy fit", draft)
+
+    def test_the_mock_ups_take_the_new_homes_look_where_the_feature_lands_there(self) -> None:
+        import command_pages
+        self.assertIn("drawn in the new home's UI, never the old\napp's",
+                      command_pages.pages("adopted")["commands/mockups.md"])
+
+    def test_sail_places_a_slice_by_each_of_the_four_strategies(self) -> None:
+        import command_pages
+        plan = command_pages.pages("adopted")["commands/sail.md"]
+        for rule in ("**strangler fig, or rewrite**", "**in place**", "**leave it**", "`Target:` is modules"):
+            self.assertIn(rule, plan)
+
+
 if __name__ == "__main__":
     unittest.main()

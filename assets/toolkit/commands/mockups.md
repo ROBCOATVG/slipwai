@@ -66,6 +66,13 @@ times the drawing. It answers four questions **per surface the spec implies**, a
 surface is any place a person or another system meets this feature: a screen, a command line, an email, a
 webhook, a report.
 
+**In a repository that was adopted, the strategy says whose look a surface takes.** Read the specification's
+`## Strategy fit`. Where it `Lands in:` a new home, the surface is drawn in the new home's UI, never the old
+app's — under `Visibility: page`, the whole new page, with the old page's behaviours that its parity rows
+bring in drawn on it; under `Visibility: seam`, the old page as it is with the new panel in it; where the
+spec says the choice is close, both, side by side, so the storyboard's verdict decides. Where it lands in the
+old code, the old app's look is the direction to follow.
+
 1. What job is the user doing on this surface, in their words rather than the system's?
 2. How do comparable products do that job? Use the harness's web search where it has one. Where it has
    none, answer from your own knowledge and **say that is what you are doing** — an uncited claim about

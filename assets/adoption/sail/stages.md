@@ -36,13 +36,25 @@
    started.
 <!-- end section -->
 <!-- section: plan -->
- In this repository the decided strategy governs the home too. Under an accepted `strangler-fig`,
-   a product slice's *Structure Decision* names a deployable that is **not** one that was here (under
-   {{wrapped-or-many}}) — a service `add-service` made beside them, current from day one,
-   whose first capability moves through `/strangle` and writes `{{retirement}}` — or it quotes the owner's written
-   exception for this slice, in their words. "Confirmed at plan time" by the plan alone is not a decision:
-   a strangler that lands every slice in the old home is the old home with a new label, and
-   `check-convergence` says so while the ledger stays empty.
+ In this repository the decided strategy governs where a product slice lands, and `project.json`'s
+   `strategy` (`decided`, and the `lines` its ADR records) says which; `docs/strategies/<decided>.md`, section
+   4, is the rule in full. The slice's *Structure Decision* states it, and quotes its specification's
+   `## Strategy fit`:
+   - **strangler fig, or rewrite** — a deployable that is **not** one that was here (under
+     {{wrapped-or-many}}): the new home the ADR's `New home:` or `Home:` names, current from day one. Under a
+     strangler fig its capability moves through `/strangle` and writes `{{retirement}}`; under a rewrite it is
+     built complete and reaches actors at the cut-over, or through a seam the ledger records. A change to the
+     code that was here is a fix, a security change or a recorded seam, never the feature.
+   - **in place** — the code that was here, with the rungs the slice requires taken first and any area a
+     rung due soon would rewrite *fenced*: its logic in plain code, a thin adapter in the layer that goes.
+   - **leave it** — the code that was here, only inside the playbook's bar; a slice that is past it is
+     refused here and taken back to the person, never shrunk quietly to fit.
+   - **any strategy whose `Target:` is modules** — the module the slice lands in, what it publishes and
+     consumes, the data it owns, and the baseline entry it removes.
+
+   Or it quotes the owner's written exception for this slice, in their words. "Confirmed at plan time" by the
+   plan alone is not a decision: a strangler that lands every slice in the old home is the old home with a new
+   label, and `check-convergence` says so while the ledger stays empty.
 <!-- end section -->
 <!-- section: map -->
  A slice that touched how an application starts — constructors, dependency injection,

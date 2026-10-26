@@ -34,8 +34,10 @@ DRIVE = """import datetime, json, os, pathlib, subprocess, sys, time
 slice_id, fairway = sys.argv[1], sys.argv[2]
 record = pathlib.Path(os.environ["ABREAST_RECORD"])
 def note(**fields):
-    with record.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps({"slice": slice_id, "pid": os.getpid(), **fields}) + "\\n")
+    # A file each: three sessions appending to one file at once lose lines on Windows, where an append is not
+    # atomic, and a run read with no start was a test that failed on the record rather than on the captain.
+    mine = record.with_name(record.stem + "." + slice_id + "." + str(os.getpid()) + "." + fields["event"] + ".json")
+    mine.write_text(json.dumps({"slice": slice_id, "pid": os.getpid(), **fields}), encoding="utf-8")
 note(event="start", at=time.time(), cwd=str(pathlib.Path.cwd().resolve()))
 time.sleep(float(os.environ.get("ABREAST_SLEEP", "2")))
 if slice_id in os.environ.get("ABREAST_FAIL", "").split(","):
@@ -64,7 +66,7 @@ class Abreast(Fixture):
         (self.root / "specs/ordering/chart.yaml").write_text(CHART, encoding="utf-8")
         (self.root / "specs/ordering/story-split.md").write_text(SPLIT, encoding="utf-8")
         (self.root / "Makefile").write_text("verify:\n\t@echo 'verify: all gates passed'\n", encoding="utf-8")
-        (self.root / ".gitignore").write_text(".slipwai/\nfake-sail.py\nrecord.jsonl\n", encoding="utf-8")
+        (self.root / ".gitignore").write_text(".slipwai/\nfake-sail.py\nrecord*\n", encoding="utf-8")
         for argv in (["config", "user.name", "t"], ["config", "user.email", "t@local"], ["add", "-A"],
                      ["commit", "--quiet", "-m", "the chart"]):
             subprocess.run(["git", *argv], cwd=self.root, check=True, capture_output=True)
@@ -103,11 +105,16 @@ class Abreast(Fixture):
         return {**os.environ, "SLIPWAI_SAIL": self.drive, "SLIPWAI_MACHINE": "harbour_one",
                 "ABREAST_RECORD": str(self.record), **env}
 
+    def notes(self) -> list[dict]:
+        """Every note the fake `/sail` sessions left, in the order they were written."""
+        found = [json.loads(path.read_text(encoding="utf-8"))
+                 for path in self.record.parent.glob(f"{self.record.stem}.*.json")]
+        return sorted(found, key=lambda row: row["at"])
+
     def windows(self) -> dict[str, tuple[float, float, str]]:
         """Each slice's last run: (started, ended, where)."""
         found: dict[str, dict] = {}
-        for line in self.record.read_text(encoding="utf-8").splitlines() if self.record.is_file() else []:
-            row = json.loads(line)
+        for row in self.notes():
             found.setdefault(row["slice"], {})[row["event"]] = row
         return {one: (rows["start"]["at"], rows.get("end", {}).get("at", float("inf")), rows["start"]["cwd"])
                 for one, rows in found.items()}
@@ -298,7 +305,7 @@ class StopTest(Abreast):
         while len(self.windows()) < 3:
             self.assertLess(time.monotonic(), until, "the three never started")
             time.sleep(0.2)
-        pids = [json.loads(line)["pid"] for line in self.record.read_text(encoding="utf-8").splitlines()]
+        pids = [row["pid"] for row in self.notes()]
         captain.send_signal(signal.SIGTERM)
         said, _ = captain.communicate(timeout=90)
         self.assertEqual(captain.returncode, 0, said)

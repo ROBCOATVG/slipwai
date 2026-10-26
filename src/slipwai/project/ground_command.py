@@ -57,6 +57,15 @@ QUESTIONS: dict[str, tuple[str, str]] = {
         "`kind` on the application's record in `deployables`, with `provenance.kind` `confirmed`; the row moves "
         "when `/survey` re-reads the record",
     ),
+    "build": (
+        "Does each application build from a clean clone through its recorded command alone — on a machine with only "
+        "the runtime its toolchain file names — and is there anything the build needs that is not in the tree: a jar "
+        "copied by hand, an IDE that runs it, a tool installed once and forgotten? `docs/strategies/build-floor.md` "
+        "has the eight criteria the row is read from",
+        "nothing — the row is read off the tree, and moves when the build does: a declared dependency, a wrapper, a "
+        "stated target, an untracked output. What only a person knows (the jar nobody can name, the machine it "
+        "really builds on) goes in `survey/running.md`, and the programme's build steps take it from there",
+    ),
     "platform": (
         "Where the tree pins no runtime version, which version does it actually run on where it is deployed — the "
         "gate's CI had to guess one and says so with *to confirm*? And of what `survey/structure.md` dates as out of "

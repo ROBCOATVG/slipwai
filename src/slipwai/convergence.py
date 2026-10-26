@@ -69,6 +69,18 @@ AXES: tuple[Axis, ...] = (
         "hexagonal": "every application declares the hexagonal layers and the import gate holds it to them",
         "typed": "every application has a type check the gate runs",
     }),
+    # First whatever the strategy (`docs/strategies/build-floor.md`): nothing can be pinned, upgraded or replaced
+    # against a build that only works on one machine.
+    Axis("build", "Build", ("undeclared", "declared", "pinned", "reproducible", "inventoried"), "inventoried", {
+        "undeclared": "a build does not declare what it depends on: committed jars or binaries, or a build tool with "
+                      "no dependency manager (Ant)",
+        "declared": "every dependency is declared by name and version and fetched, but a tool version or a compile "
+                    "target is left to whatever is installed, or a lockfile is missing",
+        "pinned": "tools through a wrapper or a pinned version, versions locked, every compile target stated",
+        "reproducible": "nothing generated or built is committed, and CI runs the gate from a clean checkout",
+        "inventoried": "every build also produces a bill of materials (an `sbom` command), which a dependency "
+                       "audit reads",
+    }),
     Axis("platform", "Platform", ("unknown", "inventoried", "supported", "audited"), "audited", {
         "unknown": "nothing an application runs on could be read from the tree: no runtime pin, no framework version, "
                    "no image",
@@ -169,6 +181,7 @@ def detected(apps: list[App], adoption: Adoption) -> list[Row]:
         why_not = f"; role not established for {', '.join(unnamed)}"
     kinds = ", ".join(f"{app.name}: {app.kind}" for app in wrapped) or "no application was here"
     rows.append(row(BY_KEY["structure"], structure, kinds + why_not, "detected"))
+    rows.append(build_row(adoption, wrapped))
     rows.append(platform_row(adoption, wrapped))
     rows.append(row(BY_KEY["constitution"], "template", ".specify/memory/constitution.md", "detected"))
     homes = (("data", "schema", adoption.database), ("infrastructure", "home", adoption.infrastructure))
@@ -183,6 +196,33 @@ def detected(apps: list[App], adoption: Adoption) -> list[Row]:
     rows.append(row(BY_KEY["release-mode"], "unrecorded", "confirm project.json's releaseMode", "unrecorded"))
     rows.append(strategy_row(adoption))
     return rows
+
+
+def build_row(adoption: Adoption, wrapped: list[App]) -> Row:
+    """The build floor, read off the tree and the survey: the lowest rung any application's build stands on."""
+    axis = BY_KEY["build"]
+    if not wrapped:
+        return row(axis, axis.target, "every application is generated, and comes with its build pinned", "detected")
+    wins = [w for w in (adoption.survey or {}).get("quickWins") or [] if isinstance(w, dict)]
+    kinds = {str(w.get("kind")) for w in wins}
+    ant = [app.name for app in wrapped if (app.toolchain or {}).get("ecosystem") == "ant"]
+    if ant or "archive-tracked" in kinds:
+        said = [f"{name} builds with Ant, its jars committed" for name in ant]
+        said += ["a binary archive is tracked"] if "archive-tracked" in kinds else []
+        return row(axis, "undeclared", "; ".join(said), "detected")
+    loose = [f"{app.name} states no compile target" for app in wrapped if not (app.toolchain or {}).get("version")]
+    loose += ["a lockfile is missing"] if "no-lockfile" in kinds else []
+    if loose:
+        return row(axis, "declared", "; ".join(loose), "detected")
+    if "ide-or-build-output-tracked" in kinds or not (adoption.ci or {}).get("gate"):
+        said = ["build output is tracked"] if "ide-or-build-output-tracked" in kinds else []
+        said += [] if (adoption.ci or {}).get("gate") else ["no CI runs the gate from a clean checkout"]
+        return row(axis, "pinned", "; ".join(said), "detected")
+    unlisted = [app.name for app in wrapped if not (app.commands or {}).get("sbom")]
+    if unlisted:
+        return row(axis, "reproducible", f"no `sbom` command recorded for {', '.join(unlisted)}", "detected")
+    return row(axis, "inventoried", "every application builds pinned, from a clean checkout, with a bill of materials",
+               "detected")
 
 
 def platform_row(adoption: Adoption, wrapped: list[App]) -> Row:

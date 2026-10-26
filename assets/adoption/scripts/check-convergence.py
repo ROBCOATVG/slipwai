@@ -49,6 +49,7 @@ RUNGS = {
     "integration": ("unknown", "branches", "trunk", "continuous"),
     "safety-net": ("none", "tests-exist", "tests-pass", "fast", "pinned", "mutation-measured"),
     "structure": ("as-found", "named", "laid-out", "hexagonal", "typed"),
+    "build": ("undeclared", "declared", "pinned", "reproducible", "inventoried"),
     "platform": ("unknown", "inventoried", "supported", "audited"),
     "constitution": ("template", "ratified", "in-full"),
     "data": ("open", "recorded", "settled"),
@@ -86,6 +87,10 @@ def caps(document: dict) -> dict[str, tuple[str, str]]:
         # not know, caps the row; a missing audit command caps it below `audited`. A person who knows better — a
         # vendor's paid support — records the row with `confirmed` provenance and the terms as evidence, and this
         # still says what the tree and the table say.
+        # The build floor the tree contradicts: a build with nothing declared cannot be claimed above `undeclared`.
+        ants = [r.get("name") for r in wrapped if (r.get("toolchain") or {}).get("ecosystem") == "ant"]
+        if ants:
+            found["build"] = ("undeclared", f"{', '.join(map(str, ants))} builds with Ant, its jars committed")
         products = [p for p in ((document.get("platform") or {}).get("products") or []) if isinstance(p, dict)]
         if not products:
             found["platform"] = ("unknown", "no runtime pin, framework version or image was dated by the survey")

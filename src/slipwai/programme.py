@@ -112,6 +112,32 @@ def step(kind: str, what: str, evidence: str, strategy: str | None) -> dict:
     return {"kind": kind, "step": what, "pacing": pacing(kind, strategy), "evidence": evidence}
 
 
+#: The newest JDK that still compiles for each old Java target: JDK 9 removed targets below 6, 12 removed 6 and 20
+#: removed 7 (JEP 182's one-plus-three policy).
+LAST_JDK_FOR = {5: 8, 6: 11, 7: 19}
+
+
+def target_steps(app: App, strategy: str | None) -> list[dict]:
+    """The build floor's compile target, where it is missing or older than a current JDK accepts."""
+    toolchain = app.toolchain or {}
+    if toolchain.get("kind") != "java":
+        return []
+    version = str(toolchain.get("version") or "")
+    where = f"toolchain.version: {version or 'unrecorded'} ({app.path})"
+    if not version:
+        return [step("build", f"`{app.name}`: the build states no compile target, so whatever the build tool "
+                              "defaults to is what ships — state it (`<maven.compiler.release>`, `release` in "
+                              "Gradle, `javac` `release`), at the level it compiles for today", where, strategy)]
+    if version.isdigit() and int(version) in LAST_JDK_FOR:
+        last = LAST_JDK_FOR[int(version)]
+        return [step("build", f"`{app.name}`: compiles for Java {version}, which no current JDK accepts — "
+                              f"JDK {last} is the newest that still can. Pinned as it is, its build runs in a JDK "
+                              f"{last} container; brought up to date, the target is raised to `--release 8` as a "
+                              "recorded stepping stone, and `/characterise` and `smoke` confirm the frameworks still "
+                              "load there (`docs/strategies/build-floor.md`)", where, strategy)]
+    return []
+
+
 def programme(adoption: Adoption, apps: list[App], strategy: str | None) -> list[dict]:
     """Every improvement the record shows, in the order to take them: quick wins, a build below the floor, an
     application nobody has proved starts, the platform, the ladder's rungs the tree says are behind, then the tooling
@@ -126,6 +152,8 @@ def programme(adoption: Adoption, apps: list[App], strategy: str | None) -> list
                     "coordinates, sources under `src/main/java`, the same artifact out of `./mvnw -q package`; then "
                     "`/survey` reads the tree as Maven, the recorded commands follow, and the jars leave the tree")
             steps.append(step("build", what, f"toolchain.ecosystem: ant ({prefixed(app.path, 'build.xml')})", strategy))
+    for app in wrapped:
+        steps += target_steps(app, strategy)
     for app in wrapped:
         # A `smoke` recorded as `null` is a written no — an application nobody can start outside production, with the
         # reason in `survey/running.md` — and is not a step; a key nobody has written is.

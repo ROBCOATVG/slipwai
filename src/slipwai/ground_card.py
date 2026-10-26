@@ -44,6 +44,8 @@ UNKNOWN = "dont-know"
 AS_READ = "as-read"
 #: Rows the tree settles. Asked only as "is this reading right?" — what moves them is a change to the tree.
 READ = {
+    "build": "each application's build tool, how its dependencies are declared, its compile target, and what is "
+             "committed that a build should produce (`docs/strategies/build-floor.md`)",
     "structure": "the applications you confirmed, where they live, the layout they declare and their type checks",
     "constitution": "`.specify/memory/constitution.md` — `/speckit-constitution` ratifies it, after these rows",
 }

@@ -1,6 +1,7 @@
 """The adoption's steps the board takes itself: which control each is, and what each writes or starts."""
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -45,6 +46,17 @@ class DecideTest(unittest.TestCase):
                         mock.patch.object(flow.subprocess, "run")):
             patched.start()
             self.addCleanup(patched.stop)
+        (self.root / "project.json").write_text(json.dumps({
+            "name": "shop", "origin": "adopted", "profile": "standard", "frontend": "none", "target": "existing",
+            "deployables": {}, "layout": {"delivery": "adopt"}}))
+
+    def test_the_reason_is_recorded_with_the_decision_and_none_is_refused(self) -> None:
+        with self.assertRaises(GenerationError) as refused:
+            flow.decide(self.root, self.layout, STRANGLER)
+        self.assertIn("business trigger", str(refused.exception))
+        flow.decide(self.root, self.layout, {**STRANGLER, "why": "the old app must go"})
+        self.assertEqual(json.loads((self.root / "project.json").read_text())["why"], "the old app must go",
+                         "the gate holds a strategy with no `why` at `open`, decided or not")
 
     def test_the_strategy_is_the_accepted_adr_the_gate_reads(self) -> None:
         (self.root / "adopt/docs/adr").mkdir(parents=True)

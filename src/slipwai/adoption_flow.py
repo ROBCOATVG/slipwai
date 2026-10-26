@@ -9,6 +9,8 @@ the board can run, or a record it can write, gets the control that does it, on t
 - **`/verify`**: the gate, run in the background, and its first baseline committed when it is green.
 - **The strategy**: the five on offer with the recommendation picked, written as the accepted ADR whose
   `Strategy:` line the gate reads — *leave it* is one of them.
+- **The steps the strategy adds**: the new home generated where it is beside the old code or a new repository, and
+  each step only the agent can take — the build floor, `smoke`, the parity list — handed to a headless session.
 - **The constitution and the first specification**: a PRD the person already has, named by its path and copied
   in, or four questions answered and written as one — who it is for, what it must do, how anyone will know it
   is done, and what is fixed — and `make draft` run on it: the same session a generated project with a PRD
@@ -20,6 +22,7 @@ From the first specification on, the voyage's own strip and its Continue the bui
 from __future__ import annotations
 
 import datetime
+import json
 import shlex
 import subprocess
 import sys
@@ -27,14 +30,14 @@ from collections.abc import Mapping
 from pathlib import Path
 from urllib.parse import quote
 
-from . import resurvey
+from . import next_steps, resurvey
 from .errors import GenerationError
 from .folder_field import folder_field
 from .ground_card import asked
 from .init_run import Fitting, Step, adopted
 from .interview_page import elected_in
 from .layout import Layout, layout_of
-from .manifest import read_manifest
+from .manifest import apps_from_manifest, read_manifest
 from .next_steps import BASELINE
 from .origin import adoption_of
 from .page_shell import esc
@@ -52,6 +55,11 @@ INIT, GROUND, VERIFY, STRATEGY, CONSTITUTION, SPECIFY = (
 HOME, NEW_SYSTEM = "generate the new home", "generate the new system"
 #: The hand-over to the new repository a rewrite is built in: its voyage is where the rest happens.
 ELSEWHERE = CONTINUE
+#: A step the strategy adds that only the agent can take — the build floor, `smoke`, the parity list — handed to a
+#: headless session (`scripts/agents/step.py`): the board stopped at the first of them with nothing to press.
+AGENT = "agent"
+IN_THE_AGENT = ", in the agent"
+STEP = "scripts/agents/step.py"
 PRD = "docs/prd.md"
 #: What a PRD has to say for a specification to be drafted from it rather than guessed: the name of each
 #: answer, its heading in the PRD, what the box suggests, and whether the draft can go without it.
@@ -68,8 +76,9 @@ def key_of(action: str) -> str:
     """Which of the board's steps an action is, or `""` for one only the agent takes."""
     if action.endswith("/init"):
         return INIT
-    return next((key for key in (GROUND, VERIFY, STRATEGY, HOME, NEW_SYSTEM, ELSEWHERE, CONSTITUTION, SPECIFY)
-                 if action.startswith(key)), "")
+    found = next((key for key in (GROUND, VERIFY, STRATEGY, HOME, NEW_SYSTEM, ELSEWHERE, CONSTITUTION, SPECIFY)
+                  if action.startswith(key)), "")
+    return found or (AGENT if action.endswith(IN_THE_AGENT) and not action.startswith("/") else "")
 
 
 def make(layout: Layout) -> list[str]:
@@ -99,8 +108,18 @@ def decide(root: Path, layout: Layout, answers: Mapping[str, str], today: str | 
     """The strategy, written as the accepted ADR the gate reads, and committed. Returns the ADR's path."""
     # Every line the strategy cannot start without is asked for on the form and refused here while one is empty.
     strategy, said = record_lines(answers)
-    why = said.pop("Why", "") or "Decided on the board, from the map and its recommendation."
+    given = said.pop("Why", "")
+    document = read_manifest(root, "the board")
+    # The map's strategy row climbs `open` → `why-recorded` → … and the gate holds a decision with no `why` at
+    # `open`: the reason this work is happening is recorded with the decision when /ground did not record it.
+    if not document.get("why") and not given:
+        raise GenerationError("say why this work is happening — the business trigger, in your words — before "
+                              "deciding what to do about it")
+    why = given or "Decided on the board, from the map and its recommendation."
     refuse_foreign(root, resurvey.writes(root, layout), "deciding the strategy")
+    if not document.get("why"):
+        document["why"] = given
+        (root / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     folder = root / layout.under("docs/adr")
     folder.mkdir(parents=True, exist_ok=True)
     taken = [int(path.name[:4]) for path in folder.glob("[0-9][0-9][0-9][0-9]-*.md")]
@@ -189,6 +208,28 @@ def home(root: Path, said: list[str] | None = None) -> Fitting:
     return fitting
 
 
+def agent_step(root: Path, layout: Layout, said: list[str] | None = None) -> Fitting:
+    """The step that is now, where only the agent can take it, handed to a headless session in the background."""
+    document = read_manifest(root, "the board")
+    adoption = adoption_of(document)
+    if adoption is None:
+        raise GenerationError("this repository was not adopted")
+    now = next((step for step in next_steps.steps(root, layout, adoption, apps_from_manifest(document, True))
+                if not step.done), None)
+    if now is None or key_of(now.action) != AGENT:
+        raise GenerationError("the step that is now is not one the agent takes from here; read the card again")
+    if not (root / layout.under(STEP)).is_file():
+        raise GenerationError(f"{layout.under(STEP)} is not here: `slipwai adopt --refresh` writes it")
+    argv = [sys.executable, layout.under(STEP), now.action[:-len(IN_THE_AGENT)], now.why]
+    step = Step(argv, f"Handing {now.action[:-len(IN_THE_AGENT)]} to a headless session — it reads the strategy's "
+                      "playbook, does this step and stops.",
+                lambda code: ("The session ended; the card reads the tree again to see whether the step is done."
+                              if code == 0 else f"The session stopped ({code}); what it said is above."), "agent")
+    fitting = Fitting(root, [step], said)
+    fitting.thread.start()
+    return fitting
+
+
 def draft(root: Path, layout: Layout, answers: Mapping[str, str], said: list[str] | None = None) -> Fitting:
     """The PRD written or copied in, and the drafting session run on it in the background."""
     written(root, layout, answers)
@@ -218,6 +259,8 @@ def take_step(root: Path, answers: Mapping[str, str], running: Fitting | None) -
             return 200, decide(root, layout, answers), None
         if step == "home":
             return 200, "started", home(root, said)
+        if step == AGENT:
+            return 200, "started", agent_step(root, layout, said)
         if step == "draft":
             return 200, "started", draft(root, layout, answers, said)
     except GenerationError as refused:
@@ -250,6 +293,9 @@ def control(key: str, recommended: str | None, agents: str, prd: str = "", tooli
                 f'{"Generate the new system" if key == NEW_SYSTEM else "Generate the new home"}</button></div>')
     if key == VERIFY:
         return '<div class="ask"><button class="go" data-step="verify">Run the gate</button></div>'
+    if key == AGENT:
+        return ('<div class="ask"><button class="go" data-step="agent">Hand it to the agent</button></div>'
+                '<p class="empty">a headless session takes this step and stops; or take it yourself in the agent.</p>')
     if key == STRATEGY:
         return strategy_form(recommended, proposal, name)
     if key in (CONSTITUTION, SPECIFY):

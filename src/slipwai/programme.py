@@ -150,14 +150,27 @@ def programme(adoption: Adoption, apps: list[App], strategy: str | None,
     wins: list[dict] = list((adoption.survey or {}).get("quickWins") or [])
     steps = [step("quick-win", f"{w.get('what')} — {w.get('fix')}", str(w.get("where")), strategy) for w in wins]
     wrapped = wrapped_of(apps)
-    for app in wrapped:
+    said = lines or {}
+    if str(said.get("Build") or "").lower().startswith("pinned"):
+        # Pinned as it is, the old build is not moved or raised: it runs in a container with its old toolchain, and
+        # the one command that does is the floor. Moving an Ant build to Maven is work the strategy throws away.
+        steps += [step("build", f"`{app.name}`: pin the build as it is — a container with its old toolchain (the JDK "
+                                "it compiles for, the build tool at its version) behind one command that builds it "
+                                "from a clean clone and leaves no tracked file changed; record that command as "
+                                "`commands.build` in `project.json` (`docs/strategies/build-floor.md`, B.4)",
+                       f"commands.build: unrecorded for {app.path}", strategy)
+                  for app in wrapped if not (app.commands or {}).get("build")]
+        wrapped_build: list[App] = []
+    else:
+        wrapped_build = wrapped
+    for app in wrapped_build:
         if (app.toolchain or {}).get("ecosystem") == "ant":
             what = (f"`{app.name}`: the build is Ant with its jars committed — move it to Maven or Gradle through the "
                     "wrapper: a `pom.xml` (or `build.gradle`) that declares each committed jar as a dependency by its "
                     "coordinates, sources under `src/main/java`, the same artifact out of `./mvnw -q package`; then "
                     "`/survey` reads the tree as Maven, the recorded commands follow, and the jars leave the tree")
             steps.append(step("build", what, f"toolchain.ecosystem: ant ({prefixed(app.path, 'build.xml')})", strategy))
-    for app in wrapped:
+    for app in wrapped_build:
         steps += target_steps(app, strategy)
     for app in wrapped:
         # A `smoke` recorded as `null` is a written no — an application nobody can start outside production, with the
@@ -170,7 +183,6 @@ def programme(adoption: Adoption, apps: list[App], strategy: str | None,
                     "there); "
                     "`make smoke` and the gate's smoke job run it from then on")
             steps.append(step("run", what, f"commands.smoke: unrecorded for {app.path}", strategy))
-    said = lines or {}
     place = str(said.get("New home" if strategy == "strangler-fig" else "Home") or "beside").split(" ")[0].lower()
     if strategy in ("strangler-fig", "rewrite") and place != "inside" and wrapped and all(
             not app.generated for app in apps):

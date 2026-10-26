@@ -22,8 +22,9 @@ TARGETS = ("install", "typecheck", "lint", "test", "integration", "adversarial",
 # What a wrapped application may record beside the eight, each with a target of its own and never proposed by the
 # survey: `test-full`, a suite too slow for `verify`; `smoke`, the one command that starts the application and proves
 # it answers — the fact the day-one gate cannot compose from the eight, and the floor beside the build
-# (`programme.py`), because every false green the first adoptions shipped was a change nothing had started.
-EXTRA = ("test-full", "smoke")
+# (`programme.py`), because every false green the first adoptions shipped was a change nothing had started; `build`,
+# the one command that builds a build pinned as it is, in its container with its old toolchain.
+EXTRA = ("test-full", "smoke", "build")
 Commands = dict[str, str | None]
 
 

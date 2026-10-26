@@ -22,6 +22,7 @@ from pathlib import Path
 
 from .layout import Layout
 from .origin import Adoption
+from .programme import programme
 from .services import App, wrapped_of
 
 PARITY = "docs/parity.md"
@@ -72,7 +73,9 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App],
     if not strategy or record.get("missing"):
         return []
     found: list[tuple[str, str, bool]] = []
-    build_open = any(step.get("kind") == "build" for step in record.get("programme") or [] if isinstance(step, dict))
+    # Read live rather than off the record's `programme`, which is as old as the last refresh: a `build` command a
+    # session has just recorded is the step done.
+    build_open = any(step["kind"] == "build" for step in programme(adoption, apps, strategy, lines))
     found.append((
         "the build floor, in the agent",
         f"each application builds from a clean clone through one declared build, every dependency and tool version "

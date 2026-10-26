@@ -149,6 +149,8 @@ def project_files(
         generated["scripts/ratchet.py"] = (ADOPTION_ROOT / "scripts/ratchet.py").read_text(encoding="utf-8")
         convergence = ADOPTION_ROOT / "scripts/check-convergence.py"
         generated["scripts/check-convergence.py"] = convergence.read_text(encoding="utf-8")
+        # The steps of an adoption only the agent can take, handed to a session from the board.
+        generated["scripts/agents/step.py"] = (ADOPTION_ROOT / "scripts/agents/step.py").read_text(encoding="utf-8")
     if managed(CATALOG, target):
         # The one answer whose credential the cloud did not issue, so the one the workflows carry extra.
         auth0 = any(

@@ -90,6 +90,24 @@ class StepsTest(unittest.TestCase):
         self.assertFalse(any(step.action.startswith("/speckit-constitution") for step in ordered),
                          "the constitution and the first feature are the new project's")
 
+    def test_a_build_pinned_as_it_is_is_done_by_its_build_command_not_by_moving_it(self) -> None:
+        java6 = {"kind": "java", "version": "6", "ecosystem": "ant"}
+        ant = App("shop", "web", "service", "java", None, 0, generated=False, commands={}, toolchain=java6)
+        pinned = {**STRANGLER, "Build": "pinned as-is: the old build in a container with its old toolchain"}
+        done = {action: was for action, _why, was in steps(self.root, LAYOUT, decided("strangler-fig", pinned), [ant])}
+        self.assertFalse(done["the build floor, in the agent"])
+        ant = App("shop", "web", "service", "java", None, 0, generated=False, toolchain=java6,
+                  commands={"build": "docker run --rm -v $PWD:/w -w /w/web ant:jdk11 ant -q dist"})
+        done = {action: was for action, _why, was in steps(self.root, LAYOUT, decided("strangler-fig", pinned), [ant])}
+        self.assertTrue(done["the build floor, in the agent"], "an Ant build pinned in a container is not moved")
+
+    def test_every_step_only_the_agent_takes_is_handed_to_it_from_the_board(self) -> None:
+        for action, _why, _done in steps(self.root, LAYOUT, decided("strangler-fig", STRANGLER), [old()]):
+            if action.endswith(", in the agent"):
+                self.assertEqual(adoption_flow.key_of(action), adoption_flow.AGENT, action)
+        self.assertIn('data-step="agent"', adoption_flow.control(adoption_flow.AGENT, None, ""))
+        self.assertEqual(adoption_flow.key_of("/sail, in the agent"), "")
+
     def test_the_stack_line_is_read_back_as_its_three_answers(self) -> None:
         self.assertEqual(stack_of(STRANGLER), {"backend": "java-spring", "frontend": "none", "persistence": "postgres"})
 

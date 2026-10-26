@@ -267,6 +267,7 @@ def executable_paths(profile: str, apps: list[App]) -> set[str]:
     # is set on the files that exist.
     executables = {
         "init", "scripts/verify", "scripts/backing-services.py", "scripts/ratchet.py", "scripts/check-convergence.py",
+        "scripts/agents/step.py",
         "scripts/deploy.py", "scripts/bootstrap.py", "scripts/check-flags.py", "scripts/check-deploy-role.py",
     }
     executables |= {verify_path(family, apps) for family in families_of(apps)}

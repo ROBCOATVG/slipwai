@@ -56,13 +56,42 @@ class DecideTest(unittest.TestCase):
             flow.decide(self.root, self.layout, {"strategy": "big-bang"})
         self.assertFalse((self.root / "adopt/docs/adr").exists())
 
-    def test_the_first_feature_is_the_prd_the_draft_reads(self) -> None:
+    def test_four_answers_are_the_prd_the_draft_reads(self) -> None:
+        answers = {"who": "Family historians", "does": "Members can export their tree", "done": "An export opens"}
         with mock.patch.object(flow.Fitting, "run"):
-            fitting = flow.draft(self.root, self.layout, {"feature": "Members can export their tree"})
-        self.assertIn("Members can export their tree", (self.root / "adopt/docs/prd.md").read_text())
+            fitting = flow.draft(self.root, self.layout, answers)
+        prd = (self.root / "adopt/docs/prd.md").read_text()
+        self.assertIn("## Who uses it, and what for\n\nFamily historians", prd)
+        self.assertNotIn("Out of scope", prd, "an optional answer left empty is not a heading over nothing")
         self.assertEqual(fitting.steps[0].argv[-2:], ["draft", "PRD=adopt/docs/prd.md"])
+
+    def test_one_word_is_refused_before_a_session_is_spent_on_it(self) -> None:
+        with self.assertRaises(GenerationError) as refused:
+            flow.draft(self.root, self.layout, {"does": "modernisation"})
+        self.assertIn("who uses it", str(refused.exception))
+        self.assertFalse((self.root / "adopt/docs/prd.md").exists())
+
+    def test_a_prd_named_by_its_path_is_copied_in(self) -> None:
+        mine = Path(tempfile.mkdtemp()) / "requirements.md"
+        mine.write_text("# Export\n\nFamily historians export their tree.\n")
+        with mock.patch.object(flow.Fitting, "run"):
+            flow.draft(self.root, self.layout, {"prd": str(mine)})
+        self.assertEqual((self.root / "adopt/docs/prd.md").read_text(), mine.read_text())
         with self.assertRaises(GenerationError):
-            flow.draft(Path(tempfile.mkdtemp()), self.layout, {})
+            flow.draft(self.root, self.layout, {"prd": str(mine.with_name("missing.md"))})
+
+    def test_answers_win_over_the_prd_offered_again(self) -> None:
+        (self.root / "adopt/docs").mkdir(parents=True)
+        (self.root / "adopt/docs/prd.md").write_text("# The first feature\n\nmodernisation\n")
+        answers = {"prd": "adopt/docs/prd.md", "who": "Family historians", "does": "Export", "done": "It opens"}
+        with mock.patch.object(flow.Fitting, "run"):
+            flow.draft(self.root, self.layout, answers)
+        self.assertIn("Family historians", (self.root / "adopt/docs/prd.md").read_text())
+
+    def test_the_form_offers_the_prd_already_written(self) -> None:
+        page = flow.control(flow.SPECIFY, None, "", "adopt/docs/prd.md")
+        self.assertIn('value="adopt/docs/prd.md"', page)
+        self.assertEqual(page.count("<textarea"), 4)
 
 
 class StepTest(unittest.TestCase):

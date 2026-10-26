@@ -9,9 +9,11 @@ the board can run, or a record it can write, gets the control that does it, on t
 - **`/verify`**: the gate, run in the background, and its first baseline committed when it is green.
 - **The strategy**: the five on offer with the recommendation picked, written as the accepted ADR whose
   `Strategy:` line the gate reads — *leave it* is one of them.
-- **The constitution and the first specification**: the first feature in a person's words, written as the
-  PRD the drafting session reads, and `make draft` run on it — the same session a generated project with a PRD
-  gets, which drafts both and stops for the person to read the specification.
+- **The constitution and the first specification**: a PRD the person already has, named by its path and copied
+  in, or four questions answered and written as one — who it is for, what it must do, how anyone will know it
+  is done, and what is fixed — and `make draft` run on it: the same session a generated project with a PRD
+  gets, which drafts both and stops for the person to read the specification. One box invited one word, and a
+  session asked to draft a product from "modernisation" rightly refused to.
 
 From the first specification on, the voyage's own strip and its Continue the build are the next steps.
 """
@@ -38,6 +40,15 @@ from .uncommitted import refuse_foreign
 INIT, GROUND, VERIFY, STRATEGY, CONSTITUTION, SPECIFY = (
     "init", "/ground", "/verify", "an accepted ADR", "/speckit-constitution", "/speckit-specify")
 PRD = "docs/prd.md"
+#: What a PRD has to say for a specification to be drafted from it rather than guessed: the name of each
+#: answer, its heading in the PRD, what the box suggests, and whether the draft can go without it.
+QUESTIONS = (
+    ("who", "Who uses it, and what for", "Who works with it, and what they need to be able to do", True),
+    ("does", "What it must do", "The behaviour that carries over, what is new, and what is dropped", True),
+    ("done", "How we will know it is done", "Concrete, testable statements — the existing data included", True),
+    ("fixed", "Out of scope, or already fixed", "The stack, a browser UI or none, how the old one is cut over",
+     False),
+)
 
 
 def key_of(action: str) -> str:
@@ -94,18 +105,34 @@ def decide(root: Path, layout: Layout, answers: Mapping[str, str], today: str | 
     return relative
 
 
-def draft(root: Path, layout: Layout, answers: Mapping[str, str], said: list[str] | None = None) -> Fitting:
-    """The first feature written as the PRD, and the drafting session run on it in the background."""
-    feature = str(answers.get("feature") or "").strip()
+def written(root: Path, layout: Layout, answers: Mapping[str, str]) -> Path:
+    """The PRD the draft reads: a person's answers written as one, or, with none given, the one they named,
+    copied in. Answers win, because the PRD already written is offered again in the same form."""
     prd = root / layout.under(PRD)
-    if feature:
-        prd.parent.mkdir(parents=True, exist_ok=True)
-        prd.write_text(f"# The first feature\n\n{feature}\n", encoding="utf-8")
-    elif not prd.is_file():
-        raise GenerationError("say what the first feature is: the drafting session writes the constitution and "
-                              "its specification from it")
-    # Named rather than left to the default, which a copy adopted before it was read under the delivery folder
-    # looked for at the root.
+    named = str(answers.get("prd") or "").strip()
+    said = {key: str(answers.get(key) or "").strip() for key, *_ in QUESTIONS}
+    if named and not any(said.values()):
+        source = Path(named).expanduser()
+        source = source if source.is_absolute() else root / source
+        if not source.is_file():
+            raise GenerationError(f"{named} is not a file: name the PRD, or answer the four questions instead")
+        if source.resolve() != prd.resolve():
+            prd.parent.mkdir(parents=True, exist_ok=True)
+            prd.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+        return prd
+    missing = [heading.lower() for key, heading, _, needed in QUESTIONS if needed and not said[key]]
+    if missing:
+        raise GenerationError(f"name a PRD, or say {'; '.join(missing)} — the specification is drafted from "
+                              "these, and guessed without them")
+    prd.parent.mkdir(parents=True, exist_ok=True)
+    prd.write_text("# Product requirements\n" + "".join(
+        f"\n## {heading}\n\n{said[key]}\n" for key, heading, *_ in QUESTIONS if said[key]), encoding="utf-8")
+    return prd
+
+
+def draft(root: Path, layout: Layout, answers: Mapping[str, str], said: list[str] | None = None) -> Fitting:
+    """The PRD written or copied in, and the drafting session run on it in the background."""
+    written(root, layout, answers)
     argv = [*make(layout), "draft", f"PRD={layout.under(PRD)}"]
     step = Step(argv, f"Drafting the constitution and the first specification from {layout.under(PRD)} — "
                       f"{' '.join(argv)}, a headless session. It stops for you to read the specification.",
@@ -144,8 +171,9 @@ def gate_when_grounded(root: Path, running: Fitting | None) -> Fitting | None:
     return gate(root, layout_of(document), running.said()["lines"] if running else None)
 
 
-def control(key: str, recommended: str | None, agents: str) -> str:
-    """The control on the step that is now, or nothing where only the agent can take it."""
+def control(key: str, recommended: str | None, agents: str, prd: str = "") -> str:
+    """The control on the step that is now, or nothing where only the agent can take it; `prd` is the PRD
+    already written, offered again."""
     if key == INIT:
         return (f'<form class="ask-page" id="step-form"><div class="q"><label for="harness">Hand it to</label>'
                 f'<select id="harness" name="harness">{agents}</select></div></form>'
@@ -161,9 +189,14 @@ def control(key: str, recommended: str | None, agents: str) -> str:
                 '<textarea name="why" rows="2" placeholder="Why this one, in your words (optional)"></textarea>'
                 '</form><div class="ask"><button class="go" data-step="strategy">Decide</button></div>')
     if key in (CONSTITUTION, SPECIFY):
-        return ('<form class="ask-page" id="step-form"><div class="q"><label for="feature">The first feature'
-                '</label><textarea id="feature" name="feature" rows="5" placeholder="What should change first, '
-                'for whom, and how you will know it worked"></textarea></div></form>'
+        boxes = "".join(
+            f'<div class="q"><label for="{name}">{esc(heading)}{"" if needed else " (optional)"}</label>'
+            f'<textarea id="{name}" name="{name}" rows="3" placeholder="{esc(hint)}"></textarea></div>'
+            for name, heading, hint, needed in QUESTIONS)
+        return ('<form class="ask-page" id="step-form"><div class="q"><label for="prd">A PRD you already have'
+                f'</label><input id="prd" name="prd" value="{esc(prd)}" placeholder="its path — copied into the '
+                'repository, and the questions below left empty"></div><p class="empty">or, without one, '
+                f"answer these and they are written as the PRD:</p>{boxes}</form>"
                 '<div class="ask"><button class="go" data-step="draft">Draft the constitution and the '
                 "specification</button></div>")
     return ""

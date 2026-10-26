@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from . import next_steps
-from .adoption_flow import GROUND, control, key_of
+from .adoption_flow import GROUND, PRD, control, key_of
 from .adoption_flow import SCRIPT as STEPPING
 from .errors import GenerationError
 from .ground_card import SCRIPT as GROUNDING
@@ -39,7 +39,8 @@ def adoption_card(root: Path, running: bool = False) -> str:
     adoption = adoption_of(document)
     if adoption is None:
         return ""
-    found = next_steps.steps(root, layout_of(document), adoption, apps_from_manifest(document, True))
+    layout = layout_of(document)
+    found = next_steps.steps(root, layout, adoption, apps_from_manifest(document, True))
     # From the first specification on, an adopted repository's voyage is a generated project's: the strip
     # takes over, and this card has said all it has to say.
     if any(step.done and step.action.startswith("/speckit-specify") for step in found):
@@ -59,7 +60,8 @@ def adoption_card(root: Path, running: bool = False) -> str:
     here = ('<p class="empty" id="step-running">Running — the card below follows it, and this moves on when it '
             "ends.</p>" if running else
             ground_card(root) + f"<script>{GROUNDING}</script>" if key == GROUND else
-            control(key, (adoption.strategy or {}).get("recommended"), agents))
+            control(key, (adoption.strategy or {}).get("recommended"), agents,
+                    layout.under(PRD) if (root / layout.under(PRD)).is_file() else ""))
     return ('<div class="card" id="adoption"><h2>Where this adoption stands</h2>'
             '<p class="empty">Read off the tree, so it moves as each step is done — on this board where it can '
             f'be, and in the coding agent opened in {esc(root.resolve())} where it cannot. '

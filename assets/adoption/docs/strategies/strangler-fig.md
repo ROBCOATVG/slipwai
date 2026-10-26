@@ -359,65 +359,73 @@ This is the common case. **Every feature request becomes a new-home slice plus a
 
 ---
 
-## 5. How the method carries it (proposed — not built yet)
+## 5. How the method carries it
 
 ### Adoption sequence on the board
-Each step is a card with a state (`blocked / ready / done`), a single primary control, and evidence links. Later cards stay `blocked` until earlier evidence exists.
+The board's voyage, and `slipwai adopt --next`, walk the same sequence. Each step is a card; later cards stay blocked until earlier evidence exists in the tree.
 
-1. **Survey**: `/survey`. Shows axes plus a **Seams** panel listing HTTP, UI, write and read seams with file:line. *Control:* "Confirm seams".
-2. **Safety net**: gate, ratchet and secrets. *Control:* "Run verify". Shows ratchet counts.
-3. **Strategy**: the ADR form, with strangler-fig pre-selected when the survey shows an EOL platform. The fields are §2's lines, including `End:`, `Seam:`, `New home:` (a path) and `Data approach:`, since the checks have nothing to check against without them. `End:` is a choice of *all* or *partial*; when the person wants the old system gone on a new stack, the board pre-selects `beside` and `End: all`, and then requires a dated `Checkpoint:` and a `Parity:` line. A person who picks *rewrite* is shown this combination first (see [rewrite.md](rewrite.md), §5). **New-home stack** is a dropdown pre-filled from the survey (e.g. the stack matching the team's main language), with an "override" text box that records who and why. *Control:* "Accept". It is refused while any line is empty.
-4. **Characterise boundary**: `/characterise` for the top journeys through the (pass-through) proxy. *Control:* "Pin journeys".
-5. **Seam live**: generates proxy config and a pass-through route. *Evidence:* CI hits the app through the proxy.
-6. **New home**: `slipwai add-service` with the chosen stack. It shows three ticks: *generated*, *gate green*, *routed through seam* (`/next/health` via the proxy in CI). **This is the only card that unlocks Draft.**
-7. **Draft**: PRD → constitution + first spec (below).
-8. **Capability order**: a ranked table, editable by a person. Under `End: all` it is preceded by the **behaviour inventory** (`parity.md`): the agent drafts it, the person marks each row *preserve / quirk / fix / drop*, and the board shows the count still undecided. Under `End: partial` it ends with the list of capabilities that stay.
-9. **Sail**: the first slice.
+1. **Survey**, then the convergence map, the gate and the ratchet, as under every strategy.
+2. **Decide.** The board's decide step is a form that asks exactly the strangler fig's lines: `Freeze:`, `New home:`, `End:` and `Target:`, plus `Parity:` and `Checkpoint:` when `End: all`. The new home's stack is proposed from the survey (the old language's language package, a browser app where the old app served pages, Postgres where there is a database), and a person may override it. A language package that is not installed is said with the command to install it, `slipwai language install <name>`. The board writes the ADR with every line plus a derived `Build:` line, and commits it. The strategy record reads the accepted ADR's `Name: value` lines; a required line that is missing is said by `check-convergence` and on the board, and the decision still stands. A person who picks *rewrite* is offered "Use a strangler fig instead" (`beside`, `End: all`; see [rewrite.md](rewrite.md), §5).
+3. **Build floor**, then **`smoke`**, after the decision and before the constitution.
+4. **The new home**, by where it lives:
+   - `beside`: "generate the new home", which the board runs itself: `add-service` with the chosen stack, then `add-frontend` when a browser app was chosen, each committed.
+   - `inside`: "declare the modules and freeze their violations" (`docs/module-map.md`). This is an agent step the board names; it does not do it.
+5. **Parity** (`End: all`): write `docs/parity.md`, the behaviour to keep. An agent step the board names; the person marks each row *preserve / quirk / fix / drop*.
+6. **Draft**: PRD → constitution + first spec (below).
+7. **Sail**: the first slice.
 
-Under `End: all` the board also shows the checkpoint date and, when it arrives, a review control: "continue / switch to `End: partial` / stop".
+Under `End: all` the board shows the `Checkpoint:` date for the whole programme and, once it has passed, puts the decision again through the decide form: carry on with a new date, change the decision (for example to `End: partial`), or stop.
 
 ### Draft, spec and mock-ups
-- Every slice has `Lands in: <home path>`, defaulting to the new home. The drafter is told the strategy and refuses to place a product slice in a `role: legacy` home.
-- Every slice that users must see in an existing screen has a **Composition** section: whole-page route or fragment include, the exact old-home seam line, auth across the seam, and fallback on failure. For a strangler, the hard part of almost every early feature is how it reaches an old screen, so this section is required rather than optional.
-- Every slice records `Visibility: page | seam` with the reason (§4). `/mockups` draws the chosen option, both where it is close, and the storyboard verdict decides.
-- Every slice that touches legacy data names its access path (view, wrapped write entry point or CDC projection) and the ACL module.
-- Slices that migrate existing behaviour reference the ledger row and the characterisation tag that pins them. The drafter needs usage evidence per rebuilt capability, and parity wording in specs is flagged.
+- `/draft` reads the strategy and this playbook, and refuses while the decision is missing or incomplete. The feature is specified where the strategy lands it: the new home.
+- Every spec ends with `## Strategy fit`, holding `Lands in:`, `Visibility: page | seam` with the reason (§4), and `Composition:` (whole-page route or fragment include, the exact old-home seam line, auth across the seam, and fallback on failure). For a strangler, the hard part of almost every early feature is how it reaches an old screen, so this section is required rather than optional. When the ADR's `Target:` is modular, the spec also holds `Module:`, `Publishes:`, `Consumes:` and `Owns data:`.
+- A PRD line that contradicts the strategy is overridden in the spec and quoted beside the ADR line it contradicts.
+- `/mockups` draws in the new home's UI where the spec lands there: for `page`, the whole new page; for `seam`, the old page with the new panel; where the choice is close, both, and the storyboard verdict decides.
+- `/sail`'s plan stage holds each slice to the strangler fig's rules.
+- The proxy config, SSI include and auth bridge a slice needs are written by the agent in that slice; nothing generates them.
 
 ### Constitution
-The strangler-fig clause, generated from the ADR:
+The draft writes the strangler-fig clause into the constitution from the ADR. In substance:
 - "Product changes land in `services/<new-home>`. `apps/<legacy>` accepts bug fixes, security fixes, and seam changes recorded in `retirement.md`, nothing else."
 - "Only `services/<new-home>/…/legacy/` may know legacy names, formats or procs."
-- "One writer per table; see `homes.yml`. Never dual-write."
+- "One writer per table. Never dual-write."
 - "No feature parity by default: a legacy behaviour is rebuilt only if it is shown to be used."
 - "Transitional components are ledger rows with a removal condition."
 - Under `End: all`: "The old app is deleted by <checkpoint date>. Parity is defined by `docs/parity.md`; a capability is done when its rows pass against both targets. Port the behaviour, not the bugs: a *fix* row needs the owner's decision."
 - Under `End: partial`: "Capabilities listed as staying remain in `apps/<legacy>`, frozen, with an owner and a review date."
 
 ### Gates
-Refuse before, do not warn after. The failure this strategy guards against happens because nothing blocks it, so each of these is a hard check, not programme prose.
-- **`homes.yml`** (`role: legacy | new`, table ownership) is the machine-readable source for the home guard, `Lands in` and ownership checks.
-- **Home guard** (in `make verify` and the fleet's pre-slice check): a diff touching `role: legacy` paths must carry a trailer `Legacy-change: bugfix|security|seam` and, for `seam`, reference a ledger row. Otherwise it fails. `/sail` and `/launch` refuse to start a slice whose `Lands in` is a legacy home. Legacy dependency changes need `Legacy-change: security`, which keeps effort off upgrading the old home.
-- **New-home readiness**: `/sail` refuses the first product slice until the new home exists, its tests are in the gate, and the seam smoke test passes. This directly closes the product-slices-in-the-old-home failure.
-- **Legacy-size ratchet**: legacy LOC, route or action count and template count may not rise, except by a bounded `seam` allowance (e.g. ≤5 lines per include). New-home routes at the proxy may not fall. This is the cheapest and most robust detector of drift: it turns "the old home with a new label" into a red build.
-- **ACL check**: an architecture test that legacy identifiers appear only in the ACL module.
-- **Ownership check**: schema migrations only from the table's owner.
-- **Proxy lint**: only `map`, `location`, `include` and `auth_request` are allowed in proxy config, so the proxy stays dumb.
-- **Parity** (`End: all`), run against both targets (in CI: legacy nightly, new on every change). A *preserve* row passing on legacy but failing on new blocks its capability from `moved`; an undecided row blocks the capability order step; a new-home output that differs from approved legacy output fails unless the row is *fix* with an owner.
-- **Ledger consistency**: see Ledgers below.
+Refuse before, do not warn after. `check-convergence`, run by `make verify`, holds these as hard checks:
+- **New home first.** A spec fails before the new home exists (`beside`), or before the module map exists (`inside`).
+- **Home guard.** A commit after the strategy ADR that changes the code that was here fails without a trailer `Legacy-change: security|bugfix|seam|quick-win|build|characterise`. This keeps effort off upgrading the old home.
+- **Ledger consistency.** A capability `moved` with no `shadowed` row before it fails, and so does an unknown status.
+- **Boundaries.** In an adopted repo `check-imports` runs through the ratchet (existing violations are a baseline). With `"layout": "modular"` on the adopted application, only its context-boundary rule applies, which is how an `inside` new home's module boundaries are held.
 
 ### Programme pacing
-- The programme text "first under a strangler fig, before the first product slice" maps onto board cards 5–6 as hard gates.
-- Mix the work: each cycle ships at least one new-feature slice in the new home (value) and advances at least one ledger row by one status (displacement). If ledger rows have not moved for N cycles, flag "strangler stalled". If no traffic reaches the new home, flag "traffic to new home = 0" on the board.
-- Platform rungs: the old home stays on its platform. The rung work goes to the new home.
-- Under `End: all`, pace in **checkpoints, not phases**. By checkpoint 1 the new home is serving at least one real capability (a new feature counts) and the inventory has no undecided rows; by checkpoint 2 a set share of the traffic-weighted *preserve* rows have moved; the last checkpoint is the old app's deletion date. Most rewrites are cancelled halfway, so the programme says plainly that every capability moved is a win on its own: a missed checkpoint triggers a board review offering *continue* (with a new date), *switch to `End: partial`* (keep what has moved, stop requiring the old app's deletion, record the rest as staying) or *stop*.
+- The build floor comes first. `beside`, the old build is pinned as it is; `inside`, the old platform is brought up as under in-place, because new work is built with it.
+- The programme has a new-home step (`beside`) or a modules-declared step (`inside`) before the first product slice.
+- Mix the work: each cycle ships at least one new-feature slice in the new home (value) and advances at least one ledger row by one status (displacement).
+- Under `End: all`, pace in **checkpoints, not phases**. By checkpoint 1 the new home is serving at least one real capability (a new feature counts) and the inventory has no undecided rows; by checkpoint 2 a set share of the traffic-weighted *preserve* rows have moved; the last checkpoint is the old app's deletion date. Most rewrites are cancelled halfway, so every capability moved is a win on its own: the board puts the decision again when the date passes.
 - Under `End: partial`, pacing is by the capabilities that need to change; when they have all moved, the programme goes to F.3.
 
 ### Ledgers
-- `retirement.md` holds **two kinds of row**: `capability` (moving from old to new) and `transitional` (proxy rules, includes, mimics, views, CDC feeds, the auth bridge). Transitional rows are needed because Fowler and Thoughtworks treat transitional architecture as the main cost and the main thing left behind, and new features composed into old pages create seam artefacts (includes, auth bridges, views) that no capability row covers. Each transitional row has a `remove when:` condition tied to capability rows. A new feature that is only *composed* into an old page creates a transitional row for its include, removed when that page itself moves.
-- **The end shows in the ledger.** Under `End: all`, a `legacy app` row exists from the ADR onward and is the last row to reach `removed`; every capability in `parity.md` has a row. Under `End: partial`, untouched capabilities get a `staying (frozen)` row with an owner and review date, and never a move.
+- `retirement.md` holds **two tables**: capabilities (moving from old to new), and "Transitional pieces" (`Date | Piece | Why | Remove when | Status`) for the proxy rules, includes, mimics, views, CDC feeds and auth bridge the seam needs. Transitional pieces are needed because Fowler and Thoughtworks treat transitional architecture as the main cost and the main thing left behind. A new feature that is only *composed* into an old page adds a piece for its include, removed when that page itself moves.
+- Capability statuses are `routed`, `shadowed`, `moved`, `retired` and `removed`; `moved` needs a `shadowed` row before it.
+- **The end shows in the ledger.** The programme is not finished while any transitional piece is live. Under `End: all`, every capability in `parity.md` has a row; under `End: partial`, untouched capabilities stay with an owner and review date.
 - **Early rows are new features.** The first ledger rows should usually be new capabilities composed into old pages, not migrations. This gets real traffic onto the new home within the first week with no parity risk.
-- **Each status has its own evidence predicate.** `pinned by` needs a characterisation tag; `routed` needs a flag or rule; `moved` needs a flag at 100% and dual-run evidence (or a `shadowed` status between `routed` and `moved` that holds the reconciliation report); `retired` needs the legacy route to be absent; `removed` needs the files to be gone. A transitional row whose `remove when:` condition is met but which is not `removed` fails the check.
-- `/strangle C` is the per-capability driver: it creates the row, calls `/characterise` (status needs `pinned by`), generates the route and flag (`routed`), sets up the shadow comparison, and advances the status only when that status's evidence check passes. It refuses `moved` without reconciliation evidence and `removed` while any reader remains in `homes.yml`. It caps capability size (routes and tables) and asks for a split when one is too big.
+
+**Not built yet:**
+- `homes.yml`, and the `Lands in:` cross-check against it.
+- The legacy-size ratchet (legacy lines, routes and templates may not rise).
+- The seam or proxy health route checked in CI.
+- Proxy, SSI include and auth bridge scaffolding (the agent writes them per slice).
+- A parity suite runner with `TARGET=legacy|new`.
+- Checkpoint tracking of real traffic served, beyond the date itself.
+- Per-module "strict" (no baseline) and privacy rules.
+- A data-ownership check over SQL, ORM and stored procedures.
+- Validating the module map.
+- Baseline burn-down tracking on the board.
+- The board's language install as a button (it shows the command).
 
 ---
 

@@ -124,21 +124,28 @@ written *no*; the SBOM produced by the build.
 - Evidence: criteria 7 and 8 hold; the gate builds through the recorded command in CI from a clean checkout.
 - Unblocks: the dependency audit, and every strategy-specific phase.
 
-## 6. The Build row on the map (proposed — not built yet)
+## 6. The Build row on the map
 
-A convergence-map row, measured like the others, so the floor is a fact on the map and not a hope:
-`undeclared` → `declared` (criteria 1, 3) → `pinned` (2, 4, 5) → `reproducible` (6, 7: built in CI from a clean
-checkout) → `inventoried` (8). Under *up to date*, `reproducible` additionally needs the toolset current.
+A convergence-map row, measured like the others and read off the tree, so the floor is a fact on the map and not a
+hope: `undeclared` → `declared` (criteria 1, 3) → `pinned` (2, 4, 5) → `reproducible` (6, 7: built in CI from a
+clean checkout) → `inventoried` (8). Under *up to date*, `reproducible` additionally needs the toolset current.
 
-## 7. How the method carries it (proposed — not built yet)
+## 7. How the method carries it
 
-- **The survey** records what section 3 detects, and names a missing tool as the tool.
-- **The programme** derives the build steps from the eight criteria for any ecosystem — not only from finding an
-  Ant build with committed jars — and puts them first, whatever the strategy.
-- **The board's decide step** writes the `Build:` line from the strategy, and asks only where section 4 leaves a
-  choice.
-- **The gate** builds through the recorded command from a clean checkout; a tracked archive, a missing lockfile or
-  an unrecorded verb fails it once the row is at `reproducible`.
+- **The board's decide step** writes a `Build:` line into the strategy ADR, derived from the strategy, alongside
+  the strategy's own lines.
+- **The adoption sequence** (the board's voyage, and `slipwai adopt --next`) puts the build floor first after the
+  decision, then `smoke`, before the constitution, whatever the strategy.
+- **The programme** names the build steps from what the tree shows, including an Ant build, a missing compile
+  target, and a Java target no current JDK accepts. For that last one it names the newest JDK that still can
+  compile it, and `--release 8` as the stepping stone.
+- **The ratchet** names a missing build tool as the tool, not as a failed build.
+
+**Not built yet:**
+- An SBOM command proposed automatically.
+- Toolchain-needs detection beyond Java targets: other ecosystems' wrappers, toolchain files, and machine tool checks
+  at survey time.
+- The gate failing on a tracked archive, a missing lockfile or an unrecorded verb once the row is at `reproducible`.
 
 ## 8. Anti-patterns
 

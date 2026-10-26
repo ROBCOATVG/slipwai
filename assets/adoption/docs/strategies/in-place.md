@@ -231,22 +231,22 @@ Visibility: not applicable. The feature ships in the one deployable, so there is
 
 ---
 
-## 5. How the method carries it (proposed — not built yet)
+## 5. How the method carries it
 
 ### Adoption sequence on the board
-1. `slipwai adopt` → survey → convergence map, gate and ratchet installed (as today).
-2. **Strategy ADR**: `Strategy: in-place` with the section 2 lines. The board shows the ladder as a column of rungs, each with its state (`unknown → inventoried → supported → audited`) and its recipe.
-3. **Floor lane** (Phase 0) as cards, in order. Smoke and characterise are blocking. Data baseline blocks only features that touch the schema.
-4. **Two interleaved lanes:** `rungs` (ladder order, with security rungs promoted) and `features` (from the PRD). Every feature card shows its `Requires rungs` badges, greyed until satisfied.
-5. **Rung window indicator**: while a rung slice is open, feature cards whose area overlaps the rung's blast radius show "held".
+1. `slipwai adopt` → survey → convergence map, gate and ratchet installed.
+2. **Decide.** The board's decide step is a form that asks exactly in-place's line: `Target:`. It writes the ADR with that line plus a derived `Build:` line, and commits it. The strategy record reads the accepted ADR's `Name: value` lines; a missing `Target:` is said by `check-convergence` and on the board, and the decision still stands.
+3. **After the decision, before the constitution**, the adoption sequence (the board's voyage, and `slipwai adopt --next`) runs the build floor and then `smoke`.
+4. The map's **Build** row (`undeclared → declared → pinned → reproducible → inventoried`) and **Platform** row (`unknown → inventoried → supported → audited`) are read off the tree and shown on the board.
 
 ### Draft, spec and mock-ups
-- **Draft (constitution + first spec)** reads the ADR and must not produce a strategy-neutral spec. The constitution states the ladder, the interleave policy and the banned list. The first spec states `Requires rungs`, `Fence` and `Rung window: <none|rung N>`.
-- **Spec** also states the feature's characterisation prerequisite (which areas must be pinned) and its data prerequisite (read-only, or needs migration Vn).
-- **Plan** orders slices as: prerequisite rungs not yet done, then characterisation of the feature area, then feature slices. If a needed rung is large (a namespace or framework-generation jump), the plan must say whether the feature waits or fences, and why.
+- **`/draft`** reads the strategy and this playbook, and refuses while the decision is missing or incomplete. The constitution carries in-place's clause. Every spec ends with `## Strategy fit`, holding `Requires rungs:`, `Fence:` and `Rung window: <none|rung N>`. When the ADR's `Target:` is modular, the spec also holds `Module:`, `Publishes:`, `Consumes:` and `Owns data:`.
+- A PRD line that contradicts the strategy is overridden in the spec and quoted beside the ADR line it contradicts.
+- **Plan**: `/sail`'s plan stage holds each slice to in-place's rules (section 4). If a needed rung is large, the plan says whether the feature waits or fences, and why.
 - **Mock-ups** show the feature inside the existing UI of the one deployable; there is no second UI to design for.
 
 ### Constitution
+The draft writes in-place's clause into the constitution from the ADR. In substance:
 - "One deployable, one codebase. No parallel system, no long-lived upgrade branch."
 - "Platform changes are recipes first. Agents run the named recipe and commit its output separately from hand fixes."
 - "Characterisation `.approved` files change only with a person's approval and a reason."
@@ -256,19 +256,26 @@ Visibility: not applicable. The feature ships in the one deployable, so there is
 - "Security rungs pre-empt features."
 
 ### Gates
-- `make verify` plus a **rung gate** per rung slice: the recipe dry-run is empty after the slice (the rung is complete), characterisation is unchanged, smoke passes on the new tuple, the dependency tree matches the declared tuple, and the banned-API ratchet tightens (the count of old API uses goes down and never up).
-- **Feature gate**: `Requires rungs` satisfied, fence respected (banned-API ratchet), migration numbered if schema touched, and no "rung files" (language level, framework versions, recipe config) in the diff.
-- Optional ratchets: internal-API use count, dependency CVE count (OWASP dependency-check, Trivy, `pip-audit`, `npm audit` or similar), and the count of the removed namespace or framework imports.
+- `make verify` runs `check-convergence` and, in an adopted repo, `check-imports` through the ratchet: existing violations are a baseline, new ones fail. With `"layout": "modular"` on the adopted application, only `check-imports`' context-boundary rule applies.
+- The build steps the programme names are read off the tree: an Ant build, a missing compile target, and a Java target no current JDK accepts (naming the newest JDK that still can, with `--release 8` as the stepping stone). The ratchet names a missing build tool correctly.
+- `Requires rungs:`, `Fence:` and `Rung window:` are written by the draft and held by the plan stage; no gate checks them.
 
 ### Programme pacing
-- "Big bang per rung" means one slice per product across the whole application, keeping each rung slice small enough to land in a day. Use stepping-stone tuples rather than one giant jump.
+- The build floor comes first. Then the security fix, then one compatible combination of versions per slice, so each rung slice is small enough to land on its own. Stepping-stone versions are used rather than one giant jump.
 - Cadence: alternate. After each rung lands, let feature slices run for a while before the next rung window. Exceptions: security rungs, and a coupled framework-generation tuple, which should be one concentrated window.
 - Measure with DORA's four keys from git and CI: deployment frequency, lead time, change-fail rate and time to restore should not get worse during rungs. If change-fail climbs, shrink the rungs.
 
 ### Ledgers
-There is no retirement ledger, because nothing is retired route by route: the one system is upgraded where it stands. Two records play the ledger's part instead:
-- **The rung record**: each rung's state (`unknown → inventoried → supported → audited`), its recipe, and its tuple, held in the convergence map and shown on the board.
-- **The banned-API ratchet baseline**: the committed count of old-API, old-namespace and doomed-framework uses, which may only fall and must reach 0 for a rung to be `audited`. In the shape phase, the module-violation baseline from `target-shape.md` works the same way.
+There is no retirement ledger, because nothing is retired route by route: the one system is upgraded where it stands. The convergence map plays the ledger's part: its Build and Platform rows say how far the one deployable has climbed, read off the tree. In the shape phase, the `check-imports` baseline is the record of what is left to fix, and it may only fall.
+
+**Not built yet:**
+- A banned-API ratchet (the count of old-API, old-namespace and doomed-framework uses).
+- Checking the dependency tree against the declared coupled-rung tuples.
+- A gate that checks `Requires rungs:` and `Fence:` (the draft writes them; nothing enforces them).
+- A per-rung gate (recipe dry-run empty, characterisation unchanged, smoke on the new tuple).
+- Per-module "strict" (no baseline) and privacy rules, and a data-ownership check over SQL, ORM and stored procedures.
+- Baseline burn-down tracking on the board.
+- Toolchain-needs detection beyond Java targets (other ecosystems' wrappers, toolchain files, machine tool checks at survey time).
 
 ---
 

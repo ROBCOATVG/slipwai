@@ -39,8 +39,8 @@ Two of the four replace code, and they differ in two independent ways: **how tra
 Every playbook has the same eight sections: what it is, and when it is right or wrong; what the ADR records;
 the phases, each step with who does it, the evidence it is done and what it unblocks, ending at a finish line;
 how a feature request is handled; how the method carries it; anti-patterns; a worked example; sources.
-Section 5, how the method carries it, describes what the board, the draft, the specification, the gate and the
-programme should do. It is a proposal: none of it is built yet, including dropping `modular-monolith` as a
-strategy (an existing record that names it reads as `strangler-fig`, new home `inside`, target modules in one
-deployable). Section 7 of each walks through an invented worked example: a small internal web app on an
+Section 5, how the method carries it, says what the board, the draft, the specification, the gate and the
+programme do under that strategy, and closes with what is not built yet. `modular-monolith` is no longer a
+strategy: an ADR that names it reads as a strangler fig whose new home is `inside`, target modules in one
+deployable. Section 7 of each walks through an invented worked example: a small internal web app on an
 end-of-life runtime, with no tests.

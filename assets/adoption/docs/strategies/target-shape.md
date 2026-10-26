@@ -123,19 +123,32 @@ The new home is generated in the shape from day one: modules, published APIs, ow
 
 ---
 
-## 5. What every spec must state (proposed — not built yet)
+## 5. What every spec must state
 
-When the ADR has a `Target:` other than `as-is`, the spec template requires:
+When the ADR has a `Target:` other than `as-is`, `/draft` ends every spec with `## Strategy fit` holding these
+fields beside the strategy's own:
 
 | Field | Meaning |
 |---|---|
-| `Module:` | existing `<name>` or new `<name>`; the spec lint fails a spec without it |
+| `Module:` | existing `<name>` or new `<name>` |
 | `Publishes:` | API types and events this slice adds to the module's contract |
 | `Consumes:` | only other modules' `api` / `api/events` |
 | `Owns data:` | the tables or stores this slice creates or takes ownership of |
-| `Leaves better:` | which baseline entries this slice removes in modules it touched (nothing owed if it touched no legacy code) |
 
-The drafter fills them from the module map. The plan lists files per module; a file outside the declared modules needs a stated reason. The PR description prints the baseline delta per checker (`check-imports: N → N-2; data-ownership: M → M`). Gates: the boundary checker and `check-data-ownership` run ratcheted in `make verify`; a new module is registered strict; a nightly change-coupling report posts a QUESTION on the board when a module pair's coupling exceeds a threshold, and a baseline flat for 3 slices triggers a `/wdyt` question: are the boundaries drawn wrong?
+The drafter fills them from the module map. `/sail`'s plan stage holds each slice to them. In an adopted repo,
+`check-imports` runs in `make verify` through the ratchet, so existing violations are a baseline and new ones
+fail; with `"layout": "modular"` on an adopted application, only its context-boundary rule applies. Under a
+strangler fig `inside`, the gate fails a spec before `docs/module-map.md` exists.
+
+**Not built yet:**
+- A `Leaves better:` field (which baseline entries a slice removes in the modules it touched).
+- A spec lint that fails a spec without `Module:`.
+- Per-module "strict" (no baseline) registration for a new module, and privacy rules.
+- `check-data-ownership`: a data-ownership check over SQL, ORM and stored procedures.
+- Validation of the module map.
+- The per-checker baseline delta printed in the PR description, and baseline burn-down tracking on the board.
+- A nightly change-coupling report, and the QUESTION it would post when coupling passes a threshold or a baseline
+  stays flat.
 
 ---
 

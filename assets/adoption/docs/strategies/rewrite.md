@@ -277,34 +277,36 @@ If exceptions keep being taken, the work is moving capability by capability in p
 
 ---
 
-## 5. How the method carries it (proposed — not built yet)
+## 5. How the method carries it
 
 ### Adoption sequence on the board
 
-When a person picks *rewrite*, the board first suggests a strangler fig with the new home `beside`, `End: all` and a checkpoint ([strangler-fig.md](strangler-fig.md)): the same end, reached one capability at a time. It accepts *rewrite* only once `Why single cut-over:` is recorded with one of the four reasons in §1. After that, the board's adoption sequence changes shape, not just a label:
+When a person picks *rewrite*, the board's decide step offers "Use a strangler fig instead": the new home `beside`, `End: all` ([strangler-fig.md](strangler-fig.md)), the same end reached one capability at a time. If the person keeps *rewrite*, the sequence (the board's voyage, and `slipwai adopt --next`) changes shape, not just a label:
 
-1. **Quick wins** (unchanged, always first).
-2. **Reproducible old build + smoke**. Shown with "old system: only as far as needed to run it".
-3. **Strategy ADR** form: Why, Why single cut-over (a required choice of reason plus evidence), Freeze (agreed/absent, with who and when), Home (beside / new repo, with the default from the survey), Stack (proposed backend from the survey, with an override dropdown that requires a reason), Parity definition, Cut-over window and decider, Rollback, Checkpoint date.
-4. **Behaviour inventory** (`parity.md`) for the whole system. The agent drafts it; the person marks each row *preserve / quirk / fix / drop*. The board shows the count still undecided.
-5. **Characterise legacy** (`/characterise` at HTTP + DB). Progress is "N of M preserve rows pinned".
-6. **Generate the new system** (`add-service` / `generate`) and **walking skeleton deployed**, with the router sending everything to legacy. This is the gate for any feature work.
-7. **Draft**: constitution plus the first feature spec, targeted at the new system, `Visibility: cut-over` by default.
-8. **Fleet** builds slices. A parity panel shows each behaviour as legacy-pass / new-pass / shadow / built, and a completeness bar shows the share of `parity.md` passing on new.
-9. **Migration rehearsals**, **parallel run**, **cut-over** and **decommission** appear as later locked steps. Each unlocks on evidence in the tree, not on a click.
+1. **Survey**, map, gate and ratchet, as under every strategy.
+2. **Decide.** The form asks exactly the rewrite's lines: `Freeze:`, `Home:` (beside / new repo), `Stack:`, `Why single cut-over:`, `Cut-over:`, `Rollback:`, `Parity:`, `Checkpoint:` and `Target:`. The stack is proposed from the survey (the old language's language package, a browser app where the old app served pages, Postgres where there is a database), and a person may override it. A language package that is not installed is said with `slipwai language install <name>`. The board writes the ADR with every line plus a derived `Build:` line, and commits it. The strategy record reads the accepted ADR's `Name: value` lines; a required line that is missing is said by `check-convergence` and on the board, and the decision still stands.
+3. **Build floor**, then **`smoke`**: the old system only as far as needed to run it.
+4. **The new system**, by where it lives:
+   - `beside`: "generate the new home", which the board runs itself: `add-service`, then `add-frontend` when a browser app was chosen, each committed.
+   - `new-repo`: "generate the new system" (`slipwai generate`). After it, the voyage hands over to the new project ("continue in the new system at …"), and the old repo's constitution and spec steps are dropped.
+5. **Parity**: write `docs/parity.md` for the whole system. An agent step the board names; it does not do it. The person marks each row *preserve / quirk / fix / drop*.
+6. **Draft**: constitution plus the first feature spec, targeted at the new system, `Visibility: cut-over` by default.
+7. **Fleet** builds slices.
 
-Controls a person sees: the strategy picker (rewrite is never the default, and is offered only after the strangler suggestion), the single-cut-over justification, the freeze agreement, home and stack, parity decisions, the build order, any `Visibility:` exception, go/no-go, and the checkpoint review ("continue / switch to strangler fig, `End: all` / stop").
+The board shows the `Checkpoint:` date for the whole programme. Once it has passed, the board puts the decision again through the decide form: carry on with a new date, switch to a strangler fig, or stop.
 
 ### Draft, spec and mock-ups
 
-- The spec's **target is the new system**: its paths, its stack, its test conventions.
-- A PRD line that contradicts the strategy is overridden in the spec's *Strategy constraints* block (§4, 4.1).
+- `/draft` reads the strategy and this playbook, and refuses while the decision is missing or incomplete. The spec's **target is the new system**: its paths, its stack, its test conventions.
+- A PRD line that contradicts the strategy is overridden in the spec and quoted beside the ADR line it contradicts.
 - A schema change the PRD asks for is either made in the new system's own store, or deferred until data migration. It is never made in the frozen legacy schema.
-- The spec says when the feature becomes visible (§4, 4.2): `cut-over` unless an exception is justified. `/mockups` draws the feature as it will look in the new system, and, for a `seam` or `page` exception, the transitional view too, so the person can judge the look.
+- Every spec ends with `## Strategy fit`, holding `Lands in:`, `Visibility: page | seam | cut-over` with its reason (§4, 4.2), and the `docs/parity.md` rows a `page` brings in. When the ADR's `Target:` is modular, it also holds `Module:`, `Publishes:`, `Consumes:` and `Owns data:`.
+- `/mockups` draws the feature in the new system's UI where the spec lands there: for `page`, the whole new page; for `seam`, the old page with the panel; where the choice is close, both, so the person can judge the look.
+- `/sail`'s plan stage holds each slice to the rewrite's rules.
 
 ### Constitution
 
-The constitution should state:
+The draft writes the rewrite's clause into the constitution from the ADR. In substance:
 
 - "This repository is under a rewrite with a single cut-over (ADR NNNN). New behaviour is built only in `<home>`, on `<stack>`, and reaches users at cut-over. The legacy app accepts security fixes, quick wins, bug fixes with a characterisation test, and transitional seams recorded in the ledger. Nothing else."
 - "Parity is defined by `docs/parity.md` for the whole system. A behaviour is done when it passes against both targets."
@@ -315,30 +317,38 @@ The constitution should state:
 
 ### Gates
 
-Checks in `make verify`:
+`check-convergence`, run by `make verify`:
 
-- **`legacy-frozen`.** A diff touching legacy app paths fails unless each commit carries a trailer: `Legacy-change: security|quick-win|bugfix|transitional — <ref>`. `bugfix` also requires a new or changed characterisation test in the same commit. `transitional` requires a ledger row. No legacy schema migration files under the freeze.
-- **`new-system-first`.** Feature specs under `docs/specs/` must name the new home. A spec whose touched paths are legacy fails the convergence check.
-- **`parity`**, run against both targets (in CI: legacy nightly, new on every change). A *preserve* row passing on legacy but failing on new blocks that row's capability from `built`, and any such row blocks the completeness check and go/no-go.
-- **`no-early-routing`.** Before cut-over, the router config may send a user path to the new system only if a transitional ledger row names it, with `remove when: cut-over`.
-- **`ledger-consistent`.** `built` means the parity rows pass on new; the cut-over moves every capability row to `moved` together; legacy code deleted means `removed`; each transitional component has a row.
-- The ratchet applies to legacy as today. In the new system the baseline is zero: no debt allowed in.
+- **Legacy frozen.** A commit after the strategy ADR that changes the code that was here fails unless it carries a trailer `Legacy-change: security|bugfix|seam|quick-win|build|characterise`.
+- **New system first.** A spec fails before the new home exists (`beside`); under `new-repo`, any spec in the old repo fails, because specs belong in the new system.
+- **Ledger consistent.** A capability `moved` with no `shadowed` row before it fails, and so does an unknown status.
+- The ratchet applies to legacy, and in an adopted repo `check-imports` runs through it (existing violations are a baseline).
 
 ### Programme pacing
 
-The programme should say plainly that under a rewrite the old system climbs only quick wins, a reproducible build and smoke. Every other rung is reached by the new system at generation. It should then pace in **checkpoints, not phases**, because a single cut-over gives users nothing to see until the end: by checkpoint 1 the new system is deployed through its own pipeline and an agreed share of the traffic-weighted *preserve* rows pass on new; by checkpoint 2 the system is complete (5.4) and a migration rehearsal has run inside the window; the last checkpoint is the cut-over window. A missed checkpoint triggers a board review offering *switch to strangler fig, `End: all`* (keep what is built and route it one capability at a time, so it starts earning) or *stop*.
+Under a rewrite the old system climbs only quick wins, a reproducible build and smoke. Every other rung is reached by the new system at generation. The programme has a new-home step, as under a strangler fig, before the first feature. It paces in **checkpoints, not phases**, because a single cut-over gives users nothing to see until the end: by checkpoint 1 the new system is deployed through its own pipeline and an agreed share of the traffic-weighted *preserve* rows pass on new; by checkpoint 2 the system is complete (5.4) and a migration rehearsal has run inside the window; the last checkpoint is the cut-over window. When the `Checkpoint:` date passes, the board puts the decision again: carry on with a new date, *switch to a strangler fig* (keep what is built and route it one capability at a time, so it starts earning), or *stop*.
 
 ### Ledgers
 
-`retirement.md` holds one row per capability (grouped behaviour from `parity.md`) and one per transitional component:
+`retirement.md` holds one row per capability (grouped behaviour from `parity.md`) and a second table, "Transitional pieces" (`Date | Piece | Why | Remove when | Status`), for each seam, routed page and auth bridge, each with `remove when: cut-over`. The programme is not finished while a transitional piece is live. Capability statuses:
 
-- `built`: the new implementation exists, passes its parity rows, and is shadowed; users do not reach it.
 - `routed`: only for a transitional route (§4, 4.2): users reach it before cut-over, with the legacy path still present.
-- `moved`: live traffic is served by new. Under a single cut-over every capability row reaches `moved` at the same switch, and the legacy path is still present for rollback.
+- `shadowed`: the new implementation exists, passes its parity rows, and runs in shadow; users do not reach it.
+- `moved`: live traffic is served by new. Under a single cut-over every capability row reaches `moved` at the same switch, and the legacy path is still present for rollback. The gate refuses `moved` without a `shadowed` row before it.
 - `retired`: legacy is switched off for it, after the rollback window.
-- `removed`: its legacy code (or the transitional component) is deleted from the tree.
+- `removed`: its legacy code is deleted from the tree.
 
 The rewrite is complete when **every** row reads `removed`, including the last one: "legacy app".
+
+**Not built yet:**
+- A parity suite runner with `TARGET=legacy|new`, and a parity panel or completeness bar on the board.
+- The `no-early-routing` gate (no user path routed to new before cut-over unless the ledger names it).
+- Checkpoint tracking of real traffic served, beyond the date itself.
+- `homes.yml`, and the `Lands in:` cross-check against it.
+- The legacy-size ratchet, and the seam or proxy health route checked in CI.
+- Proxy, SSI include and auth bridge scaffolding (the agent writes them per slice).
+- Locked migration-rehearsal, parallel-run, cut-over and decommission steps on the board.
+- The board's language install as a button (it shows the command).
 
 ---
 

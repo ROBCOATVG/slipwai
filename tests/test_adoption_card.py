@@ -78,7 +78,11 @@ class DatesTest(unittest.TestCase):
         with mock.patch.object(card, "proposed", return_value=None):
             passed = card.dates_card(root, {"name": "shop"}, record, today=datetime.date(2027, 5, 1))
         self.assertIn("The checkpoint has passed", passed)
-        self.assertIn("switch to a strangler fig", passed)
+        self.assertIn("`End: partial`", passed, "a strangler fig is offered what it can change, not itself")
+        rewrite = {"decided": "rewrite", "lines": {"Checkpoint": "2027-04-26"}}
+        with mock.patch.object(card, "proposed", return_value=None):
+            later = card.dates_card(root, {}, rewrite, today=datetime.date(2027, 5, 1))
+        self.assertIn("switch to a strangler fig", later)
         self.assertIn('data-step="strategy"', passed, "deciding again is one press away")
 
     def test_a_left_system_is_dated_by_its_review_and_nothing_else_has_no_card(self) -> None:

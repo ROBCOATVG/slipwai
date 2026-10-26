@@ -100,9 +100,12 @@ def dates_card(root: Path, document: dict, record: dict, today: datetime.date | 
         return (f'<div class="card" id="strategy-dates"><p class="empty"><b>{esc(name)}</b> for the '
                 f"`{esc(strategy)}` decision: {esc(found.group(0))}, in {left} day{'s' if left != 1 else ''}."
                 "</p></div>")
-    options = ("keep it as it is with a new review date, or replace it" if strategy == "leave-it" else
-               "carry on with a new checkpoint, switch to a strangler fig that moves one capability at a time, or "
-               "stop where the programme stands")
+    options = {
+        "leave-it": "keep it as it is with a new review date, or replace it",
+        "strangler-fig": "carry on with a new checkpoint, change what moves (`End: partial` keeps the rest, frozen), "
+                         "or stop where the programme stands",
+    }.get(str(strategy), "carry on with a new checkpoint, switch to a strangler fig that moves one capability at a "
+                         "time, or stop where the programme stands")
     return (f'<div class="card" id="strategy-dates"><h2>The {esc(name.lower())} has passed</h2>'
             f'<p class="said bad">The `{esc(strategy)}` decision was to be reviewed by {esc(found.group(0))}, '
             f"{-left} day{'s' if left != -1 else ''} ago. Decide again: {esc(options)}. The new decision is a new ADR "

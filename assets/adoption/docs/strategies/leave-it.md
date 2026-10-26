@@ -276,32 +276,36 @@ seam or cut-over choice to make.
 
 ---
 
-## 5. How the method carries it (proposed — not built yet)
+## 5. How the method carries it
 
 ### Adoption sequence on the board
 
-1. `adopt`, then survey, then the map, then the gate (with the ratchet). Unchanged.
-2. `/ground` writes the ADR at Proposed. The human sets `Strategy: leave-it`, fills in the section 2 lines, and
-   accepts. The board should **refuse "accepted" while `Risk-owner:`, `Review:` or `Variant:` is empty**, just as
-   `Freeze:` is required under a strangler.
-3. Programme: quick wins (secrets), then build floor (declared dependencies), then the security-floor slices (one
-   per accepted CVE cluster: audit in gate, virtual patch, isolation), then the boot check. Platform and rungs show
-   as *recorded, not scheduled*, each linked to the `Accepts:` line that covers it.
-4. Only then does the first feature spec get drafted.
+1. `slipwai adopt`, then the survey, the map and the gate with its ratchet, as under every strategy.
+2. **Decide.** The board's decide step is a form that asks exactly leave-it's lines: `Variant:`, `Risk-owner:` and
+   `Review:`. It writes the ADR with every line plus a derived `Build:` line, and commits it. The strategy record
+   reads the accepted ADR's `Name: value` lines; a required line that is missing is said by `check-convergence` and
+   on the board, and the decision still stands.
+3. **After the decision, before the constitution**, the adoption sequence (the board's voyage, and
+   `slipwai adopt --next`) runs the build floor, then `smoke`, then names the leave-it step: write
+   `risk-register.md`. That last one is an agent step the board names; it does not do it.
+4. The board shows the `Review:` date for the whole programme. Once it has passed, the board puts the decision
+   again through the decide form: carry on with a new date, switch to a strangler fig, or stop.
 
 ### Draft, spec and mock-ups
 
-- `draft` classifies the request against the bar and writes `Strategy-fit:` into the spec. If the request fails
-  the bar, the draft does not shrink it quietly. It writes the redirect and raises the review trigger.
-- The spec carries the `Risk:` and `Pins:` sections described in section 4.
-- Slices are capped at one for a leave-it feature.
+- `/draft` reads the strategy and this playbook, and refuses while the decision is missing or incomplete.
+- A request past the bar (section 4) is not drafted. The draft writes the redirect instead of shrinking the request
+  quietly.
+- Every spec ends with `## Strategy fit`, holding `Strategy-fit:` and `Risk:`.
+- A PRD line that contradicts the strategy is overridden in the spec and quoted beside the ADR line it contradicts.
+- `/sail`'s plan stage holds each slice to leave-it's rules.
 - Mock-ups: leave-it adds no rule of its own. A feature within the bar changes at most one view of the existing
   app, so any mock-up is of that view as it is today.
 
 ### Constitution
 
-The constitution gets a *Strategy* clause copied from the ADR (variant, feature bar, review date), with these
-lines:
+The draft writes leave-it's clause into the constitution from the ADR (variant, feature bar, review date). In
+substance:
 - "This system is left: its architecture, runtime and framework major version do not change except where the risk
   register says security requires it."
 - "No new dependency, endpoint type or schema change without the risk owner's line in the register."
@@ -311,36 +315,32 @@ lines:
 
 ### Gates
 
-- `make verify` = build + ratcheted lint + **ratcheted dependency audit** (new CVEs fail) + secret scan + boot
-  check + characterisation tests (+ the virtual-patch probes).
-- `check-convergence` (or the strategy record) treats leave-it as **finished only while the review is in date and
-  the register has no `open` row without a control**. Today `strategy.py` marks leave-it `finished` as soon as it
-  is decided (`decided == "leave-it"`), which is exactly how a leave-it gets forgotten.
-- The review date: the board shows a countdown and opens a review task at T-14 days.
-- Trigger events the agent can detect: the audit finds a new critical CVE; a third feature request in the period
-  (or any redirected request); the `Variant:` sunset date passes; the map shows the last committer to touched
-  code is gone (from git log); a host or database product reaches end-of-life in the platform record.
-- A diff check: a dependency-manifest version change in a slice whose spec says `Strategy-fit: within bar` fails
-  review.
+- `check-convergence`, run by `make verify`, fails a leave-it past its `Review:` date.
+- Leave-it counts as finished only while its `Review:` date is ahead, so a decided leave-it cannot be forgotten.
+- In an adopted repo, `check-imports` runs through the ratchet: existing violations are a baseline, new ones fail.
 
 ### Programme pacing
 
-- quick-win: now. Build: first. Run/boot check: before any slice touches code.
-- platform: "only what security requires", made concrete as *security-floor slices generated from the
-  `Accepts:`/CVE rows*, which are scheduled. The rest of the platform stays recorded.
-- rungs: not scheduled; recorded.
+- The build steps come first, as under every strategy (see [the build floor](build-floor.md)).
+- The programme schedules leave-it's security floor. Platform and rung work beyond it stays recorded, not
+  scheduled.
 
 ### Ledgers
 
-- **Risk register** (`adopt/risk-register.md` or `docs/risks.md`): one row per accepted risk with risk,
-  likelihood/impact, control, owner, last-verified date and status; per CVE, also ID, component and control
-  reference. It is modelled on a NIST POA&M: "tracked weaknesses with owners and remediation dates". Credential
-  rotations and feature risk acknowledgements are recorded here too.
-- **Review log**: each review records date, attendees, triggers seen, and decision (keep / move to sunset / change
-  strategy). A log entry dated within the last cycle supersedes an older `Review:` date.
-- **Sunset ledger** (sunset variants only): inventory, archive, verify, communicate, switch off, kept in
-  `docs/sunset.md`. It is the counterpart of the strangler's retirement ledger, and the `switch-off` row cannot be
-  ticked before the reconciliation report exists.
+The adoption sequence names the risk register (`risk-register.md`) as an agent step. The agent keeps it, with one
+row per accepted risk (risk, likelihood/impact, control, owner, last-verified date, status; per CVE, also ID,
+component and control reference), modelled on a NIST POA&M. The agent also keeps a review log (date, attendees,
+triggers seen, decision) and, for the sunset variants, a sunset ledger in `docs/sunset.md` (inventory, archive,
+verify, communicate, switch off). Nothing checks these files beyond the `Review:` date.
+
+**Not built yet:**
+- A ratcheted dependency audit required in the gate (new CVEs fail).
+- Templates for the risk register, review log and sunset ledger, and any check on them beyond the `Review:` date.
+- Counting feature specs per review period, and detecting the other review triggers (a new critical CVE, the
+  sunset date passing, the last committer gone, a host reaching end of life).
+- Checking `Variant:` and `Risk-owner:` beyond their presence.
+- A review countdown, or a review task opened before the date.
+- A check that a slice marked within the bar changes no dependency version.
 
 ---
 

@@ -72,9 +72,14 @@ class ProgrammeTest(unittest.TestCase):
         made = App("shop-next", "apps/shop-next", "service", "java", None, 0, generated=True)
         self.assertNotIn("home", [s["kind"] for s in programme(ADOPTION, [wrapped(), made], "strangler-fig")],
                          "a generated service beside what was here is the new home")
-        self.assertNotIn("home", [s["kind"] for s in programme(ADOPTION, [wrapped()], "modular-monolith")])
+        inside = programme(ADOPTION, [wrapped()], "strangler-fig", {"New home": "inside src/next"})
+        self.assertIn("module map declared", next(s["step"] for s in inside if s["kind"] == "home"),
+                      "a home inside the deployable is its modules, not a service beside it")
+        rewrite = programme(ADOPTION, [wrapped()], "rewrite", {"Home": "beside apps/next"})
+        self.assertTrue(next(s["step"] for s in rewrite if s["kind"] == "home").startswith("`rewrite` is decided"))
         in_place = programme(ADOPTION, [wrapped()], "in-place")
-        self.assertIn("big bang per rung", in_place[2]["pacing"])
+        self.assertIn("a security fix first, ahead of ladder order", in_place[2]["pacing"])
+        self.assertIn("one compatible combination per slice", in_place[2]["pacing"])
         self.assertIn("big bang per rung, in ladder order, after the platform", in_place[3]["pacing"])
         left = programme(ADOPTION, [wrapped()], "leave-it")
         self.assertIn("not scheduled", left[2]["pacing"])

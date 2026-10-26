@@ -231,7 +231,7 @@ def with_recommendation(root: Path, layout: Layout, adoption: Adoption, apps: li
         "finished": bool(decided["decided"]) and (review_in_date(decided["lines"]) if decided["decided"] == "leave-it"
                                                   else ledger_finished(root, layout)),
         # Every improvement the record shows, in order, paced by the decided strategy — none while nothing is decided.
-        "programme": programme(adoption, apps, decided["decided"]),
+        "programme": programme(adoption, apps, decided["decided"], decided["lines"]),
         "provenance": "detected",
     }
     adoption = dataclasses.replace(adoption, strategy=record)

@@ -1,6 +1,7 @@
 """The voyage's adoption card: the sequence `adopt --next` reads, for a repository that was adopted."""
 from __future__ import annotations
 
+import datetime
 import json
 import shutil
 import subprocess
@@ -31,7 +32,7 @@ class AdoptionCardTest(unittest.TestCase):
         said = [Step("./adopt/init", "installs", True), Step("/ground, in the agent", "asks", False),
                 Step("/verify", "the gate", False)]
         with mock.patch.object(card, "read_manifest", return_value={}), \
-                mock.patch.object(card, "adoption_of", return_value=object()), \
+                mock.patch.object(card, "adoption_of", return_value=mock.Mock(strategy={})), \
                 mock.patch.object(card, "layout_of"), mock.patch.object(card, "apps_from_manifest"), \
                 mock.patch.object(card.next_steps, "steps", return_value=said):
             page = card.adoption_card(root)
@@ -45,7 +46,7 @@ class AdoptionCardTest(unittest.TestCase):
         said = [Step("/speckit-specify, in the agent", "the first feature", True),
                 Step("/sail, in the agent", "", False)]
         with mock.patch.object(card, "read_manifest", return_value={}), \
-                mock.patch.object(card, "adoption_of", return_value=object()), \
+                mock.patch.object(card, "adoption_of", return_value=mock.Mock(strategy={})), \
                 mock.patch.object(card, "layout_of"), mock.patch.object(card, "apps_from_manifest"), \
                 mock.patch.object(card.next_steps, "steps", return_value=said):
             self.assertEqual(card.adoption_card(root), "")
@@ -63,6 +64,28 @@ class AdoptionCardTest(unittest.TestCase):
         self.assertIn('data-step="init"', idle)
         self.assertNotIn("data-step=", running)
         self.assertIn('id="step-running"', running)
+
+
+class DatesTest(unittest.TestCase):
+    """The strategy's checkpoint, or a left system's review, runs the length of the programme."""
+
+    def test_a_date_ahead_is_said_and_a_date_passed_puts_the_decision_again(self) -> None:
+        root = Path(tempfile.mkdtemp())
+        record = {"decided": "strangler-fig", "lines": {"Checkpoint": "2027-04-26"}}
+        ahead = card.dates_card(root, {"name": "shop"}, record, today=datetime.date(2027, 4, 20))
+        self.assertIn("in 6 days", ahead)
+        self.assertNotIn("data-step", ahead)
+        with mock.patch.object(card, "proposed", return_value=None):
+            passed = card.dates_card(root, {"name": "shop"}, record, today=datetime.date(2027, 5, 1))
+        self.assertIn("The checkpoint has passed", passed)
+        self.assertIn("switch to a strangler fig", passed)
+        self.assertIn('data-step="strategy"', passed, "deciding again is one press away")
+
+    def test_a_left_system_is_dated_by_its_review_and_nothing_else_has_no_card(self) -> None:
+        root = Path(tempfile.mkdtemp())
+        left = {"decided": "leave-it", "lines": {"Review": "2027-01-01"}}
+        self.assertIn("<b>Review</b>", card.dates_card(root, {}, left, today=datetime.date(2026, 12, 1)))
+        self.assertEqual(card.dates_card(root, {}, {"decided": "in-place", "lines": {}}), "")
 
 
 class DraftTest(unittest.TestCase):

@@ -82,11 +82,14 @@ PACING: dict[str, dict[str | None, str]] = {
                   "never builds the context cannot tell a constructor the container can call from one it cannot"},
     "platform": {
         None: "depends on the strategy — decide it first (`/ground`); the platform comes before any strategy",
-        "in-place": "big bang per rung: one slice per product across the whole application, the gate green "
-                    "between, rungs 1 and 2 of the ladder first",
-        "strangler-fig": "over time, or first: the new home starts on the current platform; the old home is upgraded "
-                         "first only where it must keep shipping for long — the ADR says which",
-        "leave-it": "only what security requires; recorded so it is not forgotten, not scheduled",
+        "in-place": "a security fix first, ahead of ladder order; then one compatible combination per slice — the "
+                    "runtime with the framework, ORM and namespace that must move with it, through the stepping "
+                    "stones the ADR records — across the whole application, the gate green between",
+        "strangler-fig": "over time, or first: a new home beside it starts on the current platform, and the old home "
+                         "takes a security fix and nothing else; a new home inside it is as current as the "
+                         "deployable, so the old home's platform is brought up as under in place, security first",
+        "leave-it": "what security requires is scheduled now, a slice of its own — the security floor the risk "
+                    "register names; the rest is recorded so it is not forgotten, not scheduled",
         "rewrite": "not in place: the new system starts current; recorded for the cut-over plan",
     },
     "rung": {
@@ -98,8 +101,9 @@ PACING: dict[str, dict[str | None, str]] = {
     },
     "tooling": {None: "over time, whatever the strategy: one tool, one slice, green through the ratchet before it is "
                       "recorded as a command — the method never adds one uninvited"},
-    "home": {None: "first under a strangler fig, before the first product slice: the new home is where every product "
-                   "slice lands, and a strangler whose slices land in the old home is the old home with a new label"},
+    "home": {None: "first under a strangler fig or a rewrite, before the first product slice: the new home is where "
+                   "every product slice lands, and a strategy whose slices land in the old home is the old home with a "
+                   "new label"},
 }
 
 
@@ -138,7 +142,8 @@ def target_steps(app: App, strategy: str | None) -> list[dict]:
     return []
 
 
-def programme(adoption: Adoption, apps: list[App], strategy: str | None) -> list[dict]:
+def programme(adoption: Adoption, apps: list[App], strategy: str | None,
+              lines: dict[str, str] | None = None) -> list[dict]:
     """Every improvement the record shows, in the order to take them: quick wins, a build below the floor, an
     application nobody has proved starts, the platform, the ladder's rungs the tree says are behind, then the tooling
     the ecosystem has and nothing here runs."""
@@ -165,13 +170,21 @@ def programme(adoption: Adoption, apps: list[App], strategy: str | None) -> list
                     "there); "
                     "`make smoke` and the gate's smoke job run it from then on")
             steps.append(step("run", what, f"commands.smoke: unrecorded for {app.path}", strategy))
-    if strategy == "strangler-fig" and wrapped and all(not app.generated for app in apps):
+    said = lines or {}
+    place = str(said.get("New home" if strategy == "strangler-fig" else "Home") or "beside").split(" ")[0].lower()
+    if strategy in ("strangler-fig", "rewrite") and place != "inside" and wrapped and all(
+            not app.generated for app in apps):
         # The strategy decided and nowhere for a capability to move to: the first strangler adoption built five
         # product slices in the WAR because no new home existed and nothing said one had to.
-        steps.append(step("home", "`strangler-fig` is decided and no new home exists — every deployable is one that "
-                                  "was here. `add-service` puts a generated service beside them, current from day "
-                                  "one; product slices land there, and the first capability moves through `/strangle`",
-                          "deployables: none generated", strategy))
+        steps.append(step("home", f"`{strategy}` is decided and no new home exists — every deployable is one that "
+                                  "was here. The board's *Generate the new home* (or `add-service`, on the stack the "
+                                  "ADR records) puts a generated service beside them, current from day one; product "
+                                  "slices land there", "deployables: none generated", strategy))
+    elif strategy == "strangler-fig" and place == "inside":
+        steps.append(step("home", "`strangler-fig` grows its new home inside the deployable: the module map declared "
+                                  "and every existing violation frozen as a ratcheted baseline (`\"layout\": "
+                                  "\"modular\"` on the application's record), before the first feature lands in a "
+                                  "module (`docs/strategies/target-shape.md`)", "New home: inside", strategy))
     steps += [step("platform", f"{phrase(p)}; the way up is {option(p)}", str(p.get("evidence")), strategy)
               for p in expired(adoption.platform)]
     wars = [app.name for app in wrapped if (app.toolchain or {}).get("packaging") == "war"]

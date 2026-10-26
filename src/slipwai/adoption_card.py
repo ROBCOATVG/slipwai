@@ -11,6 +11,8 @@ from there on the two flows are the same one.
 """
 from __future__ import annotations
 
+import datetime
+import re
 from pathlib import Path
 
 from . import next_steps
@@ -46,9 +48,10 @@ def adoption_card(root: Path, running: bool = False) -> str:
     layout = layout_of(document)
     found = next_steps.steps(root, layout, adoption, apps_from_manifest(document, True))
     # From the first specification on, an adopted repository's voyage is a generated project's: the strip
-    # takes over, and this card has said all it has to say.
+    # takes over, and this card has said all it has to say — but for the strategy's dates, which run the length
+    # of the programme.
     if any(step.done and step.action.startswith("/speckit-specify") for step in found):
-        return ""
+        return dates_card(root, document, adoption.strategy or {})
     rows, seen, now = [], False, None
     for step in found:
         now = now or (None if step.done else step)
@@ -69,7 +72,8 @@ def adoption_card(root: Path, running: bool = False) -> str:
                     field_html(tooling) if (tooling := extensions_asked({})) else "",
                     proposed(root, document) if key == STRATEGY else None,
                     f"{document.get('name') or root.name}-next".lower().replace("_", "-"), now.action if now else ""))
-    return ('<div class="card" id="adoption"><h2>Where this adoption stands</h2>'
+    return (dates_card(root, document, adoption.strategy or {}) +
+            '<div class="card" id="adoption"><h2>Where this adoption stands</h2>'
             '<p class="empty">Read off the tree, so it moves as each step is done — on this board where it can '
             f'be, and in the coding agent opened in {esc(root.resolve())} where it cannot. '
             '<code>slipwai adopt --next</code> says the same in a terminal.</p>'
@@ -78,3 +82,31 @@ def adoption_card(root: Path, running: bool = False) -> str:
                f"<script>{CHOOSING}</script>"
                if here and (running or key != GROUND) else "")
             + "</div>" + (here if key == GROUND and not running else ""))
+
+
+def dates_card(root: Path, document: dict, record: dict, today: datetime.date | None = None) -> str:
+    """The date the strategy is reviewed by — a strangler fig's or a rewrite's checkpoint, a left system's review —
+    and, once it has passed, the decision put again: carry on with a new date, switch strategy, or stop. A programme
+    that misses its checkpoint and goes on as if it had not is how most rewrites end up cancelled halfway."""
+    lines = record.get("lines") or {}
+    strategy = record.get("decided")
+    name = "Review" if strategy == "leave-it" else "Checkpoint"
+    found = re.search(r"\d{4}-\d{2}-\d{2}", str(lines.get(name) or ""))
+    if not strategy or not found:
+        return ""
+    due = datetime.date.fromisoformat(found.group(0))
+    left = (due - (today or datetime.date.today())).days
+    if left >= 0:
+        return (f'<div class="card" id="strategy-dates"><p class="empty"><b>{esc(name)}</b> for the '
+                f"`{esc(strategy)}` decision: {esc(found.group(0))}, in {left} day{'s' if left != 1 else ''}."
+                "</p></div>")
+    options = ("keep it as it is with a new review date, or replace it" if strategy == "leave-it" else
+               "carry on with a new checkpoint, switch to a strangler fig that moves one capability at a time, or "
+               "stop where the programme stands")
+    return (f'<div class="card" id="strategy-dates"><h2>The {esc(name.lower())} has passed</h2>'
+            f'<p class="said bad">The `{esc(strategy)}` decision was to be reviewed by {esc(found.group(0))}, '
+            f"{-left} day{'s' if left != -1 else ''} ago. Decide again: {esc(options)}. The new decision is a new ADR "
+            "that supersedes this one.</p>"
+            + control(STRATEGY, strategy, "", proposal=proposed(root, document),
+                      name=f"{document.get('name') or root.name}-next".lower().replace("_", "-"))
+            + f'<pre class="said bad" id="step-said" hidden></pre><script>{STEPPING}</script></div>')

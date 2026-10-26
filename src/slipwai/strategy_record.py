@@ -26,6 +26,8 @@ REQUIRED: dict[str, tuple[str, ...]] = {
 }
 #: A strangler fig that moves everything is an incremental rewrite, and owes what a rewrite owes before it starts.
 END_ALL = ("Parity", "Checkpoint")
+#: Lines that are not required but that steps after the decision read, spelled as they read them.
+READ = ("Why", "New home stack", "Build", "Seam", "Data", "Variant")
 #: What a strategy name an older factory wrote meant, in the lines it implies. A modular monolith grew new modules
 #: inside the one deployable, which is a strangler fig whose new home is `inside` and whose target is modular.
 IMPLIED: dict[str, dict[str, str]] = {
@@ -48,7 +50,7 @@ def lines_of(text: str, spelled: str | None = None) -> dict[str, str]:
     for name, value in IMPLIED.get(spelled or "", {}).items():
         found.setdefault(name.lower(), value)
     # Keyed as the strategy asks for them, whatever case the ADR wrote them in.
-    spelling = {name.lower(): name for wanted in REQUIRED.values() for name in (*wanted, *END_ALL)}
+    spelling = {name.lower(): name for wanted in (*REQUIRED.values(), END_ALL, READ) for name in wanted}
     return {spelling.get(name, name): value for name, value in found.items()}
 
 

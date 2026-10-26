@@ -24,6 +24,8 @@ from .extensions import suggestion
 from .layout import Layout
 from .origin import Adoption
 from .services import App, wrapped_of
+from .strategy_steps import CONTINUE, new_system
+from .strategy_steps import steps as strategy_steps
 
 #: What `./init` can offer beyond Spec Kit, from the catalogue. Empty where no extension is installed, which
 #: is every copy of the keel until somebody installs one — so the line simply does not mention them.
@@ -69,6 +71,7 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
     open_rows = rows_open(adoption)
     baseline = (root / layout.under(BASELINE)).is_file()
     decided = bool((adoption.strategy or {}).get("decided"))
+    incomplete = list((adoption.strategy or {}).get("missing") or [])
     recommended = (adoption.strategy or {}).get("recommended")
     outstanding = [str(row.get("name")) for row in (adoption.candidates or []) if isinstance(row, dict)]
     found = [
@@ -115,11 +118,28 @@ def steps(root: Path, layout: Layout, adoption: Adoption, apps: list[App]) -> li
         ))
     found.append(Step(
         "an accepted ADR with a `Strategy:` line",
-        (f"the map recommends `{recommended}`, and a recommendation is not a decision — `leave it` is one of the five"
+        (f"`{adoption.strategy['decided']}` is decided, and its ADR does not yet say "
+         + ", ".join(f"`{name}:`" for name in incomplete) + " — what follows from it waits on these"
+         if decided and incomplete else
+         f"the map recommends `{recommended}`, and a recommendation is not a decision — `leave it` is one of the four"
          if recommended else "nothing is recommended yet; `/ground` asks why this work is happening, and the "
          "recommendation is made from that"),
-        decided,
+        decided and not incomplete,
     ))
+    # What the decided strategy needs before the first feature: its playbook's steps, read off the tree.
+    found += [Step(*one) for one in strategy_steps(root, layout, adoption, apps)]
+    elsewhere = new_system(root, adoption)
+    if elsewhere is not None:
+        # A rewrite in a new repository: the constitution, the first feature and the loop are that project's. This
+        # one is the old system, frozen, and the sequence here ends by handing over.
+        found.append(Step(
+            f"{CONTINUE} {elsewhere}",
+            "its own voyage drafts the constitution and the first specification there, from the same PRD; this "
+            "repository is the old system, frozen but for fixes, characterised for the parity suite and cut over at "
+            "the end",
+            False,
+        ))
+        return found
     # The sequence used to stop here, at a repository that is ready and has been asked to do nothing. The
     # first person to take it end to end had to be told the rest in chat — ratify, specify, sail, cruise —
     # and the order matters: `check-constitution` fails the moment `specs/` exists over a template

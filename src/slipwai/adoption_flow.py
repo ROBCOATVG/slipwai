@@ -22,8 +22,10 @@ from __future__ import annotations
 import datetime
 import shlex
 import subprocess
+import sys
 from collections.abc import Mapping
 from pathlib import Path
+from urllib.parse import quote
 
 from . import resurvey
 from .errors import GenerationError
@@ -34,16 +36,22 @@ from .interview_page import elected_in
 from .layout import Layout, layout_of
 from .manifest import read_manifest
 from .next_steps import BASELINE
+from .origin import adoption_of
 from .page_shell import esc
 from .stack_proposal import Proposal
 from .strategy import SAYS
 from .strategy_form import form as strategy_form
 from .strategy_form import lines as record_lines
+from .strategy_steps import CONTINUE, home_of, name_of, stack_of
 from .uncommitted import refuse_foreign
 
 #: The steps by the first word of their action in `next_steps`, which is how the voyage knows which is now.
 INIT, GROUND, VERIFY, STRATEGY, CONSTITUTION, SPECIFY = (
     "init", "/ground", "/verify", "an accepted ADR", "/speckit-constitution", "/speckit-specify")
+#: The new home a strangler fig grows `beside` the old code or a rewrite builds, which the board generates itself.
+HOME, NEW_SYSTEM = "generate the new home", "generate the new system"
+#: The hand-over to the new repository a rewrite is built in: its voyage is where the rest happens.
+ELSEWHERE = CONTINUE
 PRD = "docs/prd.md"
 #: What a PRD has to say for a specification to be drafted from it rather than guessed: the name of each
 #: answer, its heading in the PRD, what the box suggests, and whether the draft can go without it.
@@ -60,7 +68,8 @@ def key_of(action: str) -> str:
     """Which of the board's steps an action is, or `""` for one only the agent takes."""
     if action.endswith("/init"):
         return INIT
-    return next((key for key in (GROUND, VERIFY, STRATEGY, CONSTITUTION, SPECIFY) if action.startswith(key)), "")
+    return next((key for key in (GROUND, VERIFY, STRATEGY, HOME, NEW_SYSTEM, ELSEWHERE, CONSTITUTION, SPECIFY)
+                 if action.startswith(key)), "")
 
 
 def make(layout: Layout) -> list[str]:
@@ -137,6 +146,49 @@ def written(root: Path, layout: Layout, answers: Mapping[str, str]) -> Path:
     return prd
 
 
+def home(root: Path, said: list[str] | None = None) -> Fitting:
+    """The new home generated on the stack the strategy ADR records, and committed: `add-service` (and
+    `add-frontend` where it has a browser app) beside the old code, or `generate` for a new repository."""
+    document = read_manifest(root, "the board")
+    adoption = adoption_of(document)
+    record = (adoption.strategy if adoption else None) or {}
+    strategy, lines = str(record.get("decided") or ""), record.get("lines") or {}
+    place, where = home_of(strategy, lines)
+    stack = stack_of(lines)
+    if strategy not in ("strangler-fig", "rewrite") or place == "inside" or not stack.get("backend"):
+        raise GenerationError("the strategy ADR names no new home beside the old code, or no stack for it")
+    if subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True).stdout.strip():
+        raise GenerationError("this repository has changes nobody has committed; commit or stash them first, so the "
+                              "new home arrives as a commit of its own")
+    name = name_of(where, f"{document.get('name') or root.name}-next").lower().replace("_", "-")
+    slipwai = [sys.executable, "-m", "slipwai"]
+    on = [f"--backend={stack['backend']}", f"--persistence={stack.get('persistence') or 'memory'}"]
+    browser = stack.get("frontend") not in (None, "", "none")
+    if place == "new-repo":
+        target = (root / where).resolve() if where else root.parent / name
+        commands = [[*slipwai, "generate", target.name, f"--output={target.parent}", *on, "--target=existing",
+                     *([f"--frontend={stack['frontend']}"] if browser else []), "--no-init"]]
+        where_to, cwd = str(target), root
+    else:
+        # Each committed before the next: `add-frontend` refuses a tree with changes nobody has committed, so that
+        # undoing it undoes only what it wrote.
+        commands = [[*slipwai, "add-service", name, *on, "--purpose=the new home the old code's capabilities move to"],
+                    ["git", "add", "-A"], ["git", "commit", "-q", "-m", f"Generate the new home: {name}"]]
+        if browser:
+            commands += [[*slipwai, "add-frontend", f"{name}-web", f"--frontend={stack['frontend']}", f"--api={name}"],
+                         ["git", "add", "-A"],
+                         ["git", "commit", "-q", "-m", f"Give the new home its browser app: {name}-web"]]
+        where_to, cwd = f"apps/{name}", root
+    steps = [Step(argv, f"Running {' '.join(argv[2:] if argv[0] == sys.executable else argv)}", lambda code: (
+        "" if code == 0 else f"It stopped ({code}); what it said is above."), "home") for argv in commands]
+    steps[-1] = Step(steps[-1].argv, steps[-1].announced, lambda code: (
+        f"The new home is at {where_to}, current from day one: every new feature is built there."
+        if code == 0 else f"It stopped ({code}); what it said is above."), "home")
+    fitting = Fitting(cwd, steps, said)
+    fitting.thread.start()
+    return fitting
+
+
 def draft(root: Path, layout: Layout, answers: Mapping[str, str], said: list[str] | None = None) -> Fitting:
     """The PRD written or copied in, and the drafting session run on it in the background."""
     written(root, layout, answers)
@@ -164,6 +216,8 @@ def take_step(root: Path, answers: Mapping[str, str], running: Fitting | None) -
             return 200, "started", gate(root, layout, said)
         if step == "strategy":
             return 200, decide(root, layout, answers), None
+        if step == "home":
+            return 200, "started", home(root, said)
         if step == "draft":
             return 200, "started", draft(root, layout, answers, said)
     except GenerationError as refused:
@@ -180,13 +234,20 @@ def gate_when_grounded(root: Path, running: Fitting | None) -> Fitting | None:
 
 
 def control(key: str, recommended: str | None, agents: str, prd: str = "", tooling: str = "",
-            proposal: Proposal | None = None, name: str = "next") -> str:
+            proposal: Proposal | None = None, name: str = "next", action: str = "") -> str:
     """The control on the step that is now, or nothing where only the agent can take it; `prd` is the PRD
     already written, offered again, and `tooling` the extensions `./init` can elect, as their checkboxes."""
     if key == INIT:
         return (f'<form class="ask-page" id="step-form"><div class="q"><label for="harness">Hand it to</label>'
                 f'<select id="harness" name="harness">{agents}</select></div>{tooling}</form>'
                 '<div class="ask"><button class="go" data-step="init">Run ./init</button></div>')
+    if key == ELSEWHERE:
+        where = action[len(CONTINUE):].strip()
+        return (f'<div class="ask"><a class="go" href="/voyage?look={esc(quote(where))}" target="_blank" '
+                f'rel="noopener">Open the new system\'s voyage</a></div>')
+    if key in (HOME, NEW_SYSTEM):
+        return ('<div class="ask"><button class="go" data-step="home">'
+                f'{"Generate the new system" if key == NEW_SYSTEM else "Generate the new home"}</button></div>')
     if key == VERIFY:
         return '<div class="ask"><button class="go" data-step="verify">Run the gate</button></div>'
     if key == STRATEGY:

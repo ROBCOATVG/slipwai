@@ -68,7 +68,7 @@ def adoption_card(root: Path, running: bool = False) -> str:
                     str((root / layout.under(PRD)).resolve()) if (root / layout.under(PRD)).is_file() else "",
                     field_html(tooling) if (tooling := extensions_asked({})) else "",
                     proposed(root, document) if key == STRATEGY else None,
-                    f"{document.get('name') or root.name}-next".lower().replace("_", "-")))
+                    f"{document.get('name') or root.name}-next".lower().replace("_", "-"), now.action if now else ""))
     return ('<div class="card" id="adoption"><h2>Where this adoption stands</h2>'
             '<p class="empty">Read off the tree, so it moves as each step is done — on this board where it can '
             f'be, and in the coding agent opened in {esc(root.resolve())} where it cannot. '

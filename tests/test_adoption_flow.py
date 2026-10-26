@@ -11,6 +11,7 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 
 from slipwai import adoption_flow as flow
+from slipwai import adoption_run
 from slipwai.errors import GenerationError
 from slipwai.layout import Layout
 
@@ -18,7 +19,7 @@ from slipwai.layout import Layout
 class KeyTest(unittest.TestCase):
     def test_each_step_of_the_sequence_is_known_by_its_action(self) -> None:
         self.assertEqual(flow.key_of("./adopt/init"), flow.INIT)
-        self.assertEqual(flow.key_of("/ground, in the agent"), flow.GROUND)
+        self.assertEqual(flow.key_of("/ground, in the agent"), adoption_run.GROUND)
         self.assertEqual(flow.key_of("an accepted ADR with a `Strategy:` line"), flow.STRATEGY)
         self.assertEqual(flow.key_of("/sail, in the agent"), "")
 

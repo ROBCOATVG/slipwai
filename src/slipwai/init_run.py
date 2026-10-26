@@ -32,7 +32,7 @@ from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 525 — one runner for every child the board starts, including assessment of a feature handed to /sail
+# budget: 540 — one runner for every child the board starts: assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
@@ -120,6 +120,9 @@ class Step:
     ended: Callable[[int], str]
     #: Which step this is — `init`, `draft`, `launch` — for the page that says what stage the project is on.
     key: str = ""
+    #: Whether a failure ends the run there. The gate's does not: the baseline its red first run writes is
+    #: still committed, and the run still ends failed.
+    stops: bool = True
 
 
 def init_step(where: Path, harness: str, repository: str | None,
@@ -304,25 +307,34 @@ class Fitting:
         if not self.steps:
             self.stop(0)
             return
-        for index, step in enumerate(self.steps):
+        self.run_steps(self.steps)
+
+    def run_steps(self, steps: list[Step], final: bool = True, announced: bool = True) -> int:
+        """`steps` run in order, ending at the first that fails; the exit status. With `final` the last one's end
+        is this run's end — a run that goes on to more steps after these passes False."""
+        failed = 0
+        for index, step in enumerate(steps):
             with self.lock:
                 self.step = step.key
-            if index:
+            if index or not announced:
                 self.say(step.announced)
-            last = index == len(self.steps) - 1
+            last = final and index == len(steps) - 1
             try:
                 child, reading, ours = self.child(step.argv)
             except OSError as fault:
                 self.say(f"{' '.join(step.argv)} could not be run here: {fault}", code=1)
-                return
+                return 1
             with child:  # closed and waited on by the context manager, so a long run leaks no pipe
                 self.read(reading)
                 code = child.wait()
             if ours:
                 os.close(reading)
-            self.say(step.ended(code), code=code if code or last else None)
-            if code:
-                return
+            ends = bool(code) and step.stops
+            self.say(step.ended(code), code=(code or failed) if ends or last else None)
+            if ends:
+                return code
+            failed = failed or code
+        return failed
 
     def say(self, line: str, code: int | None = None) -> None:
         with self.lock:
@@ -378,11 +390,17 @@ def adopted(where: Path, delivery: str, harness: str | None, said: list[str] | N
         argv = [script, "--integration", harness, *(word for key in extensions for word in ("--extension", key))]
         steps.append(Step(argv, f"Running {' '.join(argv)} in {where} — it installs Spec Kit for the coding "
                                 "agent, so it reaches the network once, here.",
-                          lambda code: (f"`{' '.join(argv)}` is done; what it wrote is uncommitted, and yours to "
-                                        "read and commit. `slipwai adopt --next` says what is left."
-                                        if code == 0 else
+                          lambda code: ("" if code == 0 else
                                         f"`{' '.join(argv)}` exited {code}, and the adoption is committed and "
                                         "unaffected. Run it again when whatever stopped it is fixed."), "init"))
+        # Committed as one change of its own: left uncommitted, every later step that generates refused the tree
+        # (`add-service` undoes itself with `git clean`, so it will not run over files nobody committed).
+        steps.append(Step(["git", "add", "-A"], "", lambda code: "", "init"))
+        steps.append(Step(["git", "commit", "-q", "-m", f"Install Spec Kit and the agent's projections ({script})"],
+                          "", lambda code: (f"`{' '.join(argv)}` is done, and what it wrote is committed as one "
+                                            "change. `slipwai adopt --next` says what is left."
+                                            if code == 0 else f"Committing what `{' '.join(argv)}` wrote stopped "
+                                            f"({code}); commit it yourself before the next step."), "init"))
     fitting = Fitting(where, steps, said)
     fitting.thread.start()
     return fitting

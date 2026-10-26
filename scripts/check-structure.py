@@ -132,8 +132,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "interview_page",
               # The interview's rows, split from its questions at the seam that module's budget names:
               # which control a question gets depends on its kind, never on which flag it becomes.
-              "interview_form", "adopt_page", "ground_card", "stack_proposal", "strategy_form", "adoption_flow",
-              "adoption_card",
+              "interview_form", "adopt_page", "ground_card", "stack_proposal", "strategy_form", "adoption_run",
+              "adoption_flow", "adoption_card",
               # The machine's own folder chooser, which a browser may not be and never could be, and the
               # one control every page that asks for a folder shows.
               "folder_choice", "folder_field",

@@ -30,36 +30,36 @@ from collections.abc import Mapping
 from pathlib import Path
 from urllib.parse import quote
 
-from . import next_steps, resurvey
+from . import resurvey
+from .adoption_run import (
+    AGENT,
+    CONSTITUTION,
+    ELSEWHERE,
+    HOME,
+    INIT,
+    NEW_SYSTEM,
+    SPECIFY,
+    STRATEGY,
+    VERIFY,
+    chain,
+    key_of,
+    now_of,
+)
 from .errors import GenerationError
 from .folder_field import folder_field
 from .ground_card import asked
 from .init_run import Fitting, Step, adopted
 from .interview_page import elected_in
 from .layout import Layout, layout_of
-from .manifest import apps_from_manifest, read_manifest
+from .manifest import read_manifest
 from .next_steps import BASELINE
-from .origin import adoption_of
 from .page_shell import esc
 from .stack_proposal import Proposal
 from .strategy import SAYS
 from .strategy_form import form as strategy_form
 from .strategy_form import lines as record_lines
-from .strategy_steps import CONTINUE, home_of, name_of, stack_of
 from .uncommitted import refuse_foreign
 
-#: The steps by the first word of their action in `next_steps`, which is how the voyage knows which is now.
-INIT, GROUND, VERIFY, STRATEGY, CONSTITUTION, SPECIFY = (
-    "init", "/ground", "/verify", "an accepted ADR", "/speckit-constitution", "/speckit-specify")
-#: The new home a strangler fig grows `beside` the old code or a rewrite builds, which the board generates itself.
-HOME, NEW_SYSTEM = "generate the new home", "generate the new system"
-#: The hand-over to the new repository a rewrite is built in: its voyage is where the rest happens.
-ELSEWHERE = CONTINUE
-#: A step the strategy adds that only the agent can take — the build floor, `smoke`, the parity list — handed to a
-#: headless session (`scripts/agents/step.py`): the board stopped at the first of them with nothing to press.
-AGENT = "agent"
-IN_THE_AGENT = ", in the agent"
-STEP = "scripts/agents/step.py"
 PRD = "docs/prd.md"
 #: What a PRD has to say for a specification to be drafted from it rather than guessed: the name of each
 #: answer, its heading in the PRD, what the box suggests, and whether the draft can go without it.
@@ -72,21 +72,13 @@ QUESTIONS = (
 )
 
 
-def key_of(action: str) -> str:
-    """Which of the board's steps an action is, or `""` for one only the agent takes."""
-    if action.endswith("/init"):
-        return INIT
-    found = next((key for key in (GROUND, VERIFY, STRATEGY, HOME, NEW_SYSTEM, ELSEWHERE, CONSTITUTION, SPECIFY)
-                  if action.startswith(key)), "")
-    return found or (AGENT if action.endswith(IN_THE_AGENT) and not action.startswith("/") else "")
-
-
 def make(layout: Layout) -> list[str]:
     return shlex.split(layout.make)
 
 
 def gate(root: Path, layout: Layout, said: list[str] | None = None) -> Fitting:
-    """`make verify` in the background, and the baseline its first run writes committed when it is green."""
+    """`make verify` in the background, and the baseline its first run writes committed, green or not: the step is
+    done once the baseline exists, and one left uncommitted stopped the new home being generated."""
     baseline = layout.under(BASELINE)
     argv = [*make(layout), "verify"]
     steps = [
@@ -94,7 +86,12 @@ def gate(root: Path, layout: Layout, said: list[str] | None = None) -> Fitting:
                    "already here as the baseline, and only new ones fail from then on.",
              lambda code: ("The gate is green, and its baseline is recorded." if code == 0 else
                            f"The gate stopped ({code}). What it said is above; `/verify` in the agent shows the "
-                           "failures, and quarantines a red suite on purpose if you tell it to."), "verify"),
+                           "failures, and quarantines a red suite on purpose if you tell it to."), "verify",
+             stops=False),
+        # A first run with nothing to hold writes no baseline, and the step is done once one exists: an empty one
+        # says the same as none to the ratchet, and is the record that the gate has run here.
+        Step([sys.executable, "-c", "import pathlib, sys; p = pathlib.Path(sys.argv[1]); "
+              "p.exists() or p.write_text('{}\\n', encoding='utf-8')", baseline], "", lambda code: "", "verify"),
         Step(["git", "add", "--", baseline], "", lambda code: "", "verify"),
         Step(["git", "commit", "-q", "-m", "Gate baseline", "--", baseline], "",
              lambda code: f"Committed {baseline}." if code == 0 else "", "verify"),
@@ -165,71 +162,6 @@ def written(root: Path, layout: Layout, answers: Mapping[str, str]) -> Path:
     return prd
 
 
-def home(root: Path, said: list[str] | None = None) -> Fitting:
-    """The new home generated on the stack the strategy ADR records, and committed: `add-service` (and
-    `add-frontend` where it has a browser app) beside the old code, or `generate` for a new repository."""
-    document = read_manifest(root, "the board")
-    adoption = adoption_of(document)
-    record = (adoption.strategy if adoption else None) or {}
-    strategy, lines = str(record.get("decided") or ""), record.get("lines") or {}
-    place, where = home_of(strategy, lines)
-    stack = stack_of(lines)
-    if strategy not in ("strangler-fig", "rewrite") or place == "inside" or not stack.get("backend"):
-        raise GenerationError("the strategy ADR names no new home beside the old code, or no stack for it")
-    if subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True).stdout.strip():
-        raise GenerationError("this repository has changes nobody has committed; commit or stash them first, so the "
-                              "new home arrives as a commit of its own")
-    name = name_of(where, f"{document.get('name') or root.name}-next").lower().replace("_", "-")
-    slipwai = [sys.executable, "-m", "slipwai"]
-    on = [f"--backend={stack['backend']}", f"--persistence={stack.get('persistence') or 'memory'}"]
-    browser = stack.get("frontend") not in (None, "", "none")
-    if place == "new-repo":
-        target = (root / where).resolve() if where else root.parent / name
-        commands = [[*slipwai, "generate", target.name, f"--output={target.parent}", *on, "--target=existing",
-                     *([f"--frontend={stack['frontend']}"] if browser else []), "--no-init"]]
-        where_to, cwd = str(target), root
-    else:
-        # Each committed before the next: `add-frontend` refuses a tree with changes nobody has committed, so that
-        # undoing it undoes only what it wrote.
-        commands = [[*slipwai, "add-service", name, *on, "--purpose=the new home the old code's capabilities move to"],
-                    ["git", "add", "-A"], ["git", "commit", "-q", "-m", f"Generate the new home: {name}"]]
-        if browser:
-            commands += [[*slipwai, "add-frontend", f"{name}-web", f"--frontend={stack['frontend']}", f"--api={name}"],
-                         ["git", "add", "-A"],
-                         ["git", "commit", "-q", "-m", f"Give the new home its browser app: {name}-web"]]
-        where_to, cwd = f"apps/{name}", root
-    steps = [Step(argv, f"Running {' '.join(argv[2:] if argv[0] == sys.executable else argv)}", lambda code: (
-        "" if code == 0 else f"It stopped ({code}); what it said is above."), "home") for argv in commands]
-    steps[-1] = Step(steps[-1].argv, steps[-1].announced, lambda code: (
-        f"The new home is at {where_to}, current from day one: every new feature is built there."
-        if code == 0 else f"It stopped ({code}); what it said is above."), "home")
-    fitting = Fitting(cwd, steps, said)
-    fitting.thread.start()
-    return fitting
-
-
-def agent_step(root: Path, layout: Layout, said: list[str] | None = None) -> Fitting:
-    """The step that is now, where only the agent can take it, handed to a headless session in the background."""
-    document = read_manifest(root, "the board")
-    adoption = adoption_of(document)
-    if adoption is None:
-        raise GenerationError("this repository was not adopted")
-    now = next((step for step in next_steps.steps(root, layout, adoption, apps_from_manifest(document, True))
-                if not step.done), None)
-    if now is None or key_of(now.action) != AGENT:
-        raise GenerationError("the step that is now is not one the agent takes from here; read the card again")
-    if not (root / layout.under(STEP)).is_file():
-        raise GenerationError(f"{layout.under(STEP)} is not here: `slipwai adopt --refresh` writes it")
-    argv = [sys.executable, layout.under(STEP), now.action[:-len(IN_THE_AGENT)], now.why]
-    step = Step(argv, f"Handing {now.action[:-len(IN_THE_AGENT)]} to a headless session — it reads the strategy's "
-                      "playbook, does this step and stops.",
-                lambda code: ("The session ended; the card reads the tree again to see whether the step is done."
-                              if code == 0 else f"The session stopped ({code}); what it said is above."), "agent")
-    fitting = Fitting(root, [step], said)
-    fitting.thread.start()
-    return fitting
-
-
 def draft(root: Path, layout: Layout, answers: Mapping[str, str], said: list[str] | None = None) -> Fitting:
     """The PRD written or copied in, and the drafting session run on it in the background."""
     written(root, layout, answers)
@@ -256,11 +188,14 @@ def take_step(root: Path, answers: Mapping[str, str], running: Fitting | None) -
         if step == "verify":
             return 200, "started", gate(root, layout, said)
         if step == "strategy":
-            return 200, decide(root, layout, answers), None
-        if step == "home":
-            return 200, "started", home(root, said)
-        if step == AGENT:
-            return 200, "started", agent_step(root, layout, said)
+            decided = decide(root, layout, answers)
+            # What the decision asks of the tree next needs nobody: it starts here, with no second button.
+            _, now = now_of(root)
+            if now is not None and key_of(now.action) in (AGENT, HOME, NEW_SYSTEM):
+                return 200, decided, chain(root, said)
+            return 200, decided, None
+        if step in ("home", AGENT):
+            return 200, "started", chain(root, said)
         if step == "draft":
             return 200, "started", draft(root, layout, answers, said)
     except GenerationError as refused:
@@ -285,17 +220,16 @@ def control(key: str, recommended: str | None, agents: str, prd: str = "", tooli
                 f'<select id="harness" name="harness">{agents}</select></div>{tooling}</form>'
                 '<div class="ask"><button class="go" data-step="init">Run ./init</button></div>')
     if key == ELSEWHERE:
-        where = action[len(CONTINUE):].strip()
+        where = action[len(ELSEWHERE):].strip()
         return (f'<div class="ask"><a class="go" href="/voyage?look={esc(quote(where))}" target="_blank" '
                 f'rel="noopener">Open the new system\'s voyage</a></div>')
-    if key in (HOME, NEW_SYSTEM):
-        return ('<div class="ask"><button class="go" data-step="home">'
-                f'{"Generate the new system" if key == NEW_SYSTEM else "Generate the new home"}</button></div>')
+    if key in (HOME, NEW_SYSTEM, AGENT):
+        # Shown only where the run that takes these on its own was stopped: deciding starts it.
+        return ('<div class="ask"><button class="go" data-step="agent">Take the steps that need nobody</button></div>'
+                '<p class="empty">each is taken in turn — a headless session for the ones only the agent can take, '
+                "the new home generated — until one needs you.</p>")
     if key == VERIFY:
         return '<div class="ask"><button class="go" data-step="verify">Run the gate</button></div>'
-    if key == AGENT:
-        return ('<div class="ask"><button class="go" data-step="agent">Hand it to the agent</button></div>'
-                '<p class="empty">a headless session takes this step and stops; or take it yourself in the agent.</p>')
     if key == STRATEGY:
         return strategy_form(recommended, proposal, name)
     if key in (CONSTITUTION, SPECIFY):

@@ -16,8 +16,9 @@ import re
 from pathlib import Path
 
 from . import next_steps
-from .adoption_flow import GROUND, PRD, STRATEGY, control, key_of
+from .adoption_flow import PRD, control
 from .adoption_flow import SCRIPT as STEPPING
+from .adoption_run import GROUND, STRATEGY, key_of
 from .errors import GenerationError
 from .folder_field import SCRIPT as CHOOSING
 from .ground_card import SCRIPT as GROUNDING

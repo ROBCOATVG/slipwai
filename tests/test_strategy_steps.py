@@ -3,15 +3,20 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import adoption_flow
+from slipwai import adoption_flow, adoption_run
 from slipwai.errors import GenerationError
+from slipwai.init_run import Fitting
+from slipwai.init_run import Step as Run
 from slipwai.layout import Layout
+from slipwai.next_steps import Step
 from slipwai.next_steps import steps as sequence
 from slipwai.origin import Adoption
 from slipwai.services import App
@@ -104,9 +109,9 @@ class StepsTest(unittest.TestCase):
     def test_every_step_only_the_agent_takes_is_handed_to_it_from_the_board(self) -> None:
         for action, _why, _done in steps(self.root, LAYOUT, decided("strangler-fig", STRANGLER), [old()]):
             if action.endswith(", in the agent"):
-                self.assertEqual(adoption_flow.key_of(action), adoption_flow.AGENT, action)
-        self.assertIn('data-step="agent"', adoption_flow.control(adoption_flow.AGENT, None, ""))
-        self.assertEqual(adoption_flow.key_of("/sail, in the agent"), "")
+                self.assertEqual(adoption_run.key_of(action), adoption_run.AGENT, action)
+        self.assertIn('data-step="agent"', adoption_flow.control(adoption_run.AGENT, None, ""))
+        self.assertEqual(adoption_run.key_of("/sail, in the agent"), "")
 
     def test_the_stack_line_is_read_back_as_its_three_answers(self) -> None:
         self.assertEqual(stack_of(STRANGLER), {"backend": "java-spring", "frontend": "none", "persistence": "postgres"})
@@ -122,8 +127,51 @@ class HomeTest(unittest.TestCase):
             "strategy": {"recommended": "strangler-fig", "decided": "strangler-fig", "lines": STRANGLER,
                          "missing": []}}))
         with self.assertRaises(GenerationError) as refused:
-            adoption_flow.home(root)
+            adoption_run.home_steps(root)
         self.assertIn("commit or stash", str(refused.exception))
+
+
+class ChainTest(unittest.TestCase):
+    """The steps that need nobody are taken one after another, and the run stops where a person is needed."""
+
+    def chained(self, *actions: str) -> list[str]:
+        nows = iter([(LAYOUT, Step(action, "why", False)) for action in actions])
+        ran: list[object] = []
+
+        def run_steps(steps: list[object], **_: object) -> int:
+            ran.append(steps)
+            return 0
+        with mock.patch.object(adoption_run, "now_of", side_effect=lambda root: next(nows)), \
+                mock.patch.object(adoption_run, "home_steps", return_value=[mock.Mock()]), \
+                mock.patch.object(adoption_run.Chain, "run_steps",
+                                  side_effect=run_steps):
+            chain = adoption_run.Chain(Path("."), [adoption_run.Step([], "go", lambda code: "")])
+            chain.run()
+        return chain.said()["lines"] + [str(len(ran)), str(chain.said()["code"])]
+
+    def test_each_step_that_needs_nobody_runs_until_one_needs_a_person(self) -> None:
+        said = self.chained("the build floor, in the agent", "prove each application starts (`smoke`), in the agent",
+                            "generate the new home", "/speckit-constitution, in the agent")
+        self.assertIn("Next: /speckit-constitution, in the agent — that one is yours.", said)
+        self.assertEqual(said[-2:], ["3", "0"])
+
+    def test_a_step_the_tree_does_not_show_done_after_its_run_stops_the_chain(self) -> None:
+        said = self.chained("the build floor, in the agent", "the build floor, in the agent")
+        self.assertTrue(any("does not show the build floor" in line for line in said))
+        self.assertEqual(said[-2:], ["1", "1"])
+
+
+class RedGateTest(unittest.TestCase):
+    def test_a_red_gate_still_commits_its_baseline_and_the_run_still_ends_red(self) -> None:
+        red = [sys.executable, "-c", "raise SystemExit(2)"]
+        then = [sys.executable, "-c", "print('committed')"]
+        fitting = Fitting(Path(tempfile.mkdtemp()), [
+            Run(red, "the gate", lambda code: f"red {code}", "verify", stops=False),
+            Run(then, "", lambda code: "the baseline", "verify")])
+        fitting.run()
+        said = fitting.said()
+        self.assertIn("committed", said["lines"])
+        self.assertEqual(said["code"], 2)
 
 
 class PagesTest(unittest.TestCase):

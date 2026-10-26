@@ -103,7 +103,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "seats", "wheel", "dials", "settings_card", "interview_form", "folder_choice", "folder_field",
        "adoption_card", "ground_card", "adoption_flow",
        # The lines a strategy ADR records beyond its name. The experiment decided a strategy by one word.
-       "strategy_record", "stack_proposal", "strategy_form", "strategy_steps",
+       "strategy_record", "stack_proposal", "strategy_form", "strategy_steps", "adoption_run",
        # Carrying in what a PRD cites. The experiment had no PRD to start from.
        "design_docs",
        # Reading a drafted document on the board. The experiment had no board to read one on.

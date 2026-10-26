@@ -28,6 +28,12 @@ class KeyTest(unittest.TestCase):
         self.assertEqual(flow.control("", None, ""), "")
 
 
+STRANGLER = {"strategy": "strangler-fig", "freeze": "agreed", "freeze_said": "the owner, 2026-10-23",
+             "home": "beside", "home_path": "apps/shop-next", "end": "all", "checkpoint": "2027-04-30",
+             "target": "modules in one deployable, hexagonal inside each", "backend": "java-spring",
+             "frontend": "react-vite", "persistence": "postgres"}
+
+
 class DecideTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp())
@@ -43,13 +49,41 @@ class DecideTest(unittest.TestCase):
     def test_the_strategy_is_the_accepted_adr_the_gate_reads(self) -> None:
         (self.root / "adopt/docs/adr").mkdir(parents=True)
         (self.root / "adopt/docs/adr/0001-record-architecture-decisions.md").write_text("# 0001\n")
-        path = flow.decide(self.root, self.layout, {"strategy": "strangler-fig", "why": "the old app must go"},
-                           today="2026-10-23")
+        path = flow.decide(self.root, self.layout, {**STRANGLER, "why": "the old app must go"}, today="2026-10-23")
         self.assertEqual(path, "adopt/docs/adr/0002-change-strategy.md")
         text = (self.root / path).read_text()
         self.assertRegex(text, r"## Status\s*\n+\s*Accepted")
         self.assertIn("\nStrategy: strangler-fig\n", text)
         self.assertIn("the old app must go", text)
+        # Every line the strategy needs, on the ADR the record reads it from.
+        for line in ("Freeze: agreed — the owner, 2026-10-23", "New home: beside apps/shop-next",
+                     "End: all — the old app is deleted by 2027-04-30", "Checkpoint: 2027-04-30",
+                     "New home stack: backend java-spring · frontend react-vite · persistence postgres",
+                     "Build: pinned as-is"):
+            self.assertIn(line, text)
+
+    def test_a_strategy_missing_a_line_it_needs_writes_nothing_and_says_which(self) -> None:
+        with self.assertRaises(GenerationError) as refused:
+            flow.decide(self.root, self.layout, {**STRANGLER, "freeze_said": "", "checkpoint": ""})
+        self.assertIn("Freeze", str(refused.exception))
+        self.assertIn("Checkpoint", str(refused.exception))
+        self.assertFalse((self.root / "adopt/docs/adr").exists())
+
+    def test_a_rewrite_says_why_one_cut_over_and_how_it_rolls_back(self) -> None:
+        with self.assertRaises(GenerationError) as refused:
+            flow.record_lines({**STRANGLER, "strategy": "rewrite"})
+        self.assertIn("Why single cut-over", str(refused.exception))
+        strategy, lines = flow.record_lines({**STRANGLER, "strategy": "rewrite", "home": "new-repo",
+                                             "home_path": "../shop-next", "why_cutover": "the host closes in March",
+                                             "cutover_by": "the owner", "rollback": "DNS back within an hour"})
+        self.assertEqual((strategy, lines["Home"], lines["Cut-over"]),
+                         ("rewrite", "new-repo ../shop-next", "single — decided by the owner"))
+        self.assertIn("Stack", lines)
+
+    def test_leaving_it_names_the_risk_owner_and_the_review(self) -> None:
+        strategy, lines = flow.record_lines({"strategy": "leave-it", "risk_owner": "the owner",
+                                             "review": "2027-04-30"})
+        self.assertEqual((lines["Variant"], lines["Target"], lines["Review"]), ("retain", "as-is", "2027-04-30"))
 
     def test_a_strategy_not_on_offer_writes_nothing(self) -> None:
         with self.assertRaises(GenerationError):

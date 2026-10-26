@@ -35,7 +35,10 @@ from .layout import Layout, layout_of
 from .manifest import read_manifest
 from .next_steps import BASELINE
 from .page_shell import esc
+from .stack_proposal import Proposal
 from .strategy import SAYS
+from .strategy_form import form as strategy_form
+from .strategy_form import lines as record_lines
 from .uncommitted import refuse_foreign
 
 #: The steps by the first word of their action in `next_steps`, which is how the voyage knows which is now.
@@ -85,10 +88,9 @@ def gate(root: Path, layout: Layout, said: list[str] | None = None) -> Fitting:
 
 def decide(root: Path, layout: Layout, answers: Mapping[str, str], today: str | None = None) -> str:
     """The strategy, written as the accepted ADR the gate reads, and committed. Returns the ADR's path."""
-    strategy = str(answers.get("strategy") or "")
-    if strategy not in SAYS:
-        raise GenerationError(f"pick one of the four strategies: {', '.join(SAYS)}")
-    why = str(answers.get("why") or "").strip() or "Decided on the board, from the map and its recommendation."
+    # Every line the strategy cannot start without is asked for on the form and refused here while one is empty.
+    strategy, said = record_lines(answers)
+    why = said.pop("Why", "") or "Decided on the board, from the map and its recommendation."
     refuse_foreign(root, resurvey.writes(root, layout), "deciding the strategy")
     folder = root / layout.under("docs/adr")
     folder.mkdir(parents=True, exist_ok=True)
@@ -97,7 +99,10 @@ def decide(root: Path, layout: Layout, answers: Mapping[str, str], today: str | 
     path = folder / f"{number:04d}-change-strategy.md"
     path.write_text(
         f"# {number:04d}. Change strategy: {SAYS[strategy]}\n\nDate: {today or datetime.date.today().isoformat()}\n\n"
-        f"## Status\n\nAccepted\n\n## Decision\n\nStrategy: {strategy}\n\n## Context\n\n{why}\n", encoding="utf-8")
+        f"## Status\n\nAccepted\n\n## Decision\n\nStrategy: {strategy}\n"
+        + "".join(f"{name}: {value}\n" for name, value in said.items())
+        + f"\nThe playbook is `docs/strategies/{strategy}.md`: what this decision means for every step after it.\n"
+        f"\n## Context\n\n{why}\n", encoding="utf-8")
     relative = path.relative_to(root).as_posix()
     # The record reads the decision off the ADR when it is refreshed, and the map and the pages follow it.
     paths = sorted({relative, "project.json", *resurvey.refresh(root, clean_checked=True).rewritten})
@@ -174,7 +179,8 @@ def gate_when_grounded(root: Path, running: Fitting | None) -> Fitting | None:
     return gate(root, layout_of(document), running.said()["lines"] if running else None)
 
 
-def control(key: str, recommended: str | None, agents: str, prd: str = "", tooling: str = "") -> str:
+def control(key: str, recommended: str | None, agents: str, prd: str = "", tooling: str = "",
+            proposal: Proposal | None = None, name: str = "next") -> str:
     """The control on the step that is now, or nothing where only the agent can take it; `prd` is the PRD
     already written, offered again, and `tooling` the extensions `./init` can elect, as their checkboxes."""
     if key == INIT:
@@ -184,13 +190,7 @@ def control(key: str, recommended: str | None, agents: str, prd: str = "", tooli
     if key == VERIFY:
         return '<div class="ask"><button class="go" data-step="verify">Run the gate</button></div>'
     if key == STRATEGY:
-        options = "".join(
-            f'<label class="check"><input type="radio" name="strategy" value="{esc(name)}"'
-            f'{" checked" if name == recommended else ""}> <span><b>{esc(name)}</b> — {esc(says)}'
-            f'{" (recommended)" if name == recommended else ""}</span></label>' for name, says in SAYS.items())
-        return (f'<form class="ask-page" id="step-form"><div class="checks">{options}</div>'
-                '<textarea name="why" rows="2" placeholder="Why this one, in your words (optional)"></textarea>'
-                '</form><div class="ask"><button class="go" data-step="strategy">Decide</button></div>')
+        return strategy_form(recommended, proposal, name)
     if key in (CONSTITUTION, SPECIFY):
         boxes = "".join(
             f'<div class="q"><label for="{name}">{esc(heading)}{"" if needed else " (optional)"}</label>'

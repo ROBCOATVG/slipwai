@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from . import next_steps
-from .adoption_flow import GROUND, PRD, control, key_of
+from .adoption_flow import GROUND, PRD, STRATEGY, control, key_of
 from .adoption_flow import SCRIPT as STEPPING
 from .errors import GenerationError
 from .folder_field import SCRIPT as CHOOSING
@@ -27,6 +27,7 @@ from .layout import layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import adoption_of
 from .page_shell import esc
+from .stack_proposal import proposed
 
 
 def adoption_card(root: Path, running: bool = False) -> str:
@@ -65,7 +66,9 @@ def adoption_card(root: Path, running: bool = False) -> str:
             ground_card(root) + f"<script>{GROUNDING}</script>" if key == GROUND else
             control(key, (adoption.strategy or {}).get("recommended"), agents,
                     str((root / layout.under(PRD)).resolve()) if (root / layout.under(PRD)).is_file() else "",
-                    field_html(tooling) if (tooling := extensions_asked({})) else ""))
+                    field_html(tooling) if (tooling := extensions_asked({})) else "",
+                    proposed(root, document) if key == STRATEGY else None,
+                    f"{document.get('name') or root.name}-next".lower().replace("_", "-")))
     return ('<div class="card" id="adoption"><h2>Where this adoption stands</h2>'
             '<p class="empty">Read off the tree, so it moves as each step is done — on this board where it can '
             f'be, and in the coding agent opened in {esc(root.resolve())} where it cannot. '

@@ -128,7 +128,7 @@ plans: S is a morning, M a day, L two or three.
 
 | Slice | What lands | Size | Status |
 |---|---|---|---|
-| 21.1 | `docs/reference/the-brief.md`, and the fixture brief the page points at | S | todo |
+| 21.1 | `docs/reference/the-brief.md`, and the fixture brief the page points at | S | done |
 | 21.2 | `slipwai brief check <dir>`, and the page readers moved to `drawn.py` | M | todo |
 | 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | M | todo |
 | 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | todo |
@@ -255,7 +255,7 @@ tests/fixtures/brief/
 
 Each page carries `<title>`, `<link rel="stylesheet" href="../look/look.css">`, and one
 `<article class="state" data-decided="person|proposed">` per state with its `<h2>`. The count of each
-`data-decided` value is fixed when the pages are written and then asserted by 21.5. The page under
+`data-decided` value is ten `person` and six `proposed`, asserted by 21.5. The page under
 `docs/reference/` links this folder as the worked example, the way the quickstarts are the reference's other
 worked examples.
 
@@ -323,9 +323,9 @@ worked examples.
   `VERDICT`, `agents/feedback.py` — match `— approved` and `— parked` with a word boundary and are not
   touched; one test runs `check-surfaces.py`'s regex over a line with the suffix to prove it.
 - `voyage_page.py`'s `verdict_form`: where any state carries the attribute, the note gains one line, `16
-  states: 11 decided by Sam, 5 proposed`, and nothing otherwise. The file stands at 785 of 790 lines; the
+  states: 10 decided by Sam, 6 proposed`, and nothing otherwise. The file stands at 785 of 790 lines; the
   line is written inside that or the budget moves with its reason in the same commit.
-- `brief_check.py`'s surfaces line gains `, 11 decided by a person, 5 proposed` where any page carries it.
+- `brief_check.py`'s surfaces line gains `, 10 decided by a person, 6 proposed` where any page carries it.
 - `assets/toolkit/commands/mockups.md`: one sentence saying a handed-over page may carry `data-decided`
   and a redraw keeps it. `tests/fixtures/command-pages.sha256` is taken again with
   `PYTHONPATH=src:tests python3 tests/command_pages.py`.

@@ -229,7 +229,8 @@ def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question
                              "sorted: whichever file reads as the requirements document becomes "
                              "docs/prd.md and everything else lands under docs/design/, which the mock-up "
                              "stage reads before it draws a surface — where it finds a direction there, "
-                             "it follows it rather than inventing one"))
+                             "it follows it rather than inventing one. The folder's shape is "
+                             "docs/reference/the-brief.md"))
     return said
 
 

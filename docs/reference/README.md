@@ -34,6 +34,7 @@ Two guide pages sit between the guide and these rules:
 | [The rungs](the-rungs.md) | How much of its past one service keeps. This is the one answer that you cannot change back later |
 | [The skiff and the liner](the-skiff-and-the-liner.md) | The two shapes of a target, and the real cost of moving between them |
 | [The kinds of package](package-kinds.md) | Language, extension, target and quickstart; the import surface, and its limit of twenty names for each kind |
+| [The brief](the-brief.md) | One folder at the front door: the requirements document is found, everything else is carried, a surface is a page and a state is an article on it |
 
 Two decision records are also here. Each record is about a question that was decided once. Read the record
 instead of deciding the question again:

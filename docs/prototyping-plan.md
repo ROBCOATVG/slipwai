@@ -6,7 +6,7 @@ rest on what to build instead: a contract at slipwai's front door that a prototy
 that a person who has never written a specification can play with a prototype, and what they decided while
 playing arrives in a generated project as a requirements document, surfaces with their states, people, facts
 and a look. A mock of the whole route, with a clickable prototype of the product it describes, is at
-https://claude.ai/artifact/GGdVnjrQzATQi1nUSDj9WM.
+https://claude.ai/artifact/GGdVnjrQzATQi1nUSDj9WM; its sources are under [`mockups/brief/`](mockups/brief/).
 
 **The principle the plan serves:** a prototype is the cheapest place to be wrong. Every answer a person
 gives while tapping through one is a decision the draft stage would otherwise take for them and list under

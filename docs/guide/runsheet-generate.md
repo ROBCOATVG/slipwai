@@ -59,7 +59,8 @@ where no command covers the step.
 - **1.1: from a document.** The last two questions take a requirements document, or the folder that
   contains it (`--prd <file>`, `--brief <dir>`). The command copies the document in as `docs/prd.md`. On
   the board, the first specification is then drafted from it for you, and Phase 2 starts at 2.3.
-  [The brief](../reference/the-brief.md) says what the folder may hold and how it is sorted.
+  [The brief](../reference/the-brief.md) says what the folder may hold and how it is sorted, and
+  `slipwai brief check <dir>` says what will be read from it before you generate.
 - **1.1: for scripts and CI.** Every answer is also a flag: for example,
   `slipwai generate bookings --quickstart laptop-trial`, or each axis one by one.
   `slipwai generate --help` lists the flags. The flag form does not run `./init` unless you give `--init`.

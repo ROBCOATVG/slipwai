@@ -60,7 +60,7 @@ follow a direction it finds there rather than invent one. The whole folder is co
 
 ## A surface page
 
-A surface is one HTML page under `surfaces/`. `passage.drawn_states` reads two things from it and nothing else:
+A surface is one HTML page under `surfaces/`. `drawn.page_states` reads two things from it and nothing else:
 
 - `<title>` names the surface. A leading *Mock:* or *Mock-up:* is dropped, and so is anything before a dash,
   so `Mock: Club boats — Book a boat` is the surface *Book a boat*.
@@ -112,7 +112,7 @@ first feature, and this contract does not try to make the other one better.
 | In the folder | Lands as | Read by | When |
 |---|---|---|---|
 | the requirements document | `docs/prd.md` | `/draft` | the first stage after `./init`, which stops with the specification and its `## Assumptions` |
-| `surfaces/*.html` | `docs/design/surfaces/*.html` | the surfaces stage, then `passage.drawn_states` | the storyboard, and the approve button on the Voyage window |
+| `surfaces/*.html` | `docs/design/surfaces/*.html` | the surfaces stage, then `drawn.page_states` | the storyboard, and the approve button on the Voyage window |
 | `look/` and anything else | `docs/design/…` | `commands/mockups.md` | before a surface is drawn |
 | `people.md` | `docs/design/people.md` | the draft, as material | planned, 21.3 |
 | `domain.md` | `docs/design/domain.md` | the mock-up stage, as material | planned, 21.4 |
@@ -129,9 +129,27 @@ Each ends with what to do.
 | `--brief <dir> holds N files, over the 200 one handed-over tree may carry` | a parent directory was named | point it at the design material rather than at its parent |
 | `--brief <dir> is NMB, over the 50MB one handed-over tree may carry` | the folder holds something that is not design material | move the large files out, or link to them from the document |
 
-*Planned, slice 21.2:* `slipwai brief check <dir>` reads the folder the way `generate` would and prints what
-it found before anything is generated: the document and how it was found, the surfaces and their states,
-the look, the people, the facts, and what the draft will have to assume.
+## The check
+
+`slipwai brief check <dir>` reads the folder the way `generate` would — the same sorting, the same page
+reader, the same limits — and prints what it found, before anything is generated:
+
+```
+requirements document: prd.md, by name
+surfaces: 3, states: 16, each with a heading
+look: look/look.css
+people: 2   facts: 2, cited
+the draft will have to assume: 1 — Can a member hold two bookings on the same day? (prd.md, ## Open)
+```
+
+- A folder with no document says so and exits 0: that is an answer, the one `generate` gives.
+- A page with no `<article class="state">` is counted as one state, `shown`, and the line names the page.
+- A fact whose section has no `Source:` line is named as having no source.
+- The last line is a reading of the document, not the draft: a heading that is a question, whatever is
+  under a `## Open` heading, and a bullet that ends in a question mark, says `TBD` or starts `open:`. It
+  finds what the document says it left open. What the document does not know it left open, the draft
+  finds, and lists under `## Assumptions`.
+- Not a directory, and over either limit, are the refusals above, exit 2.
 
 ---
 

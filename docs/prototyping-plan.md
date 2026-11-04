@@ -129,7 +129,7 @@ plans: S is a morning, M a day, L two or three.
 | Slice | What lands | Size | Status |
 |---|---|---|---|
 | 21.1 | `docs/reference/the-brief.md`, and the fixture brief the page points at | S | done |
-| 21.2 | `slipwai brief check <dir>`, and the page readers moved to `drawn.py` | M | todo |
+| 21.2 | `slipwai brief check <dir>`, and the page readers moved to `drawn.py` | M | done |
 | 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | M | todo |
 | 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | todo |
 | 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | S | todo |

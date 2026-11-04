@@ -139,6 +139,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "folder_choice", "folder_field",
               # Where the project stands, read for the board's Voyage window: the stages, the slices, the
               # model, and who answers at each stop of the run.
+              # A surface page read as the board reads it, in one place: the Voyage window, the upstream
+              # stop and `brief check` all approve or count the same states.
+              "drawn",
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
               # One captain's own window: its deck and harbour lines as one timeline, and its output.
               "captain_page",
@@ -154,6 +157,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "upstream",
               # What a handed-over document stands on, carried in with it.
               "design_docs",
+              # The same folder read before it is handed over, and the verb that prints the reading.
+              "brief_check", "cli_brief",
               # And the documents that window links to, rendered rather than served: a person asked to say
               # a specification is good is shown the specification, not its markup.
               "spec_page",

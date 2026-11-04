@@ -1,0 +1,196 @@
+# The brief: prototyping that feeds slipwai
+
+A plan for a phase after feedback points, written on 2026-11-04 from an exploration that started as "should
+slipwai have a prototyping mode". It should not, and this plan says why in one section and then spends the
+rest on what to build instead: a contract at slipwai's front door that a prototyping tool can target, so
+that a person who has never written a specification can play with a prototype, and what they decided while
+playing arrives in a generated project as a requirements document, surfaces with their states, people, facts
+and a look. A mock of the whole route, with a clickable prototype of the product it describes, is at
+https://claude.ai/artifact/GGdVnjrQzATQi1nUSDj9WM.
+
+**The principle the plan serves:** a prototype is the cheapest place to be wrong. Every answer a person
+gives while tapping through one is a decision the draft stage would otherwise take for them and list under
+`## Assumptions`, and every state they see is a state the mock-up stage would otherwise draw and ask them to
+approve. So the measure of a prototyping tool is not how fast it makes software. It is how few assumptions
+the draft has to make, and whether the storyboard is approved the first time it is shown.
+
+## 1. Why not a mode
+
+Slipwai has five dials and none of them is rigour, and that is deliberate:
+
+| Dial | What it moves | What it leaves alone |
+|---|---|---|
+| Skiff or liner | The size of the cloud stack | `make verify`, the release modes, the images. [The reference](reference/the-skiff-and-the-liner.md) says so in its last section |
+| The telegraph | Boilers, delegates, bunker, stage budgets | The gates. `bar` gets *stricter* as the run slows |
+| Sail or cruise, and `upstream` | Who answers, and whether the three upstream stops wait | What the stages are |
+| The release mode | How dark a merge is | What a merge must pass |
+| Quickstarts and axes | What is generated | The loop that runs in it |
+
+A `prototype` profile beside `standard` and `event-modelling`, or a rigour number under the telegraph, would
+be a standing exemption, which rule 5 in `AGENTS.md` forbids by name. The release-mode design derives
+behaviour from a fact about the product because *a setting that somebody must remember to change is wrong
+each time they forget*; a prototype flag left on is a product built without gates. And each stage a mode
+would skip exists because skipping it produced a named failure in the first attempt: screens nobody drew
+reached a demo, examples nothing wrote were demoed. A mode brings those back under a switch, and every skill
+and check grows an "unless prototype" branch.
+
+Two readings of "prototype" remain, and they get different answers:
+
+- **Answer a question, then throw the code away.** A spike. The story-splitting skill already defines it:
+  timeboxed, explicitly disposable, acceptance criteria phrased as answered questions. That belongs inside
+  the loop as a slice kind whose branch never merges, and it is **not this plan**: section 5 lists it as the
+  thing to do next.
+- **Get a person to a thing they can play with, before anything is specified.** This plan.
+
+## 2. What exists today
+
+The front door is `slipwai generate --brief <dir>`, or the board's *Everything else* field on the start
+form. `design_docs.py` sorts the folder:
+
+- **The requirements document is found by name, then by heading.** `prd.md`, `prd.txt`, `requirements.md`
+  or `brief.md` wins; otherwise any `.md` or `.txt` whose name or first heading says PRD, requirement or
+  product brief. Relative links from it to files in the folder are rewritten to where they land.
+- **Everything else lands under `docs/design/`**, at most 200 files and 50 MB, and nothing outside the
+  folder travels. `commands/mockups.md` reads the directory before drawing and is told to *follow it rather
+  than invent one*.
+- **Handed-over surfaces are reviewed, not redrawn.** The surfaces stage storyboards them where they are,
+  `passage.surface_pages` reads the pages the storyboard embeds, and `drawn_states` reads each page's
+  `<title>` as the surface and each `<article class="state">`'s `<h2>` as a state. The board's approve
+  button writes `mock-states.md` from that, one verdict per state.
+- **The draft lists what the document did not settle** under `## Assumptions`, so a brief has a score the
+  moment it is drafted.
+
+Two things the loop wants have no door at generation: domain facts, which live in `.specify/domain/` and
+are *cited, never summarised*; and people, the actors a story signs in as, which live as JSON under
+`specs/<feature>/people/` and cannot exist before the draft makes the feature directory.
+
+## 3. The contract
+
+One folder. Its shape, as a prototyping tool must write it and as `slipwai brief check` (21.2) reads it:
+
+```
+<brief>/
+  prd.md             the requirements document: what it must do, how to tell it works, out of scope
+  people.md          one heading per person, with role and what they do      (21.3)
+  domain.md          facts true whether or not this product exists, cited    (21.4)
+  look/              a stylesheet, a brand sheet, a logo: the direction to follow
+  surfaces/
+    <surface>.html   one page per surface, no framework, no build step
+```
+
+A surface page carries `<title>` naming the surface and one `<article class="state">` per state, headed by
+an `<h2>` naming the state. That is the whole contract for a screen, and it is what the board reads today.
+Two optional attributes make the hand-over richer without changing what the keel reads: `data-decided="person"`
+or `data-decided="proposed"` on the article, which the board shows beside the state (21.5); and a `<link>` to
+`../look/*.css`, which the storyboard then serves from where it is.
+
+What the contract does **not** carry: code. A prototype that arrives as a React application is a brownfield
+repository, and its door is `slipwai adopt`, with a survey and a convergence map. That is a worse route for a
+first feature than a folder of static states, and the plan does not make it better.
+
+## 4. The prototyping tool
+
+It is not slipwai, and it never imports the keel. Different user, different output, and the only thing the
+two share is section 3. Its working title in the mock is *Sketch*. What it has to do:
+
+1. **Draw a prototype the person can play**, from what they say. Not screens: a thing with taps. The mock's
+   fourth frame is the shape — one screen per surface, the states reachable by doing things, two people to
+   sign in as.
+2. **Walk the states.** Loading, empty, populated, partial, error, recovery, permission denied, offline: the
+   same list the mock-up researcher asks per surface. It asks the ones a person has to answer, proposes the
+   ones every good version of a screen has, and writes each as a state with who decided it. Nobody draws a
+   loading state unprompted, and the builder builds every state whether or not somebody talked about it.
+3. **Write decisions as they happen.** Every "no, grey it" is a line in `prd.md`. The draft's assumptions
+   count is the metric.
+4. **Keep facts apart from choices.** *A checkout lasts two years* goes in `domain.md`; *show the keelboats
+   greyed* goes in `prd.md`. The keel's own domain module makes this distinction the whole point, and the
+   person who has never written a spec is exactly the person who knows the facts.
+5. **Name the people.** Role, name, what they do. They become the people files and the demo as the actor.
+6. **Record what is out of scope**, which a prototype never records and the split always needs.
+7. **Check before hand-over, in plain words.** Green for what the builder can start without asking, amber for
+   what it will decide and say. The person never opens the folder; the developer can.
+8. **Export static state pages**, not the prototype's code. The prototype is for the person to play with. What
+   crosses the boundary is one page per surface, one block per state.
+
+Its first version is a conversational session using the toolkit's own skills — `frontend-design`,
+`storyboard`, `find-gaps` in its design-mock mode — with the person present: the mock-up stage's researcher
+and draughtsman, run before a project exists. Whether it later becomes a hosted application is a second
+decision, taken once the export has been through a real draft.
+
+## 5. The slices
+
+Keel side first, because a tool cannot target a contract nobody has written down. Sizes as in the other
+plans: S is a morning, M a day, L two or three.
+
+### 21.1 `docs/reference/the-brief.md` — S
+
+The contract of section 3 as a reference page, in the shape of the other reference pages: what is read,
+by which module, and what each refusal says. Links from `runsheet-generate.md` and the board's *Everything
+else* help text. No code changes.
+
+### 21.2 `slipwai brief check <dir>` — M
+
+Reads a folder the way `generate --brief` would and prints what it found, before anything is generated:
+
+```
+requirements document: prd.md, by name
+surfaces: 3, states: 16, each with a heading
+look: look/look.css
+people: 2   facts: 2, cited
+the draft will have to assume: 1 — one booking per member per day (prd.md leaves it open)
+```
+
+- It calls `design_docs.briefed` and `passage`'s page readers, so what it prints is what the stage will read.
+- A surface page with no `<article class="state">` is reported as one state, `shown`, which is what
+  `drawn_states` does, and the line says so.
+- "Will have to assume" is a heuristic over `prd.md`: a question mark in a heading or a bullet, `TBD`,
+  `open:`, and a `## Open` section. The line names the file and the heading. It is not the draft.
+- Every refusal ends with the command or edit that fixes it.
+- Tests: a fixture brief under `tests/fixtures/brief/`; a brief with no PRD prints the "written in the
+  agent" line; an oversized folder refuses with the count.
+
+### 21.3 People in the brief — M
+
+`people.md` in the folder, one `##` heading per person with `role:` and a line of what they do. The draft
+writes `specs/<feature>/people/<username>.json` from it, in the shape `try_it.people()` reads, with a
+generated password and no email. `draft.md` names the file; `check-try` already refuses a username the realm
+holds. A brief with no `people.md` changes nothing.
+
+### 21.4 Domain facts in the brief — S
+
+`domain.md` in the folder is copied to `.specify/domain/brief.md` at generation, with a first line saying
+where it came from. The skipper's citation rule needs no change: a fact there is a fact to cite.
+
+### 21.5 Who decided a state — S
+
+`drawn_states` reads `data-decided` on a state article where it is present. The voyage's storyboard card
+shows it beside the state. `record_verdict` writes it into `mock-states.md` as a trailing `(decided by
+<who>)` on the state line, so the split and the example map can see which states a person chose and which
+were proposed.
+
+### 21.6 The prototyping tool, first version — L, in its own repository
+
+A skill bundle that runs the eight steps of section 4 in a plain agent session and writes the folder of
+section 3. It carries no keel code. Its acceptance test is one real brief through `generate --brief`,
+`/draft` and `make surfaces` on a laptop-trial quickstart, with the two numbers recorded: assumptions after
+the draft, and whether the storyboard was approved the first time.
+
+## 6. What this plan does not do
+
+- **It does not add a mode, a profile or a telegraph number.** Section 1.
+- **It does not build the spike slice kind.** That is the right answer to the other reading of "prototype":
+  a slice with a question and a timebox, whose branch is kept as a ref and never merges, whose output is a
+  finding under `docs/spikes/`. It needs a chart entry kind, a command and one refusal, and it is a plan of
+  its own.
+- **It does not accept a prototype's code.** A code prototype is an adoption.
+- **It does not change the storyboard stop.** The person still approves, surface by surface, on the board.
+  The brief makes the drawings theirs; it does not skip the look.
+
+## 7. Open points
+
+- Whether `people.md` should also let a brief name an existing realm user, for a brief written against a
+  product that already has one.
+- Whether the tool should emit `given/when/then` examples per state for the event-modelling profile, or leave
+  that to the model stage. Leaving it is the default: the model derives examples from approved surfaces, and
+  a second source of examples is a second thing to keep in step.
+- The tool's name. *Sketch* is the mock's working title and nothing more.

@@ -17,9 +17,10 @@ stage that stops for a person *by design* is indistinguishable, from the outside
 `Stage.expect` is that sentence: roughly how long, and whether it will stop for you. It is written here
 beside the state rather than in the page, because the stage is what knows it.
 """
-# budget: 445 — the stages, the surfaces a storyboard shows when they were handed over, and the storyboard read
-# both ways: states waiting on a person, and a drawing turned down whole that waits on being drawn again
-# and the Slices step's two kinds of wanting a person: attention while work goes on, and stopped
+# budget: 450 — the stages and the plural words they say, the surfaces a storyboard shows when they were
+# handed over, and the storyboard read both ways: states waiting on a person, and a drawing turned down
+# whole that waits on being drawn again; and the Slices step's two kinds of wanting a person: attention
+# while work goes on, and stopped
 from __future__ import annotations
 
 import html
@@ -322,7 +323,7 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                        expect="Written in a headless session by `make draft` \u2014 minutes, not seconds. It "
                               "does not stop for you; read it afterwards."))
     ideas_waiting = intake_pending(root)
-    held = f"{len(specs)} feature(s)" if specs else "nothing to build from yet"
+    held = plural(len(specs), "feature") if specs else "nothing to build from yet"
     if ideas_waiting:
         held = f"{held}; waiting: {', '.join(ideas_waiting)}"
     found.append(Stage("specification", "Specification", drafting or ("done" if specs else "todo"),
@@ -380,7 +381,7 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     found.append(Stage("chart", "Chart & split", launching or ("done" if split else "todo"),
                        charted[0].relative_to(root).as_posix() if charted else "specs/<feature>/chart.yaml",
                        "make launch (the board's Continue the build)",
-                       f"{sum(counts.values())} slice(s) charted" if split else
+                       f"{plural(sum(counts.values()), 'slice')} charted" if split else
                        "charted, not split" if charted else "fairways, marks and slices",
                        expect="A headless session draws the chart and splits it into slices \u2014 minutes. "
                               "It does not stop for you."))
@@ -414,7 +415,7 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                        else "the fleet, under /cruise",
                        expect="The fleet: a captain per fairway, working its slices. Hours, and the Speed "
                               "card below is what sets how many run at once. It stops for you when a "
-                              "captain parks, and the park appears under *Waiting on you*."))
+                              "captain parks, and the park appears under Waiting on you."))
 
     demos = fleet.get("demo_due") or []
     accepted = fleet.get("accepted") or []
@@ -426,15 +427,19 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     return found
 
 
+def plural(count: int, word: str) -> str:
+    return f"{count} {word}{'' if count == 1 else 's'}"
+
+
 def wanting(wants: list[dict], counts: dict[str, int]) -> str:
-    """What wants a person, said by kind — `2 slice(s) parked; 15 decision(s) nobody has read yet, over the
-    ceiling of 10` — so the step names the thing to go and do rather than a count of things."""
-    kinds = {"parked": "park(s)", "question": "question(s)", "told": "note(s) for you"}
-    said = [f"{sum(1 for row in wants if row.get('kind') == kind)} {word}" for kind, word in kinds.items()
-            if any(row.get("kind") == kind for row in wants)]
+    """What wants a person, said by kind — `2 parks; 15 decisions nobody has read yet, over the ceiling of
+    10` — so the step names the thing to go and do rather than a count of things."""
+    kinds = {"parked": "park", "question": "question", "told": "note"}
+    said = [plural(sum(1 for row in wants if row.get('kind') == kind), word) + (" for you" if kind == "told" else "")
+            for kind, word in kinds.items() if any(row.get("kind") == kind for row in wants)]
     said += [str(row.get("what", "")) for row in wants if row.get("kind") == "decisions"]
     if counts.get("waiting") and not any(row.get("kind") == "parked" for row in wants):
-        said.insert(0, f"{counts['waiting']} slice(s) waiting")
+        said.insert(0, f"{plural(counts['waiting'], 'slice')} waiting")
     return "; ".join(said) or "something waits on you"
 
 

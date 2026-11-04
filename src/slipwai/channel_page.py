@@ -85,11 +85,11 @@ h1{font-size:1.4rem;font-weight:600;margin:0;letter-spacing:-.01em}
 .sub{color:var(--ink-3);font-size:.9rem;margin-top:4px}
 .mark{width:46px;height:46px;flex:none;color:var(--teal)}
 .mark .spark{color:var(--brass)}
-.card{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:18px;margin-top:20px}
+.card{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:18px;margin-top:20px}
 h2{font-size:.98rem;font-weight:600;margin:0 0 12px}
 table{width:100%;border-collapse:collapse;font-size:.9rem}
-th{text-align:left;font-weight:500;color:var(--ink-3);font-size:.76rem;text-transform:uppercase;
-letter-spacing:.05em;padding:0 12px 7px 0;border-bottom:1px solid var(--rule-2)}
+th{text-align:left;font-weight:500;color:var(--ink-3);font-size:.8rem;
+padding:0 12px 8px 0;border-bottom:1px solid var(--rule-2)}
 td{padding:10px 12px 10px 0;border-bottom:1px solid var(--rule-2);vertical-align:top}
 .mono,code,pre{font-family:var(--mono)}
 .cmd{color:var(--teal);white-space:nowrap;font-size:.84rem}

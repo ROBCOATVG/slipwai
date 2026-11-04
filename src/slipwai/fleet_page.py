@@ -30,7 +30,7 @@ STYLE = """
 .headline h2{font-size:1.05rem;margin:0;display:flex;gap:10px;align-items:flex-start;line-height:1.35}
 .headline .dot{width:10px;height:10px;border-radius:50%;flex:none;margin-top:7px;background:var(--ink-3)}
 .headline.teal .dot{background:var(--teal)}.headline.brass .dot{background:var(--brass)}
-.headline.blue .dot{background:#1d4f8f}.headline.red .dot{background:var(--critical)}
+.headline.blue .dot{background:var(--paused)}.headline.red .dot{background:var(--critical)}
 .headline p{margin:8px 0 0;color:var(--ink-2);font-size:.9rem}
 .headline .acts{display:flex;flex-direction:column;gap:8px;min-width:200px}
 .procs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
@@ -39,10 +39,8 @@ STYLE = """
 .proc .w{font-size:.8rem;color:var(--ink-2);margin-top:6px}
 .counts{display:flex;gap:18px;flex-wrap:wrap;font-size:.85rem;color:var(--ink-2);margin-top:12px}
 .counts b{color:var(--ink)}
-.chip.paused{background:#d6e6f8;color:#1d4f8f}
-:root:has(#t-dark:checked) .chip.paused{background:#1b2f4a;color:#9cc3ef}
-@media (prefers-color-scheme:dark){:root:has(#t-auto:checked) .chip.paused{background:#1b2f4a;color:#9cc3ef}}
-.group{border:1px solid var(--rule);border-radius:10px;padding:14px 16px;margin-top:12px;background:var(--paper)}
+.chip.paused{background:var(--paused-soft);color:var(--paused)}
+.group{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-top:12px;background:var(--paper)}
 .group .head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .group h3{font-size:.95rem;font-weight:600;margin:0}
 .group .meta{color:var(--ink-3);font-size:.82rem;margin-top:4px}
@@ -58,9 +56,9 @@ STYLE = """
 .needs .how{font-size:.78rem;color:var(--ink-3);text-align:right;white-space:nowrap}
 .needs .how button{font:inherit;font-size:.78rem;padding:3px 10px;border-radius:6px;border:1px solid var(--rule);
   background:var(--paper);color:var(--ink-2);cursor:pointer}
-.then{margin-top:10px;padding:8px 10px;border-radius:7px;background:var(--ground);font-size:.85rem;color:var(--ink-2)}
+.then{margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--ground);font-size:.85rem;color:var(--ink-2)}
 .then b{color:var(--ink)}
-.quiet-button{font:inherit;padding:8px 14px;border-radius:7px;border:1px solid var(--rule);background:var(--paper);
+.quiet-button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--rule);background:var(--paper);
   color:var(--ink-2);cursor:pointer;white-space:nowrap}
 .quiet-button:hover{border-color:var(--teal);color:var(--ink)}
 @media (max-width:720px){.headline{grid-template-columns:1fr}.needs li{grid-template-columns:20px 1fr}

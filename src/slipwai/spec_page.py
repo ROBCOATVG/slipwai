@@ -48,7 +48,7 @@ STYLE = """
 .doc table{margin:0 0 14px}
 .doc pre{background:var(--paper-2,var(--paper));border:1px solid var(--rule);border-radius:7px;padding:10px 12px;
   overflow-x:auto;font-size:.82rem;margin:0 0 12px}
-.doc code{font-family:ui-monospace,Menlo,monospace;font-size:.86em}
+.doc code{font-family:var(--mono);font-size:.86em}
 .doc :not(pre)>code{background:var(--teal-soft);border-radius:4px;padding:0 3px}
 .doc blockquote{margin:0 0 12px;padding:2px 0 2px 14px;border-left:3px solid var(--rule);color:var(--ink-2)}
 """

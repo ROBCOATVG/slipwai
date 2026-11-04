@@ -352,6 +352,13 @@ def pressure(config: dict, harbour: list[Entry]) -> dict[str, object]:
     }
 
 
+def ago(minutes: float) -> str:
+    """`12622m ago` is a number nobody reads: minutes under an hour, hours under two days, days after that."""
+    if minutes < 60:
+        return f"{minutes:.0f}m ago"
+    return f"{minutes / 60:.0f}h ago" if minutes < 48 * 60 else f"{minutes / 1440:.0f}d ago"
+
+
 def berths(found: list[Fairway], bound: float = STALL_MINUTES,
            now: datetime | None = None, ready: dict[tuple[str, str], list[str]] | None = None,
            clearance_faults: set[str] | None = None) -> list[dict[str, object]]:
@@ -371,7 +378,7 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
             "queued": ", ".join(one.queued(bound, now)) or NOTHING,
             "state": state_of(one, bound, now, count),
             "waiting": count if count is not None else NOTHING,
-            "last": f"{since:.0f}m ago" if since is not None else NOTHING,
+            "last": ago(since) if since is not None else NOTHING,
             "tokens": one.tokens if one.tokens is not None else NOTHING,
             "merged": len(one.merged),
             "marks": len(one.marks),

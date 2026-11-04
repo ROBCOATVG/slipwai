@@ -20,8 +20,8 @@ STYLE = """
 #console{position:fixed;right:16px;bottom:16px;z-index:20;display:grid;justify-items:end;gap:10px;
   max-width:calc(100vw - 32px)}
 #console .launch{font:inherit;font-size:.88rem;padding:8px 16px;border-radius:999px;cursor:pointer;
-  border:1px solid var(--teal);background:var(--teal);color:#fff;box-shadow:0 4px 18px rgb(0 0 0 / 30%)}
-#console .panel{width:min(30rem,calc(100vw - 32px));margin:0;box-shadow:0 8px 28px rgb(0 0 0 / 35%)}
+  border:1px solid var(--teal);background:var(--teal);color:#fff;box-shadow:0 2px 8px rgb(0 0 0 / 18%)}
+#console .panel{width:min(30rem,calc(100vw - 32px));margin:0;box-shadow:0 8px 24px rgb(0 0 0 / 18%)}
 #console .panel[hidden]{display:none}
 #console .log{max-height:min(22rem,45vh);min-height:5rem;overflow:auto;display:grid;gap:8px;align-content:start;
   padding:2px 2px 10px}

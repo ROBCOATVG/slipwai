@@ -29,7 +29,7 @@ SHOWN = 20
 STYLE = """
 #feedback .head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
 #feedback .head h2{margin:0}
-#feedback h3{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:16px 0 6px}
+#feedback h3{font-size:.8rem;font-weight:500;color:var(--ink-3);margin:16px 0 6px}
 #feedback .cap{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;
   border-left:3px solid var(--teal);padding:4px 0 4px 12px;margin:8px 0}
 #feedback .prop{border:1px solid var(--rule);border-radius:8px;padding:10px 12px;margin:10px 0;display:grid;gap:6px}
@@ -37,14 +37,14 @@ STYLE = """
 #feedback .prop pre{white-space:pre-wrap;font-family:inherit;font-size:.86rem;margin:0;color:var(--ink-2)}
 #feedback .route{font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;margin-right:8px;
   background:var(--brass-soft);color:var(--brass)}
-#feedback .route.defect{background:transparent;border:1px solid #b4432f;color:#b4432f}
+#feedback .route.defect{background:transparent;border:1px solid var(--critical);color:var(--critical)}
 #feedback .route.scope,#feedback .route.planned{background:var(--teal-soft);color:var(--teal)}
-#feedback .warn{color:#b4432f;font-size:.86rem;margin:0}
+#feedback .warn{color:var(--critical);font-size:.86rem;margin:0}
 #feedback .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #feedback table{border-collapse:collapse;font-size:.86rem;width:100%}
 #feedback th,#feedback td{text-align:left;padding:5px 10px 5px 0;vertical-align:top;
   border-bottom:1px solid var(--rule-2)}
-#feedback th{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+#feedback th{font-size:.78rem;color:var(--ink-3);font-weight:500}
 #feedback .num{font-family:var(--mono);color:var(--ink-3)}
 #feedback-box{border:1px solid var(--teal);border-radius:8px;padding:12px;margin:10px 0;display:grid;gap:8px}
 #feedback-box[hidden]{display:none}

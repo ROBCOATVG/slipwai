@@ -14,7 +14,11 @@ through it from the board as well.
 """
 from __future__ import annotations
 
+import contextlib
+import os
 import threading
+import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -52,9 +56,19 @@ class StageSession:
     cards kept here for the page."""
 
     def __init__(self, root: Path, command: str, argument: str = "", launch: Launch | None = None,
-                 limit: float = 1800.0) -> None:
+                 limit: float = 1800.0, prompt: str = "", before: Callable[[], str] | None = None,
+                 after: Callable[[], str] | None = None, pid: str = "", stage: str | None = None) -> None:
         self.root, self.command, self.argument, self.limit = Path(root), command, argument, limit
         self.launch = launch
+        #: The words to ask with, for a stage whose script carries its own prompt rather than a command file;
+        #: empty, the stage is asked to run its command. Either way the asking rule rides under them.
+        self.prompt = prompt
+        #: Why the stage cannot start, asked before anything is launched; and what the stage left undone,
+        #: asked after the agent ended its turn. Each answers a sentence, or nothing where all is well.
+        self.before, self.after = before, after
+        #: A pid file under `.slipwai/`, as the toolkit's script writes one, so another window of this
+        #: project sees the stage running; and what the session is told it is, for the hooks it fires.
+        self.pid, self.stage = pid, command if stage is None else stage
         self.turns: list[dict[str, Any]] = []
         self.dropped = 0
         self.lock = threading.Lock()
@@ -98,22 +112,42 @@ class StageSession:
         if launch is None:
             fitting.say("No agent this board can launch; the stage would have run headless.")
             return 2
+        if (refused := self.before() if self.before else ""):
+            fitting.say(refused)
+            self.done = True
+            return 2
         self.lines = fitting.say
         fitting.stage = self
+        marker = self.root / ".slipwai" / self.pid if self.pid else None
         try:
+            if marker is not None:
+                marker.parent.mkdir(parents=True, exist_ok=True)
+                marker.write_text(f"{os.getpid()}\n{time.time():.0f}\n", encoding="utf-8")
+            env = {**login_environment(), **acp_environment(launch.key)}
+            if self.stage:
+                env["SLIPWAI_STAGE"] = self.stage
             self.agent = BoardAgent(launch, self.root, "agent", self.say, kept=self.root / KEPT / self.command,
-                                    env={**login_environment(), **acp_environment(launch.key)})
+                                    env=env)
             fitting.say(f"On {launch.name}, over the Agent Client Protocol.")
             self.agent.begin()
-            stop = self.agent.turn(prompt_for(self.command, self.argument), self.limit)
+            stop = self.agent.turn(self.words(), self.limit)
+            if stop == "end_turn" and self.after and (left := self.after()):
+                fitting.say(f"! {left}")
+                stop = "short"
         except Exception as fault:  # noqa: BLE001 — a stage that raised would leave the run with no end
             fitting.say(f"! The session could not run: {fault}")
             stop = "fault"
         finally:
             if self.agent is not None:
                 self.agent.close()
+            if marker is not None:
+                with contextlib.suppress(OSError):
+                    marker.unlink()
             self.done = True
         return 0 if stop == "end_turn" else 1
+
+    def words(self) -> str:
+        return f"{self.prompt}\n\n{ASKING}" if self.prompt else prompt_for(self.command, self.argument)
 
     def answer(self, number: str, answer: str | None) -> bool:
         return self.agent is not None and self.agent.answer(number, answer)

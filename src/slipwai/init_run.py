@@ -397,18 +397,36 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
 
 
 def stage_step(where: Path, command: str, argument: str, argv: list[str], announced: str, over: str,
-               ended: Callable[[int], str], key: str, limit: float = 1800.0) -> Step:
+               ended: Callable[[int], str], key: str, limit: float = 1800.0,
+               prompt: str | Callable[[], str] | None = None, done: str = "", undone: str = "",
+               **held: Any) -> Step:
     """A stage: over the protocol where this board can launch the project's agent, so the agent can ask the
-    person what only they can decide and the board can see it work; the headless child where it cannot."""
+    person what only they can decide and the board can see it work; the headless child where it cannot.
+
+    `prompt` is the stage's own words where it has no command file — the model's — or what gets them from
+    the project; one that gets nothing leaves the stage to the child. `done` and `undone` are what the
+    stage says at its end over the protocol, where `ended`'s words about a `make` that never ran would be
+    wrong. `held` is the session's: `before`, `after`, `pid`, `stage`."""
     from .stage_session import StageSession, launchable  # noqa: PLC0415 — the edge tier, reached from here only
 
     if launchable(where) is None:
         return Step(argv, announced, ended, key)
-    return Step([], over, ended, key, session=StageSession(where, command, argument, limit=limit).run)
+    words = prompt() if callable(prompt) else prompt
+    if prompt is not None and not words:
+        return Step(argv, announced, ended, key)
+    session = StageSession(where, command, argument, limit=limit, prompt=words or "", **held)
+    if done:
+        def ended(code: int) -> str:
+            return done if code == 0 else undone
+    return Step([], over, ended, key, session=session.run)
 
 
 def draft_step(where: Path) -> Step:
-    return stage_step(where, "draft", "docs/prd.md", DRAFT, DRAFTING, DRAFTING_ACP, drafted, "draft")
+    return stage_step(where, "draft", "docs/prd.md", DRAFT, DRAFTING, DRAFTING_ACP, drafted, "draft",
+                      done="The draft is done. The specification is under specs/: read it, and Continue the "
+                           "build charts and splits it and casts off.",
+                      undone="The draft stopped short; its lines above say where. Fix what it named and draft "
+                             "again, or write the specification with the agent.")
 
 
 def first_feature(where: Path) -> str:
@@ -467,7 +485,9 @@ def assessed(code: int) -> str:
 
 def assess(where: Path, slug: str, said: list[str] | None = None) -> Fitting:
     """One captured idea assessed, in the background: what the voyage's next-feature button starts."""
-    step = stage_step(where, "assess", slug, [*ASSESS, f"SLUG={slug}"], ASSESSING, ASSESSING_ACP, assessed, "assess")
+    step = stage_step(where, "assess", slug, [*ASSESS, f"SLUG={slug}"], ASSESSING, ASSESSING_ACP, assessed, "assess",
+                      done="The assessment is done. Where the verdict was go, the specification is under specs/.",
+                      undone="The assessment stopped short; its lines above say where.")
     fitting = Fitting(where, [step], said)
     fitting.thread.start()
     return fitting
@@ -484,13 +504,6 @@ def triaged(code: int) -> str:
     return f"`make triage` exited {code}. Its last lines say why; Triage on the Feedback card tries again."
 
 
-def triage(where: Path, said: list[str] | None = None) -> Fitting:
-    """The feedback nobody has proposed a route for, read in the background: what Send on the board starts."""
-    fitting = Fitting(where, [Step(TRIAGE, TRIAGING, triaged, "triage")], said)
-    fitting.thread.start()
-    return fitting
-
-
 def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitting:
     """The surfaces drawn, in the background: what the board's Draw the surfaces button starts.
 
@@ -499,7 +512,10 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
     """
     argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
     step = stage_step(where, "mockups", feature or first_feature(where), argv, DRAWING, DRAWING_ACP, drew,
-                      "surfaces", limit=900.0)
+                      "surfaces", limit=900.0, pid="surfaces.pid", stage="",
+                      done="The surfaces are drawn. The storyboard is below: open it, then Approve or "
+                           "Disapprove it on this page. That verdict is what the model and the chart read.",
+                      undone="The drawing stopped short; nothing was approved. Its lines above say where.")
     fitting = Fitting(where, [step], said)
     fitting.thread.start()
     return fitting
@@ -543,20 +559,6 @@ def outside_session(root: Path) -> dict | None:
             return {"where": str(root), "lines": [said], "step": step, "at": 1, "seconds": seconds,
                     "done": False, "code": None}
     return None
-
-
-def begin_model(where: Path, said: list[str] | None = None) -> Fitting:
-    """The model begun, in the background: what approving a storyboard starts on an event-modelling project."""
-    fitting = Fitting(where, [Step(MODEL, MODELLING, began_model, "model")], said)
-    fitting.thread.start()
-    return fitting
-
-
-def launch(where: Path, said: list[str] | None = None) -> Fitting:
-    """The build continued, in the background: what the board's button starts, carrying the receipt so far."""
-    fitting = Fitting(where, [Step(LAUNCH, LAUNCHING, launched, "launch")], said)
-    fitting.thread.start()
-    return fitting
 
 
 def init_flag(parser: argparse.ArgumentParser) -> None:

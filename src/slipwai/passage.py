@@ -168,10 +168,9 @@ def surfaces(root: Path) -> tuple[int, int, int]:
     return seen, approved, parked
 
 
-def modelled(root: Path) -> bool:
-    """Whether `model.yaml` names at least one slice. Read as text, deliberately: the keel reads no YAML, and
-    the one fact this needs is whether the `slices:` key is followed by anything but an empty list."""
-    page = root / "docs/event-model/model.yaml"
+def names_slices(page: Path) -> bool:
+    """Whether a model or a chart names at least one slice. Read as text, deliberately: the keel reads no
+    YAML, and the one fact this needs is whether the `slices:` key is followed by anything but an empty list."""
     if not page.is_file():
         return False
     lines = [line for line in page.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -185,9 +184,18 @@ def modelled(root: Path) -> bool:
     return False
 
 
+def modelled(root: Path) -> bool:
+    return names_slices(root / "docs/event-model/model.yaml")
+
+
 def charts(root: Path) -> list[Path]:
     specs = root / "specs"
     return sorted(specs.glob("*/chart.yaml")) if specs.is_dir() else []
+
+
+def split(root: Path) -> bool:
+    """Whether a chart names a slice, which is what the fleet lights captains from."""
+    return any(names_slices(one) for one in charts(root))
 
 
 def step_state(receipt: dict | None, step: str) -> str:

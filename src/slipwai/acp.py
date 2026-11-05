@@ -215,6 +215,10 @@ class Session:
             if child is not None:
                 child.wait()
                 self.exited = child.returncode
+                for pipe in (child.stdin, child.stdout):  # the agent is gone: nothing more to say or read
+                    with contextlib.suppress(OSError, ValueError):
+                        if pipe is not None:
+                            pipe.close()
             self.errors.close()
             with self.lock:
                 waiters = list(self.waiting.values())

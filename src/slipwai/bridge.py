@@ -71,15 +71,13 @@ from .folder_choice import chosen
 from .ground_card import card as ground_card
 from .ground_card import record as record_ground
 from .harbour import config
-from .init_run import Fitting, begin_model, outside_session
+from .init_run import Fitting, outside_session
 from .init_run import adopted as adopted_init
 from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
 from .init_run import draw as draw_surfaces
-from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
-from .init_run import triage as begin_triage
 from .interview_form import drafts, form, from_query
 from .interview_form import page as interview
 from .interview_page import NO_INIT, destination, elected_in, repository_for
@@ -117,6 +115,9 @@ from .settings_page import route_post as settings_post
 from .spec_page import page as spec
 from .stage_session import route_get as stage_get
 from .stage_session import route_post as stage_post
+from .stage_steps import begin_model
+from .stage_steps import launch as continue_build
+from .stage_steps import triage as begin_triage
 from .telegraph import Refused
 from .try_card import VIDEOS, WALK_ROUTE, trunk_head, walk_file
 from .try_card import act as try_act

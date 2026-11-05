@@ -17,8 +17,9 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai.init_run import DECLINED, Fitting, adopted, command, ended, launch, start
+from slipwai.init_run import DECLINED, Fitting, adopted, command, ended, start
 from slipwai.session_log import folded_line
+from slipwai.stage_steps import launch
 
 
 def project(says: list[str], code: int = 0) -> Path:

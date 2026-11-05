@@ -8,7 +8,7 @@ playing arrives in a generated project as a requirements document, surfaces with
 and a look. A mock of the whole route, with a clickable prototype of the product it describes, is at
 https://claude.ai/artifact/GGdVnjrQzATQi1nUSDj9WM; its sources are under [`mockups/brief/`](mockups/brief/).
 
-**Status, 2026-11-05:** 21.1 to 21.5, 21.6a to 21.6c and 21.7 have landed; 21.6d, the record, has its first number and waits on a storyboard verdict for its second. 21.6, the prototyping conversation, is the board's first
+**Status, 2026-11-05:** 21.1 to 21.5, 21.6a to 21.6c and 21.7 have landed; 21.6d, the record, has its first number and waits on a storyboard verdict for its second. 21.8 to 21.10, the board on the Agent Client Protocol, the install from its settings page and the stages over it, are planned on 2026-11-05 and not started. 21.6, the prototyping conversation, is the board's first
 page in this repository, after the release carrying 21.2; it was planned as its own repository until the
 same day, when the aim was restated as one non-technical person from describing the product through to
 delivery, and the board is already their face from the brief door on. Section 8 is the build: the order,
@@ -155,6 +155,9 @@ plans: S is a morning, M a day, L two or three.
 | 21.6c | Check and hand over: the plain-words check, and the button that fills the start page | S | done |
 | 21.6d | The record: one real brief through the page and the two numbers, written here | S | todo |
 | 21.7 | The right questions: a question set in the session's prompt, and a pre-made document reviewed against it and taken as the start | M | done |
+| 21.8 | The board speaks the Agent Client Protocol: a settings page where what runs its sessions is picked from the ACP agents the registry knows and this machine has, and the first page and the console as ACP sessions — live events, permission requests and questions on the page, on every harness with an ACP agent | L | todo |
+| 21.9 | Install from the board: a harness the registry knows put on this machine from the settings page, and its sign-in started there, where the machine has what that takes; the one line to run shown where it does not | M | todo |
+| 21.10 | The stages over ACP: draft, the surfaces, the adoption steps and the rest of what the board hands to a session go through the same adapter, so each shows its progress, asks the person instead of assuming, and can be stopped | L | todo |
 
 ### 21.1 `docs/reference/the-brief.md` — S
 
@@ -235,7 +238,9 @@ its own.
 - **It does not make the board reachable without a terminal.** Through to delivery for a non-technical
   person is blocked by installation — a Python CLI, Docker, a harness and its login, a cloud target — not
   by where the prototyping conversation lives. 21.6 is a better front door onto the same step; a board a
-  person can have without a terminal is a plan of its own, and a bigger one.
+  person can have without a terminal is a plan of its own, and a bigger one. 21.8 and 21.9 are its first
+  two steps and no more: what runs the board's sessions picked on a settings page rather than found
+  in a shell, and a harness installed from there; the board itself is still started from a terminal.
 
 ## 7. Open points
 
@@ -522,6 +527,101 @@ stage's job here or a product manager's artefact, and the brief keeps its four h
   laptop-trial quickstart, with the two numbers written into section 5's heading row: assumptions after the
   draft, and whether the storyboard was approved the first time. The commit carries the numbers and nothing
   else, with `Slice-done: 21.6d`.
+
+#### 21.8 — the board on the Agent Client Protocol
+
+Asked for on 2026-11-05, during the second live run, when the first page's session turned out to be
+`claude` by name: "we cant tie this to claude", then "maybe we have an overall settings page for the ui
+where these are picked. It may be worth having 1 - autodetect - and later 2 - an actual install for this,
+it would remove the issue where non tech folk need to use bash". Four ways were laid out — one headless
+run per turn built from the registry row with the folder as the state, the harness's own session and
+resume flag recorded row by row, the Agent Client Protocol, or a model API called directly — and the
+protocol was chosen, with the words "there are many ways to build a stateful chat bot driven by a
+harness" against settling for the first.
+
+- **What is wrong today.** The console and the first page look up the `claude` binary and write its flags
+  by hand; the plan's own words under 21.6 are "not harness-neutral in its first version". The registry's
+  headless rows run 27 harnesses one prompt at a time, with a stream the board can read on two of them,
+  and a resume flag recorded on one. A conversation needs a session: state, events as they happen, a way
+  to be asked something, a way to be stopped.
+- **The protocol.** The Agent Client Protocol (agentclientprotocol.com, wire version 1 stable, v2 in
+  draft since July 2026) is JSON-RPC 2.0 over the agent's stdin and stdout, one JSON object per line, the
+  agent a subprocess of the client. The client sends `initialize`, `session/new` (a working directory and
+  MCP servers, which here are none), `session/prompt` for each turn, `session/cancel` to stop one, and
+  `session/load` where the agent advertises `loadSession`. The agent sends `session/update`
+  notifications as it works — message chunks, tool calls and their updates, plans — and calls back
+  `session/request_permission` before a tool call the client must authorise, and `elicitation/create`
+  to ask the person a question. The client may offer `fs/read_text_file` and `fs/write_text_file`, which
+  the board does not: an agent's own tools write the folder, and the permission request is where the
+  board holds the line at the workspace. The official list has 52 agents; about nineteen are harnesses
+  the registry knows — Claude Code and Codex through adapters, Gemini CLI, Goose, OpenCode, Cursor,
+  Copilot, Cline, Droid, Hermes, Kimi, Qwen, Qoder, Vibe, Augment, Pi, and two the registry has no
+  headless row for at all, Junie and Kiro.
+- **No dependency.** The keel ships with none, and the protocol's client half the board needs is small:
+  spawn, six methods, two callbacks, a line reader. `acp.py` in the edge tier, speaking it with `json`
+  and `subprocess`, with the Python SDK read as the reference and not vendored. The registry gains an
+  `acp` field per harness — how it is launched as an agent, native or through which adapter, read from
+  documentation and dated, `proven: false` until a session has run on it from the board — beside the
+  `headless` field it keeps for the one-shot stages.
+- **A settings page**, `/settings`, last on the tab bar. *Runs on*: every registry harness with an `acp`
+  row whose launch is on this machine's PATH, with where it was found, and *Auto*, the first of them, as
+  the default; a model beside it where the row says how one is named. Remembered in `~/.slipwai/board.json`
+  and read when a session starts. A project's recorded harness in `.specify/integration.json` outranks
+  the board's for its console, because it is the person's answer to `./init`; the first page, with no
+  project, has only the board's. The theme stays in the corner.
+- **The first page and the console as sessions.** `brief_session.Sketch` and `console.Console` keep their
+  shape — turns behind a lock, a poll with `since`, the brief read after each answer — and swap the
+  process for an `acp.Session`: `session/new` in the workspace, the eight steps as the first prompt's
+  system text where the agent takes one and as the prompt's own head where it does not, each turn a
+  `session/prompt`, each `session/update` a turn on the page as it happens on every agent and not two.
+  A permission request for a write inside the workspace is answered yes by policy; one for anything else
+  is a question on the page. A question the agent asks through elicitation is a question on the page,
+  which the person answers in the same session. `session/load` where the agent has it, so a board
+  restart keeps the conversation, and the session id in the workspace so the page knows what to load.
+- **What it does not change.** The brief folder stays the contract and the door for outside tools. The
+  start page and `slipwai generate` are untouched: a board with no settings file and no ACP agent on PATH
+  runs the first page and the console as it does today, on `claude`, and says so; section 6.
+- **Proof.** `tests/test_acp.py` over a stand-in agent that speaks the protocol from a script, as the
+  console's tests use a stand-in: the handshake, a turn's updates on the page, a permission inside and
+  outside the workspace, a question answered, a cancel, a load. `tests/test_brief_session.py` and the
+  console's tests run over the same stand-in. One live run on two agents, Claude's adapter and one native,
+  recorded here. Fragment, MINOR.
+
+#### 21.10 — the stages over ACP
+
+Asked on the same day: "can acp help improve the generate and adopt processes too?" Generate has no agent
+in it — it is the keel writing a tree — so no. Everything the board hands to a session after it does:
+`draft`, the surfaces and a storyboard's redraw, `assess`, the event model, `triage`, the adoption steps
+only the agent can take, and the captain's own drives. Each runs today through the toolkit's
+`harness.template` and `run_session`, one prompt, a stream read on two harnesses, a kill to stop.
+
+- **Over the adapter from 21.8**, each becomes a session the board can see into and speak to: progress as
+  it happens on every harness, not two; a permission request answered by policy or put to the person;
+  a stop that is `session/cancel` and not a kill.
+- **The one that pays most** is the question. Headless, a stage cannot ask, so the draft writes an
+  assumption; over the protocol it can ask the person on the page and go on in the same session. The
+  metric this whole phase keeps — assumptions after the draft — is answered at the source. The rule is
+  the stage's: ask what only the person can say, assume what the folder already settles, and write
+  either down.
+- **Order.** After 21.8 has run live, stage by stage, the draft first because it is where the number is
+  taken; the toolkit scripts keep their headless path for a harness with no `acp` row, so nothing a
+  project runs today stops working.
+
+#### 21.9 — install from the board
+
+The second of the two, after 21.8: a non-technical person reaches the settings page, sees no harness,
+and is not sent to a shell.
+
+- **The registry records how to put each harness on a machine** — a package manager and a package, or a
+  download — and how its sign-in starts, as it already records how to run one headless. Rows read from
+  documentation, dated, `proven: false` until a person has done it from the board.
+- **The settings page offers the install** where this machine has what the row needs — the package
+  manager on PATH — and runs it as a board step with its output on the page, then starts the sign-in,
+  which is the harness's own flow in a browser. Where the machine lacks the package manager the page shows
+  the one line to run and says why, which is the honest floor: a board that promises an install it cannot
+  do is worse than one that says so.
+- **What it does not do.** It does not install the board itself, Python, Docker or a cloud target; section
+  6's cliff stands. It is the smallest cut of that plan that pays on its own.
 
 ### What to watch
 

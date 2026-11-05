@@ -16,7 +16,11 @@ adapter (handshake 0.4 s; options mode, model, effort, fast; a prompt answered i
 `loadSession`. The page half waits on a board restart the user has not yet called for, since a
 conversation is running on it. Found on the way: the first `npx` launch fetches the package, which a
 60-second handshake would not survive on a slow line — the client now gives a package launch five
-minutes, and 22.8 gains a "make ready" step. 22.7 can be built without the board.
+minutes, and 22.8 gains a "make ready" step. 22.7 is begun without the board: the draft runs over the
+protocol where the board can launch the project's agent — `stage_session.py`, a step run in-process in
+place of the `make draft` child, its words and tool calls as lines on the receipt, a permission and a
+question as cards under it with a Stop, and every stage's prompt carrying the asking rule. The surfaces,
+assess, the model, triage, the adoption steps and the captain's drives are still the headless child.
 
 **The principle the plan serves:** the board is the face a non-technical person sees, and what runs behind
 it must be whichever coding agent that person has — not one named in the keel's source. The protocol is
@@ -155,7 +159,7 @@ the gates inside. The main plan's phase 22 table is the one `make progress` tick
 | 22.4 | The first page over the protocol: `Sketch` on an `acp.Session`, the role at the head of the first prompt, tool cards, a plan, permission and question cards, Stop, the session loaded across a restart | L | todo |
 | 22.5 | The console over the protocol: the same on the Voyage page | M | todo |
 | 22.6 | The live run: one brief through the first page on Claude's adapter and one on a native agent, recorded here | S | todo |
-| 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives; each shows its progress, asks the person instead of assuming, and stops on a cancel; the headless path kept where a harness has no `acp` row | L | todo |
+| 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives; each shows its progress, asks the person instead of assuming, and stops on a cancel; the headless path kept where a harness has no `acp` row | L | the draft done; the rest todo |
 | 22.8 | Install from the settings page: an agent put on this machine from its manifest — `npx` needs only Node, a binary archive is fetched and its sha256 checked — and its sign-in started through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | M | todo |
 
 ### 22.1 `acp.py` — M

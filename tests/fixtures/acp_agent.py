@@ -69,6 +69,9 @@ def turn(number, session, words):
         words = words.rsplit("\n---\n", 1)[1]
     words = words.strip()
     text(session, f"Drawn: {words}")
+    # What the stand-in does is keyed on the first line only: a stage's prompt carries a rule about asking
+    # under its first line, and a word in that rule is not an instruction to this script.
+    words = words.split("\n", 1)[0]
     if "die" in words:
         os._exit(3)
     allowed, cancelled = permission(number * 10 + 1, session, HOME / "prototype" / "index.html")

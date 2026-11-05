@@ -95,6 +95,12 @@ class AdoptedTest(unittest.TestCase):
 class BackgroundTest(unittest.TestCase):
     """The board's face: a child that outlives the request, read by polling."""
 
+    def setUp(self) -> None:
+        # The draft is a child here, never a session of whatever agent this machine happens to have.
+        patched = mock.patch("slipwai.stage_session.launchable", return_value=None)
+        patched.start()
+        self.addCleanup(patched.stop)
+
     def test_every_line_the_child_said_is_tailed_in_order(self) -> None:
         fitting = start(project(["first", "second", "third"]), "claude")
         lines = finished(fitting)["lines"]

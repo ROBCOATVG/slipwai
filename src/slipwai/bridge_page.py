@@ -15,7 +15,7 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 410 — the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
+# budget: 440 — the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
 # each group carries its own heading, count and the rows under it, so the page is a little longer than one
 # that listed them flat.
 from __future__ import annotations
@@ -105,6 +105,26 @@ if (fitting) {
     if (running) setTimeout(poll, 700);
   };
   poll();
+  // A stage over the Agent Client Protocol asks on cards: a permission the board could not grant, a
+  // question only the person can answer. Polled beside the lines while the run goes on.
+  const asks = document.getElementById('stage-asks'), stop = document.getElementById('stage-stop');
+  if (asks && typeof drawTurn === 'function') {
+    const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                 body: JSON.stringify(body)});
+    const reply = (id, body) => post('/stage/answer', {id, ...body});
+    let seen = 0;
+    const cards = async () => {
+      let said;
+      try { said = await (await fetch('/stage.json?since=' + seen)).json(); } catch (fault) { return; }
+      seen = said.at;
+      const shown = t => ['permission', 'question', 'answered'].includes(t.kind);
+      said.turns.filter(shown).forEach(t => drawTurn(asks, t, reply));
+      stop.hidden = said.done;
+      if (!said.done || running) setTimeout(cards, 900);
+    };
+    stop.addEventListener('click', () => post('/stage/cancel', {}));
+    cards();
+  }
 }
 
 document.addEventListener('click', event => {
@@ -345,7 +365,9 @@ def fitting_card(made: dict, verb: str = "Made") -> str:
     return (f'<div class="card" id="fitting"><h2>{esc(verb)} {esc(Path(str(made["where"])).name)}</h2>'
             f'<p class="empty">{esc(made["where"])} — {chip}</p>'
             f'<pre class="said" id="fitting-said" data-tail data-at="{esc(made["at"])}">'
-            f'{esc(said)}\n</pre><div class="ask">{launch}</div></div>')
+            f'{esc(said)}\n</pre><div class="turns" id="stage-asks"></div>'
+            f'<div class="ask">{launch}<button type="button" class="stop" id="stage-stop" hidden>Stop</button>'
+            f'</div></div>')
 
 
 def live_sub(found: dict) -> str:

@@ -27,12 +27,13 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 540 — one runner for every child the board starts: assessment of a feature, and runs of steps that go on
+# budget: 560 — one runner for every child the board starts: assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
@@ -123,6 +124,9 @@ class Step:
     #: Whether a failure ends the run there. The gate's does not: the baseline its red first run writes is
     #: still committed, and the run still ends failed.
     stops: bool = True
+    #: A step run in this process rather than as a child — a stage over the Agent Client Protocol
+    #: (`stage_session.py`) — given the fitting to say its lines into; its return is the exit status.
+    session: Callable[[Any], int] | None = None
 
 
 def init_step(where: Path, harness: str, repository: str | None,
@@ -139,6 +143,9 @@ DRAFT = ["make", "draft"]
 DRAFTING = ("Drafting the constitution and the first specification from docs/prd.md — `make draft`, a headless "
             "session of the coding agent in the project. It stops at the specification: read it, then "
             "Continue the build.")
+DRAFTING_ACP = ("Drafting the constitution and the first specification from docs/prd.md — the project's agent "
+                "over the Agent Client Protocol, from this board. Where only you can decide, it asks here; "
+                "answer on the card. It stops at the specification: read it, then Continue the build.")
 #: What the Draw the surfaces button runs: the first half of `/mockups` — the research, the wireframes and
 #: the storyboard — in a headless session, and then a stop. The second half is a person looking at one
 #: surface at a time, which is the stage rather than a step on the way to it, and is why nothing here marks
@@ -237,6 +244,7 @@ class Fitting:
         self.code: int | None = None
         self.began = time.monotonic()
         self.stopped: float | None = None
+        self.stage: Any = None  # the stage over the protocol running now, for its cards on the board
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
@@ -319,16 +327,19 @@ class Fitting:
             if index or not announced:
                 self.say(step.announced)
             last = final and index == len(steps) - 1
-            try:
-                child, reading, ours = self.child(step.argv)
-            except OSError as fault:
-                self.say(f"{' '.join(step.argv)} could not be run here: {fault}", code=1)
-                return 1
-            with child:  # closed and waited on by the context manager, so a long run leaks no pipe
-                self.read(reading)
-                code = child.wait()
-            if ours:
-                os.close(reading)
+            if step.session is not None:
+                code = step.session(self)
+            else:
+                try:
+                    child, reading, ours = self.child(step.argv)
+                except OSError as fault:
+                    self.say(f"{' '.join(step.argv)} could not be run here: {fault}", code=1)
+                    return 1
+                with child:  # closed and waited on by the context manager, so a long run leaks no pipe
+                    self.read(reading)
+                    code = child.wait()
+                if ours:
+                    os.close(reading)
             ends = bool(code) and step.stops
             self.say(step.ended(code), code=(code or failed) if ends or last else None)
             if ends:
@@ -373,10 +384,21 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
     agent was named to draft with. Returned rather than awaited: what it says is read by polling."""
     steps = [init_step(where, harness, repository, extensions)] if harness else []
     if steps and prd:
-        steps.append(Step(DRAFT, DRAFTING, drafted, "draft"))
+        steps.append(draft_step(where))
     fitting = Fitting(where, steps, said)
     fitting.thread.start()
     return fitting
+
+
+def draft_step(where: Path) -> Step:
+    """The draft: over the protocol where this board can launch the project's agent, so the agent can ask the
+    person what only they can decide; `make draft`, the headless child, where it cannot."""
+    from .stage_session import StageSession, launchable  # noqa: PLC0415 — the edge tier, reached from here only
+
+    if launchable(where) is None:
+        return Step(DRAFT, DRAFTING, drafted, "draft")
+    stage = StageSession(where, "draft", "docs/prd.md")
+    return Step([], DRAFTING_ACP, drafted, "draft", session=stage.run)
 
 
 def adopted(where: Path, delivery: str, harness: str | None, said: list[str] | None = None,

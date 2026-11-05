@@ -115,6 +115,8 @@ from .seats import Bench, Outfit, Seat, parameter
 from .settings_page import route_get as settings_get
 from .settings_page import route_post as settings_post
 from .spec_page import page as spec
+from .stage_session import route_get as stage_get
+from .stage_session import route_post as stage_post
 from .telegraph import Refused
 from .try_card import VIDEOS, WALK_ROUTE, trunk_head, walk_file
 from .try_card import act as try_act
@@ -146,7 +148,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 930 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 935 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -311,6 +313,8 @@ class Bridge(BaseHTTPRequestHandler):
         if self.controls and brief_get(self, where, query):  # the first page's own routes: `brief_page.py`
             return
         if self.controls and settings_get(self, where, query):  # what runs behind the board: `settings_page.py`
+            return
+        if self.controls and stage_get(self, where, query):  # a stage over the protocol: `stage_session.py`
             return
         if where == "/voyage" and self.controls:
             self.send(200, self.voyage())
@@ -701,6 +705,8 @@ class Bridge(BaseHTTPRequestHandler):
             if brief_post(self, where, held):
                 return
             if settings_post(self, where, held):
+                return
+            if stage_post(self, where, held):
                 return
             if where == "/generate/ask":
                 # The questions again, for the answers given so far: one of them decides what the next one

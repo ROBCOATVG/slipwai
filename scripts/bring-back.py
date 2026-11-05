@@ -110,7 +110,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "drawn", "brief_check", "brief_session", "brief_page", "cli_brief",
        # The Agent Client Protocol's client half, and what the board runs it on. The experiment had one
        # harness, by name.
-       "acp", "board_settings", "settings_page", "board_agent", "turn_cards",
+       "acp", "board_settings", "settings_page", "board_agent", "turn_cards", "stage_session",
        # Reading a drafted document on the board. The experiment had no board to read one on.
        "spec_page",
        # Whether a pid file's process is running, asked without the signal Windows reads as Ctrl-C.

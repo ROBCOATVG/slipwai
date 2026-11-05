@@ -1,0 +1,140 @@
+"""The conversation that writes a brief, driven by a stand-in for the agent.
+
+The agent is a command the sketch is handed, so what runs here is the real conversation — the workspace, the
+turns, the poll, the step line, the brief read back — over a script that writes what an agent would write
+and prints the stream it would print.
+"""
+from __future__ import annotations
+
+import sys
+import tempfile
+import time
+import unittest
+from pathlib import Path
+from unittest import mock
+
+import checkout_packages  # noqa: F401
+
+from slipwai import brief_session
+from slipwai.brief_session import Sketch, checked, prepared, slug_of, workspace
+
+FIXTURE = Path(__file__).resolve().parent / "fixtures" / "brief"
+
+#: What the agent does for one turn: it writes the requirements document and one surface into `brief/`, says
+#: which step it is at, and says something. The message is the last argument, which is how the sketch passes it.
+STAND_IN = """
+import json, sys
+from pathlib import Path
+message = sys.argv[-1]
+home = Path.cwd()
+(home / "brief" / "prd.md").write_text("# Requirements\\n\\n## What it must do\\n\\n- Book a boat.\\n",
+                                       encoding="utf-8")
+(home / "brief" / "surfaces").mkdir(exist_ok=True)
+(home / "brief" / "surfaces" / "book.html").write_text(
+    '<title>Book a boat</title><article class="state" data-decided="person"><h2>Empty</h2></article>', encoding="utf-8")
+print('a banner, not json')
+print(json.dumps({"type": "assistant", "message": {"content": [
+    {"type": "tool_use", "name": "Write", "input": {"file_path": "brief/prd.md"}}]}}))
+print(json.dumps({"type": "assistant", "message": {"content": [
+    {"type": "text", "text": "step: 2\\nI have drawn it. Tap through: " + message}]}}))
+print(json.dumps({"type": "result", "is_error": False, "result": "done"}))
+"""
+
+
+class SketchTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.area = Path(tempfile.mkdtemp())
+        patched = mock.patch.object(brief_session, "SKETCHES", self.area / "sketches")
+        patched.start()
+        self.addCleanup(patched.stop)
+        script = self.area / "agent.py"
+        script.write_text(STAND_IN, encoding="utf-8")
+        self.sketch = Sketch("club-boats", [sys.executable, str(script)])
+
+    def settle(self) -> dict:
+        for _ in range(200):
+            said = self.sketch.said()
+            if not said["busy"]:
+                return said
+            time.sleep(0.05)
+        self.fail("the sketch never finished answering")
+
+    def test_a_name_becomes_a_slug_and_a_slug_that_is_not_one_is_refused(self) -> None:
+        self.assertEqual(slug_of("  Club Boat Bookings! "), "club-boat-bookings")
+        for bad in ("", "---", "../etc", "a" * 70):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                workspace(bad) if bad else slug_of(bad)
+        self.assertEqual(workspace("club-boats"), brief_session.SKETCHES / "club-boats")
+
+    def test_the_workspace_is_made_with_its_two_folders_and_the_three_skills(self) -> None:
+        home = prepared(workspace("club-boats"))
+        self.assertTrue((home / "brief").is_dir() and (home / "prototype").is_dir())
+        for skill in ("frontend-design", "storyboard", "find-gaps"):
+            self.assertTrue((home / ".claude" / "skills" / skill / "SKILL.md").is_file(), skill)
+
+    def test_a_turn_writes_the_brief_and_the_page_is_told_the_step_and_the_count(self) -> None:
+        self.assertEqual(self.sketch.ask("Members book a boat for a morning."), "asked")
+        said = self.settle()
+        self.assertEqual([(t["role"], t["kind"]) for t in said["turns"]],
+                         [("person", "text"), ("sketch", "wrote"), ("sketch", "text")])
+        self.assertEqual(said["turns"][1]["text"], "Write brief/prd.md")
+        self.assertEqual(said["turns"][2]["text"], "I have drawn it. Tap through: Members book a boat for a morning.",
+                         "the step line is read and taken out of what the person sees")
+        self.assertEqual(said["step"], 2)
+        self.assertFalse(said["ready"])
+        self.assertEqual(said["check"][0], "requirements document: prd.md, by name")
+        self.assertIn("surfaces: 1, states: 1, each with a heading, 1 decided by a person", said["check"][1])
+
+    def test_nothing_said_and_a_second_turn_under_way_are_refused(self) -> None:
+        with self.assertRaises(ValueError):
+            self.sketch.ask("   ")
+        self.sketch.busy = True
+        with self.assertRaises(ValueError):
+            self.sketch.ask("again")
+        self.sketch.busy = False
+
+    def test_a_poll_carries_only_what_the_asker_does_not_have(self) -> None:
+        self.sketch.ask("one")
+        first = self.settle()
+        self.assertEqual(self.sketch.said(first["at"])["turns"], [])
+
+    def test_the_session_reads_and_writes_in_its_workspace_and_nothing_more(self) -> None:
+        held = Sketch("club-boats")
+        held.session = "abc"
+        with mock.patch("shutil.which", return_value="/usr/local/bin/claude"), \
+                mock.patch.object(held, "environment", return_value={"PATH": "/usr/local/bin"}):
+            argv = held.argv("hello") or []
+            self.assertEqual(argv[argv.index("--tools") + 1], "Read,Write,Edit,Glob,Grep")
+            self.assertEqual(argv[argv.index("--allowedTools") + 1], "Read,Write,Edit,Glob,Grep")
+            for power in ("Bash", "WebFetch", "--dangerously-skip-permissions"):
+                self.assertNotIn(power, " ".join(argv))
+            prompt = argv[argv.index("--append-system-prompt") + 1]
+            self.assertIn(str(held.home / "brief"), prompt)
+            self.assertIn("--session-id", argv)
+            held.begun = True
+            self.assertIn("--resume", held.argv("two") or [])
+
+    def test_the_prompts_folder_block_is_the_reference_pages(self) -> None:
+        """One shape, stated once: the page a developer reads and the prompt the session reads say the same."""
+        page = (Path(__file__).resolve().parents[1] / "docs" / "reference" / "the-brief.md").read_text(encoding="utf-8")
+        block = page.split("```\n", 2)[1].replace("<brief>/", "brief/")
+        self.assertIn(block.strip(), brief_session.PROMPT.read_text(encoding="utf-8"))
+
+    def test_the_brief_is_read_back_the_way_the_start_page_reads_it(self) -> None:
+        home = prepared(workspace("fixture"))
+        self.assertEqual(checked(home), [], "nothing yet")
+        import shutil
+        shutil.copytree(FIXTURE, home / "brief", dirs_exist_ok=True)
+        self.assertEqual(checked(home)[0], "requirements document: prd.md, by name")
+
+    def test_a_reset_forgets_the_conversation_and_keeps_the_files(self) -> None:
+        self.sketch.ask("one")
+        self.settle()
+        self.assertEqual(self.sketch.reset(), "cleared")
+        said = self.sketch.said()
+        self.assertEqual((said["turns"], said["step"]), ([], 1))
+        self.assertTrue((self.sketch.home / "brief" / "prd.md").is_file())
+
+
+if __name__ == "__main__":  # pragma: no cover
+    unittest.main()

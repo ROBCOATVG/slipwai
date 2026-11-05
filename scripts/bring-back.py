@@ -107,7 +107,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # Carrying in what a PRD cites. The experiment had no PRD to start from.
        "design_docs",
        # The brief read before it is handed over, and the page reader the board and that check share.
-       "drawn", "brief_check", "cli_brief",
+       "drawn", "brief_check", "brief_session", "cli_brief",
        # Reading a drafted document on the board. The experiment had no board to read one on.
        "spec_page",
        # Whether a pid file's process is running, asked without the signal Windows reads as Ctrl-C.

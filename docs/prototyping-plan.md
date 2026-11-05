@@ -150,7 +150,7 @@ plans: S is a morning, M a day, L two or three.
 | 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | done |
 | 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | S | done |
 | 21.6 | The prototyping conversation, as the board's first page | L | building |
-| 21.6a | The session that writes a brief: a conversation the board runs in a workspace of its own | M | todo |
+| 21.6a | The session that writes a brief: a conversation the board runs in a workspace of its own | M | done |
 | 21.6b | The page: the conversation, the brief counting itself up, the prototype to play | M | todo |
 | 21.6c | Check and hand over: the plain-words check, and the button that fills the start page | S | todo |
 | 21.6d | The record: one real brief through the page and the two numbers, written here | S | todo |

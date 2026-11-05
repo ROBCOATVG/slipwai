@@ -2524,7 +2524,7 @@ this table is the one `make progress` ticks, so the history can say what landed.
 | 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | new (owner, 2026-11-04) | M | The draft step writes one JSON per person and `check-try` accepts them; a prose test over `commands/draft.md` | done |
 | 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | new (owner, 2026-11-04) | S | `tests/test_design_docs.py` proves the copy and that `docs/design/domain.md` is not also written | done |
 | 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | new (owner, 2026-11-04) | S | `tests/test_passage.py` proves the written line still reads as approved or parked downstream; `tests/test_voyage.py` the count | done |
-| 21.6 | The prototyping tool, first version, in its own repository | new (owner, 2026-11-04) | L | Its own plan, after the release carrying 21.2 |  |
+| 21.6 | The prototyping conversation, as the board's first page: the eight steps of the prototyping plan's section 4 run as a board session, writing the brief folder and handing it to the start page | new (owner, 2026-11-05) | L | Planned in its own section 8 after the release carrying 21.2; one real brief through the page, `generate --brief`, `/draft` and `make surfaces` with the two numbers recorded |  |
 
 ### Risks the plan carries, and where each is caught
 

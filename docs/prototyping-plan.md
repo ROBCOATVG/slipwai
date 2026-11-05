@@ -8,8 +8,11 @@ playing arrives in a generated project as a requirements document, surfaces with
 and a look. A mock of the whole route, with a clickable prototype of the product it describes, is at
 https://claude.ai/artifact/GGdVnjrQzATQi1nUSDj9WM; its sources are under [`mockups/brief/`](mockups/brief/).
 
-**Status, 2026-11-05:** 21.1 to 21.5 have landed; 21.6 is its own repository, after the release carrying 21.2. Section 8 is the build: the order, the
-fixture every slice reads, and the files, tests and gates of each. The table in section 5 is ticked by
+**Status, 2026-11-05:** 21.1 to 21.5 have landed. 21.6, the prototyping conversation, is the board's first
+page in this repository, after the release carrying 21.2; it was planned as its own repository until the
+same day, when the aim was restated as one non-technical person from describing the product through to
+delivery, and the board is already their face from the brief door on. Section 8 is the build: the order,
+the fixture every slice reads, and the files, tests and gates of each. The table in section 5 is ticked by
 hand as each slice merges; the one `scripts/progress.py` ticks from the history is phase 21's table in
 [the main plan](slipwai-2-plan.md), which carries one row per slice so that each `Slice-done:` trailer
 has a row to count against.
@@ -96,8 +99,13 @@ first feature than a folder of static states, and the plan does not make it bett
 
 ## 4. The prototyping tool
 
-It is not slipwai, and it never imports the keel. Different user, different output, and the only thing the
-two share is section 3. Its working title in the mock is *Sketch*. What it has to do:
+It is the board's first page, and the only thing it and the rest of the board share is section 3: it
+writes the folder, and everything after it reads the folder. It was planned as a separate tool that never
+imports the keel, for a different user with a different output; the aim since 2026-11-05 is one
+non-technical person from describing the product through to delivery, and from the brief door on that
+person's face is already the board — *Everything else* on the start page, `./init` and `/draft` run from
+it, the storyboard approved on the Voyage page, Continue the build a button. A separate tool would put a
+folder path between them and all of that. Its working title in the mock is *Sketch*. What it has to do:
 
 1. **Draw a prototype the person can play**, from what they say. Not screens: a thing with taps. The mock's
    fourth frame is the shape — one screen per surface, the states reachable by doing things, two people to
@@ -118,10 +126,13 @@ two share is section 3. Its working title in the mock is *Sketch*. What it has t
 8. **Export static state pages**, not the prototype's code. The prototype is for the person to play with. What
    crosses the boundary is one page per surface, one block per state.
 
-Its first version is a conversational session using the toolkit's own skills — `frontend-design`,
-`storyboard`, `find-gaps` in its design-mock mode — with the person present: the mock-up stage's researcher
-and draughtsman, run before a project exists. Whether it later becomes a hosted application is a second
-decision, taken once the export has been through a real draft.
+Its first version is a conversational session the board runs the way it runs the draft — one headless
+session of the installed harness, with the person present in the page — using the toolkit's own skills:
+`frontend-design`, `storyboard`, `find-gaps` in its design-mock mode; the mock-up stage's researcher and
+draughtsman, run before a project exists. It writes the folder of section 3 under the board's own
+directory and hands it to the start page as the *Everything else* answer, so the person presses one button
+and never sees a path. The folder is still the seam: an outside tool that writes the same shape comes in by
+the same door, and `slipwai brief check` is the acceptance for both.
 
 ## 5. The slices
 
@@ -135,7 +146,7 @@ plans: S is a morning, M a day, L two or three.
 | 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | M | done |
 | 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | done |
 | 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | S | done |
-| 21.6 | The prototyping tool, first version, in its own repository | L | todo |
+| 21.6 | The prototyping conversation, as the board's first page | L | todo |
 
 ### 21.1 `docs/reference/the-brief.md` — S
 
@@ -183,12 +194,18 @@ shows it beside the state. `record_verdict` writes it into `mock-states.md` as a
 <who>)` on the state line, so the split and the example map can see which states a person chose and which
 were proposed.
 
-### 21.6 The prototyping tool, first version — L, in its own repository
+### 21.6 The prototyping conversation, as the board's first page — L
 
-A skill bundle that runs the eight steps of section 4 in a plain agent session and writes the folder of
-section 3. It carries no keel code. Its acceptance test is one real brief through `generate --brief`,
-`/draft` and `make surfaces` on a laptop-trial quickstart, with the two numbers recorded: assumptions after
-the draft, and whether the storyboard was approved the first time.
+A page before the start page, in this repository, that runs the eight steps of section 4 as a board
+session and writes the folder of section 3 under the board's directory. The three frames of the mock —
+describe it, walk the states, check and hand over — are its three faces, and hand-over is a button that
+fills the start page's *Everything else* answer. It runs its session the way `draft.py` runs the draft and
+the surfaces stage runs its draughtsman: the harness's own session, the toolkit's skills, the board
+reading what it says. Its acceptance test is one real brief through the page, `generate --brief`, `/draft`
+and `make surfaces` on a laptop-trial quickstart, with the two numbers recorded: assumptions after the
+draft, and whether the storyboard was approved the first time. Where it does not reach: a person still
+installs slipwai, Docker and a harness to have a board at all. That is section 6's last line and a plan of
+its own.
 
 ## 6. What this plan does not do
 
@@ -200,6 +217,10 @@ the draft, and whether the storyboard was approved the first time.
 - **It does not accept a prototype's code.** A code prototype is an adoption.
 - **It does not change the storyboard stop.** The person still approves, surface by surface, on the board.
   The brief makes the drawings theirs; it does not skip the look.
+- **It does not make the board reachable without a terminal.** Through to delivery for a non-technical
+  person is blocked by installation — a Python CLI, Docker, a harness and its login, a cloud target — not
+  by where the prototyping conversation lives. 21.6 is a better front door onto the same step; a board a
+  person can have without a terminal is a plan of its own, and a bigger one.
 
 ## 7. Open points
 
@@ -226,7 +247,7 @@ Two tracks, both starting from 21.1:
 21.1 the page and the fixture
   ├── 21.2 brief check, and drawn.py ── 21.5 data-decided
   └── 21.4 domain.md ──────────────────── 21.3 people.md
-21.6 the tool, in its own repository, once the release carrying 21.2 is out
+21.6 the board's first page, once the release carrying 21.2 is out
 ```
 
 - **21.1 first** because the fixture it adds is what 21.2's tests read line for line, what 21.4 and 21.3
@@ -369,13 +390,17 @@ worked examples.
 - Fragment `21.3-brief-people.md`, MINOR; catch-up `slipwai migrate` for the page, and a project whose
   draft has already run writes the files by hand from `docs/design/people.md`.
 
-### 21.6 — the tool, in its own repository
+### 21.6 — the board's first page
 
-Planned there, not here, once the release carrying 21.2 is out. What this repository hands it: the
-reference page as the contract, `tests/fixtures/brief/` as the export to match, and `slipwai brief check`
-as its acceptance. Its first version is a skill bundle running the eight steps of section 4, with no keel
-code in it, and its README records the two numbers from one real brief through `generate --brief`, `/draft`
-and `make surfaces` on a laptop-trial quickstart. Its name is open point 3.
+Planned in outline only, once the release carrying 21.2 is out; its own section 8 is written then, module
+by module, the way this one was. What it stands on: the reference page as the contract, `tests/fixtures/brief/`
+as the folder it must write, `slipwai brief check` as its acceptance, and three things the board already
+has — a headless session run from a page (`init_run.py`, `scripts/agents/draft.py`), a card that shows what
+a session says as it says it (`console_page.py`), and the start page's *Everything else* answer
+(`interview_page.py`). What it adds: one page module and its card, a session script in the toolkit's
+`scripts/agents/` that runs the eight steps with the person present, and the hand-over button. Its README
+line is the two numbers from one real brief through the page, `generate --brief`, `/draft` and `make
+surfaces` on a laptop-trial quickstart. Its name is open point 3; *the first page* will do until then.
 
 ### What to watch
 

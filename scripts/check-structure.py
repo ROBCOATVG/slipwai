@@ -132,7 +132,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "brief_session", "brief_page",
               # The Agent Client Protocol's client half: the session behind the board's conversations, what
               # the board is set to run them on, and the page that sets it.
-              "acp", "board_settings", "settings_page",
+              "acp", "board_settings", "settings_page", "board_agent",
               "bridge", "bridge_page", "fleet_page", "timeline_page",
               "cli_bridge", "cli_start",
               "interview_page",

@@ -10,6 +10,8 @@ It is a tab beside the start page and never in front of it: a person with a docu
 bridge's one job here is two lines. Files are served from the workspace and confined to it: the prototype's
 page and the surface pages' stylesheets load from there, and nothing else does.
 """
+# budget: 430 — the page's own script and styles: a conversation's bubbles, and the cards an agent's tool
+# calls, plan, permissions and questions become on it
 from __future__ import annotations
 
 import json
@@ -43,6 +45,33 @@ STYLE = """
 #sketch .turn.read,#sketch .turn.wrote{justify-self:start;border:0;padding:0 4px;color:var(--ink-3);font-size:.78rem;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 #sketch .turn.error{justify-self:start;border-color:var(--brass);color:var(--brass)}
+#sketch .turn.thought{justify-self:start;border:0;padding:0 4px;color:var(--ink-3);font-size:.8rem;font-style:italic}
+#sketch .turn.tool{justify-self:start;border:0;padding:2px 4px;font-size:.8rem;color:var(--ink-3);display:flex;gap:8px;
+  align-items:baseline;white-space:normal}
+#sketch .turn.tool .dot{width:8px;height:8px;border-radius:50%;background:var(--rule);flex:none;align-self:center}
+#sketch .turn.tool.in_progress .dot{background:var(--warn)}
+#sketch .turn.tool.completed .dot{background:var(--good)}
+#sketch .turn.tool.failed .dot{background:var(--critical)}
+#sketch .turn.tool b{font-weight:500;color:var(--ink-2);text-transform:capitalize}
+#sketch .turn.tool .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.76rem}
+#sketch .turn.plan{justify-self:start;background:var(--ground);font-size:.84rem}
+#sketch .turn.plan ol{margin:0;padding-left:1.2rem}
+#sketch .turn.plan li.completed{color:var(--ink-3);text-decoration:line-through}
+#sketch .turn.plan li.in_progress{font-weight:600}
+#sketch .turn.permission,#sketch .turn.question{justify-self:stretch;max-width:none;border-color:var(--brass);
+  background:var(--brass-soft);white-space:normal}
+#sketch .turn.permission .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem;display:block;
+  margin-top:4px;overflow-wrap:anywhere}
+#sketch .turn .buttons{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+#sketch .turn .buttons button,#sketch .turn input{font:inherit;font-size:.85rem;padding:6px 12px;border-radius:8px;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ink)}
+#sketch .turn .buttons button.allow{background:var(--teal);border-color:var(--teal);color:#fff}
+#sketch .turn input{width:100%;margin-top:8px}
+#sketch .turn.done{opacity:.55}
+#sketch .turn.done .buttons,#sketch .turn.done input{display:none}
+#sketch button.stop{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--brass);
+  background:var(--paper);color:var(--brass);cursor:pointer}
+#sketch .head .on{font-size:.8rem;color:var(--ink-3);margin-left:auto}
 #sketch .empty,#sketch .none{color:var(--ink-3);font-size:.88rem;margin:0}
 #sketch .check{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:.84rem;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-2)}
@@ -85,12 +114,70 @@ SCRIPT = """
     const frame = page.querySelector('iframe');
     const steps = page.querySelectorAll('nav.steps span');
     let at = 0, busy = false, timer = null, drawn = 0;
-    const draw = turn => {
+    const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                 body: JSON.stringify({sketch: slug, ...body})});
+    const reply = (id, body) => post('/brief/answer', {id, ...body});
+    const card = (turn, kind) => {
       const one = document.createElement('div');
-      one.className = 'turn ' + (turn.kind === 'text' ? turn.role : turn.kind);
-      one.textContent = turn.text;
+      one.className = 'turn ' + kind; one.dataset.ask = turn.ask.id;
+      const words = document.createElement('div'); words.textContent = turn.text; one.appendChild(words);
+      return one;
+    };
+    const draw = turn => {
+      if (turn.kind === 'tool_update') {
+        const had = log.querySelector('[data-tool="' + turn.tool.id + '"]');
+        if (!had) return;
+        had.className = 'turn tool ' + turn.tool.status;
+        if (turn.text) had.querySelector('.title').textContent = turn.text;
+        if (turn.tool.status === 'completed' && turn.tool.kind !== 'read' && turn.tool.kind !== 'search') drawn += 1;
+        return;
+      }
+      if (turn.kind === 'answered') {
+        const had = log.querySelector('[data-ask="' + turn.ask.id + '"]');
+        if (had) had.classList.add('done');
+        return;
+      }
+      let one;
+      if (turn.kind === 'tool') {
+        one = document.createElement('div');
+        one.className = 'turn tool ' + turn.tool.status; one.dataset.tool = turn.tool.id;
+        one.innerHTML = '<span class="dot"></span><b></b><span class="title"></span><span class="path"></span>';
+        one.querySelector('b').textContent = turn.tool.kind; one.querySelector('.title').textContent = turn.text;
+        one.querySelector('.path').textContent = turn.tool.path.replace(/^.*\/(brief|prototype)\//, '$1/');
+      } else if (turn.kind === 'plan') {
+        one = log.querySelector('.turn.plan') || document.createElement('div');
+        one.className = 'turn plan'; one.innerHTML = '<ol></ol>';
+        turn.plan.forEach(entry => { const li = document.createElement('li'); li.className = entry.status;
+                                     li.textContent = entry.content; one.querySelector('ol').appendChild(li); });
+        if (one.parentNode) return;
+      } else if (turn.kind === 'permission') {
+        one = card(turn, 'permission');
+        const path = document.createElement('span'); path.className = 'path'; path.textContent = turn.ask.path;
+        one.appendChild(path);
+        const buttons = document.createElement('div'); buttons.className = 'buttons';
+        turn.ask.options.forEach(option => {
+          const button = document.createElement('button'); button.type = 'button'; button.textContent = option.name;
+          button.className = option.kind.startsWith('allow') ? 'allow' : '';
+          button.addEventListener('click', () => reply(turn.ask.id, {option: option.id}));
+          buttons.appendChild(button);
+        });
+        one.appendChild(buttons);
+      } else if (turn.kind === 'question') {
+        one = card(turn, 'question');
+        const input = document.createElement('input'); input.placeholder = 'Your answer'; one.appendChild(input);
+        const buttons = document.createElement('div'); buttons.className = 'buttons';
+        const say = document.createElement('button'); say.type = 'button'; say.className = 'allow';
+        say.textContent = 'Answer'; say.addEventListener('click', () => reply(turn.ask.id, {answer: input.value}));
+        const no = document.createElement('button'); no.type = 'button'; no.textContent = 'Decline';
+        no.addEventListener('click', () => reply(turn.ask.id, {decline: true}));
+        buttons.append(say, no); one.appendChild(buttons);
+      } else {
+        one = document.createElement('div');
+        one.className = 'turn ' + (turn.kind === 'text' ? turn.role : turn.kind);
+        one.textContent = turn.text;
+        if (turn.kind === 'wrote') drawn += 1;
+      }
       log.appendChild(one);
-      if (turn.kind === 'wrote') drawn += 1;
     };
     const hand = page.querySelector('a.hand-over');
     const colour = line => {
@@ -100,8 +187,10 @@ SCRIPT = """
       if (line.startsWith('requirements document: none')) return 'amber';
       return /^(requirements document|surfaces|look|people):/.test(line) ? '' : 'refused';
     };
+    const stop = page.querySelector('button.stop'), on = page.querySelector('.head .on');
     const paint = said => {
       input.disabled = busy; go.disabled = busy; go.textContent = busy ? 'Drawing…' : 'Say';
+      stop.hidden = !busy; if (said.agent) on.textContent = 'on ' + said.agent;
       steps.forEach((one, index) => one.classList.toggle('now', index + 1 === said.step));
       check.replaceChildren(...said.check.map(line => {
         const li = document.createElement('li'); li.textContent = line; li.className = colour(line); return li; }));
@@ -120,21 +209,20 @@ SCRIPT = """
       at = said.at; busy = said.busy;
       if (said.turns.length) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
       paint(said);
-      if (frame && !busy && drawn !== before) frame.src = frame.dataset.src + '?v=' + Date.now();
+      if (frame && drawn !== before) { frame.hidden = false; frame.src = frame.dataset.src + '?v=' + Date.now(); }
       clearTimeout(timer);
       if (busy) timer = setTimeout(poll, 900);
     };
     const ask = async text => {
       if (!text.trim() || busy) return;
-      const answer = await fetch('/brief/ask', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                                                 body: JSON.stringify({sketch: slug, message: text})});
+      const answer = await post('/brief/ask', {message: text});
       if (!answer.ok) { draw({role: 'sketch', kind: 'error', text: await answer.text()}); return; }
       input.value = ''; busy = true; paint({step: 0, check: []}); poll();
     };
     page.querySelector('form.ask').addEventListener('submit', event => { event.preventDefault(); ask(input.value); });
+    stop.addEventListener('click', () => post('/brief/cancel', {}));
     page.querySelector('[data-clear]').addEventListener('click', async () => {
-      await fetch('/brief/reset', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                                   body: JSON.stringify({sketch: slug})});
+      await post('/brief/reset', {});
       log.querySelectorAll('.turn').forEach(one => one.remove());
       empty.hidden = false; at = 0; busy = false; poll();
     });
@@ -219,11 +307,13 @@ def sketch_page(slug: str) -> str:
     return (f'<div id="sketch" data-sketch="{esc(slug)}">'
             f'<div><nav class="steps" aria-label="Steps">{steps}</nav>'
             f'<div class="card" style="margin-top:14px"><div class="head"><h2>{esc(slug)}</h2>'
+            f'<span class="on">{esc("on " + said["agent"]) if said["agent"] else ""}</span>'
             f'<button type="button" data-clear>New conversation</button></div>'
             f'<div class="log" role="log" aria-live="polite"></div>'
             f'<p class="empty">Say what the product is: who uses it, and what they do with it.</p>'
             f'<form class="ask"><input placeholder="Members book one of the club boats for a morning…" '
-            f'autocomplete="off" aria-label="Say something"><button class="go" type="submit">Say</button></form>'
+            f'autocomplete="off" aria-label="Say something"><button class="go" type="submit">Say</button>'
+            f'<button class="stop" type="button" hidden>Stop</button></form>'
             f'</div></div>'
             f'<div><div class="card"><h2>The brief, as the start page will read it</h2>'
             f'<ul class="check"></ul><p class="none">Nothing written yet.</p>'
@@ -284,7 +374,7 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
 def route_post(bridge: Any, where: str, held: dict) -> bool:
     """Answer a POST of this page's — a turn, or a new conversation, begun with what the person typed or with
     a document they chose — or say it was not one."""
-    if where not in ("/brief/ask", "/brief/reset", "/brief/new"):
+    if where not in ("/brief/ask", "/brief/reset", "/brief/new", "/brief/answer", "/brief/cancel"):
         return False
     try:
         if where == "/brief/new":
@@ -298,7 +388,17 @@ def route_post(bridge: Any, where: str, held: dict) -> bool:
             bridge.send(200, slug, "text/plain; charset=utf-8")
             return True
         sketch = for_slug(str(held.get("sketch") or ""))
-        said = sketch.ask(str(held.get("message") or "")) if where == "/brief/ask" else sketch.reset()
+        if where == "/brief/answer":
+            # A card's answer: an option, a question's words, or a decline, which is no answer at all.
+            given = None if held.get("decline") else held.get("option") or held.get("answer")
+            if not sketch.answer(str(held.get("id") or ""), None if given is None else str(given)):
+                bridge.send(400, "nothing is waiting on that answer", "text/plain; charset=utf-8")
+                return True
+            said = "answered"
+        elif where == "/brief/cancel":
+            said = sketch.cancel()
+        else:
+            said = sketch.ask(str(held.get("message") or "")) if where == "/brief/ask" else sketch.reset()
         bridge.send(200, said, "text/plain; charset=utf-8")
     except ValueError as refused:
         bridge.send(400, str(refused), "text/plain; charset=utf-8")

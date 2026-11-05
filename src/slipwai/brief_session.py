@@ -31,9 +31,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from .assets import SLIPWAI, TOOLKIT_ROOT
+from .board_agent import BoardAgent
+from .board_settings import Launch, chosen, read
 from .brief_check import report
 from .console import reading
 from .errors import GenerationError
+from .harness import acp_environment, row_of
 from .shell_environment import login_environment
 
 #: Where this machine keeps its sketches: not a project's, so not under one.
@@ -73,12 +76,13 @@ def workspace(slug: str) -> Path:
     return SKETCHES / slug
 
 
-def prepared(home: Path) -> Path:
-    """The workspace with its two folders and the three skills in place, made where it was not."""
+def prepared(home: Path, skills: str | None = None) -> Path:
+    """The workspace with its two folders and the three skills in place, made where it was not. The skills
+    land where the agent reads them — its registry row's `skillsDir` — and under `.claude/skills` by default."""
     for name in (BRIEF, PROTOTYPE):
         (home / name).mkdir(parents=True, exist_ok=True)
     for skill in SKILLS:
-        landed = home / ".claude" / "skills" / skill
+        landed = home / (skills or ".claude/skills") / skill
         if not landed.is_dir():
             shutil.copytree(TOOLKIT_ROOT / "skills" / skill, landed)
     return home
@@ -120,10 +124,13 @@ def checked(home: Path) -> list[str]:
 class Sketch:
     """One conversation: what has been said, which step it is at, what the brief says so far, and the session."""
 
-    def __init__(self, slug: str, command: Sequence[str] | None = None) -> None:
+    def __init__(self, slug: str, command: Sequence[str] | None = None, launch: Launch | None = None) -> None:
         self.slug = slug
         self.home = workspace(slug)
         self.command = list(command) if command else None
+        self.launch = launch  # the agent to run over the protocol; a test hands one in, the board reads its settings
+        self.agent: BoardAgent | None = None
+        self.on = ""  # the agent's name, for the page
         self.turns: list[dict] = []
         self.dropped = 0
         self.session = ""
@@ -155,9 +162,9 @@ class Sketch:
                 "--allowedTools", TOOLS, "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
                 "--append-system-prompt", role(self.home), *resume]
 
-    def say(self, who: str, text: str, kind: str = "text") -> None:
+    def say(self, who: str, text: str, kind: str = "text", more: dict | None = None) -> None:
         with self.lock:
-            self.turns.append({"role": who, "kind": kind, "text": text})
+            self.turns.append({"role": who, "kind": kind, "text": text, **(more or {})})
             if len(self.turns) > KEPT:
                 cut = len(self.turns) - KEPT
                 del self.turns[:cut]
@@ -168,7 +175,8 @@ class Sketch:
         with self.lock:
             held = max(since - self.dropped, 0)
             return {"turns": self.turns[held:], "at": self.dropped + len(self.turns), "busy": self.busy,
-                    "step": self.step, "ready": self.ready, "check": list(self.check), "slug": self.slug}
+                    "step": self.step, "ready": self.ready, "check": list(self.check), "slug": self.slug,
+                    "agent": self.on}
 
     def ask(self, message: str) -> str:
         """Say something to the session, or say why it cannot be said: nothing, or an answer under way."""
@@ -181,17 +189,63 @@ class Sketch:
             self.busy = True
             if not self.session:
                 self.session = str(uuid.uuid4())
-        prepared(self.home)
         self.say("person", message)
+        launch = None if self.command else self.launch or chosen(read(), path=self.environment().get("PATH"))
+        if launch is not None and launch.able:
+            prepared(self.home, row_of(launch.key).get("skillsDir"))
+            threading.Thread(target=self.drive, args=(launch, message), daemon=True).start()
+            return "asked"
+        prepared(self.home)
         argv = self.argv(message)
         if argv is None:
-            self.say("sketch", "There is no `claude` on this machine's path, and this page is a session of it. "
-                     "Install Claude Code, or start the board from a shell that has it.", "error")
+            self.say("sketch", "There is no agent this board can run: nothing on the Settings tab can be launched, "
+                     "and `claude` is not on this machine's path. Install one, or start the board from a shell "
+                     "that has it.", "error")
             with self.lock:
                 self.busy = False
             return "no agent"
         threading.Thread(target=self.run, args=(argv,), daemon=True).start()
         return "asked"
+
+    def drive(self, launch: Launch, message: str) -> None:
+        """One turn over the protocol: the role at the head of the first prompt, the agent's updates as turns
+        as they arrive, and the brief read back after. Never raises."""
+        try:
+            if self.agent is None:
+                self.agent = BoardAgent(launch, self.home, "sketch", self.heard,
+                                        env={**self.environment(), **acp_environment(launch.key)})
+                self.on = launch.name
+            loaded = self.agent.session is not None or self.agent.begin()
+            opened = self.begun or loaded
+            stop = self.agent.turn(message if opened else f"{role(self.home)}\n\n---\n\n{message}", LIMIT)
+            self.begun = self.begun or stop != "fault"
+        except Exception as fault:  # noqa: BLE001 — a conversation stuck on busy is one nobody can type in
+            self.say("sketch", f"The session could not be started: {fault}", "error")
+            self.agent = None
+        finally:
+            lines = checked(self.home)
+            with self.lock:
+                self.check = lines
+                self.busy = False
+
+    def heard(self, role: str, kind: str, text: str, more: dict | None) -> None:
+        """A turn from the agent, with the step and ready lines read off its words."""
+        self.say(role, self.followed(text) if kind == "text" and role == "sketch" else text, kind, more)
+
+    def answer(self, number: str, answer: str | None) -> bool:
+        """The person's answer to a card the agent put up."""
+        return self.agent is not None and self.agent.answer(number, answer)
+
+    def cancel(self) -> str:
+        """Stop the turn under way, the protocol's way; the session stays."""
+        if self.agent is not None:
+            self.agent.cancel()
+            return "stopped"
+        with self.lock:
+            child = self.child
+        if child is not None:
+            child.kill()
+        return "stopped"
 
     def run(self, argv: list[str]) -> None:
         """The session to its end, its stream turned into turns, and the brief read back after. Never raises."""
@@ -256,6 +310,11 @@ class Sketch:
             child = self.child
         if child is not None:
             child.kill()
+        if self.agent is not None:
+            self.agent.cancel()
+            self.agent.close()
+            self.agent = None
+            (self.home / ".acp" / "session").unlink(missing_ok=True)
         with self.lock:
             self.turns, self.dropped, self.session, self.begun = [], self.dropped + len(self.turns), "", False
             self.step, self.ready = 1, False

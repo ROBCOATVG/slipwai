@@ -18,7 +18,8 @@ from urllib.parse import quote
 import checkout_packages  # noqa: F401
 from board_fixture import BoardTest
 
-from slipwai import brief_session
+from slipwai import board_settings, brief_session
+from slipwai.board_settings import Launch
 from slipwai.brief_page import chosen, served
 from slipwai.brief_session import Sketch
 
@@ -101,6 +102,37 @@ class FirstPageTest(BoardTest):
                       "the prototype is embedded once there is one")
         self.assertEqual(self.post("/brief/ask", {"sketch": "club-boats", "message": "  "})[0], 400)
         self.assertEqual(self.post("/brief/reset", {"sketch": "club-boats"}), (200, "cleared"))
+
+    def test_the_cards_are_answered_and_a_turn_stopped_through_the_page(self) -> None:
+        patched = mock.patch.object(board_settings, "SETTINGS", self.area / "board.json")
+        patched.start()
+        self.addCleanup(patched.stop)
+        agent = Path(__file__).resolve().parent / "fixtures" / "acp_agent.py"
+        brief_session.SKETCHED["over-acp"] = Sketch("over-acp", launch=Launch("stand-in", "Stand-in",
+                                                                               (sys.executable, str(agent)), ""))
+        self.addCleanup(brief_session.SKETCHED["over-acp"].reset)
+        page = self.get("/brief?sketch=over-acp")[1]
+        self.assertIn('<button class="stop" type="button" hidden>Stop</button>', page)
+        self.assertEqual(self.post("/brief/ask", {"sketch": "over-acp", "message": "outside"}), (200, "asked"))
+        asked = None
+        for _ in range(400):
+            turns = json.loads(self.get("/brief.json?sketch=over-acp&since=0")[1])["turns"]
+            asked = next((t for t in turns if t["kind"] == "permission"), None)
+            if asked:
+                break
+            time.sleep(0.05)
+        assert asked is not None
+        self.assertEqual(self.post("/brief/answer", {"sketch": "over-acp", "id": "p77", "option": "yes-once"})[0],
+                         400)
+        self.assertEqual(self.post("/brief/answer", {"sketch": "over-acp", "id": asked["ask"]["id"], "decline": True}),
+                         (200, "answered"))
+        for _ in range(400):
+            said = json.loads(self.get("/brief.json?sketch=over-acp&since=0")[1])
+            if not said["busy"]:
+                break
+            time.sleep(0.05)
+        self.assertIn("on Stand-in", self.get("/brief?sketch=over-acp")[1])
+        self.assertEqual(self.post("/brief/cancel", {"sketch": "over-acp"}), (200, "stopped"))
 
     def test_a_document_a_person_brought_begins_the_sketch_with_it_read_first(self) -> None:
         listing = self.get("/brief")[1]

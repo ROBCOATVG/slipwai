@@ -15,7 +15,8 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import brief_session
+from slipwai import board_settings, brief_session
+from slipwai.board_settings import Launch
 from slipwai.brief_session import Sketch, checked, prepared, slug_of, started, workspace
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "brief"
@@ -39,6 +40,117 @@ print(json.dumps({"type": "assistant", "message": {"content": [
     {"type": "text", "text": "step: 2\\nI have drawn it. Tap through: " + message}]}}))
 print(json.dumps({"type": "result", "is_error": False, "result": "done"}))
 """
+
+
+AGENT = Path(__file__).resolve().parent / "fixtures" / "acp_agent.py"
+
+
+class ProtocolTest(unittest.TestCase):
+    """The same conversation over the Agent Client Protocol, on the stand-in agent `tests/test_acp.py` uses."""
+
+    def setUp(self) -> None:
+        self.area = Path(tempfile.mkdtemp())
+        for patched in (mock.patch.object(brief_session, "SKETCHES", self.area / "sketches"),
+                        mock.patch.object(board_settings, "SETTINGS", self.area / "board.json")):
+            patched.start()
+            self.addCleanup(patched.stop)
+        self.launch = Launch("stand-in", "Stand-in", (sys.executable, str(AGENT)), "a script")
+        self.sketch = Sketch("club-boats", launch=self.launch)
+        self.addCleanup(self.sketch.reset)
+
+    def settle(self) -> dict:
+        for _ in range(400):
+            said = self.sketch.said()
+            if not said["busy"]:
+                return said
+            time.sleep(0.05)
+        self.fail("the sketch never finished answering")
+
+    def until(self, kind: str) -> dict:
+        for _ in range(400):
+            found = [t for t in self.sketch.said()["turns"] if t["kind"] == kind]
+            if found:
+                return found[-1]
+            time.sleep(0.05)
+        self.fail(f"no {kind} turn arrived")
+
+    def texts(self) -> list[str]:
+        return [t["text"] for t in self.sketch.said()["turns"] if t["kind"] == "text"]
+
+    def test_a_turn_is_the_agents_updates_as_they_arrive_and_the_brief_read_after(self) -> None:
+        self.assertEqual(self.sketch.ask("Members book a boat.\nstep: 2"), "asked")
+        said = self.settle()
+        self.assertEqual([(t["role"], t["kind"]) for t in said["turns"]],
+                         [("person", "text"), ("sketch", "text"), ("sketch", "tool"), ("sketch", "tool_update")])
+        self.assertEqual(said["turns"][1]["text"], "Role given. Drawn: Members book a boat.",
+                         "the eight steps went first, and the step line is read and taken out")
+        self.assertEqual(said["step"], 2)
+        self.assertEqual(said["turns"][2]["tool"]["kind"], "edit")
+        self.assertEqual(said["turns"][3]["tool"]["status"], "completed")
+        self.assertEqual(said["agent"], "Stand-in")
+        self.assertEqual(said["check"][0], "requirements document: prd.md, by name")
+        self.assertTrue((self.area / "board.json").is_file(), "what the agent offered was kept for the settings page")
+        self.assertIn("model", board_settings.read(self.area / "board.json").offered["stand-in"][0]["id"])
+
+    def test_the_role_heads_the_first_prompt_only(self) -> None:
+        self.sketch.ask("first")
+        self.settle()
+        self.assertEqual(self.texts()[1], "Role given. Drawn: first", "the eight steps headed the first prompt")
+        self.sketch.ask("second")
+        self.settle()
+        self.assertEqual(self.texts()[-1], "Drawn: second")
+
+    def test_a_permission_outside_the_folder_is_a_card_the_person_answers(self) -> None:
+        self.sketch.ask("outside")
+        asked = self.until("permission")
+        self.assertEqual(asked["ask"]["path"], "/etc/hosts")
+        self.assertEqual([o["kind"] for o in asked["ask"]["options"]], ["allow_once", "reject_once"])
+        self.assertTrue(self.sketch.answer(asked["ask"]["id"], "no-once"))
+        self.settle()
+        self.assertIn("refused outside", self.texts())
+        self.assertEqual(self.until("answered")["ask"]["id"], asked["ask"]["id"])
+        self.assertFalse(self.sketch.answer("p99", "yes-once"), "an answer to nothing waiting is refused")
+
+    def test_a_question_is_a_card_answered_in_the_same_turn(self) -> None:
+        self.sketch.ask("ask")
+        asked = self.until("question")
+        self.assertEqual((asked["text"], asked["ask"]["field"]), ("Which colour?", "answer"))
+        self.sketch.answer(asked["ask"]["id"], "blue")
+        self.settle()
+        self.assertIn("You said: blue", self.texts())
+
+    def test_a_stop_ends_the_turn_cancelled_and_the_session_stays(self) -> None:
+        self.sketch.ask("slow")
+        self.until("permission")
+        self.assertEqual(self.sketch.cancel(), "stopped")
+        said = self.settle()
+        self.assertEqual(said["turns"][-1]["text"], "Stopped.")
+        self.sketch.ask("again")
+        self.assertEqual(self.settle()["turns"][-3]["text"], "Drawn: again", "the same session answers the next turn")
+
+    def test_a_board_restart_loads_the_session_the_folder_kept(self) -> None:
+        self.sketch.ask("first")
+        self.settle()
+        self.sketch.agent.close() if self.sketch.agent else None
+        again = Sketch("club-boats", launch=self.launch)
+        self.addCleanup(again.reset)
+        again.ask("after")
+        said = [t["text"] for t in again.said()["turns"] if t["kind"] == "text"]
+        for _ in range(400):
+            if not again.said()["busy"]:
+                break
+            time.sleep(0.05)
+        said = [t["text"] for t in again.said()["turns"] if t["kind"] == "text"]
+        self.assertIn("earlier: hello again", said, "the agent replayed the history it kept")
+        self.assertEqual(said[-1], "Drawn: after", "and the role was not given twice")
+
+    def test_with_nothing_to_launch_the_page_says_where_to_look(self) -> None:
+        held = Sketch("club-boats")
+        with mock.patch.object(brief_session, "chosen", return_value=None), \
+                mock.patch("shutil.which", return_value=None), \
+                mock.patch.object(held, "environment", return_value={"PATH": "/nowhere"}):
+            self.assertEqual(held.ask("hello"), "no agent")
+        self.assertIn("Settings tab", held.said()["turns"][-1]["text"])
 
 
 class SketchTest(unittest.TestCase):

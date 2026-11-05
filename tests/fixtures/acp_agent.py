@@ -60,6 +60,11 @@ def permission(number, session, path):
 
 
 def turn(number, session, words):
+    # A role at the head of the prompt, set off by a rule, is acknowledged and not echoed: the words the
+    # stand-in acts on are the person's own, after it.
+    if "\n---\n" in words:
+        text(session, "Role given. ")
+        words = words.rsplit("\n---\n", 1)[1].strip()
     text(session, f"Drawn: {words}")
     if "die" in words:
         os._exit(3)
@@ -69,6 +74,9 @@ def turn(number, session, words):
     if allowed:
         (HOME / "prototype").mkdir(exist_ok=True)
         (HOME / "prototype" / "index.html").write_text("<title>Play</title>\n", encoding="utf-8")
+        (HOME / "brief").mkdir(exist_ok=True)
+        (HOME / "brief" / "prd.md").write_text("# Requirements\n\n## What it must do\n\n- Book a boat.\n",
+                                                encoding="utf-8")
     if "outside" in words:
         allowed, cancelled = permission(number * 10 + 2, session, Path("/etc/hosts"))
         text(session, "wrote outside" if allowed else "refused outside")

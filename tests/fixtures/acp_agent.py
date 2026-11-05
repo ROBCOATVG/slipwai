@@ -74,6 +74,9 @@ def turn(number, session, words):
     words = words.split("\n", 1)[0]
     if "die" in words:
         os._exit(3)
+    if " fairway=" in words:  # a captain's drive: the lines the chart says this slice publishes, and a demo
+        drove(words)
+        return "end_turn"
     allowed, cancelled = permission(number * 10 + 1, session, HOME / "prototype" / "index.html")
     if cancelled:
         return "cancelled"
@@ -97,6 +100,32 @@ def turn(number, session, words):
         said = (result or {}).get("content") or {}
         text(session, f"You said: {said.get('answer', '(nothing)')}")
     return "end_turn"
+
+
+def drove(words):
+    """What a fake `/sail` writes (`tests/captain_fixture.py`), from the chart: `mark-set` per mark in the
+    slice's `sets`, then an accepted demo, into the fairway's deck log under the working directory."""
+    import datetime
+    import re
+    found = re.search(r"`(\S+) fairway=(\S+)`", words)
+    if not found:
+        return
+    slice_id, fairway = found.group(1), found.group(2)
+    for chart in sorted((HOME / "specs").glob("*/chart.yaml")):
+        block = re.search(rf"^  {re.escape(slice_id)}:\n((?:    .*\n)*)", chart.read_text(encoding="utf-8"), re.M)
+        if not block:
+            continue
+        sets = re.search(r"sets: \[([^\]]*)\]", block.group(1))
+        marks = [m.strip() for m in (sets.group(1) if sets else "").split(",") if m.strip()]
+        path = HOME / ".slipwai" / "logs" / chart.parent.name / f"{fairway}.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        lines = [{"kind": "mark-set", "fairway": fairway, "slice": slice_id, "mark": mark} for mark in marks]
+        lines.append({"kind": "demo", "fairway": fairway, "slice": slice_id, "verdict": "accepted"})
+        with path.open("a", encoding="utf-8") as handle:
+            for body in lines:
+                handle.write(json.dumps({"v": 1, "t": now, **body}) + "\n")
+        return
 
 
 def main():

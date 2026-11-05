@@ -79,6 +79,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -88,6 +89,7 @@ sys.path.insert(0, str(HERE))
 import abreast  # noqa: E402
 import claims  # noqa: E402
 import clearance  # noqa: E402
+import drive  # noqa: E402
 import fleet  # noqa: E402
 import harness  # noqa: E402
 import inbox  # noqa: E402
@@ -478,6 +480,16 @@ def sail_command(slice_id: str, fairway: str, retry: str = "",
             f"SLIPWAI_SAIL: {named}"
     chosen, said = harness.choose()
     template, _ = harness.template(chosen)
+    prompt = sail_prompt(chosen, slice_id, fairway, retry, berth)
+    line = template.replace("{prompt}", shlex.quote(prompt)) + harness.model_flags(chosen, sail_model())
+    return shlex.split(line), {**harness.child_environment(chosen), **naming(slice_id, fairway, retry, berth)}, \
+        said
+
+
+def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "",
+                berth: Path | None = None) -> str:
+    """What the ladder's session is asked, whichever way it is started: `/sail <slice> fairway=<name>`, the
+    berth it is already in, the cruise's rule, and why the run before did not close the gate."""
     prompt = harness.prompt_for(chosen, "drive", DRIVE_COMMAND, f"{slice_id} fairway={fairway}")
     if berth is not None:
         prompt += (f"\n\nYou are already in this slice's berth: the worktree at {berth}, on branch "
@@ -488,9 +500,26 @@ def sail_command(slice_id: str, fairway: str, retry: str = "",
     if retry:
         prompt += (f"\n\nThe last run of this slice did not close its gate: {retry}. Re-enter at the first "
                    f"incomplete stage and close what it left.")
-    line = template.replace("{prompt}", shlex.quote(prompt)) + harness.model_flags(chosen, sail_model())
-    return shlex.split(line), {**harness.child_environment(chosen), **naming(slice_id, fairway, retry, berth)}, \
-        said
+    return prompt
+
+
+def starter(slice_id: str, fairway: str, retry: str = "",
+            berth: Path | None = None) -> Callable[[], subprocess.Popen | drive.Drive]:
+    """What starts the ladder for one slice, chosen now so that a harness nobody can start is said before
+    anything is fired: a session of the installed harness's print mode, or — where `SLIPWAI_ACP` says so —
+    one over the Agent Client Protocol, which the watch below drives the same way. `SLIPWAI_SAIL` wins over
+    both: it is the suite's fake and the way a command the registry does not know is pointed at."""
+    over = None if os.environ.get("SLIPWAI_SAIL") else drive.protocol()
+    if over is None:
+        argv, environment, _said = sail_command(slice_id, fairway, retry, berth)
+        return lambda: harness.Session(argv, berth or ROOT, environment)
+    launch, row, said = over
+    prompt = sail_prompt(row, slice_id, fairway, retry, berth)
+    environment = {**harness.child_environment(row), **drive.acp_environment(row),
+                   **naming(slice_id, fairway, retry, berth)}
+    print(f"captain: {slice_id}: {said}", flush=True)
+    return lambda: drive.Drive(launch, berth or ROOT, environment, prompt, model=sail_model(),
+                               kept=(berth or ROOT) / ".slipwai" / "acp" / slice_id)
 
 
 def naming(slice_id: str, fairway: str, retry: str = "", berth: Path | None = None) -> dict[str, str]:
@@ -577,7 +606,7 @@ def head(branch: str) -> str:
     return found.stdout.strip() if found.returncode == 0 else ""
 
 
-def end(process: subprocess.Popen) -> None:
+def end(process: subprocess.Popen | drive.Drive) -> None:
     """End a dispatched stage, and everything it started.
 
     The session is started in a process group of its own so that this can reach its delegates as well: a
@@ -586,6 +615,9 @@ def end(process: subprocess.Popen) -> None:
     signal, so there it is the session itself.
     """
     if process.poll() is not None:
+        return
+    if isinstance(process, drive.Drive):  # over the protocol the stop is a cancel, and the agent's own end
+        process.end()
         return
     group = getattr(os, "killpg", None)
     try:
@@ -617,7 +649,7 @@ def mine(found: list[logs.Entry], slice_id: str) -> list[logs.Entry]:
             or (alone and not e.fields.get("slice"))]
 
 
-def watched(process: subprocess.Popen, feature: str, fairway: str, slice_id: str, bound: float,
+def watched(process: subprocess.Popen | drive.Drive, feature: str, fairway: str, slice_id: str, bound: float,
             started: int, branch: str = "") -> tuple[bool, str]:
     """Wait for `/sail`, writing a heartbeat and ending it if the log stops. (finished, why it was ended).
 
@@ -796,7 +828,7 @@ def dispatch(slice_id: str, feature: str, fairway: str,
     held = flying.get("berth")
     berth = held if isinstance(held, Path) and held.resolve() != ROOT.resolve() else None
     try:
-        argv, environment, _said = sail_command(slice_id, fairway, retry, berth)
+        begin = starter(slice_id, fairway, retry, berth)
     except harness.NoHarness as refused:
         # Not a park with a mark missing: the ladder never ran, and saying "no `mark-set` was written" about
         # a session nobody could start would send somebody to read a slice that is fine.
@@ -808,7 +840,7 @@ def dispatch(slice_id: str, feature: str, fairway: str,
     refurnish(slice_id, berth)
     # A session of its own, so that `end` reaches the delegates it starts as well as the session; and a
     # `Session`, so that one which said it was finished and stayed is ended rather than waited out.
-    process = harness.Session(argv, berth or ROOT, environment)
+    process = begin()
     flying["process"] = process
     try:
         finished, why = watched(process, feature, fairway, slice_id, stage_bound(), started,
@@ -917,6 +949,14 @@ def skipper_command(slice_id: str, feature: str, fairway: str, asked: list[logs.
         return [*named.split(), slice_id, fairway, ",".join(ids)], {**os.environ, **told}
     chosen, _said = harness.choose()
     template, _ = harness.template(chosen)
+    prompt = skipper_prompt(slice_id, feature, fairway, asked, berth)
+    line = template.replace("{prompt}", shlex.quote(prompt)) + harness.model_flags(chosen, sail_model())
+    return shlex.split(line), {**harness.child_environment(chosen), **told}
+
+
+def skipper_prompt(slice_id: str, feature: str, fairway: str, asked: list[logs.Entry],
+                   berth: Path | None = None) -> str:
+    """What the skipper's session is asked: decide these questions as `/cruise` says, and end."""
     listed = "\n".join(f"- {e.fields.get('id')}: {e.fields.get('what')}" for e in asked)
     where = deck(feature, fairway).relative_to(ROOT).as_posix()
     prompt = (f"This run is under /cruise, with `decide: {cruising()}`. Slice {slice_id} on fairway {fairway} "
@@ -932,8 +972,23 @@ def skipper_command(slice_id: str, feature: str, fairway: str, asked: list[logs.
               f"decided: write nothing for it. Decide only these, build nothing, and end.")
     if berth is not None:
         prompt += f"\n\nYou are in this slice's berth, the worktree at {berth}; work there."
-    line = template.replace("{prompt}", shlex.quote(prompt)) + harness.model_flags(chosen, sail_model())
-    return shlex.split(line), {**harness.child_environment(chosen), **told}
+    return prompt
+
+
+def skipper_starter(slice_id: str, feature: str, fairway: str, asked: list[logs.Entry],
+                    berth: Path | None = None) -> Callable[[], subprocess.Popen | drive.Drive]:
+    """What starts the skipper's round, as `starter` is to the ladder's: `SLIPWAI_SKIPPER` first, then the
+    protocol where `SLIPWAI_ACP` says so, then the print mode."""
+    over = None if os.environ.get("SLIPWAI_SKIPPER") else drive.protocol()
+    if over is None:
+        argv, environment = skipper_command(slice_id, feature, fairway, asked, berth)
+        return lambda: harness.Session(argv, berth or ROOT, environment)
+    launch, row, _said = over
+    told = {**naming(slice_id, fairway, "", berth), "SLIPWAI_STAGE": "decide"}
+    environment = {**harness.child_environment(row), **drive.acp_environment(row), **told}
+    prompt = skipper_prompt(slice_id, feature, fairway, asked, berth)
+    return lambda: drive.Drive(launch, berth or ROOT, environment, prompt, model=sail_model(),
+                               kept=(berth or ROOT) / ".slipwai" / "acp" / f"{slice_id}-decide")
 
 
 def skipper_round(slice_id: str, feature: str, fairway: str, asked: list[logs.Entry]) -> list[str]:
@@ -949,7 +1004,7 @@ def skipper_round(slice_id: str, feature: str, fairway: str, asked: list[logs.En
     held = flying.get("berth")
     berth = held if isinstance(held, Path) and held.resolve() != ROOT.resolve() else None
     try:
-        argv, environment = skipper_command(slice_id, feature, fairway, asked, berth)
+        begin = skipper_starter(slice_id, feature, fairway, asked, berth)
     except harness.NoHarness as refused:
         print(f"captain: {slice_id}'s questions were not put to the skipper: {refused}", flush=True)
         return ids
@@ -959,7 +1014,7 @@ def skipper_round(slice_id: str, feature: str, fairway: str, asked: list[logs.En
     fire("before-stage", stage="decide", slice=slice_id, fairway=fairway)
     started = len(entries(feature, fairway))
     refurnish(slice_id, berth)
-    process = harness.Session(argv, berth or ROOT, environment)
+    process = begin()
     flying["process"] = process
     try:
         watched(process, feature, fairway, slice_id, stage_bound(), started)

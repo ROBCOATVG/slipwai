@@ -24,9 +24,12 @@ and the assessment followed the same way through one `stage_step` helper; the mo
 through `stage_steps.py`, which does around the session what the toolkit's scripts do around theirs — the
 model's prompt asked of the project's script, triage given the numbers nobody has routed, a launch going
 on to enable `/cruise` and cast off — and says what a stage left undone; the adoption steps the same
-way, with their prompt from `step.py --prompt`. The captain's drives are still the headless child: the
-captain runs outside the board's process, in the toolkit, which has no protocol client yet; that is the
-next change.
+way, with their prompt from `step.py --prompt`. The captain's drives and the skipper's rounds take the
+protocol too, opt-in: the toolkit carries the keel's client (`make shared` writes `scripts/agents/acp.py`)
+and `scripts/agents/drive.py` gives a session a process's face for the captain's watch; `SLIPWAI_ACP=1`
+takes the initialised harness's launch row, any other value a command, unset is the print mode as it was.
+The suite's stand-in drives a slice through the captain's gate on it. The board turning it on for a project
+waits on a proven row (22.6).
 
 **The principle the plan serves:** the board is the face a non-technical person sees, and what runs behind
 it must be whichever coding agent that person has — not one named in the keel's source. The protocol is
@@ -165,7 +168,7 @@ the gates inside. The main plan's phase 22 table is the one `make progress` tick
 | 22.4 | The first page over the protocol: `Sketch` on an `acp.Session`, the role at the head of the first prompt, tool cards, a plan, permission and question cards, Stop, the session loaded across a restart | L | todo |
 | 22.5 | The console over the protocol: the same on the Voyage page | M | todo |
 | 22.6 | The live run: one brief through the first page on Claude's adapter and one on a native agent, recorded here | S | todo |
-| 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives; each shows its progress, asks the person instead of assuming, and stops on a cancel; the headless path kept where a harness has no `acp` row | L | every stage the board runs done; the captain's drives todo |
+| 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives; each shows its progress, asks the person instead of assuming, and stops on a cancel; the headless path kept where a harness has no `acp` row | L | done 2026-11-05; the captain's path opt-in by `SLIPWAI_ACP` until a row is proven |
 | 22.8 | Install from the settings page: an agent put on this machine from its manifest — `npx` needs only Node, a binary archive is fetched and its sha256 checked — and its sign-in started through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | M | todo |
 
 ### 22.1 `acp.py` — M
@@ -230,13 +233,14 @@ the gates inside. The main plan's phase 22 table is the one `make progress` tick
 
 ### 22.7 The stages over the protocol — L
 
-- The toolkit's `harness.py` gains `acp_session(chosen, cwd, ...)` beside `run_session`, and each stage
-  script takes it where the row has `acp`: progress as updates, a permission by the same policy, a
-  question put to the page through the board's own route, a cancel as the stop. The draft first, because
-  it is where the number is taken: a draft that asks on the page instead of assuming, and the count after
-  it against 21.6d's ten. Then the surfaces and a storyboard's redraw, `assess`, the event model, `triage`,
-  the adoption steps, the captain's drives. The headless path kept, untouched, for a harness with no
-  `acp` row. One fragment per stage, MINOR.
+- As built: the stages the board runs take the protocol in the keel — `stage_session.py` is a step run
+  in-process in place of the `make` child, `stage_steps.py` does around the session what the toolkit's
+  scripts do around theirs (the model's prompt from `model.py --prompt`, triage's numbers, launch going on
+  to cast off; the adoption step's prompt from `step.py --prompt`) — so the toolkit's scripts are untouched
+  but for the `--prompt` flags, and a terminal runs them as it did. The captain's drives take it in the
+  toolkit: `acp.py` carried by `make shared`, `drive.py` a session with a process's face. The draft first,
+  because it is where the number is taken: a draft that asks on the page instead of assuming, and the
+  count after it against 21.6d's ten. One fragment per stage, MINOR.
 
 ### 22.8 Install from the settings page — M
 

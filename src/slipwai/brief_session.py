@@ -146,8 +146,11 @@ class Sketch:
         if not found:
             return None
         resume = ["--resume", self.session] if self.begun else ["--session-id", self.session]
+        # No MCP servers: a print session otherwise loads the person's own — a browser, a code index — and
+        # the first live run spent its turns trying to open the prototype in one. The page shows it.
         return [found, "-p", message, "--output-format", "stream-json", "--verbose", "--tools", TOOLS,
-                "--allowedTools", TOOLS, "--append-system-prompt", role(self.home), *resume]
+                "--allowedTools", TOOLS, "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+                "--append-system-prompt", role(self.home), *resume]
 
     def say(self, who: str, text: str, kind: str = "text") -> None:
         with self.lock:

@@ -22,9 +22,10 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 500 — the park record (cause, until, needs, then) and the shape each field is held to, beside
+# budget: 510 — the park record (cause, until, needs, then) and the shape each field is held to, beside
 # the whole vocabulary of both logs, each kind beside the reason it exists, and the few folds
-# every reader needs, among them which slices a fairway holds in flight now that it holds several at once
+# every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
+# and a park written when a need was a sentence, read as the record it now is
 from __future__ import annotations
 
 import json
@@ -336,6 +337,22 @@ def entry(kind: str, harbour: bool = False, **fields: object) -> Entry:
     return Entry(kind=kind, fields=dict(fields))
 
 
+def written_before_needs_were_records(body: dict) -> dict:
+    """A park's needs as records, where it was written when a need was a sentence.
+
+    Read and never written: `entry` still refuses a sentence. recap's LB10 parked with two strings the week
+    before needs became `{"what", "by"}`, and every captain started after the upgrade refused the whole
+    library log at that line and exited — the board drew the fairway with nothing waiting, because the park
+    it was waiting on was the line nobody could read. A sentence is a need only a person can tick, which is
+    what it always was.
+    """
+    needs = body.get("needs")
+    if not isinstance(needs, list) or not any(isinstance(need, str) for need in needs):
+        return body
+    return body | {"needs": [{"what": need, "by": "person"} if isinstance(need, str) else need
+                             for need in needs]}
+
+
 def read(line: str, harbour: bool = False) -> Entry:
     """One line back, or a refusal that says which rule it broke and what to do about it."""
     text = line.strip()
@@ -360,6 +377,8 @@ def read(line: str, harbour: bool = False) -> Entry:
     if missing:
         raise Unreadable(f"a {kind!r} line carries {', '.join(required)}; this one has no "
                          f"{', '.join(missing)}")
+    if kind in ("parked", "told"):
+        body = written_before_needs_were_records(body)
     closed(kind, body)
     known = {*COMMON, *required}
     return Entry(kind=kind, t=str(body.get("t", "")),
@@ -418,7 +437,16 @@ def fold(lines: list[str], harbour: bool = False) -> list[Entry]:
     Deliberately not "skip what you cannot parse". A board folded from a log with holes in it is a board
     that is confidently wrong, and the first attempt's whole problem was a status nobody could check.
     """
-    return [read(line, harbour) for line in lines if line.strip()]
+    found: list[Entry] = []
+    for number, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        try:
+            found.append(read(line, harbour))
+        except Unreadable as fault:
+            # The rule alone sends a person through eleven hundred lines for the one that broke it.
+            raise Unreadable(f"line {number}: {fault}") from fault
+    return found
 
 
 def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[Entry]:

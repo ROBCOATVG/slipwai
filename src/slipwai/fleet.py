@@ -17,7 +17,8 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 580 — every column of the board folded from the logs, including what waits on a person: a park,
+# budget: 590 — every column of the board folded from the logs, including what waits on a person: a park,
+# a deck log nobody can read,
 # a told, the decisions nobody has read, and a question a headless stage posted and nobody has answered
 # yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
 # which `told` an answer or a claim has already taken up, which one is a session's note for another session
@@ -274,7 +275,10 @@ def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | Non
         # Asked to stop and said so. Not `stalled`, which is a captain that went quiet without a word, and
         # not `parked`, which waits on a person: lighting the fleet again carries the slice on.
         return "stopped"
-    if last.kind == "merged" and not fairway.slices_now:
+    # Everything it claimed is merged and nothing is in flight: finished, whatever was written after the last
+    # merge. recap's catch-up took a person's read receipts after its fifteenth merge, and its row said
+    # `stalled` — a captain gone quiet — about a stream with no work left in it.
+    if not fairway.slices_now and fairway.merged and set(fairway.claimed) <= set(fairway.merged):
         if waiting is None:
             return "unknown"
         return "idle" if waiting else "finished"
@@ -441,6 +445,19 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
     return sorted(waiting, key=lambda row: row["t"])
 
 
+def unreadable_rows(faults: dict[str, str]) -> list[dict[str, Any]]:
+    """A deck log nobody can fold, as the thing waiting on a person that it is.
+
+    Its captain refuses the log and exits at every relight, so nothing it was waiting on can reach the board:
+    recap's library row said nothing was waiting while LB10's park sat behind the one line that could not be
+    read. Only a person can repair the line — anything said to the stream lands in the same file."""
+    return [{"fairway": name, "kind": "unreadable", "t": "",
+             "what": f"The {name} log cannot be read, so its captain stops at every start and the board cannot "
+                     f"see what it is waiting on ({fault}). Repair that line, and the "
+                     f"harbourmaster relights the captain on its next pass"}
+            for name, fault in sorted(faults.items()) if name != "clearance"]
+
+
 def inbox_detail(row: dict) -> str:
     """The same wait clock in the terminal, page and agent inbox, with the age visible first."""
     if not row.get("waited"):
@@ -544,7 +561,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
     accepted = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "accepted"]
     due = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "demo-due"]
-    waiting = inbox(found, bound, now, ceiling_of(held))
+    waiting = inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults)
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
         # The parks folded by what they wait on, and the numbers under the headline: both from the same

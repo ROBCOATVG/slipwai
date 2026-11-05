@@ -226,7 +226,9 @@ SCRIPT = """
 
 
 def entry_html(one: Decision) -> str:
-    kind = "yours" if one.yours else "read" if one.read else "unread"
+    # Yours and read, both: the filter, the count and Mark every one shown all read the `read` class, and an
+    # answer of your own without it was listed as unread and sent to a receipt the deck rightly refused.
+    kind = "yours read" if one.yours else "read" if one.read else "unread"
     meta = [one.slice and f"Slice {one.slice}", one.parts.get("Stage") or "", one.when[:16].replace("T", " "),
             f"Decided by {one.decided_by}" if one.decided_by else ""]
     chips = "".join(f"<span>{esc(word)}</span>" for word in meta if word)

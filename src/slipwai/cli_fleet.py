@@ -91,11 +91,9 @@ def lines(root: Path) -> list[str]:
 
     unreadable = found["unreadable"]
     assert isinstance(unreadable, dict)
-    for name, fault in sorted(unreadable.items()):
-        if name == "clearance":
-            said.append(f"  clearance unavailable ({fault}); waiting counts are unknown")
-        else:
-            said.append(f"  {name}'s log cannot be read ({fault}); its row is what is left of it")
+    # A deck log that cannot be read is listed under waiting on you, where its repair is asked for.
+    if unreadable.get("clearance"):
+        said.append(f"  clearance unavailable ({unreadable['clearance']}); waiting counts are unknown")
 
     feed = found["feed"]
     assert isinstance(feed, list)

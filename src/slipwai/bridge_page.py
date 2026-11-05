@@ -188,6 +188,8 @@ def berth_rows(rows: list[dict], streams: dict, controls: bool = True) -> str:
 #: What a person has to do with each kind of waiting row, in the order they should be looked at. A park or a
 #: question needs an answer; unread decisions need reading; a told is only a note, and Done clears it.
 WAIT_GROUPS = (
+    ("fix", "Repair a log", ("unreadable",),
+     "Its captain cannot start until the line is repaired, and nothing said here reaches it."),
     ("answer", "Needs an answer", ("question", "parked"), "Silence keeps the stream parked."),
     ("need", "Needs", ("told",), "A slice handed these back: each ticks itself when trunk has it, and you tick "
                                   "the ones only you can. It leaves when the last is met."),
@@ -248,7 +250,7 @@ def inbox_row(index: int, row: dict, controls: bool, streams: dict | None, group
             if row["kind"] == "told" and not row.get("needs") else "")
     box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
            f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button>{done}</div>'
-           if controls else "")
+           if controls and row["kind"] != "unreadable" else "")
     full = f'<p class="why">{esc(detail)}</p>' if headline(detail) != detail else ""
     return (f'<details class="log"><summary><b>{esc(headline(detail))}</b> '
             f'<span class="tag">{esc(name)}</span> <span class="mono">{esc(row["t"])}</span></summary>'

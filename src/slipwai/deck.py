@@ -18,7 +18,7 @@ import os
 import re
 from pathlib import Path
 
-from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold, harbour_logs
+from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold, harbour_logs, read
 
 #: How many lines one stream shows by default. Enough to cover a slice; short enough to read.
 RECENT = 60
@@ -214,7 +214,7 @@ def entries(root: Path, fairway: str, feature: str = "") -> tuple[list[Entry], s
         if not line.strip():
             continue
         try:
-            kept += fold([line])
+            kept.append(read(line))
         except Unreadable as fault:
             return kept, f"line {number} cannot be read: {fault}"
     return kept, ""

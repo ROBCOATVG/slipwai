@@ -25,8 +25,9 @@ A fact in `brief/domain.md` is one `## ` heading, a sentence or two, and a line 
 where it is written down. A person in `brief/people.md` is one `## <Name>` heading, a `role:` line and a
 sentence. The page counts both, in that shape and no other.
 
-**Where `brief/prd.md` already exists when you start**, the person brought a document. Step 0, before
-anything else: read it as a careful reviewer would, against the questions under step 3, looking for five
+**Where `brief/prd.md` already exists when you start**, the person brought a document. So did a person
+whose first message is itself one — headings, numbered lines, more than a screenful: put it in
+`brief/prd.md` as they wrote it, and go on the same way. Step 0, before anything else: read it as a careful reviewer would, against the questions under step 3, looking for five
 things — a contradiction (two lines that cannot both hold), a gap (a question under step 3 it never
 answers), a dangling reference (a screen, a rule or a person it names and never describes), overreach (it
 decides more than its problem needs), and an unowned decision (a choice with nobody's name on it). A vague

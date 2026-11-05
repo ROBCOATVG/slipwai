@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, quote
 
-from .brief_session import BRIEF, PROTOTYPE, for_slug, sketches, slug_of, started, workspace
+from .brief_session import BRIEF, BROUGHT, PROTOTYPE, for_slug, sketches, slug_of, started, workspace
 from .page_shell import document, esc
 
 STEPS = ("Describe", "Walk the states", "Check", "Hand over")
@@ -50,10 +50,18 @@ STYLE = """
 #sketch .head{display:flex;align-items:baseline;gap:10px;justify-content:space-between}
 #sketch .head h2{margin:0}
 #sketch .head button{font:inherit;font-size:.8rem;background:none;border:0;color:var(--ink-3);cursor:pointer}
-#sketches ul{margin:8px 0 0;padding-left:1.2rem}
-#sketches textarea{width:100%;box-sizing:border-box;min-height:9rem;font:inherit;font-size:.9rem;padding:8px 10px;
-  border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);margin-top:10px}
-#sketches label.file{display:block;font-size:.84rem;color:var(--ink-2);margin-top:8px}
+#sketches .doc{display:grid;gap:6px;margin-top:16px}
+#sketches .doc>label,#sketches h3{font-size:.85rem;font-weight:500;color:var(--ink-2);margin:0}
+#sketches textarea{width:100%;box-sizing:border-box;min-height:6rem;font:inherit;font-size:.9rem;padding:8px 10px;
+  border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);resize:vertical}
+#sketches label.file{display:flex;align-items:center;gap:10px;font-size:.84rem;color:var(--ink-3);cursor:pointer}
+#sketches label.file input{position:absolute;width:1px;height:1px;opacity:0}
+#sketches .pick,#sketches ul.had a{display:inline-block;font-size:.84rem;padding:6px 12px;border-radius:8px;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ink-2);text-decoration:none}
+#sketches ul.had a{color:var(--teal)}
+#sketches label.file:focus-within .pick{outline:2px solid var(--teal);outline-offset:1px}
+#sketches h3{margin-top:18px}
+#sketches ul.had{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 #sketches .said{color:var(--brass);font-size:.88rem;margin:8px 0 0}
 #sketch .check li{padding-left:18px;position:relative}
 #sketch .check li::before{content:"";position:absolute;left:0;top:.45em;width:9px;height:9px;border-radius:50%;
@@ -150,6 +158,7 @@ def listing() -> str:
     """The page with no sketch: the ones this machine has, a field for a new one's name, and a document a
     person already has, pasted or chosen, which the session reads first."""
     had = "".join(f'<li><a href="/brief?sketch={quote(one)}">{esc(one)}</a></li>' for one in sketches())
+    kept = f'<h3>Pick up where you left off</h3><ul class="had">{had}</ul>' if had else ""
     return (f'<div id="sketches" class="card"><h2>Describe a product</h2>'
             f'<p>Say what it is, in your words, and it is drawn as a thing you can tap through. What you decide '
             f'while playing becomes the brief a project starts from. Nothing here is required: a person with '
@@ -157,12 +166,13 @@ def listing() -> str:
             f'<form class="ask" method="get" action="/brief"><input name="name" placeholder="Club boat bookings" '
             f'autocomplete="off" aria-label="The product\'s name">'
             f'<button class="go" type="submit">Start</button></form>'
-            f'<textarea name="document" placeholder="A document you already have, if you have one: paste it here, '
-            f'or choose the file. It is read first, and what it leaves open is asked." '
-            f'aria-label="A document you already have"></textarea>'
-            f'<label class="file">Or choose it: <input type="file" accept=".md,.txt,text/*"></label>'
+            f'<div class="doc"><label for="said">Say what it is, in your words</label>'
+            f'<textarea id="said" name="said" placeholder="Who uses it, and what they do with it. A document you '
+            f'already have can go here too: it is read first, and what it leaves open is asked."></textarea>'
+            f'<label class="file"><input type="file" accept=".md,.txt,text/*"><span class="pick">Or choose a '
+            f'document you already have</span><span class="name"></span></label></div>'
             f'<p class="said" hidden></p>'
-            f"{'<ul>' + had + '</ul>' if had else ''}</div>")
+            f"{kept}</div>")
 
 
 BEGIN = """
@@ -172,15 +182,20 @@ BEGIN = """
     const form = card.querySelector('form'), text = card.querySelector('textarea');
     const file = card.querySelector('input[type=file]');
     const said = card.querySelector('.said');
+    let brought = false;  // a chosen file is a document to review; typed words are the first thing said
     file.addEventListener('change', () => {
       const one = file.files && file.files[0];
-      if (one) one.text().then(read => { text.value = read; });
+      if (!one) return;
+      one.text().then(read => {
+        text.value = read; brought = true; card.querySelector('.name').textContent = one.name;
+      });
     });
     form.addEventListener('submit', async event => {
-      if (!text.value.trim()) return;  // no document: the plain form, which needs no script
+      if (!text.value.trim()) return;  // a name alone: the plain form, which needs no script
       event.preventDefault();
+      const body = {name: form.name.value, [brought ? 'document' : 'said']: text.value};
       const answer = await fetch('/brief/new', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                                                 body: JSON.stringify({name: form.name.value, document: text.value})});
+                                                 body: JSON.stringify(body)});
       if (!answer.ok) { said.textContent = await answer.text(); said.hidden = false; return; }
       location.href = '/brief?sketch=' + encodeURIComponent(await answer.text());
     });
@@ -267,13 +282,19 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
 
 
 def route_post(bridge: Any, where: str, held: dict) -> bool:
-    """Answer a POST of this page's — a turn, or a new conversation — or say it was not one."""
+    """Answer a POST of this page's — a turn, or a new conversation, begun with what the person typed or with
+    a document they chose — or say it was not one."""
     if where not in ("/brief/ask", "/brief/reset", "/brief/new"):
         return False
     try:
         if where == "/brief/new":
             slug = slug_of(str(held.get("name") or ""))
-            started(slug, str(held.get("document") or ""))
+            document, said = str(held.get("document") or ""), str(held.get("said") or "")
+            started(slug, document)
+            if document.strip():
+                for_slug(slug).ask(BROUGHT)  # a brought document is the first thing the person said
+            elif said.strip():
+                for_slug(slug).ask(said)
             bridge.send(200, slug, "text/plain; charset=utf-8")
             return True
         sketch = for_slug(str(held.get("sketch") or ""))

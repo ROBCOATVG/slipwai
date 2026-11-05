@@ -46,6 +46,9 @@ SKILLS = ("frontend-design", "storyboard", "find-gaps")
 PROMPT = TOOLKIT_ROOT.parent / "brief" / "sketch.md"
 #: A slug: what a product's name becomes as a folder, and the only shape the address accepts.
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+#: What the page says for a person who brought a document, so the session's step 0 begins without them
+#: having to say anything: the document is the first thing they said.
+BROUGHT = "Here is the document I already have, in brief/prd.md. Read it first."
 #: The two lines the prompt asks the session to print, so the page can follow it.
 STEP = re.compile(r"^step:\s*([1-4])\s*$", re.MULTILINE)
 READY = "The brief is ready to hand over."

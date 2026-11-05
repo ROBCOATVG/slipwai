@@ -505,9 +505,10 @@ stage's job here or a product manager's artefact, and the brief keeps its four h
   happens when it fails, with "what if they skip a step" and "what if they do it out of order" asked of
   every flow. Asked in the person's words, one or two at a time, never as a form. The live run's seven
   open questions are the test: a session with the set asks them before it draws the second version.
-- **A document to start from.** The page with no sketch gains a second field beside the name: a document,
-  pasted or chosen as a file, which lands as `brief/prd.md` before the first turn. Step 0 of the prompt,
-  where that file exists: read it as a senior reviewer would against the question set — gaps,
+- **A document to start from.** The page with no sketch gains a big box under the name for the first thing
+  the person says, and a button for a document they already have, which lands as `brief/prd.md` before
+  the first turn; the conversation begins from either without another word typed. Step 0 of the prompt,
+  where that file exists or the first message is itself a document: read it as a senior reviewer would against the question set — gaps,
   contradictions, references to nothing, decisions nobody owns — write every miss under `## Open`, say
   what the document settled and what it did not, and only then draw. A document good enough has few open
   lines and the page says so in the same amber line it already has; nothing new to read.

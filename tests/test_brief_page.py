@@ -104,15 +104,24 @@ class FirstPageTest(BoardTest):
 
     def test_a_document_a_person_brought_begins_the_sketch_with_it_read_first(self) -> None:
         listing = self.get("/brief")[1]
-        self.assertIn('<textarea name="document"', listing)
+        self.assertIn('<textarea id="said" name="said"', listing)
         self.assertIn('<input type="file" accept=".md,.txt,text/*">', listing)
+        brief_session.SKETCHED["from-a-doc"] = Sketch("from-a-doc", [sys.executable, str(self.area / "agent.py")])
         code, slug = self.post("/brief/new", {"name": "From a doc", "document": "# Bookings\n\n## Open\n\n- When?\n"})
         self.assertEqual((code, slug), (200, "from-a-doc"))
         opened = self.get("/brief?sketch=from-a-doc")[1]
         self.assertIn('data-sketch="from-a-doc"', opened)
         polled = json.loads(self.get("/brief.json?sketch=from-a-doc&since=0")[1])
+        self.assertEqual(polled["turns"][0], {"role": "person", "kind": "text", "text": brief_session.BROUGHT},
+                         "the document is the first thing said, so step 0 begins without a word typed")
         self.assertEqual(polled["check"][0], "requirements document: prd.md, by name", "read before the first turn")
         self.assertEqual(self.post("/brief/new", {"name": "From a doc", "document": "# Again\n"})[0], 400)
+        brief_session.SKETCHED["in-words"] = Sketch("in-words", [sys.executable, str(self.area / "agent.py")])
+        self.assertEqual(self.post("/brief/new", {"name": "In words", "said": "A way to find games nearby"}),
+                         (200, "in-words"))
+        polled = json.loads(self.get("/brief.json?sketch=in-words&since=0")[1])
+        self.assertEqual(polled["turns"][0]["text"], "A way to find games nearby",
+                         "what was typed under the name is the first thing said, not a document to review")
         self.assertEqual(self.post("/brief/new", {"name": "", "document": ""})[0], 400)
 
     def test_a_file_is_served_from_the_workspace_and_nothing_outside_it(self) -> None:

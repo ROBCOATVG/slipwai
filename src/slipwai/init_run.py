@@ -33,7 +33,7 @@ from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 560 — one runner for every child the board starts: assessment of a feature, and runs of steps that go on
+# budget: 600 — one runner for every child the board starts: assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
@@ -161,9 +161,15 @@ MODELLING = ("Modelling — `make model-next`: the event model from the approved
 DRAWING = ("Drawing the surfaces — `make surfaces`: the research, the wireframes and the storyboard in a "
            "headless session of the coding agent. It stops at the storyboard, which is where you come in: "
            "nothing is approved by a session nobody was in.")
+DRAWING_ACP = ("Drawing the surfaces — the project's agent over the Agent Client Protocol, from this board: the "
+               "research, the wireframes and the storyboard, with what it reads and writes shown as it goes. "
+               "Where only you can decide, it asks here. It stops at the storyboard, which is where you come in.")
 ASSESS = ["make", "assess"]
 ASSESSING = ("Assessing the next feature — `make assess`: Spec Kit decides whether the idea handed to /sail "
              "deserves a specification, and writes one only when the verdict is go.")
+ASSESSING_ACP = ("Assessing the next feature — the project's agent over the Agent Client Protocol, from this "
+                 "board: whether the idea deserves a specification, written only when the verdict is go. Where "
+                 "only you can decide, it asks here.")
 #: What the button runs: the chart and the split in a second session, `/cruise` enabled, the fleet cast off.
 LAUNCH = ["make", "launch"]
 LAUNCHING = ("Continuing the build — `make launch`: the chart and the split in a headless session, then /cruise "
@@ -390,15 +396,25 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
     return fitting
 
 
-def draft_step(where: Path) -> Step:
-    """The draft: over the protocol where this board can launch the project's agent, so the agent can ask the
-    person what only they can decide; `make draft`, the headless child, where it cannot."""
+def stage_step(where: Path, command: str, argument: str, argv: list[str], announced: str, over: str,
+               ended: Callable[[int], str], key: str, limit: float = 1800.0) -> Step:
+    """A stage: over the protocol where this board can launch the project's agent, so the agent can ask the
+    person what only they can decide and the board can see it work; the headless child where it cannot."""
     from .stage_session import StageSession, launchable  # noqa: PLC0415 — the edge tier, reached from here only
 
     if launchable(where) is None:
-        return Step(DRAFT, DRAFTING, drafted, "draft")
-    stage = StageSession(where, "draft", "docs/prd.md")
-    return Step([], DRAFTING_ACP, drafted, "draft", session=stage.run)
+        return Step(argv, announced, ended, key)
+    return Step([], over, ended, key, session=StageSession(where, command, argument, limit=limit).run)
+
+
+def draft_step(where: Path) -> Step:
+    return stage_step(where, "draft", "docs/prd.md", DRAFT, DRAFTING, DRAFTING_ACP, drafted, "draft")
+
+
+def first_feature(where: Path) -> str:
+    """The feature `make surfaces` draws when none is named: the first with a specification."""
+    found = sorted((where / "specs").glob("*/spec.md")) if (where / "specs").is_dir() else []
+    return found[0].parent.name if found else ""
 
 
 def adopted(where: Path, delivery: str, harness: str | None, said: list[str] | None = None,
@@ -451,7 +467,8 @@ def assessed(code: int) -> str:
 
 def assess(where: Path, slug: str, said: list[str] | None = None) -> Fitting:
     """One captured idea assessed, in the background: what the voyage's next-feature button starts."""
-    fitting = Fitting(where, [Step([*ASSESS, f"SLUG={slug}"], ASSESSING, assessed, "assess")], said)
+    step = stage_step(where, "assess", slug, [*ASSESS, f"SLUG={slug}"], ASSESSING, ASSESSING_ACP, assessed, "assess")
+    fitting = Fitting(where, [step], said)
     fitting.thread.start()
     return fitting
 
@@ -481,7 +498,9 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
     draws the first specification, and the storyboard turned down may not be that one.
     """
     argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
-    fitting = Fitting(where, [Step(argv, DRAWING, drew, "surfaces")], said)
+    step = stage_step(where, "mockups", feature or first_feature(where), argv, DRAWING, DRAWING_ACP, drew,
+                      "surfaces", limit=900.0)
+    fitting = Fitting(where, [step], said)
     fitting.thread.start()
     return fitting
 

@@ -19,7 +19,7 @@ from board_fixture import BoardTest
 
 from slipwai import board_settings, stage_session
 from slipwai.board_settings import Launch
-from slipwai.init_run import Fitting, Step, draft_step
+from slipwai.init_run import Fitting, Step, assess, draft_step, draw, first_feature
 from slipwai.stage_session import ASKING, StageSession, prompt_for
 
 AGENT = Path(__file__).resolve().parent / "fixtures" / "acp_agent.py"
@@ -102,6 +102,24 @@ class StageTest(unittest.TestCase):
         self.assertEqual(step.argv, [])
         self.assertIsNotNone(step.session)
         self.assertIn("over the Agent Client Protocol", step.announced)
+
+    def test_the_surfaces_and_the_assessment_take_the_protocol_the_same_way(self) -> None:
+        (self.root / "specs" / "001-bookings").mkdir(parents=True)
+        (self.root / "specs" / "001-bookings" / "spec.md").write_text("# Bookings\n", encoding="utf-8")
+        self.assertEqual(first_feature(self.root), "001-bookings")
+        with mock.patch.object(stage_session, "launchable", return_value=STAND_IN), \
+                mock.patch.object(stage_session.StageSession, "run", lambda self, fitting: 0):
+            drawn = draw(self.root)
+            drawn.thread.join(5)
+            self.assertEqual(drawn.steps[0].argv, [])
+            self.assertIn("over the Agent Client Protocol", drawn.steps[0].announced)
+            self.assertEqual(drawn.said()["code"], 0)
+            judged = assess(self.root, "an-idea")
+            judged.thread.join(5)
+            self.assertIn("Where only you can decide", judged.steps[0].announced)
+        with mock.patch.object(stage_session, "launchable", return_value=None):
+            self.assertEqual(draw(self.root, feature="002-x").steps[0].argv, ["make", "surfaces", "FEATURE=002-x"])
+            self.assertEqual(assess(self.root, "an-idea").steps[0].argv, ["make", "assess", "SLUG=an-idea"])
 
 
 class StageRoutesTest(BoardTest):

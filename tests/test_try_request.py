@@ -8,6 +8,7 @@ from __future__ import annotations
 import importlib.util
 import threading
 import unittest
+import urllib.error
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
@@ -27,7 +28,16 @@ def load() -> Any:
 
 
 class Answers(BaseHTTPRequestHandler):
+    asked = 0
+
     def do_GET(self) -> None:  # noqa: N802 — http.server's own spelling
+        if self.path == "/later":
+            Answers.asked += 1
+            if Answers.asked < 3:
+                self.send_response(404)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
         if self.path == "/speech":
             body, kind = b"RIFF\xa4\x00\x00\x00WAVEfmt ", "audio/wav"
         else:
@@ -58,6 +68,18 @@ class RequestTest(unittest.TestCase):
 
     def test_json_is_read_as_json(self) -> None:
         self.assertEqual(self.module.request("GET", f"{self.base}/recap"), {"state": "ready"})
+
+    def test_a_step_that_waits_is_asked_again_until_its_worker_has_written(self) -> None:
+        Answers.asked = 0
+        self.assertEqual(self.module.request_within(5, "GET", f"{self.base}/later"), {"state": "ready"})
+        self.assertEqual(Answers.asked, 3)
+
+    def test_a_step_that_does_not_wait_is_asked_once(self) -> None:
+        Answers.asked = 0
+        with self.assertRaises(urllib.error.HTTPError) as refused:
+            self.module.request_within(0, "GET", f"{self.base}/later")
+        refused.exception.close()
+        self.assertEqual(Answers.asked, 1)
 
 
 if __name__ == "__main__":

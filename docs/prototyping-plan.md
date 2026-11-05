@@ -99,8 +99,11 @@ first feature than a folder of static states, and the plan does not make it bett
 
 ## 4. The prototyping tool
 
-It is the board's first page, and the only thing it and the rest of the board share is section 3: it
-writes the folder, and everything after it reads the folder. It was planned as a separate tool that never
+It is the board's first page, and it is entirely optional: a door beside the start page, never in front
+of it. Slipwai as it is used today — the start page with nothing in *Everything else*, `slipwai generate`
+with no `--brief`, the draft from a document somebody wrote by hand — does not change by one line, and
+that is held by the tests that run the interview with no brief. The only thing the page and the rest of the
+board share is section 3: it writes the folder, and everything after it reads the folder. It was planned as a separate tool that never
 imports the keel, for a different user with a different output; the aim since 2026-11-05 is one
 non-technical person from describing the product through to delivery, and from the brief door on that
 person's face is already the board — *Everything else* on the start page, `./init` and `/draft` run from
@@ -196,8 +199,9 @@ were proposed.
 
 ### 21.6 The prototyping conversation, as the board's first page — L
 
-A page before the start page, in this repository, that runs the eight steps of section 4 as a board
-session and writes the folder of section 3 under the board's directory. The three frames of the mock —
+A page beside the start page, in this repository, offered and never required: a person who has a
+document, or nothing, takes the start page as they do today. It runs the eight steps of section 4 as a
+board session and writes the folder of section 3 under the board's directory. The three frames of the mock —
 describe it, walk the states, check and hand over — are its three faces, and hand-over is a button that
 fills the start page's *Everything else* answer. It runs its session the way `draft.py` runs the draft and
 the surfaces stage runs its draughtsman: the harness's own session, the toolkit's skills, the board
@@ -209,6 +213,12 @@ its own.
 
 ## 6. What this plan does not do
 
+- **It does not change how slipwai is used today.** Every door this plan adds is optional and beside the
+  one that exists: `--brief` and *Everything else* are blank by default, the brief check is a verb nobody
+  has to run, the domain and people doors act only where the folder carried the file, the decided-state
+  mark is read only where a page says it, and the first page (21.6) is a door beside the start page, never
+  in front of it. A project started as today, with a document or with nothing, is generated, drafted, drawn
+  and built exactly as it was.
 - **It does not add a mode, a profile or a telegraph number.** Section 1.
 - **It does not build the spike slice kind.** That is the right answer to the other reading of "prototype":
   a slice with a question and a timebox, whose branch is kept as a ref and never merges, whose output is a

@@ -9,7 +9,14 @@ chat bot driven by a harness" against settling for the first. The work was then 
 stays the brief, with its record still to take; this is the port, done first, "and utilising its benefits,
 so screen changes welcome".
 
-**Status, 2026-11-05:** planned; nothing built. 22.1 is next.
+**Status, 2026-11-05:** 22.1 to 22.5 built and green (2887 tests). 22.6, the live run, is half taken: the
+keel's client has spoken to two real agents from a scratch folder, with no board involved — the Claude
+adapter (handshake 0.4 s; options mode, model, effort, fast; a prompt answered in 2.2 s) and OpenCode
+(1.7 s; options model and mode; 2.6 s, with thought chunks and a usage update); both advertise
+`loadSession`. The page half waits on a board restart the user has not yet called for, since a
+conversation is running on it. Found on the way: the first `npx` launch fetches the package, which a
+60-second handshake would not survive on a slow line — the client now gives a package launch five
+minutes, and 22.8 gains a "make ready" step. 22.7 can be built without the board.
 
 **The principle the plan serves:** the board is the face a non-technical person sees, and what runs behind
 it must be whichever coding agent that person has — not one named in the keel's source. The protocol is
@@ -230,6 +237,13 @@ the gates inside. The main plan's phase 22 table is the one `make progress` tick
   output on the page. Where the machine lacks Node for an `npx` package, or the platform has no archive,
   the page shows the one line to run and says why. Nothing here installs the board, Python, Docker or a
   cloud target; section 6 of the prototyping plan stands. Fragment, MINOR.
+- **Pulled down without a word asked.** Asked on 2026-11-05, when the first `npx` launch had to fetch its
+  package: "can we ensure dependencies like this are pulled down automatically?" They are — `npx --yes`
+  fetches with no prompt and caches — and two things make it unfelt: a *Make ready* step on the settings
+  page that does the fetch ahead of the first conversation with its output shown, so the first turn is
+  not also a download; and the client's handshake ceiling of five minutes for a package launch
+  (`acp.FETCHING`), the floor under a slow line. Where Node is absent the page prefers an agent
+  distributed as a binary over one that needs it, and says why.
 
 ## 5. What this plan does not do
 

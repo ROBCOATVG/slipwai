@@ -33,6 +33,10 @@ PROTOCOL = 1
 #: How long one call waits for its answer before the session is given up on. A prompt turn can run as long
 #: as a drawing takes; the caller passes its own ceiling for that one.
 TIMEOUT = 60.0
+#: The handshake's ceiling for an agent launched as a package: `npx` fetches it the first time, and a cold
+#: fetch on a slow line is minutes, not seconds. The settings page's "make ready" step is the better answer;
+#: this is the floor under it.
+FETCHING = 300.0
 #: The one kind of permission option the policy picks without asking: this call, this once.
 ALLOW_ONCE = "allow_once"
 #: Where a session keeps its id and the agent's stderr, under the working directory it was given.
@@ -117,8 +121,10 @@ class Session:
 
     # -- the pipe ---------------------------------------------------------------------------------------
 
-    def start(self) -> Agent:
-        """Spawn the agent and shake hands. The agent's stderr goes to a log beside the session's id."""
+    def start(self, handshake: float | None = None) -> Agent:
+        """Spawn the agent and shake hands. The agent's stderr goes to a log beside the session's id. A
+        launch over `npx` is given `FETCHING` for its handshake, since the first one fetches the package."""
+        waits = handshake if handshake is not None else (FETCHING if Path(self.argv[0]).name == "npx" else TIMEOUT)
         self.log.parent.mkdir(parents=True, exist_ok=True)
         self.errors = self.log.open("a", encoding="utf-8")
         try:
@@ -131,7 +137,7 @@ class Session:
         threading.Thread(target=self.read, daemon=True).start()
         said = self.call("initialize", {"protocolVersion": PROTOCOL, "clientInfo": {"name": "slipwai", "version": "2"},
                                         "clientCapabilities": {"fs": {"readTextFile": False, "writeTextFile": False},
-                                                               "terminal": False}})
+                                                               "terminal": False}}, waits)
         if said.get("protocolVersion") != PROTOCOL:
             raise Fault(f"the agent speaks protocol version {said.get('protocolVersion')!r}, not {PROTOCOL}")
         able = said.get("agentCapabilities") or {}

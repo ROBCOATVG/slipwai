@@ -13,6 +13,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from slipwai import acp
 from slipwai.acp import Fault, Session, kept_session, once, policy, within
@@ -145,6 +146,28 @@ class SessionTest(unittest.TestCase):
                       lambda params: self.answer)
         with self.assertRaises(Fault):
             one.start()
+
+
+class HandshakeTest(unittest.TestCase):
+    def test_a_package_launch_waits_longer_for_its_handshake(self) -> None:
+        """The first `npx` launch fetches the package; a cold fetch is minutes on a slow line."""
+        home = Path(tempfile.mkdtemp())
+        seen: list[float] = []
+        one = Session(["/usr/bin/npx", "--yes", "some-agent"], home, lambda u: None, lambda t, o: None,
+                      lambda p: ("decline", None))
+        with mock.patch.object(one, "call", side_effect=lambda m, p, timeout=0: seen.append(timeout) or
+                               {"protocolVersion": 1}), mock.patch("subprocess.Popen"), \
+                mock.patch("threading.Thread"):
+            one.start()
+        self.assertEqual(seen, [acp.FETCHING])
+        two = Session([sys.executable, str(AGENT)], home, lambda u: None, lambda t, o: None,
+                      lambda p: ("decline", None))
+        seen.clear()
+        with mock.patch.object(two, "call", side_effect=lambda m, p, timeout=0: seen.append(timeout) or
+                               {"protocolVersion": 1}), mock.patch("subprocess.Popen"), \
+                mock.patch("threading.Thread"):
+            two.start()
+        self.assertEqual(seen, [acp.TIMEOUT])
 
 
 class PolicyTest(unittest.TestCase):

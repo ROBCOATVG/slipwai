@@ -285,7 +285,8 @@
         },
         "via": "adapter: claude-agent-acp, over the Claude Agent SDK",
         "proven": false,
-        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "probed": "2026-11-05, through the keel's client in a scratch folder: handshake 0.4 s, loadSession true, no auth method (the installed Claude Code's login), config options mode, model, effort and fast, one prompt answered end_turn in 2.2 s; the first launch fetches the package over npx"
       }
     },
     {
@@ -1307,7 +1308,8 @@
         },
         "via": "native",
         "proven": false,
-        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "probed": "2026-11-05, through the keel's client in a scratch folder: handshake 1.7 s, loadSession true, auth method opencode-login, config options model and mode, one prompt answered end_turn in 2.6 s with thought and message chunks and a usage update"
       }
     },
     {

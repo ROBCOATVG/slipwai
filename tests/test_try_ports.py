@@ -32,6 +32,19 @@ def load() -> Any:
     return module
 
 
+#: A listener that binds a port of its own, says which, and holds it until it is stopped.
+LISTEN = (
+    "import socket, sys, time\n"
+    "server = socket.socket()\n"
+    "server.bind(('127.0.0.1', 0))\n"
+    "server.listen()\n"
+    "print(server.getsockname()[1], flush=True)\n"
+    "while True:\n"
+    "    connection, _ = server.accept()\n"
+    "    connection.close()\n"
+)
+
+
 def free_port() -> int:
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
@@ -49,14 +62,20 @@ class PortsTest(unittest.TestCase):
     def tearDown(self) -> None:
         for child in self.children:
             child.kill()
-            child.wait()
+            child.communicate()
 
     def listener(self, where: Path) -> tuple[int, subprocess.Popen]:
-        port = free_port()
-        child = subprocess.Popen([sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"], cwd=where,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # The child binds its own port and says which, isolated (`-I`) from the suite's environment: a port picked
+        # here and bound there is a race, and GitHub's macOS runner never saw an `http.server` child answer at all.
+        child = subprocess.Popen([sys.executable, "-I", "-c", LISTEN], cwd=where, text=True,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.children.append(child)
-        deadline = time.monotonic() + 10
+        line = child.stdout.readline() if child.stdout else ""
+        if not line.strip().isdigit():
+            child.kill()
+            self.fail(f"the test's own listener never started: {line!r} {child.stderr.read() if child.stderr else ''}")
+        port = int(line)
+        deadline = time.monotonic() + 30
         while not self.module.taken(port) and time.monotonic() < deadline:
             time.sleep(0.1)
         self.assertTrue(self.module.taken(port), "the test's own listener never answered")

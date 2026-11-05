@@ -108,6 +108,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "design_docs",
        # The brief read before it is handed over, and the page reader the board and that check share.
        "drawn", "brief_check", "brief_session", "brief_page", "cli_brief",
+       # The Agent Client Protocol's client half. The experiment had one harness, by name.
+       "acp",
        # Reading a drafted document on the board. The experiment had no board to read one on.
        "spec_page",
        # Whether a pid file's process is running, asked without the signal Windows reads as Ctrl-C.

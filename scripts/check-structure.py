@@ -130,6 +130,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "page_shell", "seats", "console", "console_page",
               # The conversation that writes a brief before a project exists, on the console's shape.
               "brief_session", "brief_page",
+              # The Agent Client Protocol's client half: the session behind the board's conversations.
+              "acp",
               "bridge", "bridge_page", "fleet_page", "timeline_page",
               "cli_bridge", "cli_start",
               "interview_page",

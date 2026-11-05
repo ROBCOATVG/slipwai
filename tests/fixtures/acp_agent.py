@@ -1,0 +1,113 @@
+"""A stand-in agent that speaks the Agent Client Protocol from a script, for `tests/test_acp.py`.
+
+One JSON object per line on stdin and stdout, as the protocol says. It answers `initialize`, `session/new`
+and `session/load`; on a prompt it streams a message chunk, asks permission to write a file in its working
+directory and writes it, and does more by the words in the prompt: `outside` asks permission for a path
+beyond the directory, `ask` puts a question, `slow` waits on a permission until it is answered or cancelled,
+`die` exits mid-turn. Nothing here is clever; it is the other end of the wire, held still.
+"""
+import json
+import os
+import sys
+from pathlib import Path
+
+HOME = Path.cwd()
+
+
+def send(**message):
+    sys.stdout.write(json.dumps({"jsonrpc": "2.0", **message}) + "\n")
+    sys.stdout.flush()
+
+
+def update(session, **body):
+    send(method="session/update", params={"sessionId": session, "update": body})
+
+
+def text(session, words):
+    update(session, sessionUpdate="agent_message_chunk", content={"type": "text", "text": words})
+
+
+def ask(number, method, params):
+    """A request to the client, and the next thing it says back: the reply, or a cancel notification
+    ahead of it (the client answers every open permission `cancelled` on a cancel)."""
+    send(id=number, method=method, params=params)
+    cancelled = False
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            return None, cancelled
+        message = json.loads(line)
+        if message.get("method") == "session/cancel":
+            cancelled = True
+            continue
+        if message.get("id") == number:
+            return message.get("result"), cancelled
+
+
+def permission(number, session, path):
+    call = {"toolCallId": f"call-{number}", "title": f"Write {path}", "kind": "edit", "status": "pending",
+            "locations": [{"path": str(path)}]}
+    update(session, sessionUpdate="tool_call", **call)
+    result, cancelled = ask(number, "session/request_permission", {
+        "sessionId": session, "toolCall": call,
+        "options": [{"optionId": "yes-once", "name": "Allow once", "kind": "allow_once"},
+                    {"optionId": "no-once", "name": "Reject", "kind": "reject_once"}]})
+    outcome = ((result or {}).get("outcome") or {})
+    allowed = outcome.get("outcome") == "selected" and outcome.get("optionId") == "yes-once"
+    update(session, sessionUpdate="tool_call_update", toolCallId=call["toolCallId"],
+           status="completed" if allowed else "failed")
+    return allowed, cancelled or outcome.get("outcome") == "cancelled"
+
+
+def turn(number, session, words):
+    text(session, f"Drawn: {words}")
+    if "die" in words:
+        os._exit(3)
+    allowed, cancelled = permission(number * 10 + 1, session, HOME / "prototype" / "index.html")
+    if cancelled:
+        return "cancelled"
+    if allowed:
+        (HOME / "prototype").mkdir(exist_ok=True)
+        (HOME / "prototype" / "index.html").write_text("<title>Play</title>\n", encoding="utf-8")
+    if "outside" in words:
+        allowed, cancelled = permission(number * 10 + 2, session, Path("/etc/hosts"))
+        text(session, "wrote outside" if allowed else "refused outside")
+    if "slow" in words:
+        _, cancelled = permission(number * 10 + 3, session, Path("/etc/slow.txt"))  # outside: the person is asked
+        if cancelled:
+            return "cancelled"
+    if "ask" in words:
+        result, _ = ask(number * 10 + 4, "elicitation/create", {
+            "sessionId": session, "message": "Which colour?", "mode": "form",
+            "requestedSchema": {"type": "object", "properties": {"answer": {"type": "string"}}}})
+        said = (result or {}).get("content") or {}
+        text(session, f"You said: {said.get('answer', '(nothing)')}")
+    return "end_turn"
+
+
+def main():
+    options = [{"id": "model", "type": "select", "category": "model", "name": "Model", "currentValue": "a",
+                "options": [{"name": "A", "value": "a"}, {"name": "B", "value": "b"}]}]
+    for line in sys.stdin:
+        message = json.loads(line)
+        number, method, params = message.get("id"), message.get("method"), message.get("params") or {}
+        if method == "initialize":
+            send(id=number, result={"protocolVersion": params.get("protocolVersion"), "agentInfo": {"name": "stand-in"},
+                                    "agentCapabilities": {"loadSession": True}, "authMethods": []})
+        elif method == "session/new":
+            send(id=number, result={"sessionId": "s-1", "configOptions": options})
+        elif method == "session/load":
+            text(params["sessionId"], "earlier: hello again")
+            send(id=number, result={"configOptions": options})
+        elif method == "session/set_config_option":
+            options[0]["currentValue"] = params.get("value")
+            send(id=number, result={"configOptions": options})
+        elif method == "session/prompt":
+            words = " ".join(str(block.get("text", "")) for block in params.get("prompt") or [])
+            send(id=number, result={"stopReason": turn(number, params["sessionId"], words)})
+        elif number is not None:
+            send(id=number, error={"code": -32601, "message": f"{method} is not known here"})
+
+
+if __name__ == "__main__":
+    main()

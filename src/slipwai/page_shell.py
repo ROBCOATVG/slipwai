@@ -256,6 +256,7 @@ TABS: tuple[tuple[str, str], ...] = (
     ("/brief", "Describe a product"),
     ("/adopt", "Adopt a repository"),
     ("/packages", "Packages"),
+    ("/settings", "Settings"),
 )
 
 #: The voyage's home, and what it carries instead of the bar: the one way back to the board, in its own

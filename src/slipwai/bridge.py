@@ -111,6 +111,8 @@ from .passage import (
 )
 from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
+from .settings_page import route_get as settings_get
+from .settings_page import route_post as settings_post
 from .spec_page import page as spec
 from .telegraph import Refused
 from .try_card import VIDEOS, WALK_ROUTE, trunk_head, walk_file
@@ -143,7 +145,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 920 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 925 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -174,7 +176,7 @@ APP_FILES: dict[str, tuple[Callable[[], str], str]] = {
 #: The pages a person sits on, each of which is given a seat on arrival. The data routes are not here on
 #: purpose: a poll carries the seat of the page that made it, and a `curl /board.json` carries none and
 #: should read the board rather than be redirected into a seat it would then have to keep.
-SEATED: tuple[str, ...] = ("", "/index.html", "/voyage", "/captain", "/generate", "/adopt", "/packages")
+SEATED: tuple[str, ...] = ("", "/index.html", "/voyage", "/captain", "/generate", "/adopt", "/packages", "/settings")
 
 
 class Bridge(BaseHTTPRequestHandler):
@@ -306,6 +308,8 @@ class Bridge(BaseHTTPRequestHandler):
             self.send(200, json.dumps(console_for(self.root).said(since(query))), "application/json; charset=utf-8")
             return
         if self.controls and brief_get(self, where, query):  # the first page's own routes: `brief_page.py`
+            return
+        if self.controls and settings_get(self, where, query):  # what runs behind the board: `settings_page.py`
             return
         if where == "/voyage" and self.controls:
             self.send(200, self.voyage())
@@ -694,6 +698,8 @@ class Bridge(BaseHTTPRequestHandler):
             # The path without its query, because the seat rides there: `/tell?seat=hVn0` is the tell route.
             where = self.path.partition("?")[0].rstrip("/")
             if brief_post(self, where, held):
+                return
+            if settings_post(self, where, held):
                 return
             if where == "/generate/ask":
                 # The questions again, for the answers given so far: one of them decides what the next one

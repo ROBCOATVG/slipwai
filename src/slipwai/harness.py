@@ -186,3 +186,53 @@ def unproven_line(key: str) -> str:
             f"different claim from having worked. The captain's controls depend on no harness hook — it "
             f"reads the last line itself, diffs the controlled files and owns the waits — so what is at "
             f"risk is a second belt, not the run")
+
+
+# -- the Agent Client Protocol ---------------------------------------------------------------------------
+# A harness's `acp` row says how it is launched as an agent over stdio: an `npx` package with its arguments,
+# which needs only Node on PATH, or a `binary` already installed. Copied from the protocol's own registry
+# on the date the row says. The board's sessions (`acp.py`) are built from what this returns, so the keel
+# names no agent of its own.
+
+def acp_row(key: str) -> dict | None:
+    """The harness's launch row, or `None` where the registry records none (and an `acpReason` says why)."""
+    row = row_of(key).get("acp")
+    return row if isinstance(row, dict) else None
+
+
+def acp_keys() -> tuple[str, ...]:
+    """Every harness with a launch row, in the registry's order."""
+    return tuple(row["key"] for row in registry() if isinstance(row.get("acp"), dict))
+
+
+def acp_launch(key: str, path: str | None = None) -> tuple[list[str], str]:
+    """The argv that starts this harness as an agent on this machine, and a sentence saying where it came
+    from — or an empty argv and a sentence saying what is missing. `path` is the PATH to look on; the
+    board passes its login shell's, because its own is `launchd`'s and holds nothing a person installed."""
+    import shutil  # noqa: PLC0415 — only this one function looks on PATH, and only the board calls it
+
+    row = acp_row(key)
+    if row is None:
+        why = str(row_of(key).get("acpReason") or "the registry records no way to launch it as an agent")
+        return [], f"{name_of(key)}: {why}"
+    env = row.get("npx", {}).get("env") if isinstance(row.get("npx"), dict) else None
+    if isinstance(row.get("npx"), dict):
+        found = shutil.which("npx", path=path)
+        if not found:
+            package = row["npx"]["package"]
+            return [], f"{name_of(key)} is launched with `npx {package}`, and there is no `npx` on PATH: install Node"
+        argv = [found, "--yes", str(row["npx"]["package"]), *[str(a) for a in row["npx"].get("args") or []]]
+        return argv, f"{name_of(key)} over `npx` at {found}" + (f", with {', '.join(env)} set" if env else "")
+    binary = row["binary"] if isinstance(row.get("binary"), dict) else {}
+    command = str(binary.get("cmd") or "")
+    found = shutil.which(command, path=path) if command else None
+    if not found:
+        return [], f"{name_of(key)} is launched as `{command}`, which is not on PATH"
+    return [found, *[str(a) for a in binary.get("args") or []]], f"{name_of(key)} at {found}"
+
+
+def acp_environment(key: str) -> dict[str, str]:
+    """What the launch row says to set in the agent's environment, if anything."""
+    row = acp_row(key) or {}
+    npx = row["npx"] if isinstance(row.get("npx"), dict) else {}
+    return {str(k): str(v) for k, v in (npx.get("env") or {}).items()}

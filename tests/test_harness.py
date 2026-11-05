@@ -81,6 +81,50 @@ class RegistryTest(Fixture):
                     self.assertTrue(row.get("headlessReason"), f"{key} has no headless row and no reason")
 
 
+class ProtocolRowsTest(unittest.TestCase):
+    """The `acp` column: how a harness is launched as an Agent Client Protocol agent, or why it is not."""
+
+    def test_every_launch_row_names_a_package_or_a_binary_and_where_it_was_read(self) -> None:
+        from slipwai import harness as keel
+        self.assertGreaterEqual(len(keel.acp_keys()), 24)
+        for key in keel.acp_keys():
+            row = keel.acp_row(key) or {}
+            with self.subTest(harness=key):
+                npx, binary = row.get("npx"), row.get("binary")
+                self.assertTrue((npx and npx.get("package")) or (binary and binary.get("cmd")), "nothing to launch")
+                self.assertIn("read 20", str(row.get("source")), "a row says when it was read")
+                self.assertIn(str(row.get("via")).split(":")[0], ("native", "adapter"))
+                self.assertIs(row.get("proven"), False, "nobody has run a session on it from the board yet")
+
+    def test_a_harness_with_no_launch_row_records_why(self) -> None:
+        from slipwai import harness as keel
+        for key in [row["key"] for row in keel.registry()]:
+            if keel.acp_row(key) is None:
+                with self.subTest(harness=key):
+                    self.assertTrue(keel.row_of(key).get("acpReason"), f"{key} has no acp row and no reason")
+
+    def test_the_launch_is_what_this_machine_can_make(self) -> None:
+        from slipwai import harness as keel
+        here = Path(tempfile.mkdtemp())
+        for name in ("npx", "opencode"):
+            (here / name).write_text("#!/bin/sh\n", encoding="utf-8")
+            (here / name).chmod(0o755)
+        argv, said = keel.acp_launch("claude", path=str(here))
+        self.assertEqual(argv[1:], ["--yes", "@agentclientprotocol/claude-agent-acp"])
+        self.assertIn("over `npx`", said)
+        argv, said = keel.acp_launch("opencode", path=str(here))
+        self.assertEqual(argv, [str(here / "opencode"), "acp"])
+        self.assertEqual(keel.acp_launch("goose", path=str(here)),
+                         ([], "Goose is launched as `goose`, which is not on PATH"))
+        self.assertEqual(keel.acp_launch("gemini", path="/nowhere")[0], [])
+        self.assertIn("install Node", keel.acp_launch("gemini", path="/nowhere")[1])
+        self.assertEqual(keel.acp_launch("zed")[0], [])
+        self.assertIn("a client, not an agent", keel.acp_launch("zed")[1])
+        self.assertEqual(keel.acp_environment("droid"), {"DROID_DISABLE_AUTO_UPDATE": "true",
+                                                         "FACTORY_DROID_AUTO_UPDATE_ENABLED": "false"})
+        self.assertEqual(keel.acp_environment("claude"), {})
+
+
 class ChoosingTest(Fixture):
     def test_nothing_installed_is_refused_by_name_and_not_guessed_at(self) -> None:
         with self.assertRaises(self.harness.NoHarness) as refused:

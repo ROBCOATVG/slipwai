@@ -1,5 +1,5 @@
 {
-  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what a captain needs to dispatch `/sail` for a slice — the command as a shell template with {prompt} and {permissions}, read the same way, or null with a `headlessReason` where none was verified, which the script reports rather than guessing a flag; `scripts/agents/harness.py` looks for the command's first word on PATH, and `prompt: \"slash\"` marks the one harness whose print mode is known to resolve `/cruise` itself (every other is asked to read the command file). `hooks` is the factory's fourth: whether this harness has a hook that fires when a turn ends and can refuse the end (`holds`), how, and the `projection` `scripts/agents/project.py` writes so that `scripts/agents/session.py before-stop` runs there — or null with a `why` where the file's shape was not read, and null altogether where nothing was verified. `projectMcp` is the factory's fifth: the project-scoped file this harness reads an MCP server from, its shape, and the flags a headless iteration needs for that file to be honoured in a checkout nobody has trusted — read the same way, or null with a `projectMcpReason`; `scripts/extensions/guidance.py` writes an extension's server into every installed harness's file, and `scripts/agents/captain.py` passes the flags when the file exists.",
+  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what a captain needs to dispatch `/sail` for a slice — the command as a shell template with {prompt} and {permissions}, read the same way, or null with a `headlessReason` where none was verified, which the script reports rather than guessing a flag; `scripts/agents/harness.py` looks for the command's first word on PATH, and `prompt: \"slash\"` marks the one harness whose print mode is known to resolve `/cruise` itself (every other is asked to read the command file). `hooks` is the factory's fourth: whether this harness has a hook that fires when a turn ends and can refuse the end (`holds`), how, and the `projection` `scripts/agents/project.py` writes so that `scripts/agents/session.py before-stop` runs there — or null with a `why` where the file's shape was not read, and null altogether where nothing was verified. `projectMcp` is the factory's fifth: the project-scoped file this harness reads an MCP server from, its shape, and the flags a headless iteration needs for that file to be honoured in a checkout nobody has trusted — read the same way, or null with a `projectMcpReason`; `scripts/extensions/guidance.py` writes an extension's server into every installed harness's file, and `scripts/agents/captain.py` passes the flags when the file exists. `acp` is the factory's sixth: how this harness is launched as an Agent Client Protocol agent over stdio — an `npx` package with its arguments, or a `binary` on PATH with its arguments — copied from the protocol's own registry on the date `source` says, `via` saying native or through which adapter, `proven: false` until a session has run on it from the board; or null with an `acpReason`. `slipwai.harness.acp_launch` turns it into the argv this machine can make, or says what is missing.",
   "speckitVersion": "0.16.1",
   "harnesses": [
     {
@@ -35,7 +35,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "alquimia",
@@ -60,7 +62,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "amp",
@@ -95,7 +99,15 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "binary": {
+          "cmd": "amp-acp"
+        },
+        "via": "adapter: amp-acp, third-party",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "auggie",
@@ -130,7 +142,21 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@augmentcode/auggie",
+          "args": [
+            "--acp"
+          ],
+          "env": {
+            "AUGMENT_DISABLE_AUTO_UPDATE": "1"
+          }
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "bob",
@@ -155,7 +181,18 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@ibm/bob",
+          "args": [
+            "acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "claude",
@@ -241,7 +278,15 @@
         "source": "a 2.1.280 print session in an untrusted scratch checkout: `--mcp-config .mcp.json` listed the file's server as connected on its init event and the allowed tool answered; the same file without the flag, in the same checkout, was not loaded — read 2026-09-22; the file's shape also from CodeGraph 1.6.0's installer targets (`lib/dist/installer/targets/*.js` in the @colbymchenry/codegraph-linux-x64 bundle), which write the same file for `--location=local`, read 2026-09-22; `alwaysLoad`: three 2.1.281 print sessions in a scratch checkout, each sending a delegate to find a function's callers — without the key the delegate's first call was the tool-search step selecting `codegraph_explore`, with it (two sessions) its first call was `codegraph_explore` itself — read 2026-09-25"
       },
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@agentclientprotocol/claude-agent-acp"
+        },
+        "via": "adapter: claude-agent-acp, over the Claude Agent SDK",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "cline",
@@ -276,7 +321,18 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "cline",
+          "args": [
+            "--acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "codebuddy",
@@ -311,7 +367,18 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@tencent-ai/codebuddy-code",
+          "args": [
+            "--acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "codex",
@@ -373,7 +440,15 @@
         "source": "developers.openai.com/codex/config-basic (precedence: CLI and --config, then project `.codex/config.toml` for trusted projects only), config-advanced (`-c`/`--config` with dotted keys and TOML values; untrusted projects skip project `.codex/` layers) and config-reference (`projects.<path>.trust_level`, `mcp_servers.<id>.command`/`args`), read 2026-09-22; not run here, the CLI being absent from this sandbox"
       },
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@agentclientprotocol/codex-acp"
+        },
+        "via": "adapter: codex-acp",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "copilot",
@@ -427,7 +502,18 @@
       "projectMcp": null,
       "projectMcpReason": "the Copilot CLI reads MCP servers from `~/.copilot/mcp-config.json` only: CodeGraph 1.6.0's installer target for it declines a project-local install (`supportsLocation('local')` is false, citing github/copilot-cli#2528), read 2026-09-22; the code index, where one is elected, is reached through its own CLI or `npx` from the shell",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@github/copilot",
+          "args": [
+            "--acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "cursor-agent",
@@ -512,7 +598,19 @@
         "source": "cursor.com/docs/context/mcp (`.cursor/mcp.json` in your project for project-specific tools) and cursor.com/docs/cli/mcp, read 2026-09-22; the shape also from CodeGraph 1.6.0's installer targets (`lib/dist/installer/targets/*.js` in the @colbymchenry/codegraph-linux-x64 bundle), which write the same file for `--location=local`, read 2026-09-22"
       },
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "binary": {
+          "cmd": "agent",
+          "args": [
+            "acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "note": "the manifest's archive unpacks to `cursor-agent acp`; the installed CLI is `agent`"
+      }
     },
     {
       "key": "devin",
@@ -537,7 +635,18 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "binary": {
+          "cmd": "devin",
+          "args": [
+            "acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "droid",
@@ -572,7 +681,24 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "droid",
+          "args": [
+            "exec",
+            "--output-format",
+            "acp-daemon"
+          ],
+          "env": {
+            "DROID_DISABLE_AUTO_UPDATE": "true",
+            "FACTORY_DROID_AUTO_UPDATE_ENABLED": "false"
+          }
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "firebender",
@@ -598,7 +724,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "forge",
@@ -633,7 +761,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "gemini",
@@ -714,7 +844,18 @@
         "source": "google-gemini/gemini-cli docs/tools/mcp-server.md (`mcpServers` in settings.json) and docs/cli/trusted-folders.md (disabled by default; an untrusted folder's project `.gemini/settings.json` is not loaded), read 2026-09-22; not run here"
       },
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@google/gemini-cli",
+          "args": [
+            "--acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "goose",
@@ -744,7 +885,18 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "binary": {
+          "cmd": "goose",
+          "args": [
+            "acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "grok",
@@ -779,7 +931,19 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@xai-official/grok",
+          "args": [
+            "agent",
+            "stdio"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "hermes",
@@ -816,7 +980,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05; on its agents page, unlisted there"
     },
     {
       "key": "junie",
@@ -841,7 +1007,19 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "binary": {
+          "cmd": "junie",
+          "args": [
+            "--acp=true"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "note": "the manifest's archive is the Junie app; the binary inside it takes `--acp=true`"
+      }
     },
     {
       "key": "kilocode",
@@ -876,7 +1054,19 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@kilocode/cli",
+          "args": [
+            "acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "note": "the manifest also offers a binary archive; `npx` needs only Node"
+      }
     },
     {
       "key": "kimi",
@@ -911,7 +1101,18 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "binary": {
+          "cmd": "kimi",
+          "args": [
+            "acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "kiro-cli",
@@ -941,7 +1142,19 @@
         "source": "CodeGraph 1.6.0's installer targets (`lib/dist/installer/targets/*.js` in the @colbymchenry/codegraph-linux-x64 bundle), which write the same file for `--location=local`, read 2026-09-22"
       },
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "binary": {
+          "cmd": "kiro-cli",
+          "args": [
+            "acp",
+            "--agent-engine=v3"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "lingma",
@@ -976,7 +1189,19 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@qoder-ai/qodercli",
+          "args": [
+            "--acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "note": "the same package as qodercli: Lingma was renamed Qoder CLI"
+      }
     },
     {
       "key": "omp",
@@ -1011,7 +1236,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "opencode",
@@ -1070,7 +1297,18 @@
         "source": "anomalyco/opencode packages/web/src/content/docs/mcp-servers.mdx (Local), read 2026-09-22; not run here"
       },
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "binary": {
+          "cmd": "opencode",
+          "args": [
+            "acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "pi",
@@ -1105,7 +1343,15 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "pi-acp"
+        },
+        "via": "adapter: pi-acp",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "qodercli",
@@ -1140,7 +1386,18 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@qoder-ai/qodercli",
+          "args": [
+            "--acp"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "qwen",
@@ -1175,7 +1432,19 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: QwenLM/qwen-code docs/tools/mcp-server.md returned HTTP 404, and a Gemini CLI fork reading `.qwen/settings.json` is a guess this column does not write; the code index, where one is elected, is reached through its own CLI or `npx` from the shell",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "npx": {
+          "package": "@qwen-code/qwen-code",
+          "args": [
+            "--acp",
+            "--experimental-skills"
+          ]
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "rovodev",
@@ -1205,7 +1474,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "shai",
@@ -1240,7 +1511,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "tabnine",
@@ -1275,7 +1548,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "trae",
@@ -1305,7 +1580,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "vibe",
@@ -1340,7 +1617,15 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": {
+        "binary": {
+          "cmd": "vibe-acp"
+        },
+        "via": "native",
+        "proven": false,
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      }
     },
     {
       "key": "zcode",
@@ -1365,7 +1650,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "not in the protocol's registry on 2026-11-05"
     },
     {
       "key": "zed",
@@ -1395,7 +1682,9 @@
       "projectMcp": null,
       "projectMcpReason": "not read 2026-09-22: no documentation of a project-scoped MCP file was consulted for this harness; the code index, where one is elected, is reached through its own CLI or `npx` from the shell, the route the extension's AGENTS.md block names",
       "proven": false,
-      "provenWhy": "no feature has been run end to end on it by a captain"
+      "provenWhy": "no feature has been run end to end on it by a captain",
+      "acp": null,
+      "acpReason": "a client, not an agent"
     }
   ]
 }

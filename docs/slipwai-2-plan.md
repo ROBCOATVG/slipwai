@@ -1606,7 +1606,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 185 of 197 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 9/11, phase 22 1/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 186 of 197 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 9/11, phase 22 2/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2540,7 +2540,7 @@ files and gates are in [the ACP plan](acp-plan.md); this table is the one `make 
 | Slice | What | From | Size | Done when | Status |
 |---|---|---|---|---|---|
 | 22.1 | `acp.py`: the protocol's client half with the standard library — spawn, initialize, new and load, prompt, cancel, updates to a callback, permissions and questions to callbacks | new (owner, 2026-11-05) | M | `tests/test_acp.py` over a stand-in agent proves the handshake, a turn's updates in order, a permission inside and outside the working directory, a question answered, a cancel with a permission outstanding, a load, and an agent that dies mid-turn | done |
-| 22.2 | The registry's `acp` rows for the 24 harnesses the protocol's registry has, dated, and `harness.acp_launch` giving the argv this machine can make or why not | new (owner, 2026-11-05) | S | `tests/test_harness.py` proves the lookup for an `npx` package and a binary, and the sentence where neither is on PATH |  |
+| 22.2 | The registry's `acp` rows for the 24 harnesses the protocol's registry has, dated, and `harness.acp_launch` giving the argv this machine can make or why not | new (owner, 2026-11-05) | S | `tests/test_harness.py` proves the lookup for an `npx` package and a binary, and the sentence where neither is on PATH | done |
 | 22.3 | `/settings` on the tab bar: *Runs on* from the harnesses with an `acp` row this machine can launch, the agent's own model options, remembered in `~/.slipwai/board.json`; a project's init answer wins for its console | new (owner, 2026-11-05) | M | `tests/test_settings_page.py` proves the page, the file and the precedence |  |
 | 22.4 | The first page over the protocol: `Sketch` on an `acp.Session`, the role at the head of the first prompt, tool cards, a plan, permission and question cards, Stop, the session loaded across a restart | new (owner, 2026-11-05) | L | `tests/test_brief_session.py` runs over the stand-in agent; `tests/test_brief_page.py` proves the cards, the answer route, the cancel and the load |  |
 | 22.5 | The console over the protocol, the same on the Voyage page, the project's harness first | new (owner, 2026-11-05) | M | The console's tests run over the stand-in agent |  |

@@ -10,6 +10,7 @@ the board reads the tree again when it ends, and the step is done when the tree 
 says it is.
 
     python3 scripts/agents/step.py "<the step>" "<why, and what done looks like>"
+    python3 scripts/agents/step.py --prompt "<the step>" "<why>"   # say the prompt and stop: the board runs it
 """
 from __future__ import annotations
 
@@ -44,6 +45,9 @@ def prompt(action: str, why: str) -> str:
 
 
 def main(argv: list[str]) -> int:
+    if argv[:1] == ["--prompt"]:
+        print(prompt(argv[1] if len(argv) > 1 else "", argv[2] if len(argv) > 2 else ""))
+        return 0
     if not argv:
         print("step: name the step to take", file=sys.stderr)
         return 2

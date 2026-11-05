@@ -8,6 +8,7 @@ no agent to launch.
 """
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,9 +20,12 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 
 from slipwai import board_settings, stage_session
+from slipwai.adoption_run import agent_steps
 from slipwai.board_settings import Launch
 from slipwai.feedback import capture
 from slipwai.init_run import CRUISE, LAUNCH, MODEL, TRIAGE, Fitting, Step, outside_session
+from slipwai.layout import Layout
+from slipwai.next_steps import Step as Next
 from slipwai.passage import split
 from slipwai.stage_session import StageSession
 from slipwai.stage_steps import NOBODY, begin_model, launch, launch_steps, model_prompt, model_step, triage_step
@@ -127,6 +131,36 @@ class StageStepsTest(unittest.TestCase):
         self.assertEqual(said["code"], 1)
         self.assertTrue(any(line.startswith("! The session ended without a split") for line in said["lines"]))
         self.assertNotIn("Enabling /cruise.", said["lines"])
+
+    def test_an_adoption_step_is_the_step_script_s_prompt_over_the_protocol(self) -> None:
+        layout = Layout("adopt")
+        script = self.root / layout.under("scripts/agents/step.py")
+        script.parent.mkdir(parents=True)
+        script.write_text("import sys\nif sys.argv[1] == '--prompt':\n    print('Take ' + sys.argv[2] + ' because ' + "
+                          "sys.argv[3])\n", encoding="utf-8")
+        now = Next("the build floor, in the agent", "it runs", False)
+        steps = agent_steps(layout, now, self.root)
+        self.assertEqual(steps[0].argv, [])
+        self.assertIn("over the Agent Client Protocol", steps[0].announced)
+        fitting = Fitting(self.root, steps)
+        fitting.thread.start()
+        said = finished(fitting)
+        self.assertEqual(said["code"], 0, said["lines"])
+        self.assertTrue(any(line.startswith("Drawn: Take the build floor because it runs\n") for line in said["lines"]))
+        with mock.patch.object(stage_session, "launchable", return_value=None):
+            self.assertEqual(agent_steps(layout, now, self.root)[0].argv,
+                             [sys.executable, "adopt/scripts/agents/step.py", "the build floor", "it runs"])
+
+    def test_the_adoption_step_script_says_its_prompt_when_asked(self) -> None:
+        agents = self.root / "scripts" / "agents"
+        for name in ("harness.py", "registry.json"):
+            shutil.copy(ROOT / "assets/toolkit/scripts/agents" / name, agents / name)
+        shutil.copy(ROOT / "assets/adoption/scripts/agents/step.py", agents / "step.py")
+        said = subprocess.run([sys.executable, str(agents / "step.py"), "--prompt", "the build floor", "it runs"],
+                              cwd=self.root, capture_output=True, text=True, check=False)
+        self.assertEqual(said.returncode, 0, said.stderr)
+        self.assertTrue(said.stdout.startswith("Take one step of this repository's adoption, and only that step: "
+                                               "the build floor — it runs."), said.stdout)
 
     def test_the_toolkit_s_model_script_says_its_prompt_when_asked(self) -> None:
         said = subprocess.run([sys.executable, str(ROOT / "assets/toolkit/scripts/agents/model.py"), "--prompt"],

@@ -1,5 +1,5 @@
 {
-  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what a captain needs to dispatch `/sail` for a slice — the command as a shell template with {prompt} and {permissions}, read the same way, or null with a `headlessReason` where none was verified, which the script reports rather than guessing a flag; `scripts/agents/harness.py` looks for the command's first word on PATH, and `prompt: \"slash\"` marks the one harness whose print mode is known to resolve `/cruise` itself (every other is asked to read the command file). `hooks` is the factory's fourth: whether this harness has a hook that fires when a turn ends and can refuse the end (`holds`), how, and the `projection` `scripts/agents/project.py` writes so that `scripts/agents/session.py before-stop` runs there — or null with a `why` where the file's shape was not read, and null altogether where nothing was verified. `projectMcp` is the factory's fifth: the project-scoped file this harness reads an MCP server from, its shape, and the flags a headless iteration needs for that file to be honoured in a checkout nobody has trusted — read the same way, or null with a `projectMcpReason`; `scripts/extensions/guidance.py` writes an extension's server into every installed harness's file, and `scripts/agents/captain.py` passes the flags when the file exists. `acp` is the factory's sixth: how this harness is launched as an Agent Client Protocol agent over stdio — an `npx` package with its arguments, or a `binary` on PATH with its arguments — copied from the protocol's own registry on the date `source` says, `via` saying native or through which adapter, `proven: false` until a session has run on it from the board; or null with an `acpReason`. `slipwai.harness.acp_launch` turns it into the argv this machine can make, or says what is missing.",
+  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what a captain needs to dispatch `/sail` for a slice — the command as a shell template with {prompt} and {permissions}, read the same way, or null with a `headlessReason` where none was verified, which the script reports rather than guessing a flag; `scripts/agents/harness.py` looks for the command's first word on PATH, and `prompt: \"slash\"` marks the one harness whose print mode is known to resolve `/cruise` itself (every other is asked to read the command file). `hooks` is the factory's fourth: whether this harness has a hook that fires when a turn ends and can refuse the end (`holds`), how, and the `projection` `scripts/agents/project.py` writes so that `scripts/agents/session.py before-stop` runs there — or null with a `why` where the file's shape was not read, and null altogether where nothing was verified. `projectMcp` is the factory's fifth: the project-scoped file this harness reads an MCP server from, its shape, and the flags a headless iteration needs for that file to be honoured in a checkout nobody has trusted — read the same way, or null with a `projectMcpReason`; `scripts/extensions/guidance.py` writes an extension's server into every installed harness's file, and `scripts/agents/captain.py` passes the flags when the file exists. `acp` is the factory's sixth: how this harness is launched as an Agent Client Protocol agent over stdio — an `npx` package with its arguments, or a `binary` on PATH with its arguments — copied from the protocol's own registry on the date `source` says, `via` saying native or through which adapter, `proven: false` until a session has run on it from the board; or null with an `acpReason`. `slipwai.harness.acp_launch` turns it into the argv this machine can make, or says what is missing. `acp.archive` is the registry's binary distribution per platform target — the archive's URL, its sha256 where the manifest gives one, the command inside it and its arguments — read from the manifest `acp.archiveSource` names; the board installs from it only where a sha256 is given.",
   "speckitVersion": "0.16.1",
   "harnesses": [
     {
@@ -106,7 +106,41 @@
         },
         "via": "adapter: amp-acp, third-party",
         "proven": false,
-        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "version": "0.12.0",
+        "archive": {
+          "darwin-aarch64": {
+            "url": "https://github.com/tao12345666333/amp-acp/releases/download/v0.12.0/amp-acp-darwin-aarch64.tar.gz",
+            "cmd": "./amp-acp",
+            "args": [],
+            "sha256": "1c5f08f44f3711710769585855cefcdbaed53e4133c2263d59a368b5a1597151"
+          },
+          "darwin-x86_64": {
+            "url": "https://github.com/tao12345666333/amp-acp/releases/download/v0.12.0/amp-acp-darwin-x86_64.tar.gz",
+            "cmd": "./amp-acp",
+            "args": [],
+            "sha256": "4245776441b18c05621dd66376064e66aebba90806a0d787592ea558207c5a68"
+          },
+          "linux-aarch64": {
+            "url": "https://github.com/tao12345666333/amp-acp/releases/download/v0.12.0/amp-acp-linux-aarch64.tar.gz",
+            "cmd": "./amp-acp",
+            "args": [],
+            "sha256": "f75b1f4a2adc1c243601952070eb24bbcfecf328692f799815b59efeb9791528"
+          },
+          "linux-x86_64": {
+            "url": "https://github.com/tao12345666333/amp-acp/releases/download/v0.12.0/amp-acp-linux-x86_64.tar.gz",
+            "cmd": "./amp-acp",
+            "args": [],
+            "sha256": "c25e3635159ee12f8a77bd775dd8a8fc21cc4d25a3a23483ffafec73ccb910fe"
+          },
+          "windows-x86_64": {
+            "url": "https://github.com/tao12345666333/amp-acp/releases/download/v0.12.0/amp-acp-windows-x86_64.zip",
+            "cmd": "amp-acp.exe",
+            "args": [],
+            "sha256": "7377158ddac570d50f1eb98e0ce39ca6ecf18990bf917c1930bf628509ae12b4"
+          }
+        },
+        "archiveSource": "https://github.com/agentclientprotocol/registry, amp-acp/agent.json, read 2026-11-05"
       }
     },
     {
@@ -610,7 +644,53 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
-        "note": "the manifest's archive unpacks to `cursor-agent acp`; the installed CLI is `agent`"
+        "note": "the manifest's archive unpacks to `cursor-agent acp`; the installed CLI is `agent`",
+        "version": "2026.10.22",
+        "archive": {
+          "darwin-aarch64": {
+            "url": "https://downloads.cursor.com/lab/2026.10.22-27dcf5f/darwin/arm64/agent-cli-package.tar.gz",
+            "cmd": "./dist-package/cursor-agent",
+            "args": [
+              "acp"
+            ]
+          },
+          "darwin-x86_64": {
+            "url": "https://downloads.cursor.com/lab/2026.10.22-27dcf5f/darwin/x64/agent-cli-package.tar.gz",
+            "cmd": "./dist-package/cursor-agent",
+            "args": [
+              "acp"
+            ]
+          },
+          "linux-aarch64": {
+            "url": "https://downloads.cursor.com/lab/2026.10.22-27dcf5f/linux/arm64/agent-cli-package.tar.gz",
+            "cmd": "./dist-package/cursor-agent",
+            "args": [
+              "acp"
+            ]
+          },
+          "linux-x86_64": {
+            "url": "https://downloads.cursor.com/lab/2026.10.22-27dcf5f/linux/x64/agent-cli-package.tar.gz",
+            "cmd": "./dist-package/cursor-agent",
+            "args": [
+              "acp"
+            ]
+          },
+          "windows-aarch64": {
+            "url": "https://downloads.cursor.com/lab/2026.10.22-27dcf5f/windows/arm64/agent-cli-package.zip",
+            "cmd": "./dist-package\\cursor-agent.cmd",
+            "args": [
+              "acp"
+            ]
+          },
+          "windows-x86_64": {
+            "url": "https://downloads.cursor.com/lab/2026.10.22-27dcf5f/windows/x64/agent-cli-package.zip",
+            "cmd": "./dist-package\\cursor-agent.cmd",
+            "args": [
+              "acp"
+            ]
+          }
+        },
+        "archiveSource": "https://github.com/agentclientprotocol/registry, cursor/agent.json, read 2026-11-05"
       }
     },
     {
@@ -646,7 +726,53 @@
         },
         "via": "native",
         "proven": false,
-        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "version": "3000.11.234",
+        "archive": {
+          "darwin-aarch64": {
+            "url": "https://static.devin.ai/cli/3000.11.234/devin-3000.11.234-aarch64-apple-darwin.tar.gz",
+            "cmd": "./bin/devin",
+            "args": [
+              "acp"
+            ]
+          },
+          "darwin-x86_64": {
+            "url": "https://static.devin.ai/cli/3000.11.234/devin-3000.11.234-x86_64-apple-darwin.tar.gz",
+            "cmd": "./bin/devin",
+            "args": [
+              "acp"
+            ]
+          },
+          "linux-aarch64": {
+            "url": "https://static.devin.ai/cli/3000.11.234/devin-3000.11.234-aarch64-unknown-linux.tar.gz",
+            "cmd": "./bin/devin",
+            "args": [
+              "acp"
+            ]
+          },
+          "linux-x86_64": {
+            "url": "https://static.devin.ai/cli/3000.11.234/devin-3000.11.234-x86_64-unknown-linux.tar.gz",
+            "cmd": "./bin/devin",
+            "args": [
+              "acp"
+            ]
+          },
+          "windows-aarch64": {
+            "url": "https://static.devin.ai/cli/3000.11.234/devin-3000.11.234-aarch64-pc-windows.zip",
+            "cmd": "./bin\\devin.exe",
+            "args": [
+              "acp"
+            ]
+          },
+          "windows-x86_64": {
+            "url": "https://static.devin.ai/cli/3000.11.234/devin-3000.11.234-x86_64-pc-windows.zip",
+            "cmd": "./bin\\devin.exe",
+            "args": [
+              "acp"
+            ]
+          }
+        },
+        "archiveSource": "https://github.com/agentclientprotocol/registry, devin/agent.json, read 2026-11-05"
       }
     },
     {
@@ -896,7 +1022,51 @@
         },
         "via": "native",
         "proven": false,
-        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "version": "1.57.0",
+        "archive": {
+          "darwin-aarch64": {
+            "url": "https://github.com/block/goose/releases/download/v1.57.0/goose-aarch64-apple-darwin.tar.bz2",
+            "cmd": "./goose",
+            "args": [
+              "acp"
+            ],
+            "sha256": "2fbafa227ab28654c47065f1c9ebcd12f527f017e30c08e618bc6fcf363d7935"
+          },
+          "darwin-x86_64": {
+            "url": "https://github.com/block/goose/releases/download/v1.57.0/goose-x86_64-apple-darwin.tar.bz2",
+            "cmd": "./goose",
+            "args": [
+              "acp"
+            ],
+            "sha256": "e48fe024891a4c272a89c74b9ae843d76a73229643c917b785b0680fef9c647a"
+          },
+          "linux-aarch64": {
+            "url": "https://github.com/block/goose/releases/download/v1.57.0/goose-aarch64-unknown-linux-gnu.tar.bz2",
+            "cmd": "./goose",
+            "args": [
+              "acp"
+            ],
+            "sha256": "17c6b090db6acc5605da904bbe19cc2765bc7a6786019d85a6d0a361de06dbf7"
+          },
+          "linux-x86_64": {
+            "url": "https://github.com/block/goose/releases/download/v1.57.0/goose-x86_64-unknown-linux-gnu.tar.bz2",
+            "cmd": "./goose",
+            "args": [
+              "acp"
+            ],
+            "sha256": "e54036f3b7f95d3b0d7854c09465af5ef52a28c7fa03d2497d0ea68a6382282d"
+          },
+          "windows-x86_64": {
+            "url": "https://github.com/block/goose/releases/download/v1.57.0/goose-x86_64-pc-windows-msvc.zip",
+            "cmd": "./goose-package\\goose.exe",
+            "args": [
+              "acp"
+            ],
+            "sha256": "1ab2117ceec37f95be4d3ad0cdb921d3e97fd8b0fa244046631ecf4b7619d502"
+          }
+        },
+        "archiveSource": "https://github.com/agentclientprotocol/registry, goose/agent.json, read 2026-11-05"
       }
     },
     {
@@ -1019,7 +1189,53 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
-        "note": "the manifest's archive is the Junie app; the binary inside it takes `--acp=true`"
+        "note": "the manifest's archive is the Junie app; the binary inside it takes `--acp=true`",
+        "version": "3959.5.0",
+        "archive": {
+          "darwin-aarch64": {
+            "url": "https://github.com/JetBrains/junie-acp-release/releases/download/3959.5/junie-release-3959.5-macos-aarch64.zip",
+            "cmd": "./Applications/junie.app/Contents/MacOS/junie",
+            "args": [
+              "--acp=true"
+            ]
+          },
+          "darwin-x86_64": {
+            "url": "https://github.com/JetBrains/junie-acp-release/releases/download/3959.5/junie-release-3959.5-macos-amd64.zip",
+            "cmd": "./Applications/junie.app/Contents/MacOS/junie",
+            "args": [
+              "--acp=true"
+            ]
+          },
+          "linux-aarch64": {
+            "url": "https://github.com/JetBrains/junie-acp-release/releases/download/3959.5/junie-release-3959.5-linux-aarch64.zip",
+            "cmd": "./junie-app/bin/junie",
+            "args": [
+              "--acp=true"
+            ]
+          },
+          "linux-x86_64": {
+            "url": "https://github.com/JetBrains/junie-acp-release/releases/download/3959.5/junie-release-3959.5-linux-amd64.zip",
+            "cmd": "./junie-app/bin/junie",
+            "args": [
+              "--acp=true"
+            ]
+          },
+          "windows-x86_64": {
+            "url": "https://github.com/JetBrains/junie-acp-release/releases/download/3959.5/junie-release-3959.5-windows-amd64.zip",
+            "cmd": "./junie/junie.exe",
+            "args": [
+              "--acp=true"
+            ]
+          },
+          "windows-aarch64": {
+            "url": "https://github.com/JetBrains/junie-acp-release/releases/download/3959.5/junie-release-3959.5-windows-aarch64.zip",
+            "cmd": "./junie/junie.exe",
+            "args": [
+              "--acp=true"
+            ]
+          }
+        },
+        "archiveSource": "https://github.com/agentclientprotocol/registry, junie/agent.json, read 2026-11-05"
       }
     },
     {
@@ -1112,7 +1328,51 @@
         },
         "via": "native",
         "proven": false,
-        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "version": "1.52.0",
+        "archive": {
+          "darwin-aarch64": {
+            "url": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-aarch64-apple-darwin.tar.gz",
+            "cmd": "./kimi",
+            "args": [
+              "acp"
+            ],
+            "sha256": "43fe091f70bbf8860974200f9021a05689a020857cc9926d56f1505f0d0d5cb8"
+          },
+          "linux-aarch64": {
+            "url": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-aarch64-unknown-linux-gnu.tar.gz",
+            "cmd": "./kimi",
+            "args": [
+              "acp"
+            ],
+            "sha256": "9e06eea96273600aed485b1f0bedda95b7084db4f22cf28614fe20138933507a"
+          },
+          "linux-x86_64": {
+            "url": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-x86_64-unknown-linux-gnu.tar.gz",
+            "cmd": "./kimi",
+            "args": [
+              "acp"
+            ],
+            "sha256": "a676204f7804ed5dae87652a9d66f578e0718d5026c9cb1bfa32b9a5eace4208"
+          },
+          "windows-aarch64": {
+            "url": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-aarch64-pc-windows-msvc.zip",
+            "cmd": "./kimi.exe",
+            "args": [
+              "acp"
+            ],
+            "sha256": "7c77cd413e7a3a59416c171a45ee4ff50534869b331469138aad84b9e3acb6c0"
+          },
+          "windows-x86_64": {
+            "url": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-x86_64-pc-windows-msvc.zip",
+            "cmd": "./kimi.exe",
+            "args": [
+              "acp"
+            ],
+            "sha256": "2c269e15e152b9f28ac1556795280f90a2c9860ff44c60c628c3fce4dd4c58a7"
+          }
+        },
+        "archiveSource": "https://github.com/agentclientprotocol/registry, kimi/agent.json, read 2026-11-05"
       }
     },
     {
@@ -1154,7 +1414,47 @@
         },
         "via": "native",
         "proven": false,
-        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "version": "2.37.1",
+        "archive": {
+          "darwin-aarch64": {
+            "url": "https://prod.download.cli.kiro.dev/stable/2.37.1/kirocli-universal-darwin.tar.gz",
+            "cmd": "./kirocli/bin/kiro-cli",
+            "args": [
+              "acp",
+              "--agent-engine=v3"
+            ],
+            "sha256": "c2b2bb628673cea6f05174528735ac1f82478dd936a27f0826f0cd7029699c8e"
+          },
+          "darwin-x86_64": {
+            "url": "https://prod.download.cli.kiro.dev/stable/2.37.1/kirocli-universal-darwin.tar.gz",
+            "cmd": "./kirocli/bin/kiro-cli",
+            "args": [
+              "acp",
+              "--agent-engine=v3"
+            ],
+            "sha256": "c2b2bb628673cea6f05174528735ac1f82478dd936a27f0826f0cd7029699c8e"
+          },
+          "linux-aarch64": {
+            "url": "https://prod.download.cli.kiro.dev/stable/2.37.1/kirocli-aarch64-linux.tar.gz",
+            "cmd": "./kirocli/bin/kiro-cli-chat",
+            "args": [
+              "acp",
+              "--agent-engine=v3"
+            ],
+            "sha256": "10f0318a379b27ba9bbfb2a06b33db2abaedcde2ea0c10f46e3cffbce86368aa"
+          },
+          "linux-x86_64": {
+            "url": "https://prod.download.cli.kiro.dev/stable/2.37.1/kirocli-x86_64-linux.tar.gz",
+            "cmd": "./kirocli/bin/kiro-cli-chat",
+            "args": [
+              "acp",
+              "--agent-engine=v3"
+            ],
+            "sha256": "cf6c7438934a169781b3d564e81bcdfccac901c5d659f35235ac19e0d01192a3"
+          }
+        },
+        "archiveSource": "https://github.com/agentclientprotocol/registry, kiro/agent.json, read 2026-11-05"
       }
     },
     {
@@ -1309,7 +1609,59 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
-        "probed": "2026-11-05, through the keel's client in a scratch folder: handshake 1.7 s, loadSession true, auth method opencode-login, config options model and mode, one prompt answered end_turn in 2.6 s with thought and message chunks and a usage update"
+        "probed": "2026-11-05, through the keel's client in a scratch folder: handshake 1.7 s, loadSession true, auth method opencode-login, config options model and mode, one prompt answered end_turn in 2.6 s with thought and message chunks and a usage update",
+        "version": "2.2.5",
+        "archive": {
+          "darwin-aarch64": {
+            "url": "https://github.com/anomalyco/opencode/releases/download/v2.2.5/opencode-darwin-arm64.zip",
+            "cmd": "./opencode",
+            "args": [
+              "acp"
+            ],
+            "sha256": "25ba9908979fa7d764792c82589b4b5768ab1511154e0317d98aa77d216ce767"
+          },
+          "darwin-x86_64": {
+            "url": "https://github.com/anomalyco/opencode/releases/download/v2.2.5/opencode-darwin-x64.zip",
+            "cmd": "./opencode",
+            "args": [
+              "acp"
+            ],
+            "sha256": "4d4419022e6ffbd48afc97c5101bdf001d38b0499f516169b9a80a87a340fd56"
+          },
+          "linux-aarch64": {
+            "url": "https://github.com/anomalyco/opencode/releases/download/v2.2.5/opencode-linux-arm64.tar.gz",
+            "cmd": "./opencode",
+            "args": [
+              "acp"
+            ],
+            "sha256": "5a528f42caf576c6cdece6a191eb273d3db54effa5518e0402684d8f8026aeb6"
+          },
+          "linux-x86_64": {
+            "url": "https://github.com/anomalyco/opencode/releases/download/v2.2.5/opencode-linux-x64.tar.gz",
+            "cmd": "./opencode",
+            "args": [
+              "acp"
+            ],
+            "sha256": "09f44302c10fd036912f59c81fd1aef5df45dd06f649197f9dfc9bbe2a79614e"
+          },
+          "windows-aarch64": {
+            "url": "https://github.com/anomalyco/opencode/releases/download/v2.2.5/opencode-windows-arm64.zip",
+            "cmd": "./opencode.exe",
+            "args": [
+              "acp"
+            ],
+            "sha256": "4e426a39d68516b036cd28b574c5ce5f3b50846ab460521f83f2458fe7f242d8"
+          },
+          "windows-x86_64": {
+            "url": "https://github.com/anomalyco/opencode/releases/download/v2.2.5/opencode-windows-x64.zip",
+            "cmd": "./opencode.exe",
+            "args": [
+              "acp"
+            ],
+            "sha256": "2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8"
+          }
+        },
+        "archiveSource": "https://github.com/agentclientprotocol/registry, opencode/agent.json, read 2026-11-05"
       }
     },
     {
@@ -1626,7 +1978,41 @@
         },
         "via": "native",
         "proven": false,
-        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+        "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
+        "version": "3.0.4",
+        "archive": {
+          "darwin-aarch64": {
+            "url": "https://github.com/mistralai/mistral-vibe/releases/download/v3.0.4/vibe-acp-darwin-aarch64-3.0.4.tar.gz",
+            "cmd": "./vibe-acp",
+            "args": [],
+            "sha256": "cc9c1d94ccb7890b36e82b096031e80d6c78d68f891e527e01c0865a04f90008"
+          },
+          "darwin-x86_64": {
+            "url": "https://github.com/mistralai/mistral-vibe/releases/download/v3.0.4/vibe-acp-darwin-x86_64-3.0.4.tar.gz",
+            "cmd": "./vibe-acp",
+            "args": [],
+            "sha256": "9f94678a670b9c13b5f20bc4878075b37f9ba537bec32cbccee45ff8e78e165e"
+          },
+          "linux-aarch64": {
+            "url": "https://github.com/mistralai/mistral-vibe/releases/download/v3.0.4/vibe-acp-linux-aarch64-3.0.4.tar.gz",
+            "cmd": "./vibe-acp",
+            "args": [],
+            "sha256": "dfac99ccd25de9780f54f0dc32aa90a3838810a0becc8f7fe393ea07748d3107"
+          },
+          "linux-x86_64": {
+            "url": "https://github.com/mistralai/mistral-vibe/releases/download/v3.0.4/vibe-acp-linux-x86_64-3.0.4.tar.gz",
+            "cmd": "./vibe-acp",
+            "args": [],
+            "sha256": "83d9cd21758a99719382e1c8c55420e9693d7e3358b3d3a744727e2291a9d5b3"
+          },
+          "windows-x86_64": {
+            "url": "https://github.com/mistralai/mistral-vibe/releases/download/v3.0.4/vibe-acp-windows-x86_64-3.0.4.zip",
+            "cmd": "./vibe-acp.exe",
+            "args": [],
+            "sha256": "e853cc56f586bf3e618d2d82eca5659db2f781f070252b24ea273f6c156b5aec"
+          }
+        },
+        "archiveSource": "https://github.com/agentclientprotocol/registry, mistral-vibe/agent.json, read 2026-11-05"
       }
     },
     {

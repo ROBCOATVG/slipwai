@@ -29,9 +29,11 @@ protocol too, opt-in: the toolkit carries the keel's client (`make shared` write
 and `scripts/agents/drive.py` gives a session a process's face for the captain's watch; `SLIPWAI_ACP=1`
 takes the initialised harness's launch row, any other value a command, unset is the print mode as it was.
 The suite's stand-in drives a slice through the captain's gate on it. The board turning it on for a project
-waits on a proven row (22.6). 22.8 is half built: *Make ready* on the Settings tab does the handshake through the client
-and keeps the agent's name, version, time and sign-in methods on the row; *Sign in* is `authenticate`, or the line to
-run for a terminal method. The binary archive install is the half left.
+waits on a proven row (22.6). 22.8 is built: *Make ready* on the Settings tab does the handshake through the client and keeps the
+agent's name, version, time and sign-in methods on the row; *Sign in* is `authenticate`, or the line to run for a
+terminal method; *Install* fetches the registry's archive for this platform, checks its sha256 and unpacks it
+under `~/.slipwai/agents/`, which `acp_launch` then finds. Nothing in 22.8 has been exercised against a real
+download yet; that goes with 22.6's live run.
 
 **The principle the plan serves:** the board is the face a non-technical person sees, and what runs behind
 it must be whichever coding agent that person has — not one named in the keel's source. The protocol is
@@ -171,7 +173,7 @@ the gates inside. The main plan's phase 22 table is the one `make progress` tick
 | 22.5 | The console over the protocol: the same on the Voyage page | M | todo |
 | 22.6 | The live run: one brief through the first page on Claude's adapter and one on a native agent, recorded here | S | todo |
 | 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives; each shows its progress, asks the person instead of assuming, and stops on a cancel; the headless path kept where a harness has no `acp` row | L | done 2026-11-05; the captain's path opt-in by `SLIPWAI_ACP` until a row is proven |
-| 22.8 | Install from the settings page: an agent put on this machine from its manifest — `npx` needs only Node, a binary archive is fetched and its sha256 checked — and its sign-in started through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | M | Make ready and Sign in done (`agent_ready.py`); the binary archive todo |
+| 22.8 | Install from the settings page: an agent put on this machine from its manifest — `npx` needs only Node, a binary archive is fetched and its sha256 checked — and its sign-in started through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | M | done 2026-11-05: `agent_ready.py`, `agent_install.py`; three manifests give no checksum and get the link |
 
 ### 22.1 `acp.py` — M
 

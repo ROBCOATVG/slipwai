@@ -22,9 +22,11 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from .assets import TOOLKIT_ROOT
+from .assets import SLIPWAI, TOOLKIT_ROOT
 
 REGISTRY = TOOLKIT_ROOT / "scripts/agents/registry.json"
+#: Where the board installs an agent from its archive (`agent_install.py`): `<key>/launch.json` says what to run.
+INSTALLED = SLIPWAI / "agents"
 # Where Spec Kit records the integration `./init` installed. Written by `specify init` and by nothing this
 # factory generates, so its `integration` is not a reading of the tree but a person's answer to `./init`'s
 # own question — the strongest evidence there is, and the one that closes the gap where `adopt` could not
@@ -226,9 +228,24 @@ def acp_launch(key: str, path: str | None = None) -> tuple[list[str], str]:
     binary = row["binary"] if isinstance(row.get("binary"), dict) else {}
     command = str(binary.get("cmd") or "")
     found = shutil.which(command, path=path) if command else None
-    if not found:
-        return [], f"{name_of(key)} is launched as `{command}`, which is not on PATH"
-    return [found, *[str(a) for a in binary.get("args") or []]], f"{name_of(key)} at {found}"
+    if found:
+        return [found, *[str(a) for a in binary.get("args") or []]], f"{name_of(key)} at {found}"
+    put = installed_launch(key)
+    if put:
+        return put, f"{name_of(key)} installed by the board, at {put[0]}"
+    return [], f"{name_of(key)} is launched as `{command}`, which is not on PATH"
+
+
+def installed_launch(key: str) -> list[str]:
+    """The argv of an agent the board installed from its archive, or nothing where it did not."""
+    try:
+        held = json.loads((INSTALLED / key / "launch.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    command = str(held.get("cmd") or "") if isinstance(held, dict) else ""
+    if not command or not Path(command).is_file():
+        return []
+    return [command, *[str(a) for a in held.get("args") or []]]
 
 
 def acp_environment(key: str) -> dict[str, str]:

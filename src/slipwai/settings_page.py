@@ -15,8 +15,9 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import parse_qs
 
-from . import agent_ready
+from . import agent_install, agent_ready
 from .board_settings import AUTO, Launch, Settings, chosen, launches, read, write
+from .harness import acp_row, name_of
 from .page_shell import document, esc
 
 STYLE = """
@@ -58,20 +59,24 @@ SCRIPT = """
       said.textContent = await answer.text(); said.hidden = false;
       if (answer.ok) location.reload();
     });
-    const post = body => fetch('/settings/ready', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                                                  body: JSON.stringify(body)});
-    card.querySelectorAll('[data-ready]').forEach(one => one.addEventListener('click', async event => {
-      event.preventDefault();
-      const key = one.dataset.ready, doing = one.closest('.agent').querySelector('.doing');
-      const answer = await post({key, method: one.dataset.method || ''});
+    const begin = async (one, where, body) => {
+      const doing = one.closest('.agent').querySelector('.doing');
+      const answer = await fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                         body: JSON.stringify(body)});
       doing.textContent = await answer.text(); doing.hidden = false;
       if (!answer.ok) return;
       const poll = async () => {
-        const state = await (await fetch('/settings/ready.json?key=' + encodeURIComponent(key))).json();
+        const state = await (await fetch(where + '.json?key=' + encodeURIComponent(body.key))).json();
         doing.textContent = state.lines.join('\n');
         if (state.done) location.reload(); else setTimeout(poll, 800);
       };
       poll();
+    };
+    card.querySelectorAll('[data-ready]').forEach(one => one.addEventListener('click', event => {
+      event.preventDefault(); begin(one, '/settings/ready', {key: one.dataset.ready, method: one.dataset.method || ''});
+    }));
+    card.querySelectorAll('[data-install]').forEach(one => one.addEventListener('click', event => {
+      event.preventDefault(); begin(one, '/settings/install', {key: one.dataset.install});
     }));
   }
 }
@@ -98,11 +103,30 @@ def ready_line(one: Launch, found: dict) -> str:
             f'{esc(str(found.get("at")))}; {esc(how)}.</span>')
 
 
+def install_acts(one: Launch, found: dict) -> str:
+    """What a row this machine cannot launch offers: Install, where the registry has a checked archive for
+    this platform; the link and the reason where it has one nobody can check; nothing where it has none."""
+    archive = agent_install.archive_for(one.key)
+    if archive is None:
+        return ""
+    fault = str((found.get("install") or {}).get("fault") or "")
+    said = f'<span class="ready fault">Could not be installed: {esc(fault)}</span>' if fault else ""
+    if not archive.get("sha256"):
+        return (f'{said}<span class="ready">The registry\'s manifest gives no checksum for this platform, so the '
+                f'board will not fetch it. Install it yourself from <a href="{esc(str(archive["url"]))}">'
+                f'{esc(str(archive["url"]))}</a>, or put <code>{esc(str(archive["cmd"]).removeprefix("./"))}</code> '
+                f'on PATH.</span>')
+    version = str((acp_row(one.key) or {}).get("version") or "")
+    return (f'{said}<span class="acts"><button type="button" data-install="{esc(one.key)}">Install'
+            f'{" " + esc(version) if version else ""}</button><span>from {esc(str(archive["url"]).rsplit("/", 1)[0])}, '
+            f'checked against the registry\'s sha256</span></span><span class="doing" hidden></span>')
+
+
 def acts(one: Launch, found: dict) -> str:
     """The row's buttons: Make ready, and a Sign in per method of the agent's kind; the line to run for one
-    of the terminal kind."""
+    of the terminal kind. A row this machine cannot launch offers its install instead."""
     if not one.able:
-        return ""
+        return install_acts(one, found)
     buttons = [f'<button type="button" data-ready="{esc(one.key)}">'
                f'{"Make ready again" if found and not found.get("fault") else "Make ready"}</button>']
     for method in found.get("auth") or []:
@@ -162,11 +186,12 @@ def page(settings: Settings, found: list[Launch], now: Launch | None) -> str:
 
 def route_get(bridge: Any, where: str, query: str) -> bool:
     """Answer a GET of this page's — the page, or a make-ready run's lines — or say it was not one."""
-    if where == "/settings/ready.json":
+    if where in ("/settings/ready.json", "/settings/install.json"):
         import json  # noqa: PLC0415 — one route's answer
 
         key = (parse_qs(query).get("key") or [""])[0]
-        bridge.send(200, json.dumps(agent_ready.state(key)), "application/json; charset=utf-8")
+        asked = agent_ready.state(key) if where == "/settings/ready.json" else agent_install.state(key)
+        bridge.send(200, json.dumps(asked), "application/json; charset=utf-8")
         return True
     if where != "/settings":
         return False
@@ -178,12 +203,16 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
 
 def route_post(bridge: Any, where: str, held: dict) -> bool:
     """Answer a POST of this page's — the save, or make ready — or say it was not one."""
-    if where == "/settings/ready":
-        begun = agent_ready.begin(str(held.get("key") or ""), str(held.get("method") or ""))
+    if where in ("/settings/ready", "/settings/install"):
+        key = str(held.get("key") or "")
+        begun = (agent_ready.begin(key, str(held.get("method") or "")) if where == "/settings/ready"
+                 else agent_install.begin(key))
         if isinstance(begun, str):
             bridge.send(400, begun, "text/plain; charset=utf-8")
-        else:
+        elif isinstance(begun, agent_ready.Readying):
             bridge.send(200, f"Making {begun.launch.name} ready…", "text/plain; charset=utf-8")
+        else:
+            bridge.send(200, f"Installing {name_of(key)}…", "text/plain; charset=utf-8")
         return True
     if where != "/settings/save":
         return False

@@ -62,9 +62,12 @@ def permission(number, session, path):
 def turn(number, session, words):
     # A role at the head of the prompt, set off by a rule, is acknowledged and not echoed: the words the
     # stand-in acts on are the person's own, after it.
+    if "\n---\nThe board" in words:  # a console's fold of the board rides after the question: not the words
+        words = words.split("\n---\nThe board", 1)[0]
     if "\n---\n" in words:
         text(session, "Role given. ")
-        words = words.rsplit("\n---\n", 1)[1].strip()
+        words = words.rsplit("\n---\n", 1)[1]
+    words = words.strip()
     text(session, f"Drawn: {words}")
     if "die" in words:
         os._exit(3)

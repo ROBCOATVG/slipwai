@@ -312,9 +312,8 @@ class Sketch:
             child.kill()
         if self.agent is not None:
             self.agent.cancel()
-            self.agent.close()
+            self.agent.forget()
             self.agent = None
-            (self.home / ".acp" / "session").unlink(missing_ok=True)
         with self.lock:
             self.turns, self.dropped, self.session, self.begun = [], self.dropped + len(self.turns), "", False
             self.step, self.ready = 1, False

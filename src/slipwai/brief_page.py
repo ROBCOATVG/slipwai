@@ -10,8 +10,6 @@ It is a tab beside the start page and never in front of it: a person with a docu
 bridge's one job here is two lines. Files are served from the workspace and confined to it: the prototype's
 page and the surface pages' stylesheets load from there, and nothing else does.
 """
-# budget: 430 — the page's own script and styles: a conversation's bubbles, and the cards an agent's tool
-# calls, plan, permissions and questions become on it
 from __future__ import annotations
 
 import json
@@ -21,6 +19,8 @@ from urllib.parse import parse_qs, quote
 
 from .brief_session import BRIEF, BROUGHT, PROTOTYPE, for_slug, sketches, slug_of, started, workspace
 from .page_shell import document, esc
+from .turn_cards import SCRIPT as DRAW
+from .turn_cards import STYLE as CARDS
 
 STEPS = ("Describe", "Walk the states", "Check", "Hand over")
 TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript",
@@ -45,33 +45,6 @@ STYLE = """
 #sketch .turn.read,#sketch .turn.wrote{justify-self:start;border:0;padding:0 4px;color:var(--ink-3);font-size:.78rem;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 #sketch .turn.error{justify-self:start;border-color:var(--brass);color:var(--brass)}
-#sketch .turn.thought{justify-self:start;border:0;padding:0 4px;color:var(--ink-3);font-size:.8rem;font-style:italic}
-#sketch .turn.tool{justify-self:start;border:0;padding:2px 4px;font-size:.8rem;color:var(--ink-3);display:flex;gap:8px;
-  align-items:baseline;white-space:normal}
-#sketch .turn.tool .dot{width:8px;height:8px;border-radius:50%;background:var(--rule);flex:none;align-self:center}
-#sketch .turn.tool.in_progress .dot{background:var(--warn)}
-#sketch .turn.tool.completed .dot{background:var(--good)}
-#sketch .turn.tool.failed .dot{background:var(--critical)}
-#sketch .turn.tool b{font-weight:500;color:var(--ink-2);text-transform:capitalize}
-#sketch .turn.tool .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.76rem}
-#sketch .turn.plan{justify-self:start;background:var(--ground);font-size:.84rem}
-#sketch .turn.plan ol{margin:0;padding-left:1.2rem}
-#sketch .turn.plan li.completed{color:var(--ink-3);text-decoration:line-through}
-#sketch .turn.plan li.in_progress{font-weight:600}
-#sketch .turn.permission,#sketch .turn.question{justify-self:stretch;max-width:none;border-color:var(--brass);
-  background:var(--brass-soft);white-space:normal}
-#sketch .turn.permission .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem;display:block;
-  margin-top:4px;overflow-wrap:anywhere}
-#sketch .turn .buttons{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-#sketch .turn .buttons button,#sketch .turn input{font:inherit;font-size:.85rem;padding:6px 12px;border-radius:8px;
-  border:1px solid var(--rule);background:var(--paper);color:var(--ink)}
-#sketch .turn .buttons button.allow{background:var(--teal);border-color:var(--teal);color:#fff}
-#sketch .turn input{width:100%;margin-top:8px}
-#sketch .turn.done{opacity:.55}
-#sketch .turn.done .buttons,#sketch .turn.done input{display:none}
-#sketch button.stop{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--brass);
-  background:var(--paper);color:var(--brass);cursor:pointer}
-#sketch .head .on{font-size:.8rem;color:var(--ink-3);margin-left:auto}
 #sketch .empty,#sketch .none{color:var(--ink-3);font-size:.88rem;margin:0}
 #sketch .check{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:.84rem;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-2)}
@@ -117,68 +90,7 @@ SCRIPT = """
     const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
                                                  body: JSON.stringify({sketch: slug, ...body})});
     const reply = (id, body) => post('/brief/answer', {id, ...body});
-    const card = (turn, kind) => {
-      const one = document.createElement('div');
-      one.className = 'turn ' + kind; one.dataset.ask = turn.ask.id;
-      const words = document.createElement('div'); words.textContent = turn.text; one.appendChild(words);
-      return one;
-    };
-    const draw = turn => {
-      if (turn.kind === 'tool_update') {
-        const had = log.querySelector('[data-tool="' + turn.tool.id + '"]');
-        if (!had) return;
-        had.className = 'turn tool ' + turn.tool.status;
-        if (turn.text) had.querySelector('.title').textContent = turn.text;
-        if (turn.tool.status === 'completed' && turn.tool.kind !== 'read' && turn.tool.kind !== 'search') drawn += 1;
-        return;
-      }
-      if (turn.kind === 'answered') {
-        const had = log.querySelector('[data-ask="' + turn.ask.id + '"]');
-        if (had) had.classList.add('done');
-        return;
-      }
-      let one;
-      if (turn.kind === 'tool') {
-        one = document.createElement('div');
-        one.className = 'turn tool ' + turn.tool.status; one.dataset.tool = turn.tool.id;
-        one.innerHTML = '<span class="dot"></span><b></b><span class="title"></span><span class="path"></span>';
-        one.querySelector('b').textContent = turn.tool.kind; one.querySelector('.title').textContent = turn.text;
-        one.querySelector('.path').textContent = turn.tool.path.replace(/^.*\/(brief|prototype)\//, '$1/');
-      } else if (turn.kind === 'plan') {
-        one = log.querySelector('.turn.plan') || document.createElement('div');
-        one.className = 'turn plan'; one.innerHTML = '<ol></ol>';
-        turn.plan.forEach(entry => { const li = document.createElement('li'); li.className = entry.status;
-                                     li.textContent = entry.content; one.querySelector('ol').appendChild(li); });
-        if (one.parentNode) return;
-      } else if (turn.kind === 'permission') {
-        one = card(turn, 'permission');
-        const path = document.createElement('span'); path.className = 'path'; path.textContent = turn.ask.path;
-        one.appendChild(path);
-        const buttons = document.createElement('div'); buttons.className = 'buttons';
-        turn.ask.options.forEach(option => {
-          const button = document.createElement('button'); button.type = 'button'; button.textContent = option.name;
-          button.className = option.kind.startsWith('allow') ? 'allow' : '';
-          button.addEventListener('click', () => reply(turn.ask.id, {option: option.id}));
-          buttons.appendChild(button);
-        });
-        one.appendChild(buttons);
-      } else if (turn.kind === 'question') {
-        one = card(turn, 'question');
-        const input = document.createElement('input'); input.placeholder = 'Your answer'; one.appendChild(input);
-        const buttons = document.createElement('div'); buttons.className = 'buttons';
-        const say = document.createElement('button'); say.type = 'button'; say.className = 'allow';
-        say.textContent = 'Answer'; say.addEventListener('click', () => reply(turn.ask.id, {answer: input.value}));
-        const no = document.createElement('button'); no.type = 'button'; no.textContent = 'Decline';
-        no.addEventListener('click', () => reply(turn.ask.id, {decline: true}));
-        buttons.append(say, no); one.appendChild(buttons);
-      } else {
-        one = document.createElement('div');
-        one.className = 'turn ' + (turn.kind === 'text' ? turn.role : turn.kind);
-        one.textContent = turn.text;
-        if (turn.kind === 'wrote') drawn += 1;
-      }
-      log.appendChild(one);
-    };
+    const draw = turn => { if (drawTurn(log, turn, reply)) drawn += 1; };
     const hand = page.querySelector('a.hand-over');
     const colour = line => {
       if (line.startsWith('  ')) return 'detail';
@@ -309,7 +221,7 @@ def sketch_page(slug: str) -> str:
             f'<div class="card" style="margin-top:14px"><div class="head"><h2>{esc(slug)}</h2>'
             f'<span class="on">{esc("on " + said["agent"]) if said["agent"] else ""}</span>'
             f'<button type="button" data-clear>New conversation</button></div>'
-            f'<div class="log" role="log" aria-live="polite"></div>'
+            f'<div class="log turns" role="log" aria-live="polite"></div>'
             f'<p class="empty">Say what the product is: who uses it, and what they do with it.</p>'
             f'<form class="ask"><input placeholder="Members book one of the club boats for a morning…" '
             f'autocomplete="off" aria-label="Say something"><button class="go" type="submit">Say</button>'
@@ -329,7 +241,7 @@ def page(query: str) -> str:
     slug = chosen(query)
     body = sketch_page(slug) if slug else listing()
     return document("Describe a product", "A prototype to play with, and the brief it leaves behind",
-                    f"<style>{STYLE}</style>{body}", SCRIPT + BEGIN, now="/brief")
+                    f"<style>{STYLE}{CARDS}</style>{body}", DRAW + SCRIPT + BEGIN, now="/brief")
 
 
 def served(where: str) -> tuple[Path, str] | None:

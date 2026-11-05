@@ -13,6 +13,8 @@ out of a project's files on the way.
 from __future__ import annotations
 
 from .page_shell import esc
+from .turn_cards import SCRIPT as DRAW
+from .turn_cards import STYLE as CARDS
 
 STARTERS = ("What is waiting on me?", "Why is anything stalled or paused?", "What happened in the last hour?")
 
@@ -44,7 +46,7 @@ STYLE = """
 #console .note{color:var(--ink-3);font-size:.78rem;margin:2px 0 10px}
 """
 
-SCRIPT = """
+SCRIPT = DRAW + """
 {
   const card = document.getElementById('console');
   if (card) {
@@ -63,14 +65,13 @@ SCRIPT = """
     let was = false;
     try { was = !!localStorage.getItem(KEY); } catch (fault) { /* nothing remembered */ }
     show(was);
-    const draw = turn => {
-      const one = document.createElement('div');
-      one.className = 'turn ' + (turn.kind === 'text' ? turn.role : turn.kind);
-      one.textContent = turn.text;
-      log.appendChild(one);
-    };
-    const paint = () => { input.disabled = busy; go.disabled = busy;
-      go.textContent = busy ? 'Answering…' : 'Ask'; };
+    const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                 body: JSON.stringify(body)});
+    const draw = turn => drawTurn(log, turn, (id, body) => post('/console/answer', {id, ...body}));
+    const stop = card.querySelector('button.stop'), on = card.querySelector('.head .on');
+    const paint = said => { input.disabled = busy; go.disabled = busy;
+      go.textContent = busy ? 'Answering…' : 'Ask'; stop.hidden = !busy;
+      if (said && said.agent) on.textContent = 'on ' + said.agent; };
     const poll = async () => {
       let said;
       try { said = await (await fetch('/console.json?since=' + at)).json(); }
@@ -79,21 +80,21 @@ SCRIPT = """
       said.turns.forEach(draw);
       at = said.at; busy = said.busy;
       if (said.turns.length) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
-      paint();
+      paint(said);
       clearTimeout(timer);
       if (busy) timer = setTimeout(poll, 700);
     };
     const ask = async text => {
       if (!text.trim() || busy) return;
-      const answer = await fetch('/console/ask', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                                                   body: JSON.stringify({message: text})});
+      const answer = await post('/console/ask', {message: text});
       if (!answer.ok) { draw({role: 'harbourmaster', kind: 'error', text: await answer.text()}); return; }
       input.value = ''; busy = true; paint(); poll();
     };
     card.querySelector('form').addEventListener('submit', event => { event.preventDefault(); ask(input.value); });
+    stop.addEventListener('click', () => post('/console/cancel', {}));
     card.querySelectorAll('[data-ask]').forEach(one => one.addEventListener('click', () => ask(one.dataset.ask)));
     card.querySelector('[data-clear]').addEventListener('click', async () => {
-      await fetch('/console/reset', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+      await post('/console/reset', {});
       log.querySelectorAll('.turn').forEach(one => one.remove());
       empty.hidden = false; at = 0; busy = false; paint(); poll();
     });
@@ -106,15 +107,16 @@ SCRIPT = """
 def console_card() -> str:
     """The dock, closed: the script above fills it from the server's copy of the conversation."""
     starters = "".join(f'<button type="button" data-ask="{esc(one)}">{esc(one)}</button>' for one in STARTERS)
-    return (f'<style>{STYLE}</style><div id="console">'
+    return (f'<style>{STYLE}{CARDS}</style><div id="console">'
             f'<div class="card panel" hidden>'
-            f'<div class="head"><h2>Ask the harbourmaster</h2>'
+            f'<div class="head"><h2>Ask the harbourmaster</h2><span class="on"></span>'
             f'<button type="button" data-clear>New conversation</button></div>'
             f'<p class="note">It reads this project\'s logs and answers from them. It cannot change anything — '
             f'what needs doing, you do from the board.</p>'
-            f'<div class="log" role="log" aria-live="polite"></div>'
+            f'<div class="log turns" role="log" aria-live="polite"></div>'
             f'<p class="empty">Nothing asked yet.</p>'
             f'<div class="starters">{starters}</div>'
             f'<form class="ask"><input placeholder="Why is ORD-02 waiting on me?" autocomplete="off" '
-            f'aria-label="Ask the harbourmaster"><button class="go" type="submit">Ask</button></form></div>'
+            f'aria-label="Ask the harbourmaster"><button class="go" type="submit">Ask</button>'
+            f'<button class="stop" type="button" hidden>Stop</button></form></div>'
             f'<button type="button" class="launch" aria-expanded="false">Ask the harbourmaster</button></div>')

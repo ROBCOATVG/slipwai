@@ -49,7 +49,7 @@ class SessionTest(unittest.TestCase):
         agent = one.start()
         self.assertEqual((agent.name, agent.load_session, agent.auth_methods), ("stand-in", True, []))
         self.assertEqual(one.new(), "s-1")
-        self.assertEqual(kept_session(self.home), "s-1", "the id is kept beside the log for a later load")
+        self.assertEqual(kept_session(self.home / ".acp"), "s-1", "the id is kept beside the log for a later load")
         self.assertEqual([o["category"] for o in one.agent.config_options], ["model"])
         self.assertEqual(one.set_option("model", "b")[0]["currentValue"], "b")
 
@@ -125,7 +125,7 @@ class SessionTest(unittest.TestCase):
         first.close()
         second = self.session()
         second.start()
-        self.assertTrue(second.load(kept_session(self.home)))
+        self.assertTrue(second.load(kept_session(self.home / ".acp")))
         self.assertEqual(second.session_id, "s-1")
         self.assertEqual(self.updates[-1]["content"]["text"], "earlier: hello again")
         self.assertEqual(second.prompt("after"), "end_turn")

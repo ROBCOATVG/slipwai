@@ -20,7 +20,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .acp import Fault, Session, kept_session, policy
+from .acp import KEPT, Fault, Session, kept_session, once, policy
 from .board_settings import Launch, offered, read
 
 #: role, kind, text, and the fields the kind carries (`tool`, `plan`, `ask`).
@@ -28,6 +28,8 @@ Say = Callable[[str, str, str, "dict[str, Any] | None"], None]
 #: How long a card waits for the person before it is answered with nothing. A permission left for an hour
 #: is a turn nobody is coming back to.
 ASK_LIMIT = 3600.0
+#: The tool kinds a read-only session is allowed without asking; every other kind it is refused, and told.
+READS = ("read", "search", "think", "fetch")
 
 
 def located(tool_call: dict[str, Any]) -> str:
@@ -46,8 +48,11 @@ def tool_fields(update: dict[str, Any]) -> dict[str, Any]:
 class BoardAgent:
     """One agent session for one page's folder."""
 
-    def __init__(self, launch: Launch, home: Path, who: str, say: Say, env: dict[str, str] | None = None) -> None:
+    def __init__(self, launch: Launch, home: Path, who: str, say: Say, env: dict[str, str] | None = None,
+                 kept: Path | None = None, reads_only: bool = False) -> None:
         self.launch, self.home, self.who, self.say, self.env = launch, Path(home), who, say, env
+        self.kept = Path(kept) if kept is not None else self.home / KEPT
+        self.reads_only = reads_only  # the console: a session that can read and cannot do, and says so
         self.session: Session | None = None
         self.loaded = False
         self.text: list[str] = []  # the agent's message under way, flushed at the next card or the turn's end
@@ -62,10 +67,11 @@ class BoardAgent:
     def begin(self) -> bool:
         """Start the agent and load the session this folder kept, or begin a new one. True where loaded,
         which is the caller's cue that the role was already given. Raises `Fault` where the agent will not."""
-        session = Session(list(self.launch.argv), self.home, self.update, policy(self.home, self.permission),
-                          self.question, env=self.env)
+        decide = self.refuse if self.reads_only else policy(self.home, self.permission)
+        session = Session(list(self.launch.argv), self.home, self.update, decide, self.question, env=self.env,
+                          kept=self.kept)
         session.start()
-        kept = kept_session(self.home)
+        kept = kept_session(self.kept)
         self.loaded = bool(kept) and session.load(kept)
         if not self.loaded:
             session.new()
@@ -114,6 +120,21 @@ class BoardAgent:
         if self.session is not None:
             self.session.close()
             self.session = None
+
+    def forget(self) -> None:
+        """Close, and drop the kept id, so the next begin is a new session."""
+        self.close()
+        (self.kept / "session").unlink(missing_ok=True)
+
+    def refuse(self, tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | None:
+        """A read-only session's policy: a read or a search is allowed this once; anything else is refused
+        with the agent's own reject option, and the page is told why."""
+        if str(tool_call.get("kind") or "") in READS:
+            return once(options)
+        self.flush()
+        self.say(self.who, "error", f"Refused: {tool_call.get('title') or 'a change'}. This session can read "
+                 "and cannot do; what needs doing, you do from the board.", None)
+        return next((str(o["optionId"]) for o in options if str(o.get("kind", "")).startswith("reject")), None)
 
     # -- updates ------------------------------------------------------------------------------------------
 

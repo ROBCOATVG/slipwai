@@ -56,6 +56,7 @@ from .captain_page import payload as captain_json
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
+from .console import answered as console_answer
 from .console import for_root as console_for
 from .decision_log import card as decision_card
 from .decision_log import mark as mark_decisions
@@ -145,7 +146,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 925 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 930 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -857,6 +858,8 @@ class Bridge(BaseHTTPRequestHandler):
                 said = console_for(self.root).ask(str(held.get("message", "")))
             elif where == "/console/reset":
                 said = console_for(self.root).reset()
+            elif where in ("/console/answer", "/console/cancel"):
+                said = console_answer(console_for(self.root), where, held)
             elif where == "/tell":
                 said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")),
                             str(held.get("slice", "")))

@@ -99,8 +99,9 @@ class Session:
     waits on a person does not stop the reader."""
 
     def __init__(self, argv: Sequence[str], cwd: Path, on_update: OnUpdate, on_permission: OnPermission,
-                 on_question: OnQuestion, env: dict[str, str] | None = None) -> None:
+                 on_question: OnQuestion, env: dict[str, str] | None = None, kept: Path | None = None) -> None:
         self.argv, self.cwd, self.env = list(argv), Path(cwd), env
+        self.kept = Path(kept) if kept is not None else self.cwd / KEPT  # the session's id and the agent's stderr
         self.on_update, self.on_permission, self.on_question = on_update, on_permission, on_question
         self.agent = Agent()
         self.session_id = ""
@@ -111,7 +112,7 @@ class Session:
         self.lock = threading.Lock()  # over `waiting`, `open` and the write side of the pipe
         self.busy = False
         self.exited: int | None = None
-        self.log = self.cwd / KEPT / "agent.log"
+        self.log = self.kept / "agent.log"
         self.errors: Any = None  # the log, open while the agent runs
 
     # -- the pipe ---------------------------------------------------------------------------------------
@@ -259,7 +260,7 @@ class Session:
         self.session_id = str(said.get("sessionId") or "")
         self.agent.config_options = list(said.get("configOptions") or [])
         self.agent.modes = said.get("modes")
-        (self.cwd / KEPT / "session").write_text(self.session_id + "\n", encoding="utf-8")
+        (self.kept / "session").write_text(self.session_id + "\n", encoding="utf-8")
 
     def prompt(self, text: str, timeout: float = TIMEOUT) -> str:
         """One turn: the text as the prompt, the stop reason when the agent is done. Updates arrive on
@@ -307,9 +308,9 @@ class Session:
             child.kill()
 
 
-def kept_session(cwd: Path) -> str:
-    """The id of the session last begun in this working directory, or `''`."""
+def kept_session(kept: Path) -> str:
+    """The id of the session last begun with this folder as its keep, or `''`."""
     try:
-        return (Path(cwd) / KEPT / "session").read_text(encoding="utf-8").strip()
+        return (Path(kept) / "session").read_text(encoding="utf-8").strip()
     except OSError:
         return ""

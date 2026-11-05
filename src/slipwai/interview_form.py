@@ -173,6 +173,16 @@ def from_query(query: str) -> dict[str, str]:
     return {"brief": folder} if folder else {}
 
 
+def drafts(answers: Mapping[str, str], where: Path) -> bool:
+    """Whether the draft follows `./init`: a document was given, or the brief carried one.
+
+    The second is read off the project rather than off the answers, because sorting the folder is
+    `generate`'s and the one fact that matters here is whether it wrote `docs/prd.md`. The first live run
+    through the first page generated, ran `./init`, and stopped there: the answers had a brief and no PRD.
+    """
+    return bool(str(answers.get("prd") or "").strip()) or (where / "docs" / "prd.md").is_file()
+
+
 def page(answers: Mapping[str, str], title: str = "Start a new project", root: Path | None = None) -> str:
     """The interview as a page of its own. 14.4 makes it a tab of the board; the questions do not change."""
     try:

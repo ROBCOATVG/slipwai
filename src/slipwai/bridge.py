@@ -79,7 +79,7 @@ from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
 from .init_run import triage as begin_triage
-from .interview_form import form, from_query
+from .interview_form import drafts, form, from_query
 from .interview_form import page as interview
 from .interview_page import NO_INIT, destination, elected_in, repository_for
 from .interview_page import run as generate
@@ -454,7 +454,7 @@ class Bridge(BaseHTTPRequestHandler):
         self.look(where)
         self.launched = False
         self.fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
-                               repository_for(answers), prd=bool(str(answers.get("prd") or "").strip()),
+                               repository_for(answers), prd=drafts(answers, where),
                                extensions=elected_in(answers))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
 

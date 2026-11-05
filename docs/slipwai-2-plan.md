@@ -1606,7 +1606,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 178 of 184 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 3/6. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 179 of 184 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 4/6. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2522,7 +2522,7 @@ this table is the one `make progress` ticks, so the history can say what landed.
 | 21.1 | `docs/reference/the-brief.md` names the folder's shape, and `tests/fixtures/brief/` is the worked example the suite reads | new (owner, 2026-11-04) | S | The page says what the front door reads and refuses; `tests/test_design_docs.py` sorts the fixture the way the page says | done |
 | 21.2 | `slipwai brief check <dir>` says what the front door will read, and the page readers move from `passage.py` to `drawn.py` | new (owner, 2026-11-04) | M | `tests/test_brief_check.py` holds the five lines and the refusals; `tests/test_cli.py` the verb alone | done |
 | 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | new (owner, 2026-11-04) | M | The draft step writes one JSON per person and `check-try` accepts them; a prose test over `commands/draft.md` |  |
-| 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | new (owner, 2026-11-04) | S | `tests/test_design_docs.py` proves the copy and that `docs/design/domain.md` is not also written |  |
+| 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | new (owner, 2026-11-04) | S | `tests/test_design_docs.py` proves the copy and that `docs/design/domain.md` is not also written | done |
 | 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | new (owner, 2026-11-04) | S | `tests/test_passage.py` proves the written line still reads as approved or parked downstream; `tests/test_voyage.py` the count | done |
 | 21.6 | The prototyping tool, first version, in its own repository | new (owner, 2026-11-04) | L | Its own plan, after the release carrying 21.2 |  |
 

@@ -95,8 +95,10 @@ it as material.
 
 **`domain.md`** is one `## ` heading per fact and a line saying where it came from. A fact is what is true
 whether or not this product exists: *a checkout lasts two years* is a fact; *show the keelboats greyed* is a
-decision, and belongs in the document. *Planned, slice 21.4:* the file lands as `.specify/domain/brief.md`,
-where the skipper cites it rather than guessing. Today it lands under `docs/design/` like anything else.
+decision, and belongs in the document. The file lands as `.specify/domain/brief.md`, beside the project's
+own domain files and in their shape, so a decision cites a fact by its heading and the skipper reads what
+the business already knows rather than guessing it. Only the folder's top-level `domain.md` is read this
+way; one deeper travels as material like anything else.
 
 ---
 
@@ -116,7 +118,7 @@ first feature, and this contract does not try to make the other one better.
 | `surfaces/*.html` | `docs/design/surfaces/*.html` | the surfaces stage, then `drawn.page_states` | the storyboard, and the approve button on the Voyage window |
 | `look/` and anything else | `docs/design/…` | `commands/mockups.md` | before a surface is drawn |
 | `people.md` | `docs/design/people.md` | the draft, as material | planned, 21.3 |
-| `domain.md` | `docs/design/domain.md` | the mock-up stage, as material | planned, 21.4 |
+| `domain.md` | `.specify/domain/brief.md` | every stage that cites a fact, by its heading | from the draft on |
 
 ---
 

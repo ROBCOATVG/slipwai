@@ -16,7 +16,7 @@ from pathlib import Path
 import checkout_packages
 from support import FactoryTestCase
 
-from slipwai.design_docs import DESIGN, FILES, briefed, handed_over, inside, referenced
+from slipwai.design_docs import DESIGN, FACTS, FILES, briefed, domain_facts, handed_over, inside, referenced
 from slipwai.errors import GenerationError
 
 #: The brief the reference page describes, as a prototyping tool would export it.
@@ -146,8 +146,27 @@ class GeneratedTest(FactoryTestCase):
             self.assertFalse((made / "docs/design/game-prd.md").exists(),
                              "the document is not also design material")
 
+    def test_the_brief_s_facts_land_in_the_domain_directory_and_not_with_the_wireframes(self) -> None:
+        with tempfile.TemporaryDirectory() as area:
+            made = self.generate(area, "facts", profile="standard", language="toy-plain", brief=str(BRIEF))
+            said = (made / FACTS).read_text(encoding="utf-8")
+            self.assertIn("## A checkout lasts two years", said)
+            self.assertTrue(said.startswith("*Handed over with the brief"), "says where it came from")
+            self.assertFalse((made / "docs/design/domain.md").exists(), "a fact is cited, not drawn")
+            self.assertTrue((made / "docs/design/people.md").is_file(), "the rest still travels")
+
 
 class BriefTest(unittest.TestCase):
+    def test_the_top_level_domain_file_is_lifted_out_and_the_rest_is_untouched(self) -> None:
+        found, rest = briefed(BRIEF)
+        left, text = domain_facts(BRIEF, rest)
+        self.assertEqual([one.name for one in rest if one not in left], ["domain.md"])
+        self.assertIsNotNone(text)
+        assert text is not None
+        self.assertTrue(text.startswith("*Handed over with the brief as `domain.md`."))
+        self.assertIn("Source: the club's sailing rules", text)
+        self.assertEqual(domain_facts(BRIEF, left), (left, None), "nothing to lift, nothing changes")
+
     """One folder with everything in it, sorted here rather than by the person handing it over."""
 
     def sorted_out(self, **files: object) -> tuple[str | None, list[str]]:

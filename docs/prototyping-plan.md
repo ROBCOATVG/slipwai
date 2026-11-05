@@ -8,7 +8,7 @@ playing arrives in a generated project as a requirements document, surfaces with
 and a look. A mock of the whole route, with a clickable prototype of the product it describes, is at
 https://claude.ai/artifact/GGdVnjrQzATQi1nUSDj9WM; its sources are under [`mockups/brief/`](mockups/brief/).
 
-**Status, 2026-11-04:** building; 21.1, 21.2 and 21.5 have landed. Section 8 is the build: the order, the
+**Status, 2026-11-04:** building; 21.1, 21.2, 21.4 and 21.5 have landed. Section 8 is the build: the order, the
 fixture every slice reads, and the files, tests and gates of each. The table in section 5 is ticked by
 hand as each slice merges; the one `scripts/progress.py` ticks from the history is phase 21's table in
 [the main plan](slipwai-2-plan.md), which carries one row per slice so that each `Slice-done:` trailer
@@ -133,7 +133,7 @@ plans: S is a morning, M a day, L two or three.
 | 21.1 | `docs/reference/the-brief.md`, and the fixture brief the page points at | S | done |
 | 21.2 | `slipwai brief check <dir>`, and the page readers moved to `drawn.py` | M | done |
 | 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | M | todo |
-| 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | todo |
+| 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | done |
 | 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | S | done |
 | 21.6 | The prototyping tool, first version, in its own repository | L | todo |
 

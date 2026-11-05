@@ -13,6 +13,7 @@ import unittest
 import urllib.error
 from pathlib import Path
 from unittest import mock
+from urllib.parse import quote
 
 import checkout_packages  # noqa: F401
 from board_fixture import BoardTest
@@ -80,6 +81,10 @@ class FirstPageTest(BoardTest):
         self.assertIn('<span class="now">1 Describe</span>', said)
         self.assertIn("4 Hand over", said)
         self.assertIn("Nothing written yet.", said)
+        home = brief_session.workspace("club-boats") / "brief"
+        self.assertIn(f'<a class="hand-over" hidden href="/generate?brief={quote(str(home))}">', said,
+                      "a link to the start page with its last field filled, shown once the brief has a document")
+        self.assertIn("Green: the builder can start from it without asking. Amber: what the draft will", said)
         with self.assertRaises(urllib.error.HTTPError, msg="a name that is not one is refused") as refused:
             self.get("/brief?name=%2F..%2F")
         self.assertEqual(refused.exception.code, 400)

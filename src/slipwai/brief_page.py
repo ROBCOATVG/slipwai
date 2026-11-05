@@ -51,6 +51,16 @@ STYLE = """
 #sketch .head h2{margin:0}
 #sketch .head button{font:inherit;font-size:.8rem;background:none;border:0;color:var(--ink-3);cursor:pointer}
 #sketches ul{margin:8px 0 0;padding-left:1.2rem}
+#sketch .check li{padding-left:18px;position:relative}
+#sketch .check li::before{content:"";position:absolute;left:0;top:.45em;width:9px;height:9px;border-radius:50%;
+  background:var(--good)}
+#sketch .check li.amber::before{background:var(--warn)}
+#sketch .check li.refused::before{background:var(--brass)}
+#sketch .check li.detail{padding-left:30px}#sketch .check li.detail::before{display:none}
+#sketch .legend{color:var(--ink-3);font-size:.78rem;margin:8px 0 0}
+#sketch a.hand-over{display:inline-block;margin-top:12px;font-size:.9rem;padding:8px 14px;border-radius:8px;
+  border:1px solid var(--teal);background:var(--teal);color:#fff;text-decoration:none}
+#sketch a.hand-over.ready{box-shadow:0 0 0 4px var(--teal-soft)}
 """
 
 SCRIPT = """
@@ -70,12 +80,23 @@ SCRIPT = """
       log.appendChild(one);
       if (turn.kind === 'wrote') drawn += 1;
     };
+    const hand = page.querySelector('a.hand-over');
+    const colour = line => {
+      if (line.startsWith('  ')) return 'detail';
+      if (line.startsWith('the draft will have to assume: nothing')) return '';
+      if (line.startsWith('the draft will have to assume')) return 'amber';
+      if (line.startsWith('requirements document: none')) return 'amber';
+      return /^(requirements document|surfaces|look|people):/.test(line) ? '' : 'refused';
+    };
     const paint = said => {
       input.disabled = busy; go.disabled = busy; go.textContent = busy ? 'Drawing…' : 'Say';
       steps.forEach((one, index) => one.classList.toggle('now', index + 1 === said.step));
       check.replaceChildren(...said.check.map(line => {
-        const li = document.createElement('li'); li.textContent = line; return li; }));
+        const li = document.createElement('li'); li.textContent = line; li.className = colour(line); return li; }));
       none.hidden = said.check.length > 0;
+      const written = said.check.length > 0 && !said.check[0].startsWith('requirements document: none')
+        && colour(said.check[0]) !== 'refused';
+      hand.hidden = !written; hand.classList.toggle('ready', !!said.ready);
     };
     const poll = async () => {
       let said;
@@ -157,6 +178,10 @@ def sketch_page(slug: str) -> str:
             f'</div></div>'
             f'<div><div class="card"><h2>The brief, as the start page will read it</h2>'
             f'<ul class="check"></ul><p class="none">Nothing written yet.</p>'
+            f'<p class="legend">Green: the builder can start from it without asking. Amber: what the draft will '
+            f'decide for you, and say it did.</p>'
+            f'<a class="hand-over" hidden href="/generate?brief={quote(str(home / BRIEF))}">Hand over: start a '
+            f'project from this brief</a>'
             f'<p class="empty" style="margin-top:8px">Folder: <code>{esc(home / BRIEF)}</code></p></div>'
             f'<div class="card" style="margin-top:14px"><h2>The prototype</h2>{frame}</div></div></div>')
 

@@ -79,7 +79,7 @@ from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
 from .init_run import triage as begin_triage
-from .interview_form import form
+from .interview_form import form, from_query
 from .interview_form import page as interview
 from .interview_page import NO_INIT, destination, elected_in, repository_for
 from .interview_page import run as generate
@@ -406,7 +406,7 @@ class Bridge(BaseHTTPRequestHandler):
         # than on a server of its own because the two things a person does before there is anything to
         # watch are the two the board could not do.
         if where == "/generate" and self.controls:
-            self.send(200, interview({}, root=self.root))
+            self.send(200, interview(from_query(query), root=self.root))
             return
         if where == "/adopt" and self.controls:
             self.send(200, adoption({"root": str(self.root.resolve())}))

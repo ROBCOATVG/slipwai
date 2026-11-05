@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+from urllib.parse import parse_qs
 
 from .errors import GenerationError
 from .folder_field import SCRIPT as CHOOSING
@@ -160,6 +161,16 @@ def nothing(refused: GenerationError) -> str:
             f'<p class="empty">{esc(refused)}</p>'
             '<dl><dt><a href="/packages">Install a language</a></dt>'
             "<dd>this page asks its questions the moment there is one</dd></dl></div>")
+
+
+def from_query(query: str) -> dict[str, str]:
+    """The one answer the address may carry: the brief's folder, which the first page's hand-over fills.
+
+    Only that one. The start page with no query is what it always was, and an answer typed into an address
+    is still an answer a person reads on the form before pressing Generate.
+    """
+    folder = (parse_qs(query).get("brief") or [""])[0].strip()
+    return {"brief": folder} if folder else {}
 
 
 def page(answers: Mapping[str, str], title: str = "Start a new project", root: Path | None = None) -> str:

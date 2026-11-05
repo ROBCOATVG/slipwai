@@ -36,6 +36,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -263,6 +264,12 @@ def flag_keys(where: Path) -> list[str]:
     if declared.is_file():
         keys |= {name.lower().removeprefix("flag_").replace("_", "-")
                  for name in DECLARED.findall(declared.read_text(encoding="utf-8"))}
+    # A flag the settings declare: a service-only capability has no browser call to find it by, and recap's
+    # `report-a-spoiler` stayed dark here while every other capability was lit. A commented line declares nothing.
+    example = where / ".env.example"
+    if example.is_file():
+        keys |= {name.lower().replace("_", "-") for name in
+                 re.findall(r"^FLAG_([A-Z0-9_]+)=", example.read_text(encoding="utf-8"), re.MULTILINE)}
     call = WEB_FLAG_CALLS.get(str(manifest().get("frontend", "")))
     for app in deployables():
         if app["kind"] != "web" or call is None:
@@ -653,6 +660,10 @@ def start_alongside(where: Path, env: dict[str, str], pids: dict, state: dict) -
 
 def start_apps(where: Path, env: dict[str, str], state: dict) -> None:
     ports = {app["name"]: app["port"] + offset() for app in deployables()}
+    # A port somebody else holds is a start that would report `ready` over their process: refused, by name.
+    others = free_ports(where)
+    if others:
+        raise RuntimeError("; ".join(others) + ". Stop it, or move Try it with TRY_IT_PORT_OFFSET")
     pids: dict[str, int] = {}
     start_alongside(where, env, pids, state)
     for app in deployables():
@@ -681,6 +692,72 @@ def start_apps(where: Path, env: dict[str, str], state: dict) -> None:
             time.sleep(2)
 
 
+def ports_of(where: Path) -> list[int]:
+    """Every port Try it serves on: each app's, moved by the offset, and each declared process's `answers`."""
+    found = [app["port"] + offset() for app in deployables()]
+    for one in alongside(where):
+        try:
+            port = urllib.parse.urlparse(str(one.get("answers", ""))).port
+        except ValueError:
+            port = None
+        if port:
+            found.append(port)
+    return found
+
+
+def listening(port: int) -> list[int]:
+    """The processes listening on a port, where `lsof` can say; none where it cannot."""
+    if not shutil.which("lsof"):
+        return []
+    done = subprocess.run(["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"], capture_output=True, text=True,
+                          check=False)
+    return sorted({int(line) for line in done.stdout.split() if line.isdigit()})
+
+
+def runs_in(pid: int, where: Path) -> bool:
+    """Whether a process's working directory is inside the workspace: Try it's own, and nobody else's."""
+    proc = Path(f"/proc/{pid}/cwd")
+    try:
+        cwd = proc.resolve(strict=True) if proc.exists() else None
+    except OSError:
+        cwd = None
+    if cwd is None and shutil.which("lsof"):
+        done = subprocess.run(["lsof", "-a", "-p", str(pid), "-d", "cwd", "-Fn"], capture_output=True, text=True,
+                              check=False)
+        named = next((line[1:] for line in done.stdout.splitlines() if line.startswith("n")), "")
+        cwd = Path(named) if named else None
+    return cwd is not None and cwd.resolve().is_relative_to(where.resolve())
+
+
+def free_ports(where: Path) -> list[str]:
+    """Stop whatever of Try it's own still holds one of its ports, and say what else holds one.
+
+    A stop signals the process groups it recorded, and a process that left its group, or one started by a run
+    whose record was lost, outlived every stop: recap's service and web server answered on Try it's ports from
+    a morning's run all day, so every start after it reported `ready` over the old code. A holder running in
+    the workspace is Try it's and is stopped; anything else is somebody's, and is named rather than touched.
+    """
+    others: list[str] = []
+    for port in ports_of(where):
+        mine = [pid for pid in listening(port) if runs_in(pid, where)]
+        for pid in mine:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                continue
+        deadline = time.monotonic() + 8
+        while any(alive(pid) for pid in mine) and time.monotonic() < deadline:
+            time.sleep(0.3)
+        for pid in mine:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                continue
+        others += [f"port {port} is held by pid {pid}, which Try it did not start" for pid in listening(port)
+                   if pid not in mine]
+    return others
+
+
 def stop_apps(state: dict) -> None:
     for pid in (state.get("pids") or {}).values():
         try:
@@ -696,6 +773,8 @@ def stop_apps(state: dict) -> None:
         except (OSError, ValueError):
             continue
     state["pids"] = {}
+    # Whatever of Try it's outlived its group, so a stop leaves none of it serving.
+    free_ports(workspace())
 
 
 # ---- HTTP, with nothing but the standard library ------------------------------------------------------------
@@ -717,7 +796,10 @@ def request(method: str, address: str, body: object = None, token: str = "", hea
     asked = urllib.request.Request(address, data=data, method=method, headers=sent)
     with urllib.request.urlopen(asked, timeout=20) as reply:
         raw = reply.read()
-    return json.loads(raw) if raw.strip() else None
+        kind = reply.headers.get_content_type()
+    # JSON only where the service says JSON: a story may fetch a recap's speech, and its bytes decoded as text
+    # failed the step with a codec error on an answer that was exactly the one asked for.
+    return json.loads(raw) if raw.strip() and "json" in kind else None
 
 
 def post_form(address: str, fields: dict[str, str]) -> dict:

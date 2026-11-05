@@ -164,6 +164,14 @@ class TryItTest(Project):
                                                      encoding="utf-8")
         self.assertIn("new-checkout", self.module.flag_keys(self.root))
 
+    def test_a_flag_the_settings_declare_is_read_and_a_commented_one_is_not(self) -> None:
+        """recap's `report-a-spoiler` has no screen, so no browser call names it; `.env.example` does."""
+        (self.root / ".env.example").write_text("FLAG_REPORT_A_SPOILER=off\n# FLAG_CHECKOUT_V2=off\n", encoding="utf-8")
+        keys = self.module.flag_keys(self.root)
+        self.assertIn("report-a-spoiler", keys)
+        self.assertNotIn("checkout-v2", keys)
+        self.assertEqual(self.module.environment(self.root)["FLAG_REPORT_A_SPOILER"], "on")
+
     def test_the_people_are_the_enabled_fixture_users_with_a_password(self) -> None:
         self.assertEqual(self.module.people(self.root), [
             {"name": "Amara Shah", "username": "amara@example.test", "password": "amara", "realm": "customers",

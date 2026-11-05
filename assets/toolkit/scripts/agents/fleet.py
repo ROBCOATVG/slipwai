@@ -410,7 +410,8 @@ def need_of(what: str, check: str, by: str) -> dict:
     return found
 
 
-def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, slice_id: str = "") -> int:
+def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, slice_id: str = "",
+         dark: bool = False) -> int:
     """Write one `told` line into each named stream's deck log, which its captain reads at its next boundary.
 
     With `needs`, the line is a hand-back that names a shared surface — a dependency the slice may not add,
@@ -429,6 +430,8 @@ def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, 
     pushed onto a queue only its own iteration drained, so a message queued while nothing was running waited
     on a run that might never come. This one is read by whatever is lit next, on whichever machine.
     """
+    if dark and not (slice_id and needs):
+        raise SystemExit("--dark names the slice whose story the needs keep dark: it takes --slice and --need")
     message = " ".join(words).strip() if words else ("" if sys.stdin.isatty() else sys.stdin.read().strip())
     if not message:
         raise SystemExit("tell takes the message as its words, or on standard input")
@@ -446,6 +449,10 @@ def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, 
             extra["needs"] = needs
         if slice_id:
             extra["slice"] = slice_id
+        if dark:
+            # The hand-back is why this slice's story cannot seed yet, named as the story it keeps dark: the
+            # harbourmaster lets the slice merge on that, and on no other hand-back it happens to have.
+            extra["story"] = f"specs/{where.parent.name}/slices/{slice_id}/try-it.json"
         with where.open("a", encoding="utf-8") as handle:
             handle.write(logs.entry("told", fairway=stream, message=message, by=by, **extra).line())
         written.append(stream)
@@ -501,7 +508,11 @@ def main(argv: list[str]) -> int:
                         help=f"for `tell --need`: how the fleet proves it landed, {CHECK_SPELLINGS}, one per --need "
                              f"in order; a need with none is a person's to tick")
     parser.add_argument("--slice", default="", help="for `tell`: the slice the message is about")
-    parsed = parser.parse_args(argv)
+    parser.add_argument("--dark", action="store_true",
+                        help="for `tell --slice --need`: these needs are why the slice's story cannot seed yet")
+    # Intermixed, so a message may follow the options: `sail.md` spells `tell <fairway> --need … <message>`,
+    # and with the plain parse that form was refused as unrecognized arguments.
+    parsed = parser.parse_intermixed_args(argv)
     if parsed.verb == "stop":
         stop_all()
         return 0
@@ -515,7 +526,7 @@ def main(argv: list[str]) -> int:
         named = words.pop(0) if words and not parsed.everyone else None
         checks = list(parsed.check) + [""] * (len(parsed.need) - len(parsed.check))
         needs = [need_of(what, check, "fleet" if check else "person") for what, check in zip(parsed.need, checks)]
-        return tell(telling(named, parsed.everyone), words, needs, parsed.slice)
+        return tell(telling(named, parsed.everyone), words, needs, parsed.slice, parsed.dark)
     held = config()
     limit = parsed.boilers if parsed.boilers is not None else held.get("boilers")
     if isinstance(limit, int) and limit <= 0:

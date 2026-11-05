@@ -156,7 +156,7 @@ TICKERS = ("person", "fleet")
 #: how many `given` records the story appended first, the `api` it ran against and the `story` file.
 OPTIONAL: dict[str, tuple[str, ...]] = {
     "parked": ("slice", "waiting", "cause", "until", "needs", "then"),
-    "told": ("slice", "needs", "by"),
+    "told": ("slice", "needs", "by", "story"),
     "seeded": ("given", "api", "story"),
 }
 #: The instant an `until` is written in: the log's own format, so two logs sort it with everything else.

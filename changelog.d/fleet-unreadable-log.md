@@ -24,8 +24,10 @@ its gates or demoed yet, and that `/sail` is what takes each one there.
 captain's `seeded` check ran after the turn, and a turn that had merged was counted as done before the check
 was reached, so recap merged five slices whose stories never seeded, two of which never could. The
 harbourmaster now refuses that merge, as something the berth can fix: seed the story with
-`try_it.py seed --slice <id>`, or, where it is dark until a shared need lands, hand the need back with
-`fleet.py tell --need` and ask again.
+`try_it.py seed --slice <id>`, or, where it is dark until a shared need lands, hand the need back as what
+keeps it dark — `fleet.py tell <fairway> <message> --slice <id> --dark --need '<what>'` — and ask again. Only
+that hand-back counts: one about anything else, as recap's LB13 merged on, does not let a dark story through.
+`fleet.py tell` also takes its message after the options now, as `sail.md` has always spelled it.
 
 **Try it signs a declared person in by the name their realm stores.** In a realm with
 `registrationEmailAsUsername`, a person declared as `ines` is stored under her email, so every story signed in

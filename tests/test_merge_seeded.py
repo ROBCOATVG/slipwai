@@ -42,11 +42,23 @@ class SeededTest(MergeFixture):
     def test_a_story_dark_until_a_shared_need_lands_merges_with_the_need_handed_back(self) -> None:
         self.a_slice_with_a_story()
         self.deck("ordering", "ORD", logs.entry("told", fairway="ORD", slice="ORD-01", by="session",
-                                                message="dark until the JWT library lands",
+                                                message="dark until the JWT library lands", story=STORY,
                                                 needs=[{"what": "add the JWT library", "by": "person"}]))
         self.ask("ORD-01")
         self.run_once()
         self.assertEqual(self.answer().kind, "granted")
+
+    def test_a_hand_back_about_something_else_does_not_let_a_dark_story_through(self) -> None:
+        """recap's LB13 merged on a hand-back about its design page, with a story that could never seed."""
+        self.a_slice_with_a_story()
+        self.deck("ordering", "ORD", logs.entry("told", fairway="ORD", slice="ORD-01", by="session",
+                                                message="the design page is the host's",
+                                                needs=[{"what": "land the patterns", "by": "person"}]))
+        self.ask("ORD-01")
+        self.run_once()
+        answer = self.answer()
+        self.assertEqual(answer.kind, "refused", answer.fields)
+        self.assertIn("--dark", str(answer.fields["why"]))
 
     def test_a_slice_with_no_story_is_not_asked_for_one(self) -> None:
         self.slice_branch("ORD-01", "service.txt", "one\ntwo\n")

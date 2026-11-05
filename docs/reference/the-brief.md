@@ -88,10 +88,12 @@ A page may hold anything else a browser can show. Nothing beyond the title and t
 
 ## People and facts
 
-**`people.md`** is one `## ` heading per person, a `role:` line and a sentence of what they do. *Planned,
-slice 21.3:* the draft writes one `specs/<feature>/people/<username>.json` per heading, in the shape the
-try-it stories sign in as. Today the file lands under `docs/design/` like anything else and the draft reads
-it as material.
+**`people.md`** is one `## ` heading per person, a `role:` line and a sentence of what they do. It lands as
+`docs/design/people.md`, and the draft writes one `specs/<feature>/people/<username>.json` per heading, in
+the shape the try-it stories sign in as: the heading lowercased as the username, the heading as the name,
+a generated password, the project's realm, the role, and no email. The draft lists them under `## People`
+in the specification. A project with no sign-in server has nothing to sign in to, so the draft writes the
+heading and no files, and says so.
 
 **`domain.md`** is one `## ` heading per fact and a line saying where it came from. A fact is what is true
 whether or not this product exists: *a checkout lasts two years* is a fact; *show the keelboats greyed* is a
@@ -117,7 +119,7 @@ first feature, and this contract does not try to make the other one better.
 | the requirements document | `docs/prd.md` | `/draft` | the first stage after `./init`, which stops with the specification and its `## Assumptions` |
 | `surfaces/*.html` | `docs/design/surfaces/*.html` | the surfaces stage, then `drawn.page_states` | the storyboard, and the approve button on the Voyage window |
 | `look/` and anything else | `docs/design/…` | `commands/mockups.md` | before a surface is drawn |
-| `people.md` | `docs/design/people.md` | the draft, as material | planned, 21.3 |
+| `people.md` | `docs/design/people.md` | the draft, which writes `specs/<feature>/people/` from it | the first stage after `./init` |
 | `domain.md` | `.specify/domain/brief.md` | every stage that cites a fact, by its heading | from the draft on |
 
 ---

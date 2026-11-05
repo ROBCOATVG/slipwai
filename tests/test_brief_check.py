@@ -113,3 +113,18 @@ class VerbTest(unittest.TestCase):
             brief_main(["check", str(BRIEF / "nowhere")])
         self.assertIn("is not a directory", err.getvalue())
         self.assertNotIn("usage:", err.getvalue())
+
+
+class DraftPageTest(unittest.TestCase):
+    """The draft reads the people file the brief hands over, in the shape the reference page states."""
+
+    def test_the_draft_declares_the_briefs_people_where_a_story_can_sign_in_as_them(self) -> None:
+        import command_pages
+        for face in ("standard", "adopted"):
+            with self.subTest(face=face):
+                draft = command_pages.pages(face)["commands/draft.md"]
+                self.assertIn("**Declare the people the brief names.**", draft)
+                for said in ("`docs/design/people.md`", "`specs/<feature>/people/<username>.json`",
+                             "`docker/keycloak/realms/`", "`## People`", "no `email`",
+                             "every person declared and the file each was written to"):
+                    self.assertIn(said, draft)

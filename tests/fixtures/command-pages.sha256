@@ -100,6 +100,8 @@
 # `commands/triage.md`, a row per project. No other row moved.
 # Re-taken 2026-11-04 for 21.5: `commands/mockups.md` says a handed-over article may carry `data-decided`,
 # which a redraw keeps. The eight `mockups.md` rows moved and nothing else did.
+# Re-taken 2026-11-05 for 21.3: `commands/draft.md` gains the step that declares the brief's people. The
+# eight `draft.md` rows moved and nothing else did.
 66d331cb3c5ef22e660804383367ffcd7602a2b9c64b91fe8dfd8c9398f8cbfd  standard  commands/add-frontend.md
 0c5d6f3c16243ec7a2c928dab9502e52ae7ed8d97352c8f188764854f6cec241  standard  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  standard  commands/adversary.md
@@ -115,7 +117,7 @@ bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  standard  comm
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  standard  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  standard  commands/cruise-watch.md
 9b4d794d0048e6ae7aadaf320bcf7e54d4f512ab954df669283a6028844da8c5  standard  commands/cruise.md
-369487348b314cb08f9f2fc48166ab1f0c1c42cf8c04e7f479a47f40f37f5ac2  standard  commands/draft.md
+ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  standard  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  standard  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  standard  commands/launch.md
 0de13b5e2394a32e7c3cbe6f127c6f7cb674f8333ec8fdbfff084d332fdf56a1  standard  commands/mockups.md
@@ -142,7 +144,7 @@ bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  event  command
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  event  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  event  commands/cruise-watch.md
 52a0b780b0c9089b74b4467d98f5a866b101d96ce237696d0c0bfdb2d12a2be5  event  commands/cruise.md
-369487348b314cb08f9f2fc48166ab1f0c1c42cf8c04e7f479a47f40f37f5ac2  event  commands/draft.md
+ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  event  commands/draft.md
 26d0ea9fd3ccb35659c85a7fe9619389b3f1b0272df33b63cf8b3d8034b7a505  event  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  event  commands/launch.md
 0de13b5e2394a32e7c3cbe6f127c6f7cb674f8333ec8fdbfff084d332fdf56a1  event  commands/mockups.md
@@ -170,7 +172,7 @@ bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  event-state  c
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  event-state  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  event-state  commands/cruise-watch.md
 52a0b780b0c9089b74b4467d98f5a866b101d96ce237696d0c0bfdb2d12a2be5  event-state  commands/cruise.md
-369487348b314cb08f9f2fc48166ab1f0c1c42cf8c04e7f479a47f40f37f5ac2  event-state  commands/draft.md
+ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  event-state  commands/draft.md
 a8829b5c502f0a2cf9fb189705e4c718e89fe7107df48e9afdfc3c10ce71db48  event-state  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  event-state  commands/launch.md
 0de13b5e2394a32e7c3cbe6f127c6f7cb674f8333ec8fdbfff084d332fdf56a1  event-state  commands/mockups.md
@@ -198,7 +200,7 @@ fc0fa59b6d6c3450b89d5e5f30056cf10b3225489660f793344bf40d54fd5620  event-two-serv
 ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  event-two-services  commands/cruise-tell.md
 463309ea6eef6c4443ae1e037763393c491dc25af0c0515a626d1ec968042f23  event-two-services  commands/cruise-watch.md
 de704fd09503dedbbcfe4bdb09f88fa12af0a45ea3955ea75399c9dc8b6fa3c3  event-two-services  commands/cruise.md
-2adaf017b6123592052118347a677165bcf7708a842ac1fb78829483bccad710  event-two-services  commands/draft.md
+63578f9fb94bb3e3af48a2925fb749f0c7e18854422fe6c962955aa46a8fdac9  event-two-services  commands/draft.md
 a8829b5c502f0a2cf9fb189705e4c718e89fe7107df48e9afdfc3c10ce71db48  event-two-services  commands/gaps.md
 34ea1655f9bc549cf93d4a581df6ea8d2970afb7c760f5c468b6f0cc013248b3  event-two-services  commands/launch.md
 362a2937d8a5f9feec709d6f5687c6b25e0bd2973223a1b7d3688a2dd889824d  event-two-services  commands/mockups.md
@@ -226,7 +228,7 @@ bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  standard-manag
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  standard-managed  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  standard-managed  commands/cruise-watch.md
 2dc4a4c5d4b78bc412a7a5bac5d4ea902a202fe2f56108b40c9a578bab310e7b  standard-managed  commands/cruise.md
-369487348b314cb08f9f2fc48166ab1f0c1c42cf8c04e7f479a47f40f37f5ac2  standard-managed  commands/draft.md
+ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  standard-managed  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  standard-managed  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  standard-managed  commands/launch.md
 0de13b5e2394a32e7c3cbe6f127c6f7cb674f8333ec8fdbfff084d332fdf56a1  standard-managed  commands/mockups.md
@@ -253,7 +255,7 @@ bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  no-application
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  no-applications  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  no-applications  commands/cruise-watch.md
 9b4d794d0048e6ae7aadaf320bcf7e54d4f512ab954df669283a6028844da8c5  no-applications  commands/cruise.md
-369487348b314cb08f9f2fc48166ab1f0c1c42cf8c04e7f479a47f40f37f5ac2  no-applications  commands/draft.md
+ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  no-applications  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  no-applications  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  no-applications  commands/launch.md
 0de13b5e2394a32e7c3cbe6f127c6f7cb674f8333ec8fdbfff084d332fdf56a1  no-applications  commands/mockups.md
@@ -280,7 +282,7 @@ f28b890748c27e6c0a3b566661d1a584f5a94c00d8bcdbd078ab39e0771be247  adopted  comma
 ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  adopted  commands/cruise-tell.md
 463309ea6eef6c4443ae1e037763393c491dc25af0c0515a626d1ec968042f23  adopted  commands/cruise-watch.md
 51e05ca20bcf4ec1addd7bdf66012d38f7801cdf7f5448ce429d9818e919f6be  adopted  commands/cruise.md
-2adaf017b6123592052118347a677165bcf7708a842ac1fb78829483bccad710  adopted  commands/draft.md
+63578f9fb94bb3e3af48a2925fb749f0c7e18854422fe6c962955aa46a8fdac9  adopted  commands/draft.md
 26d0ea9fd3ccb35659c85a7fe9619389b3f1b0272df33b63cf8b3d8034b7a505  adopted  commands/gaps.md
 40c7e53c459a369f91ed9c93a4269801ca589bcbab0d8901156058895528ef39  adopted  commands/ground.md
 34ea1655f9bc549cf93d4a581df6ea8d2970afb7c760f5c468b6f0cc013248b3  adopted  commands/launch.md
@@ -309,7 +311,7 @@ bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  adopted-settle
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  adopted-settled  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  adopted-settled  commands/cruise-watch.md
 5a2551bb113828b0d49d110688010d2259a33c202f68972be800ae37f509b996  adopted-settled  commands/cruise.md
-369487348b314cb08f9f2fc48166ab1f0c1c42cf8c04e7f479a47f40f37f5ac2  adopted-settled  commands/draft.md
+ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  adopted-settled  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  adopted-settled  commands/gaps.md
 416556baab51101e62162ca0b01f8446eece3684871789039f9ef93fd8189e24  adopted-settled  commands/ground.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  adopted-settled  commands/launch.md

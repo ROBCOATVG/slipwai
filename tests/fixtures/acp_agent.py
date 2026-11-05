@@ -12,6 +12,10 @@ import sys
 from pathlib import Path
 
 HOME = Path.cwd()
+#: How this agent says it can be signed in to: through itself, or by a command run in a terminal.
+METHODS = [{"id": "login", "name": "Sign in", "description": "Opens the browser", "type": "agent"},
+           {"id": "setup", "name": "Set up", "description": "Interactive setup", "type": "terminal",
+            "args": ["--setup"]}]
 
 
 def send(**message):
@@ -135,8 +139,14 @@ def main():
         message = json.loads(line)
         number, method, params = message.get("id"), message.get("method"), message.get("params") or {}
         if method == "initialize":
-            send(id=number, result={"protocolVersion": params.get("protocolVersion"), "agentInfo": {"name": "stand-in"},
-                                    "agentCapabilities": {"loadSession": True}, "authMethods": []})
+            send(id=number, result={"protocolVersion": params.get("protocolVersion"),
+                                    "agentInfo": {"name": "stand-in", "version": "0.1"},
+                                    "agentCapabilities": {"loadSession": True}, "authMethods": METHODS})
+        elif method == "authenticate":
+            if params.get("methodId") == "login":
+                send(id=number, result={})
+            else:
+                send(id=number, error={"code": -32602, "message": f"{params.get('methodId')} is not a way to sign in"})
         elif method == "session/new":
             send(id=number, result={"sessionId": "s-1", "configOptions": options})
         elif method == "session/load":

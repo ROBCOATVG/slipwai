@@ -59,6 +59,7 @@ class Agent:
     """What the agent said about itself at `initialize`, and what the session offered when it began."""
 
     name: str = ""
+    version: str = ""
     load_session: bool = False
     auth_methods: list[dict[str, Any]] = field(default_factory=list)
     config_options: list[dict[str, Any]] = field(default_factory=list)
@@ -141,9 +142,16 @@ class Session:
         if said.get("protocolVersion") != PROTOCOL:
             raise Fault(f"the agent speaks protocol version {said.get('protocolVersion')!r}, not {PROTOCOL}")
         able = said.get("agentCapabilities") or {}
-        self.agent = Agent(name=str((said.get("agentInfo") or {}).get("name") or self.argv[0]),
+        info = said.get("agentInfo") or {}
+        self.agent = Agent(name=str(info.get("name") or self.argv[0]), version=str(info.get("version") or ""),
                            load_session=bool(able.get("loadSession")), auth_methods=list(said.get("authMethods") or []))
         return self.agent
+
+    def authenticate(self, method_id: str) -> dict[str, Any]:
+        """Sign in by one of the methods the agent offered at `initialize`. An agent-type method is the
+        agent's own doing — a browser it opens, a token it keeps — and this waits on it; a `Fault` where
+        it refused or did not finish within the fetching ceiling."""
+        return self.call("authenticate", {"methodId": method_id}, FETCHING)
 
     def write(self, message: dict[str, Any]) -> None:
         child = self.child

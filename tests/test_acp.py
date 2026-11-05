@@ -48,7 +48,8 @@ class SessionTest(unittest.TestCase):
     def test_the_handshake_and_a_new_session(self) -> None:
         one = self.session()
         agent = one.start()
-        self.assertEqual((agent.name, agent.load_session, agent.auth_methods), ("stand-in", True, []))
+        self.assertEqual((agent.name, agent.version, agent.load_session), ("stand-in", "0.1", True))
+        self.assertEqual([one["id"] for one in agent.auth_methods], ["login", "setup"])
         self.assertEqual(one.new(), "s-1")
         self.assertEqual(kept_session(self.home / ".acp"), "s-1", "the id is kept beside the log for a later load")
         self.assertEqual([o["category"] for o in one.agent.config_options], ["model"])

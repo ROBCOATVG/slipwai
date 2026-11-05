@@ -33,9 +33,10 @@ class Settings:
     runs_on: str = AUTO
     models: dict[str, str] = field(default_factory=dict)  # agent key -> the model value it offered and was set
     offered: dict[str, list[dict]] = field(default_factory=dict)  # agent key -> its model options, last seen
+    ready: dict[str, dict] = field(default_factory=dict)  # agent key -> what making it ready found (`agent_ready.py`)
 
     def record(self) -> dict:
-        return {"runs_on": self.runs_on, "models": self.models, "offered": self.offered}
+        return {"runs_on": self.runs_on, "models": self.models, "offered": self.offered, "ready": self.ready}
 
 
 def read(path: Path | None = None) -> Settings:
@@ -48,7 +49,8 @@ def read(path: Path | None = None) -> Settings:
         return Settings()
     return Settings(runs_on=str(held.get("runs_on") or AUTO),
                     models={str(k): str(v) for k, v in (held.get("models") or {}).items()},
-                    offered={str(k): list(v) for k, v in (held.get("offered") or {}).items() if isinstance(v, list)})
+                    offered={str(k): list(v) for k, v in (held.get("offered") or {}).items() if isinstance(v, list)},
+                    ready={str(k): dict(v) for k, v in (held.get("ready") or {}).items() if isinstance(v, dict)})
 
 
 def write(settings: Settings, path: Path | None = None) -> None:

@@ -72,6 +72,10 @@ WEB_ROUTE_CALLS = {"react-vite": re.compile(r"<Route\s[^>]*?\bpath=['\"]([^'\"]+
 #: file under `docker/` is not: recap's stories signed in as `ada` and `ines`, whom the plan stage invented
 #: for the quickstart, and the realm held one user nobody's story named.
 PEOPLE = "specs/*/people/*.json"
+#: What runs beside the apps for the stories: a stub a story connects to, which the project declares because
+#: nothing else here can know it exists. Each is `{"name", "run": [argv], "answers": url}`, run from the
+#: workspace with the apps' settings, and started before them so a service that reaches one at start finds it.
+ALONGSIDE = "docker/try-it/alongside.json"
 PERSON_FIELDS = ("username", "name", "password", "realm")
 DECLARED_FLAGS = ROOT / "infra/service/flags.auto.tfvars"
 DECLARED = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\"", re.M)
@@ -612,9 +616,45 @@ def sign_in_server(where: Path, env: dict[str, str]) -> None:
         print(f"created {made} declared {'person' if made == 1 else 'people'} in the sign-in server", flush=True)
 
 
+def alongside(where: Path) -> list[dict]:
+    """The processes the project declares to run beside the apps, or none where it declares none.
+
+    recap's stories connect to an Audiobookshelf server, and the project's stub for one was started by hand
+    from a quickstart or nowhere: six stories answered `serverUnreachable` on every Try it.
+    """
+    try:
+        found = json.loads((where / ALONGSIDE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [one for one in found if isinstance(one, dict) and one.get("name") and isinstance(one.get("run"), list)
+            and one["run"] and all(isinstance(part, str) for part in one["run"])] if isinstance(found, list) else []
+
+
+def start_alongside(where: Path, env: dict[str, str], pids: dict, state: dict) -> None:
+    """Start what runs beside the apps and wait for each to answer, under the same patience as an app."""
+    for one in alongside(where):
+        out = (HOME / f"{one['name']}.log").open("w", encoding="utf-8")
+        child = subprocess.Popen(one["run"], cwd=where, env=env, stdout=out, stderr=subprocess.STDOUT,
+                                 stdin=subprocess.DEVNULL, start_new_session=True)
+        pids[one["name"]] = child.pid
+    # Recorded before the wait, so a stub that never answers is one `stop` still finds.
+    state["pids"] = pids
+    write_state(state)
+    for one in alongside(where):
+        waited = time.monotonic()
+        while one.get("answers") and not answers(str(one["answers"])):
+            if not alive(pids[one["name"]]):
+                raise RuntimeError(f"{one['name']} stopped before it answered: "
+                                   + " / ".join(tail(HOME / f"{one['name']}.log", 3)))
+            if time.monotonic() - waited > PATIENCE:
+                raise RuntimeError(f"{one['name']} did not answer at {one['answers']} within {PATIENCE}s")
+            time.sleep(1)
+
+
 def start_apps(where: Path, env: dict[str, str], state: dict) -> None:
     ports = {app["name"]: app["port"] + offset() for app in deployables()}
-    pids = {}
+    pids: dict[str, int] = {}
+    start_alongside(where, env, pids, state)
     for app in deployables():
         mine = dict(env)
         mine[app["variable"]] = str(ports[app["name"]])
@@ -1100,7 +1140,7 @@ def main(argv: list[str] | None = None) -> int:
     up(state, log, fresh=asked.verb == "fresh", keep_data=asked.verb != "fresh")
     print(f"Try it is ready at {state['url']}")
     for person in state.get("people") or []:
-        print(f"  sign in as {person['username']} / {person['password']}  ({person['name']})")
+        print(f"  sign in as {person.get('sign_in') or person['username']} / {person['password']}  ({person['name']})")
     return 0
 
 

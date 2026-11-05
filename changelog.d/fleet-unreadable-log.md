@@ -33,5 +33,11 @@ as `ines` was refused `invalid_grant`, and the next start looked her up by the s
 stopped on a 409 creating her again. Try it now uses the email where the realm makes it the username, and the
 card shows that name.
 
+**Try it starts what a project's stories connect to.** A project lists the processes to run beside its apps
+in `docker/try-it/alongside.json`, each a `name`, a `run` command and the `answers` address Try it waits on,
+such as a stub of a server a story connects to. Try it starts them before the apps and stops them with the
+apps. recap's six stories that connect an Audiobookshelf server answered `serverUnreachable` on every run
+until its stub was listed there.
+
 **Catch-up:** `slipwai migrate` brings the toolkit's reader to an existing project, so its captains read the
 older parks; the board's part arrives with the upgrade itself.

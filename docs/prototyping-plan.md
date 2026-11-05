@@ -154,6 +154,7 @@ plans: S is a morning, M a day, L two or three.
 | 21.6b | The page: the conversation, the brief counting itself up, the prototype to play | M | done |
 | 21.6c | Check and hand over: the plain-words check, and the button that fills the start page | S | done |
 | 21.6d | The record: one real brief through the page and the two numbers, written here | S | todo |
+| 21.7 | The right questions: a question set in the session's prompt, and a pre-made document reviewed against it and taken as the start | M | todo |
 
 ### 21.1 `docs/reference/the-brief.md` — S
 
@@ -479,6 +480,31 @@ be resumed. Not a door in front of the start page: a tab beside it, section 6.
 - `tests/test_brief_page.py` grows the two; `tests/test_interview_page.py` proves the query fills the field
   and that the page with no query is byte for byte what it was.
 - Fragment `21.6c-hand-over.md`, MINOR; catch-up nothing.
+
+#### 21.7 — the right questions, and a document to start from
+
+Asked for on 2026-11-05, after the first live run: "we need to ensure we ask the right questions", and a
+person who already has a document must be able to start from it, have its quality checked, and have it
+taken into the conversation. Read first: `carollrollroll/prd-skill` (write, review and verify as three
+skills, MIT), `deanpeters/Product-Manager-Skills` (`prd-development`: the seven framing questions and a
+"before moving on" check per section), `GarrusHuang/prd-writer` (each feature passes a three-way check —
+where the data comes from, the rule, what happens when it fails — before the document moves on, MIT).
+
+- **The question set**, folded into step 3 of `assets/brief/sketch.md` and nowhere else, so the one prompt
+  stays the one place: what problem, for whom, why now, the one measure that must move and what must not
+  get worse, what is out of scope and why; and per feature, where the data comes from, the rule, and what
+  happens when it fails, with "what if they skip a step" and "what if they do it out of order" asked of
+  every flow. Asked in the person's words, one or two at a time, never as a form. The live run's seven
+  open questions are the test: a session with the set asks them before it draws the second version.
+- **A document to start from.** The page with no sketch gains a second field beside the name: a document,
+  pasted or chosen as a file, which lands as `brief/prd.md` before the first turn. Step 0 of the prompt,
+  where that file exists: read it as a senior reviewer would against the question set — gaps,
+  contradictions, references to nothing, decisions nobody owns — write every miss under `## Open`, say
+  what the document settled and what it did not, and only then draw. A document good enough has few open
+  lines and the page says so in the same amber line it already has; nothing new to read.
+- `brief_page.py` takes the second field; `brief_session.py` writes the document in before `prepared`;
+  `tests/test_brief_page.py` and `tests/test_brief_session.py` grow one test each; the prompt test holds
+  the question set's headings. Fragment `21.7-the-right-questions.md`, MINOR. Both doors optional, section 6.
 
 #### 21.6d — the record
 

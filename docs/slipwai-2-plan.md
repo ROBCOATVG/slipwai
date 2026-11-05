@@ -2529,6 +2529,7 @@ this table is the one `make progress` ticks, so the history can say what landed.
 | 21.6b | The page: `/brief` on the tab bar, the conversation, the brief counting itself up, the prototype embedded, files served from the workspace and confined to it | new (owner, 2026-11-05) | M | `tests/test_brief_page.py` with the board fixture proves the tab, the page, the JSON route and the confinement | done |
 | 21.6c | Check and hand over: the check's lines in plain words with green and amber, and a button that opens the start page with *Everything else* filled; the start page with no query is byte for byte what it was | new (owner, 2026-11-05) | S | `tests/test_interview_page.py` proves the query fills the field and nothing else changes | done |
 | 21.6d | The record: one real brief through the page, `generate --brief`, `/draft` and `make surfaces` on a laptop-trial quickstart, the two numbers written into the prototyping plan | new (owner, 2026-11-05) | S | The numbers are in section 5 of the prototyping plan |  |
+| 21.7 | The right questions: a question set folded into the first page's prompt, and a pre-made document taken as the start, reviewed against the set with every miss written under `## Open` | new (owner, 2026-11-05) | M | A session with the set asks the live run's open questions before its second drawing; `tests/test_brief_page.py` proves a pasted document lands as `brief/prd.md` before the first turn |  |
 
 ### Risks the plan carries, and where each is caught
 

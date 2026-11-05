@@ -804,6 +804,25 @@ def answers(address: str) -> bool:
         return False
 
 
+def request_within(wait: float, method: str, address: str, body: object = None, token: str = "",
+                   headers: dict | None = None):
+    """A story step that waits on a worker: asked again each second while the answer is a 4xx, until `wait`
+    seconds have passed, and then the last refusal stands.
+
+    recap's CU6 asks for a recap and then for its speech, which a sweep writes a second or two later; asked once,
+    the speech is a 404 whenever the seed outruns the sweep, and the story failed on a machine that was merely
+    quick. A step with no `wait` is asked once, as before."""
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            return request(method, address, body, token, headers)
+        except urllib.error.HTTPError as refused:
+            if not 400 <= refused.code < 500 or time.monotonic() >= deadline:
+                raise
+            refused.close()
+        time.sleep(1)
+
+
 def request(method: str, address: str, body: object = None, token: str = "", headers: dict | None = None):
     data = json.dumps(body).encode() if body is not None else None
     sent = {"Content-Type": "application/json", **({"Authorization": f"Bearer {token}"} if token else {}),
@@ -834,7 +853,7 @@ def scenarios(where: Path) -> list[tuple[str, Path]]:
 
 #: What a story may say, and what each step may. A key outside these is a typo the service would never see.
 STORY_KEYS = ("as", "open", "steps", "given")
-STEP_KEYS = ("say", "method", "path", "body", "keep", "headers", "as")
+STEP_KEYS = ("say", "method", "path", "body", "keep", "headers", "as", "wait")
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 
 
@@ -872,6 +891,9 @@ def story_faults(name: str, story: object, known: set[str], mounted_routes: list
             said.append(f"{name}: step {number} is `as` {step['as']}, whom no realm or people file declares")
         if not isinstance(step.get("keep", {}), dict):
             said.append(f"{name}: step {number}'s `keep` is a mapping of name to a field of the answer")
+        wait = step.get("wait", 0)
+        if isinstance(wait, bool) or not isinstance(wait, (int, float)) or not 0 <= wait <= 300:
+            said.append(f"{name}: step {number}'s `wait` is a number of seconds from 0 to 300")
     for number, given in enumerate(story.get("given") or [], start=1):
         if events is None:
             said.append(f"{name}: given {number}: the standard profile has no `given`; it is defined for events "
@@ -1015,8 +1037,9 @@ def seed(where: Path, env: dict[str, str], state: dict, only_new: bool, api: str
                 if who and who not in tokens:
                     tokens[who] = token_for(who, env, where)
                 headers = {"Idempotency-Key": str(uuid.uuid4()), **(one.get("headers") or {})}
-                answer = request(one.get("method", "GET"), base + str(filled(one["path"], kept)),
-                                 filled(one.get("body"), kept), tokens.get(who, ""), filled(headers, kept))
+                answer = request_within(float(one.get("wait") or 0), one.get("method", "GET"),
+                                        base + str(filled(one["path"], kept)), filled(one.get("body"), kept),
+                                        tokens.get(who, ""), filled(headers, kept))
             except urllib.error.HTTPError as refused:
                 said = refused.read().decode(errors="replace")[:300]
                 refused.close()

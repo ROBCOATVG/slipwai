@@ -763,6 +763,34 @@ def slice_asked(entry: logs.Entry) -> str:
     return given.removeprefix("merge-") if given.startswith("merge-") else ""
 
 
+def unseeded(fairway: str, slice_id: str) -> str:
+    """Why this slice may not merge yet because its story never ran green, or "" where nothing stops it.
+
+    The captain's gate on a `seeded` line runs after the turn, and a turn that merged has already landed:
+    `landed_already` answers first and the gate is never reached. recap merged five slices with a story and
+    no `seeded` line, two of them with stories that could never have seeded. So the merge is where it holds.
+    A slice dark by design — a stub shipped around a shared need — says so with a hand-back carrying
+    `needs`, and that hand-back is what lets it through: the need stays open on the board against it.
+    """
+    path = next((one for one in deck_logs() if one.stem == fairway), None)
+    if path is None:
+        return ""
+    story = f"specs/{path.parent.name}/slices/{slice_id}/try-it.json"
+    if git("cat-file", "-e", f"{BRANCH.format(slice=slice_id)}:{story}").returncode != 0:
+        return ""
+    try:
+        lines = logs.fold(path.read_text(encoding="utf-8").splitlines())
+    except (OSError, UnicodeDecodeError, logs.Unreadable):
+        return ""
+    mine = [one for one in lines if str(one.fields.get("slice", "")) == slice_id]
+    if any(one.kind == "seeded" or (one.kind == "told" and one.fields.get("needs")) for one in mine):
+        return ""
+    return (f"{slice_id} has a story ({story}) and no `seeded` line says it ran green against the app its "
+            f"berth runs. Seed it with `python3 scripts/agents/try_it.py seed --slice {slice_id}`, or, where "
+            f"it is dark until a shared need lands, hand the need back with `fleet.py tell --need`, then ask "
+            f"again")
+
+
 def attempts(fairway: str, slice_id: str) -> int:
     """Which attempt at merging this slice this one is: one more than the answers it has had already.
 
@@ -833,6 +861,11 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
                                "this one says neither, and guessing which branch to merge is not a thing to "
                                "guess at")]
     spent["attempt"] = attempts(fairway, slice_id)
+    dark = unseeded(fairway, slice_id)
+    if dark:
+        # `resolve` true: seeding the story, or handing its need back, is the berth's to do.
+        return [logs.entry("refused", harbour=True, fairway=fairway, request=request, why=dark,
+                           resolve=True, slice=slice_id, **spent)]
     commit, fault, resolvable, note = merge(slice_id, spent)
     if fault:
         # `resolve` says whether going back into the berth could change the answer. A captain reads it to

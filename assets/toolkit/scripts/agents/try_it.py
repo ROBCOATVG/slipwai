@@ -222,6 +222,19 @@ def declared_people(where: Path) -> list[dict]:
     return found
 
 
+def sign_in_name(person: dict, where: Path) -> str:
+    """What a person types to sign in: the email, where their realm makes the email the username.
+
+    Keycloak with `registrationEmailAsUsername` stores a user created as `ines` under her email, so the
+    name a story signs in as is not one the server knows. recap's customers realm is one: every story as
+    `ines` or `ada` was refused `invalid_grant`, and the next start asked for `ines` by name, found nobody,
+    created her again and was refused 409 for an email already taken. The story keeps the short name.
+    """
+    realm = next((one for one in realms(where) if one.get("realm") == person.get("realm")), {})
+    return str(person["email"]) if realm.get("registrationEmailAsUsername") and person.get("email") \
+        else str(person["username"])
+
+
 def people(where: Path) -> list[dict]:
     """Everyone a person can sign in as: the realms' users first, then every person a feature declares.
 
@@ -234,7 +247,8 @@ def people(where: Path) -> list[dict]:
         if "fault" in person or person["username"] in known:
             continue
         known.add(person["username"])
-        found.append({key: value for key, value in person.items() if key in (*PERSON_FIELDS, "email", "roles", "source")})
+        kept = {key: value for key, value in person.items() if key in (*PERSON_FIELDS, "email", "roles", "source")}
+        found.append(kept | {"sign_in": sign_in_name(kept, where)})
     return found
 
 
@@ -543,7 +557,7 @@ def create_people(base: str, token: str, where: Path) -> int:
             continue
         realm = person["realm"]
         found = request("GET", f"{base}/admin/realms/{realm}/users?exact=true&username="
-                        + urllib.parse.quote(person["username"]), token=token) or []
+                        + urllib.parse.quote(person.get("sign_in") or person["username"]), token=token) or []
         if found:
             continue
         first, _, last = person["name"].partition(" ")
@@ -764,7 +778,7 @@ def token_for(username: str, env: dict[str, str], where: Path) -> str:
     client = next((c["clientId"] for c in realm.get("clients") or [] if c.get("publicClient")
                    and c.get("redirectUris")), "")
     return post_form(f"{issuer.rstrip('/')}/protocol/openid-connect/token",
-                     {"grant_type": "password", "client_id": client, "username": username,
+                     {"grant_type": "password", "client_id": client, "username": person.get("sign_in") or username,
                       "password": person["password"], "scope": "openid email profile"})["access_token"]
 
 

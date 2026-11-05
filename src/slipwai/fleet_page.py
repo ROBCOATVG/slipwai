@@ -20,6 +20,8 @@ from datetime import UTC, datetime
 from .fleet_record import NOTHING, clock_of
 from .page_shell import esc
 
+# budget: 360 — the headline over every state a fleet can be in, a build merged whole among them
+
 #: The word on a group for its cause, in the words a person uses rather than the record's.
 CAUSES = {"limit": "paused", "host": "on main", "question": "a question", "demo": "demo sent back",
           "gate": "gate not closed", "silence": "went quiet", "exit": "session ended", "ceiling": "to read",
@@ -150,6 +152,10 @@ def needs_title(needs: list[dict[str, str]]) -> str:
     return f"{first} and {rest} more" if rest else first
 
 
+#: What waits on a person one row at a time rather than as a group: a log nobody can read is one.
+LISTED = ("told", "question", "unreadable")
+
+
 def plural(count: int, word: str) -> str:
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
@@ -162,7 +168,7 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
     berths = found.get("berths") or []
     running, paused = int(counts.get("running") or 0), int(counts.get("paused") or 0)
     on_you = [g for g in groups if g.get("paused") != "yes"]
-    on_you += [row for row in inbox if row.get("kind") in ("told", "question") and row.get("grouped") != "yes"]
+    on_you += [row for row in inbox if row.get("kind") in LISTED and row.get("grouped") != "yes"]
     limit = next((g for g in groups if g.get("cause") == "limit"), None)
     slots = counts.get("slots")
     stalled = [row["fairway"] for row in berths if row.get("state") == "stalled"]
@@ -186,6 +192,13 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
             extra.append(f"{plural(paused, 'slice')} paused until {lifts.split(',')[0]}" if lifts else
                          f"{plural(paused, 'slice')} paused")
         return "teal", said + ".", (" · ".join(extra) + "." if extra else "Nothing is waiting on you.")
+    if all(row.get("state") == "finished" for row in berths):
+        # Built, and said so: recap merged every slice and this read `Stopped. Nothing runs until one of
+        # them is answered` over follow-ups no slice was waiting for.
+        merged = int(counts.get("merged") or 0)
+        return ("grey", f"Built: every stream has merged what it claimed, {plural(merged, 'slice')} in all.",
+                f"{plural(len(on_you), 'thing')} left for you below; none of them holds a slice." if on_you
+                else "Nothing is waiting on you.")
     if on_you:
         held = sum(len(g.get("slices") or []) for g in groups if g.get("paused") != "yes")
         said = (f"Stopped. {plural(held, 'slice')} wait on you for {plural(len(on_you), 'thing')}." if held
@@ -208,9 +221,11 @@ def live_sub(found: dict) -> str:
     counts = found.get("counts") or {}
     colour, _sentence, _under = headline(found)
     word = {"teal": "working", "brass": "stopped", "blue": "paused", "red": "stalled", "grey": "quiet"}[colour]
+    if _sentence.startswith("Built:"):
+        word = "built"
     on_you = len([g for g in found.get("groups") or [] if g.get("paused") != "yes"])
     on_you += len([row for row in found.get("inbox") or []
-                   if row.get("kind") in ("told", "question") and row.get("grouped") != "yes"])
+                   if row.get("kind") in LISTED and row.get("grouped") != "yes"])
     bits = [word, f"{on_you} waiting on you"]
     if counts.get("paused"):
         bits.append(f"{counts['paused']} paused")

@@ -38,6 +38,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -714,6 +715,15 @@ def listening(port: int) -> list[int]:
     return sorted({int(line) for line in done.stdout.split() if line.isdigit()})
 
 
+def taken(port: int) -> bool:
+    """Whether something accepts a connection on a port, whoever it is and whatever `lsof` can see."""
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
 def runs_in(pid: int, where: Path) -> bool:
     """Whether a process's working directory is inside the workspace: Try it's own, and nobody else's."""
     proc = Path(f"/proc/{pid}/cwd")
@@ -736,6 +746,7 @@ def free_ports(where: Path) -> list[str]:
     whose record was lost, outlived every stop: recap's service and web server answered on Try it's ports from
     a morning's run all day, so every start after it reported `ready` over the old code. A holder running in
     the workspace is Try it's and is stopped; anything else is somebody's, and is named rather than touched.
+    A port that answers when `lsof` names nobody on it is held too, by a process it cannot name.
     """
     others: list[str] = []
     for port in ports_of(where):
@@ -753,8 +764,12 @@ def free_ports(where: Path) -> list[str]:
                 os.kill(pid, signal.SIGKILL)
             except OSError:
                 continue
-        others += [f"port {port} is held by pid {pid}, which Try it did not start" for pid in listening(port)
-                   if pid not in mine]
+        held = [pid for pid in listening(port) if pid not in mine]
+        others += [f"port {port} is held by pid {pid}, which Try it did not start" for pid in held]
+        # Where `lsof` cannot see a listener (a macOS runner's could not see its own child's), a port that still
+        # answers is somebody's all the same: named as held, never taken as free.
+        if not held and not mine and taken(port):
+            others.append(f"port {port} is held by a process lsof could not name")
     return others
 
 

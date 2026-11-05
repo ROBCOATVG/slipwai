@@ -57,12 +57,20 @@ class PortsTest(unittest.TestCase):
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.children.append(child)
         deadline = time.monotonic() + 10
-        while not self.module.listening(port) and time.monotonic() < deadline:
+        while not self.module.taken(port) and time.monotonic() < deadline:
             time.sleep(0.1)
+        self.assertTrue(self.module.taken(port), "the test's own listener never answered")
         return port, child
+
+    def seen(self, port: int) -> None:
+        # GitHub's macOS runner has an `lsof` that cannot see the test's own child listening; there is nothing to
+        # stop by pid there, and the unnamed holder is the other test's to prove.
+        if not self.module.listening(port):
+            self.skipTest("lsof here cannot see a listener this test started")
 
     def test_a_process_of_its_own_left_on_its_port_is_stopped(self) -> None:
         port, child = self.listener(self.workspace)
+        self.seen(port)
         self.module.ports_of = lambda where: [port]
         self.assertEqual(self.module.free_ports(self.workspace), [])
         self.assertIsNotNone(child.wait(timeout=10))
@@ -72,8 +80,23 @@ class PortsTest(unittest.TestCase):
         port, child = self.listener(self.elsewhere)
         self.module.ports_of = lambda where: [port]
         said = self.module.free_ports(self.workspace)
-        self.assertEqual(said, [f"port {port} is held by pid {child.pid}, which Try it did not start"])
+        named = f"port {port} is held by pid {child.pid}, which Try it did not start"
+        unnamed = f"port {port} is held by a process lsof could not name"
+        self.assertIn(said, ([named], [unnamed]))
         self.assertIsNone(child.poll())
+
+    def test_a_port_that_answers_with_nobody_named_on_it_is_held(self) -> None:
+        port, child = self.listener(self.elsewhere)
+        self.module.ports_of = lambda where: [port]
+        self.module.listening = lambda port: []
+        said = self.module.free_ports(self.workspace)
+        self.assertEqual(said, [f"port {port} is held by a process lsof could not name"])
+        self.assertIsNone(child.poll())
+
+    def test_a_port_nothing_answers_on_is_free(self) -> None:
+        port = free_port()
+        self.module.ports_of = lambda where: [port]
+        self.assertEqual(self.module.free_ports(self.workspace), [])
 
 
 if __name__ == "__main__":

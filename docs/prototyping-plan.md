@@ -8,7 +8,7 @@ playing arrives in a generated project as a requirements document, surfaces with
 and a look. A mock of the whole route, with a clickable prototype of the product it describes, is at
 https://claude.ai/artifact/GGdVnjrQzATQi1nUSDj9WM; its sources are under [`mockups/brief/`](mockups/brief/).
 
-**Status, 2026-11-05:** 21.1 to 21.5 have landed. 21.6, the prototyping conversation, is the board's first
+**Status, 2026-11-05:** 21.1 to 21.5, 21.6a to 21.6c and 21.7 have landed; 21.6d, the record, has its first number and waits on a storyboard verdict for its second. 21.6, the prototyping conversation, is the board's first
 page in this repository, after the release carrying 21.2; it was planned as its own repository until the
 same day, when the aim was restated as one non-technical person from describing the product through to
 delivery, and the board is already their face from the brief door on. Section 8 is the build: the order,
@@ -149,7 +149,7 @@ plans: S is a morning, M a day, L two or three.
 | 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | M | done |
 | 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | done |
 | 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | S | done |
-| 21.6 | The prototyping conversation, as the board's first page | L | building |
+| 21.6 | The prototyping conversation, as the board's first page. **The record, 2026-11-05:** one real brief (club boat bookings) through the page in three turns, the hand-over button, the start page, `generate`, `./init`, `/draft` and `make surfaces` on the laptop-trial preset with a React browser app. Assumptions after the draft: **10**, seven of them the brief's own `## Open` lines carried through and three the draft added. Storyboard: 4 surfaces, 27 states, 10 decided by a person and 17 proposed, reviewed and not redrawn; first-time approval awaits the person's verdict | L | building |
 | 21.6a | The session that writes a brief: a conversation the board runs in a workspace of its own | M | done |
 | 21.6b | The page: the conversation, the brief counting itself up, the prototype to play | M | done |
 | 21.6c | Check and hand over: the plain-words check, and the button that fills the start page | S | done |

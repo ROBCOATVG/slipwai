@@ -435,7 +435,9 @@ wherever trunk can prove it landed — a dependency is `text:<manifest>:"<packag
 `python3 scripts/agents/fleet.py tell <fairway> --need '<what>' --check <check> <message>`. The
 harbourmaster ticks each need against trunk as it ticks a park's, the board groups it under *Waiting on
 you* by need, and a slice that ships a stub around the need still ships with the need open against it,
-which is what keeps a merged slice's dark story from reading as finished. The canonical slot at the feature
+which is what keeps a merged slice's dark story from reading as finished. Where the need is why the slice's story cannot
+seed yet, add `--slice <id> --dark`: the line then names the story it keeps dark, and the harbourmaster
+merges a slice with a story only on a `seeded` line or on that hand-back — never on one about something else. The canonical slot at the feature
 root is a link, never committed.
 
 **Prove on the slice branch, then verify, then push.** As delegates report their examples proven, check each slice's

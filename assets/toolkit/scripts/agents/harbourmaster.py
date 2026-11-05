@@ -770,7 +770,9 @@ def unseeded(fairway: str, slice_id: str) -> str:
     `landed_already` answers first and the gate is never reached. recap merged five slices with a story and
     no `seeded` line, two of them with stories that could never have seeded. So the merge is where it holds.
     A slice dark by design — a stub shipped around a shared need — says so with a hand-back carrying
-    `needs`, and that hand-back is what lets it through: the need stays open on the board against it.
+    `needs` and naming the story it keeps dark (`fleet.py tell --dark`), and that is what lets it through:
+    the need stays open on the board against it. Any other hand-back is not: recap's LB13 merged on one
+    about its design page, with a story whose data belonged to a subject nobody signs in as.
     """
     path = next((one for one in deck_logs() if one.stem == fairway), None)
     if path is None:
@@ -783,12 +785,13 @@ def unseeded(fairway: str, slice_id: str) -> str:
     except (OSError, UnicodeDecodeError, logs.Unreadable):
         return ""
     mine = [one for one in lines if str(one.fields.get("slice", "")) == slice_id]
-    if any(one.kind == "seeded" or (one.kind == "told" and one.fields.get("needs")) for one in mine):
+    if any(one.kind == "seeded" or (one.kind == "told" and one.fields.get("needs")
+                                    and one.fields.get("story") == story) for one in mine):
         return ""
     return (f"{slice_id} has a story ({story}) and no `seeded` line says it ran green against the app its "
             f"berth runs. Seed it with `python3 scripts/agents/try_it.py seed --slice {slice_id}`, or, where "
-            f"it is dark until a shared need lands, hand the need back with `fleet.py tell --need`, then ask "
-            f"again")
+            f"it is dark until a shared need lands, hand the need back as what keeps it dark — `fleet.py tell "
+            f"{fairway} <message> --slice {slice_id} --dark --need '<what>'` — then ask again")
 
 
 def attempts(fairway: str, slice_id: str) -> int:

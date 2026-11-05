@@ -149,7 +149,11 @@ plans: S is a morning, M a day, L two or three.
 | 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | M | done |
 | 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | done |
 | 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | S | done |
-| 21.6 | The prototyping conversation, as the board's first page | L | todo |
+| 21.6 | The prototyping conversation, as the board's first page | L | building |
+| 21.6a | The session that writes a brief: a conversation the board runs in a workspace of its own | M | todo |
+| 21.6b | The page: the conversation, the brief counting itself up, the prototype to play | M | todo |
+| 21.6c | Check and hand over: the plain-words check, and the button that fills the start page | S | todo |
+| 21.6d | The record: one real brief through the page and the two numbers, written here | S | todo |
 
 ### 21.1 `docs/reference/the-brief.md` — S
 
@@ -257,7 +261,7 @@ Two tracks, both starting from 21.1:
 21.1 the page and the fixture
   ├── 21.2 brief check, and drawn.py ── 21.5 data-decided
   └── 21.4 domain.md ──────────────────── 21.3 people.md
-21.6 the board's first page, once the release carrying 21.2 is out
+21.6a the session ── 21.6b the page ── 21.6c check and hand over ── 21.6d the record
 ```
 
 - **21.1 first** because the fixture it adds is what 21.2's tests read line for line, what 21.4 and 21.3
@@ -402,15 +406,86 @@ worked examples.
 
 ### 21.6 — the board's first page
 
-Planned in outline only, once the release carrying 21.2 is out; its own section 8 is written then, module
-by module, the way this one was. What it stands on: the reference page as the contract, `tests/fixtures/brief/`
-as the folder it must write, `slipwai brief check` as its acceptance, and three things the board already
-has — a headless session run from a page (`init_run.py`, `scripts/agents/draft.py`), a card that shows what
-a session says as it says it (`console_page.py`), and the start page's *Everything else* answer
-(`interview_page.py`). What it adds: one page module and its card, a session script in the toolkit's
-`scripts/agents/` that runs the eight steps with the person present, and the hand-over button. Its README
-line is the two numbers from one real brief through the page, `generate --brief`, `/draft` and `make
-surfaces` on a laptop-trial quickstart. Its name is open point 3; *the first page* will do until then.
+Written on 2026-11-05 from the code on `brief-21-3`, after the user asked for the build to start ahead of
+the release the outline waited on. Four slices, each its own commit with a `Slice-done: 21.6a` to `21.6d`
+trailer; the main plan's `21.6` row is a heading over them and ticks itself when the four are done.
+
+**What it stands on, read before writing a line.** The console (`console.py`, `console_page.py`) is the
+precedent and the shape: one conversation on the board, held as turns, run as a headless session of
+Claude Code (`claude -p … --output-format stream-json`, resumed by session id), polled at one JSON route,
+with a stand-in command as the test seam. The console can read and cannot do; the first page's session
+can read and write, inside one folder, and nothing else. `brief_check.report(home)` is the brief counting
+itself up. `assets.SLIPWAI` (`~/.slipwai`) is where this machine keeps what is its own and not a project's.
+The start page is `interview_page.py`, whose `brief` question is a path. The tab bar is `page_shell.TABS`.
+Every module here lands in the `edge` tier beside `console`, and `bridge.py` is at 907 of 910: its two new
+lines hand straight to the page's own module, and its budget line says so.
+
+**What it is not.** Not a toolkit script: there is no project for one to live in. Not harness-neutral in
+its first version: the console already runs on Claude Code alone and says so when `claude` is not on the
+path, and the first page says the same sentence; other harnesses follow when their headless sessions can
+be resumed. Not a door in front of the start page: a tab beside it, section 6.
+
+#### 21.6a — the session
+
+- `src/slipwai/brief_session.py`, from `console.py`'s shape: a `Sketch` (the module's name for one
+  conversation; the product's name is open point 3) with `turns`, `said(since)`, `ask(message)`, `reset()`,
+  `run()` and `take(line)`, and these differences. **Its cwd is a workspace of its own**,
+  `~/.slipwai/sketches/<slug>/`, made at `ask` where it does not exist, with `brief/` for the folder of
+  section 3 and `prototype/` beside it for the thing with taps, so the prototype's code never travels as
+  design material. **Its tools are** `Read,Write,Edit,Glob,Grep`, which Claude Code confines to the cwd
+  in a print session; the system prompt names the two folders and refuses everything outside them.
+  **Its system prompt is the eight steps** of section 4, as `assets/brief/sketch.md`, with the contract
+  folded in by reading `docs/reference/the-brief.md`'s folder block, so the two cannot drift; the skills
+  `frontend-design`, `storyboard` and `find-gaps` are projected from `assets/toolkit/skills/` into
+  `<workspace>/.claude/skills/` before the first turn, the way `./init` projects them into a project. **After
+  each answer** it reads `brief_check.report(<workspace>/brief)` where the folder exists and keeps the
+  lines as the sketch's `check`, so the page shows the count without a second route.
+- `SKETCHES` by slug, as `CONSOLES` by root; `for_slug(slug)`; a slug from the product's name the way
+  `naming` makes one.
+- `tests/test_brief_session.py` over a stand-in agent that writes `brief/prd.md` and a surface page and
+  says something: the workspace is made with the two folders and the skills, the question is the command's
+  last argument, the tools are the five, the second question resumes, the check is the fixture's lines
+  where the stand-in copied the fixture in, the folder is confined (`../` in a slug is refused).
+- Fragment `21.6a-brief-session.md`, MINOR; catch-up nothing.
+
+#### 21.6b — the page
+
+- `src/slipwai/brief_page.py`: `/brief` renders the page in the shell with the tab bar; its card is
+  `console_page.py`'s conversation with the words changed, and beside it the brief counting itself up
+  (the five lines of the check, or *nothing yet*) and the prototype embedded (`<iframe>` of
+  `/brief/files/<slug>/prototype/index.html`, or the surface pages where there is no prototype yet). The
+  header carries the four steps as the mock draws them — Describe, Walk the states, Check, Hand over — with
+  the one the conversation is at marked; the session says which by a line it prints, `step: <n>`, which
+  `take` reads and keeps. A sketch is named by its slug in the address, `/brief?sketch=<slug>`, and the
+  page with none lists the sketches this machine has and a field for a new one's name.
+- `page_shell.TABS` gains `("/brief", "Describe a product")` after *Start a project*; `bridge.py` gains
+  one GET line and one POST line that hand `/brief…` to `brief_page.route(...)`, and `# budget: 920`.
+- `/brief/files/<slug>/<path>` serves a file from the workspace, confined to it, with the type by suffix:
+  what the iframe and the surface pages' stylesheets load.
+- `tests/test_brief_page.py` with `BoardTest`: the tab is on the bar, the page renders empty and with a
+  sketch, the JSON route carries turns, check and step, a file is served and `..` is refused, the published
+  (read-only) copy has no ask.
+- Fragment `21.6b-brief-page.md`, MINOR; catch-up nothing.
+
+#### 21.6c — check and hand over
+
+- The Check face: the check's five lines rendered in plain words with green and amber, as the mock's
+  Handover frame draws them — green where the draft can start without asking, amber for what it will
+  decide and say, which is the `assume` line; the refusal, where the folder is not yet one, as the sentence
+  the verb prints.
+- The Hand over button: a link to `/generate?brief=<workspace>/brief`; `interview_page.interview` takes
+  the query's `brief` as the field's answer, and nothing else about the start page changes. The person
+  presses one button and sees the start page with its last field filled.
+- `tests/test_brief_page.py` grows the two; `tests/test_interview_page.py` proves the query fills the field
+  and that the page with no query is byte for byte what it was.
+- Fragment `21.6c-hand-over.md`, MINOR; catch-up nothing.
+
+#### 21.6d — the record
+
+- One real brief through the page on this machine, `generate --brief`, `/draft` and `make surfaces` on a
+  laptop-trial quickstart, with the two numbers written into section 5's heading row: assumptions after the
+  draft, and whether the storyboard was approved the first time. The commit carries the numbers and nothing
+  else, with `Slice-done: 21.6d`.
 
 ### What to watch
 

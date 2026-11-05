@@ -15,6 +15,7 @@ from .bridge_page import fitting_card, live_cards, live_sub
 from .console_page import console_card
 from .decision_log import SCRIPT as DECISIONS_SCRIPT
 from .decision_log import STYLE as DECISIONS_STYLE
+from .drawn import decided_states
 from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
 from .feedback_card import STYLE as FEEDBACK_STYLE
 from .feedback_card import opener
@@ -27,7 +28,8 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 790 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# budget: 800 — the bands of one window, and who decided each state the storyboard's note counts: where the
+# project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
@@ -613,6 +615,13 @@ def verdict_form(root: Path, feature: str) -> str:
                 f"verdict of its own.")
     elif "\u2014 approved" in text:
         note = "Approved."
+    # Where the pages say who chose each state, the note says how many a person decided and how many the
+    # tool put in: the person approving knows which states they have already seen.
+    who = [one for page in surface_pages(home) for _, one in decided_states(page)[1]]
+    if any(who):
+        proposed = sum(one.lower() == "proposed" for one in who)
+        note += (f" {len(who)} states: {sum(bool(one) for one in who) - proposed} decided by a person, "
+                 f"{proposed} proposed.")
     # Either verdict locks both. A refusal (a disapproval with no reason) turns them back on in the page.
     held = " disabled" if parked or "\u2014 approved" in text else ""
     return (f'<form class="verdict" onsubmit="return false"><p class="empty">{esc(note)} '

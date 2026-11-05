@@ -78,8 +78,9 @@ So a relative `<link rel="stylesheet" href="../look/look.css">` resolves, becaus
 
 **`data-decided`** on an article records who chose the state: `person`, for a state the person asked for or
 answered a question about, or `proposed`, for one the tool put in because every good version of the screen
-has it. *Planned, slice 21.5:* the board reads it, counts it on the storyboard card and writes it into
-`mock-states.md`. Today it is kept on the page and read by nobody.
+has it. The storyboard's note on the Voyage window counts them — *16 states: 10 decided by a person, 6
+proposed* — and each verdict line in `mock-states.md` ends `(decided by a person)` or `(proposed)`, after
+the verdict, so the gates that read the line are unchanged. A page that does not say is written as before.
 
 A page may hold anything else a browser can show. Nothing beyond the title and the articles is read.
 
@@ -136,7 +137,7 @@ reader, the same limits — and prints what it found, before anything is generat
 
 ```
 requirements document: prd.md, by name
-surfaces: 3, states: 16, each with a heading
+surfaces: 3, states: 16, each with a heading, 10 decided by a person, 6 proposed
 look: look/look.css
 people: 2   facts: 2, cited
 the draft will have to assume: 1 — Can a member hold two bookings on the same day? (prd.md, ## Open)

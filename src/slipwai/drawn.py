@@ -14,8 +14,10 @@ import re
 from pathlib import Path
 
 _FEATURE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
-_ARTICLE = re.compile(r'<article\b[^>]*\bclass="[^"]*\bstate\b[^"]*"[^>]*>(.*?)</article>',
+_ARTICLE = re.compile(r'<article\b(?P<tag>[^>]*\bclass="[^"]*\bstate\b[^"]*"[^>]*)>(?P<body>.*?)</article>',
                       re.IGNORECASE | re.DOTALL)
+#: Who chose a state, where the page says: `person` or `proposed` as the reference page spells them, or a name.
+_DECIDED = re.compile(r'\bdata-decided="([^"]*)"', re.IGNORECASE)
 _HEADING = re.compile(r"<h2>(.*?)</h2>", re.IGNORECASE | re.DOTALL)
 _TITLE = re.compile(r"<title>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 _NOT_A_SURFACE = frozenset({"storyboard.html", "index.html"})
@@ -39,22 +41,43 @@ def _surface_name(title: str, stem: str) -> str:
     return title or stem
 
 
-def page_states(page: Path) -> tuple[str, list[str]]:
-    """One page as the board reads it: the surface its title names, and the states its articles name.
+def decided_states(page: Path) -> tuple[str, list[tuple[str, str]]]:
+    """One page as the board reads it: the surface its title names, and each state its articles name with
+    who decided it — `data-decided` on the article, or `""` where the page does not say.
 
     A page with no article is one state, `shown` — a plain page is still a drawing somebody can approve.
-    Two articles with the same heading are one state.
+    Two articles with the same heading are one state, and the first says who decided it.
     """
     text = page.read_text(encoding="utf-8", errors="replace")
     title = _TITLE.search(text)
     name = _surface_name(title.group(1) if title else "", page.stem)
-    states: list[str] = []
+    states: list[tuple[str, str]] = []
     for article in _ARTICLE.finditer(text):
-        heading = _HEADING.search(article.group(1))
+        heading = _HEADING.search(article.group("body"))
         label = _plain(heading.group(1)) if heading else ""
-        if label and label not in states:
-            states.append(label)
-    return name, states or [SHOWN]
+        if label and label not in [state for state, _ in states]:
+            who = _DECIDED.search(article.group("tag"))
+            states.append((label, who.group(1).strip() if who else ""))
+    return name, states or [(SHOWN, "")]
+
+
+def page_states(page: Path) -> tuple[str, list[str]]:
+    """The surface and its states, without who decided each: what every reader before `data-decided` reads."""
+    name, states = decided_states(page)
+    return name, [state for state, _ in states]
+
+
+def decided(who: str) -> str:
+    """The suffix a verdict line carries for who chose the state, or nothing where the page did not say.
+
+    After the verdict, so the three readers of the line — `check-surfaces.py`, the surfaces agent and the
+    feedback reader — which match `approved` and `parked` at a word boundary, read it as they always did.
+    """
+    if not who:
+        return ""
+    if who.lower() == "proposed":
+        return " (proposed)"
+    return " (decided by a person)" if who.lower() == "person" else f" (decided by {who})"
 
 
 def surface_pages(home: Path) -> list[Path]:
@@ -105,10 +128,12 @@ def record_verdict(root: Path, feature: str, verdict: str, reason: str = "", by:
     if verdict == "parked" and not why:
         raise ValueError("say why you disapprove, so the next drawing knows what to change")
     lines: list[str] = [by, ""] if by else []
-    for name, states in drawn_states(root, feature):
+    # The same pages `drawn_states` reads, with who decided each state kept: the refusals above are its.
+    drawn_states(root, feature)
+    for name, states in (decided_states(page) for page in surface_pages(root / "specs" / feature / "mockups")):
         lines.append(f"## Surface: {name}")
         mark = "approved" if verdict == "approved" else f"parked: {why}"
-        lines.extend(f"- {state} — {mark}" for state in states)
+        lines.extend(f"- {state} — {mark}{decided(who)}" for state, who in states)
         lines.append("")
     (root / "specs" / feature / "mockups" / "mock-states.md").write_text("\n".join(lines), encoding="utf-8")
     return "approved" if verdict == "approved" else "disapproved"

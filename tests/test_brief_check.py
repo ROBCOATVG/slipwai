@@ -35,7 +35,7 @@ class ReportTest(unittest.TestCase):
     def test_the_worked_example_reads_as_the_reference_page_says(self) -> None:
         self.assertEqual(report(BRIEF), [
             "requirements document: prd.md, by name",
-            "surfaces: 3, states: 16, each with a heading",
+            "surfaces: 3, states: 16, each with a heading, 10 decided by a person, 6 proposed",
             "look: look/look.css",
             "people: 2   facts: 2, cited",
             "the draft will have to assume: 1 — Can a member hold two bookings on the same day? (prd.md, ## Open)",

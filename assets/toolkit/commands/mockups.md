@@ -99,7 +99,9 @@ Then one of two things, depending on what was in the directory.
   `<title>` naming it, and each state an `<article class="state">` headed by an `<h2>` naming the state — that
   is what the board reads when a person approves the drawing, one verdict per state. The storyboard
   (`storyboard.html`) embeds or links those pages: the ones beside it, or — where a person handed the mock-ups
-  over in `docs/design/` — those pages where they are, which the board then reads as the surfaces. A storyboard
+  over in `docs/design/` — those pages where they are, which the board then reads as the surfaces. A handed-over
+  article may carry `data-decided="person"` or `data-decided="proposed"`, saying who chose the state; keep it
+  on a redraw, because the board counts it and writes it after each verdict. A storyboard
   with the surfaces drawn inside it and no page to show is nothing anybody can approve, and the stage refuses it
   as nothing drawn.
 

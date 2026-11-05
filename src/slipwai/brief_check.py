@@ -21,7 +21,7 @@ import re
 from pathlib import Path
 
 from .design_docs import PRD_NAMES, PRD_WORDS, briefed, weighed
-from .drawn import SHOWN, page_states
+from .drawn import SHOWN, decided_states, page_states
 from .errors import GenerationError
 
 #: Where the pages are, and where the look is, in a folder that follows the reference page.
@@ -112,10 +112,19 @@ def surfaces_line(home: Path, pages: list[Path]) -> str:
     plain = [page.relative_to(home).as_posix() for page, _, states in read if states == [SHOWN]]
     total = sum(len(states) for _, _, states in read)
     if not plain:
-        return f"surfaces: {len(read)}, states: {total}, each with a heading"
+        return f"surfaces: {len(read)}, states: {total}, each with a heading{who_decided(pages)}"
     return (f"surfaces: {len(read)}, states: {total}; {', '.join(plain)} "
             f"{'has' if len(plain) == 1 else 'have'} no <article class=\"state\"> and "
             f"{'is' if len(plain) == 1 else 'are'} one state each, {SHOWN}")
+
+
+def who_decided(pages: list[Path]) -> str:
+    """`, 10 decided by a person, 6 proposed` where any page says who chose a state; nothing where none does."""
+    said = [who for page in pages for _, who in decided_states(page)[1]]
+    if not any(said):
+        return ""
+    proposed = sum(who.lower() == "proposed" for who in said)
+    return f", {sum(bool(who) for who in said) - proposed} decided by a person, {proposed} proposed"
 
 
 def report(home: Path) -> list[str]:

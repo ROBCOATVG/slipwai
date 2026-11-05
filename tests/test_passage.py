@@ -6,13 +6,16 @@ that proves it appears, and only then.
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.passage import current, drawn, modelled, record_verdict, stages
+from slipwai.passage import current, drawn, modelled, record_verdict, stages, surfaces
+
+ROOT = Path(__file__).resolve().parents[1]
 
 CONSTITUTION = ".specify/memory/constitution.md"
 
@@ -197,6 +200,32 @@ class StoryboardVerdictTest(unittest.TestCase):
         text = (root / "specs/001-demo/mockups/mock-states.md").read_text(encoding="utf-8")
         self.assertIn("## Surface: Discover tables near you\n- shown \u2014 approved\n", text)
         self.assertNotIn("secret", text)
+
+    def test_who_decided_a_state_is_written_after_the_verdict_where_the_page_says(self) -> None:
+        """After it, so the gate that reads the line — `check-surfaces.py`'s own regex, read here from the
+        script — still matches the verdict at a word boundary. A page that does not say is written as before."""
+        root = tree(**{"specs__001-demo__mockups__book.html": (
+            '<title>Book</title><article class="state" data-decided="person"><h2>Empty</h2></article>'
+            '<article class="state" data-decided="proposed"><h2>Loading</h2></article>'
+            '<article class="state" data-decided="Sam"><h2>Booked</h2></article>'
+            '<article class="state"><h2>Failed</h2></article>')})
+        record_verdict(root, "001-demo", "parked", "grey the keelboats")
+        text = (root / "specs/001-demo/mockups/mock-states.md").read_text(encoding="utf-8")
+        self.assertIn("- Empty \u2014 parked: grey the keelboats (decided by a person)\n", text)
+        self.assertIn("- Loading \u2014 parked: grey the keelboats (proposed)\n", text)
+        self.assertIn("- Booked \u2014 parked: grey the keelboats (decided by Sam)\n", text)
+        self.assertIn("- Failed \u2014 parked: grey the keelboats\n", text)
+        record_verdict(root, "001-demo", "approved")
+        text = (root / "specs/001-demo/mockups/mock-states.md").read_text(encoding="utf-8")
+        self.assertIn("- Empty \u2014 approved (decided by a person)\n", text)
+        script = (ROOT / "assets/toolkit/scripts/check-surfaces.py").read_text(encoding="utf-8")
+        spelled = re.search(r'^STATE = re.compile\(r"(.+?)", re.MULTILINE\)$', script, re.MULTILINE)
+        assert spelled is not None
+        gate = re.compile(spelled.group(1), re.MULTILINE)
+        self.assertEqual([(found.group("state"), found.group("verdict")) for found in gate.finditer(text)],
+                         [("Empty", "approved"), ("Loading", "approved"), ("Booked", "approved"),
+                          ("Failed", "approved")])
+        self.assertEqual(surfaces(root), (4, 4, 0))
 
     def test_a_feature_that_was_not_drawn_cannot_be_approved(self) -> None:
         with self.assertRaises(ValueError):

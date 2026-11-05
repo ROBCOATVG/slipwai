@@ -1606,7 +1606,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 184 of 189 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 9/11. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 184 of 197 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 9/11, phase 22 0/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2530,9 +2530,23 @@ this table is the one `make progress` ticks, so the history can say what landed.
 | 21.6c | Check and hand over: the check's lines in plain words with green and amber, and a button that opens the start page with *Everything else* filled; the start page with no query is byte for byte what it was | new (owner, 2026-11-05) | S | `tests/test_interview_page.py` proves the query fills the field and nothing else changes | done |
 | 21.6d | The record: one real brief through the page, `generate --brief`, `/draft` and `make surfaces` on a laptop-trial quickstart, the two numbers written into the prototyping plan | new (owner, 2026-11-05) | S | The numbers are in section 5 of the prototyping plan |  |
 | 21.7 | The right questions: a question set folded into the first page's prompt, and a pre-made document taken as the start, reviewed against the set with every miss written under `## Open` | new (owner, 2026-11-05) | M | A session with the set asks the live run's open questions before its second drawing; `tests/test_brief_page.py` proves a pasted document lands as `brief/prd.md` before the first turn | done |
-| 21.8 | The board on the Agent Client Protocol: `acp.py` speaks the protocol's client half with the standard library, the registry gains an `acp` launch row per harness, a `/settings` page picks *Runs on* from the agents this machine has, and the first page and the console become ACP sessions with live events, permission requests and the agent's questions on the page, loadable across a restart | new (owner, 2026-11-05) | L | `tests/test_acp.py` over a stand-in agent proves the handshake, a turn's updates, permissions inside and outside the workspace, a question, a cancel and a load; one live run on Claude's adapter and one native agent recorded in the prototyping plan |  |
-| 21.9 | Install from the board: a harness the registry knows installed and signed in from the settings page where the machine has its package manager, the one line to run shown where it does not | new (owner, 2026-11-05) | M | One harness installed from the page on a machine that had none, recorded in the registry row as proven |  |
-| 21.10 | The stages over ACP: draft, the surfaces, assess, the event model, triage, the adoption steps and the captain's drives run as sessions through the 21.8 adapter where the harness has an `acp` row, with progress, permissions and the agent's questions on the page and `session/cancel` as the stop; the headless path kept where it has none | new (owner, 2026-11-05) | L | The draft on a live project asks a question on the page instead of writing an assumption, and the count after it is lower than 21.6d's |  |
+
+### Phase 22. The board on the Agent Client Protocol
+
+What runs behind the board must be whichever coding agent the person has, not one named in the keel's
+source. The design, the protocol as far as it is needed, which harnesses have an agent, and each slice's
+files and gates are in [the ACP plan](acp-plan.md); this table is the one `make progress` ticks.
+
+| Slice | What | From | Size | Done when | Status |
+|---|---|---|---|---|---|
+| 22.1 | `acp.py`: the protocol's client half with the standard library — spawn, initialize, new and load, prompt, cancel, updates to a callback, permissions and questions to callbacks | new (owner, 2026-11-05) | M | `tests/test_acp.py` over a stand-in agent proves the handshake, a turn's updates in order, a permission inside and outside the working directory, a question answered, a cancel with a permission outstanding, a load, and an agent that dies mid-turn |  |
+| 22.2 | The registry's `acp` rows for the 24 harnesses the protocol's registry has, dated, and `harness.acp_launch` giving the argv this machine can make or why not | new (owner, 2026-11-05) | S | `tests/test_harness.py` proves the lookup for an `npx` package and a binary, and the sentence where neither is on PATH |  |
+| 22.3 | `/settings` on the tab bar: *Runs on* from the harnesses with an `acp` row this machine can launch, the agent's own model options, remembered in `~/.slipwai/board.json`; a project's init answer wins for its console | new (owner, 2026-11-05) | M | `tests/test_settings_page.py` proves the page, the file and the precedence |  |
+| 22.4 | The first page over the protocol: `Sketch` on an `acp.Session`, the role at the head of the first prompt, tool cards, a plan, permission and question cards, Stop, the session loaded across a restart | new (owner, 2026-11-05) | L | `tests/test_brief_session.py` runs over the stand-in agent; `tests/test_brief_page.py` proves the cards, the answer route, the cancel and the load |  |
+| 22.5 | The console over the protocol, the same on the Voyage page, the project's harness first | new (owner, 2026-11-05) | M | The console's tests run over the stand-in agent |  |
+| 22.6 | The live run: one brief through the first page on Claude's adapter and one on a native agent, the rows marked proven and the runs recorded in the ACP plan | new (owner, 2026-11-05) | S | Two rows `proven: true` with dates, and the ACP plan's status line carries both runs |  |
+| 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives, each with progress, a permission by policy, a question on the page and a cancel; the headless path kept where a harness has no `acp` row | new (owner, 2026-11-05) | L | The draft on a live project asks on the page instead of writing an assumption, and the count after it is lower than 21.6d's |  |
+| 22.8 | Install from the settings page: an `npx` agent launched with Node alone, a binary agent fetched for this platform with its sha256 checked, sign-in through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | new (owner, 2026-11-05) | M | One agent installed and signed in from the page on a machine that had none, its row marked proven |  |
 
 ### Risks the plan carries, and where each is caught
 

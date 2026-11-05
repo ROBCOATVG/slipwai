@@ -129,7 +129,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # that server has, which is a window each: every route beside it is a fold of files on disk.
               "page_shell", "seats", "console", "console_page",
               # The conversation that writes a brief before a project exists, on the console's shape.
-              "brief_session",
+              "brief_session", "brief_page",
               "bridge", "bridge_page", "fleet_page", "timeline_page",
               "cli_bridge", "cli_start",
               "interview_page",

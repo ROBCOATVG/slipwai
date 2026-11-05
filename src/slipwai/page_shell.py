@@ -253,6 +253,7 @@ font-weight:600}
 TABS: tuple[tuple[str, str], ...] = (
     ("/", "Board"),
     ("/generate", "Start a project"),
+    ("/brief", "Describe a product"),
     ("/adopt", "Adopt a repository"),
     ("/packages", "Packages"),
 )

@@ -48,6 +48,8 @@ from .adopt_page import run as adopt
 from .adoption_card import adoption_card, strategy_dates
 from .adoption_flow import gate_when_grounded, take_step
 from .bridge_page import page, payload
+from .brief_page import route_get as brief_get
+from .brief_page import route_post as brief_post
 from .captain_page import number
 from .captain_page import page as captain
 from .captain_page import payload as captain_json
@@ -141,7 +143,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 910 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 920 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -302,6 +304,8 @@ class Bridge(BaseHTTPRequestHandler):
             return
         if where == "/console.json" and self.controls:
             self.send(200, json.dumps(console_for(self.root).said(since(query))), "application/json; charset=utf-8")
+            return
+        if self.controls and brief_get(self, where, query):  # the first page's own routes: `brief_page.py`
             return
         if where == "/voyage" and self.controls:
             self.send(200, self.voyage())
@@ -689,6 +693,8 @@ class Bridge(BaseHTTPRequestHandler):
             held = self.body()
             # The path without its query, because the seat rides there: `/tell?seat=hVn0` is the tell route.
             where = self.path.partition("?")[0].rstrip("/")
+            if brief_post(self, where, held):
+                return
             if where == "/generate/ask":
                 # The questions again, for the answers given so far: one of them decides what the next one
                 # offers, and which that is, is the catalogue's business and not the browser's.

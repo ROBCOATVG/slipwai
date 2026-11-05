@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, quote
 
-from .brief_session import BRIEF, PROTOTYPE, for_slug, sketches, slug_of, workspace
+from .brief_session import BRIEF, PROTOTYPE, for_slug, sketches, slug_of, started, workspace
 from .page_shell import document, esc
 
 STEPS = ("Describe", "Walk the states", "Check", "Hand over")
@@ -51,6 +51,10 @@ STYLE = """
 #sketch .head h2{margin:0}
 #sketch .head button{font:inherit;font-size:.8rem;background:none;border:0;color:var(--ink-3);cursor:pointer}
 #sketches ul{margin:8px 0 0;padding-left:1.2rem}
+#sketches textarea{width:100%;box-sizing:border-box;min-height:9rem;font:inherit;font-size:.9rem;padding:8px 10px;
+  border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);margin-top:10px}
+#sketches label.file{display:block;font-size:.84rem;color:var(--ink-2);margin-top:8px}
+#sketches .said{color:var(--brass);font-size:.88rem;margin:8px 0 0}
 #sketch .check li{padding-left:18px;position:relative}
 #sketch .check li::before{content:"";position:absolute;left:0;top:.45em;width:9px;height:9px;border-radius:50%;
   background:var(--good)}
@@ -143,7 +147,8 @@ def chosen(query: str) -> str | None:
 
 
 def listing() -> str:
-    """The page with no sketch: the ones this machine has, and a field for a new one's name."""
+    """The page with no sketch: the ones this machine has, a field for a new one's name, and a document a
+    person already has, pasted or chosen, which the session reads first."""
     had = "".join(f'<li><a href="/brief?sketch={quote(one)}">{esc(one)}</a></li>' for one in sketches())
     return (f'<div id="sketches" class="card"><h2>Describe a product</h2>'
             f'<p>Say what it is, in your words, and it is drawn as a thing you can tap through. What you decide '
@@ -152,7 +157,36 @@ def listing() -> str:
             f'<form class="ask" method="get" action="/brief"><input name="name" placeholder="Club boat bookings" '
             f'autocomplete="off" aria-label="The product\'s name">'
             f'<button class="go" type="submit">Start</button></form>'
+            f'<textarea name="document" placeholder="A document you already have, if you have one: paste it here, '
+            f'or choose the file. It is read first, and what it leaves open is asked." '
+            f'aria-label="A document you already have"></textarea>'
+            f'<label class="file">Or choose it: <input type="file" accept=".md,.txt,text/*"></label>'
+            f'<p class="said" hidden></p>'
             f"{'<ul>' + had + '</ul>' if had else ''}</div>")
+
+
+BEGIN = """
+{
+  const card = document.getElementById('sketches');
+  if (card) {
+    const form = card.querySelector('form'), text = card.querySelector('textarea');
+    const file = card.querySelector('input[type=file]');
+    const said = card.querySelector('.said');
+    file.addEventListener('change', () => {
+      const one = file.files && file.files[0];
+      if (one) one.text().then(read => { text.value = read; });
+    });
+    form.addEventListener('submit', async event => {
+      if (!text.value.trim()) return;  // no document: the plain form, which needs no script
+      event.preventDefault();
+      const answer = await fetch('/brief/new', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                 body: JSON.stringify({name: form.name.value, document: text.value})});
+      if (!answer.ok) { said.textContent = await answer.text(); said.hidden = false; return; }
+      location.href = '/brief?sketch=' + encodeURIComponent(await answer.text());
+    });
+  }
+}
+"""
 
 
 def sketch_page(slug: str) -> str:
@@ -190,7 +224,7 @@ def page(query: str) -> str:
     slug = chosen(query)
     body = sketch_page(slug) if slug else listing()
     return document("Describe a product", "A prototype to play with, and the brief it leaves behind",
-                    f"<style>{STYLE}</style>{body}", SCRIPT, now="/brief")
+                    f"<style>{STYLE}</style>{body}", SCRIPT + BEGIN, now="/brief")
 
 
 def served(where: str) -> tuple[Path, str] | None:
@@ -234,9 +268,14 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
 
 def route_post(bridge: Any, where: str, held: dict) -> bool:
     """Answer a POST of this page's — a turn, or a new conversation — or say it was not one."""
-    if where not in ("/brief/ask", "/brief/reset"):
+    if where not in ("/brief/ask", "/brief/reset", "/brief/new"):
         return False
     try:
+        if where == "/brief/new":
+            slug = slug_of(str(held.get("name") or ""))
+            started(slug, str(held.get("document") or ""))
+            bridge.send(200, slug, "text/plain; charset=utf-8")
+            return True
         sketch = for_slug(str(held.get("sketch") or ""))
         said = sketch.ask(str(held.get("message") or "")) if where == "/brief/ask" else sketch.reset()
         bridge.send(200, said, "text/plain; charset=utf-8")

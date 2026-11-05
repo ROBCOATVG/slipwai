@@ -154,7 +154,7 @@ plans: S is a morning, M a day, L two or three.
 | 21.6b | The page: the conversation, the brief counting itself up, the prototype to play | M | done |
 | 21.6c | Check and hand over: the plain-words check, and the button that fills the start page | S | done |
 | 21.6d | The record: one real brief through the page and the two numbers, written here | S | todo |
-| 21.7 | The right questions: a question set in the session's prompt, and a pre-made document reviewed against it and taken as the start | M | todo |
+| 21.7 | The right questions: a question set in the session's prompt, and a pre-made document reviewed against it and taken as the start | M | done |
 
 ### 21.1 `docs/reference/the-brief.md` — S
 
@@ -485,10 +485,19 @@ be resumed. Not a door in front of the start page: a tab beside it, section 6.
 
 Asked for on 2026-11-05, after the first live run: "we need to ensure we ask the right questions", and a
 person who already has a document must be able to start from it, have its quality checked, and have it
-taken into the conversation. Read first: `carollrollroll/prd-skill` (write, review and verify as three
-skills, MIT), `deanpeters/Product-Manager-Skills` (`prd-development`: the seven framing questions and a
-"before moving on" check per section), `GarrusHuang/prd-writer` (each feature passes a three-way check —
-where the data comes from, the rule, what happens when it fails — before the document moves on, MIT).
+taken into the conversation. The model is `deanpeters/Product-Manager-Skills`' `prd-development` skill,
+at the user's word: the one-sentence summary written first and refined last, the problem with its
+evidence, why now, one primary measure with what to watch and what must not get worse, stories with "what
+if they skip a step" and "out of order", out of scope with a reason on each line, dependencies and risks,
+open questions, gaps tagged where they fall, a check against earlier sections before moving on, and a
+self-assessment at the end. The others were read critically and four things taken: the reviewer's five
+issue types from `carollrollroll/prd-skill` (contradiction, gap, dangling reference, overreach, unowned
+decision) for step 0; the per-feature three-way check from `GarrusHuang/prd-writer` (where the data comes
+from, the rule, what happens when it fails), asked and never gated; *when* and *what job* from
+`DivikWu/product-requirement-craft`'s problem framing; and the vague-word rule from GitHub's
+`awesome-copilot` PRD skill. Left out of all of them: priorities, timelines, roadmaps, technical sections,
+metrics frameworks, document formats, completeness scores and sign-off checklists — each is another
+stage's job here or a product manager's artefact, and the brief keeps its four headings.
 
 - **The question set**, folded into step 3 of `assets/brief/sketch.md` and nowhere else, so the one prompt
   stays the one place: what problem, for whom, why now, the one measure that must move and what must not

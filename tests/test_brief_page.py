@@ -102,6 +102,19 @@ class FirstPageTest(BoardTest):
         self.assertEqual(self.post("/brief/ask", {"sketch": "club-boats", "message": "  "})[0], 400)
         self.assertEqual(self.post("/brief/reset", {"sketch": "club-boats"}), (200, "cleared"))
 
+    def test_a_document_a_person_brought_begins_the_sketch_with_it_read_first(self) -> None:
+        listing = self.get("/brief")[1]
+        self.assertIn('<textarea name="document"', listing)
+        self.assertIn('<input type="file" accept=".md,.txt,text/*">', listing)
+        code, slug = self.post("/brief/new", {"name": "From a doc", "document": "# Bookings\n\n## Open\n\n- When?\n"})
+        self.assertEqual((code, slug), (200, "from-a-doc"))
+        opened = self.get("/brief?sketch=from-a-doc")[1]
+        self.assertIn('data-sketch="from-a-doc"', opened)
+        polled = json.loads(self.get("/brief.json?sketch=from-a-doc&since=0")[1])
+        self.assertEqual(polled["check"][0], "requirements document: prd.md, by name", "read before the first turn")
+        self.assertEqual(self.post("/brief/new", {"name": "From a doc", "document": "# Again\n"})[0], 400)
+        self.assertEqual(self.post("/brief/new", {"name": "", "document": ""})[0], 400)
+
     def test_a_file_is_served_from_the_workspace_and_nothing_outside_it(self) -> None:
         home = brief_session.prepared(brief_session.workspace("club-boats"))
         (home / "prototype" / "index.html").write_text("<title>Play</title>", encoding="utf-8")

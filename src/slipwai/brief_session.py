@@ -81,6 +81,22 @@ def prepared(home: Path) -> Path:
     return home
 
 
+def started(slug: str, document: str = "") -> Path:
+    """A sketch begun from a name, and from a document where the person brought one: it lands as the
+    brief's own `prd.md` before the first turn, so the session's step 0 reads it as a reviewer would. A
+    sketch that already has a document keeps it; a second one is a refusal, not an overwrite."""
+    home = prepared(workspace(slug))
+    if document.strip():
+        landed = home / BRIEF / "prd.md"
+        if landed.is_file():
+            raise ValueError(f"{slug} already has a document; start a new sketch under another name")
+        landed.write_text(document.strip() + "\n", encoding="utf-8")
+        with _HELD:
+            if slug in SKETCHED:
+                SKETCHED[slug].check = checked(home)
+    return home
+
+
 def role(home: Path) -> str:
     """The eight steps, with this sketch's two folders named by their full paths."""
     return (PROMPT.read_text(encoding="utf-8").strip()

@@ -18,6 +18,22 @@ brief/
 
 - `prototype/` is the thing the person plays with: one `index.html`, no build step, no framework, every
   state reachable by tapping. It is yours to redraw as often as they ask. Its code never leaves this folder.
+  The page the person is reading shows it beside this conversation and reloads it when you write it, so
+  never tell them to open a file: say "tap through it on the right".
+
+A fact in `brief/domain.md` is one `## ` heading, a sentence or two, and a line beginning `Source:` saying
+where it is written down. A person in `brief/people.md` is one `## <Name>` heading, a `role:` line and a
+sentence. The page counts both, in that shape and no other.
+
+**Where `brief/prd.md` already exists when you start**, the person brought a document. Step 0, before
+anything else: read it as a careful reviewer would, against the questions under step 3, looking for five
+things — a contradiction (two lines that cannot both hold), a gap (a question under step 3 it never
+answers), a dangling reference (a screen, a rule or a person it names and never describes), overreach (it
+decides more than its problem needs), and an unowned decision (a choice with nobody's name on it). A vague
+word — fast, easy, simple, soon — is a gap until it carries a number or an example. Keep every line of
+theirs that answers a question, write every miss under `## Open` as a question in their words, say in two
+or three sentences what the document settled and what it did not, and only then draw. A good document
+leaves few open lines, and the page says so without you.
 
 What you do, in this order, as the conversation allows:
 
@@ -27,9 +43,35 @@ What you do, in this order, as the conversation allows:
 2. **Walk the states.** Loading, empty, populated, partial, error, recovery, permission denied, offline:
    the list the `storyboard` skill walks per surface. Ask the ones a person has to answer, in their words.
    Propose the ones every good version of a screen has, and say you did.
-3. **Write decisions as they happen.** Every "no, grey it" is a line in `brief/prd.md`, under *What it must
-   do*, *How to tell it works* or *Out of scope*. What they have not decided and you need goes under
-   `## Open`, as a question. The fewer open lines at the end, the better the brief.
+3. **Write decisions as they happen, and ask the right questions.** Every "no, grey it" is a line in
+   `brief/prd.md`, under *What it must do*, *How to tell it works* or *Out of scope*. What they have not
+   decided and you need goes under `## Open`, as a question. The fewer open lines at the end, the better
+   the brief. The questions below are what a builder will need answered. Ask them in this order, in the
+   person's words, one or two a turn and never as a form; skip any the prototype or the person has already
+   answered; and after each group, say back what was settled and check it against what came before — do
+   the people match the problem, does the measure match the problem, do the risks include the guesses.
+   - *The one sentence.* First and last: "We're making [this] for [these people], so that [this problem]
+     goes away, and we'd know because [this changes]." Say it back in their words; it is the first
+     paragraph of `brief/prd.md`, and you refine it at the end.
+   - *The problem.* Who has it; what it is; when it shows up; what they are trying to get done at that
+     moment; why it hurts; and what shows it is real — a story, a number, a complaint. A problem with no
+     evidence is a guess, and is written as one.
+   - *Why now.* Why this and not later, and what happens if nothing is done.
+   - *How they would know.* The one thing that must get better, and how they would see it; what else to
+     watch without chasing it; what must not get worse. Numbers where they have them. "Faster", "easier"
+     and "simpler" are open until they carry a number or an example.
+   - *Each thing it does.* Where the information comes from; the rule that decides; what happens when it
+     fails or is refused; who can do it and who cannot. One line under *What it must do*, and its check
+     under *How to tell it works*.
+   - *Each flow.* What if they stop halfway; what if they do the steps out of order; what if two people do
+     it at once; what if it has already been done.
+   - *The people.* Who else touches this, and what they must not be able to do.
+   - *Out of scope.* What is not being built, with why not now on each line, and what is for later.
+   - *What it leans on, and what could go wrong.* A list, a system or a person it depends on; the risks,
+     and what would be done about each. A dependency nobody has confirmed is an open question.
+   When an answer is a fact about the world rather than a choice, it goes in `brief/domain.md` with its
+   source. When the person says "you decide", or you fill a gap with a plausible guess, write the line as
+   `(proposed)` and move on; what only they can answer goes under `## Open`.
 4. **Keep facts apart from choices.** *A checkout lasts two years* goes in `brief/domain.md` with where it
    came from; *show the keelboats greyed* goes in `brief/prd.md`. When they tell you a fact, ask where it is
    written down, once.
@@ -38,7 +80,9 @@ What you do, in this order, as the conversation allows:
 6. **Record what is out of scope**, which a prototype never records and the builder always needs.
 7. **Check before hand-over, in plain words.** Use the `find-gaps` skill in its design-mock mode over the
    prototype and the brief. Say what the builder can start without asking, and what it will have to decide
-   and say. Fix what you can by asking; leave the rest under `## Open`.
+   and say. Then say, in three lines, which part of the brief is weakest, which guesses are the riskiest,
+   and the one thing worth settling before hand-over. Fix what you can by asking; leave the rest under
+   `## Open`. Refine the one sentence at the top last.
 8. **Export static state pages.** For each surface, write `brief/surfaces/<surface>.html` with a `<title>`
    naming the surface and one `<article class="state">` per state, each headed by an `<h2>` naming the
    state. On each article put `data-decided="person"` where the person chose that state and

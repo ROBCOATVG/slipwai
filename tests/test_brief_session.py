@@ -16,7 +16,7 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 
 from slipwai import brief_session
-from slipwai.brief_session import Sketch, checked, prepared, slug_of, workspace
+from slipwai.brief_session import Sketch, checked, prepared, slug_of, started, workspace
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "brief"
 
@@ -104,6 +104,8 @@ class SketchTest(unittest.TestCase):
         with mock.patch("shutil.which", return_value="/usr/local/bin/claude"), \
                 mock.patch.object(held, "environment", return_value={"PATH": "/usr/local/bin"}):
             argv = held.argv("hello") or []
+            self.assertIn("--strict-mcp-config", argv, "the person's own MCP servers do not reach the session")
+            self.assertEqual(argv[argv.index("--mcp-config") + 1], '{"mcpServers":{}}')
             self.assertEqual(argv[argv.index("--tools") + 1], "Read,Write,Edit,Glob,Grep")
             self.assertEqual(argv[argv.index("--allowedTools") + 1], "Read,Write,Edit,Glob,Grep")
             for power in ("Bash", "WebFetch", "--dangerously-skip-permissions"):
@@ -113,6 +115,37 @@ class SketchTest(unittest.TestCase):
             self.assertIn("--session-id", argv)
             held.begun = True
             self.assertIn("--resume", held.argv("two") or [])
+
+    def test_a_document_a_person_brought_lands_as_the_briefs_own_before_the_first_turn(self) -> None:
+        home = started("brought", "# Bookings\n\n## What it must do\n\n- Book a boat.\n\n## Open\n\n- When?\n")
+        self.assertEqual((home / "brief" / "prd.md").read_text(encoding="utf-8").splitlines()[0], "# Bookings")
+        self.assertEqual(checked(home)[0], "requirements document: prd.md, by name")
+        self.assertIn("the draft will have to assume: 1", checked(home)[-1])
+        with self.assertRaises(ValueError, msg="a second document is a refusal, not an overwrite"):
+            started("brought", "# Another\n")
+        self.assertEqual(started("brought"), home, "and no document is just the workspace")
+
+    def test_the_prompt_asks_the_right_questions_and_reads_a_brought_document_first(self) -> None:
+        """The question set follows the prd-development skill's shape, in a person's words: the one
+        sentence, the problem with its evidence, why now, the measure and its guardrail, the stories' edge
+        cases, out of scope with a reason, dependencies and risks, and gaps tagged where they fall."""
+        prompt = brief_session.PROMPT.read_text(encoding="utf-8")
+        for heading in ("*The one sentence.*", "*The problem.*", "*Why now.*", "*How they would know.*",
+                        "*Each thing it does.*", "*Each flow.*", "*The people.*", "*Out of scope.*",
+                        "*What it leans on, and what could go wrong.*"):
+            self.assertIn(heading, prompt)
+        for asked in ("what shows it is real", "what must not get worse",
+                      "what happens when it\n     fails or is refused", "what if they do the steps out of order",
+                      "why not now on each line", "never as a form",
+                      "say back what was settled and check it against what came before",
+                      "which part of the brief is weakest"):
+            self.assertIn(asked, prompt)
+        for taken in ("a contradiction", "a dangling reference", "overreach", "an unowned decision",
+                      "fast, easy, simple, soon"):
+            self.assertIn(taken, prompt, "step 0 reviews a brought document for the five things")
+        self.assertIn("Step 0, before", prompt)
+        self.assertIn("never tell them to open a file", prompt)
+        self.assertIn("a line beginning `Source:`", prompt)
 
     def test_the_prompts_folder_block_is_the_reference_pages(self) -> None:
         """One shape, stated once: the page a developer reads and the prompt the session reads say the same."""

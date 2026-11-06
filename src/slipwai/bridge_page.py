@@ -133,7 +133,8 @@ document.addEventListener('click', event => {
   const say = event.target.closest('[data-tell]');
   if (say) {
     const box = document.getElementById(say.dataset.box || 'tell-' + say.dataset.tell);
-    if (box && box.value.trim()) send('/tell', {fairway: say.dataset.tell, message: box.value.trim()});
+    if (box && box.value.trim()) send('/tell', {fairway: say.dataset.tell, message: box.value.trim(),
+                                              ...(say.dataset.question ? {question: say.dataset.question} : {})});
   }
   const read = event.target.closest('[data-read]');
   if (read) send('/read', {fairway: read.dataset.read, decisions: read.dataset.stamps.split(',')});
@@ -269,8 +270,11 @@ def inbox_row(index: int, row: dict, controls: bool, streams: dict | None, group
     # hand-back with needs is not done until trunk has them, so Done is not offered on one.
     done = (f'<button data-dismiss="{esc(name)}" data-told="{esc(row["t"])}">Done</button>'
             if row["kind"] == "told" and not row.get("needs") else "")
+    # The box under a question answers it: the id rides on the button, and the answer is the decision that
+    # closes the question rather than a note beside it.
+    asks = f' data-question="{esc(str(row.get("id") or ""))}"' if row["kind"] == "question" and row.get("id") else ""
     box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
-           f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button>{done}</div>'
+           f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}"{asks}>Send</button>{done}</div>'
            if controls and row["kind"] != "unreadable" else "")
     # A question is its own words, whole, once: the id and the slice it came from are a tag beside it, and
     # the log line it was read from — the same words again, in field syntax — is folded away under it.

@@ -60,7 +60,7 @@ from .console import answered as console_answer
 from .console import for_root as console_for
 from .decision_log import card as decision_card
 from .decision_log import mark as mark_decisions
-from .deck import dismiss, mark_read, tell, tick_need
+from .deck import answer, dismiss, mark_read, tell, tick_need
 from .dials import set_dial
 from .errors import Busy, GenerationError
 from .feedback_card import act as feedback_act
@@ -150,7 +150,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 960 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 965 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -894,8 +894,10 @@ class Bridge(BaseHTTPRequestHandler):
             elif where in ("/console/answer", "/console/cancel"):
                 said = console_answer(console_for(self.root), where, held)
             elif where == "/tell":
-                said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")),
-                            str(held.get("slice", "")))
+                said = (answer(self.root, str(held.get("fairway", "")), str(held["question"]),
+                               str(held.get("message", ""))) if held.get("question") else
+                        tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")),
+                             str(held.get("slice", ""))))
             # The receipt the decision ceiling counts, for the decisions a person has read on this page.
             elif where == "/read":
                 stamps = held.get("decisions")

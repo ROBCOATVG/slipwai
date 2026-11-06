@@ -30,7 +30,7 @@ from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 745 — every route the board answers, the draft that runs by itself and the question that reads
+# budget: 760 — every route the board answers, the draft that runs by itself, the question that reads
 # once among them, driven against
 # `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
@@ -150,6 +150,19 @@ class ServerTest(BoardTest):
         self.assertEqual(code, 200)
         self.assertEqual([e.fields["message"] for e in self.read("ORD") if e.kind == "told"],
                          ["from the page"])
+
+    def test_an_answer_to_a_question_is_the_decision_that_closes_it(self) -> None:
+        """The box under a question wrote a note beside it, and the question stood until somebody wrote the
+        decision line by hand."""
+        self.deck("ORD", logs.entry("question", fairway="ORD", id="D13", slice="chart", what="One context?"))
+        self.assertIn('data-question="D13"', self.rendered())
+        code, said = self.post("/tell", {"fairway": "ORD", "message": "Yes, one context.", "question": "D13"})
+        self.assertEqual((code, said), (200, "answered D13"))
+        taken = [e for e in self.read("ORD") if e.kind == "decision"]
+        self.assertEqual([(e.fields["id"], e.fields["what"], e.fields["decided_by"]) for e in taken],
+                         [("D13", "Yes, one context.", "human")])
+        self.assertNotIn("Needs an answer", self.rendered(), "answered: the question is off the card")
+        self.assertEqual(self.post("/tell", {"fairway": "ORD", "message": "x", "question": "../D"})[0], 400)
 
     def test_a_note_for_the_host_is_dismissed_from_the_page(self) -> None:
         """A session's note needs no answer, and nothing but a `read` receipt takes it off Waiting on you."""

@@ -530,6 +530,27 @@ class LandingTest(BoardTest):
         self.assertEqual(self.post("/draw", {}), (200, "drawing the surfaces"))
         self.assertIn("drawing 001-demo again", self._until("surfaces")["lines"])
 
+    def test_a_document_with_no_specification_offers_the_draft_button_and_the_stage_checks_it_drafted(self) -> None:
+        """A draft that stopped short exited 0 and said the specification was there. The file is the reading."""
+        self.land()
+        self._until("init")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["draftable"], "no document, nothing to draft")
+        (self.made / "docs").mkdir(exist_ok=True)
+        (self.made / "docs/prd.md").write_text("# Demo\n", encoding="utf-8")
+        found = json.loads(self.get("/voyage.json")[1])
+        self.assertTrue(found["draftable"])
+        self.assertEqual(found["waiting"]["href"], "#draft")
+        self.assertIn('id="draft"', self.get("/voyage")[1])
+        (self.made / "Makefile").write_text("draft:\n\t@echo 'nothing drafted'\n", encoding="utf-8")
+        self.assertEqual(self.post("/draft", {}), (200, "drafting the specification"))
+        receipt = self._until("draft")
+        self.assertIn("nothing drafted", receipt["lines"])
+        self.assertTrue(json.loads(self.get("/voyage.json")[1])["draftable"], "nothing drafted: offered again")
+        (self.made / "specs/001-demo").mkdir(parents=True)
+        (self.made / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["draftable"])
+        self.assertEqual(self.post("/draft", {})[0], 400)
+
     def test_a_launch_that_failed_can_be_continued_again(self) -> None:
         """A `make launch` that exited non-zero cast nothing off. It used to leave the button gone for the life
         of the board, and a press was told there was no specification — the one thing that was there."""

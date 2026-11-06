@@ -75,6 +75,7 @@ from .init_run import Fitting, outside_session
 from .init_run import adopted as adopted_init
 from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
+from .init_run import draft as draft_specification
 from .init_run import draw as draw_surfaces
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
@@ -149,7 +150,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 935 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 950 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -586,6 +587,12 @@ class Bridge(BaseHTTPRequestHandler):
             return "approved; continuing the build"
         return said
 
+    def draftable(self) -> bool:
+        """Whether the specification can be drafted from here: a document, no specification, and nothing running
+        — a draft that stopped short, or a project made without one, has a button rather than a command."""
+        idle = (not self.fitting or self.fitting.said()["done"]) and not outside_session(self.root)
+        return (self.root / "docs/prd.md").is_file() and not specifications(self.root) and idle
+
     def drawable(self) -> bool:
         """Whether the surfaces can be drawn from here: a specification to draw them from, nothing drawn
         yet or a storyboard a person turned down, and no child of this board already on its way.
@@ -643,7 +650,7 @@ class Bridge(BaseHTTPRequestHandler):
                       decision_card(self.root),
                       points=feedback_points(self.root), adopting=(adopting := adoption_card(
                           self.root, bool(self.fitting and not self.fitting.said()["done"]))),
-                      dates="" if adopting else strategy_dates(self.root))
+                      dates="" if adopting else strategy_dates(self.root), draftable=self.draftable())
 
     def triaging(self) -> bool:
         """Whether this board's child is the triage session, reading what a person said."""
@@ -663,10 +670,12 @@ class Bridge(BaseHTTPRequestHandler):
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
         able = {"launchable": self.launchable(), "castable": self.castable(rows, fleet),
-                "stoppable": self.stoppable(fleet), "drawable": self.drawable(), "modelable": self.modelable()}
+                "stoppable": self.stoppable(fleet), "drawable": self.drawable(), "modelable": self.modelable(),
+                "draftable": self.draftable()}
         return voyage_payload(found, able["launchable"], any(one.state == "working" for one in found),
                               able["castable"], able["stoppable"], able["drawable"],
-                              self.made_of(rows, fleet)[1], able["modelable"], waiting=on_voyage(self, fleet, able))
+                              self.made_of(rows, fleet)[1], able["modelable"], waiting=on_voyage(self, fleet, able),
+                              draftable=able["draftable"])
 
     def attach(self, named: str) -> str:
         """Point this board at another directory, or say why it cannot be.
@@ -839,6 +848,12 @@ class Bridge(BaseHTTPRequestHandler):
                 said = record_verdict(self.root, str(held.get("feature", "")), str(held.get("verdict", "")),
                                       str(held.get("reason", "")))
                 said = self.after_storyboard(said)
+            elif where == "/draft":
+                if not self.draftable():
+                    raise ValueError("nothing to draft: the specification is drafted from docs/prd.md, once, "
+                                     "and this project has one already or has no document")
+                self.fitting = draft_specification(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                said = "drafting the specification"
             elif where == "/draw":
                 if not self.drawable():
                     raise ValueError("nothing to draw: the surfaces are drawn from a specification under "

@@ -36,13 +36,20 @@ ASKING = ("Where a choice is only the person's to make — what the product is f
           "change — ask them, one question at a time, and write down what they decide. Where the documents in "
           "this project already settle a question, do not ask it; where they are silent on something you must "
           "decide to go on, decide it, and write it down as an assumption where the command says to.")
+#: And what every stage is told about where it is: a session the board started, after `./init` projected
+#: this harness's commands, skills and delegate types. AGENTS.md's first step — check, `make agents`, start
+#: a new session — read as an order to stop, and one agent stopped at it before drafting a line.
+SET_UP = ("This session was started by the board after `./init` projected this harness's commands, skills "
+          "and delegate types, so AGENTS.md's first step is already met: do not run `make agents`, and do not "
+          "stop to start a new session. Do the command's work here, in this session.")
 
 
 def prompt_for(command: str, argument: str = "") -> str:
     """What a stage asks: the words that make any agent read the command's file and follow it. The slash form
     is the one harness's and the protocol has no flag for it, so every agent is asked the long way."""
     tail = f", with `{argument}` as its argument" if argument else "; it is given no argument"
-    return f"Run the /{command} command: read commands/{command}.md and follow it exactly as written{tail}.\n\n{ASKING}"
+    return (f"Run the /{command} command: read commands/{command}.md and follow it exactly as written{tail}."
+            f"\n\n{ASKING}\n\n{SET_UP}")
 
 
 def launchable(root: Path) -> Launch | None:
@@ -149,7 +156,7 @@ class StageSession:
         return 0 if stop == "end_turn" else 1
 
     def words(self) -> str:
-        return f"{self.prompt}\n\n{ASKING}" if self.prompt else prompt_for(self.command, self.argument)
+        return f"{self.prompt}\n\n{ASKING}\n\n{SET_UP}" if self.prompt else prompt_for(self.command, self.argument)
 
     def answer(self, number: str, answer: str | None) -> bool:
         return self.agent is not None and self.agent.answer(number, answer)

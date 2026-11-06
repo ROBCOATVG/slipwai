@@ -130,6 +130,8 @@ def on_voyage(board: Any, fleet: dict[str, Any], able: dict[str, bool]) -> dict[
     approving = unjudged(board.root) if fitting is None or fitting.said()["done"] else ""
     if approving:
         held.append((1, f"The storyboard for {approving} is drawn: approve it or send it back", "#tab-screens"))
+    elif able.get("draftable"):
+        held.append((1, "The draft ended without a specification: draft it again", "#draft"))
     elif able.get("drawable"):
         held.append((1, "The specification is ready: read it, then draw the surfaces", "#draw"))
     elif able.get("modelable"):

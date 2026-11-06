@@ -422,11 +422,26 @@ def stage_step(where: Path, command: str, argument: str, argv: list[str], announ
 
 
 def draft_step(where: Path) -> Step:
+    def undrafted() -> str:
+        # An agent that read AGENTS.md's setup step as an order to stop ended its turn cleanly, with nothing
+        # drafted, and the stage said the specification was there to read. The file is the reading.
+        return "" if any((where / "specs").glob("*/spec.md")) else (
+            "The session ended without a specification under specs/; its lines above say where it stopped. "
+            "Draft the specification tries once more.")
     return stage_step(where, "draft", "docs/prd.md", DRAFT, DRAFTING, DRAFTING_ACP, drafted, "draft",
+                      after=undrafted,
                       done="The draft is done. The specification is under specs/: read it, and Continue the "
                            "build charts and splits it and casts off.",
-                      undone="The draft stopped short; its lines above say where. Fix what it named and draft "
-                             "again, or write the specification with the agent.")
+                      undone="The draft stopped short; its lines above say where. Draft the specification tries "
+                             "once more, or write it with the agent.")
+
+
+def draft(where: Path, said: list[str] | None = None) -> Fitting:
+    """The draft run again, in the background: what the board's Draft the specification button starts, on a
+    project with a document and no specification — a draft that stopped short, or a project made without one."""
+    fitting = Fitting(where, [draft_step(where)], said)
+    fitting.thread.start()
+    return fitting
 
 
 def first_feature(where: Path) -> str:

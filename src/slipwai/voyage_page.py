@@ -28,7 +28,7 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 800 — the bands of one window, and who decided each state the storyboard's note counts: where the
+# budget: 810 — the bands of one window, and who decided each state the storyboard's note counts: where the
 # project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
@@ -213,6 +213,8 @@ SCRIPT = BOARD_SCRIPT + """
     if (stop) { stop.hidden = !found.stoppable; stop.disabled = false; }
     const draw = document.getElementById('draw');
     if (draw) { draw.hidden = !found.drawable; draw.disabled = false; }
+    const draft = document.getElementById('draft');
+    if (draft) { draft.hidden = !found.draftable; draft.disabled = false; }
     const model = document.getElementById('model');
     if (model) { model.hidden = !found.modelable; model.disabled = false; }
     if (window.waiting) waiting.set(found.waiting);
@@ -242,6 +244,7 @@ SCRIPT = BOARD_SCRIPT + """
   document.addEventListener('click', event => {
     if (event.target.id === 'cast-off') { event.target.disabled = true; send('/cast-off', {}); }
     if (event.target.id === 'draw') { event.target.disabled = true; send('/draw', {}); }
+    if (event.target.id === 'draft') { event.target.disabled = true; send('/draft', {}); }
     if (event.target.id === 'model') { event.target.disabled = true; send('/model', {}); }
     if (event.target.id === 'intake-go') { event.target.disabled = true; send('/intake', {}); }
     const answer = event.target.dataset && event.target.dataset.answer;
@@ -419,7 +422,7 @@ def expect_card(found: list[Stage]) -> str:
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
                  stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
-                 modelable: bool = False) -> str:
+                 modelable: bool = False, draftable: bool = False) -> str:
     strip = "".join(stage_html(one, index) for index, one in enumerate(found))
     wide = f"--stages:{max(1, len(found))}"
     said = now_said(found)
@@ -438,6 +441,9 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     # a command in the agent — on the page a person had just run two headless sessions from. This runs the
     # half of it nobody has to be present for; the half they do is the storyboard, below.
     button += (f'<button class="go" id="draw"{"" if drawable else " hidden"}>Draw the surfaces</button>')
+    # A draft that ended with nothing drafted left a project with a document, no specification and no way
+    # on but a terminal. Shown by the poll, as Draw is.
+    button += (f'<button class="go" id="draft"{"" if draftable else " hidden"}>Draft the specification</button>')
     # Approving starts the model once and locks the verdict, so a model step that failed had no way back but
     # the agent. Always in the page and shown by the poll, as Draw is, so the page's shape does not move.
     button += (f'<button class="go" id="model"{"" if modelable else " hidden"}>Model again</button>')
@@ -720,7 +726,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
          decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "",
-         dates: str = "") -> str:
+         dates: str = "", draftable: bool = False) -> str:
     now = current(found)
     # An adopted repository walks its own steps until its first specification, and the strip a generated
     # project has would name a stage it is not on: the adoption's card stands where the strip does.
@@ -733,7 +739,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     live = live_cards(fleet, config or {}, True, project_tabs(root, True)) if fleet else ""
     # Past it, the strategy's checkpoint stands above the strip, never in its place.
     where = adopting or dates + passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
-                                     feature, drawable, shape, modelable)
+                                     feature, drawable, shape, modelable, draftable)
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]
@@ -790,8 +796,9 @@ def now_said(found: list[Stage]) -> str:
 
 def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False,
             stoppable: bool = False, drawable: bool = False, shape: str = "", modelable: bool = False,
-            waiting: dict | None = None) -> str:
+            waiting: dict | None = None, draftable: bool = False) -> str:
     return json.dumps({"stages": stage_payload(found), "launchable": launchable, "moving": moving,
                        "castable": castable, "stoppable": stoppable, "drawable": drawable, "modelable": modelable,
+                       "draftable": draftable,
                        "shape": shape, "now": now_said(found),
                        "waiting": waiting or {"count": 0, "text": "", "href": ""}})

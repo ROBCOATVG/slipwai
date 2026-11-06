@@ -64,7 +64,7 @@ def rules(keys: list[str]) -> str:
     the project has rather than a list written out here."""
     return "".join(
         f"#tab-{key}:checked~.bar label[for=tab-{key}]{{color:var(--teal);border-color:var(--rule);"
-        f"background:var(--paper);font-weight:600}}"
+        f"background:var(--paper);font-weight:500}}"
         f"#tab-{key}:checked~.panels>[data-panel={key}]{{display:block}}" for key in keys)
 
 

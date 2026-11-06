@@ -1,13 +1,9 @@
 PATCH
 
-**The board reads as one designed page: sentence-case headings, one set of state colours, paths that break
-at slashes, and plural words that are words.** Table headers and section headings were small uppercase
-tracked labels; they are now sentence case at a readable size. The three state colours a stage or chip can
-wear — waiting, attention, paused — were hard-coded hexes in six modules and did not follow the theme; they
-are tokens now, with dark values, and the dark theme's cards take the ground's tint instead of a warm grey
-on a blue page. The draw.io viewer's bar follows the theme too. Controls share one radius (8px) and cards
-another (12px), the strip's file paths break only at a slash, the Streams table says `3h ago` rather than
-`12622m ago`, and the board says `5 notes for you` rather than `5 note(s) for you`. Nothing moved and no
-control changed what it does.
+**The board's chrome, polished.** Buttons share one radius, and only a status chip is a pill. The ready
+hand-over button no longer glows; the strip and its colour say it. Titles carry their weight in size, not
+boldness. Each question on the start form keeps its help text to the width of its field. The Board's
+*Start something* card lists all three doors. The question box on the Voyage pushes the page up when it
+opens, so nothing sits under it. Found by an audit against the unslop signs, by Damir Sokolovsky.
 
 **Catch-up:** nothing; the board is served from the installed command.

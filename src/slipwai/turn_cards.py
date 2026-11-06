@@ -27,12 +27,12 @@ STYLE = """
 .turns .turn.tool .path:empty{display:none}
 .turns .turn ul{margin:4px 0 0;padding-left:1.2rem}
 .turns .turn li{margin:2px 0}
-.turns .turn.waiting{justify-self:start;border:0;padding:4px 4px;color:var(--ink-3);font-size:.84rem;font-style:italic;
+.turns .turn.waiting{justify-self:start;border:0;padding:4px 4px;color:var(--ink-3);font-size:.84rem;
   animation:breathe 1.7s ease-in-out infinite}
 .turns .turn.plan{justify-self:start;background:var(--ground);font-size:.84rem}
 .turns .turn.plan ol{margin:0;padding-left:1.2rem}
 .turns .turn.plan li.completed{color:var(--ink-3);text-decoration:line-through}
-.turns .turn.plan li.in_progress{font-weight:600}
+.turns .turn.plan li.in_progress{font-weight:500}
 .turns .turn.permission,.turns .turn.question{justify-self:stretch;max-width:none;border-color:var(--brass);
   background:var(--brass-soft);white-space:normal}
 .turns .turn.permission .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem;display:block;

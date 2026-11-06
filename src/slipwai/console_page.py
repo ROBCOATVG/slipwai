@@ -21,7 +21,7 @@ STARTERS = ("What is waiting on me?", "Why is anything stalled or paused?", "Wha
 STYLE = """
 #console{position:fixed;right:16px;bottom:16px;z-index:20;display:grid;justify-items:end;gap:10px;
   max-width:calc(100vw - 32px)}
-#console .launch{font:inherit;font-size:.88rem;padding:8px 16px;border-radius:999px;cursor:pointer;
+#console .launch{font:inherit;font-size:.88rem;padding:8px 16px;border-radius:8px;cursor:pointer;
   border:1px solid var(--teal);background:var(--teal);color:#fff;box-shadow:0 2px 8px rgb(0 0 0 / 18%)}
 #console .panel{width:min(30rem,calc(100vw - 32px));margin:0;box-shadow:0 8px 24px rgb(0 0 0 / 18%)}
 #console .panel[hidden]{display:none}
@@ -37,7 +37,7 @@ STYLE = """
 #console .turn.error{justify-self:start;border-color:var(--brass);color:var(--brass)}
 #console .empty{color:var(--ink-3);font-size:.88rem;margin:0}
 #console .starters{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0}
-#console .starters button{font:inherit;font-size:.8rem;padding:4px 10px;border-radius:999px;cursor:pointer;
+#console .starters button{font:inherit;font-size:.8rem;padding:4px 10px;border-radius:8px;cursor:pointer;
   border:1px solid var(--rule);background:transparent;color:var(--ink-2)}
 #console .starters button:hover{border-color:var(--teal);color:var(--ink)}
 #console .head{display:flex;align-items:baseline;gap:10px;justify-content:space-between}
@@ -62,7 +62,10 @@ SCRIPT = DRAW + """
       panel.hidden = !open; launch.setAttribute('aria-expanded', String(open));
       try { localStorage.setItem(KEY, open ? '1' : ''); } catch (fault) { /* a private window: not remembered */ }
       if (open) { log.scrollTop = log.scrollHeight; input.focus(); }
+      clear();
     };
+    // The page ends above the open box, so the strip and the work are never under it.
+    const clear = () => { document.body.style.paddingBottom = panel.hidden ? '' : (panel.offsetHeight + 48) + 'px'; };
     launch.addEventListener('click', () => show(panel.hidden));
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !panel.hidden) show(false); });
     let was = false;
@@ -85,6 +88,7 @@ SCRIPT = DRAW + """
       drawWaiting(log, busy, said.thinking);
       if (said.turns.length || busy) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
       paint(said);
+      clear();
       clearTimeout(timer);
       timer = setTimeout(poll, busy ? 700 : 4000);  // and while idle, for a turn another window started
     };

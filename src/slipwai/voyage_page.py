@@ -85,7 +85,7 @@ a.quiet:hover{background:var(--teal-soft)}
   color:var(--brass);margin-bottom:3px}
 .expect .now p{margin:0;font-size:.9rem;color:var(--ink-2)}
 .expect ol{margin:8px 0 0;padding:0 0 0 18px;display:grid;gap:7px;font-size:.86rem;color:var(--ink-2)}
-.expect ol b.who{color:var(--ink);font-weight:600}
+.expect ol b.who{color:var(--ink);font-weight:500}
 .expect ol li.gone{opacity:.45}
 .columns{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .col h3{font-size:.8rem;font-weight:500;color:var(--ink-3);margin:0 0 8px;
@@ -143,7 +143,7 @@ details.slice button{justify-self:start;margin-top:4px}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;margin:18px 0 0;border-bottom:1px solid var(--rule)}
 .tabs button{font:inherit;font-size:.88rem;background:none;border:1px solid transparent;border-bottom:0;
   border-radius:8px 8px 0 0;padding:8px 14px;margin-bottom:-1px;color:var(--ink-2);cursor:pointer}
-.tabs button[aria-selected="true"]{background:var(--paper);border-color:var(--rule);color:var(--ink);font-weight:600}
+.tabs button[aria-selected="true"]{background:var(--paper);border-color:var(--rule);color:var(--ink);font-weight:500}
 .tabs .count{font-size:.72rem;padding:0 6px;border-radius:999px;margin-left:6px;background:var(--brass-soft);
   color:var(--brass)}
 .tab[hidden]{display:none}

@@ -35,7 +35,7 @@ STYLE = """
 .filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
 .filters .lbl{font-size:.78rem;color:var(--ink-3)}
 .f{font:inherit;font-size:.8rem;border:1px solid var(--rule);background:var(--paper);color:var(--ink-2);
-  border-radius:999px;padding:2px 10px;cursor:pointer}
+  border-radius:8px;padding:2px 10px;cursor:pointer}
 .f[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .filters input{flex:1 1 160px;min-width:0;font:inherit;font-size:.84rem;padding:4px 10px;border:1px solid var(--rule);
   border-radius:8px;background:var(--paper);color:var(--ink)}

@@ -37,9 +37,9 @@ STYLE = """
 @media (max-width:860px){#sketch{grid-template-columns:minmax(0,1fr)}}
 #sketch .card{margin-top:0;min-width:0}
 #sketch nav.steps{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
-#sketch nav.steps span{font-size:.82rem;padding:5px 12px;border-radius:999px;background:var(--rule-2);
+#sketch nav.steps span{font-size:.82rem;padding:5px 12px;border-radius:8px;background:var(--rule-2);
   color:var(--ink-2)}
-#sketch nav.steps span.now{background:var(--teal);color:#fff;font-weight:600}
+#sketch nav.steps span.now{background:var(--teal);color:#fff;font-weight:500}
 #sketch .log{max-height:min(32rem,60vh);min-height:8rem;overflow:auto;display:grid;gap:8px;align-content:start;
   padding:2px 2px 10px}
 #sketch .turn{max-width:min(46rem,92%);padding:8px 12px;border-radius:10px;border:1px solid var(--rule);
@@ -81,7 +81,6 @@ STYLE = """
 #sketch .legend{color:var(--ink-3);font-size:.78rem;margin:8px 0 0}
 #sketch a.hand-over{display:inline-block;margin-top:12px;font-size:.9rem;padding:8px 14px;border-radius:8px;
   border:1px solid var(--teal);background:var(--teal);color:#fff;text-decoration:none}
-#sketch a.hand-over.ready{box-shadow:0 0 0 4px var(--teal-soft)}
 """
 
 SCRIPT = """

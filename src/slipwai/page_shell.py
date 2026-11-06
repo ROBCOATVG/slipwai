@@ -92,7 +92,7 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
 line-height:1.45;padding-inline:20px;padding-block:0 60px}
 .wrap{max-width:1200px;margin:0 auto}
 code,.mono{font-family:var(--mono);font-size:.92em}
-h1{font-size:1.35rem;font-weight:600;margin:0}
+h1{font-size:1.35rem;font-weight:500;margin:0}
 .sub{color:var(--ink-3);font-size:.85rem;margin-top:3px}
 .top{padding-block:22px 14px;border-bottom:1px solid var(--rule);display:flex;align-items:flex-start;
 justify-content:space-between;gap:16px}
@@ -103,7 +103,7 @@ justify-content:space-between;gap:16px}
 .mark .spark{color:var(--brass)}
 @media (max-width:480px){.mark{width:34px;height:34px}}
 .card{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:16px;margin-top:18px}
-.card h2{font-size:.95rem;font-weight:600;margin:0 0 10px}
+.card h2{font-size:.95rem;font-weight:500;margin:0 0 10px}
 table{width:100%;border-collapse:collapse;font-size:.9rem}
 th{text-align:left;font-weight:500;color:var(--ink-3);font-size:.8rem;
 padding:0 10px 8px 0;border-bottom:1px solid var(--rule-2)}
@@ -212,7 +212,7 @@ button.working::before{content:"";position:absolute;left:10px;top:50%;width:11px
 
 FORM = """
 form.ask-page{display:grid;gap:14px;margin:0}
-form.ask-page .q{display:grid;gap:4px}
+form.ask-page .q{display:grid;gap:4px;max-width:720px}
 form.ask-page label{font-size:.85rem;color:var(--ink-2);font-weight:500}
 form.ask-page .why{color:var(--ink-3);font-size:.8rem;white-space:pre-line}
 /* A checkbox group. Rows rather than a multiple-select, because what each one is for has to be readable
@@ -241,7 +241,7 @@ nav.tabs a{font-size:.88rem;color:var(--ink-2);text-decoration:none;padding:8px 
 border:1px solid transparent;border-bottom:none;margin-bottom:-1px}
 nav.tabs a:hover{color:var(--ink)}
 nav.tabs a[aria-current="page"]{background:var(--paper);border-color:var(--rule);color:var(--ink);
-font-weight:600}
+font-weight:500}
 """
 
 

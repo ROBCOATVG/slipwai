@@ -15,6 +15,8 @@ from .page_shell import document, esc
 
 #: What can be started from here: the page, the verb, and why.
 STARTING = (
+    ("Start from an idea", "", "/brief",
+     "A conversation that draws a prototype you can click through, and writes the brief a project starts from."),
     ("Start from a document", "generate", "/generate",
      "The interview, asked here: the delivery foundation, the language, what the first service owns, and "
      "where it goes to production."),
@@ -48,7 +50,8 @@ def starting_points(command: str | None = None) -> str:
     command = this_command() if command is None else command
     rows = "".join(f'<dt><a href="{esc(where)}"><b>{esc(title)}</b></a>'
                    f'<div class="empty">{esc(why)}</div></dt>'
-                   f"<dd><code>{esc(command)} {esc(verb)}</code></dd>" for title, verb, where, why in STARTING)
+                   + (f"<dd><code>{esc(command)} {esc(verb)}</code></dd>" if verb else "<dd></dd>")
+                   for title, verb, where, why in STARTING)
     return f'<div class="card"><h2>Start something</h2><dl>{rows}</dl></div>'
 
 

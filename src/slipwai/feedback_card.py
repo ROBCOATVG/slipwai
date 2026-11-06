@@ -35,7 +35,7 @@ STYLE = """
 #feedback .prop{border:1px solid var(--rule);border-radius:8px;padding:10px 12px;margin:10px 0;display:grid;gap:6px}
 #feedback .prop q{color:var(--ink-2);font-style:italic}
 #feedback .prop pre{white-space:pre-wrap;font-family:inherit;font-size:.86rem;margin:0;color:var(--ink-2)}
-#feedback .route{font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;margin-right:8px;
+#feedback .route{font-size:.72rem;font-weight:500;padding:2px 8px;border-radius:999px;margin-right:8px;
   background:var(--brass-soft);color:var(--brass)}
 #feedback .route.defect{background:transparent;border:1px solid var(--critical);color:var(--critical)}
 #feedback .route.scope,#feedback .route.planned{background:var(--teal-soft);color:var(--teal)}

@@ -26,14 +26,14 @@ STYLE = """
 #settings .agent{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;padding:8px 10px;
   border:1px solid var(--rule);border-radius:8px;cursor:pointer}
 #settings .agent input{margin:4px 0 0;accent-color:var(--teal)}
-#settings .agent b{font-weight:600}
+#settings .agent b{font-weight:500}
 #settings .agent .where{display:block;font-size:.8rem;color:var(--ink-3);overflow-wrap:anywhere}
 #settings .agent.missing{color:var(--ink-3)}
 #settings .agent.missing b{color:var(--ink-2)}
 #settings .ready{display:block;font-size:.8rem;color:var(--ink-2);margin-top:4px}
 #settings .ready.fault{color:var(--brass)}
 #settings .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-#settings .acts button{font:inherit;font-size:.78rem;padding:3px 10px;border-radius:999px;cursor:pointer;
+#settings .acts button{font:inherit;font-size:.78rem;padding:3px 10px;border-radius:8px;cursor:pointer;
   border:1px solid var(--rule);background:transparent;color:var(--ink-2)}
 #settings .acts button:hover{border-color:var(--teal);color:var(--ink)}
 #settings .acts code{font-size:.78rem}

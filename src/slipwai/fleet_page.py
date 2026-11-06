@@ -45,7 +45,7 @@ STYLE = """
 .chip.paused{background:var(--paused-soft);color:var(--paused)}
 .group{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-top:12px;background:var(--paper)}
 .group .head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
-.group h3{font-size:.95rem;font-weight:600;margin:0}
+.group h3{font-size:.95rem;font-weight:500;margin:0}
 .group .meta{color:var(--ink-3);font-size:.82rem;margin-top:4px}
 .group .prog{height:6px;border-radius:3px;background:var(--rule-2);overflow:hidden;margin-top:10px}
 .group .prog i{display:block;height:100%;background:var(--teal)}

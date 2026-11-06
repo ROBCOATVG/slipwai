@@ -25,7 +25,7 @@ STYLE = """
 #waiting{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:14px 0 0;padding:10px 14px;
   border:1px solid var(--brass);border-left-width:5px;border-radius:8px;background:var(--brass-soft);color:var(--ink)}
 #waiting[hidden]{display:none}
-#waiting .what{flex:1 1 auto;font-weight:600}
+#waiting .what{flex:1 1 auto;font-weight:500}
 #waiting a{font:inherit;font-size:.85rem;padding:6px 12px;border-radius:7px;border:1px solid var(--brass);
   color:var(--ink);text-decoration:none;background:var(--paper);white-space:nowrap}
 #waiting a:hover{background:var(--brass-soft)}

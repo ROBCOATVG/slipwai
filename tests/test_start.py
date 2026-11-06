@@ -127,6 +127,7 @@ class OpenedBoardTest(unittest.TestCase):
         """Empty, with what it *can* do from there. The alternative is a sentence telling somebody to go
         back to the terminal, which is the moment this was supposed to stop being a terminal."""
         said = self.board(self.root)
+        self.assertIn("Start from an idea", said)
         self.assertIn("Start from a document", said)
         self.assertIn("Start from a codebase", said)
 

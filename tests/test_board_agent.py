@@ -23,8 +23,8 @@ class ToolFieldsTest(unittest.TestCase):
     def test_a_failed_call_s_reason_is_kept_as_its_note(self) -> None:
         fields = tool_fields({"toolCallId": "c1", "title": "skill", "kind": "other", "status": "failed",
                               "rawInput": {"id": "frontend-design"},
-                              "content": [{"type": "content", "content": {"type": "text",
-                                                                           "text": "Unable to load skill frontend-design"}}]})
+                              "content": [{"type": "content",
+                                           "content": {"type": "text", "text": "Unable to load skill frontend-design"}}]})
         self.assertEqual((fields["what"], fields["note"], fields["path"]),
                          ("frontend-design", "Unable to load skill frontend-design", ""))
         self.assertEqual(tool_fields({"toolCallId": "c2"})["note"], "")

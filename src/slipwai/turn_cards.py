@@ -16,6 +16,7 @@ STYLE = """
 .turns .turn.tool b{flex:none;min-width:5.2em}
 .turns .turn.tool .title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .turns .turn.tool b,.turns .turn.tool .path{white-space:nowrap}
+.turns .turn.tool .note{color:var(--critical);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .turns .turn.tool .dot{width:8px;height:8px;border-radius:50%;background:var(--rule);flex:none;align-self:center}
 .turns .turn.tool.in_progress .dot{background:var(--warn)}
 .turns .turn.tool.completed .dot{background:var(--good)}
@@ -70,8 +71,8 @@ function toolLine(one, turn) {
   const said = (bare && turn.tool.what) || (bare ? '' : named) || turn.tool.what || '';
   const title = one.querySelector('.title');
   title.textContent = said.length > 90 ? said.slice(0, 90) + '…' : said; title.title = said;
-  const inside = turn.tool.path.match(/\\/(brief|prototype)\\/(.*)$/);
-  one.querySelector('.path').textContent = inside ? inside[1] + '/' + inside[2] : '';
+  const inside = turn.tool.path.match(/\\/(brief|prototype)(?:\\/(.*))?$/);
+  one.querySelector('.path').textContent = inside ? inside[1] + (inside[2] ? '/' + inside[2] : '') : '';
 }
 const drawTurn = (log, turn, reply) => {
   const card = kind => {
@@ -84,7 +85,12 @@ const drawTurn = (log, turn, reply) => {
     const had = log.querySelector('[data-tool="' + turn.tool.id + '"]');
     if (!had) return false;
     had.className = 'turn tool ' + turn.tool.status;
-    if (turn.text || turn.tool.what) toolLine(had, turn);
+    if (turn.text || turn.tool.what || turn.tool.path) toolLine(had, turn);
+    if (turn.tool.status === 'failed' && turn.tool.note) {
+      let note = had.querySelector('.note');
+      if (!note) { note = document.createElement('span'); note.className = 'note'; had.appendChild(note); }
+      note.textContent = turn.tool.note;
+    }
     if (turn.text) had.querySelector('.title').textContent = turn.text;
     return turn.tool.status === 'completed' && turn.tool.kind !== 'read' && turn.tool.kind !== 'search';
   }

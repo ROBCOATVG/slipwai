@@ -106,6 +106,10 @@ def started(slug: str, document: str = "") -> Path:
     return home
 
 
+#: How the role begins, which is how a replayed first message is told from one the person wrote whole.
+PROMPT_HEAD = "You are drawing a product"
+
+
 def role(home: Path) -> str:
     """The eight steps, with this sketch's two folders named by their full paths."""
     return (PROMPT.read_text(encoding="utf-8").strip()
@@ -266,7 +270,10 @@ class Sketch:
                 self.busy = False
 
     def heard(self, role: str, kind: str, text: str, more: dict | None) -> None:
-        """A turn from the agent, with the step and ready lines read off its words."""
+        """A turn from the agent, with the step and ready lines read off its words. A person's words replayed
+        on a load come back with the role the board put ahead of them; the page shows only theirs."""
+        if role == "person" and kind == "text" and "\n\n---\n\n" in text and text.startswith(PROMPT_HEAD):
+            text = text.rsplit("\n\n---\n\n", 1)[1]
         self.say(role, self.followed(text) if kind == "text" and role == "sketch" else text, kind, more)
 
     def answer(self, number: str, answer: str | None) -> bool:

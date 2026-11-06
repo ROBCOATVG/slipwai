@@ -43,7 +43,8 @@ def located(tool_call: dict[str, Any]) -> str:
 
 #: The one field of a tool call's input that says what it is about, in the order it is looked for: a
 #: command, a file, a name (a skill's), a pattern, a query, an address.
-TELLING = ("command", "cmd", "filePath", "file_path", "path", "name", "skill", "pattern", "query", "url", "description")
+TELLING = ("command", "cmd", "filePath", "file_path", "path", "name", "skill", "id", "pattern", "query", "url",
+           "description")
 
 
 def telling(update: dict[str, Any]) -> str:
@@ -59,9 +60,20 @@ def telling(update: dict[str, Any]) -> str:
     return ""
 
 
+def noted(update: dict[str, Any]) -> str:
+    """What a call's content says in words, in one short line: a failed call's reason, mostly."""
+    words = []
+    for block in update.get("content") or []:
+        inner = block.get("content") if isinstance(block, dict) else None
+        if isinstance(inner, dict) and inner.get("type") == "text" and inner.get("text"):
+            words.append(str(inner["text"]).strip())
+    return " ".join(words).splitlines()[0][:160] if words else ""
+
+
 def tool_fields(update: dict[str, Any]) -> dict[str, Any]:
     return {"id": str(update.get("toolCallId") or ""), "kind": str(update.get("kind") or ""),
-            "status": str(update.get("status") or ""), "path": located(update), "what": telling(update)}
+            "status": str(update.get("status") or ""), "path": located(update), "what": telling(update),
+            "note": noted(update)}
 
 
 class BoardAgent:

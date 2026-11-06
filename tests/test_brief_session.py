@@ -95,6 +95,8 @@ class ProtocolTest(unittest.TestCase):
         said = again.said()
         self.assertFalse(said["busy"])
         self.assertIn("earlier: hello again", [t["text"] for t in said["turns"]], "the agent replayed the session")
+        self.assertIn(("person", "hello from before"), [(t["role"], t["text"]) for t in said["turns"]],
+                      "the person's words replayed without the role the board put ahead of them")
         self.assertEqual((said["agent"], said["model"]), ("stand-in 0.1", "A"))
         self.assertEqual(again.ask("And a second boat."), "asked")
         self.assertEqual(self.settle_on(again)["turns"][-1]["kind"], "tool_update", "and the conversation goes on")
@@ -150,7 +152,7 @@ class ProtocolTest(unittest.TestCase):
         self.until("permission")
         self.assertEqual(self.sketch.cancel(), "stopped")
         said = self.settle()
-        self.assertEqual(said["turns"][-1]["text"], "Stopped.")
+        self.assertIn("Stopped.", [t["text"] for t in said["turns"][-3:]], "a tool's last update may land after")
         self.sketch.ask("again")
         self.assertEqual(self.settle()["turns"][-3]["text"], "Drawn: again", "the same session answers the next turn")
 

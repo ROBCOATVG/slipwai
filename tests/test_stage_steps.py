@@ -60,6 +60,21 @@ class StageStepsTest(unittest.TestCase):
         self.assertEqual(model_prompt(self.root), "Model it.")
         (self.root / "scripts" / "agents" / "model.py").write_text("import sys\nsys.exit(2)\n", encoding="utf-8")
         self.assertEqual(model_prompt(self.root), "", "a script without the flag leaves the stage to the child")
+
+    def test_a_script_written_before_the_flag_is_never_run_for_its_prompt(self) -> None:
+        """The old script ignores its arguments and runs the stage: asked for its prompt, it started the model."""
+        old = "import sys, pathlib\ndel sys.argv\npathlib.Path('ran').write_text('the stage ran')\n"
+        (self.root / "scripts" / "agents" / "model.py").write_text(old, encoding="utf-8")
+        self.assertEqual(model_prompt(self.root), "")
+        self.assertFalse((self.root / "ran").exists(), "read off the text, not run")
+        layout = Layout("adopt")
+        script = self.root / layout.under("scripts/agents/step.py")
+        script.parent.mkdir(parents=True)
+        script.write_text(old, encoding="utf-8")
+        with mock.patch.object(stage_session, "launchable", return_value=STAND_IN):
+            steps = agent_steps(layout, Next("the build floor, in the agent", "it runs", False), self.root)
+        self.assertEqual(steps[0].argv[1:], ["adopt/scripts/agents/step.py", "the build floor", "it runs"])
+        self.assertFalse((self.root / "ran").exists())
         self.assertEqual((model_step(self.root).argv, model_step(self.root).session), (MODEL, None))
 
     def test_the_model_runs_over_the_protocol_and_is_short_without_a_slice(self) -> None:

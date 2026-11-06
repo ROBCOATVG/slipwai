@@ -19,6 +19,7 @@ from .layout import Layout, layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import adoption_of
 from .shell_environment import login_environment
+from .stage_steps import knows
 from .strategy_steps import CONTINUE, home_of, name_of, stack_of
 
 #: The steps by the first word of their action in `next_steps`, which is how the voyage knows which is now.
@@ -87,7 +88,10 @@ def home_steps(root: Path) -> list[Step]:
 
 def step_prompt(root: Path, layout: Layout, taken: str, why: str) -> str:
     """The step's prompt, from the project's own script; empty where the script has no `--prompt`, which
-    leaves the step to the headless child that script is."""
+    leaves the step to the headless child that script is. Read off the script's text first: one written
+    before the flag would take `--prompt` for the step's name and run it."""
+    if not knows(root / layout.under(STEP), "--prompt"):
+        return ""
     try:
         said = subprocess.run(["python3", layout.under(STEP), "--prompt", taken, why], cwd=root, capture_output=True,
                               text=True, env=login_environment(), timeout=30, check=False)

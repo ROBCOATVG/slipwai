@@ -694,3 +694,4 @@ class StreamDrawerTest(Fixture):
     def test_a_person_s_message_is_still_escaped_inside_the_drawer(self) -> None:
         self.deck("ORD", logs.entry("told", fairway="ORD", message="<script>alert(1)</script>"))
         self.assertNotIn("<script>alert(1)</script>", self.rendered())
+

@@ -52,9 +52,21 @@ NOBODY = "Proceed on your best-evidenced proposal; nobody is here to ask."
 PROMPT_FLAG = "--prompt"
 
 
+def knows(script: Path, flag: str) -> bool:
+    """Whether the project's script takes the flag — read off its text, never by running it. A script written
+    before the flag ignores its arguments and runs its stage: asked for its prompt, it would start the very
+    session the board was about to start, under a timeout that then killed it."""
+    try:
+        return flag in script.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+
+
 def model_prompt(where: Path) -> str:
     """The model's prompt, from the project's own script; empty where the script has no `--prompt`, which
     leaves the stage to the headless child that script is."""
+    if not knows(where / "scripts/agents/model.py", PROMPT_FLAG):
+        return ""
     try:
         said = subprocess.run(["python3", "scripts/agents/model.py", PROMPT_FLAG], cwd=where, capture_output=True,
                               text=True, env=login_environment(), timeout=30, check=False)

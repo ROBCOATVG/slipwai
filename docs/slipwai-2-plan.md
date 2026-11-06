@@ -1606,7 +1606,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 192 of 197 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 9/11, phase 22 8/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 193 of 198 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 9/11, phase 22 9/9. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2547,7 +2547,7 @@ files and gates are in [the ACP plan](acp-plan.md); this table is the one `make 
 | 22.6 | The live run: one brief through the first page on Claude's adapter and one on a native agent, the rows marked proven and the runs recorded in the ACP plan | new (owner, 2026-11-05) | S | Two rows `proven: true` with dates, and the ACP plan's status line carries both runs | done |
 | 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives, each with progress, a permission by policy, a question on the page and a cancel; the headless path kept where a harness has no `acp` row | new (owner, 2026-11-05) | L | The draft on a live project asks on the page instead of writing an assumption, and the count after it is lower than 21.6d's | done |
 | 22.8 | Install from the settings page: an `npx` agent launched with Node alone, a binary agent fetched for this platform with its sha256 checked, sign-in through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | new (owner, 2026-11-05) | M | One agent installed and signed in from the page on a machine that had none, its row marked proven | done |
-| 22.9 | The captain's protocol path turned on per project from the board: `sessions` in `.specify/cruise.json`, print or protocol, set on the Who answers card and read by the captain's switch | new (owner, 2026-11-06) | S | A project set to `protocol` runs its captains over the Agent Client Protocol with nothing in the environment; one set to `print`, or never set, runs them as before |  |
+| 22.9 | The captain's protocol path turned on per project from the board: `sessions` in `.specify/cruise.json`, print or protocol, set on the Who answers card and read by the captain's switch | new (owner, 2026-11-06) | S | A project set to `protocol` runs its captains over the Agent Client Protocol with nothing in the environment; one set to `print`, or never set, runs them as before | done |
 
 ### Risks the plan carries, and where each is caught
 

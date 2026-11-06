@@ -122,6 +122,12 @@ def path_findings(where: str, label: str, value: str, base: Path) -> list[str]:
     for path in paths_of(value):
         if PLACEHOLDER.search(path):
             findings.append(f"{where}: {label} still carries a placeholder: {path}")
+        elif Path(path).is_absolute() or not (base / path).resolve().is_relative_to(ROOT.resolve()):
+            # Absolute, or `..` out of the project: it exists on the machine that wrote it and nowhere else, so
+            # this passed there and failed every other checkout — recap's LB9 named its walk recordings by an
+            # absolute path into a folder Git ignores, and CI was the first other checkout to read it.
+            findings.append(f"{where}: {label} names `{path}`, which is outside the project; name a path in it, "
+                            f"or say in words what stayed on the machine that made it")
         elif not (base / path).exists() and not (ROOT / path).exists():
             findings.append(f"{where}: {label} names `{path}`, which is not in the tree")
     return findings

@@ -66,9 +66,13 @@ class CapabilityGatesTest(unittest.TestCase):
         self.assertIn("stowed to the careen", rung)
         self.assertIn("an open `CRITICAL` is the next slice", rung)
 
-    def test_keystone_gates_the_last_slice_before_the_merge_that_lights_it(self) -> None:
-        self.assertIn("under the `keystone` release mode on the last slice's branch before its merge",
-                      self.rungs()["Capability gates"])
+    def test_every_mode_gates_the_last_slice_before_the_merge_that_makes_it_whole(self) -> None:
+        """After the last merge, nothing owned the gates: recap merged every slice and gated no capability."""
+        rung = self.rungs()["Capability gates"]
+        self.assertIn("on the capability's last slice's branch, before that slice merges", rung)
+        self.assertIn("The harbourmaster refuses the merge that would make a capability whole", rung)
+        self.assertIn("in every release mode", rung)
+        self.assertIn("under `keystone` that merge is also the one that lights the entry point", rung)
 
     def test_the_demo_rung_proves_examples_by_tests_and_opens_no_browser(self) -> None:
         rung = self.rungs()["Demo"]

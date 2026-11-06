@@ -17,9 +17,10 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 590 — every column of the board folded from the logs, including what waits on a person: a park,
+# budget: 615 — every column of the board folded from the logs, including what waits on a person: a park,
 # a deck log nobody can read,
-# a told, the decisions nobody has read, and a question a headless stage posted and nobody has answered
+# a told, the decisions nobody has read, a question a headless stage posted and nobody has answered, and the
+# capabilities whole and owed their gates
 # yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
 # which `told` an answer or a claim has already taken up, which one is a session's note for another session
 # rather than for the person, and whether unread decisions hold anything up
@@ -537,6 +538,26 @@ def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:
                              f"`python3 {script} --json --feature {feature}` and repair the reported fault")
 
 
+def gates_owed(root: Path) -> list[str]:
+    """The capabilities that are whole and whose gates have not cleared, through the project's own script.
+
+    The headline said *Built* once every claimed slice had merged, and recap's eight capabilities had never been
+    gated: nothing on the board said a whole capability is not a finished one. Empty where the project's script
+    is too old to answer, which `slipwai migrate` updates, or cannot be run.
+    """
+    script = root / "scripts/agents/capabilities.py"
+    if not script.is_file() or "--json" not in script.read_text(encoding="utf-8"):
+        return []
+    try:
+        done = subprocess.run([project_python(), "-B", str(script), "--gates", "--json"],
+                              capture_output=True, text=True, timeout=15, env=login_environment())
+        result = json.loads(done.stdout)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return []
+    owed = result.get("owed") if isinstance(result, dict) else None
+    return [str(name) for name in owed] if isinstance(owed, list) else []
+
+
 def ceiling_of(held: dict) -> int | None:
     """The decision ceiling the harbour runs to, or None where it says none a reader can use."""
     try:
@@ -573,6 +594,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         # The acceptance facts, for the voyage's last stage: a demo owed is a capability due and not yet
         # accepted, and accepted is the only line a capability ends on.
         "accepted": sorted(set(accepted)),
+        "gates_owed": gates_owed(root),
         "demo_due": sorted(set(due) - set(accepted)),
         "demo_due_in": {str(e.fields["capability"]): one.name for one in found for e in one.entries  # whose
                         if e.kind == "demo-due" and str(e.fields["capability"]) not in accepted},

@@ -90,6 +90,10 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import berths  # noqa: E402
+try:  # the capability hold reads the chart through it; a harbour without it holds nothing back on capabilities
+    import capabilities  # noqa: E402
+except ImportError:  # pragma: no cover - a toolkit older than the capability hold
+    capabilities = None  # type: ignore[assignment]
 import claims  # noqa: E402
 import inbox  # noqa: E402
 import logs  # noqa: E402
@@ -163,6 +167,10 @@ PUSH_RACES = 3
 #: What a merge refused only because trunk was red carries, so that the park it causes can be told apart
 #: from every other park when trunk comes back: a field and not the refusal's prose, which gets reworded.
 GREEN_TRUNK = "green-trunk"
+#: What a gate prints where it ran nothing, and `/verify` has always said is not a pass. Only its own words: a gate
+#: that skipped part of itself still exits 0, and the merge was granted on the exit code alone — every one of
+#: recap's slices with a screen merged over `render gate(s) SKIPPED, not passed`, for fifteen days.
+SKIPPED = "SKIPPED, not passed"
 
 
 def read_cursors() -> dict[str, int]:
@@ -523,6 +531,24 @@ def still_ours() -> bool:
     return found is not None and found.machine == logs.machine()
 
 
+def furnish(where: Path) -> None:
+    """Link into the scratch worktree what extensions installed under `tools/` and Git ignores.
+
+    A worktree has the tracked tree and nothing else, and an extension's kit is ignored by Git on purpose
+    (`tools/ux-gates/` is one), so the gate here reported it *not installed in this checkout* on every merge
+    however well the berth was furnished. Linked rather than copied: the same install, read in place.
+    """
+    tools = ROOT / "tools"
+    if not tools.is_dir():
+        return
+    for installed in sorted(tools.iterdir()):
+        target = where / "tools" / installed.name
+        if target.exists() or git("check-ignore", "-q", f"tools/{installed.name}/").returncode != 0:
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.symlink_to(installed, target_is_directory=installed.is_dir())
+
+
 def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:
     """One fetch, rebase, gate and advance of this branch. `merge`'s answer, plus whether trunk moved.
 
@@ -537,6 +563,7 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
     if made.returncode != 0:
         return "", f"a worktree for {branch} could not be made ({(made.stderr or made.stdout).strip()})", \
             False, "", False
+    furnish(SCRATCH)
     try:
         rebased = git("rebase", onto, where=SCRATCH)
         if rebased.returncode != 0:
@@ -552,6 +579,13 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
             said = [line for line in (done.stdout + done.stderr).splitlines() if line.strip()]
             return "", (f"the full gate failed on {branch} rebased onto {onto}: "
                         f"{said[-1] if said else 'no output'}"), True, "", False
+        skipped = [line.strip() for line in (done.stdout + done.stderr).splitlines() if SKIPPED in line]
+        if skipped:
+            # `resolve` true: what the gate could not find is installed on this machine, by the berth or a
+            # person, and asked again — recap's was Playwright, added in one line.
+            return "", (f"the full gate exited 0 on {branch} rebased onto {onto} only because part of it did not "
+                        f"run: {skipped[0]}. A skipped gate has not passed; install what it says it could not "
+                        f"find on this machine and ask again"), True, "", False
         if not still_ours():
             # `resolve` true, because nothing is wrong with the slice and nothing needs a person: the next
             # ask queues behind whoever has the ref now and gates again on the trunk they leave.
@@ -671,7 +705,9 @@ def trunk_ci(trunk_name: str) -> tuple[str, dict]:
     """
     runs, fault = forge_runs(trunk_name)
     if fault:
-        return "unverified", {"why": fault}
+        # `ci: off` is a person's word that this harbour has no CI, and is merged on as before. Anything else
+        # that could not be asked — no remote, `gh` missing or refused — is a forge nobody has looked at.
+        return ("unverified" if config().get("ci") == "off" else "unasked"), {"why": fault}
     done = [one for one in runs if one.get("status") == "completed"]
     if not done:
         return "unverified", {"why": f"no CI run of {trunk_name} has finished yet"}
@@ -713,13 +749,15 @@ def last_trunk_word() -> str:
     return ""
 
 
-def watch_trunk() -> tuple[str, list[logs.Entry]]:
-    """Read trunk's CI and say what the harbour log owes. (the verdict, the lines to write).
+def watch_trunk() -> tuple[str, list[logs.Entry], str]:
+    """Read trunk's CI and say what the harbour log owes. (the verdict, the lines to write, why where it is not
+    green — which a merge refused on `unasked` names, so the person reads what to fix rather than a word).
 
     Written once per change of state rather than every pass: a board that said `trunk-red` fifteen times a
     minute is one nobody reads, and the fifteenth says nothing the first did not.
     """
     verdict, said = trunk_ci(trunk())
+    why = str(said.get("why", ""))
     was = last_trunk_word()
     if verdict == "red" and was != "trunk-red":
         fairway, slice_id = broke_it(str(said.get("commit", "")))
@@ -734,10 +772,10 @@ def watch_trunk() -> tuple[str, list[logs.Entry]]:
                                         f"({said.get('job', 'a job')}) and no `merged` line accounts for "
                                         f"that commit, so nobody here broke it. A person decides what "
                                         f"happens; no merge is granted until trunk is green"))
-        return verdict, lines
+        return verdict, lines, why
     if verdict == "green" and was == "trunk-red":
-        return verdict, [logs.entry("trunk-green", harbour=True, commit=str(said.get("commit", "")))]
-    return verdict, []
+        return verdict, [logs.entry("trunk-green", harbour=True, commit=str(said.get("commit", "")))], why
+    return verdict, [], why
 
 
 def never(detail: str) -> str | None:
@@ -794,6 +832,41 @@ def unseeded(fairway: str, slice_id: str) -> str:
             f"{fairway} <message> --slice {slice_id} --dark --need '<what>'` — then ask again")
 
 
+def ungated(slice_id: str) -> str:
+    """Why this slice may not merge yet because it is its capability's last and the gates have not cleared, or "".
+
+    The gates run once a capability is whole and before anyone is shown it, and `/sail` used to put them
+    *after* the last merge under every release mode but `keystone`. Nothing owned "after": the captain dispatches
+    slices, finds none left, and exits — recap merged all 34 of its slices, the board said *Built*, and none of
+    its eight capabilities was ever gated until a person ran `/sail` by hand, which found 34 findings in one of
+    them. So the last merge is where it holds, as `keystone` already did: the gates run on that slice's branch,
+    and its `gates.md` says `Cleared:` there before it lands.
+    """
+    if capabilities is None:
+        return ""
+    charted, feature = capabilities.chart()
+    if not charted:
+        return ""
+    capability = next((name for name, members in capabilities.slices_by_capability(charted).items()
+                       if slice_id in members), "")
+    if not capability:
+        return ""
+    members = capabilities.slices_by_capability(charted)[capability]
+    try:
+        merged = {str(line.get("slice")) for line in capabilities.lines(feature) if line.get("kind") == "merged"}
+    except SystemExit:
+        return ""
+    if any(member not in merged for member in members if member != slice_id):
+        return ""
+    record = f"specs/{feature}/capabilities/{capability}/gates.md"
+    shown = git("show", f"{BRANCH.format(slice=slice_id)}:{record}")
+    if shown.returncode == 0 and capabilities.CLEARED.search(shown.stdout):
+        return ""
+    return (f"{slice_id} is the last slice of {capability}, whose gates have not cleared on its branch: {record} "
+            f"has no `Cleared:` line. Run the capability gates in this berth — converge, gaps, design review, "
+            f"adversary, mutation and the walk, `/sail`'s *Capability gates* — record them there, and ask again")
+
+
 def attempts(fairway: str, slice_id: str) -> int:
     """Which attempt at merging this slice this one is: one more than the answers it has had already.
 
@@ -822,7 +895,7 @@ def waited(entry: logs.Entry) -> dict[str, int]:
     return {"waited_s": max(0, round((datetime.now(UTC) - asked).total_seconds()))}
 
 
-def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entry]:
+def answer(entry: logs.Entry, trunk_state: str = "unverified", trunk_why: str = "") -> list[logs.Entry]:
     """The harbour-log line(s) one `request` gets: `granted` or `refused`, and always one of them.
 
     A granted merge is *performed* here before the line is written, so `granted` carries the commit trunk is
@@ -857,6 +930,16 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
                                "which commit and which job; no fairway is granted a merge until it is "
                                "green, and the queue drains the moment it is",
                            resolve=False, waiting=GREEN_TRUNK, **spent)]
+    if trunk_state == "unasked":
+        # `resolve` false: no berth can give the harbour a remote. Parked once, with why, rather than merged
+        # blind: recap had no remote for fifteen days and all 34 of its merges were granted `ci=unverified`,
+        # with a CI workflow that would have failed from its first commit. `waiting` is green-trunk, so the
+        # park clears on the first pass the forge can be read and trunk is not red.
+        return [logs.entry("refused", harbour=True, fairway=fairway, request=request,
+                           why=f"trunk's CI cannot be read here, so nothing merges blind: {trunk_why}. Give the "
+                               f"repository a remote its CI runs on, or say `\"ci\": \"off\"` in harbour.json if "
+                               f"this project has no CI",
+                           resolve=False, waiting=GREEN_TRUNK, **spent)]
     slice_id = slice_asked(entry)
     if not slice_id:
         return [logs.entry("refused", harbour=True, fairway=fairway, request=request,
@@ -868,6 +951,11 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified") -> list[logs.Entr
     if dark:
         # `resolve` true: seeding the story, or handing its need back, is the berth's to do.
         return [logs.entry("refused", harbour=True, fairway=fairway, request=request, why=dark,
+                           resolve=True, slice=slice_id, **spent)]
+    owed = ungated(slice_id)
+    if owed:
+        # `resolve` true: the gates are the berth's to run, on this branch, before the merge that makes it whole.
+        return [logs.entry("refused", harbour=True, fairway=fairway, request=request, why=owed,
                            resolve=True, slice=slice_id, **spent)]
     commit, fault, resolvable, note = merge(slice_id, spent)
     if fault:
@@ -929,7 +1017,8 @@ def allocation(fairway: str, taken: list[str]) -> logs.Entry:
                       berth=berths.berth(name, index, logs.machine()).name)
 
 
-def carried(entries: list[logs.Entry], taken: list[str], trunk_state: str = "unverified") -> list[logs.Entry]:
+def carried(entries: list[logs.Entry], taken: list[str], trunk_state: str = "unverified",
+            trunk_why: str = "") -> list[logs.Entry]:
     """Every harbour-log line this batch of deck-log lines produces, in the order they were written."""
     written: list[logs.Entry] = []
     for entry in entries:
@@ -946,7 +1035,7 @@ def carried(entries: list[logs.Entry], taken: list[str], trunk_state: str = "unv
             if name not in taken:
                 taken.append(name)
         elif entry.kind == "request":
-            written += answer(entry, trunk_state)
+            written += answer(entry, trunk_state, trunk_why)
     return written
 
 
@@ -1028,11 +1117,11 @@ def once() -> int:
     # Trunk first, because what it says decides whether any merge in this batch is granted at all. Asked
     # once a pass rather than once a request: it is a question for the forge, and the answer cannot change
     # between two requests answered a millisecond apart.
-    trunk_state, trunk_said = watch_trunk()
+    trunk_state, trunk_said, trunk_why = watch_trunk()
     # By the clock rather than by file, so requests are answered in the order they were asked across every
     # fairway and not in the order the directory happens to list. It is the merge that makes this matter:
     # one at a time, each gated on a trunk that already holds the one before it.
-    written: list[logs.Entry] = trunk_said + carried(sorted(fresh, key=lambda one: one.t), taken, trunk_state)
+    written: list[logs.Entry] = trunk_said + carried(sorted(fresh, key=lambda one: one.t), taken, trunk_state, trunk_why)
     written += bank() or rung()
     written += told_after_parks()
     written += cleared_for_review()
@@ -1193,7 +1282,7 @@ def cleared_for_green(trunk_state: str, already: list[logs.Entry]) -> list[logs.
     drops the park from `open_parks`, so a second pass writes nothing, as in `told_after_parks`; `already`
     is this pass's lines, so a park that a `told` has just cleared is not cleared twice.
     """
-    if trunk_state == "red":
+    if trunk_state in ("red", "unasked"):
         return []
     harbour = harbour_entries()
     answers: dict[str, list[logs.Entry]] = {}

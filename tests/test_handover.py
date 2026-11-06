@@ -67,6 +67,7 @@ class HandoverTest(unittest.TestCase):
                             for line in handover.said(handover.answers(self.folder))))
         landed = design_docs.carried(self.folder)
         self.assertEqual(landed, self.folder / "prototype" / "index.html")
+        assert landed is not None
         self.assertEqual(landed.read_text(encoding="utf-8"), played.read_text(encoding="utf-8"))
         self.assertEqual(design_docs.carried(self.folder), landed, "carried twice is still the one copy")
         self.assertIn(landed, design_docs.briefed(self.folder)[1], "it travels with the rest of the brief")

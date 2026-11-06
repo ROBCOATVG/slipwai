@@ -100,7 +100,7 @@ class ReadersTest(unittest.TestCase):
         self.assertEqual(shape_of(found), "liner")
         self.assertEqual(report(home)[4], "runs for: customers, an emergency when it is down — the full stack, with a "
                                           "staging environment (proposed)")
-        staff = {"used_by": "staff", "when_down": "annoyance", "proposed": False}
+        staff: dict[str, str | bool] = {"used_by": "staff", "when_down": "annoyance", "proposed": False}
         self.assertEqual(shape_of(staff), "skiff")
         self.assertEqual(shape_of({"used_by": "staff", "when_down": "emergency", "proposed": False}), "liner")
         self.assertEqual(shape_of({"used_by": "", "when_down": "annoyance", "proposed": False}), "")

@@ -9,6 +9,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 import checkout_packages  # noqa: F401
@@ -57,7 +58,9 @@ class ChoiceTest(unittest.TestCase):
         found = launches(self.path)
         self.assertEqual(preferred(found, Settings())[1], "on this machine")
         made = Settings(ready={"claude": {"agent": "claude-agent-acp", "fault": ""}})
-        self.assertEqual([one.key for one in [preferred(found, made)[0]]], ["claude"])
+        chosen = preferred(found, made)[0]
+        assert chosen is not None
+        self.assertEqual(chosen.key, "claude")
         self.assertEqual(preferred(found, made)[1], "made ready and signed in")
         wanting = Settings(ready={"bob": {"agent": "bob", "fault": "", "auth": [{"id": "key"}]},
                                   "claude": {"agent": "claude-agent-acp", "fault": "", "auth": [{"id": "login"}]}})
@@ -92,7 +95,8 @@ class ChoiceTest(unittest.TestCase):
         self.assertEqual(now.key, "claude", "a recorded harness this machine cannot launch falls to the board's")
 
     def test_what_an_agent_offered_is_kept_flat(self) -> None:
-        options = [{"id": "model", "type": "select", "category": "model", "name": "Model", "currentValue": "a",
+        options: list[dict[str, Any]] = [
+            {"id": "model", "type": "select", "category": "model", "name": "Model", "currentValue": "a",
                     "options": [{"name": "A", "value": "a"},
                                 {"group": "big", "name": "Big", "options": [{"name": "B", "value": "b"}]}]},
                    {"id": "mode", "type": "select", "category": "mode", "options": []}]

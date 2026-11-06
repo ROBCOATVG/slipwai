@@ -159,7 +159,7 @@ def main():
             text(params["sessionId"], "earlier: hello again")
             send(id=number, result={"configOptions": options})
         elif method == "session/set_config_option":
-            options[0]["currentValue"] = params.get("value")
+            options[0]["currentValue"] = str(params.get("value") or "")
             send(id=number, result={"configOptions": options})
         elif method == "session/prompt":
             words = " ".join(str(block.get("text", "")) for block in params.get("prompt") or [])

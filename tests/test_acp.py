@@ -154,18 +154,20 @@ class HandshakeTest(unittest.TestCase):
         """The first `npx` launch fetches the package; a cold fetch is minutes on a slow line."""
         home = Path(tempfile.mkdtemp())
         seen: list[float] = []
+
+        def calls(method: str, params: dict, timeout: float = 0) -> dict:
+            seen.append(timeout)
+            return {"protocolVersion": 1}
         one = Session(["/usr/bin/npx", "--yes", "some-agent"], home, lambda u: None, lambda t, o: None,
                       lambda p: ("decline", None))
-        with mock.patch.object(one, "call", side_effect=lambda m, p, timeout=0: seen.append(timeout) or
-                               {"protocolVersion": 1}), mock.patch("subprocess.Popen"), \
+        with mock.patch.object(one, "call", side_effect=calls), mock.patch("subprocess.Popen"), \
                 mock.patch("threading.Thread"):
             one.start()
         self.assertEqual(seen, [acp.FETCHING])
         two = Session([sys.executable, str(AGENT)], home, lambda u: None, lambda t, o: None,
                       lambda p: ("decline", None))
         seen.clear()
-        with mock.patch.object(two, "call", side_effect=lambda m, p, timeout=0: seen.append(timeout) or
-                               {"protocolVersion": 1}), mock.patch("subprocess.Popen"), \
+        with mock.patch.object(two, "call", side_effect=calls), mock.patch("subprocess.Popen"), \
                 mock.patch("threading.Thread"):
             two.start()
         self.assertEqual(seen, [acp.TIMEOUT])

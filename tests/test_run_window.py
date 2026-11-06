@@ -276,7 +276,7 @@ class RunWindowTest(BoardTest):
 
     def test_the_board_s_bar_does_not_carry_the_voyage(self) -> None:
         said = self.get("/")[1]
-        for name in ("Start a project", "Adopt a repository", "Packages"):
+        for name in ("Start from a document", "Start from a codebase", "Packages"):
             self.assertIn(f">{name}</a>", said)
         self.assertNotIn(">Voyage</a>", said)
 
@@ -292,7 +292,7 @@ class RunWindowTest(BoardTest):
         """A run window that navigated itself to the board would be a run nobody is watching."""
         said = self.get("/voyage")[1]
         self.assertIn('<a href="/" target="_blank"', said)
-        for name in ("Start a project", "Adopt a repository", "Packages"):
+        for name in ("Start from a document", "Start from a codebase", "Packages"):
             self.assertNotIn(f">{name}</a>", said, "a run window is not the board with a tab selected")
 
 

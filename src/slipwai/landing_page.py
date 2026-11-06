@@ -15,10 +15,10 @@ from .page_shell import document, esc
 
 #: What can be started from here: the page, the verb, and why.
 STARTING = (
-    ("Start a new project", "generate", "/generate",
+    ("Start from a document", "generate", "/generate",
      "The interview, asked here: the delivery foundation, the language, what the first service owns, and "
      "where it goes to production."),
-    ("Adopt a repository you already have", "adopt", "/adopt",
+    ("Start from a codebase", "adopt", "/adopt",
      "The method installed around code that exists, with what it found and what it would write shown "
      "before anything is written."),
 )

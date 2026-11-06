@@ -44,7 +44,7 @@ where no command covers the step.
 
 | # | Where | Command | Done when |
 |---|---|---|---|
-| 1.1 | terminal *or* board | `slipwai generate` — or `slipwai`, then *Start a project* | it prints `created: <path>` and runs `./init` in the new project |
+| 1.1 | terminal *or* board | `slipwai generate` — or `slipwai`, then *Start from a document* | it prints `created: <path>` and runs `./init` in the new project |
 | 1.2 | terminal | `cd <name>` | you are at the project's root; start your coding agent here |
 | 1.3 | terminal | `./init`, only if 1.1 did not run it | Spec Kit, the skills and the commands are installed for your agent |
 | 1.4 | agent | `/verify` | it says `verify: all gates passed` |

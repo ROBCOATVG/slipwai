@@ -127,12 +127,12 @@ class OpenedBoardTest(unittest.TestCase):
         """Empty, with what it *can* do from there. The alternative is a sentence telling somebody to go
         back to the terminal, which is the moment this was supposed to stop being a terminal."""
         said = self.board(self.root)
-        self.assertIn("Start a new project", said)
-        self.assertIn("Adopt a repository", said)
+        self.assertIn("Start from a document", said)
+        self.assertIn("Start from a codebase", said)
 
     def test_what_can_be_started_is_on_the_landing_and_nothing_live_is(self) -> None:
         said = self.board(self.root)
-        self.assertIn("Start a new project", said)
+        self.assertIn("Start from a document", said)
         self.assertNotIn("Waiting on you", said)
 
 

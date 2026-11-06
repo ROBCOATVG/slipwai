@@ -39,7 +39,8 @@ waits. It is off until you press it, and your browser remembers the answer.
 
 ## The tabs
 
-The board has four tabs. The Voyage is a separate window, so that you can leave it open.
+The board has six tabs. The three in the middle are the three ways in, in the order a person arrives: with an
+idea, with a document, with a codebase. The Voyage is a separate window, so that you can leave it open.
 
 ### Board
 
@@ -49,7 +50,23 @@ The board has four tabs. The Voyage is a separate window, so that you can leave 
   opens the Voyage for this project in a new window.
 - **Start something** — links to the next two tabs, with the command that does the same job.
 
-### Start a project
+### Start from an idea
+
+This is for a person who has no document. Type what the product does. The agent draws a prototype that you
+can click through on the same page, writes the brief beside it, and asks only what it cannot work out. The
+header shows the four steps: describe, walk the states, check, hand over.
+
+- **The brief, as the start page will read it** counts what the brief has settled and what the build will
+  have to assume. Green lines need no question. Amber lines are what the draft will decide and say it did.
+- **Read the brief as a document** opens the requirements document, the people or the facts as a page.
+- **Hand over** appears once the brief has a document, and is marked when the agent says the brief is
+  ready. It opens the next tab with the brief's answers filled in: a confirm page that shows what the brief
+  settled, with every extension on this machine ticked. **Make it** makes the project. **Change something**
+  opens the whole form.
+- **New conversation** starts the sketch again. A sketch keeps its conversation, so a window opened later
+  shows the same turns.
+
+### Start from a document
 
 This is the `slipwai generate` interview as a form. The questions come in the same order and offer the
 same answers.
@@ -61,7 +78,7 @@ same answers.
   you gave a requirements document, the board then runs `make draft`. The card **Made &lt;name&gt;** shows
   what `./init` and `make draft` print while they run.
 
-### Adopt a repository
+### Start from a codebase
 
 This installs the method around code that already exists.
 
@@ -76,6 +93,16 @@ This is the chandlery, the index of packages that slipwai can install. Each row 
 state. **Install** installs it in the same way as `slipwai install`. A package from a publisher you have not
 trusted yet has a checkbox **accept &lt;publisher&gt;**. Tick it to trust that publisher. An installed
 package that has a newer version says so.
+
+### Settings
+
+This names the coding agent that runs the board's conversations, over the Agent Client Protocol: the brief,
+the stages a project runs from the board, and the question box on the Voyage. **Runs on** lists every agent
+this machine can launch, with where each was found or what is missing. *Auto* takes the first that is ready,
+else the first found. Beside it, the model, where the agent offered a choice. Under each agent: **Make
+ready**, which does the handshake once and shows what the agent said of itself, **Sign in** for each way
+the agent offers, and **Install** where the agent is not on this machine. The answers are saved to
+`~/.slipwai/board.json`. A project's own `./init` answer still wins for its question box.
 
 ---
 

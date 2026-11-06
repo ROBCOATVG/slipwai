@@ -6,7 +6,7 @@ yet* — and the prototype, embedded from the sketch's own folder. The header ca
 draws, with the one the session says it is at marked.
 
 It is a tab beside the start page and never in front of it: a person with a document, or with nothing, takes
-*Start a project* as they do today. Its routes are its own and hand straight back to the session, so the
+*Start from a document* as they do today. Its routes are its own and hand straight back to the session, so the
 bridge's one job here is two lines. Files are served from the workspace and confined to it: the prototype's
 page and the surface pages' stylesheets load from there, and nothing else does.
 """
@@ -174,7 +174,7 @@ def listing() -> str:
     person already has, pasted or chosen, which the session reads first."""
     had = "".join(f'<li><a href="/brief?sketch={quote(one)}">{esc(one)}</a></li>' for one in sketches())
     kept = f'<h3>Pick up where you left off</h3><ul class="had">{had}</ul>' if had else ""
-    return (f'<div id="sketches" class="card"><h2>Describe a product</h2>'
+    return (f'<div id="sketches" class="card"><h2>Start from an idea</h2>'
             f'<p>Say what it is, in your words, and it is drawn as a thing you can tap through. What you decide '
             f'while playing becomes the brief a project starts from. Nothing here is required: a person with '
             f'a document, or with nothing, starts a project from the next tab as before.</p>'
@@ -278,7 +278,7 @@ def reading(slug: str, name: str) -> str:
 def page(query: str) -> str:
     slug = chosen(query)
     body = sketch_page(slug) if slug else listing()
-    return document("Describe a product", "A prototype to play with, and the brief it leaves behind",
+    return document("Start from an idea", "A prototype to play with, and the brief it leaves behind",
                     f"<style>{STYLE}{CARDS}</style>{body}", DRAW + SCRIPT + BEGIN, now="/brief")
 
 

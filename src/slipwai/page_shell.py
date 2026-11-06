@@ -255,9 +255,9 @@ font-weight:600}
 #: moment they press Packages. So a voyage opens in a window of its own, and the board keeps its own.
 TABS: tuple[tuple[str, str], ...] = (
     ("/", "Board"),
-    ("/generate", "Start a project"),
-    ("/brief", "Describe a product"),
-    ("/adopt", "Adopt a repository"),
+    ("/brief", "Start from an idea"),
+    ("/generate", "Start from a document"),
+    ("/adopt", "Start from a codebase"),
     ("/packages", "Packages"),
     ("/settings", "Settings"),
 )

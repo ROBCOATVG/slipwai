@@ -296,7 +296,7 @@ class ServedTest(unittest.TestCase):
                 return answer.code, answer.read().decode("utf-8")
 
     def test_the_interview_is_a_page_on_the_board_s_own_server(self) -> None:
-        self.assertIn("Start a new project", self.get("/generate"))
+        self.assertIn("Start from a document", self.get("/generate"))
 
     def test_the_draft_follows_init_when_the_brief_carried_the_document(self) -> None:
         """Not only when one was given in the PRD field: the first live run stopped after `./init`."""

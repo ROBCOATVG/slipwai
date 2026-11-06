@@ -172,15 +172,15 @@ telegraph: half-ahead  boilers 3  fanout 2  bunker 126/10000k today
 
 Run `slipwai` with no arguments to open one page. The page has a tab for each of these:
 
-- starting a project
-- describing a product, which writes the brief that a project starts from
-- adopting a repository
+- **Start from an idea**: a conversation that writes the brief a project starts from
+- **Start from a document**: a project from a requirements document or a brief
+- **Start from a codebase**: the method installed around code that exists
 - the packages that this machine can install
 - settings: which coding agent runs the board's conversations, and the model
 - the fleet
 - the **Voyage**
 
-**Describe a product** is for a person who has no document. Type what the product does. The agent draws a
+**Start from an idea** is for a person who has no document. Type what the product does. The agent draws a
 prototype that you can click through on the same page, writes the brief beside it, and asks only what it
 cannot work out: how people do the job today, what would count as success, who runs it. The brief is a
 folder with a requirements document, the people, the facts and one page per screen. A check under the

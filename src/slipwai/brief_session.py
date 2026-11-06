@@ -21,6 +21,9 @@ opinion.
 """
 from __future__ import annotations
 
+# budget: 400 — one conversation run two ways: the protocol session, and the legacy `claude -p` child kept as
+# the fallback for a machine with nothing the board can launch; the child goes when every machine has one.
+
 import json
 import re
 import shutil

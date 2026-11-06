@@ -100,7 +100,9 @@ class ProtocolRowsTest(unittest.TestCase):
                 self.assertTrue((npx and npx.get("package")) or (binary and binary.get("cmd")), "nothing to launch")
                 self.assertIn("read 20", str(row.get("source")), "a row says when it was read")
                 self.assertIn(str(row.get("via")).split(":")[0], ("native", "adapter"))
-                self.assertIs(row.get("proven"), False, "nobody has run a session on it from the board yet")
+                self.assertIn(row.get("proven"), (True, False))
+            if row.get("proven"):
+                self.assertIn("2026-", str(row.get("proof")), "a proven row says when and what was run")
 
     def test_a_harness_with_no_launch_row_records_why(self) -> None:
         from slipwai import harness as keel

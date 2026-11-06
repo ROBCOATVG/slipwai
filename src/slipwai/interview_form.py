@@ -10,8 +10,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote
 
+from . import handover
 from .errors import GenerationError
 from .folder_field import SCRIPT as CHOOSING
 from .folder_field import folder_field
@@ -164,13 +165,18 @@ def nothing(refused: GenerationError) -> str:
 
 
 def from_query(query: str) -> dict[str, str]:
-    """The one answer the address may carry: the brief's folder, which the first page's hand-over fills.
+    """The two things the address may carry: the brief's folder, which the first page's hand-over fills, and
+    `edit`, which asks for the whole form rather than the hand-over's few lines.
 
-    Only that one. The start page with no query is what it always was, and an answer typed into an address
-    is still an answer a person reads on the form before pressing Generate.
+    Only those. The start page with no query is what it always was, and an answer typed into an address is
+    still an answer a person reads on the page before pressing.
     """
-    folder = (parse_qs(query).get("brief") or [""])[0].strip()
-    return {"brief": folder} if folder else {}
+    asked = parse_qs(query)
+    folder = (asked.get("brief") or [""])[0].strip()
+    held = {"brief": folder} if folder else {}
+    if folder and (asked.get("edit") or [""])[0]:
+        held["edit"] = "1"
+    return held
 
 
 def drafts(answers: Mapping[str, str], where: Path) -> bool:
@@ -183,8 +189,33 @@ def drafts(answers: Mapping[str, str], where: Path) -> bool:
     return bool(str(answers.get("prd") or "").strip()) or (where / "docs" / "prd.md").is_file()
 
 
+def confirm(held: Mapping[str, str]) -> str:
+    """The hand-over's page: what the brief settled and what the builder takes as read, in a few lines,
+    one button to make it and one to change something. The answers ride in a hidden form, so the one
+    script this page has posts them exactly as it posts the long form's."""
+    lines = "".join(f"<li>{esc(line)}</li>" for line in handover.said(dict(held)))
+    hidden = "".join(f'<input type="hidden" name="{esc(key)}" value="{esc(value)}">'
+                     for key, value in held.items() if key != "edit")
+    folder = str(held.get("brief") or "")
+    return (f'<div class="card" id="interview"><h2>Make {esc(str(held.get("name") or "it"))}</h2>'
+            f'<p>From the brief at <code>{esc(folder)}</code>. Everything below was settled there or is the '
+            f'smallest start; nothing here is a question you have not already answered.</p>'
+            f'<ul class="settled">{lines}</ul>'
+            f'<form class="ask-page" hidden>{hidden}</form>'
+            f'<div class="ask"><button class="go" id="generate">Make it</button>'
+            f'<a class="quiet-link" href="/generate?brief={quote(folder)}&amp;edit=1">Change something</a></div>'
+            f'<pre class="said" id="said" data-tail hidden></pre></div>')
+
+
 def page(answers: Mapping[str, str], title: str = "Start a new project", root: Path | None = None) -> str:
-    """The interview as a page of its own. 14.4 makes it a tab of the board; the questions do not change."""
+    """The interview as a page of its own. 14.4 makes it a tab of the board; the questions do not change.
+    From a brief it is a confirmation first, and the questions only on *Change something*."""
+    folder = str(answers.get("brief") or "").strip()
+    if folder:
+        held = {**handover.answers(Path(folder)), **{k: v for k, v in answers.items() if k != "brief"}}
+        if not answers.get("edit"):
+            return document(title, "from the brief", confirm(held), SCRIPT, now="/generate")
+        answers = {k: v for k, v in held.items() if k != "edit"}
     try:
         body, sub = form(answers, root), f"{len(asked(answers))} questions, read from the catalogue"
     except GenerationError as refused:

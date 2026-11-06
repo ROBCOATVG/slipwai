@@ -59,7 +59,7 @@ from .services import FIRST_SERVICE, FIRST_WEB
 from .shell_environment import login_environment
 from .targets import managed, offered_backends
 
-# budget: 480 — the shape a brief's two lines give is passed on from here, and
+# budget: 490 — the shape a brief's two lines give is passed on from here, and
 # this is the interview's one list of questions, held in step with the terminal question for
 # question (`InStepTest` walks it), and the half that turns the answers back into the flags `generate` takes.
 # Split, the question and the flag it becomes would be in two files, which is the drift the pairing exists

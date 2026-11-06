@@ -173,10 +173,32 @@ telegraph: half-ahead  boilers 3  fanout 2  bunker 126/10000k today
 Run `slipwai` with no arguments to open one page. The page has a tab for each of these:
 
 - starting a project
+- describing a product, which writes the brief that a project starts from
 - adopting a repository
 - the packages that this machine can install
+- settings: which coding agent runs the board's conversations, and the model
 - the fleet
 - the **Voyage**
+
+**Describe a product** is for a person who has no document. Type what the product does. The agent draws a
+prototype that you can click through on the same page, writes the brief beside it, and asks only what it
+cannot work out: how people do the job today, what would count as success, who runs it. The brief is a
+folder with a requirements document, the people, the facts and one page per screen. A check under the
+conversation counts what the brief has settled and what the build will have to assume. Read the brief as a
+document from the same page. When the agent says the brief is ready, press **Hand over**. The next page
+shows what the brief settled, with every extension on this machine ticked. Untick any, then press
+**Make it**. The project is made, `./init` runs, and the agent drafts the constitution and the first
+specification from the brief. The Voyage opens in its own window.
+
+The board's conversations run on the coding agent that the **Settings** tab names, over the Agent Client
+Protocol. The tab lists every agent this machine can launch, says which are ready, and lets you sign in
+or install one.
+
+**When the board waits on you, it says so.** A strip appears under the page title: *The specification is
+ready: read it, then draw the surfaces*, *The storyboard is drawn: approve it or send it back*, *The agent
+asks you something*, *2 slices waiting on you*, *The brief is ready to hand over*. The count goes on the
+browser tab's title. Press **Tell me when it waits on me** once, and the browser notifies you when a wait
+begins while you are in another window.
 
 The **Voyage** tab shows:
 
@@ -190,6 +212,8 @@ The **Voyage** tab shows:
   your answer.
 - **One Settings box**, with tabs for speed, fine tune, who answers, delegation and models. The project's
   own scripts write these settings. The board never writes them itself.
+- **Ask about this project**, a box in the corner. It reads the project's logs and answers questions
+  such as *What is waiting on me?* It cannot change anything.
 
 Each button runs a `make` target, and where the stop has a slash command, that command runs the same one.
 `slipwai bridge install` starts the board each time you log in. [Your first feature](docs/guide/first-feature.md#from-the-board) goes through the

@@ -17,6 +17,8 @@ from pathlib import Path
 from .board_settings import chosen as agent_chosen
 from .board_settings import read
 from .brief_check import runs_line, sections, service
+from .browser_app import frontend_menu
+from .catalog import CATALOG
 from .design_docs import briefed
 from .harness import name_of
 from .identity import EVERYONE, STAFF, WHO
@@ -29,8 +31,7 @@ SLUG = re.compile(r"[^a-z0-9._-]+")
 #: What the quickstart's answers are called, in a person's words, for the lines the page says.
 STORES = {"sqlite": "a real store in one file", "memory": "no store kept between runs", "postgres": "Postgres"}
 TRUTH = {"events": "keeping every change as its history", "state": "keeping current state"}
-PLACES = {"none": "on this machine, deployed nowhere", "existing": "on infrastructure somebody else runs",
-          "aws": "on AWS", "azure": "on Azure"}
+PLACES = {"none": "on this machine, deployed nowhere", "existing": "on infrastructure somebody else runs"}
 
 
 def slug_of(folder: Path) -> str:
@@ -59,7 +60,8 @@ def answers(folder: Path) -> dict[str, str]:
     except Exception:  # noqa: BLE001 — a folder that will not sort is still one the form can be given
         document, rest = None, []
     pages = [one for one in rest if one.parent.name == "surfaces" and one.suffix.lower() == ".html"]
-    held["frontend"] = "react-vite" if pages else "none"
+    # The browser app is the catalogue's own default frontend: which family ships it is the catalogue's to say.
+    held["frontend"] = frontend_menu()[1] if pages else "none"
     found = service(document) if document else {}
     held[WHO] = STAFF if found.get("used_by") == "staff" else EVERYONE
     words = held["name"].split("-")
@@ -90,7 +92,9 @@ def said(held: dict[str, str]) -> list[str]:
     lines.append(f"A browser app, drawn from the brief's {len(pages)} surface{'s' if len(pages) != 1 else ''}."
                  if held.get("frontend", "none") != "none" else "No browser app: the brief draws no surfaces.")
     store = STORES.get(held.get("persistence", ""), held.get("persistence", ""))
-    place = PLACES.get(held.get("target", ""), held.get("target", ""))
+    target = held.get("target", "")
+    # A place that is a package says its own name: the catalogue's label for it, never a word of this keel's.
+    place = PLACES.get(target) or f"on {CATALOG['targets'].get(target, {}).get('label', target)}"
     lines.append(f"One service, {held.get('service-name', 'service')}, in {held.get('language', '')} with {store}, "
                  f"{TRUTH.get(held.get('write-model', ''), '')}, {place}.")
     lines.append("Signed in by the people who work here, and nobody else." if held.get(WHO) == STAFF

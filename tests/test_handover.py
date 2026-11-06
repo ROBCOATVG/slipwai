@@ -29,7 +29,10 @@ class HandoverTest(unittest.TestCase):
         shutil.copytree(FIXTURE, self.folder)
         stand_in = Launch("stand-in", "Stand-in", ("python3",), "a script")
         for patched in (mock.patch.object(board_settings, "SETTINGS", area / "board.json"),
-                        mock.patch.object(handover, "agent_chosen", return_value=stand_in)):
+                        mock.patch.object(handover, "agent_chosen", return_value=stand_in),
+                        # The catalogue's own default frontend, as a checkout with a language shipped answers it.
+                        mock.patch.object(handover, "frontend_menu",
+                                          return_value=(["none", "react-vite"], "react-vite", {}))):
             patched.start()
             self.addCleanup(patched.stop)
 

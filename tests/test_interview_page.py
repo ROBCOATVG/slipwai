@@ -316,7 +316,7 @@ class ServedTest(unittest.TestCase):
         self.assertEqual(from_query("brief=%2Ftmp%2Fclub%2Fbrief&name=x"), {"brief": "/tmp/club/brief"})
         self.assertEqual(from_query(""), {})
         filled = self.get("/generate?brief=%2Ftmp%2Fclub%2Fbrief")
-        self.assertIn('name="brief" value="/tmp/club/brief"', filled)
+        self.assertIn(f'name="brief" value="{Path("/tmp/club/brief")}"', filled)
         self.assertEqual(self.get("/generate"), self.get("/generate?seat=w"), "the page with no brief is what it was")
 
     def test_the_served_interview_proposes_the_board_s_own_root_as_the_output_parent(self) -> None:

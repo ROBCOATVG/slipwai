@@ -49,8 +49,11 @@ def ask(number, method, params):
 
 
 def permission(number, session, path):
+    # Forward slashes whatever the platform: the stub's wire form is what the tests read back, and a Windows
+    # `Path` would have put backslashes in the card the keel showed.
+    path = Path(path).as_posix()
     call = {"toolCallId": f"call-{number}", "title": f"Write {path}", "kind": "edit", "status": "pending",
-            "locations": [{"path": str(path)}], "rawInput": {"filePath": str(path), "content": "<title>"}}
+            "locations": [{"path": path}], "rawInput": {"filePath": path, "content": "<title>"}}
     update(session, sessionUpdate="tool_call", **call)
     result, cancelled = ask(number, "session/request_permission", {
         "sessionId": session, "toolCall": call,

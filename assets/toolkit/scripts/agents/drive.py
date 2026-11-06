@@ -84,7 +84,9 @@ def protocol() -> tuple[list[str], dict[str, Any] | None, str] | None:
     if not named:
         return None
     if named.lower() not in ON:
-        return shlex.split(named), None, f"{VARIABLE}: {named}, over the Agent Client Protocol"
+        # A Windows path is backslashes, which POSIX splitting reads as escapes and drops: kept as written.
+        words = shlex.split(named.replace("\\", "\\\\") if os.name == "nt" else named)
+        return words, None, f"{VARIABLE}: {named}, over the Agent Client Protocol"
     rows = harness.registry()
     for key in harness.installed_keys():
         argv = acp_launch(rows.get(key))

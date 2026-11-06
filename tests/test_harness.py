@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -117,6 +118,8 @@ class ProtocolRowsTest(unittest.TestCase):
         for name in ("npx", "opencode"):
             (here / name).write_text("#!/bin/sh\n", encoding="utf-8")
             (here / name).chmod(0o755)
+            if os.name == "nt":  # `which` on Windows finds what PATHEXT names, and no mode bit
+                (here / f"{name}.cmd").write_text("@echo off\n", encoding="utf-8")
         argv, said = keel.acp_launch("claude", path=str(here))
         self.assertEqual(argv[1:], ["--yes", "@agentclientprotocol/claude-agent-acp"])
         self.assertIn("over `npx`", said)

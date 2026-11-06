@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import tarfile
 import tempfile
 import time
@@ -69,7 +70,8 @@ class InstallTest(unittest.TestCase):
         put = agent_install.installed("goose")
         assert put is not None
         self.assertTrue(Path(put["cmd"]).is_file())
-        self.assertTrue(Path(put["cmd"]).stat().st_mode & 0o100, "made executable")
+        if os.name != "nt":  # a mode bit is a POSIX thing; Windows runs what PATHEXT names
+            self.assertTrue(Path(put["cmd"]).stat().st_mode & 0o100, "made executable")
         self.assertEqual(read(self.file).ready["goose"]["install"]["fault"], "")
         argv, said = harness.acp_launch("goose", path="/nowhere")
         self.assertEqual(argv, [put["cmd"], "acp"])

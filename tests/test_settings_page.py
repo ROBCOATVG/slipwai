@@ -6,6 +6,7 @@ this machine really has does not decide a test.
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -24,6 +25,8 @@ def fake_path() -> str:
     for name in ("npx", "opencode"):
         (here / name).write_text("#!/bin/sh\n", encoding="utf-8")
         (here / name).chmod(0o755)
+        if os.name == "nt":  # `which` on Windows finds what PATHEXT names, and no mode bit
+            (here / f"{name}.cmd").write_text("@echo off\n", encoding="utf-8")
     return str(here)
 
 

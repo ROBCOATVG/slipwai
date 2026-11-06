@@ -20,7 +20,7 @@ STYLE = """
 .turns .turn.tool.in_progress .dot{background:var(--warn)}
 .turns .turn.tool.completed .dot{background:var(--good)}
 .turns .turn.tool.failed .dot{background:var(--critical)}
-.turns .turn.tool b{font-weight:500;color:var(--ink-2);text-transform:capitalize}
+.turns .turn.tool b{font-weight:500;color:var(--ink-2)}
 .turns .turn.tool .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.76rem;flex:none}
 .turns .turn.tool .path:empty{display:none}
 .turns .turn.waiting{justify-self:start;border:0;padding:4px 4px;color:var(--ink-3);font-size:.84rem;font-style:italic;
@@ -67,7 +67,7 @@ const TOOLS = {shell: 'Running', bash: 'Running', skill: 'Loading the skill', re
 function toolLine(one, turn) {
   const named = turn.text.trim(), bare = /^[a-z_]+$/.test(named);
   one.querySelector('b').textContent = (bare && TOOLS[named]) || VERBS[turn.tool.kind] || 'Working';
-  const said = (bare && turn.tool.what) || named || turn.tool.what || '';
+  const said = (bare && turn.tool.what) || (bare ? '' : named) || turn.tool.what || '';
   const title = one.querySelector('.title');
   title.textContent = said.length > 90 ? said.slice(0, 90) + '…' : said; title.title = said;
   const inside = turn.tool.path.match(/\\/(brief|prototype)\\/(.*)$/);

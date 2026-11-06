@@ -109,6 +109,31 @@ class BoardAgent:
                 self.say(self.who, "error", f"The model could not be set: {refused}", None)
         return self.loaded
 
+    @property
+    def named(self) -> str:
+        """The agent as it named itself at the handshake, with its version, or the launch's name before that."""
+        session = self.session
+        if session is None or not session.agent.name:
+            return self.launch.name
+        return f"{session.agent.name} {session.agent.version}".strip()
+
+    @property
+    def model(self) -> str:
+        """The model the session runs on, as the agent names it, or `''` where it offered no choice."""
+        session = self.session
+        if session is None:
+            return ""
+        for option in session.agent.config_options:
+            if option.get("category") != "model":
+                continue
+            current = option.get("currentValue")
+            for row in option.get("options") or []:
+                for inner in (row.get("options") if "options" in row else [row]):
+                    if inner.get("value") == current:
+                        return str(inner.get("name") or current or "")
+            return str(current or "")
+        return ""
+
     def turn(self, text: str, timeout: float) -> str:
         """One prompt, and the stop reason; a fault is said as an error and the session let go of."""
         try:

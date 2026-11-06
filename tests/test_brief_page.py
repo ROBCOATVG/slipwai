@@ -131,7 +131,7 @@ class FirstPageTest(BoardTest):
             if not said["busy"]:
                 break
             time.sleep(0.05)
-        self.assertIn("on Stand-in", self.get("/brief?sketch=over-acp")[1])
+        self.assertIn("on stand-in 0.1", self.get("/brief?sketch=over-acp")[1])
         self.assertEqual(self.post("/brief/cancel", {"sketch": "over-acp"}), (200, "stopped"))
 
     def test_a_document_a_person_brought_begins_the_sketch_with_it_read_first(self) -> None:

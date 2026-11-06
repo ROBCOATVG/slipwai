@@ -151,7 +151,8 @@ class Console:
         with self.lock:
             held = max(since - self.dropped, 0)
             return {"turns": self.turns[held:], "at": self.dropped + len(self.turns), "busy": self.busy,
-                    "agent": self.on, "thinking": bool(self.agent is not None and self.agent.thinking)}
+                    "agent": self.on, "thinking": bool(self.agent is not None and self.agent.thinking),
+                    "model": self.agent.model if self.agent is not None else ""}
 
     def ask(self, message: str) -> str:
         """Put a question to the harbourmaster, or say why it cannot be: it is empty, or one is under way."""
@@ -190,6 +191,7 @@ class Console:
                                         env={**self.environment(), **acp_environment(launch.key)})
                 self.on = launch.name
             loaded = self.agent.session is not None or self.agent.begin()
+            self.on = self.agent.named
             asked = f"{message}\n\n---\nThe board as it stands now, folded from the logs:\n{snapshot(self.root)}"
             if not (self.begun or loaded):
                 asked = f"{brief(self.root)}\n\n{ROLE}".strip() + f"\n\n---\n\n{asked}"

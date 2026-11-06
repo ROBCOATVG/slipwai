@@ -176,7 +176,8 @@ class Sketch:
             held = max(since - self.dropped, 0)
             return {"turns": self.turns[held:], "at": self.dropped + len(self.turns), "busy": self.busy,
                     "step": self.step, "ready": self.ready, "check": list(self.check), "slug": self.slug,
-                    "agent": self.on, "thinking": bool(self.agent is not None and self.agent.thinking)}
+                    "agent": self.on, "thinking": bool(self.agent is not None and self.agent.thinking),
+                    "model": self.agent.model if self.agent is not None else ""}
 
     def ask(self, message: str) -> str:
         """Say something to the session, or say why it cannot be said: nothing, or an answer under way."""
@@ -216,6 +217,7 @@ class Sketch:
                                         env={**self.environment(), **acp_environment(launch.key)})
                 self.on = launch.name
             loaded = self.agent.session is not None or self.agent.begin()
+            self.on = self.agent.named
             opened = self.begun or loaded
             stop = self.agent.turn(message if opened else f"{role(self.home)}\n\n---\n\n{message}", LIMIT)
             self.begun = self.begun or stop != "fault"

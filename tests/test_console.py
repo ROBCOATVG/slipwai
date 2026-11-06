@@ -126,7 +126,7 @@ class ProtocolTest(BoardTest):
         self.assertIn("can read and cannot do", refused["text"])
         self.assertEqual(next(t for t in said["turns"] if t["kind"] == "tool_update")["tool"]["status"], "failed")
         self.assertFalse((self.root / "prototype" / "index.html").exists(), "the refused write did not happen")
-        self.assertEqual(said["agent"], "Stand-in")
+        self.assertEqual(said["agent"], "stand-in 0.1", "as the agent named itself")
         self.assertTrue((self.root / ".slipwai" / "console" / "session").is_file(), "kept under the board's folder")
         self.assertTrue(said["turns"][1]["text"].startswith("Role given. Drawn: why is ORD-01 waiting?"),
                         "the brief and the role went first; the fold rides with the question")

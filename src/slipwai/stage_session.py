@@ -128,8 +128,10 @@ class StageSession:
                 env["SLIPWAI_STAGE"] = self.stage
             self.agent = BoardAgent(launch, self.root, "agent", self.say, kept=self.root / KEPT / self.command,
                                     env=env)
-            fitting.say(f"On {launch.name}, over the Agent Client Protocol.")
             self.agent.begin()
+            model = self.agent.model
+            fitting.say(f"On {self.agent.named}, over the Agent Client Protocol"
+                        + (f", model {model}." if model else "."))
             stop = self.agent.turn(self.words(), self.limit)
             if stop == "end_turn" and self.after and (left := self.after()):
                 fitting.say(f"! {left}")

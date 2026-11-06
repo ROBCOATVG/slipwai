@@ -55,6 +55,8 @@ class ReadyTest(unittest.TestCase):
         self.assertEqual((found["agent"], found["version"], found["load_session"], found["fault"]),
                          ("stand-in", "0.1", True, ""))
         self.assertEqual([m["id"] for m in found["auth"]], ["login", "setup"])
+        self.assertIn("It offers 2 models to pick from on this page.", state["lines"])
+        self.assertEqual(read(self.file).offered["stand-in"][0]["values"][1]["value"], "b")
         self.assertTrue((self.root / "ready" / "stand-in" / ".acp" / "agent.log").is_file())
         with mock.patch.object(agent_ready, "launch_for", return_value=STAND_IN):
             signed = agent_ready.begin("stand-in", method="login")

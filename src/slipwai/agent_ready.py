@@ -5,9 +5,11 @@ An agent launched with `npx` is fetched the first time it is started — a downl
 the first turn of somebody's first conversation. *Make ready* starts the agent exactly as a session will,
 through the keel's own client, in a folder of the board's under `~/.slipwai/ready/`, and keeps what the
 handshake said: the agent's name and version, how long it took, whether it can load a session, and the
-ways it offers to sign in. Nothing is guessed from a manifest; the agent itself answers, which is also the
-proof a launch row wants. The sign-in is the same session calling `authenticate` with a method of the
-agent's own kind; a method of the terminal kind is a command a person runs, and the page says which.
+ways it offers to sign in, and — from a session opened and closed at once — the models it offers, so the
+page can show them to pick from before the first conversation. Nothing is guessed from a manifest; the agent
+itself answers, which is also the proof a launch row wants. The sign-in is the same session calling
+`authenticate` with a method of the agent's own kind; a method of the terminal kind is a command a person
+runs, and the page says which.
 
 Nothing here installs the board, Python, Node or a cloud target: where the machine lacks what a launch
 needs, the row already says so, and this does not start.
@@ -22,7 +24,7 @@ from typing import Any
 
 from . import acp
 from .assets import SLIPWAI
-from .board_settings import Launch, launches, read, write
+from .board_settings import Launch, launches, offered, read, write
 from .harness import acp_environment
 from .shell_environment import login_environment
 
@@ -67,6 +69,14 @@ class Readying:
             self.say(f"{agent.name} {agent.version} answered the handshake in {seconds} s.".replace("  ", " "))
             self.say("It can pick a conversation up where it left off." if agent.load_session
                      else "It starts every conversation afresh.")
+            # A session too, closed at once: it is where the agent says which models it offers, and the
+            # settings page shows those to pick from before the first conversation rather than after it.
+            session.new()
+            settings = read(self.settings_path)
+            offered(settings, self.key, session.agent.config_options, self.settings_path)
+            models = settings.offered.get(self.key) or []
+            self.say(f"It offers {len(models[0].get('values') or [])} models to pick from on this page."
+                     if models else "It offers no model to pick; its own runs.")
             if self.method:
                 session.authenticate(self.method)
                 record.setdefault("signed_in", {})

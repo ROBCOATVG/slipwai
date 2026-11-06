@@ -71,7 +71,7 @@ SCRIPT = DRAW + """
     const stop = card.querySelector('button.stop'), on = card.querySelector('.head .on');
     const paint = said => { input.disabled = busy; go.disabled = busy;
       go.textContent = busy ? (said && said.thinking ? 'Thinking…' : 'Answering…') : 'Ask'; stop.hidden = !busy;
-      if (said && said.agent) on.textContent = 'on ' + said.agent; };
+      if (said && said.agent) on.textContent = 'on ' + said.agent + (said.model ? ' · ' + said.model : ''); };
     const poll = async () => {
       let said;
       try { said = await (await fetch('/console.json?since=' + at)).json(); }

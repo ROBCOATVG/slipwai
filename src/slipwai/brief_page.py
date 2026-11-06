@@ -103,7 +103,8 @@ SCRIPT = """
     const paint = said => {
       input.disabled = busy; go.disabled = busy;
       go.textContent = busy ? (said.thinking ? 'Thinking…' : 'Drawing…') : 'Say';
-      stop.hidden = !busy; if (said.agent) on.textContent = 'on ' + said.agent;
+      stop.hidden = !busy;
+      if (said.agent) on.textContent = 'on ' + said.agent + (said.model ? ' · ' + said.model : '');
       steps.forEach((one, index) => one.classList.toggle('now', index + 1 === said.step));
       check.replaceChildren(...said.check.map(line => {
         const li = document.createElement('li'); li.textContent = line; li.className = colour(line); return li; }));

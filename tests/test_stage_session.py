@@ -58,7 +58,7 @@ class StageTest(unittest.TestCase):
         self.assertEqual(said["step"], "draft")
         lines = said["lines"]
         self.assertEqual(lines[0], "Drafting.")
-        self.assertIn("On Stand-in, over the Agent Client Protocol.", lines)
+        self.assertIn("On stand-in 0.1, over the Agent Client Protocol, model A.", lines)
         self.assertTrue(any(line.startswith("Drawn: Run the /draft command") for line in lines), lines)
         self.assertTrue(any(line.startswith("· Write ") and line.endswith("prototype/index.html") for line in lines),
                         "a tool call is a line, with its path short")

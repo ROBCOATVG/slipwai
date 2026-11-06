@@ -68,6 +68,10 @@ class HandoverTest(unittest.TestCase):
         self.assertIn("<h2>Make club-boat-bookings</h2>", shown)
         self.assertIn('id="generate">Make it</button>', shown)
         self.assertIn("Change something", shown)
+        with mock.patch("slipwai.interview_form.SKETCHES", self.folder.parent.parent):
+            self.assertIn('href="/brief/read?sketch=club-boat-bookings">Read the brief</a>',
+                          page({"brief": str(self.folder)}, root=self.folder.parent))
+        self.assertNotIn("Read the brief", shown, "a brief that is not a sketch's is not read from here")
         self.assertIn('<input type="hidden" name="frontend" value="react-vite">', shown)
         self.assertIn('<input type="hidden" name="who" value="staff">', shown)
         self.assertNotIn("Delivery foundation", shown, "no question is asked on the hand-over's page")

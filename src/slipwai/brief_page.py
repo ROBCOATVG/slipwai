@@ -12,6 +12,8 @@ page and the surface pages' stylesheets load from there, and nothing else does.
 """
 from __future__ import annotations
 
+# budget: 400 — the first page's two faces, the listing and a sketch, their routes, the files a sketch serves,
+# and the brief read as a document; the conversation itself is brief_session.py's.
 import json
 from pathlib import Path
 from typing import Any
@@ -20,6 +22,7 @@ from urllib.parse import parse_qs, quote
 from .brief_session import BRIEF, BROUGHT, PROTOTYPE, for_slug, sketches, slug_of, started, workspace
 from .errors import Busy
 from .page_shell import document, esc
+from .spec_page import page as read_page
 from .turn_cards import SCRIPT as DRAW
 from .turn_cards import STYLE as CARDS
 
@@ -243,8 +246,29 @@ def sketch_page(slug: str) -> str:
             f'decide for you, and say it did.</p>'
             f'<a class="hand-over" hidden href="/generate?brief={quote(str(home / BRIEF))}">Hand over: start a '
             f'project from this brief</a>'
+            f'<p class="read" style="margin-top:8px"><a class="quiet-link" href="/brief/read?sketch={quote(slug)}">'
+            f'Read the brief as a document</a> · '
+            f'<a class="quiet-link" href="/brief/read?sketch={quote(slug)}&amp;file=people">the people</a> · '
+            f'<a class="quiet-link" href="/brief/read?sketch={quote(slug)}&amp;file=domain">the facts</a></p>'
             f'<p class="empty" style="margin-top:8px">Folder: <code>{esc(home / BRIEF)}</code></p></div>'
             f'<div class="card" style="margin-top:14px"><h2>The prototype</h2>{frame}</div></div></div>')
+
+
+#: The brief's documents a person may read on the board, by the name the address carries.
+READABLE = {"prd": "prd.md", "people": "people.md", "domain": "domain.md"}
+
+
+def reading(slug: str, name: str) -> str:
+    """One of the brief's documents in reading form, the way a drafted specification is read on the voyage:
+    headings, lists, bold and code rendered, nothing followed, nothing run. A missing one is a refusal."""
+    if name not in READABLE:
+        raise ValueError(f"{name} is not a document of the brief; prd, people or domain")
+    home = workspace(slug_of(slug))
+    document = home / BRIEF / READABLE[name]
+    if not document.is_file():
+        raise ValueError(f"{READABLE[name]} is not written yet in this sketch")
+    return read_page(f"{slug}/brief/{READABLE[name]}", document.read_text(encoding="utf-8", errors="replace"),
+                     back=f"/brief?sketch={quote(slug)}")
 
 
 def page(query: str) -> str:
@@ -269,6 +293,14 @@ def served(where: str) -> tuple[Path, str] | None:
 
 def route_get(bridge: Any, where: str, query: str) -> bool:
     """Answer a GET of this page's, or say it was not one."""
+    if where == "/brief/read":
+        asked = parse_qs(query)
+        slug, name = (asked.get("sketch") or [""])[0], (asked.get("file") or ["prd"])[0]
+        try:
+            bridge.send(200, reading(slug, name))
+        except ValueError as refused:
+            bridge.send(404, str(refused), "text/plain; charset=utf-8")
+        return True
     if where == "/brief":
         try:
             bridge.send(200, page(query))

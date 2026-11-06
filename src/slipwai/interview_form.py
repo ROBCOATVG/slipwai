@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote
 
 from . import handover
+from .brief_session import SKETCHES
 from .errors import GenerationError
 from .folder_field import SCRIPT as CHOOSING
 from .folder_field import folder_field
@@ -203,8 +204,17 @@ def confirm(held: Mapping[str, str]) -> str:
             f'<ul class="settled">{lines}</ul>'
             f'<form class="ask-page" hidden>{hidden}</form>'
             f'<div class="ask"><button class="go" id="generate">Make it</button>'
-            f'<a class="quiet-link" href="/generate?brief={quote(folder)}&amp;edit=1">Change something</a></div>'
+            f'<a class="quiet-link" href="/generate?brief={quote(folder)}&amp;edit=1">Change something</a>'
+            f'{reading_link(Path(folder))}</div>'
             f'<pre class="said" id="said" data-tail hidden></pre></div>')
+
+
+def reading_link(folder: Path) -> str:
+    """A link to read the brief's document on the board, where the brief is a sketch's; nothing otherwise,
+    since the board reads a sketch's folder and no other."""
+    if folder.name != "brief" or folder.parent.parent != SKETCHES:
+        return ""
+    return f'<a class="quiet-link" href="/brief/read?sketch={quote(folder.parent.name)}">Read the brief</a>'
 
 
 def page(answers: Mapping[str, str], title: str = "Start a new project", root: Path | None = None) -> str:

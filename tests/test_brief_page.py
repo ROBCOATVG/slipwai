@@ -83,6 +83,7 @@ class FirstPageTest(BoardTest):
         self.assertIn("4 Hand over", said)
         self.assertIn("Nothing written yet.", said)
         home = brief_session.workspace("club-boats") / "brief"
+        self.assertIn('href="/brief/read?sketch=club-boats"', said, "the brief can be read as a document")
         self.assertIn(f'<a class="hand-over" hidden href="/generate?brief={quote(str(home))}">', said,
                       "a link to the start page with its last field filled, shown once the brief has a document")
         self.assertIn("Green: the builder can start from it without asking. Amber: what the draft will", said)
@@ -175,3 +176,29 @@ class FirstPageTest(BoardTest):
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+class ReadingTest(BoardTest):
+    def setUp(self) -> None:
+        super().setUp()
+        patched = mock.patch.object(brief_session, "SKETCHES", self.root / "sketches")
+        patched.start()
+        self.addCleanup(patched.stop)
+
+    def test_the_brief_s_documents_are_read_on_the_board_and_a_missing_one_is_said(self) -> None:
+        home = brief_session.started("club-boats")
+        (home / "brief").mkdir(exist_ok=True)
+        (home / "brief" / "prd.md").write_text("# Club boats\n\nMembers **book** a boat.\n\n## Open\n\n- When?\n",
+                                              encoding="utf-8")
+        code, page = self.get("/brief/read?sketch=club-boats")
+        self.assertEqual(code, 200)
+        self.assertIn("<h1>Club boats</h1>", page)
+        self.assertIn("<b>book</b>", page)
+        self.assertIn('href="/brief?sketch=club-boats"', page, "the way back is the brief, not the voyage")
+        self.assertIn("the brief</a>", page)
+        with self.assertRaises(urllib.error.HTTPError) as refused:
+            self.get("/brief/read?sketch=club-boats&file=people")
+        self.assertEqual(refused.exception.code, 404)
+        with self.assertRaises(urllib.error.HTTPError) as refused:
+            self.get("/brief/read?sketch=club-boats&file=secrets")
+        self.assertEqual(refused.exception.code, 404)

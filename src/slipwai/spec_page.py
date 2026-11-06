@@ -202,7 +202,8 @@ def page(where: str, text: str, back: str = "/voyage") -> str:
     still served rather than published, which is what carries the seat onto both links back: this window is
     a view of one project, and the voyage it returns to is that project's.
     """
+    where_to = "the brief" if back.startswith("/brief") else "the voyage"
     body = (f'<style>{STYLE}</style><div class="card doc">{rendered(text)}</div>'
-            f'<p class="empty"><a href="{esc(back)}">\u2190 the voyage</a></p>')
+            f'<p class="empty"><a href="{esc(back)}">\u2190 {where_to}</a></p>')
     return document(titled(text, where.rsplit("/", 2)[-2] if "/" in where else where), where, body,
                     now="/spec")

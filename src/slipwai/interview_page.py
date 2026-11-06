@@ -50,7 +50,7 @@ from .catalog import (
 from .cli_generate import DECLINE, quickstart_menu, unavailable_quickstarts
 from .cli_offered import not_installed_frameworks, not_installed_languages
 from .cli_prompts import PROFILE_GUIDANCE
-from .design_docs import briefed
+from .design_docs import briefed, carried
 from .errors import GenerationError
 from .extension_install import catalogue
 from .harness import detect, keys, name_of
@@ -439,6 +439,7 @@ def brief_flags(answers: Mapping[str, str], folder: Path) -> list[str]:
     """`--brief`, and `--shape` from the brief's two lines where the target is one the keel deploys: a shape
     is a deployment's, and `generate` refuses one for a project that goes nowhere."""
     flags = ["--brief", str(folder)]
+    carried(folder)  # the prototype a person played goes with the brief, so the builder draws to match it
     if managed(CATALOG, chosen(answers)["target"]):
         flags += shape_flag(folder)
     return flags

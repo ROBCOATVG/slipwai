@@ -88,6 +88,11 @@ Then one of two things, depending on what was in the directory.
 
 - **A person handed over mock-ups.** Review each against the note. One finding list per mock-up, in the
   shape the `/gaps` stage uses, so one triage reads both. Do not redraw them.
+- **A person handed over a prototype** (`docs/design/prototype/index.html`): the drawing they approved by
+  playing it. The storyboard embeds it first, as the thing to play, and every surface drawn or reviewed
+  follows its look and layout; a surface page that says a state in words the prototype shows is reviewed
+  against the prototype, not the words. It is not a surface: it has no state articles, the board asks for
+  no verdict on it, and nothing is built from its code.
 - **The directory was empty.** Draft them: one static HTML file per surface, from the note. No framework and
   no build step, because the point is a file a person opens in a browser and points at. Load
   `skills/frontend-design/SKILL.md` for this, read through *How much rigour a mock-up gets* below, which

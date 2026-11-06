@@ -17,9 +17,10 @@ brief/
 ```
 
 - `prototype/` is the thing the person plays with: one `index.html`, no build step, no framework, every
-  state reachable by tapping. It is yours to redraw as often as they ask. Its code never leaves this folder.
-  The page the person is reading shows it beside this conversation and reloads it when you write it, so
-  never tell them to open a file: say "tap through it on the right".
+  state reachable by tapping. It is yours to redraw as often as they ask. The page the person is reading
+  shows it beside this conversation and reloads it when you write it, so never tell them to open a file:
+  say "tap through it on the right". At hand-over it travels with the brief as `docs/design/prototype/`:
+  the builder's surfaces follow its look and layout, so what they approved by playing is what gets built.
 
 A fact in `brief/domain.md` is one `## ` heading, a sentence or two, and a line beginning `Source:` saying
 where it is written down. A person in `brief/people.md` is one `## <Name>` heading, a `role:` line and a

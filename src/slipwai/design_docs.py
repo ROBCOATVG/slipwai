@@ -142,6 +142,33 @@ def briefed(home: Path) -> tuple[Path | None, list[Path]]:
     return None, found
 
 
+#: The drawing a person played: one page, inside the brief once it travels, beside it while it is drawn.
+PLAYED = "prototype/index.html"
+
+
+def played(folder: Path) -> Path | None:
+    """The prototype that goes with this brief, or nothing: inside the folder once carried, else the
+    sketch's own beside it. A sketch draws it beside the brief so the agent can redraw it as often as asked
+    without the brief's reading counting it; hand-over is what brings it in."""
+    for home in (folder, folder.parent if folder.name == "brief" else None):
+        if home is not None and (home / PLAYED).is_file():
+            return home / PLAYED
+    return None
+
+
+def carried(folder: Path) -> Path | None:
+    """The prototype copied into the brief, so it lands under `docs/design/` with the rest, and the path it
+    took; nothing where there is none. The one artefact a person approved by playing it was the one the
+    builder never saw: the surfaces are state inventories, and the storyboard framed those."""
+    found = played(folder)
+    if found is None or found.is_relative_to(folder):
+        return found
+    landed = folder / PLAYED
+    landed.parent.mkdir(parents=True, exist_ok=True)
+    landed.write_bytes(found.read_bytes())
+    return landed
+
+
 #: Where the brief's `domain.md` lands: beside the project's own domain files, as one of them.
 FACTS = f"{DOMAIN}/brief.md"
 HANDED_FACTS = ("*Handed over with the brief as `domain.md`. A fact here is cited by its heading, like any "

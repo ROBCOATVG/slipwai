@@ -61,7 +61,7 @@ class FirstPageTest(BoardTest):
 
     def test_the_tab_is_beside_start_a_project_and_not_on_the_published_copy(self) -> None:
         board = self.get("/")[1]
-        self.assertLess(board.index('href="/brief"'), board.index("Start from a document"),
+        self.assertLess(board.index('href="/brief"'), board.index("Start from a PRD"),
                         "the first door, in the order a person arrives: an idea before a document")
         self.assertNotIn('href="/brief"', self.rendered(controls=False))
 

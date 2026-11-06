@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .design_docs import PRD_NAMES, PRD_WORDS, briefed, weighed
+from .design_docs import PRD_NAMES, PRD_WORDS, briefed, played, weighed
 from .drawn import SHOWN, decided_states, page_states
 from .errors import GenerationError
 
@@ -160,11 +160,12 @@ def surfaces_line(home: Path, pages: list[Path]) -> str:
     read = [(page, *page_states(page)) for page in pages]
     plain = [page.relative_to(home).as_posix() for page, _, states in read if states == [SHOWN]]
     total = sum(len(states) for _, _, states in read)
+    play = "; the prototype goes with them" if played(home) else ""
     if not plain:
-        return f"surfaces: {len(read)}, states: {total}, each with a heading{who_decided(pages)}"
+        return f"surfaces: {len(read)}, states: {total}, each with a heading{who_decided(pages)}{play}"
     return (f"surfaces: {len(read)}, states: {total}; {', '.join(plain)} "
             f"{'has' if len(plain) == 1 else 'have'} no <article class=\"state\"> and "
-            f"{'is' if len(plain) == 1 else 'are'} one state each, {SHOWN}")
+            f"{'is' if len(plain) == 1 else 'are'} one state each, {SHOWN}{play}")
 
 
 def who_decided(pages: list[Path]) -> str:

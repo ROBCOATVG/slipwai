@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -32,6 +33,18 @@ def tree(**files: str) -> Path:
 
 
 class ReportTest(unittest.TestCase):
+    def test_a_prototype_beside_or_inside_the_brief_goes_with_the_surfaces(self) -> None:
+        """The first page draws it beside the brief; hand-over copies it in. Either way the check says it goes."""
+        area = Path(tempfile.mkdtemp())
+        folder = area / "brief"
+        shutil.copytree(BRIEF, folder)
+        self.assertFalse(report(folder)[1].endswith("the prototype goes with them"))
+        (area / "prototype").mkdir()
+        (area / "prototype" / "index.html").write_text("<title>Play</title>", encoding="utf-8")
+        self.assertTrue(report(folder)[1].endswith("6 proposed; the prototype goes with them"), report(folder)[1])
+        shutil.move(area / "prototype", folder / "prototype")
+        self.assertTrue(report(folder)[1].endswith("; the prototype goes with them"))
+
     def test_the_worked_example_reads_as_the_reference_page_says(self) -> None:
         self.assertEqual(report(BRIEF), [
             "requirements document: prd.md, by name",

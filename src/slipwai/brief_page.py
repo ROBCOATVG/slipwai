@@ -6,7 +6,7 @@ yet* — and the prototype, embedded from the sketch's own folder. The header ca
 draws, with the one the session says it is at marked.
 
 It is a tab beside the start page and never in front of it: a person with a document, or with nothing, takes
-*Start from a document* as they do today. Its routes are its own and hand straight back to the session, so the
+*Start from a PRD* as they do today. Its routes are its own and hand straight back to the session, so the
 bridge's one job here is two lines. Files are served from the workspace and confined to it: the prototype's
 page and the surface pages' stylesheets load from there, and nothing else does.
 """

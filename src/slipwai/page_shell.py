@@ -256,7 +256,7 @@ font-weight:500}
 TABS: tuple[tuple[str, str], ...] = (
     ("/", "Board"),
     ("/brief", "Start from an idea"),
-    ("/generate", "Start from a document"),
+    ("/generate", "Start from a PRD"),
     ("/adopt", "Start from a codebase"),
     ("/packages", "Packages"),
     ("/settings", "Settings"),

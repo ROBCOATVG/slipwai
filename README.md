@@ -173,7 +173,7 @@ telegraph: half-ahead  boilers 3  fanout 2  bunker 126/10000k today
 Run `slipwai` with no arguments to open one page. The page has a tab for each of these:
 
 - **Start from an idea**: a conversation that writes the brief a project starts from
-- **Start from a document**: a project from a requirements document or a brief
+- **Start from a PRD**: a project from a requirements document or a brief
 - **Start from a codebase**: the method installed around code that exists
 - the packages that this machine can install
 - settings: which coding agent runs the board's conversations, and the model

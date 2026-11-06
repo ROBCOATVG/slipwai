@@ -231,7 +231,7 @@ The command writes every answer in `project.json`. Nothing else keeps a second c
 ### The same interview, on the board
 
 `slipwai` with no arguments opens **the board**. This machine serves the board, and only this machine can
-open it. The *Start from a document* tab is the same interview as a form, in the same order and with the same
+open it. The *Start from a PRD* tab is the same interview as a form, in the same order and with the same
 menus. Three things are easier on the board:
 
 - A quickstart fills in the questions below it. Each answer stays yours to change.

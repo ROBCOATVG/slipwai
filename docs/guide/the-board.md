@@ -66,7 +66,7 @@ header shows the four steps: describe, walk the states, check, hand over.
 - **New conversation** starts the sketch again. A sketch keeps its conversation, so a window opened later
   shows the same turns.
 
-### Start from a document
+### Start from a PRD
 
 This is the `slipwai generate` interview as a form. The questions come in the same order and offer the
 same answers.

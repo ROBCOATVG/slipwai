@@ -72,7 +72,7 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
     if (offered := extensions_asked(answers)) is not None:
         rows += field_html(offered)
     rows += field_html(repository_asked(answers))
-    return (f'<div class="card" id="interview"><h2>Start from a document</h2>'
+    return (f'<div class="card" id="interview"><h2>Start from a PRD</h2>'
             f'<form class="ask-page">{rows}</form>'
             f'<div class="ask"><button class="go" id="generate">Generate</button></div>'
             f'<pre class="said" id="said" data-tail hidden></pre></div>')
@@ -220,7 +220,7 @@ def reading_link(folder: Path) -> str:
     return f'<a class="quiet-link" href="/brief/read?sketch={quote(folder.parent.name)}">Read the brief</a>'
 
 
-def page(answers: Mapping[str, str], title: str = "Start from a document", root: Path | None = None) -> str:
+def page(answers: Mapping[str, str], title: str = "Start from a PRD", root: Path | None = None) -> str:
     """The interview as a page of its own. 14.4 makes it a tab of the board; the questions do not change.
     From a brief it is a confirmation first, and the questions only on *Change something*."""
     folder = str(answers.get("brief") or "").strip()

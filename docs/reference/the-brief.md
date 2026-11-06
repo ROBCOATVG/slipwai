@@ -14,6 +14,8 @@ start form. [The prototyping plan](../prototyping-plan.md) says why a folder and
   look/              a stylesheet, a brand sheet, a logo: the direction the drawing follows
   surfaces/
     <surface>.html   one page per surface, no framework, no build step
+  prototype/
+    index.html       the drawing a person played, where the brief came from the board's first page
 ```
 
 Only the first line is required. A folder of wireframes and a brand sheet with no document in it is a
@@ -132,6 +134,7 @@ first feature, and this contract does not try to make the other one better.
 |---|---|---|---|
 | the requirements document | `docs/prd.md` | `/draft` | the first stage after `./init`, which stops with the specification and its `## Assumptions` |
 | `surfaces/*.html` | `docs/design/surfaces/*.html` | the surfaces stage, then `drawn.page_states` | the storyboard, and the approve button on the Voyage window |
+| `prototype/index.html` | `docs/design/prototype/index.html` | the surfaces stage, which embeds it first and draws to match it; never a surface itself | the storyboard |
 | `look/` and anything else | `docs/design/…` | `commands/mockups.md` | before a surface is drawn |
 | `people.md` | `docs/design/people.md` | the draft, which writes `specs/<feature>/people/` from it | the first stage after `./init` |
 | `domain.md` | `.specify/domain/brief.md` | every stage that cites a fact, by its heading | from the draft on |

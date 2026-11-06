@@ -15,7 +15,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import board_settings, handover
+from slipwai import board_settings, design_docs, handover
 from slipwai.board_settings import Launch
 from slipwai.interview_form import from_query, page
 
@@ -57,6 +57,19 @@ class HandoverTest(unittest.TestCase):
         self.assertIn("Signed in by the people who work here, and nobody else.", lines)
         self.assertTrue(any("One service, bookings, in python with a real store in one file" in line for line in lines))
         self.assertTrue(any(line.startswith("Built with stand-in") for line in lines), lines)
+
+    def test_the_prototype_beside_the_brief_is_carried_in_and_said(self) -> None:
+        """The page a person played was left behind at hand-over; the builder saw state inventories in words."""
+        played = self.folder.parent / "prototype" / "index.html"
+        played.parent.mkdir()
+        played.write_text("<title>Play</title><button>Book</button>", encoding="utf-8")
+        self.assertTrue(any(line.endswith("and the prototype you played, which the surfaces follow.")
+                            for line in handover.said(handover.answers(self.folder))))
+        landed = design_docs.carried(self.folder)
+        self.assertEqual(landed, self.folder / "prototype" / "index.html")
+        self.assertEqual(landed.read_text(encoding="utf-8"), played.read_text(encoding="utf-8"))
+        self.assertEqual(design_docs.carried(self.folder), landed, "carried twice is still the one copy")
+        self.assertIn(landed, design_docs.briefed(self.folder)[1], "it travels with the rest of the brief")
 
     def test_a_brief_with_no_surfaces_and_no_lines_takes_the_plain_defaults(self) -> None:
         bare = Path(tempfile.mkdtemp()) / "notes"

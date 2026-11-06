@@ -19,7 +19,7 @@ from .board_settings import read
 from .brief_check import runs_line, sections, service
 from .browser_app import frontend_menu
 from .catalog import CATALOG
-from .design_docs import briefed
+from .design_docs import briefed, played
 from .harness import name_of
 from .identity import EVERYONE, STAFF, WHO
 from .interview_page import extensions_offered
@@ -89,7 +89,8 @@ def said(held: dict[str, str]) -> list[str]:
     runs = runs_line(found)
     lines.append(runs.replace("runs for: ", "For ", 1).capitalize() if not runs.startswith("runs for: not said")
                  else "Who runs it is not said yet; the first build starts small, one environment.")
-    lines.append(f"A browser app, drawn from the brief's {len(pages)} surface{'s' if len(pages) != 1 else ''}."
+    play = " and the prototype you played, which the surfaces follow" if played(folder) else ""
+    lines.append(f"A browser app, drawn from the brief's {len(pages)} surface{'s' if len(pages) != 1 else ''}{play}."
                  if held.get("frontend", "none") != "none" else "No browser app: the brief draws no surfaces.")
     store = STORES.get(held.get("persistence", ""), held.get("persistence", ""))
     target = held.get("target", "")

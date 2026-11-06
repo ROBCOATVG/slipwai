@@ -17,7 +17,7 @@ from .page_shell import document, esc
 STARTING = (
     ("Start from an idea", "", "/brief",
      "A conversation that draws a prototype you can click through, and writes the brief a project starts from."),
-    ("Start from a document", "generate", "/generate",
+    ("Start from a PRD", "generate", "/generate",
      "The interview, asked here: the delivery foundation, the language, what the first service owns, and "
      "where it goes to production."),
     ("Start from a codebase", "adopt", "/adopt",

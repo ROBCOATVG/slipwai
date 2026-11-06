@@ -3,9 +3,10 @@
 A page's conversation — the first page's, the console's — keeps its own shape: turns behind a lock, a poll
 with `since`. This is what sits between that shape and `acp.Session`. It begins or loads the agent's
 session in the page's folder, puts each turn as a prompt, and turns every `session/update` into a turn
-the page can draw: text and thought as the agent's own words, a tool call as a card that its updates
-change in place, a plan as a list. The two things the agent asks a client for become cards too — a
-permission the policy could not grant on its own, a question — and the page answers them through
+the page can draw: text as the agent's own words — a thought is not, its reasoning being its own, and only
+sets `thinking` while it streams — a tool call as a card that its updates change in place, a plan as a
+list. The two things the agent asks a client for become cards too — a permission the policy could not
+grant on its own, a question — and the page answers them through
 `answer`, which is what the protocol's callback was waiting on. A cancel is the protocol's, and every
 card still open is answered with nothing.
 
@@ -56,7 +57,9 @@ class BoardAgent:
         self.session: Session | None = None
         self.loaded = False
         self.text: list[str] = []  # the agent's message under way, flushed at the next card or the turn's end
-        self.thought: list[str] = []
+        #: Whether the last thing the agent streamed was a thought. Its reasoning is its own and is not a
+        #: turn on the page; the page says "Thinking…" while this holds, so the wait is explained.
+        self.thinking = False
         self.person: list[str] = []  # what the person said, as the agent replays it on a load
         self.asks: dict[str, dict[str, Any]] = {}
         self.count = itertools.count(1)
@@ -141,10 +144,14 @@ class BoardAgent:
     def update(self, update: dict[str, Any]) -> None:
         kind = update.get("sessionUpdate")
         content = update.get("content") or {}
-        if kind in ("agent_message_chunk", "agent_thought_chunk", "user_message_chunk"):
+        if kind == "agent_thought_chunk":
+            self.thinking = True
+            return
+        self.thinking = False
+        if kind in ("agent_message_chunk", "user_message_chunk"):
             if content.get("type") == "text" and content.get("text"):
-                {"agent_message_chunk": self.text, "agent_thought_chunk": self.thought,
-                 "user_message_chunk": self.person}[str(kind)].append(str(content["text"]))
+                {"agent_message_chunk": self.text, "user_message_chunk": self.person}[str(kind)].append(
+                    str(content["text"]))
         elif kind == "tool_call":
             self.flush()
             self.say(self.who, "tool", str(update.get("title") or update.get("name") or "a tool"),
@@ -164,8 +171,8 @@ class BoardAgent:
     def flush(self) -> None:
         """The words gathered so far, said as one turn each. Called at every card and at the turn's end,
         so a message arrives in the pieces the agent's own work divides it into."""
-        for role, kind, held in (("person", "text", self.person), (self.who, "thought", self.thought),
-                                 (self.who, "text", self.text)):
+        self.thinking = False
+        for role, kind, held in (("person", "text", self.person), (self.who, "text", self.text)):
             if held:
                 words = "".join(held).strip()
                 held.clear()

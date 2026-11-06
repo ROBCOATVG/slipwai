@@ -101,7 +101,8 @@ SCRIPT = """
     };
     const stop = page.querySelector('button.stop'), on = page.querySelector('.head .on');
     const paint = said => {
-      input.disabled = busy; go.disabled = busy; go.textContent = busy ? 'Drawing…' : 'Say';
+      input.disabled = busy; go.disabled = busy;
+      go.textContent = busy ? (said.thinking ? 'Thinking…' : 'Drawing…') : 'Say';
       stop.hidden = !busy; if (said.agent) on.textContent = 'on ' + said.agent;
       steps.forEach((one, index) => one.classList.toggle('now', index + 1 === said.step));
       check.replaceChildren(...said.check.map(line => {
@@ -119,7 +120,8 @@ SCRIPT = """
       const before = drawn;
       said.turns.forEach(draw);
       at = said.at; busy = said.busy;
-      if (said.turns.length) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
+      drawWaiting(log, busy, said.thinking);
+      if (said.turns.length || busy) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
       paint(said);
       if (frame && drawn !== before) { frame.hidden = false; frame.src = frame.dataset.src + '?v=' + Date.now(); }
       clearTimeout(timer);
@@ -129,7 +131,7 @@ SCRIPT = """
       if (!text.trim() || busy) return;
       const answer = await post('/brief/ask', {message: text});
       if (!answer.ok) { draw({role: 'sketch', kind: 'error', text: await answer.text()}); return; }
-      input.value = ''; busy = true; paint({step: 0, check: []}); poll();
+      input.value = ''; busy = true; drawWaiting(log, true, false); paint({step: 0, check: []}); poll();
     };
     page.querySelector('form.ask').addEventListener('submit', event => { event.preventDefault(); ask(input.value); });
     stop.addEventListener('click', () => post('/brief/cancel', {}));

@@ -60,9 +60,9 @@ class SessionTest(unittest.TestCase):
         one.start()
         one.new()
         self.assertEqual(one.prompt("hello"), "end_turn")
-        self.assertEqual(self.kinds(), ["agent_message_chunk", "tool_call", "tool_call_update"])
-        self.assertEqual(self.updates[0]["content"]["text"], "Drawn: hello")
-        self.assertEqual(self.updates[2]["status"], "completed")
+        self.assertEqual(self.kinds(), ["agent_thought_chunk", "agent_message_chunk", "tool_call", "tool_call_update"])
+        self.assertEqual(self.updates[1]["content"]["text"], "Drawn: hello")
+        self.assertEqual(self.updates[3]["status"], "completed")
         self.assertTrue((self.home / "prototype" / "index.html").is_file(), "the agent wrote where it was allowed")
         self.assertEqual(self.asked, [], "nobody was asked about a write inside the working directory")
         self.hold.clear()  # the next turn waits on the person, so a second prompt meanwhile is refused

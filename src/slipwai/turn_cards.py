@@ -11,15 +11,19 @@ Everything is `textContent`: what the agent said is data.
 from __future__ import annotations
 
 STYLE = """
-.turns .turn.thought{justify-self:start;border:0;padding:0 4px;color:var(--ink-3);font-size:.8rem;font-style:italic}
 .turns .turn.tool{justify-self:start;border:0;padding:2px 4px;font-size:.8rem;color:var(--ink-3);display:flex;gap:8px;
-  align-items:baseline;white-space:normal}
+  align-items:baseline;white-space:nowrap;max-width:100%;width:100%}
+.turns .turn.tool b{flex:none;min-width:5.2em}
+.turns .turn.tool .title{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .turns .turn.tool .dot{width:8px;height:8px;border-radius:50%;background:var(--rule);flex:none;align-self:center}
 .turns .turn.tool.in_progress .dot{background:var(--warn)}
 .turns .turn.tool.completed .dot{background:var(--good)}
 .turns .turn.tool.failed .dot{background:var(--critical)}
 .turns .turn.tool b{font-weight:500;color:var(--ink-2);text-transform:capitalize}
-.turns .turn.tool .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.76rem}
+.turns .turn.tool .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.76rem;flex:none}
+.turns .turn.tool .path:empty{display:none}
+.turns .turn.waiting{justify-self:start;border:0;padding:4px 4px;color:var(--ink-3);font-size:.84rem;font-style:italic;
+  animation:breathe 1.7s ease-in-out infinite}
 .turns .turn.plan{justify-self:start;background:var(--ground);font-size:.84rem}
 .turns .turn.plan ol{margin:0;padding-left:1.2rem}
 .turns .turn.plan li.completed{color:var(--ink-3);text-decoration:line-through}
@@ -41,6 +45,18 @@ button.stop{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var
 """
 
 SCRIPT = """
+// The line at the foot of the log while the agent is busy: what it is doing now, in a word, breathing. It
+// is the one turn that is never kept — the next real turn replaces it, and the end of the turn removes it.
+function drawWaiting(log, busy, thinking) {
+  let had = log.querySelector('.turn.waiting');
+  if (!busy) { if (had) had.remove(); return; }
+  if (!had) { had = document.createElement('div'); had.className = 'turn waiting'; }
+  had.textContent = thinking ? 'Thinking…' : 'Working…';
+  log.appendChild(had);
+}
+// What a tool call's kind is called on the page: a verb a person reads, not the protocol's word.
+const VERBS = {read: 'Reading', edit: 'Writing', delete: 'Deleting', move: 'Moving', search: 'Searching',
+               execute: 'Running', think: 'Thinking', fetch: 'Fetching', switch_mode: 'Switching', other: 'Working'};
 const drawTurn = (log, turn, reply) => {
   const card = kind => {
     const one = document.createElement('div');
@@ -65,8 +81,12 @@ const drawTurn = (log, turn, reply) => {
     one = document.createElement('div');
     one.className = 'turn tool ' + turn.tool.status; one.dataset.tool = turn.tool.id;
     one.innerHTML = '<span class="dot"></span><b></b><span class="title"></span><span class="path"></span>';
-    one.querySelector('b').textContent = turn.tool.kind; one.querySelector('.title').textContent = turn.text;
-    one.querySelector('.path').textContent = turn.tool.path.replace(/^.*\\/(brief|prototype)\\//, '$1/');
+    one.querySelector('b').textContent = VERBS[turn.tool.kind] || 'Working';
+    // One line, cut: an `execute` call is titled with its whole command, and a command is not the person's.
+    const title = one.querySelector('.title');
+    title.textContent = turn.text.length > 90 ? turn.text.slice(0, 90) + '…' : turn.text; title.title = turn.text;
+    const inside = turn.tool.path.match(/\\/(brief|prototype)\\/(.*)$/);
+    one.querySelector('.path').textContent = inside ? inside[1] + '/' + inside[2] : '';
   } else if (turn.kind === 'plan') {
     one = log.querySelector('.turn.plan') || document.createElement('div');
     one.className = 'turn plan'; one.innerHTML = '<ol></ol>';

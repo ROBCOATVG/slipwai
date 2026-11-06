@@ -70,7 +70,7 @@ SCRIPT = DRAW + """
     const draw = turn => drawTurn(log, turn, (id, body) => post('/console/answer', {id, ...body}));
     const stop = card.querySelector('button.stop'), on = card.querySelector('.head .on');
     const paint = said => { input.disabled = busy; go.disabled = busy;
-      go.textContent = busy ? 'Answering…' : 'Ask'; stop.hidden = !busy;
+      go.textContent = busy ? (said && said.thinking ? 'Thinking…' : 'Answering…') : 'Ask'; stop.hidden = !busy;
       if (said && said.agent) on.textContent = 'on ' + said.agent; };
     const poll = async () => {
       let said;
@@ -79,7 +79,8 @@ SCRIPT = DRAW + """
       const stuck = log.scrollTop + log.clientHeight >= log.scrollHeight - 24;
       said.turns.forEach(draw);
       at = said.at; busy = said.busy;
-      if (said.turns.length) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
+      drawWaiting(log, busy, said.thinking);
+      if (said.turns.length || busy) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
       paint(said);
       clearTimeout(timer);
       if (busy) timer = setTimeout(poll, 700);
@@ -88,7 +89,7 @@ SCRIPT = DRAW + """
       if (!text.trim() || busy) return;
       const answer = await post('/console/ask', {message: text});
       if (!answer.ok) { draw({role: 'harbourmaster', kind: 'error', text: await answer.text()}); return; }
-      input.value = ''; busy = true; paint(); poll();
+      input.value = ''; busy = true; drawWaiting(log, true, false); paint(); poll();
     };
     card.querySelector('form').addEventListener('submit', event => { event.preventDefault(); ask(input.value); });
     stop.addEventListener('click', () => post('/console/cancel', {}));

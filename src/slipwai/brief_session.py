@@ -176,7 +176,7 @@ class Sketch:
             held = max(since - self.dropped, 0)
             return {"turns": self.turns[held:], "at": self.dropped + len(self.turns), "busy": self.busy,
                     "step": self.step, "ready": self.ready, "check": list(self.check), "slug": self.slug,
-                    "agent": self.on}
+                    "agent": self.on, "thinking": bool(self.agent is not None and self.agent.thinking)}
 
     def ask(self, message: str) -> str:
         """Say something to the session, or say why it cannot be said: nothing, or an answer under way."""

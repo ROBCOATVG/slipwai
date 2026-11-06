@@ -72,6 +72,7 @@ def turn(number, session, words):
         text(session, "Role given. ")
         words = words.rsplit("\n---\n", 1)[1]
     words = words.strip()
+    update(session, sessionUpdate="agent_thought_chunk", content={"type": "text", "text": "Thinking it over. "})
     text(session, f"Drawn: {words}")
     # What the stand-in does is keyed on the first line only: a stage's prompt carries a rule about asking
     # under its first line, and a word in that rule is not an instruction to this script.

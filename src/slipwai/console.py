@@ -151,7 +151,7 @@ class Console:
         with self.lock:
             held = max(since - self.dropped, 0)
             return {"turns": self.turns[held:], "at": self.dropped + len(self.turns), "busy": self.busy,
-                    "agent": self.on}
+                    "agent": self.on, "thinking": bool(self.agent is not None and self.agent.thinking)}
 
     def ask(self, message: str) -> str:
         """Put a question to the harbourmaster, or say why it cannot be: it is empty, or one is under way."""

@@ -28,7 +28,7 @@ from .console_page import SCRIPT as CONSOLE_SCRIPT
 from .fleet import NOTHING, inbox_detail  # noqa: F401 - NOTHING is read by name by the pages built on this
 from .fleet_page import SCRIPT as FLEET_SCRIPT
 from .fleet_page import STYLE as FLEET_STYLE
-from .fleet_page import headline_card, parks_table, waiting_card
+from .fleet_page import headline_card, parks_table, waiting_card, when
 from .fleet_page import live_sub as fleet_sub
 
 # PLAIN, STYLE and THEME are read by name here — and `PLAIN` by the suite, which is where the board's
@@ -263,7 +263,8 @@ def inbox_row(index: int, row: dict, controls: bool, streams: dict | None, group
     name, detail = str(row["fairway"]), inbox_detail(row)
     # A park brings its own slice's lines, without heartbeats; anything else shows the stream's tail.
     lines = row["lines"] if "lines" in row else (streams or {}).get(name) or []
-    log = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines[-20:])
+    log = "".join(f'<li><span class="when">{esc(when(str(at)) or at)}</span> {esc(what)}</li>'
+                  for at, what in lines[-20:])
     # A note needs no answer, only to be seen: Done writes its `read` receipt and it leaves the list. A
     # hand-back with needs is not done until trunk has them, so Done is not offered on one.
     done = (f'<button data-dismiss="{esc(name)}" data-told="{esc(row["t"])}">Done</button>'
@@ -271,11 +272,20 @@ def inbox_row(index: int, row: dict, controls: bool, streams: dict | None, group
     box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
            f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button>{done}</div>'
            if controls and row["kind"] != "unreadable" else "")
-    full = f'<p class="why">{esc(detail)}</p>' if headline(detail) != detail else ""
-    return (f'<details class="log"><summary><b>{esc(headline(detail))}</b> '
-            f'<span class="tag">{esc(name)}</span> <span class="mono">{esc(row["t"])}</span></summary>'
-            f'{full}{needs_list(row, controls)}<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}'
-            f'</ol>{box}</details>')
+    # A question is its own words, whole, once: the id and the slice it came from are a tag beside it, and
+    # the log line it was read from — the same words again, in field syntax — is folded away under it.
+    asking = row["kind"] == "question" and bool(row.get("asked"))
+    shown = str(row["asked"]) if asking else headline(detail)
+    full = f'<p class="why">{esc(detail)}</p>' if not asking and headline(detail) != detail else ""
+    where = (f' <span class="tag">{esc(" · ".join(part for part in (row.get("slice"), row.get("id")) if part))}'
+             f'</span>' if asking else "")
+    at = when(str(row["t"])) or str(row["t"])
+    story = f'<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}</ol>'
+    if asking:
+        story = f'<details class="log"><summary>what the stream said</summary>{story}</details>'
+    return (f'<details class="log"><summary><b>{esc(shown)}</b> '
+            f'<span class="tag">{esc(name)}</span>{where} <span class="mono">{esc(at)}</span></summary>'
+            f'{full}{needs_list(row, controls)}{story}{box}</details>')
 
 
 def needs_list(row: dict, controls: bool) -> str:

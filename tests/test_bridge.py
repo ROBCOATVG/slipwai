@@ -30,7 +30,8 @@ from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 730 — every route the board answers, the draft that runs by itself among them, driven against
+# budget: 745 — every route the board answers, the draft that runs by itself and the question that reads
+# once among them, driven against
 # `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
@@ -87,6 +88,19 @@ class PageTest(Fixture):
         self.assertIn('data-tell="ORD" data-box="tell-wait-0"', said)
         # And a note, which needs no answer, can be put away with Done.
         self.assertIn('data-dismiss="ORD"', said)
+
+    def test_a_question_reads_once_in_its_own_words_with_its_slice_and_a_clock(self) -> None:
+        """A stage's question showed three times, with its instant raw beside it."""
+        self.deck("ORD", logs.entry("question", fairway="ORD", id="D13", slice="chart",
+                                    what="Confirm one context for the 16 slices? See decisions.md#d13.",
+                                    t="2026-11-06T15:45:17.501701+00:00"))
+        said = self.rendered()
+        card = said[said.index("Waiting on you"):said.index("Streams")]
+        self.assertIn("<b>Confirm one context for the 16 slices? See decisions.md#d13.</b>", card)
+        self.assertIn('<span class="tag">chart · D13</span>', card)
+        self.assertNotIn("15:45:17.501701", card, "the instant reads as a clock, not as it was written")
+        self.assertEqual(card.count("Confirm one context"), 2, "once in the row, once in the folded log line")
+        self.assertIn("<summary>what the stream said</summary>", card)
 
     def test_a_message_from_a_person_is_escaped_and_never_rendered_as_markup(self) -> None:
         self.deck("ORD", logs.entry("told", fairway="ORD", message="<script>alert(1)</script>"))

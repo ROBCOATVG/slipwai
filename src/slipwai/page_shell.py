@@ -158,6 +158,7 @@ a.quiet-link:hover{text-decoration:underline}
 .wait-group .tag{font-size:.72rem;background:var(--rule-2);border-radius:4px;padding:0 6px;color:var(--ink-3)}
 .wait-group .why{margin:2px 0 6px 1.2rem;font-size:.84rem;color:var(--ink-3);max-width:68ch}
 details.log summary{cursor:pointer;font-size:.82rem;color:var(--teal);padding:4px 0;list-style:none}
+details.log summary b{color:var(--ink);font-weight:500;font-size:.9rem}
 details.log summary::-webkit-details-marker{display:none}
 details.log summary::before{content:"\\25B8  ";color:var(--ink-3)}
 details.log[open] summary::before{content:"\\25BE  "}

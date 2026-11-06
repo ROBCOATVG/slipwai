@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
+from .fleet import instant
 from .fleet_record import NOTHING, clock_of
 from .page_shell import esc
 
@@ -98,10 +99,10 @@ document.addEventListener('click', event => {
 
 def when(stamp: str, now: datetime | None = None) -> str:
     """A log instant as a clock, with the day where it is not today: `17:40`, `17:40 yesterday`, `Mon 17:40`."""
-    try:
-        at = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC).astimezone()
-    except (ValueError, TypeError):
+    read = instant(stamp)
+    if read is None:
         return ""
+    at = read.astimezone()
     today = (now or datetime.now(UTC)).astimezone().date()
     days = (today - at.date()).days
     if days == 0:

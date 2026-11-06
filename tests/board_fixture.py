@@ -35,6 +35,10 @@ class Fixture(unittest.TestCase):
         launchable = mock.patch("slipwai.stage_session.launchable", return_value=None)
         launchable.start()
         self.addCleanup(launchable.stop)
+        # Nor what this machine's own board installed under ~/.slipwai/agents: a row is able by the fake PATH alone.
+        installed = mock.patch("slipwai.harness.INSTALLED", Path(tempfile.mkdtemp()) / "agents")
+        installed.start()
+        self.addCleanup(installed.stop)
         (self.root / "harbour.json").write_text(harbour_config(), encoding="utf-8")
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
 

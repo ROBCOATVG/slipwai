@@ -1,9 +1,10 @@
 """What runs behind the board: the agent its conversations are sessions of, and what the board remembers
 about it.
 
-One file, `~/.slipwai/board.json`, read when a session starts. *Runs on* is a registry key or `auto`, which
-is the first agent this machine can launch. A model is remembered per agent, and only ever one the agent
-itself offered: the board names no model of its own, it keeps what `session/new` answered under
+One file, `~/.slipwai/board.json`, read when a session starts. *Runs on* is a registry key or `auto`: the
+first agent made ready that needs no sign-in or has had it, else the first made ready, else the first this
+machine has as a binary, else the first it can launch. A model is remembered per agent, and only ever one
+the agent itself offered: the board names no model of its own, it keeps what `session/new` answered under
 `configOptions` of category `model` the last time a session began, so the settings page can show it.
 
 A project's own answer outranks the board's. `.specify/integration.json` is what the person told `./init`,
@@ -104,7 +105,28 @@ def chosen(settings: Settings, root: Path | None = None, path: str | None = None
     if settings.runs_on != AUTO:
         argv, said = acp_launch(settings.runs_on, found)
         return Launch(settings.runs_on, name_of(settings.runs_on), tuple(argv), said)
-    return next((one for one in launches(found) if one.able), None)
+    return preferred(launches(found), settings)[0]
+
+
+def preferred(found: list[Launch], settings: Settings) -> tuple[Launch | None, str]:
+    """What *Auto* picks, and why in a few words: the first agent made ready that needs no sign-in or has had
+    it, then the first made ready at all, then the first this machine has as a binary — on PATH, or installed
+    by the board — then the first that can be launched at all. A package `npx` would fetch comes last: with
+    Node present every such row can be launched, and the first in the registry's order is not the one
+    somebody installed and signed in to."""
+    able = [one for one in found if one.able]
+    ready = [one for one in able
+             if settings.ready.get(one.key, {}).get("agent") and not settings.ready[one.key].get("fault")]
+    signed = [one for one in ready
+              if not settings.ready[one.key].get("auth") or settings.ready[one.key].get("signed_in")]
+    if signed:
+        return signed[0], "made ready and signed in"
+    if ready:
+        return ready[0], "made ready"
+    binaries = [one for one in able if Path(one.argv[0]).name != "npx"]
+    if binaries:
+        return binaries[0], "on this machine"
+    return (able[0], "the first found") if able else (None, "")
 
 
 def model_options(options: list[dict]) -> list[dict]:

@@ -17,6 +17,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -83,6 +84,11 @@ class RegistryTest(Fixture):
 
 class ProtocolRowsTest(unittest.TestCase):
     """The `acp` column: how a harness is launched as an Agent Client Protocol agent, or why it is not."""
+
+    def setUp(self) -> None:
+        installed = mock.patch("slipwai.harness.INSTALLED", Path(tempfile.mkdtemp()) / "agents")
+        installed.start()
+        self.addCleanup(installed.stop)
 
     def test_every_launch_row_names_a_package_or_a_binary_and_where_it_was_read(self) -> None:
         from slipwai import harness as keel

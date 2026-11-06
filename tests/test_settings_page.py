@@ -15,7 +15,7 @@ import checkout_packages  # noqa: F401
 from board_fixture import BoardTest
 
 from slipwai import board_settings
-from slipwai.board_settings import AUTO, Settings, chosen, launches, model_options, offered, read, write
+from slipwai.board_settings import AUTO, Settings, chosen, launches, model_options, offered, preferred, read, write
 
 
 def fake_path() -> str:
@@ -30,6 +30,9 @@ class ChoiceTest(unittest.TestCase):
     def setUp(self) -> None:
         self.path = fake_path()
         self.file = Path(tempfile.mkdtemp()) / "board.json"
+        installed = mock.patch("slipwai.harness.INSTALLED", Path(tempfile.mkdtemp()) / "agents")
+        installed.start()
+        self.addCleanup(installed.stop)
 
     def test_the_file_is_read_and_written_and_absent_means_auto(self) -> None:
         self.assertEqual(read(self.file).runs_on, AUTO)
@@ -46,8 +49,27 @@ class ChoiceTest(unittest.TestCase):
         self.assertIn("claude", able, "npx is on the path, so every npx package can be launched")
         self.assertIn("opencode", able)
         self.assertNotIn("goose", able)
-        self.assertEqual(chosen(Settings(), path=self.path), next(one for one in found if one.able))
+        self.assertEqual(chosen(Settings(), path=self.path).key, "opencode",  # type: ignore[union-attr]
+                         "a binary on the machine before a package npx would fetch")
         self.assertIsNone(chosen(Settings(), path="/nowhere"))
+
+    def test_auto_prefers_an_agent_made_ready_then_a_binary_then_the_first_found(self) -> None:
+        found = launches(self.path)
+        self.assertEqual(preferred(found, Settings())[1], "on this machine")
+        made = Settings(ready={"claude": {"agent": "claude-agent-acp", "fault": ""}})
+        self.assertEqual([one.key for one in [preferred(found, made)[0]]], ["claude"])
+        self.assertEqual(preferred(found, made)[1], "made ready and signed in")
+        wanting = Settings(ready={"bob": {"agent": "bob", "fault": "", "auth": [{"id": "key"}]},
+                                  "claude": {"agent": "claude-agent-acp", "fault": "", "auth": [{"id": "login"}]}})
+        first = preferred(found, wanting)[0]
+        self.assertEqual(first.key if first else "", "bob", "neither signed in: the first made ready")
+        wanting.ready["claude"]["signed_in"] = {"login": "2026-11-06"}
+        self.assertEqual(preferred(found, wanting)[0].key, "claude")  # type: ignore[union-attr]
+        broken = Settings(ready={"claude": {"agent": "claude-agent-acp", "fault": "the agent exited 1"}})
+        self.assertEqual(preferred(found, broken)[0].key, "opencode")  # type: ignore[union-attr]
+        only_npx = [one for one in found if one.key != "opencode"]
+        self.assertEqual(preferred(only_npx, Settings())[1], "the first found")
+        self.assertEqual(preferred([], Settings()), (None, ""))
 
     def test_a_choice_that_cannot_be_launched_is_returned_unable_not_replaced(self) -> None:
         now = chosen(Settings(runs_on="goose"), path=self.path)

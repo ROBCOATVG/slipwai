@@ -1,7 +1,8 @@
 """The settings page: what runs behind the board, picked from the agents this machine has.
 
 One question first, *Runs on*: every harness the registry can launch as an Agent Client Protocol agent,
-each with where it was found or what is missing, and *Auto* — the first found — as the default. Beside it,
+each with where it was found or what is missing, and *Auto* — the first made ready, else the first found as a
+binary, else the first found — as the default. Beside it,
 the model, where the chosen agent has offered one: the board shows what the agent said at `session/new`
 and never a name of its own. Saved to `~/.slipwai/board.json`; a project's own `./init` answer still wins
 for its console. Nothing else moves here: the theme stays in the corner of every page.
@@ -16,7 +17,7 @@ from typing import Any
 from urllib.parse import parse_qs
 
 from . import agent_install, agent_ready
-from .board_settings import AUTO, Launch, Settings, chosen, launches, read, write
+from .board_settings import AUTO, Launch, Settings, chosen, launches, preferred, read, write
 from .harness import acp_row, name_of
 from .page_shell import document, esc
 
@@ -67,7 +68,7 @@ SCRIPT = """
       if (!answer.ok) return;
       const poll = async () => {
         const state = await (await fetch(where + '.json?key=' + encodeURIComponent(body.key))).json();
-        doing.textContent = state.lines.join('\n');
+        doing.textContent = state.lines.join('\\n');
         if (state.done) location.reload(); else setTimeout(poll, 800);
       };
       poll();
@@ -86,7 +87,7 @@ SCRIPT = """
 def ready_line(one: Launch, found: dict) -> str:
     """What making the agent ready found, in a sentence: the agent's own name and version, the handshake's
     time, and how it signs in — or what went wrong."""
-    if not found:
+    if not found.get("agent") and not found.get("fault"):  # installed, perhaps, but never started
         return '<span class="ready">Not made ready yet: the first conversation would fetch and start it.</span>'
     if found.get("fault"):
         return (f'<span class="ready fault">Could not be made ready on {esc(str(found.get("at")))}: '
@@ -161,8 +162,8 @@ def model_field(settings: Settings, now: Launch | None) -> str:
 
 
 def page(settings: Settings, found: list[Launch], now: Launch | None) -> str:
-    auto = next((one for one in found if one.able), None)
-    auto_said = f"the first found: {auto.name}" if auto else "nothing this machine can launch yet"
+    auto, why = preferred(found, settings)
+    auto_said = f"{why}: {auto.name}" if auto else "nothing this machine can launch yet"
     rows = (f'<label class="agent"><input type="radio" name="runs_on" value="{AUTO}"'
             f'{" checked" if settings.runs_on == AUTO else ""}><span><b>Auto</b>'
             f'<span class="where">{esc(auto_said)}</span></span></label>')

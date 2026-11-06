@@ -1606,7 +1606,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 193 of 198 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 9/11, phase 22 9/9. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 193 of 196 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/7, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/4, phase 18 2/2, phase 21 9/11, phase 22 9/9. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2004,6 +2004,7 @@ is only when the number is written.
 **Preparation may run in parallel, decided 2026-10-12 (owner).** Migration implementation and its fixture
 matrix, release checks and cutover preparation may proceed alongside the remaining rebuild slices. Only
 the actual 2.0.0 tag, publication and upstream release in 8.5, and the final 1.x cut in 8.6, stay last.
+(8.6 was struck on 2026-11-06: 2.0.1 was out, 1.x is not touched, and nobody made the signpost release.)
 This changes preparation order; it authorizes no early version change or actual release.
 
 | Slice | What | From | Size | Done when | Status |
@@ -2013,8 +2014,7 @@ This changes preparation order; it authorizes no early version change or actual 
 | 8.3 | `migrate`: base from an installed 1.x, languages first, the rename table, in-flight work as data (section 6); the installed directory moved from `languages/` to `packages/`. **The fairway confirmation is `.slipwai/catch-up.md`'s first task, above the renames**, decided 2026-10-09 (owner): counted rather than described — *N fairways proposed, M slices in `unplaced`, nothing can be claimed until you confirm* — with the command that confirms and the command that re-charts. `/catch-up` refuses to report itself done while any fairway is still `proposed`, the shape `check-convergence` already has for a row the tree does not support, and a non-empty `unplaced` is the harder stop of the two: a proposed fairway is a reading the migration is fairly confident of, `unplaced` is the migration saying it could not read one at all. A project whose slices all landed in one context gets one fairway and finds the task already satisfied | upstream + cruise-2 + new | L | `make test-migration` green for every profile and backend and the adopted fixtures; an install made under `languages/` is found, moved and loaded from `packages/`; and a migrated project with two contexts and one unreadable slice has a catch-up page whose first task names both counts, with `/catch-up` red until they are confirmed | done |
 | 8.4 | The release backstop: one job that runs the matrix across the published packages against the keel about to ship, and the root matrix retired | cruise-2 + new | M | A keel release is refused when a published package fails against it; no per-commit job reads a package | done |
 | 8.4b | The chandlery has something in it: `ROBCOATVG/slipwai-index` created from `slipwai channel new`, the language packages released at 1.0.0 and registered, Pages on. Blocks 8.5 — a 2.0.0 whose `slipwai install go` finds nothing is a 2.0.0 whose headline feature does not work | new | M | A fresh `pip install slipwai` can `search`, `install` a language and `generate` with it | done |
-| 8.5 | `make release` to 2.0.0; the merge back to upstream; the Gitea decision. On the merge, `package_new.KEEL_REPO` and every published package's `uses:` move from the fork to `ROBCOATVG/slipwai`, and `SLIPWAI_KEEL` comes off the channel. **From the tag, the protocol is an API** (`docs/backend-protocol.md`, *Compatibility*): a 9.x adds only what a package can ignore, anything else is schema 10, and every published package's CI runs conformance nightly against the keel's `main` as well as the keel it was released with — so the cut is also when each package's pinned keel moves to `v2.0.0` and its `contract-main` job goes on | new | M | `v2.0.0` tagged, published, and upstream `main` is version 2; every published package green against both `v2.0.0` and `main` |  |
-| 8.6 | A final 1.5.x release whose `slipwai upgrade --check` names 2.0.0 and its migration page | upstream | S | A version 1 user is told where version 2 is and what moving costs |  |
+| 8.5 | `make release` to 2.0.0; the merge back to upstream; the Gitea decision. **Taken as done 2026-11-06:** `v2.0.0` and `v2.0.1` are tagged, `package_new.KEEL_REPO` and this repository's one remote are `ROBCOATVG/slipwai`, the fork is quiet since 2026-10-17, and GitHub is canonical by use. The nightly `contract-main` conformance job in every published package was not built and is let go of with the row; a package's `verify.yml` is its reading | new | M | `v2.0.0` tagged, published, and upstream `main` is version 2; every published package green against both `v2.0.0` and `main` |  |
 | 8.7 | `slipwai upgrade` says what changed, read from the changelog the release carries: a line or two for a patch, and for the jump from 1.x to 2.x the whole of what version 2 is and the one command that moves a project to it | new | S | Somebody who upgrades is told what they got without being sent to a web page, and the person who crosses from 1 to 2 is told it is a crossing | done |
 
 Depends on: everything before it, phase 10 included — the keel that is released has to be one that names
@@ -2309,7 +2309,7 @@ Phase 1 ──► 2 ──► 3 ──► 4 ──► Phase 6 ──┐
 Phase 5 starts as soon as 1.2 is green and runs beside phases 2 to 4 on the toolkit assets, which do not import
 the scaffold; its slices from 5.3 on need a generated project, so they wait for 4.1. Phases 6 and 7 run beside
 each other. Phase 8 preparation may run beside them (owner, 2026-10-12); the actual release cuts in
-8.5 and 8.6 wait for every other phase to finish.
+8.5 waits for every other phase to finish; 8.6 was struck on 2026-11-06.
 
 Three phases have moved. Two on 2026-10-08, in opposite directions; the release itself on 2026-10-09.
 
@@ -2436,7 +2436,6 @@ already refuses in. Nothing that works today stops working; what goes is a tree 
 | 17.2 | `react-vite` out of the keel: the 26 files and both `frontend-only` locks into the npm-workspace family that already commits the locks resolving them, `catalog.json`'s `frontends` block merged from a family fragment the way `axes` is (`catalog_options.declare_options`'s two rules, unchanged), and `assets.BUNDLED`, the wheel, the sdist and `slipwai.spec` losing the tree | upstream + new | L | `assets/frontends/` is gone and `tests/test_bundled.py` agrees; a project with a browser app generates with the family installed, and `--frontend` offers `none` alone without one | done |
 | 17.3 | The passing mentions and the gate: `services.WEB_FRAMEWORK`, `catalog_checks`'s two `react-vite` rows, `matrix/rows.FRONTENDS`, and `tests/test_no_frontend_named.py` in the shape `test_no_cloud_named.py` already has | new | M | `grep -ri 'react\|vite' src/slipwai` finds nothing but the comment saying where the rule is kept | done |
 | 17.4 | Conformance: a family answering `browser_apps` is held to it by `slipwai package check` — every tree the pipeline reads by name is there, the app's Biome agrees with the family's own pin, and the generated browser app builds and runs its tests. The obligation goes in `maintainer/skills/add-language` beside the npm-workspace one, and `docs/backend-protocol.md` stops saying `react-vite` is the keel's | new | M | A publisher who ships a browser app finds out on their own machine whether it is one, with no project generated by hand | done |
-| 17.5 | The second frontend, as the proof the shape was right rather than as a feature: one more entry in a family's `browser_apps`, offered by `--frontend`, chosen in the interview, and recorded in `project.json` — with the keel naming neither | new | S | Two frontends are offered by one installed family and nothing in `src/slipwai/` knows either name |  |
 
 **How 17.2–17.4 landed (2026-10-23).** `react-vite` moved into `slipwai-language-typescript`, under
 `assets/frontends/react-vite/`, and `language.json`'s `frontends` block declares it; the keel's `catalog.json`
@@ -2457,7 +2456,9 @@ both still keyed by `react-vite`.
 
 Order: 17.1 first and alone, because the four after it are written against the record it introduces. Then
 17.2, which is the only one that moves bytes and the only one a person notices. 17.3 and 17.4 in either
-order after it. 17.5 last, and optional — a phase that stops after 17.4 has done the thing it exists for.
+order after it. 17.5 was last and optional — a phase that stops after 17.4 has done the thing it exists for —
+and was struck on 2026-11-06: the split has shipped and been used, so the proof has lost its point; a second
+frontend is a feature for whoever wants one.
 
 Depends on: phase 10, for the pattern and for the gate `test_no_frontend_named.py` copies; and a published
 npm-workspace language package to receive the material, which is a second repository and the reason 17.2 is
@@ -2528,7 +2529,7 @@ this table is the one `make progress` ticks, so the history can say what landed.
 | 21.6a | The session that writes a brief: `brief_session.py`, a conversation the board runs in `~/.slipwai/sketches/<slug>/` with read and write tools confined to it, the eight steps as its system prompt, the toolkit's design skills projected in, and the brief check read after each answer | new (owner, 2026-11-05) | M | `tests/test_brief_session.py` over a stand-in agent proves the workspace, the tools, the resume and the check | done |
 | 21.6b | The page: `/brief` on the tab bar, the conversation, the brief counting itself up, the prototype embedded, files served from the workspace and confined to it | new (owner, 2026-11-05) | M | `tests/test_brief_page.py` with the board fixture proves the tab, the page, the JSON route and the confinement | done |
 | 21.6c | Check and hand over: the check's lines in plain words with green and amber, and a button that opens the start page with *Everything else* filled; the start page with no query is byte for byte what it was | new (owner, 2026-11-05) | S | `tests/test_interview_page.py` proves the query fills the field and nothing else changes | done |
-| 21.6d | The record: one real brief through the page, `generate --brief`, `/draft` and `make surfaces` on a laptop-trial quickstart, the two numbers written into the prototyping plan | new (owner, 2026-11-05) | S | The numbers are in section 5 of the prototyping plan |  |
+| 21.6d | The record: one real brief through the page, `generate --brief`, `/draft` and `make surfaces` on a laptop-trial quickstart, the two numbers written into the prototyping plan — ten assumptions after the draft; the storyboard approved the first time, 27 of 27 states, on 2026-11-06 | new (owner, 2026-11-05) | S | The numbers are in section 5 of the prototyping plan |  |
 | 21.7 | The right questions: a question set folded into the first page's prompt, and a pre-made document taken as the start, reviewed against the set with every miss written under `## Open` | new (owner, 2026-11-05) | M | A session with the set asks the live run's open questions before its second drawing; `tests/test_brief_page.py` proves a pasted document lands as `brief/prd.md` before the first turn | done |
 
 ### Phase 22. The board on the Agent Client Protocol
@@ -3454,7 +3455,7 @@ Collected from above, so they can be taken before the slice that needs them.
    provenance throughout. Provenance says where a package came from. It says nothing about what the code
    does. So signing is what makes *confirm a publisher once* mean something — it is the confirmation that
    limits blast radius, and the signature is only what stops somebody else answering to that name.
-2. **Gitea or GitHub as canonical** after the merge back (8.5).
+2. ~~**Gitea or GitHub as canonical** after the merge back (8.5).~~ **Decided by use, recorded 2026-11-06: GitHub.** This repository's one remote is `ROBCOATVG/slipwai`; nothing points at Gitea.
 3. ~~**The sandbox on macOS**~~ **Decided 2026-10-07: two kinds, `none` and `sbx`.** No per-platform
    matrix, so `sandbox-exec`, `bwrap` and Windows Sandbox are all out and the question they raised is
    closed. `sbx` is Docker Sandboxes, which already creates isolated environments for agents and is the
@@ -3528,8 +3529,9 @@ carries, never a fetch** — the text is in the artefact, so an upgrade on a mac
 same thing as one anywhere else. Small, and it depends on 8.1 for the machinery and 8.2 for the entry it
 reads.
 
-**8.6 — The last 1.5.x.** A final version 1 release whose `slipwai upgrade --check` names 2.0.0 and
-links the migration page, so a version 1 user is told where version 2 is and what moving costs.
+~~**8.6 — The last 1.5.x.** A final version 1 release whose `slipwai upgrade --check` names 2.0.0 and
+links the migration page, so a version 1 user is told where version 2 is and what moving costs.~~ Struck
+2026-11-06: 2.0.1 is out, 1.x is not touched, and the signpost release was never made.
 
 ### Phase 9. The README and the docs
 

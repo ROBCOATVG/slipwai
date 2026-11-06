@@ -8,7 +8,7 @@ playing arrives in a generated project as a requirements document, surfaces with
 and a look. A mock of the whole route, with a clickable prototype of the product it describes, is at
 https://claude.ai/artifact/GGdVnjrQzATQi1nUSDj9WM; its sources are under [`mockups/brief/`](mockups/brief/).
 
-**Status, 2026-11-05:** 21.1 to 21.5, 21.6a to 21.6c and 21.7 have landed; 21.6d, the record, has its first number and waits on a storyboard verdict for its second. The board on the Agent Client Protocol, asked for the same day, is phase 22 in [its own plan](acp-plan.md), built before the record is taken. 21.6, the prototyping conversation, is the board's first
+**Status, 2026-11-06:** every slice has landed. 21.6d's two numbers are in the 21.6 row of section 5: ten assumptions after the draft, and a storyboard approved the first time. The board on the Agent Client Protocol, asked for the same day, is phase 22 in [its own plan](acp-plan.md), built before the record is taken. 21.6, the prototyping conversation, is the board's first
 page in this repository, after the release carrying 21.2; it was planned as its own repository until the
 same day, when the aim was restated as one non-technical person from describing the product through to
 delivery, and the board is already their face from the brief door on. Section 8 is the build: the order,
@@ -149,11 +149,11 @@ plans: S is a morning, M a day, L two or three.
 | 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | M | done |
 | 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | done |
 | 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | S | done |
-| 21.6 | The prototyping conversation, as the board's first page. **The record, 2026-11-05:** one real brief (club boat bookings) through the page in three turns, the hand-over button, the start page, `generate`, `./init`, `/draft` and `make surfaces` on the laptop-trial preset with a React browser app. Assumptions after the draft: **10**, seven of them the brief's own `## Open` lines carried through and three the draft added. Storyboard: 4 surfaces, 27 states, 10 decided by a person and 17 proposed, reviewed and not redrawn; first-time approval awaits the person's verdict | L | building |
+| 21.6 | The prototyping conversation, as the board's first page. **The record, 2026-11-05:** one real brief (club boat bookings) through the page in three turns, the hand-over button, the start page, `generate`, `./init`, `/draft` and `make surfaces` on the laptop-trial preset with a React browser app. Assumptions after the draft: **10**, seven of them the brief's own `## Open` lines carried through and three the draft added. Storyboard: 4 surfaces, 27 states, 10 decided by a person and 17 proposed, reviewed and not redrawn. **Approved the first time: yes** — 27 of 27 states on 2026-11-06, by the reviewer, with the audit's gaps carried as open questions: a link-expired state, a booking under way, My bookings' offline and loading, and the two emails. The approval started the event model over the Agent Client Protocol on Claude Code, from the board, without a terminal | L | done |
 | 21.6a | The session that writes a brief: a conversation the board runs in a workspace of its own | M | done |
 | 21.6b | The page: the conversation, the brief counting itself up, the prototype to play | M | done |
 | 21.6c | Check and hand over: the plain-words check, and the button that fills the start page | S | done |
-| 21.6d | The record: one real brief through the page and the two numbers, written here | S | todo |
+| 21.6d | The record: one real brief through the page and the two numbers, written here | S | done 2026-11-06 |
 | 21.7 | The right questions: a question set in the session's prompt, and a pre-made document reviewed against it and taken as the start | M | done |
 
 ### 21.1 `docs/reference/the-brief.md` — S

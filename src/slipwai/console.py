@@ -159,7 +159,7 @@ class Console:
         """Put a question to the harbourmaster, or say why it cannot be: it is empty, or one is under way."""
         message = message.strip()
         if not message:
-            raise ValueError("ask the harbourmaster something")
+            raise ValueError("ask something first")
         with self.lock:
             if self.busy:
                 raise Busy("the harbourmaster is still answering the last question")

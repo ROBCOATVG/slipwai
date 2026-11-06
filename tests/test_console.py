@@ -70,7 +70,7 @@ class ConsoleTest(BoardTest):
     def test_an_empty_question_and_a_second_while_one_is_under_way_are_refused(self) -> None:
         code, said = self.post("/console/ask", {"message": "   "})
         self.assertEqual(code, 400)
-        self.assertIn("ask the harbourmaster something", said)
+        self.assertIn("ask something first", said)
         os.environ["STAND_IN_WAIT"] = "1"
         self.addCleanup(os.environ.pop, "STAND_IN_WAIT", None)
         self.assertEqual(self.post("/console/ask", {"message": "slow"})[0], 200)
@@ -150,7 +150,7 @@ class ProtocolTest(BoardTest):
     def test_the_dock_carries_the_stop_and_the_cards(self) -> None:
         page = self.get("/voyage")[1]
         self.assertIn('<button class="stop" type="button" hidden>Stop</button>', page)
-        self.assertIn("const drawTurn", page)
+        self.assertIn("function drawTurn(", page)
 
 
 class AgentCommandTest(unittest.TestCase):

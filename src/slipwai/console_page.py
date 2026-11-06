@@ -111,7 +111,7 @@ def console_card() -> str:
     starters = "".join(f'<button type="button" data-ask="{esc(one)}">{esc(one)}</button>' for one in STARTERS)
     return (f'<style>{STYLE}{CARDS}</style><div id="console">'
             f'<div class="card panel" hidden>'
-            f'<div class="head"><h2>Ask the harbourmaster</h2><span class="on"></span>'
+            f'<div class="head"><h2>Ask about this project</h2><span class="on"></span>'
             f'<button type="button" data-clear>New conversation</button></div>'
             f'<p class="note">It reads this project\'s logs and answers from them. It cannot change anything — '
             f'what needs doing, you do from the board.</p>'
@@ -119,6 +119,6 @@ def console_card() -> str:
             f'<p class="empty">Nothing asked yet.</p>'
             f'<div class="starters">{starters}</div>'
             f'<form class="ask"><input placeholder="Why is ORD-02 waiting on me?" autocomplete="off" '
-            f'aria-label="Ask the harbourmaster"><button class="go" type="submit">Ask</button>'
+            f'aria-label="Ask about this project"><button class="go" type="submit">Ask</button>'
             f'<button class="stop" type="button" hidden>Stop</button></form></div>'
-            f'<button type="button" class="launch" aria-expanded="false">Ask the harbourmaster</button></div>')
+            f'<button type="button" class="launch" aria-expanded="false">Ask about this project</button></div>')

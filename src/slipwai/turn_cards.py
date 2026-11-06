@@ -107,7 +107,7 @@ function toolLine(one, turn) {
   const inside = turn.tool.path.match(/\\/(brief|prototype)(?:\\/(.*))?$/);
   one.querySelector('.path').textContent = inside ? inside[1] + (inside[2] ? '/' + inside[2] : '') : '';
 }
-const drawTurn = (log, turn, reply) => {
+function drawTurn(log, turn, reply) {
   const card = kind => {
     const one = document.createElement('div');
     one.className = 'turn ' + kind; one.dataset.ask = turn.ask.id;
@@ -172,5 +172,5 @@ const drawTurn = (log, turn, reply) => {
   }
   log.appendChild(one);
   return turn.kind === 'wrote';
-};
+}
 """

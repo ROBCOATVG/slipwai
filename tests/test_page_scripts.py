@@ -6,6 +6,7 @@ the suite to say so. Node reads each script the way a browser would; where there
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import tempfile
@@ -50,6 +51,17 @@ class PageScriptsTest(unittest.TestCase):
                 file.write_text(script, encoding="utf-8")
                 said = subprocess.run(["node", "--check", str(file)], capture_output=True, text=True, check=False)
                 self.assertEqual(said.returncode, 0, f"{name}: {said.stderr[:400]}")
+
+    def test_a_guarded_name_is_declared_hoisted(self) -> None:
+        """`typeof name === 'function'` is how one block asks whether another has given it a function. A
+        `const` is in its dead zone until its own line runs, and `typeof` on it throws rather than saying
+        `undefined`: the Voyage's stage card asked for `drawTurn` that way on 2026-11-06, the throw ended
+        the page's script there, and the console dock below it was never wired. A `function` is hoisted."""
+        for name, script in SCRIPTS.items():
+            for asked in set(re.findall(r"typeof (\w+) === 'function'", script)):
+                with self.subTest(f"{name}: {asked}"):
+                    self.assertIn(f"function {asked}(", script,
+                                  f"{asked} is asked for before its line: declare it with `function`")
 
 
 if __name__ == "__main__":

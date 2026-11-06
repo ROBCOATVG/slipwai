@@ -1,107 +1,3 @@
-# What the generator rendered for every `commands/*.md` page before the standing text of `commands.py`,
-# `add_commands.py`, `pin_commands.py`, `ground_command.py` and `sail_section.py` moved out of their string
-# literals and into `assets/toolkit/commands/`, as SHA-256 over the UTF-8 bytes of each generated file.
-#
-# The move is only worth doing if it changed nothing a project receives, and "generate before and after"
-# cannot be run across one commit. So these were captured at 074aa35, the commit this change was written on
-# top of, and the new path has to reproduce them exactly (`tests/test_command_pages.py`). Anyone can take
-# the same reading: check out 074aa35, copy `tests/command_pages.py` from this branch over it, and run
-#
-#     PYTHONPATH=src:tests python3 tests/command_pages.py
-#
-# Eight projects, because these pages branch on more than one thing at once and a record taken at one
-# would pass with half the branches stubbed out: the profile, a service that keeps its events and one that
-# does not, a browser app and none, no application at all, a managed destination and none, both layouts,
-# and an adopted repository with candidates outstanding beside one with none. `tests/command_pages.py`
-# names each and says what it reaches.
-#
-# Every page a project receives from those five modules is here, and so are the ones they only assemble —
-# `cruise.md`, `benchmark.md`, `mutation.md` and the rest come from modules this slice does not touch, and
-# a row of theirs that moved is this slice having disturbed something it was not moving.
-#
-# A deliberate edit to a page changes these, which is the point: the line a reviewer has to see change is
-# in this file, beside the diff that changed it.
-#
-#
-# Re-taken for the scheduling rules — two bands, a state per slice, refill at every boundary, a `question`
-# deck-log kind (`changelog.d/sail-scheduling-is-a-state.md`). Only the rows named there moved:
-# `commands/cruise.md`, `commands/sail.md`, `commands/where-are-we.md`. Every other row is still its earlier reading.
-#
-# Re-taken for the review cadence — once per slice over the whole diff, a return spot-checked and never
-# reviewed (`changelog.d/loop-cadence-review-once-per-slice.md`).
-# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
-#
-# Re-taken for the committed return — a shipwright hands back `commit <hash>` or `no commit`, and the session
-# integrates the commit (`changelog.d/loop-cadence-a-return-is-a-commit.md`).
-# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
-#
-# Re-taken for the two concurrency numbers read as two things (`changelog.d/loop-cadence-two-numbers-two-things.md`).
-# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
-#
-# Re-taken for the budget as work tokens, read at every bracket (`changelog.d/loop-cadence-the-budget-is-work-tokens.md`).
-# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
-#
-# Re-taken for the fast checks per deployable (`changelog.d/loop-cadence-fast-checks-per-deployable.md`).
-# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
-#
-# Re-taken for the preflight run once per worktree (`changelog.d/loop-cadence-preflight-once-per-worktree.md`).
-# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
-#
-# Re-taken for mutation once per capability, bounded (`changelog.d/loop-cadence-mutation-once-per-capability.md`).
-# Only the rows named there moved: `commands/mutation.md`, `commands/sail.md`. Every other row is still its earlier reading.
-#
-# Re-taken for the fairway priority (`changelog.d/18.2-the-streams-can-be-reordered.md`).
-# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
-# Two pages added after the record was taken — `draft.md` and `launch.md`, a project started from a PRD —
-# recorded from the generator that introduced them. Every row above is as it was at 074aa35.
-# 2026-10-15: commands/sail.md moved deliberately — the ladder now runs `make arrive` beside its
-# own fetch, `make dispatch` before any delegate, and `make depart` at every boundary, and the
-# single-slice exit is a recorded probe rather than a judgement. Only those rows were re-taken.
-# See changelog.d/the-loop-travels-and-says-what-it-dispatched.md.
-#
-# Re-taken for the surfaces stage — the mock-up review's first half can now be started from the
-# board, so `commands/mockups.md` names the project's own make spelling and is written by the
-# generator rather than copied verbatim (`changelog.d/the-surfaces-can-be-drawn-from-the-board.md`).
-# Nothing moved: every earlier row is still its earlier reading, and the only rows below that are
-# new are the eight `commands/mockups.md` ones, one per project.
-#
-# Re-taken for `docs/design/` — the mock-up stage is told to read what the project was handed
-# rather than invent a direction, so `commands/mockups.md` gained a paragraph
-# (`changelog.d/a-prd-brings-what-it-stands-on-with-it.md`). Only that row moved, in all eight
-# projects; every other row is still its earlier reading.
-#
-# Re-taken for intake — a further feature is handed to /sail, assessed, and specified only after
-# a yes and a go (`changelog.d/a-further-feature-is-handed-to-sail.md`). The rows that moved are
-# `commands/sail.md`, `commands/draft.md`, `commands/catch-up.md`, and the new `commands/assess.md`.
-# Every other row is still its earlier reading.
-# 
-# Re-taken for the seam tests — a context boundary is tested for language, change and flow, and a
-# shared noun settles nothing (`changelog.d/a-seam-is-tested-three-ways.md`). The rows that moved are
-# `commands/sail.md` (the context step on both profiles) and, through the cruise stops table,
-# `commands/cruise.md`, `commands/draft.md` and `commands/assess.md`. Every other row is still its earlier reading.
-#
-# Re-taken for clarify, checklist and analyze (`changelog.d/clarify-checklist-and-analyze.md`).
-# Only the rows named there moved: `commands/sail.md`, `commands/gaps.md`, `commands/assess.md`.
-# Every other row is still its earlier reading.
-# Re-taken for the dispatch ledger's new home (`changelog.d/dispatch-ledger-moves-under-slipwai.md`).
-# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
-#
-# Re-taken for the catch-up notes opening with the way to a set-up project, conflicts or not
-# (`changelog.d/catch-up-sets-the-project-up.md`). Only the rows named there moved: `commands/catch-up.md`.
-# Every other row is still its earlier reading.
-# Re-taken 2026-10-17 for changelog.d/capability-gates-once-per-capability.md: the rows for `commands/adversary.md`, `commands/cruise.md`, `commands/gaps.md`, `commands/mockups.md`, `commands/sail.md`, `commands/whats-next.md`, `commands/where-are-we.md` moved, deliberately — converge, gaps, design review, adversary, mutation and the hand's walk run once per capability, and three of them moved off the slice.
-# Re-taken 2026-10-17 for changelog.d/a-slice-carries-its-own-dispatch-line.md: only the rows for commands/sail.md moved, deliberately — a slice's dispatch line travels in its own pull request, and a delegate hands the diff review it cannot start back to the host.
-# Re-taken 2026-10-19 for changelog.d/a-disapproved-storyboard-is-drawn-again.md: only the rows for commands/mockups.md moved, deliberately — a session dispatched with SLIPWAI_REDRAW=1 redraws a disapproved storyboard from the reason rather than reviewing its own rejected drafts.
-# Re-taken 2026-10-19 for changelog.d/the-context-decision-is-always-recorded.md: only the rows for commands/cruise.md, commands/launch.md and commands/sail.md moved, deliberately — the context answer is always a decision entry with its seam table, stands at `awaiting human confirmation` where nobody was there to give it, and posts its question to the board; the event model stage interrogates every stream first.
-# Re-taken 2026-10-19 for changelog.d/the-mock-up-stage-draws-a-sketch-to-a-clock.md: only the rows for commands/mockups.md moved, deliberately — the first drawing is styled from a short proposed look, visual checking is one render per surface, the drawing is told its budget and ended at it, and a redraw answers only its reason.
-# Re-taken 2026-10-19 for changelog.d/a-fairway-runs-its-ready-slices-abreast.md: only the rows for commands/sail.md moved, deliberately — the fleet honours rule 6 inside a fairway, a session the captain dispatched is already in its berth, and slices run abreast merge as each passes its gate.
-#
-# Re-taken for feedback from the board (`changelog.d/feedback-from-the-board.md`): one new page,
-# `commands/triage.md`, a row per project. No other row moved.
-# Re-taken 2026-11-04 for 21.5: `commands/mockups.md` says a handed-over article may carry `data-decided`,
-# which a redraw keeps. The eight `mockups.md` rows moved and nothing else did.
-# Re-taken 2026-11-05 for 21.3: `commands/draft.md` gains the step that declares the brief's people. The
-# eight `draft.md` rows moved and nothing else did.
 66d331cb3c5ef22e660804383367ffcd7602a2b9c64b91fe8dfd8c9398f8cbfd  standard  commands/add-frontend.md
 0c5d6f3c16243ec7a2c928dab9502e52ae7ed8d97352c8f188764854f6cec241  standard  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  standard  commands/adversary.md
@@ -110,8 +6,10 @@ a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  standard  comm
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  standard  commands/careen.md
 5b84268a2e166a413a2c9eb06247f98da6d08af02a006c6b65798090a9c1225b  standard  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  standard  commands/characterise.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  standard  commands/claim.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  standard  commands/clearance.md
 226dfe9253940ca7659fb2420c602086f0e65b92793279cc45dde5f1a2ae75ad  standard  commands/constitution-coverage.md
-bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  standard  commands/cruise-settings.md
+ae2c5ba8320de95af3d5c58cfa27f20af3e1cf9b23fabe4339627a10c9b9df96  standard  commands/cruise-settings.md
 07263b867f234cdaca73d099e8a4d08d3679d86b244c43e9a432b02bbee77e99  standard  commands/cruise-status.md
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  standard  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  standard  commands/cruise-tell.md
@@ -127,6 +25,7 @@ faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  standard  comm
 9591c217add3a84241c32c4a250240241223550769ff3899a4244e4f952f80c4  standard  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard  commands/survey.md
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  standard  commands/triage.md
+4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  standard  commands/verify.md
 5c956492240d2fdd2636c5c0aa1bd5f8cb86e53d78049f1a365b5f396b14d894  standard  commands/whats-next.md
 9470792eee29419647d1054a4cc8548f86fd6ed19f93deed7827ed8c6a1f4252  standard  commands/where-are-we.md
 66d331cb3c5ef22e660804383367ffcd7602a2b9c64b91fe8dfd8c9398f8cbfd  event  commands/add-frontend.md
@@ -137,8 +36,10 @@ a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  event  command
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  event  commands/careen.md
 5b84268a2e166a413a2c9eb06247f98da6d08af02a006c6b65798090a9c1225b  event  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  event  commands/characterise.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  event  commands/claim.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  event  commands/clearance.md
 8c33fd55d3cdd0ac3cb4983356b3eddb8f48aa7237db756d29bbe2992b03c9eb  event  commands/constitution-coverage.md
-bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  event  commands/cruise-settings.md
+ae2c5ba8320de95af3d5c58cfa27f20af3e1cf9b23fabe4339627a10c9b9df96  event  commands/cruise-settings.md
 07263b867f234cdaca73d099e8a4d08d3679d86b244c43e9a432b02bbee77e99  event  commands/cruise-status.md
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  event  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  event  commands/cruise-tell.md
@@ -155,6 +56,7 @@ ccddefe7035c02b19ddf5724bfd52e8cff311e95b094b90282a36ba72cd88c03  event  command
 7832c48d3e1cf6260d29b84adacadfbb90469c60d63308731786d47c9906dccf  event  commands/sail.md
 b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event  commands/survey.md
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  event  commands/triage.md
+4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  event  commands/verify.md
 13d412a77e7e84622caaa6dd8316cbb31f67af240bae3e93cfad2fc9f175203f  event  commands/whats-next.md
 b79c5fa0effe9b7df563b82afb5abcfc01214f4abf8fc8539a0cc3841a8ee20d  event  commands/where-are-we.md
 3885b44ab45ec02ffa31ab2c1c0c041f008090a432d2d22d7d78021174c46e34  event-state  commands/add-frontend.md
@@ -165,8 +67,10 @@ a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  event-state  c
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  event-state  commands/careen.md
 5b84268a2e166a413a2c9eb06247f98da6d08af02a006c6b65798090a9c1225b  event-state  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  event-state  commands/characterise.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  event-state  commands/claim.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  event-state  commands/clearance.md
 f28b890748c27e6c0a3b566661d1a584f5a94c00d8bcdbd078ab39e0771be247  event-state  commands/constitution-coverage.md
-bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  event-state  commands/cruise-settings.md
+ae2c5ba8320de95af3d5c58cfa27f20af3e1cf9b23fabe4339627a10c9b9df96  event-state  commands/cruise-settings.md
 07263b867f234cdaca73d099e8a4d08d3679d86b244c43e9a432b02bbee77e99  event-state  commands/cruise-status.md
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  event-state  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  event-state  commands/cruise-tell.md
@@ -183,6 +87,7 @@ ccddefe7035c02b19ddf5724bfd52e8cff311e95b094b90282a36ba72cd88c03  event-state  c
 64c7da21651644bf4b2ed97e5215700ed63d90381069544bf50513433296b753  event-state  commands/sail.md
 b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event-state  commands/survey.md
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  event-state  commands/triage.md
+4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  event-state  commands/verify.md
 13d412a77e7e84622caaa6dd8316cbb31f67af240bae3e93cfad2fc9f175203f  event-state  commands/whats-next.md
 b79c5fa0effe9b7df563b82afb5abcfc01214f4abf8fc8539a0cc3841a8ee20d  event-state  commands/where-are-we.md
 eab3e2e0ac64c91b66f5abfeacdeaa27b1d852151cd4a89b1098f258dc50119d  event-two-services  commands/add-frontend.md
@@ -193,8 +98,10 @@ feeb81564a22b7000bd370769244df72ed0f661b2d7c34347509ac8e937b828a  event-two-serv
 6bb3905e7811dd0f37937916d1f5341aa43e7bf5726e9c5df2834a82ffe66b22  event-two-services  commands/careen.md
 7d59ab6dfb64801bfa6adc63217e856ef8bbb3cdbd93074cb6059062c3f5bdde  event-two-services  commands/catch-up.md
 fc0fa59b6d6c3450b89d5e5f30056cf10b3225489660f793344bf40d54fd5620  event-two-services  commands/characterise.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  event-two-services  commands/claim.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  event-two-services  commands/clearance.md
 8c33fd55d3cdd0ac3cb4983356b3eddb8f48aa7237db756d29bbe2992b03c9eb  event-two-services  commands/constitution-coverage.md
-5fbdb06382a84b05ba5c16e30579e206ea725e81598d595ace44db3bfa4497cf  event-two-services  commands/cruise-settings.md
+48540e2b3e1d4dd67ac860a119f974c0f96a098c21af08d8a0b09bdfe71ab72d  event-two-services  commands/cruise-settings.md
 07263b867f234cdaca73d099e8a4d08d3679d86b244c43e9a432b02bbee77e99  event-two-services  commands/cruise-status.md
 2e05a38c77a5ba88758fa2aa0309fc2f5014a68b0fb53189aeb7b5935a54259a  event-two-services  commands/cruise-stop.md
 ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  event-two-services  commands/cruise-tell.md
@@ -211,6 +118,7 @@ a0317f0ffc046b6b69d5373cf2466bc3f9936c7154da47ac25f2df8934edc7cd  event-two-serv
 8f2311525a99e14fb092a516f2963d4f1ebfbffabaedcc2e5cf76f2b67e7c04d  event-two-services  commands/sail.md
 67c2effb5e863122c5022fd14f37a8eaeb68c79f8ab998d421ec2e9d767978cb  event-two-services  commands/survey.md
 40cc0634d1851740e9cc8d2ff94e8e1fab4a0f667803f41d3da5ac364c1ff7f3  event-two-services  commands/triage.md
+4870f005b9a740379178df9f58a4f16e9aeb334e7200f66702a6de2883e63590  event-two-services  commands/verify.md
 13d412a77e7e84622caaa6dd8316cbb31f67af240bae3e93cfad2fc9f175203f  event-two-services  commands/whats-next.md
 c8d8b61badcaeec5a15d5a7018f3802f75b9a471f1406d9e59552e0c4e3efac6  event-two-services  commands/where-are-we.md
 2f6d7f001f15beeeb4cbad10a95f7d6452dc1921841d5988158aa58b23ab0689  standard-managed  commands/add-frontend.md
@@ -221,8 +129,10 @@ a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  standard-manag
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  standard-managed  commands/careen.md
 7d59ab6dfb64801bfa6adc63217e856ef8bbb3cdbd93074cb6059062c3f5bdde  standard-managed  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  standard-managed  commands/characterise.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  standard-managed  commands/claim.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  standard-managed  commands/clearance.md
 226dfe9253940ca7659fb2420c602086f0e65b92793279cc45dde5f1a2ae75ad  standard-managed  commands/constitution-coverage.md
-bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  standard-managed  commands/cruise-settings.md
+ae2c5ba8320de95af3d5c58cfa27f20af3e1cf9b23fabe4339627a10c9b9df96  standard-managed  commands/cruise-settings.md
 07263b867f234cdaca73d099e8a4d08d3679d86b244c43e9a432b02bbee77e99  standard-managed  commands/cruise-status.md
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  standard-managed  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  standard-managed  commands/cruise-tell.md
@@ -238,6 +148,7 @@ faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  standard-manag
 0df9b3cbc0bc442be5a2559bb7d2fb794b490bb3756b67fbd4f3ff99243a2c92  standard-managed  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard-managed  commands/survey.md
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  standard-managed  commands/triage.md
+4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  standard-managed  commands/verify.md
 5c956492240d2fdd2636c5c0aa1bd5f8cb86e53d78049f1a365b5f396b14d894  standard-managed  commands/whats-next.md
 7b605fef54eda098bd018a5fa6c2782b7bd40fd2cb9c7e491c06f7031736c7d5  standard-managed  commands/where-are-we.md
 858f9d87f1c790b8383c5bcd230b6a65f795ce69a814fbc6abb88ca78d380dd4  no-applications  commands/add-frontend.md
@@ -248,8 +159,10 @@ a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  no-application
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  no-applications  commands/careen.md
 d3353192f405324625f93580aa1449835fefcb5139b68df1208549bb0a37a8fc  no-applications  commands/catch-up.md
 5eba307e79c2d807254c593a9b961e484f2ff950349b8c6414bdb40d7b405943  no-applications  commands/characterise.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  no-applications  commands/claim.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  no-applications  commands/clearance.md
 226dfe9253940ca7659fb2420c602086f0e65b92793279cc45dde5f1a2ae75ad  no-applications  commands/constitution-coverage.md
-bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  no-applications  commands/cruise-settings.md
+ae2c5ba8320de95af3d5c58cfa27f20af3e1cf9b23fabe4339627a10c9b9df96  no-applications  commands/cruise-settings.md
 07263b867f234cdaca73d099e8a4d08d3679d86b244c43e9a432b02bbee77e99  no-applications  commands/cruise-status.md
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  no-applications  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  no-applications  commands/cruise-tell.md
@@ -265,6 +178,7 @@ faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  no-application
 c23dd89fe57eef72f547473c274bf74895935c676b071e35e6f455fa54201cff  no-applications  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  no-applications  commands/survey.md
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  no-applications  commands/triage.md
+4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  no-applications  commands/verify.md
 5c956492240d2fdd2636c5c0aa1bd5f8cb86e53d78049f1a365b5f396b14d894  no-applications  commands/whats-next.md
 9470792eee29419647d1054a4cc8548f86fd6ed19f93deed7827ed8c6a1f4252  no-applications  commands/where-are-we.md
 c42be3f2264e76f7178979abab0e352eea948931f81e77ec49fbec331dc8baa1  adopted  commands/add-frontend.md
@@ -275,8 +189,10 @@ feeb81564a22b7000bd370769244df72ed0f661b2d7c34347509ac8e937b828a  adopted  comma
 6bb3905e7811dd0f37937916d1f5341aa43e7bf5726e9c5df2834a82ffe66b22  adopted  commands/careen.md
 69fa0f6cf8dbe7a2bc1e159bc3bbb2e710ed0d2f87e980ebfab42d3fdee4decb  adopted  commands/catch-up.md
 e5456ddbf70fc7563b6919253f6926707ce2eefc53dcd8fa8dc9725689265329  adopted  commands/characterise.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  adopted  commands/claim.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  adopted  commands/clearance.md
 f28b890748c27e6c0a3b566661d1a584f5a94c00d8bcdbd078ab39e0771be247  adopted  commands/constitution-coverage.md
-5fbdb06382a84b05ba5c16e30579e206ea725e81598d595ace44db3bfa4497cf  adopted  commands/cruise-settings.md
+48540e2b3e1d4dd67ac860a119f974c0f96a098c21af08d8a0b09bdfe71ab72d  adopted  commands/cruise-settings.md
 07263b867f234cdaca73d099e8a4d08d3679d86b244c43e9a432b02bbee77e99  adopted  commands/cruise-status.md
 2e05a38c77a5ba88758fa2aa0309fc2f5014a68b0fb53189aeb7b5935a54259a  adopted  commands/cruise-stop.md
 ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  adopted  commands/cruise-tell.md
@@ -294,6 +210,7 @@ ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  adopted  comma
 f28bc2fcfcec78ec89fba402da84de4b9067fe3634c7811afc8eee4a1aa3169d  adopted  commands/sail.md
 67c2effb5e863122c5022fd14f37a8eaeb68c79f8ab998d421ec2e9d767978cb  adopted  commands/survey.md
 40cc0634d1851740e9cc8d2ff94e8e1fab4a0f667803f41d3da5ac364c1ff7f3  adopted  commands/triage.md
+4870f005b9a740379178df9f58a4f16e9aeb334e7200f66702a6de2883e63590  adopted  commands/verify.md
 13d412a77e7e84622caaa6dd8316cbb31f67af240bae3e93cfad2fc9f175203f  adopted  commands/whats-next.md
 b79c5fa0effe9b7df563b82afb5abcfc01214f4abf8fc8539a0cc3841a8ee20d  adopted  commands/where-are-we.md
 c42be3f2264e76f7178979abab0e352eea948931f81e77ec49fbec331dc8baa1  adopted-settled  commands/add-frontend.md
@@ -304,8 +221,10 @@ a3f9a59788d96c82f4ee2d628ec864423d21317364f873a81ed7027be7accce6  adopted-settle
 b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  adopted-settled  commands/careen.md
 69fa0f6cf8dbe7a2bc1e159bc3bbb2e710ed0d2f87e980ebfab42d3fdee4decb  adopted-settled  commands/catch-up.md
 50544b12663013372f52f52f05381b25739b55c7c48cb1704bbd442e047902b4  adopted-settled  commands/characterise.md
+12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  adopted-settled  commands/claim.md
+4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  adopted-settled  commands/clearance.md
 226dfe9253940ca7659fb2420c602086f0e65b92793279cc45dde5f1a2ae75ad  adopted-settled  commands/constitution-coverage.md
-bafc1033b0498bb580860829454ee0de1f551e9aa0034637256bdb71788d9f71  adopted-settled  commands/cruise-settings.md
+ae2c5ba8320de95af3d5c58cfa27f20af3e1cf9b23fabe4339627a10c9b9df96  adopted-settled  commands/cruise-settings.md
 07263b867f234cdaca73d099e8a4d08d3679d86b244c43e9a432b02bbee77e99  adopted-settled  commands/cruise-status.md
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  adopted-settled  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  adopted-settled  commands/cruise-tell.md
@@ -322,32 +241,6 @@ faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  adopted-settle
 12487726e0f2b2af58cc9e0f93c9757f958cb639ed88b3a878e8b04080bbe281  adopted-settled  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  adopted-settled  commands/survey.md
 6a291e2245eeab6611413bff914eb26c88a669a95a5cab211c763a562cdc7782  adopted-settled  commands/triage.md
+4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  adopted-settled  commands/verify.md
 5c956492240d2fdd2636c5c0aa1bd5f8cb86e53d78049f1a365b5f396b14d894  adopted-settled  commands/whats-next.md
 9470792eee29419647d1054a4cc8548f86fd6ed19f93deed7827ed8c6a1f4252  adopted-settled  commands/where-are-we.md
-4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  standard  commands/verify.md
-4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  event  commands/verify.md
-4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  event-state  commands/verify.md
-4870f005b9a740379178df9f58a4f16e9aeb334e7200f66702a6de2883e63590  event-two-services  commands/verify.md
-4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  standard-managed  commands/verify.md
-4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  no-applications  commands/verify.md
-4870f005b9a740379178df9f58a4f16e9aeb334e7200f66702a6de2883e63590  adopted  commands/verify.md
-4dd11538b207c8099f431da8f38a2c891e4a768ed71252b2974ffee964015f93  adopted-settled  commands/verify.md
-#
-# Added for /clearance and /claim (`changelog.d/the-guides-type-in-the-harness.md`): two new pages,
-# `commands/clearance.md` and `commands/claim.md`, a row per project. No other row moved.
-12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  standard  commands/claim.md
-12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  event  commands/claim.md
-12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  event-state  commands/claim.md
-12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  event-two-services  commands/claim.md
-12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  standard-managed  commands/claim.md
-12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  no-applications  commands/claim.md
-12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  adopted  commands/claim.md
-12f3da0276a57d1a7f3a11e28d84e95dd8d6e087bafcbaa877149d2fca8949e4  adopted-settled  commands/claim.md
-4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  standard  commands/clearance.md
-4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  event  commands/clearance.md
-4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  event-state  commands/clearance.md
-4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  event-two-services  commands/clearance.md
-4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  standard-managed  commands/clearance.md
-4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  no-applications  commands/clearance.md
-4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  adopted  commands/clearance.md
-4038bd0f0835c72b1fd4d03491b832484e556fa4328d25a63c085cbee583fa7c  adopted-settled  commands/clearance.md

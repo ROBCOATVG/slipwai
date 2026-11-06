@@ -1,3 +1,113 @@
+# What the generator rendered for every `commands/*.md` page before the standing text of `commands.py`,
+# `add_commands.py`, `pin_commands.py`, `ground_command.py` and `sail_section.py` moved out of their string
+# literals and into `assets/toolkit/commands/`, as SHA-256 over the UTF-8 bytes of each generated file.
+#
+# The move is only worth doing if it changed nothing a project receives, and "generate before and after"
+# cannot be run across one commit. So these were captured at 074aa35, the commit this change was written on
+# top of, and the new path has to reproduce them exactly (`tests/test_command_pages.py`). Anyone can take
+# the same reading: check out 074aa35, copy `tests/command_pages.py` from this branch over it, and run
+#
+#     PYTHONPATH=src:tests python3 tests/command_pages.py
+#
+# Eight projects, because these pages branch on more than one thing at once and a record taken at one
+# would pass with half the branches stubbed out: the profile, a service that keeps its events and one that
+# does not, a browser app and none, no application at all, a managed destination and none, both layouts,
+# and an adopted repository with candidates outstanding beside one with none. `tests/command_pages.py`
+# names each and says what it reaches.
+#
+# Every page a project receives from those five modules is here, and so are the ones they only assemble —
+# `cruise.md`, `benchmark.md`, `mutation.md` and the rest come from modules this slice does not touch, and
+# a row of theirs that moved is this slice having disturbed something it was not moving.
+#
+# A deliberate edit to a page changes these, which is the point: the line a reviewer has to see change is
+# in this file, beside the diff that changed it.
+#
+#
+# Re-taken for the scheduling rules — two bands, a state per slice, refill at every boundary, a `question`
+# deck-log kind (`changelog.d/sail-scheduling-is-a-state.md`). Only the rows named there moved:
+# `commands/cruise.md`, `commands/sail.md`, `commands/where-are-we.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the review cadence — once per slice over the whole diff, a return spot-checked and never
+# reviewed (`changelog.d/loop-cadence-review-once-per-slice.md`).
+# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the committed return — a shipwright hands back `commit <hash>` or `no commit`, and the session
+# integrates the commit (`changelog.d/loop-cadence-a-return-is-a-commit.md`).
+# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the two concurrency numbers read as two things (`changelog.d/loop-cadence-two-numbers-two-things.md`).
+# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the budget as work tokens, read at every bracket (`changelog.d/loop-cadence-the-budget-is-work-tokens.md`).
+# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the fast checks per deployable (`changelog.d/loop-cadence-fast-checks-per-deployable.md`).
+# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the preflight run once per worktree (`changelog.d/loop-cadence-preflight-once-per-worktree.md`).
+# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
+#
+# Re-taken for mutation once per capability, bounded (`changelog.d/loop-cadence-mutation-once-per-capability.md`).
+# Only the rows named there moved: `commands/mutation.md`, `commands/sail.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the fairway priority (`changelog.d/18.2-the-streams-can-be-reordered.md`).
+# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
+# Two pages added after the record was taken — `draft.md` and `launch.md`, a project started from a PRD —
+# recorded from the generator that introduced them. Every row above is as it was at 074aa35.
+# 2026-10-15: commands/sail.md moved deliberately — the ladder now runs `make arrive` beside its
+# own fetch, `make dispatch` before any delegate, and `make depart` at every boundary, and the
+# single-slice exit is a recorded probe rather than a judgement. Only those rows were re-taken.
+# See changelog.d/the-loop-travels-and-says-what-it-dispatched.md.
+#
+# Re-taken for the surfaces stage — the mock-up review's first half can now be started from the
+# board, so `commands/mockups.md` names the project's own make spelling and is written by the
+# generator rather than copied verbatim (`changelog.d/the-surfaces-can-be-drawn-from-the-board.md`).
+# Nothing moved: every earlier row is still its earlier reading, and the only rows below that are
+# new are the eight `commands/mockups.md` ones, one per project.
+#
+# Re-taken for `docs/design/` — the mock-up stage is told to read what the project was handed
+# rather than invent a direction, so `commands/mockups.md` gained a paragraph
+# (`changelog.d/a-prd-brings-what-it-stands-on-with-it.md`). Only that row moved, in all eight
+# projects; every other row is still its earlier reading.
+#
+# Re-taken for intake — a further feature is handed to /sail, assessed, and specified only after
+# a yes and a go (`changelog.d/a-further-feature-is-handed-to-sail.md`). The rows that moved are
+# `commands/sail.md`, `commands/draft.md`, `commands/catch-up.md`, and the new `commands/assess.md`.
+# Every other row is still its earlier reading.
+# 
+# Re-taken for the seam tests — a context boundary is tested for language, change and flow, and a
+# shared noun settles nothing (`changelog.d/a-seam-is-tested-three-ways.md`). The rows that moved are
+# `commands/sail.md` (the context step on both profiles) and, through the cruise stops table,
+# `commands/cruise.md`, `commands/draft.md` and `commands/assess.md`. Every other row is still its earlier reading.
+#
+# Re-taken for clarify, checklist and analyze (`changelog.d/clarify-checklist-and-analyze.md`).
+# Only the rows named there moved: `commands/sail.md`, `commands/gaps.md`, `commands/assess.md`.
+# Every other row is still its earlier reading.
+# Re-taken for the dispatch ledger's new home (`changelog.d/dispatch-ledger-moves-under-slipwai.md`).
+# Only the rows named there moved: `commands/sail.md`. Every other row is still its earlier reading.
+#
+# Re-taken for the catch-up notes opening with the way to a set-up project, conflicts or not
+# (`changelog.d/catch-up-sets-the-project-up.md`). Only the rows named there moved: `commands/catch-up.md`.
+# Every other row is still its earlier reading.
+# Re-taken 2026-10-17 for changelog.d/capability-gates-once-per-capability.md: the rows for `commands/adversary.md`, `commands/cruise.md`, `commands/gaps.md`, `commands/mockups.md`, `commands/sail.md`, `commands/whats-next.md`, `commands/where-are-we.md` moved, deliberately — converge, gaps, design review, adversary, mutation and the hand's walk run once per capability, and three of them moved off the slice.
+# Re-taken 2026-10-17 for changelog.d/a-slice-carries-its-own-dispatch-line.md: only the rows for commands/sail.md moved, deliberately — a slice's dispatch line travels in its own pull request, and a delegate hands the diff review it cannot start back to the host.
+# Re-taken 2026-10-19 for changelog.d/a-disapproved-storyboard-is-drawn-again.md: only the rows for commands/mockups.md moved, deliberately — a session dispatched with SLIPWAI_REDRAW=1 redraws a disapproved storyboard from the reason rather than reviewing its own rejected drafts.
+# Re-taken 2026-10-19 for changelog.d/the-context-decision-is-always-recorded.md: only the rows for commands/cruise.md, commands/launch.md and commands/sail.md moved, deliberately — the context answer is always a decision entry with its seam table, stands at `awaiting human confirmation` where nobody was there to give it, and posts its question to the board; the event model stage interrogates every stream first.
+# Re-taken 2026-10-19 for changelog.d/the-mock-up-stage-draws-a-sketch-to-a-clock.md: only the rows for commands/mockups.md moved, deliberately — the first drawing is styled from a short proposed look, visual checking is one render per surface, the drawing is told its budget and ended at it, and a redraw answers only its reason.
+# Re-taken 2026-10-19 for changelog.d/a-fairway-runs-its-ready-slices-abreast.md: only the rows for commands/sail.md moved, deliberately — the fleet honours rule 6 inside a fairway, a session the captain dispatched is already in its berth, and slices run abreast merge as each passes its gate.
+#
+# Re-taken for feedback from the board (`changelog.d/feedback-from-the-board.md`): one new page,
+# `commands/triage.md`, a row per project. No other row moved.
+# Re-taken 2026-11-04 for 21.5: `commands/mockups.md` says a handed-over article may carry `data-decided`,
+# which a redraw keeps. The eight `mockups.md` rows moved and nothing else did.
+# Re-taken 2026-11-05 for 21.3: `commands/draft.md` gains the step that declares the brief's people. The
+# eight `draft.md` rows moved and nothing else did.
+#
+# Added for /clearance and /claim (`changelog.d/the-guides-type-in-the-harness.md`): two new pages,
+# `commands/clearance.md` and `commands/claim.md`, a row per project. No other row moved.
+#
+# Rows that moved on 2026-11-06, for the `sessions` setting slice 22.9 added to the cruise settings:
+# `.specify/cruise.json` and `commands/cruise-settings.md`. Every other row is still its earlier reading.
 66d331cb3c5ef22e660804383367ffcd7602a2b9c64b91fe8dfd8c9398f8cbfd  standard  commands/add-frontend.md
 0c5d6f3c16243ec7a2c928dab9502e52ae7ed8d97352c8f188764854f6cec241  standard  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  standard  commands/adversary.md

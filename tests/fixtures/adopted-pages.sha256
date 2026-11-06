@@ -1,3 +1,33 @@
+# What `project/adopted.py` and `project/sail_adoption.py` rendered before the standing text in them
+# moved out to `assets/`, as SHA-256 over the UTF-8 bytes of each page and each appended block.
+#
+# The move is only worth doing if it changed nothing a repository receives, and "generate before and
+# after" cannot be run across one commit. So these were captured at a6a0aed, the commit slice 16.6 was
+# written on top of, by the matrix `tests/adopted_pages.py` describes, and the new path has to reproduce
+# them exactly. Anyone can take the same reading: check out a6a0aed, put that module beside this file, and
+#
+#     PYTHONPATH=src:tests python3 tests/adopted_pages.py
+#
+# and compare it with the lines below. The module that prints them changes nothing the generator does, so
+# the reading is the same whether it is taken at a6a0aed or at the commit that added it.
+#
+# Six repositories: each of the five forges that can run the gate, each of the four paths a change takes
+# to production, a repository that had a `Makefile` and one that had none, both delivery layouts, one that
+# has converged, a language the keel generates beside one it does not, an adoption with nothing wrapped at
+# all, and each home the schema and the infrastructure can be recorded at.
+#
+# The command pages these modules also reach — `commands/sail.md`, whose ladder gains the adoption's three
+# stages — are in `command-pages.sha256` already and are deliberately not recorded twice.
+#
+# `<digest>  <repository>  <path>`. A `#` in a path marks a block appended to a file of the repository's
+# own rather than a file the keel writes whole.
+#
+# Re-taken for a project that sets itself up in whichever harness opens it (`changelog.d/harness-switch-sets-itself-up.md`).
+# Only the rows named there moved: `AGENTS.md#delivery`. Every other row is still its earlier reading.
+# Re-taken 2026-10-17 for changelog.d/capability-gates-once-per-capability.md: the rows for `.specify/extensions.yml`, `docs/adoption.md` moved, deliberately — converge, gaps, design review, adversary, mutation and the hand's walk run once per capability, and three of them moved off the slice.
+#
+# Rows that moved on 2026-11-06, for the `sessions` setting slice 22.9 added to the cruise settings:
+# `.specify/cruise.json` and `commands/cruise-settings.md`. Every other row is still its earlier reading.
 0c734450650a9af5411094fde5773d6099cc4a7b677d35162260eedd398968d3  github-pipeline  .gitignore#delivery
 b1ef5ca4fae93171ad178e6e6f5b197587bf27883942a7d70034780173890bcc  github-pipeline  .specify/cruise.json
 7d1e41dedcdc7a2efb86456416d6d71b61fd0f96f56b81e37f7b346ac4a1e3bf  github-pipeline  .specify/extensions.yml

@@ -44,6 +44,10 @@ class HandoverTest(unittest.TestCase):
                          ("python", "sqlite", "events", "none"))
         self.assertEqual(held["init"], "stand-in")
         self.assertEqual(held["brief"], str(self.folder))
+        with mock.patch("slipwai.handover.extensions_offered", return_value=[("codegraph", "CodeGraph", "an index"),
+                                                                           ("uipro", "UI/UX Pro Max", "")]):
+            self.assertEqual(handover.answers(self.folder)["extensions"], "codegraph,uipro",
+                             "every extension this machine has, ticked")
         lines = handover.said(held)
         self.assertIn("A browser app, drawn from the brief's 3 surfaces.", lines)
         self.assertTrue(any(line.startswith("For staff, an annoyance when it is down") for line in lines), lines)
@@ -75,6 +79,15 @@ class HandoverTest(unittest.TestCase):
         self.assertIn('<input type="hidden" name="frontend" value="react-vite">', shown)
         self.assertIn('<input type="hidden" name="who" value="staff">', shown)
         self.assertNotIn("Delivery foundation", shown, "no question is asked on the hand-over's page")
+        self.assertNotIn("Dev tooling", shown, "a machine with no extension installed is asked nothing")
+        offered = [("codegraph", "CodeGraph", "an index"), ("uipro", "UI/UX Pro Max", "")]
+        with mock.patch("slipwai.handover.extensions_offered", return_value=offered), \
+                mock.patch("slipwai.interview_page.extensions_offered", return_value=offered):
+            ticked = page({"brief": str(self.folder)}, root=self.folder.parent)
+        self.assertIn("Dev tooling", ticked, "the one choice the brief cannot settle stays on the page")
+        self.assertIn('name="extensions" value="codegraph" checked', ticked)
+        self.assertIn('name="extensions" value="uipro" checked', ticked)
+        self.assertNotIn('<input type="hidden" name="extensions"', ticked, "the boxes are the answer, once")
         full = page({"brief": str(self.folder), "edit": "1"}, root=self.folder.parent)
         self.assertIn("Delivery foundation", full)
         self.assertIn('value="club-boat-bookings"', full)

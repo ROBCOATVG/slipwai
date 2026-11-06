@@ -195,14 +195,17 @@ def confirm(held: Mapping[str, str]) -> str:
     one button to make it and one to change something. The answers ride in a hidden form, so the one
     script this page has posts them exactly as it posts the long form's."""
     lines = "".join(f"<li>{esc(line)}</li>" for line in handover.said(dict(held)))
+    # The dev tooling is the one choice kept on this page, every row ticked: it is `./init`'s own question
+    # and the brief cannot answer it, so it is asked here rather than elected silently or not at all.
+    tooling = extensions_asked(held)
     hidden = "".join(f'<input type="hidden" name="{esc(key)}" value="{esc(value)}">'
-                     for key, value in held.items() if key != "edit")
+                     for key, value in held.items() if key != "edit" and (key != "extensions" or not tooling))
     folder = str(held.get("brief") or "")
     return (f'<div class="card" id="interview"><h2>Make {esc(str(held.get("name") or "it"))}</h2>'
             f'<p>From the brief at <code>{esc(folder)}</code>. Everything below was settled there or is the '
-            f'smallest start; nothing here is a question you have not already answered.</p>'
+            f'smallest start; the dev tooling is the one thing left to you, and it is all ticked.</p>'
             f'<ul class="settled">{lines}</ul>'
-            f'<form class="ask-page" hidden>{hidden}</form>'
+            f'<form class="ask-page">{hidden}{field_html(tooling) if tooling else ""}</form>'
             f'<div class="ask"><button class="go" id="generate">Make it</button>'
             f'<a class="quiet-link" href="/generate?brief={quote(folder)}&amp;edit=1">Change something</a>'
             f'{reading_link(Path(folder))}</div>'

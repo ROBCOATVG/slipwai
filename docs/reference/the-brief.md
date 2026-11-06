@@ -96,6 +96,10 @@ a liner, the full stack. The first page works the two out from what was said and
 `(proposed)`, which the check shows amber; where it cannot tell, it asks the two questions in plain words.
 The start page passes the answer to `generate --shape`; a brief without the lines starts small, as before.
 
+The page a brief is handed over on asks nothing the brief has answered. The one thing it keeps is the dev
+tooling — `./init`'s own menu, which no brief can answer — with every extension this machine has ticked;
+untick what the project should not have, then press *Make it*. *Change something* opens the whole form.
+
 ## People and facts
 
 **`people.md`** is one `## ` heading per person, a `role:` line and a sentence of what they do. It lands as

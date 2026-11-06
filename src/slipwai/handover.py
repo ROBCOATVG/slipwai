@@ -20,6 +20,7 @@ from .brief_check import runs_line, sections, service
 from .design_docs import briefed
 from .harness import name_of
 from .identity import EVERYONE, STAFF, WHO
+from .interview_page import extensions_offered
 from .quickstart import answered, find
 
 #: The builder's defaults for a project that starts from a brief: the smallest start there is.
@@ -67,6 +68,9 @@ def answers(folder: Path) -> dict[str, str]:
     agent = agent_chosen(read())
     if agent is not None and agent.able:
         held["init"] = agent.key
+    # Every extension this machine has, ticked: the hand-over is the one start where nobody has read a menu,
+    # and a project that quietly had none was the omission `./init`'s silent menu used to make.
+    held["extensions"] = ",".join(key for key, _, _ in extensions_offered())
     return held
 
 

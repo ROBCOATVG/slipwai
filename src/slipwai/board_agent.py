@@ -87,6 +87,7 @@ class BoardAgent:
         self.session: Session | None = None
         self.loaded = False
         self.text: list[str] = []  # the agent's message under way, flushed at the next card or the turn's end
+        self.replaying = False  # inside a load: the person's messages come back whole, one chunk each
         #: Whether the last thing the agent streamed was a thought. Its reasoning is its own and is not a
         #: turn on the page; the page says "Thinking…" while this holds, so the wait is explained.
         self.thinking = False
@@ -105,7 +106,11 @@ class BoardAgent:
                           kept=self.kept)
         session.start()
         kept = kept_session(self.kept)
-        self.loaded = bool(kept) and session.load(kept)
+        self.replaying = True  # a load replays the conversation: each of the person's messages comes whole
+        try:
+            self.loaded = bool(kept) and session.load(kept)
+        finally:
+            self.replaying = False
         if not self.loaded:
             session.new()
         self.session = session
@@ -205,8 +210,12 @@ class BoardAgent:
         self.thinking = False
         if kind in ("agent_message_chunk", "user_message_chunk"):
             if content.get("type") == "text" and content.get("text"):
+                if kind == "user_message_chunk" and self.text:
+                    self.flush()  # the agent's words before the person's next, in the order they were said
                 {"agent_message_chunk": self.text, "user_message_chunk": self.person}[str(kind)].append(
                     str(content["text"]))
+                if kind == "user_message_chunk" and self.replaying:
+                    self.flush()  # replayed whole: two messages with no answer between stay two turns
         elif kind == "tool_call":
             self.flush()
             self.say(self.who, "tool", str(update.get("title") or update.get("name") or "a tool"),

@@ -154,6 +154,8 @@ def main():
             update(params["sessionId"], sessionUpdate="user_message_chunk",
                    content={"type": "text",
                             "text": "You are drawing a product with a person.\n\n---\n\nhello from before"})
+            update(params["sessionId"], sessionUpdate="user_message_chunk",
+                   content={"type": "text", "text": "and once more"})
             text(params["sessionId"], "earlier: hello again")
             send(id=number, result={"configOptions": options})
         elif method == "session/set_config_option":

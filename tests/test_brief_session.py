@@ -97,6 +97,8 @@ class ProtocolTest(unittest.TestCase):
         self.assertIn("earlier: hello again", [t["text"] for t in said["turns"]], "the agent replayed the session")
         self.assertIn(("person", "hello from before"), [(t["role"], t["text"]) for t in said["turns"]],
                       "the person's words replayed without the role the board put ahead of them")
+        self.assertIn(("person", "and once more"), [(t["role"], t["text"]) for t in said["turns"]],
+                      "two messages with no answer between them stay two turns")
         self.assertEqual((said["agent"], said["model"]), ("stand-in 0.1", "A"))
         self.assertEqual(again.ask("And a second boat."), "asked")
         self.assertEqual(self.settle_on(again)["turns"][-1]["kind"], "tool_update", "and the conversation goes on")

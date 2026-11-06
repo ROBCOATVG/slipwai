@@ -123,7 +123,8 @@ def preferred(found: list[Launch], settings: Settings) -> tuple[Launch | None, s
         return signed[0], "made ready and signed in"
     if ready:
         return ready[0], "made ready"
-    binaries = [one for one in able if Path(one.argv[0]).name != "npx"]
+    # By stem, lower-cased: on Windows `which` finds `npx.CMD`, and every package row read as a binary.
+    binaries = [one for one in able if Path(one.argv[0]).stem.lower() != "npx"]
     if binaries:
         return binaries[0], "on this machine"
     return (able[0], "the first found") if able else (None, "")

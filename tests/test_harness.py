@@ -13,6 +13,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -124,7 +125,7 @@ class ProtocolRowsTest(unittest.TestCase):
         self.assertEqual(argv[1:], ["--yes", "@agentclientprotocol/claude-agent-acp"])
         self.assertIn("over `npx`", said)
         argv, said = keel.acp_launch("opencode", path=str(here))
-        self.assertEqual(argv, [str(here / "opencode"), "acp"])
+        self.assertEqual(argv, [shutil.which("opencode", path=str(here)), "acp"])
         self.assertEqual(keel.acp_launch("goose", path=str(here)),
                          ([], "Goose is launched as `goose`, which is not on PATH"))
         self.assertEqual(keel.acp_launch("gemini", path="/nowhere")[0], [])

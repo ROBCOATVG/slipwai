@@ -435,6 +435,15 @@ def repository_for(answers: Mapping[str, str]) -> str | None:
     return named if named and managed(CATALOG, chosen(answers)["target"]) else None
 
 
+def brief_flags(answers: Mapping[str, str], folder: Path) -> list[str]:
+    """`--brief`, and `--shape` from the brief's two lines where the target is one the keel deploys: a shape
+    is a deployment's, and `generate` refuses one for a project that goes nowhere."""
+    flags = ["--brief", str(folder)]
+    if managed(CATALOG, chosen(answers)["target"]):
+        flags += shape_flag(folder)
+    return flags
+
+
 def shape_flag(folder: Path) -> list[str]:
     """`--shape` from the brief's own two lines under *Who runs it*, where the brief has them; nothing where
     it does not, and `generate` starts small as it does."""
@@ -466,8 +475,7 @@ def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
         # so the folder is already where the verb can read it: carrying its bytes through a browser and
         # writing them back would be a copy nobody asked for, with a size limit nobody needs.
         if (folder := str(answers.get("brief") or "").strip()):
-            argv += ["--brief", folder]
-            argv += shape_flag(Path(folder))
+            argv += brief_flags(answers, Path(folder))
         done = subprocess.run([*relaunch(), "generate", *argv], cwd=str(root),
                               capture_output=True, text=True, env=login_environment())
     return done.returncode == 0, (done.stdout + done.stderr).strip()

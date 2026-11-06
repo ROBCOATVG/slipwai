@@ -96,6 +96,17 @@ class ReadersTest(unittest.TestCase):
         self.assertEqual(report(tree(**{"brand.md": "# B\n"}))[4], "runs for: not said yet — who uses it, and what an "
                                                                "afternoon without it is")
 
+    def test_the_start_page_passes_the_shape_only_to_a_target_the_keel_deploys(self) -> None:
+        from slipwai.interview_page import brief_flags, shape_flag
+        home = tree(**{"prd.md": "# P\n\n## Who runs it\n\n- Used by: staff — the club\n"
+                                 "- When it is down: an annoyance — they ring the bosun\n"})
+        self.assertEqual(shape_flag(home), ["--shape", "skiff"])
+        self.assertEqual(brief_flags({"target": "none"}, home), ["--brief", str(home)],
+                         "a project that goes nowhere has no shape to be given")
+        self.assertEqual(brief_flags({"target": "aws"}, home), ["--brief", str(home), "--shape", "skiff"])
+        self.assertEqual(shape_flag(tree(**{"prd.md": "# P\n"})), [])
+        self.assertEqual(shape_flag(Path(tempfile.mkdtemp()) / "nowhere"), [])
+
     def test_people_are_headings_with_the_role_their_section_says(self) -> None:
         self.assertEqual(people(BRIEF / "people.md"),
                          [{"name": "Sam", "role": "member"}, {"name": "Jo", "role": "bosun"}])

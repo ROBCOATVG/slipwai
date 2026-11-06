@@ -70,6 +70,20 @@ class DriveTest(unittest.TestCase):
             self.drive.protocol()
         self.assertIn("no initialised harness has a launch row", str(refused.exception))
 
+    def test_the_project_s_own_setting_switches_the_protocol_on(self) -> None:
+        self.assertFalse(self.drive.switched_on())
+        (self.root / ".specify").mkdir()
+        (self.root / ".specify" / "cruise.json").write_text('{"sessions": "print"}', encoding="utf-8")
+        self.assertFalse(self.drive.switched_on())
+        self.assertIsNone(self.drive.protocol(), "print mode: nothing taken")
+        (self.root / ".specify" / "cruise.json").write_text('{"sessions": "protocol"}', encoding="utf-8")
+        self.assertTrue(self.drive.switched_on())
+        with self.assertRaises(self.drive.harness.NoHarness) as refused:  # asked for, and nothing initialised here
+            self.drive.protocol()
+        self.assertIn("sessions: protocol", str(refused.exception))
+        os.environ["SLIPWAI_ACP"] = STAND_IN
+        self.assertEqual(self.drive.protocol()[1], None, "the variable still says first")
+
     def test_a_launch_row_is_what_this_machine_can_make(self) -> None:
         self.assertEqual(self.drive.acp_launch({"acp": {"binary": {"cmd": "no-such-agent-here", "args": ["acp"]}}}), [])
         self.assertEqual(self.drive.acp_launch({"acp": None}), [])

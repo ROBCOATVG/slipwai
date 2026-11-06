@@ -12,13 +12,14 @@ Nobody is in the berth: a permission for a write inside it is allowed this once,
 with a line saying so, and a question is declined — a stage that must ask a person parks on a `question`
 line in the deck log, as it did. The stop is the protocol's cancel, then the agent's own end.
 
-Opt-in, by `SLIPWAI_ACP`: `1` takes the initialised harness's launch row where this machine can make it, any
-other value is the command that starts an agent (the suite's stand-in; a harness the registry does not
-know). Unset, every drive runs in the harness's print mode as it did: the launch rows are unproven, and the
-board turns this on for a project once one is.
+Opt-in, per project: `sessions: protocol` in `.specify/cruise.json`, which the board's *Who answers* card
+sets, or `SLIPWAI_ACP` in the environment — `1` takes the initialised harness's launch row where this
+machine can make it, any other value is the command that starts an agent (the suite's stand-in; a harness
+the registry does not know). Neither set, every drive runs in the harness's print mode as it did.
 """
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import shutil
@@ -35,6 +36,18 @@ import harness  # noqa: E402
 
 VARIABLE = "SLIPWAI_ACP"
 ON = ("1", "true", "yes", "on")
+#: The project's own switch, set from the board: `sessions: protocol` in `.specify/cruise.json`.
+CONFIG = ".specify/cruise.json"
+
+
+def switched_on() -> bool:
+    """Whether this project asked for its captains' sessions over the protocol, on the board or by
+    `/cruise-settings`; the variable, where set, still says first. Read under the project the harness
+    module names now, which the suite points elsewhere."""
+    try:
+        return json.loads((harness.ROOT / CONFIG).read_text(encoding="utf-8")).get("sessions") == "protocol"
+    except (OSError, ValueError, AttributeError):
+        return False
 #: A turn's ceiling, nominal: the captain's watch on the deck log is what ends a drive that stopped writing.
 TURN = 7 * 24 * 3600.0
 
@@ -66,6 +79,8 @@ def protocol() -> tuple[list[str], dict[str, Any] | None, str] | None:
     """Where this run takes the protocol: (the launch, the harness row or `None` for a named command, what was
     chosen) — or `None` where `SLIPWAI_ACP` is unset and every session runs headless as it did."""
     named = os.environ.get(VARIABLE, "").strip()
+    if not named and switched_on():
+        named = "1"
     if not named:
         return None
     if named.lower() not in ON:
@@ -75,7 +90,8 @@ def protocol() -> tuple[list[str], dict[str, Any] | None, str] | None:
         argv = acp_launch(rows.get(key))
         if argv:
             return argv, rows[key], f"agent: {rows[key]['name']}, over the Agent Client Protocol"
-    raise harness.NoHarness(f"{VARIABLE} is set, and no initialised harness has a launch row this machine can "
+    raise harness.NoHarness(f"sessions over the protocol were asked for ({VARIABLE}, or `sessions: protocol` in "
+                            f".specify/cruise.json), and no initialised harness has a launch row this machine can "
                             f"make (scripts/agents/registry.json, `acp`)")
 
 

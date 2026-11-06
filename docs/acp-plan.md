@@ -186,6 +186,7 @@ the gates inside. The main plan's phase 22 table is the one `make progress` tick
 | 22.6 | The live run: one brief through the first page on Claude's adapter and one on a native agent, recorded here | S | done 2026-11-06; the rows carry the proof |
 | 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives; each shows its progress, asks the person instead of assuming, and stops on a cancel; the headless path kept where a harness has no `acp` row | L | done 2026-11-05; the captain's path opt-in by `SLIPWAI_ACP` until a row is proven |
 | 22.8 | Install from the settings page: an agent put on this machine from its manifest — `npx` needs only Node, a binary archive is fetched and its sha256 checked — and its sign-in started through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | M | done 2026-11-05: `agent_ready.py`, `agent_install.py`; three manifests give no checksum and get the link |
+| 22.9 | The captain's protocol path turned on per project from the board: `sessions: protocol` in `.specify/cruise.json`, set on the *Who answers* card and read by the captain's switch; `SLIPWAI_ACP` still says first | S | done 2026-11-06 |
 
 ### 22.1 `acp.py` — M
 
@@ -257,6 +258,14 @@ the gates inside. The main plan's phase 22 table is the one `make progress` tick
   toolkit: `acp.py` carried by `make shared`, `drive.py` a session with a process's face. The draft first,
   because it is where the number is taken: a draft that asks on the page instead of assuming, and the
   count after it against 21.6d's ten. One fragment per stage, MINOR.
+
+### 22.9 The captain's switch, from the board — S
+
+- `sessions` joins `.specify/cruise.json`'s one list of settings, `print` or `protocol`, default `print`,
+  a later key so a project written before it still passes `make check-agents`. The *Who answers* card on
+  the Voyage sets it through the project's own `/cruise-settings` script, as it sets every other answer,
+  and the captain's `drive.protocol()` reads it where `SLIPWAI_ACP` is unset. Nothing else changes: a
+  project that never flips it runs its captains in the print mode it always did. Fragment, MINOR.
 
 ### 22.8 Install from the settings page — M
 

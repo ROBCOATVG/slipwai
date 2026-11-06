@@ -33,7 +33,8 @@ from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 600 — one runner for every child the board starts: assessment of a feature, and runs of steps that go on
+# budget: 610 — one runner for every child the board starts, and the file check an exit code does not make:
+# assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
@@ -127,6 +128,10 @@ class Step:
     #: A step run in this process rather than as a child — a stage over the Agent Client Protocol
     #: (`stage_session.py`) — given the fitting to say its lines into; its return is the exit status.
     session: Callable[[Any], int] | None = None
+    #: Asked once the command exited 0: a sentence where it did not do what it said — a draft with no
+    #: specification — which ends the step failed, or nothing where all is well. A child's exit code is
+    #: the child's word; the file is the board's.
+    check: Callable[[], str] | None = None
 
 
 def init_step(where: Path, harness: str, repository: str | None,
@@ -346,6 +351,9 @@ class Fitting:
                     code = child.wait()
                 if ours:
                     os.close(reading)
+            if not code and step.check and (left := step.check()):
+                self.say(left)
+                code = 1
             ends = bool(code) and step.stops
             self.say(step.ended(code), code=(code or failed) if ends or last else None)
             if ends:
@@ -410,10 +418,10 @@ def stage_step(where: Path, command: str, argument: str, argv: list[str], announ
     from .stage_session import StageSession, launchable  # noqa: PLC0415 — the edge tier, reached from here only
 
     if launchable(where) is None:
-        return Step(argv, announced, ended, key)
+        return Step(argv, announced, ended, key, check=held.get("after"))
     words = prompt() if callable(prompt) else prompt
     if prompt is not None and not words:
-        return Step(argv, announced, ended, key)
+        return Step(argv, announced, ended, key, check=held.get("after"))
     session = StageSession(where, command, argument, limit=limit, prompt=words or "", **held)
     if done:
         def ended(code: int) -> str:

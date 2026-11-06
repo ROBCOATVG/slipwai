@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from .fleet_page import plural, waiting_on_you
-from .init_run import draw, outside_session
+from .init_run import draft, draw, outside_session
 from .passage import record_verdict, specifications, storyboards, surfaces
 from .stage_session import running
 from .stage_steps import launch
@@ -85,6 +85,12 @@ def advance(board: Any) -> None:
         return  # another window's poll is already pressing it
     try:
         running = board.fitting
+        # The draft is not a step a person holds off: a document with no specification is drafted the
+        # moment the board sees it, once. What a draft that drafted nothing leaves is the button, and a line.
+        if board.draftable() and not board.drafted:
+            board.drafted = True
+            board.fitting = draft(board.root, running.said()["lines"] if running else None)
+            return
         done = not running or (running.said()["done"] and not running.said()["code"])
         step = next_step(board.root, done and not outside_session(board.root), board.drawable(), board.launchable())
         lines = running.said()["lines"] if running else None

@@ -297,10 +297,12 @@ The newest lines from every log, newest at the bottom.
 
 ## What the board does by itself
 
-The board starts something without a button press in two cases only:
+The board starts something without a button press in three cases only:
 
 1. **After Generate.** It runs `./init`, and `make draft` when the project starts from a requirements
    document.
+   A project with a document and no specification is drafted the moment the board sees it, once: nobody
+   holds a draft off. A draft that drafts nothing leaves **Draft the specification**, which runs it again.
 2. **When `upstream` is `advance`.** Each time a window polls, the board checks whether the step before
    ended well and nothing is running. If so, it presses the next upstream button: draw, approve, or continue
    the build. Only one window presses at a time.

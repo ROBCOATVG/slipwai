@@ -30,7 +30,8 @@ from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 700 — every route the board answers, driven against `board_fixture`: the fleet pages, the
+# budget: 730 — every route the board answers, the draft that runs by itself among them, driven against
+# `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
 # hold; the fixture moved out with it rather than being copied, which is what the one-suite rule was for.
@@ -530,22 +531,26 @@ class LandingTest(BoardTest):
         self.assertEqual(self.post("/draw", {}), (200, "drawing the surfaces"))
         self.assertIn("drawing 001-demo again", self._until("surfaces")["lines"])
 
-    def test_a_document_with_no_specification_offers_the_draft_button_and_the_stage_checks_it_drafted(self) -> None:
-        """A draft that stopped short exited 0 and said the specification was there. The file is the reading."""
+    def test_a_document_with_no_specification_is_drafted_by_itself_once_and_the_button_is_the_retry(self) -> None:
+        """A draft that stopped short exited 0 and said the specification was there. The file is the reading,
+        and nobody holds a draft off: the poll starts it the moment there is a document and no specification."""
         self.land()
         self._until("init")
         self.assertFalse(json.loads(self.get("/voyage.json")[1])["draftable"], "no document, nothing to draft")
+        (self.made / "Makefile").write_text("draft:\n\t@echo 'nothing drafted'\n", encoding="utf-8")
         (self.made / "docs").mkdir(exist_ok=True)
         (self.made / "docs/prd.md").write_text("# Demo\n", encoding="utf-8")
-        found = json.loads(self.get("/voyage.json")[1])
-        self.assertTrue(found["draftable"])
-        self.assertEqual(found["waiting"]["href"], "#draft")
-        self.assertIn('id="draft"', self.get("/voyage")[1])
-        (self.made / "Makefile").write_text("draft:\n\t@echo 'nothing drafted'\n", encoding="utf-8")
-        self.assertEqual(self.post("/draft", {}), (200, "drafting the specification"))
+        self.get("/voyage.json")  # the poll is the clock: it presses the draft
         receipt = self._until("draft")
         self.assertIn("nothing drafted", receipt["lines"])
-        self.assertTrue(json.loads(self.get("/voyage.json")[1])["draftable"], "nothing drafted: offered again")
+        self.assertTrue(receipt["code"], "a draft that drafted nothing ended badly, whatever `make` said")
+        found = json.loads(self.get("/voyage.json")[1])
+        self.assertTrue(found["draftable"], "nothing drafted: offered again, by hand")
+        self.assertEqual(found["waiting"]["href"], "#draft")
+        self.assertEqual(self._until("draft")["step"], "draft")
+        self.assertIn('id="draft"', self.get("/voyage")[1])
+        self.assertEqual(self.post("/draft", {}), (200, "drafting the specification"))
+        self.assertIn("nothing drafted", self._until("draft")["lines"])
         (self.made / "specs/001-demo").mkdir(parents=True)
         (self.made / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
         self.assertFalse(json.loads(self.get("/voyage.json")[1])["draftable"])

@@ -150,7 +150,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 950 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 960 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -258,6 +258,15 @@ class Bridge(BaseHTTPRequestHandler):
     @launched.setter
     def launched(self, one: bool) -> None:
         self.outfit(starting=True).launched = one
+
+    @property
+    def drafted(self) -> bool:
+        """Whether this board has drafted the specification here by itself; it does so once."""
+        return self.outfit().drafted
+
+    @drafted.setter
+    def drafted(self, one: bool) -> None:
+        self.outfit(starting=True).drafted = one
 
     def log_message(self, format: str, *args: Any) -> None:
         """Quiet. The run's log is the log; a request line per reload is noise over the top of it."""

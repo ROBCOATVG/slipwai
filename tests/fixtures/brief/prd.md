@@ -30,6 +30,11 @@ nobody can book it until it is back.
 - Recording a checkout. It is recorded on paper in the clubhouse and stays there for now.
 - Offline use. The product is used on the clubhouse wifi.
 
+## Who runs it
+
+- Used by: staff — the club's members and its bosun, all named
+- When it is down: an annoyance — bookings go back to the whiteboard for an afternoon
+
 ## Open
 
 - Can a member hold two bookings on the same day?

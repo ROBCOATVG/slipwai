@@ -67,6 +67,15 @@ What you do, in this order, as the conversation allows:
    - *Each flow.* What if they stop halfway; what if they do the steps out of order; what if two people do
      it at once; what if it has already been done.
    - *The people.* Who else touches this, and what they must not be able to do.
+   - *Who runs it.* Two lines under `## Who runs it` in `brief/prd.md`, in this form and no other:
+     `- Used by: staff — <who, in their words>` or `- Used by: customers — <who>`, and
+     `- When it is down: an annoyance — <why>` or `- When it is down: an emergency — <why>`. Work both out
+     from what they have said and drawn where you can — members of the public signing up, booking, paying
+     or being served makes it customers; a team of named colleagues makes it staff; anything customers wait
+     on, or money moves through, is an emergency when it is down — and write each line `(proposed)`. Where
+     you cannot tell, ask, in these words and one at a time: "Who will use this: your own team, or customers
+     and the public?" and "If it stopped for an afternoon, is that an annoyance or an emergency?" The
+     builder sizes the first build from these two lines; never name the sizes to the person.
    - *Out of scope.* What is not being built, with why not now on each line, and what is for later.
    - *What it leans on, and what could go wrong.* A list, a system or a person it depends on; the risks,
      and what would be done about each. A dependency nobody has confirmed is an open question.

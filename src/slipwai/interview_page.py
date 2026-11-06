@@ -34,6 +34,7 @@ from pathlib import Path
 
 from . import identity, quickstart
 from .assets import DEFAULT_OUTPUT, relaunch
+from .brief_check import service, shape_of
 from .browser_app import frontend_menu
 from .catalog import (
     CATALOG,
@@ -49,6 +50,7 @@ from .catalog import (
 from .cli_generate import DECLINE, quickstart_menu, unavailable_quickstarts
 from .cli_offered import not_installed_frameworks, not_installed_languages
 from .cli_prompts import PROFILE_GUIDANCE
+from .design_docs import briefed
 from .errors import GenerationError
 from .extension_install import catalogue
 from .harness import detect, keys, name_of
@@ -57,7 +59,8 @@ from .services import FIRST_SERVICE, FIRST_WEB
 from .shell_environment import login_environment
 from .targets import managed, offered_backends
 
-# budget: 460 — this is the interview's one list of questions, held in step with the terminal question for
+# budget: 480 — the shape a brief's two lines give is passed on from here, and
+# this is the interview's one list of questions, held in step with the terminal question for
 # question (`InStepTest` walks it), and the half that turns the answers back into the flags `generate` takes.
 # Split, the question and the flag it becomes would be in two files, which is the drift the pairing exists
 # to prevent — and the two questions that are not one flag each, the quickstart that fills in many and the
@@ -432,6 +435,17 @@ def repository_for(answers: Mapping[str, str]) -> str | None:
     return named if named and managed(CATALOG, chosen(answers)["target"]) else None
 
 
+def shape_flag(folder: Path) -> list[str]:
+    """`--shape` from the brief's own two lines under *Who runs it*, where the brief has them; nothing where
+    it does not, and `generate` starts small as it does."""
+    try:
+        document, _rest = briefed(folder)
+    except (OSError, GenerationError):
+        return []
+    shape = shape_of(service(document)) if document else ""
+    return ["--shape", shape] if shape else []
+
+
 def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
     """Generate, by running the verb. Whether it worked, and what it said either way.
 
@@ -453,6 +467,7 @@ def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
         # writing them back would be a copy nobody asked for, with a size limit nobody needs.
         if (folder := str(answers.get("brief") or "").strip()):
             argv += ["--brief", folder]
+            argv += shape_flag(Path(folder))
         done = subprocess.run([*relaunch(), "generate", *argv], cwd=str(root),
                               capture_output=True, text=True, env=login_environment())
     return done.returncode == 0, (done.stdout + done.stderr).strip()

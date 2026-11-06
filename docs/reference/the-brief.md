@@ -86,6 +86,16 @@ A page may hold anything else a browser can show. Nothing beyond the title and t
 
 ---
 
+## Who runs it
+
+Two lines under `## Who runs it` in the requirements document size the first build, in the person's words
+and none of ours: `- Used by: staff — …` or `- Used by: customers — …`, and `- When it is down: an
+annoyance — …` or `- When it is down: an emergency — …`. A staff tool whose outage is an annoyance starts
+as [a skiff](the-skiff-and-the-liner.md), one environment on the smallest compute; anything else starts as
+a liner, the full stack. The first page works the two out from what was said and drawn and writes them
+`(proposed)`, which the check shows amber; where it cannot tell, it asks the two questions in plain words.
+The start page passes the answer to `generate --shape`; a brief without the lines starts small, as before.
+
 ## People and facts
 
 **`people.md`** is one `## ` heading per person, a `role:` line and a sentence of what they do. It lands as

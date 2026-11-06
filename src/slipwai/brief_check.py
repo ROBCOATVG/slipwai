@@ -35,6 +35,14 @@ ROLE = re.compile(r"^role:\s*(?P<role>\S.*?)\s*$", re.MULTILINE | re.IGNORECASE)
 SOURCE = re.compile(r"^\s*(?:source|from|where it came from)\s*:", re.MULTILINE | re.IGNORECASE)
 #: A bullet, or a line, the document has not settled.
 BULLET = re.compile(r"^\s*[-*]\s+(?P<text>.+?)\s*$", re.MULTILINE)
+#: The two lines under `## Who runs it` that size the first build, in the person's words and no term of ours:
+#: who uses it, and what an afternoon without it is. `shape_of` turns them into the target's shape.
+USED_BY = re.compile(r"^\s*[-*]\s+used by:\s*(?P<said>.+?)\s*$", re.MULTILINE | re.IGNORECASE)
+WHEN_DOWN = re.compile(r"^\s*[-*]\s+when it is down:\s*(?P<said>.+?)\s*$", re.MULTILINE | re.IGNORECASE)
+STAFF = ("staff", "team", "colleague", "named people", "volunteer", "internal", "our own")
+CUSTOMERS = ("customer", "public", "member", "client", "visitor", "resident", "patient", "anyone")
+ANNOYANCE = ("annoyance", "inconvenience", "nuisance", "wait")
+EMERGENCY = ("emergency", "incident", "outage", "lost")
 UNSETTLED = re.compile(r"\?\s*$|\bTBD\b|^\s*open:", re.IGNORECASE)
 
 
@@ -96,6 +104,47 @@ def assumptions(prd: Path) -> list[str]:
     return found
 
 
+def service(prd: Path) -> dict[str, str | bool]:
+    """Who runs it, read off the two lines under `## Who runs it`: `used_by` as `staff` or `customers`,
+    `when_down` as `annoyance` or `emergency`, each `''` where the line is missing or says neither; and
+    `proposed`, where either line is the drawing's guess rather than the person's word."""
+    body = next((text for title, text in sections(prd) if title.strip().lower() == "who runs it"), "")
+    used = USED_BY.search(body)
+    down = WHEN_DOWN.search(body)
+
+    def one(found: re.Match[str] | None, first: tuple[str, ...], second: tuple[str, ...], a: str, b: str) -> str:
+        if found is None:
+            return ""
+        said = found.group("said").lower()
+        head = said.split("—")[0].split(" - ")[0]
+        if any(word in head for word in first):
+            return a
+        return b if any(word in head for word in second) else ""
+    return {"used_by": one(used, STAFF, CUSTOMERS, "staff", "customers"),
+            "when_down": one(down, ANNOYANCE, EMERGENCY, "annoyance", "emergency"),
+            "proposed": any("(proposed)" in found.group("said").lower() for found in (used, down) if found)}
+
+
+def shape_of(found: dict[str, str | bool]) -> str:
+    """The target's shape the two lines give: a skiff for a staff tool whose outage is an annoyance, a liner
+    for anything else — and `''` where either line is not there to read."""
+    if not found.get("used_by") or not found.get("when_down"):
+        return ""
+    return "skiff" if found["used_by"] == "staff" and found["when_down"] == "annoyance" else "liner"
+
+
+def runs_line(found: dict[str, str | bool]) -> str:
+    """The report's line for it, in the person's words: never a skiff or a liner."""
+    shape = shape_of(found)
+    if not shape:
+        return "runs for: not said yet — who uses it, and what an afternoon without it is"
+    where = ("one environment, the smallest" if shape == "skiff"
+             else "the full stack, with a staging environment")
+    down = "an annoyance" if found["when_down"] == "annoyance" else "an emergency"
+    guessed = " (proposed)" if found["proposed"] else ""
+    return f"runs for: {found['used_by']}, {down} when it is down — {where}{guessed}"
+
+
 def how_found(document: Path, home: Path) -> str:
     """Which of the three questions `briefed` asked found the document, in its own words."""
     if document.name.lower() in PRD_NAMES:
@@ -128,7 +177,7 @@ def who_decided(pages: list[Path]) -> str:
 
 
 def report(home: Path) -> list[str]:
-    """The five lines, or a refusal that ends with what to do."""
+    """The six lines, or a refusal that ends with what to do."""
     if not home.is_dir():
         raise GenerationError(f"{home} is not a directory; it is the folder your brief is in — "
                               f"run `slipwai brief check <dir>` against that folder")
@@ -147,6 +196,7 @@ def report(home: Path) -> list[str]:
     said_facts = ("none" if not known else f"{len(known)}, cited" if not uncited
                   else f"{len(known)}, {len(uncited)} with no source ({', '.join(uncited)})")
     lines.append(f"people: {len(who) or 'none'}   facts: {said_facts}")
+    lines.append(runs_line(service(document) if document else {}))
     open_ = assumptions(document) if document else []
     if not open_:
         lines.append("the draft will have to assume: nothing the document says it left open")

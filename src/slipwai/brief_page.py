@@ -97,6 +97,8 @@ SCRIPT = """
       if (line.startsWith('the draft will have to assume: nothing')) return '';
       if (line.startsWith('the draft will have to assume')) return 'amber';
       if (line.startsWith('requirements document: none')) return 'amber';
+      if (line.startsWith('runs for: not said')) return 'amber';
+      if (line.startsWith('runs for:')) return line.endsWith('(proposed)') ? 'amber' : '';
       return /^(requirements document|surfaces|look|people):/.test(line) ? '' : 'refused';
     };
     const stop = page.querySelector('button.stop'), on = page.querySelector('.head .on');

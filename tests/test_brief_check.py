@@ -13,7 +13,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.brief_check import assumptions, facts, people, report
+from slipwai.brief_check import assumptions, facts, people, report, service, shape_of
 from slipwai.cli_brief import brief_main
 from slipwai.design_docs import FILES
 from slipwai.errors import GenerationError
@@ -38,6 +38,7 @@ class ReportTest(unittest.TestCase):
             "surfaces: 3, states: 16, each with a heading, 10 decided by a person, 6 proposed",
             "look: look/look.css",
             "people: 2   facts: 2, cited",
+            "runs for: staff, an annoyance when it is down — one environment, the smallest",
             "the draft will have to assume: 1 — Can a member hold two bookings on the same day? (prd.md, ## Open)",
         ])
 
@@ -47,7 +48,7 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(said[1], "surfaces: none; one page per surface goes under surfaces/")
         self.assertIn("look: none", said[2])
         self.assertEqual(said[3], "people: none   facts: none")
-        self.assertEqual(said[4], "the draft will have to assume: nothing the document says it left open")
+        self.assertEqual(said[5], "the draft will have to assume: nothing the document says it left open")
 
     def test_a_page_with_no_state_article_is_one_state_shown_and_the_line_says_so(self) -> None:
         said = report(tree(**{"game-prd.md": "# P\n", "surfaces__home.html": "<title>Home</title><p>hi</p>",
@@ -63,7 +64,7 @@ class ReportTest(unittest.TestCase):
 
     def test_more_than_one_assumption_is_a_count_and_then_a_line_each(self) -> None:
         home = tree(**{"prd.md": "# P\n\n## Open\n\n- One?\n- Two?\n"})
-        self.assertEqual(report(home)[4:], ["the draft will have to assume: 2",
+        self.assertEqual(report(home)[5:], ["the draft will have to assume: 2",
                                             "  — One? (prd.md, ## Open)", "  — Two? (prd.md, ## Open)"])
 
     def test_not_a_directory_and_too_many_files_are_refusals_that_end_with_the_fix(self) -> None:
@@ -78,6 +79,23 @@ class ReportTest(unittest.TestCase):
 
 
 class ReadersTest(unittest.TestCase):
+    def test_who_runs_it_is_two_lines_in_the_person_s_words_and_the_shape_follows(self) -> None:
+        home = tree(**{"prd.md": "# P\n\n## Who runs it\n\n- Used by: customers — anyone in town (proposed)\n"
+                                 "- When it is down: an emergency — the desk cannot serve anyone\n"})
+        found = service(home / "prd.md")
+        self.assertEqual((found["used_by"], found["when_down"], found["proposed"]), ("customers", "emergency", True))
+        self.assertEqual(shape_of(found), "liner")
+        self.assertEqual(report(home)[4], "runs for: customers, an emergency when it is down — the full stack, with a "
+                                          "staging environment (proposed)")
+        staff = {"used_by": "staff", "when_down": "annoyance", "proposed": False}
+        self.assertEqual(shape_of(staff), "skiff")
+        self.assertEqual(shape_of({"used_by": "staff", "when_down": "emergency", "proposed": False}), "liner")
+        self.assertEqual(shape_of({"used_by": "", "when_down": "annoyance", "proposed": False}), "")
+        home = tree(**{"prd.md": "# P\n\n## Who runs it\n\n- Used by: the whole village\n"})
+        self.assertEqual(report(home)[4], "runs for: not said yet — who uses it, and what an afternoon without it is")
+        self.assertEqual(report(tree(**{"brand.md": "# B\n"}))[4], "runs for: not said yet — who uses it, and what an "
+                                                               "afternoon without it is")
+
     def test_people_are_headings_with_the_role_their_section_says(self) -> None:
         self.assertEqual(people(BRIEF / "people.md"),
                          [{"name": "Sam", "role": "member"}, {"name": "Jo", "role": "bosun"}])

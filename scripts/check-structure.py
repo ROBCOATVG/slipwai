@@ -127,7 +127,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # The board, as a page a person answers from: the render, the server and the verb — and
               # what bare `slipwai` does, which is open that same board. `seats` is the one piece of state
               # that server has, which is a window each: every route beside it is a fold of files on disk.
-              "page_shell", "seats", "console", "console_page",
+              "page_shell", "seats", "console", "console_page", "attention",
               # The conversation that writes a brief before a project exists, on the console's shape.
               "brief_session", "brief_page",
               # The Agent Client Protocol's client half: the session behind the board's conversations, what

@@ -118,6 +118,10 @@ SCRIPT = """
       const written = said.check.length > 0 && !said.check[0].startsWith('requirements document: none')
         && colour(said.check[0]) !== 'refused';
       hand.hidden = !written; hand.classList.toggle('ready', !!said.ready);
+      const open = log.querySelectorAll('.turn.permission:not(.done), .turn.question:not(.done)').length;
+      const ready = {count: 1, text: 'The brief is ready to hand over', href: '#hand-over'};
+      if (window.waiting) waiting.set(open ? {count: open, text: 'The brief asks you something', href: '#brief-log'}
+                                      : said.ready ? ready : null);
     };
     const poll = async () => {
       let said;
@@ -234,7 +238,7 @@ def sketch_page(slug: str) -> str:
             f'<div class="card" style="margin-top:14px"><div class="head"><h2>{esc(slug)}</h2>'
             f'<span class="on">{esc("on " + said["agent"]) if said["agent"] else ""}</span>'
             f'<button type="button" data-clear>New conversation</button></div>'
-            f'<div class="log turns" role="log" aria-live="polite"></div>'
+            f'<div class="log turns" id="brief-log" role="log" aria-live="polite"></div>'
             f'<p class="empty">Say what the product is: who uses it, and what they do with it.</p>'
             f'<form class="ask"><input placeholder="Members book one of the club boats for a morning…" '
             f'autocomplete="off" aria-label="Say something"><button class="go" type="submit">Say</button>'
@@ -244,8 +248,8 @@ def sketch_page(slug: str) -> str:
             f'<ul class="check"></ul><p class="none">Nothing written yet.</p>'
             f'<p class="legend">Green: the builder can start from it without asking. Amber: what the draft will '
             f'decide for you, and say it did.</p>'
-            f'<a class="hand-over" hidden href="/generate?brief={quote(str(home / BRIEF))}">Hand over: start a '
-            f'project from this brief</a>'
+            f'<a class="hand-over" id="hand-over" hidden href="/generate?brief={quote(str(home / BRIEF))}">'
+            f'Hand over: start a project from this brief</a>'
             f'<p class="read" style="margin-top:8px"><a class="quiet-link" href="/brief/read?sketch={quote(slug)}">'
             f'Read the brief as a document</a> · '
             f'<a class="quiet-link" href="/brief/read?sketch={quote(slug)}&amp;file=people">the people</a> · '

@@ -215,6 +215,7 @@ SCRIPT = BOARD_SCRIPT + """
     if (draw) { draw.hidden = !found.drawable; draw.disabled = false; }
     const model = document.getElementById('model');
     if (model) { model.hidden = !found.modelable; model.disabled = false; }
+    if (window.waiting) waiting.set(found.waiting);
   };
   // Two things change on this page and only one of them is the strip. The cards — the storyboard, the
   // model, the work, the button that opens the specification — are rendered once, out of files that may
@@ -788,7 +789,9 @@ def now_said(found: list[Stage]) -> str:
 
 
 def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False,
-            stoppable: bool = False, drawable: bool = False, shape: str = "", modelable: bool = False) -> str:
+            stoppable: bool = False, drawable: bool = False, shape: str = "", modelable: bool = False,
+            waiting: dict | None = None) -> str:
     return json.dumps({"stages": stage_payload(found), "launchable": launchable, "moving": moving,
                        "castable": castable, "stoppable": stoppable, "drawable": drawable, "modelable": modelable,
-                       "shape": shape, "now": now_said(found)})
+                       "shape": shape, "now": now_said(found),
+                       "waiting": waiting or {"count": 0, "text": "", "href": ""}})

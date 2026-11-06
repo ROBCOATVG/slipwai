@@ -84,7 +84,7 @@ class FirstPageTest(BoardTest):
         self.assertIn("Nothing written yet.", said)
         home = brief_session.workspace("club-boats") / "brief"
         self.assertIn('href="/brief/read?sketch=club-boats"', said, "the brief can be read as a document")
-        self.assertIn(f'<a class="hand-over" hidden href="/generate?brief={quote(str(home))}">', said,
+        self.assertIn(f'<a class="hand-over" id="hand-over" hidden href="/generate?brief={quote(str(home))}">', said,
                       "a link to the start page with its last field filled, shown once the brief has a document")
         self.assertIn("Green: the builder can start from it without asking. Amber: what the draft will", said)
         with self.assertRaises(urllib.error.HTTPError, msg="a name that is not one is refused") as refused:

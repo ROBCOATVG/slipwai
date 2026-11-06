@@ -201,15 +201,19 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
             f"{plural(merged, 'slice')} merged so far. The processes below say what would start things again.")
 
 
+def waiting_on_you(found: dict) -> int:
+    """How many things wait on a person: the parks not paused, and the questions and hand-backs no park groups."""
+    on_you = len([g for g in found.get("groups") or [] if g.get("paused") != "yes"])
+    return on_you + len([row for row in found.get("inbox") or []
+                         if row.get("kind") in ("told", "question") and row.get("grouped") != "yes"])
+
+
 def live_sub(found: dict) -> str:
     """The short line in the page header: the state in a word, and the numbers that matter."""
     counts = found.get("counts") or {}
     colour, _sentence, _under = headline(found)
     word = {"teal": "working", "brass": "stopped", "blue": "paused", "red": "stalled", "grey": "quiet"}[colour]
-    on_you = len([g for g in found.get("groups") or [] if g.get("paused") != "yes"])
-    on_you += len([row for row in found.get("inbox") or []
-                   if row.get("kind") in ("told", "question") and row.get("grouped") != "yes"])
-    bits = [word, f"{on_you} waiting on you"]
+    bits = [word, f"{waiting_on_you(found)} waiting on you"]
     if counts.get("paused"):
         bits.append(f"{counts['paused']} paused")
     slots = counts.get("slots")

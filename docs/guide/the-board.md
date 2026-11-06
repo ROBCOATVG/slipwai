@@ -30,6 +30,11 @@ one window moves that window only.
 The button **Install this board** appears when your browser offers to install the page as an app. The theme
 toggle is remembered in your browser.
 
+Beside them, **Tell me when it waits on me** asks your browser, once, to let the board notify you. From then
+on a wait that begins while you are in another window — a storyboard to approve, a question on a card, a
+brief ready to hand over — is a notification; click it and the window comes to the front at the thing that
+waits. It is off until you press it, and your browser remembers the answer.
+
 ---
 
 ## The tabs
@@ -80,6 +85,12 @@ The Voyage shows where one project stands and how its run is going. Its title is
 *Voyage · &lt;project&gt;*. It updates itself: it asks the board for news every 2.5 seconds while a stage is
 working, and every 8 seconds when nothing is working. When the project gains a new kind of file, such as a
 first storyboard, the window reloads itself.
+
+When something waits on you, a strip appears under the title saying what — *The specification is ready: read
+it, then draw the surfaces*, *The storyboard for 001-… is drawn: approve it or send it back*, *The agent asks
+you something*, *2 slices waiting on you* — with **Go to it** beside the words. The count goes on the tab's
+title, *(1) Voyage · …*, and on the installed board's badge. The first page does the same when a card asks
+you something, and when the brief is ready to hand over.
 
 The cards come in this order, from the top.
 

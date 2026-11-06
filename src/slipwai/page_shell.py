@@ -22,6 +22,9 @@ import html
 import json
 
 from .assets import this_command
+from .attention import SCRIPT as ATTENTION
+from .attention import STRIP, TELL
+from .attention import STYLE as WAITING
 from .brand import MARK, favicon, inline, svg
 
 # budget: 470 — the waiting groups' chips and their row styles landed here with the rest of the sheet;
@@ -447,13 +450,14 @@ def document(title: str, sub: str, body: str, script: str = "", now: str = "") -
 <title>{esc(title)}</title>
 <link rel="icon" href="{favicon()}">
 {HEAD if served else ""}
-<style>{STYLE}{FORM}{WORKING}</style></head>
+<style>{STYLE}{FORM}{WORKING}{WAITING if served else ""}</style></head>
 <body><div class="wrap">
 <div class="top"><div><h1>{esc(title)}</h1><div class="sub">{esc(sub)}</div></div>
-<div class="corner">{INSTALL if served else ""}{THEME}{inline(
+<div class="corner">{INSTALL + TELL if served else ""}{THEME}{inline(
     title="slipwai — the little tug that moves the big one")}</div></div>
 {tabs(now) if now else ""}
+{STRIP if served else ""}
 {body}
-</div>{"<script>" + SEATED + script + REGISTER + "</script>" if served else
+</div>{"<script>" + SEATED + ATTENTION + script + REGISTER + "</script>" if served else
        "<script>" + script + "</script>" if script else ""}</body></html>
 """

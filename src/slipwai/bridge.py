@@ -123,7 +123,7 @@ from .try_card import VIDEOS, WALK_ROUTE, trunk_head, walk_file
 from .try_card import act as try_act
 from .try_card import card as try_card
 from .try_card import payload as try_payload
-from .upstream import advance
+from .upstream import advance, on_voyage
 from .voyage import (
     MOCK_ROUTE,
     SCREEN_ROUTE,
@@ -662,9 +662,11 @@ class Bridge(BaseHTTPRequestHandler):
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
-        return voyage_payload(found, self.launchable(), any(one.state == "working" for one in found),
-                              self.castable(rows, fleet), self.stoppable(fleet), self.drawable(),
-                              self.made_of(rows, fleet)[1], self.modelable())
+        able = {"launchable": self.launchable(), "castable": self.castable(rows, fleet),
+                "stoppable": self.stoppable(fleet), "drawable": self.drawable(), "modelable": self.modelable()}
+        return voyage_payload(found, able["launchable"], any(one.state == "working" for one in found),
+                              able["castable"], able["stoppable"], able["drawable"],
+                              self.made_of(rows, fleet)[1], able["modelable"], waiting=on_voyage(self, fleet, able))
 
     def attach(self, named: str) -> str:
         """Point this board at another directory, or say why it cannot be.

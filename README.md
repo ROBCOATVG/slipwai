@@ -195,7 +195,7 @@ Protocol. The tab lists every agent this machine can launch, says which are read
 or install one.
 
 **When the board waits on you, it says so.** A strip appears under the page title: *The specification is
-ready: read it, then draw the surfaces*, *The storyboard is drawn: approve it or send it back*, *The agent
+ready: read it, then draw the storyboard*, *The storyboard is drawn: approve it or send it back*, *The agent
 asks you something*, *2 slices waiting on you*, *The brief is ready to hand over*. The count goes on the
 browser tab's title. Press **Tell me when it waits on me** once, and the browser notifies you when a wait
 begins while you are in another window.

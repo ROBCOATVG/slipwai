@@ -209,7 +209,9 @@ BEGIN = """
 
 def sketch_page(slug: str) -> str:
     """One sketch: the steps, the conversation, the brief so far, and the prototype where there is one."""
-    said = for_slug(slug).said()
+    held = for_slug(slug)
+    held.resume()  # after a restart: the kept session loading while the page is read
+    said = held.said()
     now = said["step"]
     steps = "".join(f'<span class="{"now" if number == now else ""}">{number} {esc(name)}</span>'
                     for number, name in enumerate(STEPS, 1))

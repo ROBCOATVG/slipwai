@@ -30,6 +30,8 @@ import uuid
 from collections.abc import Sequence
 from pathlib import Path
 
+from .acp import KEPT as SESSION_KEPT
+from .acp import kept_session
 from .assets import SLIPWAI, TOOLKIT_ROOT
 from .board_agent import BoardAgent
 from .board_settings import Launch, chosen, read
@@ -207,6 +209,39 @@ class Sketch:
             return "no agent"
         threading.Thread(target=self.run, args=(argv,), daemon=True).start()
         return "asked"
+
+    def resume(self) -> bool:
+        """After the board was restarted: the session this sketch kept, loaded at once, so the page shows the
+        conversation again rather than a blank box until the next message. True where a load was started;
+        False where there is nothing kept, nothing to launch it on, or a conversation already in hand."""
+        with self.lock:
+            if self.busy or self.agent is not None or self.turns or self.begun or self.command:
+                return False
+            if not kept_session(self.home / SESSION_KEPT):
+                return False
+            launch = self.launch or chosen(read(), path=self.environment().get("PATH"))
+            if launch is None or not launch.able:
+                return False
+            self.busy = True
+        threading.Thread(target=self.reload, args=(launch,), daemon=True).start()
+        return True
+
+    def reload(self, launch: Launch) -> None:
+        """The kept session loaded: the agent replays what was said as updates, which `heard` keeps as turns."""
+        try:
+            self.agent = BoardAgent(launch, self.home, "sketch", self.heard,
+                                    env={**self.environment(), **acp_environment(launch.key)})
+            self.on = launch.name
+            self.begun = self.agent.begin()
+            self.on = self.agent.named
+        except Exception as fault:  # noqa: BLE001 — a sketch stuck on busy is one nobody can type in
+            self.say("sketch", f"The conversation could not be picked up again: {fault}", "error")
+            self.agent = None
+        finally:
+            lines = checked(self.home)
+            with self.lock:
+                self.check = lines
+                self.busy = False
 
     def drive(self, launch: Launch, message: str) -> None:
         """One turn over the protocol: the role at the head of the first prompt, the agent's updates as turns

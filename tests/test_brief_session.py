@@ -59,8 +59,11 @@ class ProtocolTest(unittest.TestCase):
         self.addCleanup(self.sketch.reset)
 
     def settle(self) -> dict:
+        return self.settle_on(self.sketch)
+
+    def settle_on(self, sketch: Sketch) -> dict:
         for _ in range(400):
-            said = self.sketch.said()
+            said = sketch.said()
             if not said["busy"]:
                 return said
             time.sleep(0.05)
@@ -76,6 +79,25 @@ class ProtocolTest(unittest.TestCase):
 
     def texts(self) -> list[str]:
         return [t["text"] for t in self.sketch.said()["turns"] if t["kind"] == "text"]
+
+    def test_a_reopened_sketch_loads_its_kept_session_and_the_agent_replays_it(self) -> None:
+        self.assertFalse(self.sketch.resume(), "nothing kept yet")
+        self.assertEqual(self.sketch.ask("Members book a boat."), "asked")
+        self.settle()
+        self.assertFalse(self.sketch.resume(), "a conversation in hand is not loaded over")
+        again = Sketch("club-boats", launch=self.launch)  # the board restarted: a new object, the folder kept
+        self.addCleanup(again.reset)
+        self.assertTrue(again.resume())
+        for _ in range(400):
+            if not again.said()["busy"]:
+                break
+            time.sleep(0.05)
+        said = again.said()
+        self.assertFalse(said["busy"])
+        self.assertIn("earlier: hello again", [t["text"] for t in said["turns"]], "the agent replayed the session")
+        self.assertEqual((said["agent"], said["model"]), ("stand-in 0.1", "A"))
+        self.assertEqual(again.ask("And a second boat."), "asked")
+        self.assertEqual(self.settle_on(again)["turns"][-1]["kind"], "tool_update", "and the conversation goes on")
 
     def test_a_turn_is_the_agents_updates_as_they_arrive_and_the_brief_read_after(self) -> None:
         self.assertEqual(self.sketch.ask("Members book a boat.\nstep: 2"), "asked")

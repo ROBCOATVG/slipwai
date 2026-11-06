@@ -11,8 +11,9 @@ Everything is `textContent`: what the agent said is data.
 from __future__ import annotations
 
 STYLE = """
+.turns{grid-template-columns:minmax(0,1fr)}
 .turns .turn.tool{justify-self:start;border:0;padding:2px 4px;font-size:.8rem;color:var(--ink-3);display:flex;gap:8px;
-  align-items:baseline;white-space:nowrap;max-width:100%;width:100%}
+  align-items:baseline;white-space:nowrap;max-width:100%;width:100%;min-width:0}
 .turns .turn.tool b{flex:none;min-width:5.2em}
 .turns .turn.tool .title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .turns .turn.tool b,.turns .turn.tool .path{white-space:nowrap}

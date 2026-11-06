@@ -54,8 +54,11 @@ STYLE = """
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-2)}
 #sketch iframe{width:100%;height:36rem;border:1px solid var(--rule);border-radius:8px;background:#fff}
 #sketch .head{display:flex;align-items:baseline;gap:10px;justify-content:space-between}
-#sketch .head h2{margin:0}
-#sketch .head button{font:inherit;font-size:.8rem;background:none;border:0;color:var(--ink-3);cursor:pointer}
+#sketch .head h2{margin:0;white-space:nowrap}
+#sketch .head .on{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:.8rem;color:var(--ink-3)}
+#sketch .head button{font:inherit;font-size:.8rem;background:none;border:0;color:var(--ink-3);cursor:pointer;
+  white-space:nowrap}
 #sketches .doc{display:grid;gap:6px;margin-top:16px}
 #sketches .doc>label,#sketches h3{font-size:.85rem;font-weight:500;color:var(--ink-2);margin:0}
 #sketches textarea{width:100%;box-sizing:border-box;min-height:6rem;font:inherit;font-size:.9rem;padding:8px 10px;

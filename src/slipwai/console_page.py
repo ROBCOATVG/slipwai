@@ -41,8 +41,11 @@ STYLE = """
   border:1px solid var(--rule);background:transparent;color:var(--ink-2)}
 #console .starters button:hover{border-color:var(--teal);color:var(--ink)}
 #console .head{display:flex;align-items:baseline;gap:10px;justify-content:space-between}
-#console .head h2{margin:0}
-#console .head button{font:inherit;font-size:.8rem;background:none;border:0;color:var(--ink-3);cursor:pointer}
+#console .head h2{margin:0;white-space:nowrap}
+#console .head .on{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:.8rem;color:var(--ink-3)}
+#console .head button{font:inherit;font-size:.8rem;background:none;border:0;color:var(--ink-3);cursor:pointer;
+  white-space:nowrap}
 #console .note{color:var(--ink-3);font-size:.78rem;margin:2px 0 10px}
 """
 

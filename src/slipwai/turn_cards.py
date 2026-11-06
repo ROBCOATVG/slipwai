@@ -14,7 +14,8 @@ STYLE = """
 .turns .turn.tool{justify-self:start;border:0;padding:2px 4px;font-size:.8rem;color:var(--ink-3);display:flex;gap:8px;
   align-items:baseline;white-space:nowrap;max-width:100%;width:100%}
 .turns .turn.tool b{flex:none;min-width:5.2em}
-.turns .turn.tool .title{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.turns .turn.tool .title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.turns .turn.tool b,.turns .turn.tool .path{white-space:nowrap}
 .turns .turn.tool .dot{width:8px;height:8px;border-radius:50%;background:var(--rule);flex:none;align-self:center}
 .turns .turn.tool.in_progress .dot{background:var(--warn)}
 .turns .turn.tool.completed .dot{background:var(--good)}
@@ -57,6 +58,21 @@ function drawWaiting(log, busy, thinking) {
 // What a tool call's kind is called on the page: a verb a person reads, not the protocol's word.
 const VERBS = {read: 'Reading', edit: 'Writing', delete: 'Deleting', move: 'Moving', search: 'Searching',
                execute: 'Running', think: 'Thinking', fetch: 'Fetching', switch_mode: 'Switching', other: 'Working'};
+// An agent that titles a call with its tool's name says less than its kind does; these names say more.
+const TOOLS = {shell: 'Running', bash: 'Running', skill: 'Loading the skill', read: 'Reading', write: 'Writing',
+               edit: 'Writing', glob: 'Searching', grep: 'Searching', webfetch: 'Fetching', todowrite: 'Planning',
+               task: 'Delegating', list: 'Listing'};
+// One line for a tool call: a verb, what it is about, and the path where that is inside the sketch. The title
+// is cut to a line with the whole of it on hover; a bare tool name as the title gives way to the call's input.
+function toolLine(one, turn) {
+  const named = turn.text.trim(), bare = /^[a-z_]+$/.test(named);
+  one.querySelector('b').textContent = (bare && TOOLS[named]) || VERBS[turn.tool.kind] || 'Working';
+  const said = (bare && turn.tool.what) || named || turn.tool.what || '';
+  const title = one.querySelector('.title');
+  title.textContent = said.length > 90 ? said.slice(0, 90) + '…' : said; title.title = said;
+  const inside = turn.tool.path.match(/\\/(brief|prototype)\\/(.*)$/);
+  one.querySelector('.path').textContent = inside ? inside[1] + '/' + inside[2] : '';
+}
 const drawTurn = (log, turn, reply) => {
   const card = kind => {
     const one = document.createElement('div');
@@ -68,6 +84,7 @@ const drawTurn = (log, turn, reply) => {
     const had = log.querySelector('[data-tool="' + turn.tool.id + '"]');
     if (!had) return false;
     had.className = 'turn tool ' + turn.tool.status;
+    if (turn.text || turn.tool.what) toolLine(had, turn);
     if (turn.text) had.querySelector('.title').textContent = turn.text;
     return turn.tool.status === 'completed' && turn.tool.kind !== 'read' && turn.tool.kind !== 'search';
   }
@@ -81,12 +98,7 @@ const drawTurn = (log, turn, reply) => {
     one = document.createElement('div');
     one.className = 'turn tool ' + turn.tool.status; one.dataset.tool = turn.tool.id;
     one.innerHTML = '<span class="dot"></span><b></b><span class="title"></span><span class="path"></span>';
-    one.querySelector('b').textContent = VERBS[turn.tool.kind] || 'Working';
-    // One line, cut: an `execute` call is titled with its whole command, and a command is not the person's.
-    const title = one.querySelector('.title');
-    title.textContent = turn.text.length > 90 ? turn.text.slice(0, 90) + '…' : turn.text; title.title = turn.text;
-    const inside = turn.tool.path.match(/\\/(brief|prototype)\\/(.*)$/);
-    one.querySelector('.path').textContent = inside ? inside[1] + '/' + inside[2] : '';
+    toolLine(one, turn);
   } else if (turn.kind === 'plan') {
     one = log.querySelector('.turn.plan') || document.createElement('div');
     one.className = 'turn plan'; one.innerHTML = '<ol></ol>';

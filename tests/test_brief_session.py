@@ -86,6 +86,7 @@ class ProtocolTest(unittest.TestCase):
                          "the eight steps went first, and the step line is read and taken out")
         self.assertEqual(said["step"], 2)
         self.assertEqual(said["turns"][2]["tool"]["kind"], "edit")
+        self.assertTrue(said["turns"][2]["tool"]["what"].endswith("prototype/index.html"), "the input's telling field")
         self.assertNotIn("thought", [t["kind"] for t in said["turns"]], "the agent's reasoning is not a turn")
         self.assertFalse(said["thinking"])
         self.assertEqual(said["turns"][3]["tool"]["status"], "completed")

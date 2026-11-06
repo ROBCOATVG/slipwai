@@ -50,7 +50,7 @@ def ask(number, method, params):
 
 def permission(number, session, path):
     call = {"toolCallId": f"call-{number}", "title": f"Write {path}", "kind": "edit", "status": "pending",
-            "locations": [{"path": str(path)}]}
+            "locations": [{"path": str(path)}], "rawInput": {"filePath": str(path), "content": "<title>"}}
     update(session, sessionUpdate="tool_call", **call)
     result, cancelled = ask(number, "session/request_permission", {
         "sessionId": session, "toolCall": call,

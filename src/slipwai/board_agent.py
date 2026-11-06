@@ -41,9 +41,27 @@ def located(tool_call: dict[str, Any]) -> str:
     return ""
 
 
+#: The one field of a tool call's input that says what it is about, in the order it is looked for: a
+#: command, a file, a name (a skill's), a pattern, a query, an address.
+TELLING = ("command", "cmd", "filePath", "file_path", "path", "name", "skill", "pattern", "query", "url", "description")
+
+
+def telling(update: dict[str, Any]) -> str:
+    """What the call's input says it is about, in one short string, or `''`. An agent that titles a call
+    with its tool's name — `shell`, `skill` — still sends the command or the name here."""
+    given = update.get("rawInput")
+    if not isinstance(given, dict):
+        return ""
+    for key in TELLING:
+        value = given.get(key)
+        if isinstance(value, (str, int, float)) and str(value).strip():
+            return str(value).strip().splitlines()[0][:200]
+    return ""
+
+
 def tool_fields(update: dict[str, Any]) -> dict[str, Any]:
     return {"id": str(update.get("toolCallId") or ""), "kind": str(update.get("kind") or ""),
-            "status": str(update.get("status") or ""), "path": located(update)}
+            "status": str(update.get("status") or ""), "path": located(update), "what": telling(update)}
 
 
 class BoardAgent:

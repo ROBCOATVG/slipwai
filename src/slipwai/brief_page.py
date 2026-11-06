@@ -277,7 +277,11 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
     elif where.startswith("/brief/files/"):
         found = served(where)
         if found is None:
-            bridge.send(404, "no such file in this sketch", "text/plain; charset=utf-8")
+            # Styled, because the frame shows it: a prototype is reloaded as soon as the agent wrote anything,
+            # and the first reload lands before the first drawing exists.
+            bridge.send(404, '<!doctype html><html><body style="margin:0;padding:16px;background:#fcfcfb;'
+                             'color:#7a8891;font:14px system-ui,sans-serif">Nothing drawn yet.</body></html>',
+                        "text/html; charset=utf-8")
         else:
             bridge.send(200, found[0].read_bytes(), found[1])
     else:

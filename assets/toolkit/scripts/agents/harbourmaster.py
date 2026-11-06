@@ -509,8 +509,10 @@ def gated(where: Path) -> subprocess.CompletedProcess[str]:
     asked again after each renewal, which is what the standard library says to do with one that expired.
     """
     argv = gate()
+    # UTF-8 whatever the platform's code page: a gate's words are a project's own, `check-ux-gates` prints an em
+    # dash in every line it writes, and Windows decoding that as cp1252 took the harbourmaster down with no answer.
     with subprocess.Popen(argv, cwd=where, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          text=True) as running:
+                          text=True, encoding="utf-8", errors="replace") as running:
         while True:
             try:
                 out, err = running.communicate(timeout=renew_every())

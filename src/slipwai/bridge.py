@@ -230,8 +230,13 @@ class Bridge(BaseHTTPRequestHandler):
     @property
     def root(self) -> Path:
         """Which directory this request's window is a view of. Read fresh per request and never cached,
-        which is what lets a seat be moved with a sentence rather than a restart."""
-        return self.seat().root
+        which is what lets a seat be moved with a sentence rather than a restart. A window whose project
+        was deleted under it goes back to the harbour, as a new window would, rather than to an error."""
+        where = self.seat().root
+        if where.is_dir():
+            return where
+        self.look(self.bench.start)
+        return self.bench.start
 
     def look(self, where: Path) -> None:
         """Point this request's window at a directory, and no other window with it."""

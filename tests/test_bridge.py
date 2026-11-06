@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 import threading
 import time
@@ -30,7 +31,7 @@ from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 760 — every route the board answers, the draft that runs by itself, the question that reads
+# budget: 775 — every route the board answers, the draft that runs by itself, the question that reads
 # once among them, driven against
 # `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
@@ -305,6 +306,15 @@ class LandingTest(BoardTest):
         assignment — and it is made to the window that generated and to no other."""
         self.assertEqual(self.land()[0], 200)
         self.assertEqual(self.seats()[self.seat].root, self.made)
+
+    def test_a_window_whose_project_was_deleted_goes_back_to_the_harbour(self) -> None:
+        """It answered every request with `[Errno 2] No such file or directory` until the seat was dropped."""
+        self.land()
+        shutil.rmtree(self.made)
+        code, said = self.get("/voyage")
+        self.assertEqual(code, 200)
+        self.assertEqual(self.seats()[self.seat].root, self.root)
+        self.assertNotIn("No such file", said)
 
     def test_it_lands_with_the_receipt_for_what_it_made(self) -> None:
         self.land()

@@ -252,8 +252,11 @@ class BoardAgent:
         waiting["event"].wait(ASK_LIMIT)
         with self.lock:
             self.asks.pop(number, None)
-        self.say(self.who, "answered", "", {"ask": {"id": number}})
         return waiting["answer"]
+
+    def answered(self, number: str, said: str) -> None:
+        """The card closed, with what the person chose on it: the page dims the card and shows the words."""
+        self.say(self.who, "answered", said, {"ask": {"id": number}})
 
     def permission(self, tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | None:
         """A permission the policy did not grant: a card, and the option the person chose, or nothing."""
@@ -264,6 +267,8 @@ class BoardAgent:
                      {"id": str(o.get("optionId")), "name": str(o.get("name") or o.get("optionId")),
                       "kind": str(o.get("kind") or "")} for o in options if o.get("optionId")]}})
         chosen = self.wait(number)
+        names = {str(o.get("optionId")): str(o.get("name") or o.get("optionId")) for o in options}
+        self.answered(number, names.get(str(chosen), str(chosen)) if chosen else "No answer")
         return str(chosen) if chosen else None
 
     def question(self, params: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
@@ -275,6 +280,7 @@ class BoardAgent:
         self.say(self.who, "question", str(params.get("message") or "The agent has a question"),
                  {"ask": {"id": number, "field": str(field)}})
         answer = self.wait(number)
+        self.answered(number, str(answer) if answer is not None else "No answer")
         if answer is None:
             return "decline", None
         return "accept", {str(field): str(answer)}

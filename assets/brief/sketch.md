@@ -14,6 +14,8 @@ brief/
   look/              a stylesheet, a brand sheet, a logo: the direction the drawing follows
   surfaces/
     <surface>.html   one page per surface, no framework, no build step
+  prototype/
+    index.html       the drawing a person played, where the brief came from the board's first page
 ```
 
 - `prototype/` is the thing the person plays with: one `index.html`, no build step, no framework, every

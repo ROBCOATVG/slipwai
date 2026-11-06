@@ -42,8 +42,13 @@ STYLE = """
   border:1px solid var(--rule);background:var(--paper);color:var(--ink)}
 .turns .turn .buttons button.allow{background:var(--teal);border-color:var(--teal);color:#fff}
 .turns .turn input{width:100%;margin-top:8px}
-.turns .turn.done{opacity:.55}
+.turns .turn.done{opacity:.7}
 .turns .turn.done .buttons,.turns .turn.done input{display:none}
+.turns .turn .chose{margin-top:6px;font-size:.84rem;color:var(--ink)}
+/* On a stage card an answered ask folds to one line: the question and the answer, out of the way. */
+#stage-asks .turn.done{border:0;background:none;padding:2px 4px;display:flex;gap:10px;flex-wrap:wrap;
+  font-size:.8rem;color:var(--ink-3)}
+#stage-asks .turn.done .chose{margin:0;font-size:.8rem}
 button.stop{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--brass);background:var(--paper);
   color:var(--brass);cursor:pointer}
 .head .on{font-size:.8rem;color:var(--ink-3);margin-left:auto}
@@ -130,7 +135,13 @@ function drawTurn(log, turn, reply) {
   }
   if (turn.kind === 'answered') {
     const had = log.querySelector('[data-ask="' + turn.ask.id + '"]');
-    if (had) had.classList.add('done');
+    if (!had) return false;
+    had.classList.add('done');
+    // What was chosen, said on the card: a dimmed card with no words was one that looked unanswered.
+    if (turn.text && !had.querySelector('.chose')) {
+      const chose = document.createElement('div'); chose.className = 'chose';
+      chose.textContent = 'You: ' + turn.text; had.appendChild(chose);
+    }
     return false;
   }
   let one;

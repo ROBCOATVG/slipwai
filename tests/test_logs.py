@@ -132,6 +132,13 @@ class ReadingTest(unittest.TestCase):
         with self.assertRaises(logs.Unreadable):
             logs.fold([good, "{not json}", good])
 
+    def test_a_fold_names_the_line_it_could_not_read(self) -> None:
+        """Counted as the file is, blank lines included, so the number is the one an editor shows."""
+        good = logs.entry("heartbeat", fairway="ORD").line().strip()
+        with self.assertRaises(logs.Unreadable) as refused:
+            logs.fold([good, "", "not json"])
+        self.assertTrue(str(refused.exception).startswith("line 3: not JSON"), refused.exception)
+
     def test_a_fold_keeps_the_order_the_lines_were_written_in(self) -> None:
         written = [logs.entry("claimed", fairway="ORD", slice=f"ORD-0{n}").line() for n in (1, 2, 3)]
         self.assertEqual([entry.fields["slice"] for entry in logs.fold(written)],

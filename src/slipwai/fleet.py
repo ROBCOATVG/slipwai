@@ -17,8 +17,10 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 580 — every column of the board folded from the logs, including what waits on a person: a park,
-# a told, the decisions nobody has read, and a question a headless stage posted and nobody has answered
+# budget: 625 — every column of the board folded from the logs, including what waits on a person: a park,
+# a deck log nobody can read, a last-seen age said in the unit a person reads it in,
+# a told, the decisions nobody has read, a question a headless stage posted and nobody has answered, and the
+# capabilities whole and owed their gates
 # yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
 # which `told` an answer or a claim has already taken up, which one is a session's note for another session
 # rather than for the person, and whether unread decisions hold anything up
@@ -274,7 +276,10 @@ def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | Non
         # Asked to stop and said so. Not `stalled`, which is a captain that went quiet without a word, and
         # not `parked`, which waits on a person: lighting the fleet again carries the slice on.
         return "stopped"
-    if last.kind == "merged" and not fairway.slices_now:
+    # Everything it claimed is merged and nothing is in flight: finished, whatever was written after the last
+    # merge. recap's catch-up took a person's read receipts after its fifteenth merge, and its row said
+    # `stalled` — a captain gone quiet — about a stream with no work left in it.
+    if not fairway.slices_now and fairway.merged and set(fairway.claimed) <= set(fairway.merged):
         if waiting is None:
             return "unknown"
         return "idle" if waiting else "finished"
@@ -448,6 +453,19 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
     return sorted(waiting, key=lambda row: row["t"])
 
 
+def unreadable_rows(faults: dict[str, str]) -> list[dict[str, Any]]:
+    """A deck log nobody can fold, as the thing waiting on a person that it is.
+
+    Its captain refuses the log and exits at every relight, so nothing it was waiting on can reach the board:
+    recap's library row said nothing was waiting while LB10's park sat behind the one line that could not be
+    read. Only a person can repair the line — anything said to the stream lands in the same file."""
+    return [{"fairway": name, "kind": "unreadable", "t": "",
+             "what": f"The {name} log cannot be read, so its captain stops at every start and the board cannot "
+                     f"see what it is waiting on ({fault}). Repair that line, and the "
+                     f"harbourmaster relights the captain on its next pass"}
+            for name, fault in sorted(faults.items()) if name != "clearance"]
+
+
 def inbox_detail(row: dict) -> str:
     """The same wait clock in the terminal, page and agent inbox, with the age visible first."""
     if not row.get("waited"):
@@ -527,6 +545,26 @@ def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:
                              f"`python3 {script} --json --feature {feature}` and repair the reported fault")
 
 
+def gates_owed(root: Path) -> list[str]:
+    """The capabilities that are whole and whose gates have not cleared, through the project's own script.
+
+    The headline said *Built* once every claimed slice had merged, and recap's eight capabilities had never been
+    gated: nothing on the board said a whole capability is not a finished one. Empty where the project's script
+    is too old to answer, which `slipwai migrate` updates, or cannot be run.
+    """
+    script = root / "scripts/agents/capabilities.py"
+    if not script.is_file() or "--json" not in script.read_text(encoding="utf-8"):
+        return []
+    try:
+        done = subprocess.run([project_python(), "-B", str(script), "--gates", "--json"],
+                              capture_output=True, text=True, timeout=15, env=login_environment())
+        result = json.loads(done.stdout)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return []
+    owed = result.get("owed") if isinstance(result, dict) else None
+    return [str(name) for name in owed] if isinstance(owed, list) else []
+
+
 def ceiling_of(held: dict) -> int | None:
     """The decision ceiling the harbour runs to, or None where it says none a reader can use."""
     try:
@@ -551,7 +589,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
     accepted = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "accepted"]
     due = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "demo-due"]
-    waiting = inbox(found, bound, now, ceiling_of(held))
+    waiting = inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults)
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
         # The parks folded by what they wait on, and the numbers under the headline: both from the same
@@ -563,6 +601,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         # The acceptance facts, for the voyage's last stage: a demo owed is a capability due and not yet
         # accepted, and accepted is the only line a capability ends on.
         "accepted": sorted(set(accepted)),
+        "gates_owed": gates_owed(root),
         "demo_due": sorted(set(due) - set(accepted)),
         "demo_due_in": {str(e.fields["capability"]): one.name for one in found for e in one.entries  # whose
                         if e.kind == "demo-due" and str(e.fields["capability"]) not in accepted},

@@ -202,7 +202,7 @@ class SerialisedTest(MergeFixture):
         super().setUp()
         # Seconds rather than the hour a real harbour allows: this case is about the refusal when the wait
         # runs out, and the wait running out is the thing being tested rather than something to sit through.
-        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", "wait_bound": 0.02}),
+        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", "wait_bound": 0.02, "ci": "off"}),
                                                 encoding="utf-8")
 
     def hold_the_merge(self, machine: str, since: str = "") -> None:

@@ -85,10 +85,12 @@ def capability_gates_stage(web: bool) -> str:
     )
     return f"""**Capability gates** — the slice's capability has a cleared `{GATES_FILE}`, or this slice says
    which capability it belongs to and that it is not that capability's last. The gates run **once per
-   capability, not per slice**: when a capability's last slice has merged (`python3 scripts/agents/capabilities.py`
-   says *gates due*) and before the person's demo stop walks it — under the `keystone` release mode on the last
-   slice's branch before its merge instead, because that merge is the one that lights the entry point. In this
-   order, each over every file the capability's slices changed since the first of them branched:
+   capability, not per slice**: on the capability's last slice's branch, before that slice merges, and before the
+   person's demo stop walks it. The harbourmaster refuses the merge that would make a capability whole until its
+   `{GATES_FILE}` says `Cleared:` on that branch, in every release mode — under `keystone` that merge is also the
+   one that lights the entry point. A capability that is whole already with no cleared record
+   (`python3 scripts/agents/capabilities.py` says *gates due*) has them run now, on trunk. In this order, each
+   over every file the capability's slices changed since the first of them branched:
 
 {convergence_gate()}
    2. **Gaps** — `/gaps` over the capability's whole diff, delegated to `sail-gaps-lookout`: every promise in

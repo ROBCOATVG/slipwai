@@ -190,7 +190,7 @@ def button(verb: str, face: str, primary: bool = False, **data: str) -> str:
 
 
 def credentials(person: dict) -> str:
-    return (f'<code>{esc(person.get("username", ""))}</code> · password '
+    return (f'<code>{esc(person.get("sign_in") or person.get("username", ""))}</code> · password '
             f'<code>{esc(person.get("password", ""))}</code>')
 
 

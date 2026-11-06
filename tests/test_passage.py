@@ -258,6 +258,17 @@ class ExpectationTest(unittest.TestCase):
         self.assertNotIn("not on this profile", expect_card(found))
         self.assertIn("Storyboard", expect_card(found), "the stages that will happen are all still there")
 
+    def test_every_slice_merged_and_nothing_accepted_says_so_and_names_what_runs_the_gates(self) -> None:
+        """recap merged all 34 and Accepted read `every capability demoed` over no `accepted` line at all."""
+        root = tree(**{"specs__001-demo__spec.md": "# Demo\n", "specs__001-demo__chart.yaml": "fairways: {}\n"})
+        found = stages(root, fleet={"inbox": [{"kind": "told", "what": "a note"}]}, slices={"done": 2})
+        accepted = next(one for one in found if one.key == "accepted")
+        self.assertEqual(accepted.state, "todo")
+        self.assertIn("no capability has been through its gates", accepted.detail)
+        self.assertIn("/sail", accepted.next)
+        self.assertIn("2 of 2 merged; left for you: 1 note for you",
+                      next(one.detail for one in found if one.key == "slices"))
+
     def test_modelled_reads_the_slices_key_as_text(self) -> None:
         for text, expected in (("slices: []\n", False), ("slices: {}\n", False), ("# slices: x\nslices:\n", False),
                                ("slices:\n  - id: A\n", True), ("slices: [A]\n", True)):
@@ -271,6 +282,9 @@ class ExpectationTest(unittest.TestCase):
         self.assertEqual(states(root, slices={"todo": 2, "waiting": 1})["slices"], "waiting")
         self.assertEqual(states(root, slices={"done": 2})["slices"], "done")
         self.assertEqual(states(root, slices={"done": 2}, fleet={"inbox": [{"kind": "parked"}]})["slices"], "waiting")
+        notes = {"inbox": [{"kind": "told", "what": "land the design patterns"}, {"kind": "question", "what": "D8"}]}
+        self.assertEqual(states(root, slices={"done": 2}, fleet=notes)["slices"], "done",
+                         "every slice merged: a note or an old question is left for you, and holds no slice")
         reading = {"inbox": [{"kind": "decisions", "blocking": "no"}]}
         self.assertEqual(states(root, slices={"todo": 2, "working": 1}, fleet=reading)["slices"], "working",
                          "decisions to read below the ceiling hold nothing up")

@@ -174,7 +174,7 @@ class MergeLeaseTest(MergeFixture):
 
     def test_a_holder_inside_its_lease_is_waited_on_rather_than_taken_over(self) -> None:
         """The hour a real harbour waits, so the half-hour lease: a hold renewed ten minutes ago is alive."""
-        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", "wait_bound": 0.02}),
+        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", "wait_bound": 0.02, "ci": "off"}),
                                                 encoding="utf-8")
         self.hold("harbour_two", datetime.now(UTC) + timedelta(days=1))
         self.slice_branch("ORD-01", "service.txt", "one\ntwo\n")
@@ -186,7 +186,7 @@ class MergeLeaseTest(MergeFixture):
     def test_the_holder_renews_the_ref_while_a_long_gate_runs(self) -> None:
         """A slow `make verify` writes nothing anywhere, and without a renewal would look exactly like a
         dead machine to the next harbourmaster that wanted the ref."""
-        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", "wait_bound": 0.02}),
+        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", "wait_bound": 0.02, "ci": "off"}),
                                                 encoding="utf-8")
         (self.root / "Makefile").write_text(
             f"verify:\n\t@{sys.executable} -c 'import time; time.sleep(1.2)'\n", encoding="utf-8")

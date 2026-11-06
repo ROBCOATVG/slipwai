@@ -63,6 +63,11 @@ class LogTest(unittest.TestCase):
         mine = next(one for one in decisions(self.root) if one.yours)
         self.assertEqual((mine.title, mine.decision, mine.read), ("Which bank question?", "decide for me", True))
 
+    def test_a_persons_own_answer_is_drawn_read_so_the_unread_filter_leaves_it_out(self) -> None:
+        """The filter, the count and Mark every one shown all read the class: `yours` alone listed it unread."""
+        html, _ = card(self.root)
+        self.assertIn('<article class="yours read"', html)
+
     def test_a_decision_from_before_the_fleet_is_in_the_log_too(self) -> None:
         early = next(one for one in decisions(self.root) if one.number == "D1")
         self.assertEqual(early.key, "md:D1")

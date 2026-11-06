@@ -25,6 +25,24 @@ class RecordTest(unittest.TestCase):
                            "why": "LB3: `/sail` exited 1. That was the last of 3 run(s)"})
         self.assertEqual(logs.cause_of(logs.read(line)), "other")
 
+    def test_a_park_written_when_a_need_was_a_sentence_still_reads_as_a_person_s_need(self) -> None:
+        """recap's LB10 parked with two sentences, and the library captain refused its log at every start."""
+        line = json.dumps({"v": logs.V, "t": logs.now(), "kind": "parked", "fairway": "library", "slice": "LB10",
+                           "why": "check-chart fails on main", "cause": "gate",
+                           "needs": ["land `make chart` output on main", {"what": "decide holds.json", "by": "fleet",
+                                     "check": {"kind": "make", "target": "check-chart"}}]})
+        self.assertEqual(logs.read(line).fields["needs"], [
+            {"what": "land `make chart` output on main", "by": "person"},
+            {"what": "decide holds.json", "by": "fleet", "check": {"kind": "make", "target": "check-chart"}}])
+
+    def test_a_sentence_is_read_as_a_need_and_never_written_as_one(self) -> None:
+        with self.assertRaises(logs.Unreadable):
+            logs.entry("parked", fairway="library", why="x", cause="host", needs=["fix main"])
+        blank = json.dumps({"v": logs.V, "t": logs.now(), "kind": "parked", "fairway": "library", "why": "x",
+                            "needs": ["  "]})
+        with self.assertRaises(logs.Unreadable):
+            logs.read(blank)
+
     def test_a_full_record_round_trips(self) -> None:
         needs = [{"what": "context: catch-up on LB6..LB10 in docs/event-model/model.yaml", "by": "fleet",
                   "check": {"kind": "text", "path": "docs/event-model/model.yaml", "has": "context: catch-up"}},

@@ -17,9 +17,10 @@ stage that stops for a person *by design* is indistinguishable, from the outside
 `Stage.expect` is that sentence: roughly how long, and whether it will stop for you. It is written here
 beside the state rather than in the page, because the stage is what knows it.
 """
-# budget: 370 — the stages and the plural words they say, and the storyboard read both ways: states waiting
-# on a person, and a drawing turned down whole that waits on being drawn again; and the Slices step's two
-# kinds of wanting a person: attention while work goes on, and stopped
+# budget: 460 — the stages, the surfaces a storyboard shows when they were handed over, and the storyboard read
+# both ways: states waiting on a person, and a drawing turned down whole that waits on being drawn again
+# and the Slices step's two kinds of wanting a person: attention while work goes on, and stopped,
+# and a build merged whole said as merged, with what it has not yet been shown said as not shown
 from __future__ import annotations
 
 import json
@@ -320,12 +321,17 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     # Two different things, drawn differently: *attention* is something wanting a person while slices are
     # still at work, and *waiting* is everything stopped until a person acts. One red for both drew a fleet
     # with seven slices running and fifteen decisions to read the same as a fleet that had stopped.
-    stopped = becalmed or (bool(wanted) and not working)
-    found.append(Stage("slices", "Slices", cruising or ("waiting" if stopped else "attention" if wanted
-                                                        else "working" if working
-                                                        else "done" if all_done else "todo"), "deck logs",
+    # Every slice merged, only a park still holds the stage: recap merged all 34 and the stage said `stopped
+    # until you act` over eleven notes and three old questions, none of which held a slice.
+    holding = not all_done or any(row.get("kind") == "parked" for row in wants)
+    stopped = holding and (becalmed or (bool(wanted) and not working))
+    found.append(Stage("slices", "Slices", cruising or ("waiting" if stopped else "done" if all_done
+                                                        else "attention" if wanted
+                                                        else "working" if working else "todo"), "deck logs",
                        ("the fleet is running; Stop the fleet ends it, and a park appears under Waiting on you"
                         if fleet.get("running") else "make cruise; make cruise-tell answers a park"),
+                       f"{counts.get('done', 0)} of {sum(counts.values())} merged; left for you: "
+                       f"{wanting(wants, counts)}" if all_done and wanted and not stopped else
                        "the fleet is not running: cast off" if becalmed and not wanted else
                        f"stopped until you act: {wanting(wants, counts)}" if stopped else
                        f"{wanting(wants, counts)}; the rest is still at work" if wanted else
@@ -337,9 +343,16 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
 
     demos = fleet.get("demo_due") or []
     accepted = fleet.get("accepted") or []
+    # Not demoed is said as not demoed: the summary read `every capability demoed` — the stage's goal — over a
+    # voyage with no `accepted` line at all, which is a build that looks finished and has never been shown.
     found.append(Stage("accepted", "Accepted", "working" if demos else "done" if all_done and accepted else "todo",
-                       "accepted lines", "the demo, as the actor; /cruise-tell records the verdict",
-                       f"{len(accepted)} capability(ies) accepted" if accepted else "every capability demoed",
+                       "accepted lines",
+                       "/sail takes each whole capability through its gates to its demo" if all_done and not accepted
+                       else "the demo, as the actor; /cruise-tell records the verdict",
+                       f"{len(accepted)} capability(ies) accepted" if accepted else
+                       f"{', '.join(demos)} ready to demo" if demos else
+                       "every slice merged; no capability has been through its gates or demoed yet" if all_done
+                       else "every capability demoed",
                        expect="Each capability demoed to you as the actor. It stops for you at every demo, "
                               "and the verdict is typed under *Waiting on you*."))
     return found

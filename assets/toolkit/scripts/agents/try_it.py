@@ -36,7 +36,9 @@ import argparse
 import json
 import os
 import re
+import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -72,6 +74,10 @@ WEB_ROUTE_CALLS = {"react-vite": re.compile(r"<Route\s[^>]*?\bpath=['\"]([^'\"]+
 #: file under `docker/` is not: recap's stories signed in as `ada` and `ines`, whom the plan stage invented
 #: for the quickstart, and the realm held one user nobody's story named.
 PEOPLE = "specs/*/people/*.json"
+#: What runs beside the apps for the stories: a stub a story connects to, which the project declares because
+#: nothing else here can know it exists. Each is `{"name", "run": [argv], "answers": url}`, run from the
+#: workspace with the apps' settings, and started before them so a service that reaches one at start finds it.
+ALONGSIDE = "docker/try-it/alongside.json"
 PERSON_FIELDS = ("username", "name", "password", "realm")
 DECLARED_FLAGS = ROOT / "infra/service/flags.auto.tfvars"
 DECLARED = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\"", re.M)
@@ -222,6 +228,19 @@ def declared_people(where: Path) -> list[dict]:
     return found
 
 
+def sign_in_name(person: dict, where: Path) -> str:
+    """What a person types to sign in: the email, where their realm makes the email the username.
+
+    Keycloak with `registrationEmailAsUsername` stores a user created as `ines` under her email, so the
+    name a story signs in as is not one the server knows. recap's customers realm is one: every story as
+    `ines` or `ada` was refused `invalid_grant`, and the next start asked for `ines` by name, found nobody,
+    created her again and was refused 409 for an email already taken. The story keeps the short name.
+    """
+    realm = next((one for one in realms(where) if one.get("realm") == person.get("realm")), {})
+    return str(person["email"]) if realm.get("registrationEmailAsUsername") and person.get("email") \
+        else str(person["username"])
+
+
 def people(where: Path) -> list[dict]:
     """Everyone a person can sign in as: the realms' users first, then every person a feature declares.
 
@@ -234,7 +253,8 @@ def people(where: Path) -> list[dict]:
         if "fault" in person or person["username"] in known:
             continue
         known.add(person["username"])
-        found.append({key: value for key, value in person.items() if key in (*PERSON_FIELDS, "email", "roles", "source")})
+        kept = {key: value for key, value in person.items() if key in (*PERSON_FIELDS, "email", "roles", "source")}
+        found.append(kept | {"sign_in": sign_in_name(kept, where)})
     return found
 
 
@@ -245,6 +265,12 @@ def flag_keys(where: Path) -> list[str]:
     if declared.is_file():
         keys |= {name.lower().removeprefix("flag_").replace("_", "-")
                  for name in DECLARED.findall(declared.read_text(encoding="utf-8"))}
+    # A flag the settings declare: a service-only capability has no browser call to find it by, and recap's
+    # `report-a-spoiler` stayed dark here while every other capability was lit. A commented line declares nothing.
+    example = where / ".env.example"
+    if example.is_file():
+        keys |= {name.lower().replace("_", "-") for name in
+                 re.findall(r"^FLAG_([A-Z0-9_]+)=", example.read_text(encoding="utf-8"), re.MULTILINE)}
     call = WEB_FLAG_CALLS.get(str(manifest().get("frontend", "")))
     for app in deployables():
         if app["kind"] != "web" or call is None:
@@ -543,7 +569,7 @@ def create_people(base: str, token: str, where: Path) -> int:
             continue
         realm = person["realm"]
         found = request("GET", f"{base}/admin/realms/{realm}/users?exact=true&username="
-                        + urllib.parse.quote(person["username"]), token=token) or []
+                        + urllib.parse.quote(person.get("sign_in") or person["username"]), token=token) or []
         if found:
             continue
         first, _, last = person["name"].partition(" ")
@@ -598,9 +624,49 @@ def sign_in_server(where: Path, env: dict[str, str]) -> None:
         print(f"created {made} declared {'person' if made == 1 else 'people'} in the sign-in server", flush=True)
 
 
+def alongside(where: Path) -> list[dict]:
+    """The processes the project declares to run beside the apps, or none where it declares none.
+
+    recap's stories connect to an Audiobookshelf server, and the project's stub for one was started by hand
+    from a quickstart or nowhere: six stories answered `serverUnreachable` on every Try it.
+    """
+    try:
+        found = json.loads((where / ALONGSIDE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [one for one in found if isinstance(one, dict) and one.get("name") and isinstance(one.get("run"), list)
+            and one["run"] and all(isinstance(part, str) for part in one["run"])] if isinstance(found, list) else []
+
+
+def start_alongside(where: Path, env: dict[str, str], pids: dict, state: dict) -> None:
+    """Start what runs beside the apps and wait for each to answer, under the same patience as an app."""
+    for one in alongside(where):
+        out = (HOME / f"{one['name']}.log").open("w", encoding="utf-8")
+        child = subprocess.Popen(one["run"], cwd=where, env=env, stdout=out, stderr=subprocess.STDOUT,
+                                 stdin=subprocess.DEVNULL, start_new_session=True)
+        pids[one["name"]] = child.pid
+    # Recorded before the wait, so a stub that never answers is one `stop` still finds.
+    state["pids"] = pids
+    write_state(state)
+    for one in alongside(where):
+        waited = time.monotonic()
+        while one.get("answers") and not answers(str(one["answers"])):
+            if not alive(pids[one["name"]]):
+                raise RuntimeError(f"{one['name']} stopped before it answered: "
+                                   + " / ".join(tail(HOME / f"{one['name']}.log", 3)))
+            if time.monotonic() - waited > PATIENCE:
+                raise RuntimeError(f"{one['name']} did not answer at {one['answers']} within {PATIENCE}s")
+            time.sleep(1)
+
+
 def start_apps(where: Path, env: dict[str, str], state: dict) -> None:
     ports = {app["name"]: app["port"] + offset() for app in deployables()}
-    pids = {}
+    # A port somebody else holds is a start that would report `ready` over their process: refused, by name.
+    others = free_ports(where)
+    if others:
+        raise RuntimeError("; ".join(others) + ". Stop it, or move Try it with TRY_IT_PORT_OFFSET")
+    pids: dict[str, int] = {}
+    start_alongside(where, env, pids, state)
     for app in deployables():
         mine = dict(env)
         mine[app["variable"]] = str(ports[app["name"]])
@@ -627,6 +693,86 @@ def start_apps(where: Path, env: dict[str, str], state: dict) -> None:
             time.sleep(2)
 
 
+def ports_of(where: Path) -> list[int]:
+    """Every port Try it serves on: each app's, moved by the offset, and each declared process's `answers`."""
+    found = [app["port"] + offset() for app in deployables()]
+    for one in alongside(where):
+        try:
+            port = urllib.parse.urlparse(str(one.get("answers", ""))).port
+        except ValueError:
+            port = None
+        if port:
+            found.append(port)
+    return found
+
+
+def listening(port: int) -> list[int]:
+    """The processes listening on a port, where `lsof` can say; none where it cannot."""
+    if not shutil.which("lsof"):
+        return []
+    done = subprocess.run(["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"], capture_output=True, text=True,
+                          check=False)
+    return sorted({int(line) for line in done.stdout.split() if line.isdigit()})
+
+
+def taken(port: int) -> bool:
+    """Whether something accepts a connection on a port, whoever it is and whatever `lsof` can see."""
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+def runs_in(pid: int, where: Path) -> bool:
+    """Whether a process's working directory is inside the workspace: Try it's own, and nobody else's."""
+    proc = Path(f"/proc/{pid}/cwd")
+    try:
+        cwd = proc.resolve(strict=True) if proc.exists() else None
+    except OSError:
+        cwd = None
+    if cwd is None and shutil.which("lsof"):
+        done = subprocess.run(["lsof", "-a", "-p", str(pid), "-d", "cwd", "-Fn"], capture_output=True, text=True,
+                              check=False)
+        named = next((line[1:] for line in done.stdout.splitlines() if line.startswith("n")), "")
+        cwd = Path(named) if named else None
+    return cwd is not None and cwd.resolve().is_relative_to(where.resolve())
+
+
+def free_ports(where: Path) -> list[str]:
+    """Stop whatever of Try it's own still holds one of its ports, and say what else holds one.
+
+    A stop signals the process groups it recorded, and a process that left its group, or one started by a run
+    whose record was lost, outlived every stop: recap's service and web server answered on Try it's ports from
+    a morning's run all day, so every start after it reported `ready` over the old code. A holder running in
+    the workspace is Try it's and is stopped; anything else is somebody's, and is named rather than touched.
+    A port that answers when `lsof` names nobody on it is held too, by a process it cannot name.
+    """
+    others: list[str] = []
+    for port in ports_of(where):
+        mine = [pid for pid in listening(port) if runs_in(pid, where)]
+        for pid in mine:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                continue
+        deadline = time.monotonic() + 8
+        while any(alive(pid) for pid in mine) and time.monotonic() < deadline:
+            time.sleep(0.3)
+        for pid in mine:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                continue
+        held = [pid for pid in listening(port) if pid not in mine]
+        others += [f"port {port} is held by pid {pid}, which Try it did not start" for pid in held]
+        # Where `lsof` cannot see a listener (a macOS runner's could not see its own child's), a port that still
+        # answers is somebody's all the same: named as held, never taken as free.
+        if not held and not mine and taken(port):
+            others.append(f"port {port} is held by a process lsof could not name")
+    return others
+
+
 def stop_apps(state: dict) -> None:
     for pid in (state.get("pids") or {}).values():
         try:
@@ -642,6 +788,8 @@ def stop_apps(state: dict) -> None:
         except (OSError, ValueError):
             continue
     state["pids"] = {}
+    # Whatever of Try it's outlived its group, so a stop leaves none of it serving.
+    free_ports(workspace())
 
 
 # ---- HTTP, with nothing but the standard library ------------------------------------------------------------
@@ -656,6 +804,25 @@ def answers(address: str) -> bool:
         return False
 
 
+def request_within(wait: float, method: str, address: str, body: object = None, token: str = "",
+                   headers: dict | None = None):
+    """A story step that waits on a worker: asked again each second while the answer is a 4xx, until `wait`
+    seconds have passed, and then the last refusal stands.
+
+    recap's CU6 asks for a recap and then for its speech, which a sweep writes a second or two later; asked once,
+    the speech is a 404 whenever the seed outruns the sweep, and the story failed on a machine that was merely
+    quick. A step with no `wait` is asked once, as before."""
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            return request(method, address, body, token, headers)
+        except urllib.error.HTTPError as refused:
+            if not 400 <= refused.code < 500 or time.monotonic() >= deadline:
+                raise
+            refused.close()
+        time.sleep(1)
+
+
 def request(method: str, address: str, body: object = None, token: str = "", headers: dict | None = None):
     data = json.dumps(body).encode() if body is not None else None
     sent = {"Content-Type": "application/json", **({"Authorization": f"Bearer {token}"} if token else {}),
@@ -663,7 +830,10 @@ def request(method: str, address: str, body: object = None, token: str = "", hea
     asked = urllib.request.Request(address, data=data, method=method, headers=sent)
     with urllib.request.urlopen(asked, timeout=20) as reply:
         raw = reply.read()
-    return json.loads(raw) if raw.strip() else None
+        kind = reply.headers.get_content_type()
+    # JSON only where the service says JSON: a story may fetch a recap's speech, and its bytes decoded as text
+    # failed the step with a codec error on an answer that was exactly the one asked for.
+    return json.loads(raw) if raw.strip() and "json" in kind else None
 
 
 def post_form(address: str, fields: dict[str, str]) -> dict:
@@ -683,7 +853,7 @@ def scenarios(where: Path) -> list[tuple[str, Path]]:
 
 #: What a story may say, and what each step may. A key outside these is a typo the service would never see.
 STORY_KEYS = ("as", "open", "steps", "given")
-STEP_KEYS = ("say", "method", "path", "body", "keep", "headers", "as")
+STEP_KEYS = ("say", "method", "path", "body", "keep", "headers", "as", "wait")
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 
 
@@ -721,6 +891,9 @@ def story_faults(name: str, story: object, known: set[str], mounted_routes: list
             said.append(f"{name}: step {number} is `as` {step['as']}, whom no realm or people file declares")
         if not isinstance(step.get("keep", {}), dict):
             said.append(f"{name}: step {number}'s `keep` is a mapping of name to a field of the answer")
+        wait = step.get("wait", 0)
+        if isinstance(wait, bool) or not isinstance(wait, (int, float)) or not 0 <= wait <= 300:
+            said.append(f"{name}: step {number}'s `wait` is a number of seconds from 0 to 300")
     for number, given in enumerate(story.get("given") or [], start=1):
         if events is None:
             said.append(f"{name}: given {number}: the standard profile has no `given`; it is defined for events "
@@ -764,7 +937,7 @@ def token_for(username: str, env: dict[str, str], where: Path) -> str:
     client = next((c["clientId"] for c in realm.get("clients") or [] if c.get("publicClient")
                    and c.get("redirectUris")), "")
     return post_form(f"{issuer.rstrip('/')}/protocol/openid-connect/token",
-                     {"grant_type": "password", "client_id": client, "username": username,
+                     {"grant_type": "password", "client_id": client, "username": person.get("sign_in") or username,
                       "password": person["password"], "scope": "openid email profile"})["access_token"]
 
 
@@ -864,8 +1037,9 @@ def seed(where: Path, env: dict[str, str], state: dict, only_new: bool, api: str
                 if who and who not in tokens:
                     tokens[who] = token_for(who, env, where)
                 headers = {"Idempotency-Key": str(uuid.uuid4()), **(one.get("headers") or {})}
-                answer = request(one.get("method", "GET"), base + str(filled(one["path"], kept)),
-                                 filled(one.get("body"), kept), tokens.get(who, ""), filled(headers, kept))
+                answer = request_within(float(one.get("wait") or 0), one.get("method", "GET"),
+                                        base + str(filled(one["path"], kept)), filled(one.get("body"), kept),
+                                        tokens.get(who, ""), filled(headers, kept))
             except urllib.error.HTTPError as refused:
                 said = refused.read().decode(errors="replace")[:300]
                 refused.close()
@@ -1086,7 +1260,7 @@ def main(argv: list[str] | None = None) -> int:
     up(state, log, fresh=asked.verb == "fresh", keep_data=asked.verb != "fresh")
     print(f"Try it is ready at {state['url']}")
     for person in state.get("people") or []:
-        print(f"  sign in as {person['username']} / {person['password']}  ({person['name']})")
+        print(f"  sign in as {person.get('sign_in') or person['username']} / {person['password']}  ({person['name']})")
     return 0
 
 

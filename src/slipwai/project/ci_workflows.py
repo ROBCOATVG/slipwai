@@ -93,6 +93,9 @@ def container_setup(tooling: Tooling) -> str:
 # and a token long enough to wrap would otherwise be sent with a newline in the middle of the header.
 CONTAINER_CHECKOUT = """      - name: Check out the commit under test
         run: |
+          # The job runs as root in a container over a workspace the runner owns, and git refuses that tree
+          # as dubious ownership unless it is named safe.
+          git config --global --add safe.directory "$PWD"
           git init -q -b ci .
           git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
           git -c "http.extraheader=Authorization: Basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 | tr -d '\\n')" \\

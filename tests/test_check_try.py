@@ -97,6 +97,15 @@ class CheckTryTest(unittest.TestCase):
         self.assertIn("CU3: says `opens`, which a story has no use for", done.stderr)
         self.assertIn("CU3: step 1 names no `path` starting with /", done.stderr)
 
+    def test_a_step_may_wait_a_bounded_number_of_seconds(self) -> None:
+        self.person("ada")
+        self.story("CU3", {"as": "ada", "steps": [{"path": "/api/a", "wait": 30}, {"path": "/api/b", "wait": "soon"},
+                                                   {"path": "/api/c", "wait": 301}]})
+        done = self.run_gate()
+        self.assertNotIn("step 1", done.stderr)
+        self.assertIn("CU3: step 2's `wait` is a number of seconds from 0 to 300", done.stderr)
+        self.assertIn("CU3: step 3's `wait` is a number of seconds from 0 to 300", done.stderr)
+
     def test_a_given_is_held_to_the_model_s_event_and_its_attributes(self) -> None:
         self.person("ada")
         self.person("ines")

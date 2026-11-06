@@ -139,7 +139,7 @@ def on_voyage(board: Any, fleet: dict[str, Any], able: dict[str, bool]) -> dict[
     elif able.get("draftable"):
         held.append((1, "The draft ended without a specification: draft it again", "#draft"))
     elif able.get("drawable"):
-        held.append((1, "The specification is ready: read it, then draw the surfaces", "#draw"))
+        held.append((1, "The specification is ready: read it, then draw the storyboard", "#draw"))
     elif able.get("modelable"):
         held.append((1, "The storyboard is approved: model it", "#model"))
     elif able.get("launchable"):

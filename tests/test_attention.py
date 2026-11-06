@@ -36,7 +36,7 @@ class VoyageTest(unittest.TestCase):
 
     def test_a_specification_with_nothing_drawn_waits_to_be_read_and_drawn(self) -> None:
         said = upstream.on_voyage(board(self.root), {}, {"drawable": True, "launchable": False})
-        self.assertEqual(said, {"count": 1, "text": "The specification is ready: read it, then draw the surfaces",
+        self.assertEqual(said, {"count": 1, "text": "The specification is ready: read it, then draw the storyboard",
                                 "href": "#draw"})
 
     def test_a_drawn_storyboard_waits_on_a_verdict_before_anything_else(self) -> None:

@@ -114,7 +114,7 @@ working, and every 8 seconds when nothing is working. When the project gains a n
 first storyboard, the window reloads itself.
 
 When something waits on you, a strip appears under the title saying what — *The specification is ready: read
-it, then draw the surfaces*, *The storyboard for 001-… is drawn: approve it or send it back*, *The agent asks
+it, then draw the storyboard*, *The storyboard for 001-… is drawn: approve it or send it back*, *The agent asks
 you something*, *2 slices waiting on you* — with **Go to it** beside the words. The count goes on the tab's
 title, *(1) Voyage · …*, and on the installed board's badge. The first page does the same when a card asks
 you something, and when the brief is ready to hand over.
@@ -140,7 +140,7 @@ buttons for the next step. Each button appears only when it can be pressed.
 
 | Button | Runs | Appears when |
 |---|---|---|
-| **Draw the surfaces** | `make surfaces` | There is a specification, nothing is drawn yet, and the board is not running anything |
+| **Draw the storyboard** | `make surfaces` | There is a specification, nothing is drawn yet, and the board is not running anything |
 | **Continue the build** | `make launch` | The active feature has a specification and no chart. On the event-modelling profile it needs a model too. Nothing on the board is running or failed |
 | **Cast off the fleet** | `make cruise` | There are slices to work, the fleet is not running, and the board is not running anything |
 | **Stop the fleet** | `make cruise-stop` | Part of the fleet is running. It asks each captain to stop. The captain ends the stage it is running, writes a `stopped` line naming its slice, and gives its claim back. The slice is carried on when the fleet is cast off again |

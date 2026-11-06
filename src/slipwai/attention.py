@@ -1,6 +1,6 @@
 """What waits on the person, said where they will see it.
 
-A page that waits on somebody says so in its own words — *Draw the surfaces*, a card with a question on it,
+A page that waits on somebody says so in its own words — *Draw the storyboard*, a card with a question on it,
 a slice parked on you — and a person who has gone to another window for the ten minutes a stage takes
 comes back to find the words have been there for nine. This is the one place that says *it is waiting on
 you* loudly enough to be seen from elsewhere: a strip under the page's title naming the first thing and

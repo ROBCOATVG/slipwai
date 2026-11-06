@@ -214,13 +214,13 @@ def main(argv: list[str]) -> int:
         alone = (SPECS / feature / MOCKUPS / "storyboard.html").is_file()
         print(f"surfaces: the session ended with no surface pages under specs/{feature}/{MOCKUPS}/"
               + (" — a storyboard.html that neither has a page per surface beside it nor shows one, which is "
-                 "nothing a person can approve" if alone else "") + f", so there is no storyboard to approve; Draw the surfaces again, and read its last "
+                 "nothing a person can approve" if alone else "") + f", so there is no storyboard to approve; Draw the storyboard again, and read its last "
               f"lines above", file=sys.stderr)
         return 1
     if redraw:
         if not touched(feature, started):
             print(f"surfaces: the session ended without redrawing anything under specs/{feature}/{MOCKUPS}/, so "
-                  f"the disapproval stands and Draw the surfaces is still on the board; read its last lines "
+                  f"the disapproval stands and Draw the storyboard is still on the board; read its last lines "
                   f"above", file=sys.stderr)
             return 1
         retire(feature, redraw)

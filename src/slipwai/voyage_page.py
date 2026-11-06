@@ -440,7 +440,7 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     # The stage between a specification and a model had no button at all, and its line said to go and type
     # a command in the agent — on the page a person had just run two headless sessions from. This runs the
     # half of it nobody has to be present for; the half they do is the storyboard, below.
-    button += (f'<button class="go" id="draw"{"" if drawable else " hidden"}>Draw the surfaces</button>')
+    button += (f'<button class="go" id="draw"{"" if drawable else " hidden"}>Draw the storyboard</button>')
     # A draft that ended with nothing drafted left a project with a document, no specification and no way
     # on but a terminal. Shown by the poll, as Draw is.
     button += (f'<button class="go" id="draft"{"" if draftable else " hidden"}>Draft the specification</button>')
@@ -610,7 +610,7 @@ def verdict_form(root: Path, feature: str) -> str:
     home = root / "specs" / feature / "mockups"
     if not surface_pages(home):
         return ('<p class="empty">This storyboard has no page per surface, so there is nothing to approve: '
-                "each surface is drawn as its own page, which the storyboard links. Draw the surfaces draws it "
+                "each surface is drawn as its own page, which the storyboard links. Draw the storyboard draws it "
                 "again.</p>")
     path = home / "mock-states.md"
     note = "Nothing on this storyboard is approved yet."

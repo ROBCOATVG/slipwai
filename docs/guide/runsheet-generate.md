@@ -78,7 +78,7 @@ where no command covers the step.
 | 2.1 | agent | `/sail` | it has asked you to ratify the constitution, and `make check-constitution` passes |
 | 2.2 | agent | `/speckit-specify <the feature, in a sentence or two>` | `specs/<feature>/spec.md` exists |
 | 2.3 | agent *or* board | `/sail` — or **Open spec**, then read it | the specification is clarified, checked and its gaps answered |
-| 2.4 | agent *or* board | `/mockups` — or **Draw the surfaces**, then **Approve storyboard** | every surface state is approved, parked with its question, or `n/a` with a reason |
+| 2.4 | agent *or* board | `/mockups` — or **Draw the storyboard**, then **Approve storyboard** | every surface state is approved, parked with its question, or `n/a` with a reason |
 | 2.5 | agent *or* board | the event-modeling skill | `docs/event-model/model.yaml` names the commands, events and read models; standard profile: skip |
 | 2.6 | agent *or* board | `/sail` — it writes the chart on the standard profile and renders it from the model on the event-modelling profile — or **Continue the build**, which in the agent is `/launch` | `check-chart` passes: every mark typed, one setter each |
 | 2.7 | agent | `/sail` | the first slice reaches its demo and asks you to accept it |

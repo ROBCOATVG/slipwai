@@ -126,7 +126,7 @@ def drawn(root: Path) -> bool:
     """
     specs = root / "specs"
     # Surface pages, not any page: a storyboard on its own has nothing to approve, and reading it as drawn
-    # left the board offering Approve, which then refused, and no Draw the surfaces to get out of it.
+    # left the board offering Approve, which then refused, and no Draw the storyboard to get out of it.
     return bool(specs.is_dir() and any(surface_pages(home) for home in specs.glob("*/mockups")))
 
 

@@ -151,7 +151,7 @@ DRAFTING = ("Drafting the constitution and the first specification from docs/prd
 DRAFTING_ACP = ("Drafting the constitution and the first specification from docs/prd.md — the project's agent "
                 "over the Agent Client Protocol, from this board. Where only you can decide, it asks here; "
                 "answer on the card. It stops at the specification: read it, then Continue the build.")
-#: What the Draw the surfaces button runs: the first half of `/mockups` — the research, the wireframes and
+#: What the Draw the storyboard button runs: the first half of `/mockups` — the research, the wireframes and
 #: the storyboard — in a headless session, and then a stop. The second half is a person looking at one
 #: surface at a time, which is the stage rather than a step on the way to it, and is why nothing here marks
 #: anything approved. Before the model deliberately: `project/ladder.py` has the review there, because a
@@ -528,7 +528,7 @@ def triaged(code: int) -> str:
 
 
 def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitting:
-    """The surfaces drawn, in the background: what the board's Draw the surfaces button starts.
+    """The surfaces drawn, in the background: what the board's Draw the storyboard button starts.
 
     `feature` names the one to draw, which a redraw after a disapproval needs: `make surfaces` on its own
     draws the first specification, and the storyboard turned down may not be that one.

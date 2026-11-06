@@ -522,7 +522,7 @@ class LandingTest(BoardTest):
         found = json.loads(self.get("/voyage.json")[1])
         self.assertTrue(found["drawable"])
         self.assertEqual(found["waiting"], {"count": 1, "href": "#draw",
-                                            "text": "The specification is ready: read it, then draw the surfaces"})
+                                            "text": "The specification is ready: read it, then draw the storyboard"})
         # Not while a redraw this board did not start is running: that offered a second drawing over the first.
         (self.made / ".slipwai").mkdir(exist_ok=True)
         (self.made / ".slipwai/surfaces.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")

@@ -120,7 +120,7 @@ class StagesTest(unittest.TestCase):
 
     def test_surfaces_drawn_and_nothing_approved_is_waiting_on_a_person_rather_than_still_to_do(self) -> None:
         """The reading was `mock-states.md` or nothing, and that file is written at the *end* of the stage.
-        Between the drawing and the verdicts — which is where the board's Draw the surfaces button leaves a
+        Between the drawing and the verdicts — which is where the board's Draw the storyboard button leaves a
         project, and where a person is the only thing holding it up — the strip said *to do*."""
         made = {**INIT, "specs__001-demo__spec.md": "# Demo\n",
                 "specs__001-demo__mockups__basket.html": "<title>Mock: Basket</title>\n"}
@@ -133,7 +133,7 @@ class StagesTest(unittest.TestCase):
 
     def test_a_storyboard_with_no_surface_pages_is_not_drawn_so_the_board_can_draw_again(self) -> None:
         """The board reads a page per surface. A storyboard on its own read as drawn, so Approve was offered and
-        refused, and Draw the surfaces — which waits for nothing drawn — never came back."""
+        refused, and Draw the storyboard — which waits for nothing drawn — never came back."""
         made = {**INIT, "specs__001-demo__spec.md": "# Demo\n",
                 "specs__001-demo__mockups__storyboard.html": "<title>Storyboard</title><section>Basket</section>\n"}
         root = tree(**made)

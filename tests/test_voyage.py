@@ -351,7 +351,7 @@ class BuiltScreensPageTest(unittest.TestCase):
         said = verdict_form(root, "001-demo")
         self.assertNotIn("data-verdict", said)
         self.assertIn("no page per surface", said)
-        self.assertIn("Draw the surfaces", said)
+        self.assertIn("Draw the storyboard", said)
 
     def test_a_locked_verdict_button_looks_locked(self) -> None:
         """A disabled control keeps the attribute and loses the teal of a button that can be pressed."""

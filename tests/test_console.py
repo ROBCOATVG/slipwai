@@ -75,7 +75,7 @@ class ConsoleTest(BoardTest):
         self.addCleanup(os.environ.pop, "STAND_IN_WAIT", None)
         self.assertEqual(self.post("/console/ask", {"message": "slow"})[0], 200)
         code, said = self.post("/console/ask", {"message": "again"})
-        self.assertEqual(code, 400)
+        self.assertEqual(code, 409, "a turn under way: the page waits rather than complains")
         self.assertIn("still answering", said)
         self.settle()
 

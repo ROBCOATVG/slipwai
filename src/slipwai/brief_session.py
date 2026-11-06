@@ -39,7 +39,7 @@ from .board_agent import BoardAgent
 from .board_settings import Launch, chosen, read
 from .brief_check import report
 from .console import reading
-from .errors import GenerationError
+from .errors import Busy, GenerationError
 from .harness import acp_environment, row_of
 from .shell_environment import login_environment
 
@@ -194,7 +194,7 @@ class Sketch:
             raise ValueError("say what the product is, or answer the question")
         with self.lock:
             if self.busy:
-                raise ValueError("the last answer is still being written")
+                raise Busy("the last answer is still being written")
             self.busy = True
             if not self.session:
                 self.session = str(uuid.uuid4())

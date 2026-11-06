@@ -83,11 +83,12 @@ SCRIPT = DRAW + """
       if (said.turns.length || busy) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
       paint(said);
       clearTimeout(timer);
-      if (busy) timer = setTimeout(poll, 700);
+      timer = setTimeout(poll, busy ? 700 : 4000);  // and while idle, for a turn another window started
     };
     const ask = async text => {
       if (!text.trim() || busy) return;
       const answer = await post('/console/ask', {message: text});
+      if (answer.status === 409) { busy = true; paint(); poll(); return; }  // another window's turn
       if (!answer.ok) { draw({role: 'harbourmaster', kind: 'error', text: await answer.text()}); return; }
       input.value = ''; busy = true; drawWaiting(log, true, false); paint(); poll();
     };

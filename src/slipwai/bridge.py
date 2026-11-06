@@ -62,7 +62,7 @@ from .decision_log import card as decision_card
 from .decision_log import mark as mark_decisions
 from .deck import dismiss, mark_read, tell, tick_need
 from .dials import set_dial
-from .errors import GenerationError
+from .errors import Busy, GenerationError
 from .feedback_card import act as feedback_act
 from .feedback_card import card as feedback_card
 from .feedback_card import payload as feedback_payload
@@ -904,6 +904,9 @@ class Bridge(BaseHTTPRequestHandler):
             else:
                 self.send(404, "No such control.", "text/plain; charset=utf-8")
                 return
+        except Busy as wait:  # a turn under way in this conversation: the page waits, whichever window asked
+            self.send(409, str(wait), "text/plain; charset=utf-8")
+            return
         except (ValueError, Refused, GenerationError, OSError) as fault:
             self.send(400, str(fault) or type(fault).__name__, "text/plain; charset=utf-8")
             return

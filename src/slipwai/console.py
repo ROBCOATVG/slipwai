@@ -38,6 +38,7 @@ from pathlib import Path
 
 from .board_agent import BoardAgent
 from .board_settings import Launch, chosen, read
+from .errors import Busy
 from .fleet import board
 from .harness import acp_environment
 from .shell_environment import login_environment
@@ -161,7 +162,7 @@ class Console:
             raise ValueError("ask the harbourmaster something")
         with self.lock:
             if self.busy:
-                raise ValueError("the harbourmaster is still answering the last question")
+                raise Busy("the harbourmaster is still answering the last question")
             self.busy = True
             if not self.session:
                 self.session = str(uuid.uuid4())

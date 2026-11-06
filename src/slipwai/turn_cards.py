@@ -24,6 +24,8 @@ STYLE = """
 .turns .turn.tool b{font-weight:500;color:var(--ink-2)}
 .turns .turn.tool .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.76rem;flex:none}
 .turns .turn.tool .path:empty{display:none}
+.turns .turn ul{margin:4px 0 0;padding-left:1.2rem}
+.turns .turn li{margin:2px 0}
 .turns .turn.waiting{justify-self:start;border:0;padding:4px 4px;color:var(--ink-3);font-size:.84rem;font-style:italic;
   animation:breathe 1.7s ease-in-out infinite}
 .turns .turn.plan{justify-self:start;background:var(--ground);font-size:.84rem}
@@ -55,6 +57,37 @@ function drawWaiting(log, busy, thinking) {
   if (!had) { had = document.createElement('div'); had.className = 'turn waiting'; }
   had.textContent = thinking ? 'Thinking…' : 'Working…';
   log.appendChild(had);
+}
+// An agent's words carry a little markdown — bold, code, bullets — and a person reading raw asterisks is
+// reading the wrong thing. Only those three, built as nodes rather than HTML, so what the agent said is data.
+function words(one, text) {
+  const run = (into, line) => {
+    const parts = line.split(/(\\*\\*[^*]+\\*\\*|`[^`]+`)/);
+    for (const part of parts) {
+      if (!part) continue;
+      let node;
+      if (part.startsWith('**') && part.endsWith('**')) {
+        node = document.createElement('b'); node.textContent = part.slice(2, -2);
+      }
+      else if (part.startsWith('`') && part.endsWith('`')) {
+        node = document.createElement('code'); node.textContent = part.slice(1, -1);
+      }
+      else node = document.createTextNode(part);
+      into.appendChild(node);
+    }
+  };
+  let list = null;
+  for (const line of text.split('\\n')) {
+    const item = line.match(/^\\s*(?:[-*]|\\d+\\.)\\s+(.*)$/);
+    if (item) {
+      if (!list) { list = document.createElement('ul'); one.appendChild(list); }
+      const li = document.createElement('li'); run(li, item[1]); list.appendChild(li);
+      continue;
+    }
+    list = null;
+    if (one.childNodes.length) one.appendChild(document.createTextNode('\\n'));
+    run(one, line);
+  }
 }
 // What a tool call's kind is called on the page: a verb a person reads, not the protocol's word.
 const VERBS = {read: 'Reading', edit: 'Writing', delete: 'Deleting', move: 'Moving', search: 'Searching',
@@ -135,7 +168,7 @@ const drawTurn = (log, turn, reply) => {
   } else {
     one = document.createElement('div');
     one.className = 'turn ' + (turn.kind === 'text' ? turn.role : turn.kind);
-    one.textContent = turn.text;
+    if (turn.kind === 'text') words(one, turn.text); else one.textContent = turn.text;
   }
   log.appendChild(one);
   return turn.kind === 'wrote';

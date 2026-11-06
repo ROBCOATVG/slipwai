@@ -18,6 +18,7 @@ from typing import Any
 from urllib.parse import parse_qs, quote
 
 from .brief_session import BRIEF, BROUGHT, PROTOTYPE, for_slug, sketches, slug_of, started, workspace
+from .errors import Busy
 from .page_shell import document, esc
 from .turn_cards import SCRIPT as DRAW
 from .turn_cards import STYLE as CARDS
@@ -128,11 +129,13 @@ SCRIPT = """
       paint(said);
       if (frame && drawn !== before) { frame.hidden = false; frame.src = frame.dataset.src + '?v=' + Date.now(); }
       clearTimeout(timer);
-      if (busy) timer = setTimeout(poll, 900);
+      // Polled while idle too, slowly: a turn started from another window is still this conversation's.
+      timer = setTimeout(poll, busy ? 900 : 4000);
     };
     const ask = async text => {
       if (!text.trim() || busy) return;
       const answer = await post('/brief/ask', {message: text});
+      if (answer.status === 409) { busy = true; paint({step: 0, check: []}); poll(); return; }  // another window's turn
       if (!answer.ok) { draw({role: 'sketch', kind: 'error', text: await answer.text()}); return; }
       input.value = ''; busy = true; drawWaiting(log, true, false); paint({step: 0, check: []}); poll();
     };
@@ -323,6 +326,8 @@ def route_post(bridge: Any, where: str, held: dict) -> bool:
         else:
             said = sketch.ask(str(held.get("message") or "")) if where == "/brief/ask" else sketch.reset()
         bridge.send(200, said, "text/plain; charset=utf-8")
+    except Busy as wait:
+        bridge.send(409, str(wait), "text/plain; charset=utf-8")  # a turn under way: the page waits
     except ValueError as refused:
         bridge.send(400, str(refused), "text/plain; charset=utf-8")
     return True

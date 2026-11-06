@@ -196,6 +196,8 @@ class ReadingTest(BoardTest):
         self.assertIn("<b>book</b>", page)
         self.assertIn('href="/brief?sketch=club-boats"', page, "the way back is the brief, not the voyage")
         self.assertIn("the brief</a>", page)
+        self.assertIn('<a href="/brief?sketch=club-boats">\u2190 The brief</a>', page, "the bar goes back to the brief too")
+        self.assertNotIn("The voyage", page)
         with self.assertRaises(urllib.error.HTTPError) as refused:
             self.get("/brief/read?sketch=club-boats&file=people")
         self.assertEqual(refused.exception.code, 404)

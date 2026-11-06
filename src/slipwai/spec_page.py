@@ -206,4 +206,4 @@ def page(where: str, text: str, back: str = "/voyage") -> str:
     body = (f'<style>{STYLE}</style><div class="card doc">{rendered(text)}</div>'
             f'<p class="empty"><a href="{esc(back)}">\u2190 {where_to}</a></p>')
     return document(titled(text, where.rsplit("/", 2)[-2] if "/" in where else where), where, body,
-                    now="/spec")
+                    now=back if back.startswith("/brief?") else "/spec")

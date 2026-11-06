@@ -279,6 +279,8 @@ def tabs(now: str) -> str:
     `slipwai fleet` and `slipwai bridge` deep links into one page rather than three commands that each open
     something of their own.
     """
+    if now.startswith("/brief?"):  # a document of a brief: the way back is that brief, not the voyage
+        return f'<nav class="tabs" aria-label="Brief"><a href="{esc(now)}">\u2190 The brief</a></nav>'
     if not any(where == now for where, _ in TABS):
         return AWAY if now == VOYAGE else BACK
     here = ' aria-current="page"'

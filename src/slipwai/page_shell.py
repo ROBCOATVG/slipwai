@@ -22,6 +22,9 @@ import html
 import json
 
 from .assets import this_command
+from .attention import SCRIPT as ATTENTION
+from .attention import STRIP, TELL
+from .attention import STYLE as WAITING
 from .brand import MARK, favicon, inline, svg
 
 # budget: 470 — the waiting groups' chips and their row styles landed here with the rest of the sheet;
@@ -55,33 +58,33 @@ def esc(value: object) -> str:
 
 STYLE = """
 :root{--ground:#f1f3f4;--paper:#fcfcfb;--ink:#172129;--ink-2:#4a5862;--ink-3:#7a8891;--rule:#d9e0e4;
---rule-2:#e9eef1;--teal:#0f6b6b;--teal-soft:#dcecea;--brass:#8a6d24;--brass-soft:#f1e9d2;--good:#0ca30c;
---warn:#fab219;--serious:#ec835a;--critical:#d03b3b;
+--rule-2:#e9eef1;--teal:#0f6b6b;--teal-soft:#dcecea;--brass:#8a6d24;--brass-soft:#f1e9d2;--good:#2e7d4f;
+--warn:#c77d14;--critical:#b4432f;--critical-soft:#fbe1d7;--paused:#1d4f8f;--paused-soft:#d6e6f8;
 --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
 /* Three states, not two: Auto follows the system, and Light and Dark say so. A two-state toggle can only
    mean "the system's, or the other one", which is the setting people cannot put back. Radios and `:has()`
    rather than a script, so the published copy — which has nothing to press — still has this. */
-@media (prefers-color-scheme:dark){:root:has(#t-auto:checked){--ground:#10171c;--paper:#1a1a19;
+@media (prefers-color-scheme:dark){:root:has(#t-auto:checked){--ground:#10171c;--paper:#161e24;
 --ink:#e6ecef;--ink-2:#b6c1c8;--ink-3:#808e97;--rule:#2c3840;--rule-2:#222c33;--teal:#5fc1bb;
---teal-soft:#15302f;--brass:#d2b465;--brass-soft:#2e2814}}
-:root:has(#t-dark:checked){--ground:#10171c;--paper:#1a1a19;
+--teal-soft:#15302f;--brass:#d2b465;--brass-soft:#2e2814;--good:#5fbf8a;--warn:#d8a04a;--critical:#e3806b;--critical-soft:#3a211c;--paused:#9cc3ef;--paused-soft:#1b2f4a}}
+:root:has(#t-dark:checked){--ground:#10171c;--paper:#161e24;
 --ink:#e6ecef;--ink-2:#b6c1c8;--ink-3:#808e97;--rule:#2c3840;--rule-2:#222c33;--teal:#5fc1bb;
---teal-soft:#15302f;--brass:#d2b465;--brass-soft:#2e2814}
+--teal-soft:#15302f;--brass:#d2b465;--brass-soft:#2e2814;--good:#5fbf8a;--warn:#d8a04a;--critical:#e3806b;--critical-soft:#3a211c;--paused:#9cc3ef;--paused-soft:#1b2f4a}
 :root:has(#t-light:checked){--ground:#f1f3f4;--paper:#fcfcfb;--ink:#172129;--ink-2:#4a5862;
 --ink-3:#7a8891;--rule:#d9e0e4;--rule-2:#e9eef1;--teal:#0f6b6b;--teal-soft:#dcecea;--brass:#8a6d24;
 --brass-soft:#f1e9d2}
-.theme{display:flex;gap:0;border:1px solid var(--rule);border-radius:7px;padding:2px;margin:0;
+.theme{display:flex;gap:0;border:1px solid var(--rule);border-radius:8px;padding:2px;margin:0;
 background:var(--rule-2)}
 .theme input{position:absolute;opacity:0;pointer-events:none}
-.theme label{font-size:.78rem;color:var(--ink-2);padding:4px 10px;border-radius:5px;cursor:pointer;
+.theme label{font-size:.78rem;color:var(--ink-2);padding:4px 10px;border-radius:6px;cursor:pointer;
 user-select:none}
 .theme input:checked+label{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
 .theme input:focus-visible+label{outline:2px solid var(--teal);outline-offset:1px}
 .corner{display:flex;align-items:center;gap:12px}
 /* Quiet: the install is worth offering and is not what the page is for. The dial's own button, in the
    colours a control that has not been pressed yet wears. */
-button.install{font:inherit;font-size:.8rem;padding:6px 12px;border-radius:7px;border:1px solid var(--rule);
+button.install{font:inherit;font-size:.8rem;padding:6px 12px;border-radius:8px;border:1px solid var(--rule);
 background:var(--paper);color:var(--ink-2);cursor:pointer}
 button.install:hover{color:var(--ink);border-color:var(--teal)}
 *{box-sizing:border-box}
@@ -89,7 +92,7 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
 line-height:1.45;padding-inline:20px;padding-block:0 60px}
 .wrap{max-width:1200px;margin:0 auto}
 code,.mono{font-family:var(--mono);font-size:.92em}
-h1{font-size:1.35rem;font-weight:600;margin:0}
+h1{font-size:1.35rem;font-weight:500;margin:0}
 .sub{color:var(--ink-3);font-size:.85rem;margin-top:3px}
 .top{padding-block:22px 14px;border-bottom:1px solid var(--rule);display:flex;align-items:flex-start;
 justify-content:space-between;gap:16px}
@@ -99,25 +102,25 @@ justify-content:space-between;gap:16px}
 .mark{width:44px;height:44px;flex:none;color:var(--teal)}
 .mark .spark{color:var(--brass)}
 @media (max-width:480px){.mark{width:34px;height:34px}}
-.card{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:16px;margin-top:18px}
-.card h2{font-size:.95rem;font-weight:600;margin:0 0 10px}
+.card{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:16px;margin-top:18px}
+.card h2{font-size:.95rem;font-weight:500;margin:0 0 10px}
 table{width:100%;border-collapse:collapse;font-size:.9rem}
-th{text-align:left;font-weight:500;color:var(--ink-3);font-size:.78rem;text-transform:uppercase;
-letter-spacing:.05em;padding:0 10px 6px 0;border-bottom:1px solid var(--rule-2)}
+th{text-align:left;font-weight:500;color:var(--ink-3);font-size:.8rem;
+padding:0 10px 8px 0;border-bottom:1px solid var(--rule-2)}
 td{padding:8px 10px 8px 0;border-bottom:1px solid var(--rule-2);vertical-align:top}
 .chip{display:inline-block;font-size:.76rem;padding:2px 8px;border-radius:999px;background:var(--rule-2);
 color:var(--ink-2)}
 .chip.running{background:var(--teal-soft);color:var(--teal)}
-.chip.stalled{background:#fbe1d7;color:var(--critical)}
+.chip.stalled{background:var(--critical-soft);color:var(--critical)}
 .chip[data-state="waiting on you"]{background:var(--brass-soft);color:var(--brass)}
 .dial{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-.dial button,.dial span{font:inherit;font-size:.85rem;padding:7px 14px;border-radius:7px;cursor:pointer;
+.dial button,.dial span{font:inherit;font-size:.85rem;padding:8px 14px;border-radius:8px;cursor:pointer;
 border:1px solid var(--rule);background:var(--paper);color:var(--ink-2)}
 .dial .now{background:var(--teal);border-color:var(--teal);color:#fff;cursor:default}
 .ask{display:flex;gap:8px;margin-top:8px}
-.ask input{flex:1;font:inherit;padding:7px 10px;border:1px solid var(--rule);border-radius:7px;
+.ask input{flex:1;font:inherit;padding:8px 10px;border:1px solid var(--rule);border-radius:8px;
 background:var(--paper);color:var(--ink)}
-button.go{font:inherit;padding:7px 14px;border-radius:7px;border:1px solid var(--teal);background:var(--teal);
+button.go{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--teal);background:var(--teal);
 color:#fff;cursor:pointer}
 /* A locked control stays in the row and stops looking like one that can be pressed. The teal and the
    pointer come from the rules above, which are more specific than a browser's own disabled grey. */
@@ -147,18 +150,19 @@ a.quiet-link{color:var(--teal);font-size:.82rem;white-space:nowrap;text-decorati
 a.quiet-link:hover{text-decoration:underline}
 .wait-sum{margin:0 0 .6rem;font-size:.82rem;color:var(--ink-3)}
 .wait-group{display:grid;gap:2px;margin-top:.9rem}
-.wait-group h3{margin:0;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;display:flex;
+.wait-group h3{margin:0;font-size:.8rem;font-weight:500;display:flex;
   flex-wrap:wrap;gap:6px;align-items:baseline}
-.wait-group h3 small{font-size:.76rem;letter-spacing:0;text-transform:none;font-weight:400;color:var(--ink-3)}
+.wait-group h3 small{font-size:.76rem;font-weight:400;color:var(--ink-3)}
 .wait-group h3 .count{background:var(--rule-2);border-radius:999px;padding:0 7px;font-size:.72rem}
 .wait-group.answer h3{color:var(--brass)} .wait-group.answer h3 .count{background:var(--brass-soft)}
 .wait-group .tag{font-size:.72rem;background:var(--rule-2);border-radius:4px;padding:0 6px;color:var(--ink-3)}
 .wait-group .why{margin:2px 0 6px 1.2rem;font-size:.84rem;color:var(--ink-3);max-width:68ch}
 details.log summary{cursor:pointer;font-size:.82rem;color:var(--teal);padding:4px 0;list-style:none}
+details.log summary b{color:var(--ink);font-weight:500;font-size:.9rem}
 details.log summary::-webkit-details-marker{display:none}
 details.log summary::before{content:"\\25B8  ";color:var(--ink-3)}
 details.log[open] summary::before{content:"\\25BE  "}
-ol.lines{margin:4px 0 8px;padding:8px 12px;list-style:none;background:var(--ground);border-radius:7px;
+ol.lines{margin:4px 0 8px;padding:8px 12px;list-style:none;background:var(--ground);border-radius:8px;
 font-family:var(--mono);font-size:.78rem}
 ol.lines li{padding:1px 0;color:var(--ink-2)}
 ol.lines .when{color:var(--ink-3);margin-right:8px}
@@ -209,7 +213,7 @@ button.working::before{content:"";position:absolute;left:10px;top:50%;width:11px
 
 FORM = """
 form.ask-page{display:grid;gap:14px;margin:0}
-form.ask-page .q{display:grid;gap:4px}
+form.ask-page .q{display:grid;gap:4px;max-width:720px}
 form.ask-page label{font-size:.85rem;color:var(--ink-2);font-weight:500}
 form.ask-page .why{color:var(--ink-3);font-size:.8rem;white-space:pre-line}
 /* A checkbox group. Rows rather than a multiple-select, because what each one is for has to be readable
@@ -225,20 +229,20 @@ form.ask-page .check{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8
   font-weight:400;color:var(--ink);cursor:pointer}
 form.ask-page .check input{margin:3px 0 0;accent-color:var(--teal)}
 form.ask-page .check span{font-size:.86rem;line-height:1.35}
-form.ask-page input,form.ask-page select{font:inherit;padding:7px 10px;border:1px solid var(--rule);
-border-radius:7px;background:var(--paper);color:var(--ink);width:100%;max-width:460px}
+form.ask-page input,form.ask-page select{font:inherit;padding:8px 10px;border:1px solid var(--rule);
+border-radius:8px;background:var(--paper);color:var(--ink);width:100%;max-width:460px}
 form.ask-page .no{color:var(--brass);font-size:.8rem}
-pre.said{background:var(--ground);border-radius:7px;padding:10px 12px;font-family:var(--mono);
+pre.said{background:var(--ground);border-radius:8px;padding:10px 12px;font-family:var(--mono);
 font-size:.8rem;white-space:pre-wrap;overflow-x:auto;margin:10px 0 0}
 pre.said.bad{color:var(--critical)}
 @keyframes breathe{0%,100%{opacity:1}50%{opacity:.5}}
 #fitting .chip.running{animation:breathe 1.7s ease-in-out infinite}
 nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-top:14px;border-bottom:1px solid var(--rule)}
-nav.tabs a{font-size:.88rem;color:var(--ink-2);text-decoration:none;padding:8px 14px;border-radius:7px 7px 0 0;
+nav.tabs a{font-size:.88rem;color:var(--ink-2);text-decoration:none;padding:8px 14px;border-radius:8px 8px 0 0;
 border:1px solid transparent;border-bottom:none;margin-bottom:-1px}
 nav.tabs a:hover{color:var(--ink)}
 nav.tabs a[aria-current="page"]{background:var(--paper);border-color:var(--rule);color:var(--ink);
-font-weight:600}
+font-weight:500}
 """
 
 
@@ -252,9 +256,11 @@ font-weight:600}
 #: moment they press Packages. So a voyage opens in a window of its own, and the board keeps its own.
 TABS: tuple[tuple[str, str], ...] = (
     ("/", "Board"),
-    ("/generate", "Start a project"),
-    ("/adopt", "Adopt a repository"),
+    ("/brief", "Start from an idea"),
+    ("/generate", "Start from a PRD"),
+    ("/adopt", "Start from a codebase"),
     ("/packages", "Packages"),
+    ("/settings", "Settings"),
 )
 
 #: The voyage's home, and what it carries instead of the bar: the one way back to the board, in its own
@@ -277,6 +283,8 @@ def tabs(now: str) -> str:
     `slipwai fleet` and `slipwai bridge` deep links into one page rather than three commands that each open
     something of their own.
     """
+    if now.startswith("/brief?"):  # a document of a brief: the way back is that brief, not the voyage
+        return f'<nav class="tabs" aria-label="Brief"><a href="{esc(now)}">\u2190 The brief</a></nav>'
     if not any(where == now for where, _ in TABS):
         return AWAY if now == VOYAGE else BACK
     here = ' aria-current="page"'
@@ -443,13 +451,14 @@ def document(title: str, sub: str, body: str, script: str = "", now: str = "") -
 <title>{esc(title)}</title>
 <link rel="icon" href="{favicon()}">
 {HEAD if served else ""}
-<style>{STYLE}{FORM}{WORKING}</style></head>
+<style>{STYLE}{FORM}{WORKING}{WAITING if served else ""}</style></head>
 <body><div class="wrap">
 <div class="top"><div><h1>{esc(title)}</h1><div class="sub">{esc(sub)}</div></div>
-<div class="corner">{INSTALL if served else ""}{THEME}{inline(
+<div class="corner">{INSTALL + TELL if served else ""}{THEME}{inline(
     title="slipwai — the little tug that moves the big one")}</div></div>
 {tabs(now) if now else ""}
+{STRIP if served else ""}
 {body}
-</div>{"<script>" + SEATED + script + REGISTER + "</script>" if served else
+</div>{"<script>" + SEATED + ATTENTION + script + REGISTER + "</script>" if served else
        "<script>" + script + "</script>" if script else ""}</body></html>
 """

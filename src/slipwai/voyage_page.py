@@ -15,6 +15,7 @@ from .bridge_page import fitting_card, live_cards, live_sub
 from .console_page import console_card
 from .decision_log import SCRIPT as DECISIONS_SCRIPT
 from .decision_log import STYLE as DECISIONS_STYLE
+from .drawn import decided_states
 from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
 from .feedback_card import STYLE as FEEDBACK_STYLE
 from .feedback_card import opener
@@ -27,7 +28,8 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 790 — the bands of one window: where the project stands, what to expect of the stage it is on,
+# budget: 810 — the bands of one window, and who decided each state the storyboard's note counts: where the
+# project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
@@ -63,43 +65,44 @@ STYLE = """
 .stage.working .dot{border-color:var(--brass);color:var(--brass);background:var(--brass-soft)}
 .stage.working .dot::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid var(--brass);
   opacity:.5;animation:pulse 1.6s ease-out infinite}
-.stage.waiting .dot{border-color:#b4432f;background:#b4432f;color:#fff}
-.stage.attention .dot{border-color:#c77d14;color:#c77d14;background:var(--brass-soft)}
-.stage.attention .dot::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid #c77d14;
+.stage.waiting .dot{border-color:var(--critical);background:var(--critical);color:#fff}
+.stage.attention .dot{border-color:var(--warn);color:var(--warn);background:var(--brass-soft)}
+.stage.attention .dot::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid var(--warn);
   opacity:.5;animation:pulse 1.6s ease-out infinite}
 @keyframes pulse{from{transform:scale(.85);opacity:.6}to{transform:scale(1.25);opacity:0}}
 @media (prefers-reduced-motion:reduce){.stage.working .dot::after,.stage.attention .dot::after{animation:none}}
-.stage b{font-size:.84rem;line-height:1.2}.stage.working b{color:var(--brass)}.stage.waiting b{color:#b4432f}
-.stage.attention b{color:#c77d14}
+.stage b{font-size:.84rem;line-height:1.2}.stage.working b{color:var(--brass)}.stage.waiting b{color:var(--critical)}
+.stage.attention b{color:var(--warn)}
 .stage small{font-size:.74rem;color:var(--ink-3);line-height:1.3}
-.stage .ev{font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:var(--ink-3);word-break:break-all}
+.stage .ev{font-family:var(--mono);font-size:.7rem;color:var(--ink-3);overflow-wrap:anywhere}
 .stage.skipped{opacity:.4}.stage.todo .dot{opacity:.75}
 .next{border-top:1px solid var(--rule-2);padding-top:12px;display:grid;gap:8px}
 a.quiet{font:inherit;padding:7px 14px;border-radius:7px;border:1px solid var(--teal);background:transparent;
   color:var(--teal);text-decoration:none;align-self:center}
 a.quiet:hover{background:var(--teal-soft)}
 .expect .now{border-left:3px solid var(--brass);padding-left:12px;margin:0 0 10px}
-.expect .now .who{display:block;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;
+.expect .now .who{display:block;font-size:.8rem;font-weight:500;
   color:var(--brass);margin-bottom:3px}
 .expect .now p{margin:0;font-size:.9rem;color:var(--ink-2)}
 .expect ol{margin:8px 0 0;padding:0 0 0 18px;display:grid;gap:7px;font-size:.86rem;color:var(--ink-2)}
-.expect ol b.who{color:var(--ink);font-weight:600}
+.expect ol b.who{color:var(--ink);font-weight:500}
 .expect ol li.gone{opacity:.45}
 .columns{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
-.col h3{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;
+.col h3{font-size:.8rem;font-weight:500;color:var(--ink-3);margin:0 0 8px;
   padding-bottom:6px;border-bottom:2px solid var(--rule)}
 .col.queued h3{border-color:var(--brass-soft)}
-.col.done h3{border-color:var(--teal)}.col.working h3{border-color:var(--brass)}.col.waiting h3{border-color:#b4432f}
+.col.done h3{border-color:var(--teal)}.col.working h3{border-color:var(--brass)}
+.col.waiting h3{border-color:var(--critical)}
 .slice{border:1px solid var(--rule);border-radius:8px;padding:8px 10px;margin-bottom:8px;display:grid;gap:3px;
   background:var(--paper)}
-.slice b{font-size:.86rem}.slice .fw{font-size:.72rem;color:var(--ink-3);font-family:ui-monospace,Menlo,monospace}
+.slice b{font-size:.86rem}.slice .fw{font-size:.72rem;color:var(--ink-3);font-family:var(--mono)}
 .slice .why{font-size:.78rem;color:var(--ink-2)}
 details.slice summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;cursor:pointer;
   list-style:none}
 .slice .chip{font-size:.7rem;padding:1px 7px;border-radius:999px;border:1px solid var(--rule);color:var(--ink-2);
   white-space:nowrap}
 .slice.working .chip{border-color:var(--brass);color:var(--brass)}
-.slice.waiting .chip{border-color:#b4432f;color:#b4432f}
+.slice.waiting .chip{border-color:var(--critical);color:var(--critical)}
 details.slice .facts{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0 0;font-size:.78rem}
 details.slice .facts dt{color:var(--ink-3)}details.slice .facts dd{margin:0;color:var(--ink-2);overflow-wrap:anywhere}
 details.slice summary::-webkit-details-marker{display:none}
@@ -109,7 +112,7 @@ details.slice .asked{font-size:.8rem;margin:4px 0;padding-left:18px;display:grid
 details.slice textarea{width:100%;box-sizing:border-box;font:inherit;font-size:.84rem;margin-top:6px}
 details.slice button{justify-self:start;margin-top:4px}
 .slice.queued{border-style:dashed;border-color:var(--brass)}
-.slice.waiting{border-color:#b4432f}.slice.working{border-color:var(--brass)}.slice.done{border-color:var(--teal-soft)}
+.slice.waiting{border-color:var(--critical)}.slice.working{border-color:var(--brass)}.slice.done{border-color:var(--teal-soft)}
 .mocks{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .mock{display:grid;gap:4px;text-decoration:none;color:inherit;border:1px solid var(--rule);border-radius:8px;
   padding:8px;background:var(--paper)}
@@ -117,29 +120,30 @@ details.slice button{justify-self:start;margin-top:4px}
 .mocks .board{grid-column:1 / -1;max-width:720px}.mocks .board iframe{aspect-ratio:16/9}
 .mock iframe{width:100%;aspect-ratio:4/3;border:0;border-radius:4px;background:#fff;pointer-events:none;
   transform-origin:0 0}
-.mock b{font-size:.84rem}.mock .fw{font-size:.72rem;color:var(--ink-3);font-family:ui-monospace,Menlo,monospace}
+.mock b{font-size:.84rem}.mock .fw{font-size:.72rem;color:var(--ink-3);font-family:var(--mono)}
 .shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
 .shot{display:grid;gap:4px;text-decoration:none;color:inherit}
 .shot img{width:100%;aspect-ratio:4/3;object-fit:contain;object-position:top;border-radius:4px;background:#fff;
   border:1px solid var(--rule)}
 .compare{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
-.compare h3{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
+.compare h3{font-size:.8rem;font-weight:500;color:var(--ink-3);margin:0 0 8px}
 .viewer{border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:#fff}
-.viewer .bar{display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid #e3e3e3;
-  background:#f7f7f7;color:#555;font-size:.78rem}
+.viewer .bar{display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--rule);
+  background:var(--ground);color:var(--ink-2);font-size:.78rem}
 .viewer .canvas{height:520px !important;width:auto !important;overflow:hidden !important;position:relative;
   background:#fff;cursor:grab}
 .viewer .canvas:active{cursor:grabbing}
 .viewer .sp{flex:1}
 .viewer .model-dial{display:flex;gap:4px}
-.viewer .model-dial button{font:inherit;font-size:.78rem;min-width:28px;padding:2px 7px;border:1px solid #d0d0d0;
-  border-radius:4px;background:#fff;color:#444;cursor:pointer}
-.viewer .model-dial button:hover{border-color:#0f6b6b;color:#0f6b6b}
-.viewer .hint{font-size:.74rem;color:#666;padding:6px 10px;margin:0;border-top:1px solid #e3e3e3;background:#fafafa}
+.viewer .model-dial button{font:inherit;font-size:.78rem;min-width:28px;padding:2px 7px;border:1px solid var(--rule);
+  border-radius:6px;background:var(--paper);color:var(--ink-2);cursor:pointer}
+.viewer .model-dial button:hover{border-color:var(--teal);color:var(--teal)}
+.viewer .hint{font-size:.74rem;color:var(--ink-3);padding:6px 10px;margin:0;border-top:1px solid var(--rule);
+  background:var(--ground)}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;margin:18px 0 0;border-bottom:1px solid var(--rule)}
 .tabs button{font:inherit;font-size:.88rem;background:none;border:1px solid transparent;border-bottom:0;
-  border-radius:8px 8px 0 0;padding:7px 14px;margin-bottom:-1px;color:var(--ink-2);cursor:pointer}
-.tabs button[aria-selected="true"]{background:var(--paper);border-color:var(--rule);color:var(--ink);font-weight:600}
+  border-radius:8px 8px 0 0;padding:8px 14px;margin-bottom:-1px;color:var(--ink-2);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--paper);border-color:var(--rule);color:var(--ink);font-weight:500}
 .tabs .count{font-size:.72rem;padding:0 6px;border-radius:999px;margin-left:6px;background:var(--brass-soft);
   color:var(--brass)}
 .tab[hidden]{display:none}
@@ -209,8 +213,11 @@ SCRIPT = BOARD_SCRIPT + """
     if (stop) { stop.hidden = !found.stoppable; stop.disabled = false; }
     const draw = document.getElementById('draw');
     if (draw) { draw.hidden = !found.drawable; draw.disabled = false; }
+    const draft = document.getElementById('draft');
+    if (draft) { draft.hidden = !found.draftable; draft.disabled = false; }
     const model = document.getElementById('model');
     if (model) { model.hidden = !found.modelable; model.disabled = false; }
+    if (window.waiting) waiting.set(found.waiting);
   };
   // Two things change on this page and only one of them is the strip. The cards — the storyboard, the
   // model, the work, the button that opens the specification — are rendered once, out of files that may
@@ -237,6 +244,7 @@ SCRIPT = BOARD_SCRIPT + """
   document.addEventListener('click', event => {
     if (event.target.id === 'cast-off') { event.target.disabled = true; send('/cast-off', {}); }
     if (event.target.id === 'draw') { event.target.disabled = true; send('/draw', {}); }
+    if (event.target.id === 'draft') { event.target.disabled = true; send('/draft', {}); }
     if (event.target.id === 'model') { event.target.disabled = true; send('/model', {}); }
     if (event.target.id === 'intake-go') { event.target.disabled = true; send('/intake', {}); }
     const answer = event.target.dataset && event.target.dataset.answer;
@@ -368,7 +376,7 @@ def stage_html(stage: Stage, index: int) -> str:
     shown = "" if stage.state == "skipped" else stage.evidence
     return (f'<div class="stage {esc(stage.state)}" data-stage="{esc(stage.key)}" role="listitem">'
             f'<div class="dot">{esc(dot)}</div><b>{title}</b><small>{esc(stage.detail)}</small>'
-            f'<span class="ev">{esc(shown)}</span></div>')
+            f'<span class="ev">{esc(shown).replace("/", "/<wbr>")}</span></div>')
 
 
 def stage_payload(found: list[Stage]) -> list[dict[str, str]]:
@@ -414,7 +422,7 @@ def expect_card(found: list[Stage]) -> str:
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
                  stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
-                 modelable: bool = False) -> str:
+                 modelable: bool = False, draftable: bool = False) -> str:
     strip = "".join(stage_html(one, index) for index, one in enumerate(found))
     wide = f"--stages:{max(1, len(found))}"
     said = now_said(found)
@@ -432,7 +440,10 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     # The stage between a specification and a model had no button at all, and its line said to go and type
     # a command in the agent — on the page a person had just run two headless sessions from. This runs the
     # half of it nobody has to be present for; the half they do is the storyboard, below.
-    button += (f'<button class="go" id="draw"{"" if drawable else " hidden"}>Draw the surfaces</button>')
+    button += (f'<button class="go" id="draw"{"" if drawable else " hidden"}>Draw the storyboard</button>')
+    # A draft that ended with nothing drafted left a project with a document, no specification and no way
+    # on but a terminal. Shown by the poll, as Draw is.
+    button += (f'<button class="go" id="draft"{"" if draftable else " hidden"}>Draft the specification</button>')
     # Approving starts the model once and locks the verdict, so a model step that failed had no way back but
     # the agent. Always in the page and shown by the poll, as Draw is, so the page's shape does not move.
     button += (f'<button class="go" id="model"{"" if modelable else " hidden"}>Model again</button>')
@@ -599,7 +610,7 @@ def verdict_form(root: Path, feature: str) -> str:
     home = root / "specs" / feature / "mockups"
     if not surface_pages(home):
         return ('<p class="empty">This storyboard has no page per surface, so there is nothing to approve: '
-                "each surface is drawn as its own page, which the storyboard links. Draw the surfaces draws it "
+                "each surface is drawn as its own page, which the storyboard links. Draw the storyboard draws it "
                 "again.</p>")
     path = home / "mock-states.md"
     note = "Nothing on this storyboard is approved yet."
@@ -611,6 +622,13 @@ def verdict_form(root: Path, feature: str) -> str:
                 f"verdict of its own.")
     elif "\u2014 approved" in text:
         note = "Approved."
+    # Where the pages say who chose each state, the note says how many a person decided and how many the
+    # tool put in: the person approving knows which states they have already seen.
+    who = [one for page in surface_pages(home) for _, one in decided_states(page)[1]]
+    if any(who):
+        proposed = sum(one.lower() == "proposed" for one in who)
+        note += (f" {len(who)} states: {sum(bool(one) for one in who) - proposed} decided by a person, "
+                 f"{proposed} proposed.")
     # Either verdict locks both. A refusal (a disapproval with no reason) turns them back on in the page.
     held = " disabled" if parked or "\u2014 approved" in text else ""
     return (f'<form class="verdict" onsubmit="return false"><p class="empty">{esc(note)} '
@@ -708,7 +726,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
          decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "",
-         dates: str = "") -> str:
+         dates: str = "", draftable: bool = False) -> str:
     now = current(found)
     # An adopted repository walks its own steps until its first specification, and the strip a generated
     # project has would name a stage it is not on: the adoption's card stands where the strip does.
@@ -721,7 +739,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     live = live_cards(fleet, config or {}, True, project_tabs(root, True)) if fleet else ""
     # Past it, the strategy's checkpoint stands above the strip, never in its place.
     where = adopting or dates + passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
-                                     feature, drawable, shape, modelable)
+                                     feature, drawable, shape, modelable, draftable)
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]
@@ -777,7 +795,10 @@ def now_said(found: list[Stage]) -> str:
 
 
 def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False,
-            stoppable: bool = False, drawable: bool = False, shape: str = "", modelable: bool = False) -> str:
+            stoppable: bool = False, drawable: bool = False, shape: str = "", modelable: bool = False,
+            waiting: dict | None = None, draftable: bool = False) -> str:
     return json.dumps({"stages": stage_payload(found), "launchable": launchable, "moving": moving,
                        "castable": castable, "stoppable": stoppable, "drawable": drawable, "modelable": modelable,
-                       "shape": shape, "now": now_said(found)})
+                       "draftable": draftable,
+                       "shape": shape, "now": now_said(found),
+                       "waiting": waiting or {"count": 0, "text": "", "href": ""}})

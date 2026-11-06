@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sketch: walk the states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#172129;background:#f1f3f4}
+a{color:#0f6b6b}a:hover{color:#0A4F4F}
+</style>
+</helmet>
+<div style="min-height: 920px; max-width: 1280px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; background: #f1f3f4">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 14px 24px; background: #fcfcfb; border-bottom: 1px solid #d9e0e4">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="display: inline-block; width: 28px; height: 28px; border-radius: 8px; background: #0f6b6b"></span>
+      <strong style="font-size: 16px">Sketch</strong>
+      <span style="color: #4a5862">·</span>
+      <span style="font-size: 15px">Club boat bookings</span>
+    </div>
+    <nav aria-label="Steps" style="display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto">
+      <span style="padding: 6px 12px; border-radius: 999px; background: #e9eef1; color: #172129; font-size: 13px">1 Describe</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #0f6b6b; color: #FFFFFF; font-size: 13px; font-weight: 600">2 Walk the states</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #e9eef1; color: #172129; font-size: 13px">3 Check</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #e9eef1; color: #172129; font-size: 13px">4 Hand over</span>
+    </nav>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; padding: 20px 24px; flex: 1">
+
+    <section aria-label="Conversation" style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 12px; background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 18px">
+      <p style="margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #4a5862">Book a boat · state 2 of 7</p>
+      <div style="display: flex; flex-direction: column; gap: 14px; flex: 1">
+
+        <div style="align-self: flex-start; max-width: 85%; background: #f1f3f4; border-radius: 12px 12px 12px 2px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+          A screen is never one picture. This one is seven, and a builder will build every one of them whether or not we talk about it. So: it is the first week and nobody has booked anything yet. What does Sam see?
+        </div>
+
+        <div style="align-self: flex-end; max-width: 85%; background: #dcecea; border-radius: 12px 12px 2px 12px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+          Say "You have no bookings yet" at the top, but still show the boats. Otherwise people think it is broken.
+        </div>
+
+        <div style="align-self: flex-start; max-width: 85%; background: #f1f3f4; border-radius: 12px 12px 12px 2px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+          Drawn, on the right. Next: Sam is a dinghy sailor and taps a keelboat. Checkout says no. Do we hide the keelboats, grey them out, or let Sam tap and then explain?
+        </div>
+
+        <div style="align-self: flex-end; max-width: 85%; background: #dcecea; border-radius: 12px 12px 2px 12px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+          Show them greyed, with "Not checked out on keelboats. Ask the training officer." People should see what they could sail if they did the checkout.
+        </div>
+
+        <div style="align-self: flex-start; max-width: 85%; background: #f1f3f4; border-radius: 12px 12px 12px 2px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+          Good, that is a decision and I have written it as one. Two states I will propose rather than ask, because every version of this screen needs them: loading, and a booking that failed to save. Tell me if either is wrong.
+        </div>
+      </div>
+
+      <form style="display: flex; gap: 8px; margin-top: 8px">
+        <label for="say2" style="position: absolute; left: -9999px">Say what happens next</label>
+        <input id="say2" type="text" placeholder="Say what happens next…" style="flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid #d9e0e4; border-radius: 8px; font-size: 14px; background: #fcfcfb">
+        <button type="button" style="padding: 12px 18px; border: 0; border-radius: 8px; background: #0f6b6b; color: #FFFFFF; font-size: 14px; font-weight: 600; min-height: 44px">Send</button>
+      </form>
+    </section>
+
+    <section aria-label="The state being drawn" style="flex: 1 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+      <div style="background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+          <strong style="font-size: 15px">Book a boat</strong>
+          <span style="padding: 4px 10px; border-radius: 999px; background: #0f6b6b; color: #FFFFFF; font-size: 12px; font-weight: 600">Empty</span>
+          <span style="font-size: 12px; color: #4a5862">decided by Sam, just now</span>
+        </div>
+
+        <div style="border: 1px solid #d9e0e4; border-radius: 8px; padding: 18px; background: #f1f3f4; display: flex; flex-direction: column; gap: 12px">
+          <div style="padding: 12px 14px; border-radius: 8px; background: #dcecea; font-size: 14px">You have no bookings yet. Pick a boat and a half day below.</div>
+          <h2 style="margin: 0; font-size: 20px">Saturday 8 November</h2>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+            <div style="border: 1px solid #d9e0e4; border-radius: 8px; padding: 12px; background: #fcfcfb; display: flex; flex-direction: column; gap: 8px">
+              <strong style="font-size: 14px">Kestrel</strong>
+              <span style="font-size: 12px; color: #4a5862">Dinghy · 2 crew</span>
+              <div style="display: flex; gap: 6px">
+                <button type="button" style="flex: 1; padding: 8px; border: 1px solid #0f6b6b; border-radius: 6px; background: #fcfcfb; color: #0f6b6b; font-size: 13px; min-height: 36px">Morning</button>
+                <button type="button" style="flex: 1; padding: 8px; border: 1px solid #0f6b6b; border-radius: 6px; background: #fcfcfb; color: #0f6b6b; font-size: 13px; min-height: 36px">Afternoon</button>
+              </div>
+            </div>
+            <div style="border: 1px solid #d9e0e4; border-radius: 8px; padding: 12px; background: #fcfcfb; display: flex; flex-direction: column; gap: 8px">
+              <strong style="font-size: 14px">Sandpiper</strong>
+              <span style="font-size: 12px; color: #4a5862">Keelboat · 4 crew</span>
+              <div style="display: flex; gap: 6px">
+                <button type="button" style="flex: 1; padding: 8px; border: 1px solid #0f6b6b; border-radius: 6px; background: #fcfcfb; color: #0f6b6b; font-size: 13px; min-height: 36px">Morning</button>
+                <button type="button" style="flex: 1; padding: 8px; border: 1px solid #0f6b6b; border-radius: 6px; background: #fcfcfb; color: #0f6b6b; font-size: 13px; min-height: 36px">Afternoon</button>
+              </div>
+            </div>
+            <div style="border: 1px solid #d9e0e4; border-radius: 8px; padding: 12px; background: #fcfcfb; display: flex; flex-direction: column; gap: 8px">
+              <strong style="font-size: 14px">Tern</strong>
+              <span style="font-size: 12px; color: #4a5862">Dinghy · 2 crew</span>
+              <div style="display: flex; gap: 6px">
+                <button type="button" style="flex: 1; padding: 8px; border: 1px solid #0f6b6b; border-radius: 6px; background: #fcfcfb; color: #0f6b6b; font-size: 13px; min-height: 36px">Morning</button>
+                <button type="button" style="flex: 1; padding: 8px; border: 1px solid #0f6b6b; border-radius: 6px; background: #fcfcfb; color: #0f6b6b; font-size: 13px; min-height: 36px">Afternoon</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside aria-label="States of this surface" style="background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+        <strong style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: #4a5862">States of Book a boat</strong>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #e9eef1"><span style="width: 150px; font-weight: 600">Loading</span><span style="color: #4a5862">proposed by Sketch · "Finding today's boats…"</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #e9eef1"><span style="width: 150px; font-weight: 600">Empty</span><span style="color: #2e7d4f">decided by Sam · banner, boats still shown</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #e9eef1"><span style="width: 150px; font-weight: 600">Populated</span><span style="color: #2e7d4f">decided by Sam · taken half days greyed</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #e9eef1"><span style="width: 150px; font-weight: 600">Out of service</span><span style="color: #2e7d4f">decided by Sam · greyed, with the date and who set it</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #e9eef1"><span style="width: 150px; font-weight: 600">Not checked out</span><span style="color: #2e7d4f">decided by Sam · greyed, "ask the training officer"</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #e9eef1"><span style="width: 150px; font-weight: 600">Booking failed</span><span style="color: #4a5862">proposed by Sketch · "Nothing was saved, try again"</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0"><span style="width: 150px; font-weight: 600">Offline</span><span style="color: #4a5862">not applicable · Sam: "it is used on the clubhouse wifi"</span></div>
+        </div>
+        <p style="margin: 4px 0 0; font-size: 12px; color: #4a5862">Each row becomes one state on the exported page, with who decided it. The builder reads the page, one verdict per state.</p>
+      </aside>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":920}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

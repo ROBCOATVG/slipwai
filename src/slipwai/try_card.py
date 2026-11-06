@@ -48,13 +48,13 @@ STYLE = """
   color:var(--ink-2);background:var(--rule-2)}
 #try .pill.starting{border-color:var(--brass);color:var(--brass);background:var(--brass-soft)}
 #try .pill.ready{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
-#try .pill.failed{border-color:#b4432f;color:#b4432f;background:transparent}
+#try .pill.failed{border-color:var(--critical);color:var(--critical);background:transparent}
 #try .buttons{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 #try .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px}
-#try .fact b{display:block;font-size:.72rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;
+#try .fact b{display:block;font-size:.76rem;font-weight:500;
   color:var(--ink-3)}
 #try .fact span{font-size:.88rem}
-#try h3{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:16px 0 6px}
+#try h3{font-size:.8rem;font-weight:500;color:var(--ink-3);margin:16px 0 6px}
 #try table{border-collapse:collapse;font-size:.86rem;width:100%}
 #try td{padding:4px 12px 4px 0;vertical-align:top}
 #try td.who{white-space:nowrap}
@@ -66,7 +66,7 @@ STYLE = """
 #try pre.said{max-height:180px;overflow:auto}
 #try .flag{display:flex;gap:10px;align-items:center;font-size:.86rem;margin:4px 0}
 #try .flag code{flex:1}
-#try .warn{color:#b4432f;font-size:.86rem}
+#try .warn{color:var(--critical);font-size:.86rem}
 #try .as-group{border-left:3px solid var(--teal);padding:2px 0 2px 12px;margin:8px 0 12px}
 #try .as{margin:0 0 6px;font-size:.88rem}
 """

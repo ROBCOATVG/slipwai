@@ -1,4 +1,5 @@
 """The command line: one question per answer, asked or passed, and the refusals in between."""
+# budget: 360 — one row of the dispatch table per verb, and every verb the command has is a row here
 from __future__ import annotations
 
 import argparse
@@ -24,6 +25,7 @@ from .cli_add import (
 )
 from .cli_adopt import adopt_main
 from .cli_bridge import bridge_main
+from .cli_brief import brief_main
 from .cli_channel import channel_main
 from .cli_extension import extension_main, hooks_main
 from .cli_fleet import fleet_main
@@ -69,7 +71,7 @@ from .upgrade import main as upgrade_main
 VERBS = ("generate", "add-service", "add-frontend", "describe-service", "migrate", "replay",
          "adopt", "converge", "upgrade", "list", "search", "show", "install", "language", "extension",
          "hooks", "package", "quickstart", "target", "trust", "channel", "telegraph", "fleet",
-         "bridge", "mcp")
+         "bridge", "mcp", "brief")
 
 
 def main() -> None:
@@ -135,9 +137,9 @@ def dispatch(argv: list[str]) -> None:
                       ("describe-service", describe_service_main), ("migrate", migrate_main),
                       ("replay", replay_main), ("adopt", adopt_main), ("converge", converge_main),
                       ("extension", extension_main), ("hooks", hooks_main), ("package", package_main),
-                      ("quickstart", quickstart_main), ("target", target_main),
-                      ("trust", trust_main), ("channel", channel_main), ("telegraph", telegraph_main),
-                      ("fleet", fleet_main), ("bridge", bridge_main), ("mcp", mcp_main)):
+                      ("quickstart", quickstart_main), ("target", target_main), ("trust", trust_main),
+                      ("channel", channel_main), ("telegraph", telegraph_main), ("fleet", fleet_main),
+                      ("bridge", bridge_main), ("mcp", mcp_main), ("brief", brief_main)):
         if argv[:1] == [verb]:
             run(argv[1:])
             return

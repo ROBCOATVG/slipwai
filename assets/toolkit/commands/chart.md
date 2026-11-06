@@ -109,14 +109,15 @@ whose fairways no such entry explains, and a crowded one whose entry records no 
 
 **With nobody present** — any session a script dispatched, which says so with `SLIPWAI_STAGE` in its
 environment (`launch`, `model`, a captain's `drive`) — do not decide silently and do not stop. Proceed on the best-evidenced proposal, and record it as `Decided by: host (stage
-recommendation)` with `Status: awaiting human confirmation`. Then post the question for a person: append
-one `question` line to the deck log of the first fairway the chart names,
-`.slipwai/logs/<feature>/<fairway>.jsonl` — `{"v": 1, "t": "<ISO instant>", "kind": "question", "fairway":
-"<fairway>", "slice": "chart", "id": "D<n>", "what": "<the contexts proposed, and the seam you are least
-sure of>"}`. The board's *Waiting on you* shows it; `slice: chart` names no slice, so nothing waits on it.
-A person confirms by setting the entry's `Status` to `confirmed by human <date>`, or overturns it with an
-entry of their own; whoever records that answer writes the `decision` line carrying `D<n>`, which is what
-closes the question.
+recommendation)` with `Status: awaiting human confirmation`. Then say so where a person will read it: append
+one `decision` line to the deck log of the first fairway the chart names,
+`.slipwai/logs/<feature>/<fairway>.jsonl` — `{"v": 1, "t": "<ISO instant>", "kind": "decision", "fairway":
+"<fairway>", "id": "D<n>", "what": "<the contexts taken, and the seam you are least sure of>. Taken as it
+stands; if it is wrong, say so under Waiting on you and the chart is redone."}`. A decision taken is not a
+question to answer: the board lists it under *Read and mark read*, and a person who reads it and says
+nothing has accepted it. Only a seam the evidence genuinely cannot settle is a `question` line — `"kind":
+"question"`, with `"slice": "chart"` so nothing waits on it — and the `decision` line that answers it,
+written by whoever answers, carries the same `D<n>`, which is what closes the question.
 
 ## Pass one, here: the marks
 

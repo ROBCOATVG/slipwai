@@ -4,7 +4,8 @@
 --can-delegate`. If it says this harness has none of the project's delegate types, or is missing some, run
 `make agents` and start a new session. A project set up under one coding agent and opened in another has
 this page, but none of its commands, skills or delegate types until then: they are generated per harness, and
-git ignores them.
+git ignores them. A session the board dispatched — `SLIPWAI_STAGE` is set in its environment — was started
+after that setup and skips this step: do the stage's work here.
 
 Keep domain logic independent of adapters and make changes as small end-to-end slices.
 

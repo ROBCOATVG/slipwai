@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Club boats prototype</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:#1B1F23;background:#F4F5F7}
+a{color:#0E6B6B}a:hover{color:#0A4F4F}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #FFFFFF; border: 1px solid #D9DEE3; border-radius: 28px; overflow: hidden">
+
+  <header style="display: flex; flex-direction: column; gap: 8px; padding: 18px 18px 12px; background: #16345A; color: #FFFFFF">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="display: inline-block; width: 26px; height: 26px; border-radius: 999px; background: #FFFFFF"></span>
+      <strong style="font-size: 16px">Club boats</strong>
+      <span style="margin-left: auto; font-size: 12px; color: #C9D6E6">prototype</span>
+    </div>
+    <div role="group" aria-label="Signed in as" style="display: flex; gap: 6px">
+      <button type="button" onClick="{{beSam}}" style="{{samTab}}">Sam · member</button>
+      <button type="button" onClick="{{beBosun}}" style="{{bosunTab}}">Jo · bosun</button>
+    </div>
+  </header>
+
+  <sc-if value="{{toastShown}}" hint-placeholder-val="{{false}}">
+    <div style="margin: 12px 16px 0; padding: 10px 14px; border-radius: 10px; background: #EAF5EE; color: #1E6B3A; font-size: 14px">{{toast}}</div>
+  </sc-if>
+
+  <main style="flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+
+    <sc-if value="{{onBook}}" hint-placeholder-val="{{true}}">
+      <h1 style="margin: 0; font-size: 22px">Book a boat</h1>
+      <p style="margin: 0; font-size: 13px; color: #5B6470">Saturday 8 November · you are checked out on dinghies</p>
+      <sc-if value="{{noBookings}}" hint-placeholder-val="{{true}}">
+        <div style="padding: 12px 14px; border-radius: 10px; background: #E3F1F0; font-size: 14px">You have no bookings yet. Pick a boat and a half day below.</div>
+      </sc-if>
+      <sc-for list="{{boats}}" as="b" hint-placeholder-count="3">
+        <div style="{{b.card}}">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <strong style="{{b.nameStyle}}">{{b.name}}</strong>
+            <span style="{{b.noteStyle}}">{{b.note}}</span>
+          </div>
+          <div style="display: flex; gap: 8px">
+            <button type="button" disabled="{{b.amOff}}" onClick="{{b.pickAm}}" style="{{b.amStyle}}">{{b.amLabel}}</button>
+            <button type="button" disabled="{{b.pmOff}}" onClick="{{b.pickPm}}" style="{{b.pmStyle}}">{{b.pmLabel}}</button>
+          </div>
+        </div>
+      </sc-for>
+    </sc-if>
+
+    <sc-if value="{{onConfirm}}" hint-placeholder-val="{{false}}">
+      <h1 style="margin: 0; font-size: 22px">Book {{pendingBoat}}?</h1>
+      <p style="margin: 0; font-size: 15px; line-height: 1.5">Saturday 8 November, {{pendingHalf}}. Be at the pontoon fifteen minutes before. The boat is yours until the half day ends.</p>
+      <div style="padding: 12px 14px; border-radius: 10px; background: #F4F5F7; font-size: 13px; color: #5B6470">Kit in the boat: lifejackets for two, a paddle, a bailer. Tell the bosun if anything is missing.</div>
+      <button type="button" onClick="{{confirm}}" style="padding: 14px; border: 0; border-radius: 12px; background: #16345A; color: #FFFFFF; font-size: 16px; font-weight: 600; min-height: 48px">Confirm booking</button>
+      <button type="button" onClick="{{backToBook}}" style="padding: 14px; border: 1px solid #C9D0D6; border-radius: 12px; background: #FFFFFF; color: #1B1F23; font-size: 15px; min-height: 48px">Back</button>
+    </sc-if>
+
+    <sc-if value="{{onMine}}" hint-placeholder-val="{{false}}">
+      <h1 style="margin: 0; font-size: 22px">My bookings</h1>
+      <sc-if value="{{noBookings}}" hint-placeholder-val="{{true}}">
+        <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px 16px; border-radius: 12px; background: #F4F5F7; align-items: flex-start">
+          <strong style="font-size: 15px">Nothing booked yet</strong>
+          <span style="font-size: 14px; color: #5B6470">When you book a boat it will be listed here, with a way to cancel it.</span>
+          <button type="button" onClick="{{goBook}}" style="padding: 12px 16px; border: 0; border-radius: 10px; background: #16345A; color: #FFFFFF; font-size: 14px; font-weight: 600; min-height: 44px">Book a boat</button>
+        </div>
+      </sc-if>
+      <sc-for list="{{mine}}" as="m" hint-placeholder-count="1">
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #D9DEE3; border-radius: 12px">
+          <strong style="font-size: 15px">{{m.boat}}</strong>
+          <span style="font-size: 13px; color: #5B6470">Saturday 8 November · {{m.half}}</span>
+          <button type="button" onClick="{{m.cancel}}" style="align-self: flex-start; padding: 10px 14px; border: 1px solid #C9D0D6; border-radius: 10px; background: #FFFFFF; color: #8A1C0F; font-size: 14px; min-height: 44px">Cancel this booking</button>
+        </div>
+      </sc-for>
+    </sc-if>
+
+    <sc-if value="{{onBosun}}" hint-placeholder-val="{{false}}">
+      <h1 style="margin: 0; font-size: 22px">Boats in service</h1>
+      <p style="margin: 0; font-size: 13px; color: #5B6470">Take a boat out and members cannot book it. They see why, and until when.</p>
+      <sc-for list="{{fleet}}" as="f" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #D9DEE3; border-radius: 12px">
+          <strong style="font-size: 15px">{{f.name}}</strong>
+          <span style="{{f.noteStyle}}">{{f.note}}</span>
+          <button type="button" onClick="{{f.toggle}}" style="{{f.buttonStyle}}">{{f.buttonLabel}}</button>
+        </div>
+      </sc-for>
+    </sc-if>
+  </main>
+
+  <nav aria-label="Sections" style="display: flex; border-top: 1px solid #D9DEE3; background: #FFFFFF">
+    <button type="button" onClick="{{goBook}}" style="{{navBook}}">Book</button>
+    <button type="button" onClick="{{goMine}}" style="{{navMine}}">My bookings</button>
+    <sc-if value="{{isBosun}}" hint-placeholder-val="{{false}}">
+      <button type="button" onClick="{{goBosun}}" style="{{navBosun}}">Boats</button>
+    </sc-if>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      screen: 'book', role: 'sam', toast: '', pending: null,
+      bookings: [],
+      taken: { 'Kestrel-Afternoon': true },
+      out: { Tern: 'Out of service until 14 Nov · rudder fitting' }
+    };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var isBosun = s.role === 'bosun';
+    var tabOn = 'flex: 1; padding: 8px; border: 1px solid #FFFFFF; border-radius: 999px; background: #FFFFFF; color: #16345A; font-size: 13px; font-weight: 600; min-height: 36px';
+    var tabOff = 'flex: 1; padding: 8px; border: 1px solid #7E95B5; border-radius: 999px; background: transparent; color: #FFFFFF; font-size: 13px; min-height: 36px';
+    var navOn = 'flex: 1; padding: 14px 8px; border: 0; border-top: 3px solid #16345A; background: #FFFFFF; color: #16345A; font-size: 14px; font-weight: 600; min-height: 56px';
+    var navOff = 'flex: 1; padding: 14px 8px; border: 0; border-top: 3px solid transparent; background: #FFFFFF; color: #5B6470; font-size: 14px; min-height: 56px';
+    var card = 'display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid #D9DEE3; border-radius: 12px; background: #FFFFFF';
+    var cardOff = 'display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid #D9DEE3; border-radius: 12px; background: #F4F5F7';
+    var free = 'flex: 1; padding: 12px; border: 1px solid #16345A; border-radius: 10px; background: #FFFFFF; color: #16345A; font-size: 14px; font-weight: 600; min-height: 44px';
+    var mineSlot = 'flex: 1; padding: 12px; border: 1px solid #1E6B3A; border-radius: 10px; background: #EAF5EE; color: #1E6B3A; font-size: 14px; font-weight: 600; min-height: 44px';
+    var dead = 'flex: 1; padding: 12px; border: 1px solid #D9DEE3; border-radius: 10px; background: #E9ECEF; color: #5B6470; font-size: 14px; min-height: 44px';
+    var kinds = [
+      { name: 'Kestrel', kind: 'Dinghy · 2 crew', type: 'dinghy' },
+      { name: 'Sandpiper', kind: 'Keelboat · 4 crew', type: 'keelboat' },
+      { name: 'Tern', kind: 'Dinghy · 2 crew', type: 'dinghy' }
+    ];
+    function has(boat, half) {
+      for (var i = 0; i < s.bookings.length; i++) { if (s.bookings[i].boat === boat && s.bookings[i].half === half) { return true; } }
+      return false;
+    }
+    function slot(boat, half, blocked) {
+      var mineHere = has(boat.name, half);
+      var takenHere = !!s.taken[boat.name + '-' + half];
+      var off = blocked || takenHere;
+      return {
+        off: off && !mineHere,
+        style: mineHere ? mineSlot : (off ? dead : free),
+        label: mineHere ? half + ' · yours' : (takenHere ? half + ' · taken' : half),
+        pick: function () {
+          if (off || mineHere) { return; }
+          self.setState({ screen: 'confirm', pending: { boat: boat.name, half: half }, toast: '' });
+        }
+      };
+    }
+    var boats = kinds.map(function (b) {
+      var outNote = s.out[b.name];
+      var denied = !isBosun && b.type === 'keelboat';
+      var blocked = !!outNote || denied;
+      var note = outNote ? outNote : (denied ? 'Not checked out on keelboats. Ask the training officer.' : b.kind);
+      var am = slot(b, 'Morning', blocked);
+      var pm = slot(b, 'Afternoon', blocked);
+      return {
+        name: b.name, note: note,
+        card: blocked ? cardOff : card,
+        nameStyle: blocked ? 'font-size: 15px; color: #5B6470' : 'font-size: 15px',
+        noteStyle: blocked ? 'font-size: 13px; color: #9A5B00' : 'font-size: 13px; color: #5B6470',
+        amOff: am.off, amStyle: am.style, amLabel: am.label, pickAm: am.pick,
+        pmOff: pm.off, pmStyle: pm.style, pmLabel: pm.label, pickPm: pm.pick
+      };
+    });
+    var mine = s.bookings.map(function (bk, i) {
+      return { boat: bk.boat, half: bk.half, cancel: function () {
+        var next = s.bookings.slice(); next.splice(i, 1);
+        self.setState({ bookings: next, toast: 'Cancelled. The half day is free for somebody else.' });
+      } };
+    });
+    var fleet = kinds.map(function (b) {
+      var outNote = s.out[b.name];
+      return {
+        name: b.name,
+        note: outNote ? outNote : b.kind + ' · in service',
+        noteStyle: outNote ? 'font-size: 13px; color: #9A5B00' : 'font-size: 13px; color: #1E6B3A',
+        buttonLabel: outNote ? 'Put back in service' : 'Take out of service',
+        buttonStyle: outNote
+          ? 'align-self: flex-start; padding: 10px 14px; border: 1px solid #1E6B3A; border-radius: 10px; background: #FFFFFF; color: #1E6B3A; font-size: 14px; min-height: 44px'
+          : 'align-self: flex-start; padding: 10px 14px; border: 1px solid #C9D0D6; border-radius: 10px; background: #FFFFFF; color: #8A1C0F; font-size: 14px; min-height: 44px',
+        toggle: function () {
+          var next = {}; for (var k in s.out) { next[k] = s.out[k]; }
+          if (next[b.name]) { delete next[b.name]; } else { next[b.name] = 'Out of service until 21 Nov · set by Jo, maintenance'; }
+          self.setState({ out: next, toast: next[b.name] ? b.name + ' is out of service. Members see why.' : b.name + ' is back in service.' });
+        }
+      };
+    });
+    var p = s.pending || { boat: '', half: '' };
+    return {
+      samTab: isBosun ? tabOff : tabOn,
+      bosunTab: isBosun ? tabOn : tabOff,
+      beSam: function () { self.setState({ role: 'sam', screen: 'book', toast: '' }); },
+      beBosun: function () { self.setState({ role: 'bosun', screen: 'bosun', toast: '' }); },
+      isBosun: isBosun,
+      toastShown: s.toast !== '',
+      toast: s.toast,
+      onBook: s.screen === 'book',
+      onConfirm: s.screen === 'confirm',
+      onMine: s.screen === 'mine',
+      onBosun: s.screen === 'bosun',
+      noBookings: s.bookings.length === 0,
+      boats: boats,
+      mine: mine,
+      fleet: fleet,
+      pendingBoat: p.boat,
+      pendingHalf: p.half.toLowerCase(),
+      confirm: function () {
+        var next = s.bookings.concat([{ boat: p.boat, half: p.half }]);
+        self.setState({ bookings: next, pending: null, screen: 'mine', toast: 'Booked. See you at the pontoon.' });
+      },
+      backToBook: function () { self.setState({ screen: 'book', pending: null }); },
+      goBook: function () { self.setState({ screen: 'book', toast: '' }); },
+      goMine: function () { self.setState({ screen: 'mine', toast: '' }); },
+      goBosun: function () { self.setState({ screen: 'bosun', toast: '' }); },
+      navBook: s.screen === 'book' || s.screen === 'confirm' ? navOn : navOff,
+      navMine: s.screen === 'mine' ? navOn : navOff,
+      navBosun: s.screen === 'bosun' ? navOn : navOff
+    };
+  }
+}
+</script>
+</body>
+</html>

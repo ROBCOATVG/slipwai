@@ -70,12 +70,12 @@ class ConsoleTest(BoardTest):
     def test_an_empty_question_and_a_second_while_one_is_under_way_are_refused(self) -> None:
         code, said = self.post("/console/ask", {"message": "   "})
         self.assertEqual(code, 400)
-        self.assertIn("ask the harbourmaster something", said)
+        self.assertIn("ask something first", said)
         os.environ["STAND_IN_WAIT"] = "1"
         self.addCleanup(os.environ.pop, "STAND_IN_WAIT", None)
         self.assertEqual(self.post("/console/ask", {"message": "slow"})[0], 200)
         code, said = self.post("/console/ask", {"message": "again"})
-        self.assertEqual(code, 400)
+        self.assertEqual(code, 409, "a turn under way: the page waits rather than complains")
         self.assertIn("still answering", said)
         self.settle()
 
@@ -88,6 +88,69 @@ class ConsoleTest(BoardTest):
     def test_the_dock_is_on_the_voyage_window_and_not_on_the_published_copy(self) -> None:
         self.assertIn('id="console"', self.get("/voyage")[1])
         self.assertNotIn('id="console"', self.rendered(controls=False))
+
+
+class ProtocolTest(BoardTest):
+    """The same dock over the Agent Client Protocol, on the stand-in agent `tests/test_acp.py` uses: it can
+    read and cannot do, and says so."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        from slipwai import board_settings
+        from slipwai.board_settings import Launch
+        patched = mock.patch.object(board_settings, "SETTINGS", self.root / "board.json")
+        patched.start()
+        self.addCleanup(patched.stop)
+        agent = Path(__file__).resolve().parent / "fixtures" / "acp_agent.py"
+        launch = Launch("stand-in", "Stand-in", (sys.executable, str(agent)), "")
+        self.talking = console.Console(self.root, launch=launch)
+        console.CONSOLES[self.root.resolve()] = self.talking
+        self.addCleanup(console.CONSOLES.clear)
+        self.addCleanup(self.talking.reset)
+
+    def settle(self) -> dict:
+        for _ in range(400):
+            said = json.loads(self.get("/console.json?since=0")[1])
+            if not said["busy"]:
+                return said
+            time.sleep(0.05)
+        self.fail("the console never finished answering")
+
+    def test_a_change_is_refused_and_the_dock_says_it_can_read_and_cannot_do(self) -> None:
+        self.assertEqual(self.post("/console/ask", {"message": "why is ORD-01 waiting?"}), (200, "asked"))
+        said = self.settle()
+        kinds = [(t["role"], t["kind"]) for t in said["turns"]]
+        self.assertEqual(kinds[:2], [("person", "text"), ("harbourmaster", "text")])
+        self.assertIn(("harbourmaster", "tool"), kinds)
+        refused = next(t for t in said["turns"] if t["kind"] == "error")
+        self.assertIn("can read and cannot do", refused["text"])
+        self.assertEqual(next(t for t in said["turns"] if t["kind"] == "tool_update")["tool"]["status"], "failed")
+        self.assertFalse((self.root / "prototype" / "index.html").exists(), "the refused write did not happen")
+        self.assertEqual(said["agent"], "stand-in 0.1", "as the agent named itself")
+        self.assertTrue((self.root / ".slipwai" / "console" / "session").is_file(), "kept under the board's folder")
+        self.assertTrue(said["turns"][1]["text"].startswith("Role given. Drawn: why is ORD-01 waiting?"),
+                        "the brief and the role went first; the fold rides with the question")
+
+    def test_a_question_from_the_agent_is_a_card_answered_from_the_dock(self) -> None:
+        self.post("/console/ask", {"message": "ask"})
+        asked = None
+        for _ in range(400):
+            turns = json.loads(self.get("/console.json?since=0")[1])["turns"]
+            asked = next((t for t in turns if t["kind"] == "question"), None)
+            if asked:
+                break
+            time.sleep(0.05)
+        assert asked is not None
+        self.assertEqual(self.post("/console/answer", {"id": asked["ask"]["id"], "answer": "blue"}), (200, "answered"))
+        said = self.settle()
+        self.assertIn("You said: blue", [t["text"] for t in said["turns"]])
+        self.assertEqual(self.post("/console/answer", {"id": "q9", "answer": "x"})[0], 400)
+        self.assertEqual(self.post("/console/cancel", {}), (200, "stopped"))
+
+    def test_the_dock_carries_the_stop_and_the_cards(self) -> None:
+        page = self.get("/voyage")[1]
+        self.assertIn('<button class="stop" type="button" hidden>Stop</button>', page)
+        self.assertIn("function drawTurn(", page)
 
 
 class AgentCommandTest(unittest.TestCase):

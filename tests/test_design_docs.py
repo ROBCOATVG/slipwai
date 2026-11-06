@@ -16,9 +16,11 @@ from pathlib import Path
 import checkout_packages
 from support import FactoryTestCase
 
-from slipwai.design_docs import DESIGN, FILES, briefed, handed_over, inside, referenced
+from slipwai.design_docs import DESIGN, FACTS, FILES, briefed, domain_facts, handed_over, inside, referenced
 from slipwai.errors import GenerationError
 
+#: The brief the reference page describes, as a prototyping tool would export it.
+BRIEF = Path(__file__).resolve().parent / "fixtures" / "brief"
 #: The first bytes of a real PNG, which is the point: this is not text.
 PNG = b"\x89PNG\r\n\x1a\n"
 
@@ -144,8 +146,27 @@ class GeneratedTest(FactoryTestCase):
             self.assertFalse((made / "docs/design/game-prd.md").exists(),
                              "the document is not also design material")
 
+    def test_the_brief_s_facts_land_in_the_domain_directory_and_not_with_the_wireframes(self) -> None:
+        with tempfile.TemporaryDirectory() as area:
+            made = self.generate(area, "facts", profile="standard", language="toy-plain", brief=str(BRIEF))
+            said = (made / FACTS).read_text(encoding="utf-8")
+            self.assertIn("## A checkout lasts two years", said)
+            self.assertTrue(said.startswith("*Handed over with the brief"), "says where it came from")
+            self.assertFalse((made / "docs/design/domain.md").exists(), "a fact is cited, not drawn")
+            self.assertTrue((made / "docs/design/people.md").is_file(), "the rest still travels")
+
 
 class BriefTest(unittest.TestCase):
+    def test_the_top_level_domain_file_is_lifted_out_and_the_rest_is_untouched(self) -> None:
+        found, rest = briefed(BRIEF)
+        left, text = domain_facts(BRIEF, rest)
+        self.assertEqual([one.name for one in rest if one not in left], ["domain.md"])
+        self.assertIsNotNone(text)
+        assert text is not None
+        self.assertTrue(text.startswith("*Handed over with the brief as `domain.md`."))
+        self.assertIn("Source: the club's sailing rules", text)
+        self.assertEqual(domain_facts(BRIEF, left), (left, None), "nothing to lift, nothing changes")
+
     """One folder with everything in it, sorted here rather than by the person handing it over."""
 
     def sorted_out(self, **files: object) -> tuple[str | None, list[str]]:
@@ -167,6 +188,16 @@ class BriefTest(unittest.TestCase):
         opens with *# Product Requirements*."""
         self.assertEqual(self.sorted_out(**{"v2-final.md": "# Product Requirements\n\nSell more.\n",
                                             "brand.md": "# Brand\n"})[0], "v2-final.md")
+
+    def test_the_worked_example_is_sorted_the_way_the_reference_page_says(self) -> None:
+        """`tests/fixtures/brief/` is the brief `docs/reference/the-brief.md` describes, as a prototyping tool
+        would export it. The suite reads it so the page and the folder cannot drift apart."""
+        found, rest = briefed(BRIEF)
+        self.assertEqual(found, BRIEF / "prd.md", "found by name, before anything else is asked")
+        self.assertEqual([one.relative_to(BRIEF).as_posix() for one in rest],
+                         ["domain.md", "look/logo.svg", "look/look.css", "people.md",
+                          "surfaces/boat-out-of-service.html", "surfaces/book-a-boat.html",
+                          "surfaces/my-bookings.html"])
 
     def test_a_folder_with_no_document_in_it_is_an_answer_rather_than_a_failure(self) -> None:
         """Wireframes and a brand sheet is design material. The specification gets written in the agent,

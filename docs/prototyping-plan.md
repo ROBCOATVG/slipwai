@@ -1,0 +1,542 @@
+# The brief: prototyping that feeds slipwai
+
+A plan for a phase after feedback points, written on 2026-11-04 from an exploration that started as "should
+slipwai have a prototyping mode". It should not, and this plan says why in one section and then spends the
+rest on what to build instead: a contract at slipwai's front door that a prototyping tool can target, so
+that a person who has never written a specification can play with a prototype, and what they decided while
+playing arrives in a generated project as a requirements document, surfaces with their states, people, facts
+and a look. A mock of the whole route, with a clickable prototype of the product it describes, is at
+https://claude.ai/artifact/GGdVnjrQzATQi1nUSDj9WM; its sources are under [`mockups/brief/`](mockups/brief/).
+
+**Status, 2026-11-06:** every slice has landed. 21.6d's two numbers are in the 21.6 row of section 5: ten assumptions after the draft, and a storyboard approved the first time. The board on the Agent Client Protocol, asked for the same day, is phase 22 in [its own plan](acp-plan.md), built before the record is taken. 21.6, the prototyping conversation, is the board's first
+page in this repository, after the release carrying 21.2; it was planned as its own repository until the
+same day, when the aim was restated as one non-technical person from describing the product through to
+delivery, and the board is already their face from the brief door on. Section 8 is the build: the order,
+the fixture every slice reads, and the files, tests and gates of each. The table in section 5 is ticked by
+hand as each slice merges; the one `scripts/progress.py` ticks from the history is phase 21's table in
+[the main plan](slipwai-2-plan.md), which carries one row per slice so that each `Slice-done:` trailer
+has a row to count against.
+
+**The principle the plan serves:** a prototype is the cheapest place to be wrong. Every answer a person
+gives while tapping through one is a decision the draft stage would otherwise take for them and list under
+`## Assumptions`, and every state they see is a state the mock-up stage would otherwise draw and ask them to
+approve. So the measure of a prototyping tool is not how fast it makes software. It is how few assumptions
+the draft has to make, and whether the storyboard is approved the first time it is shown.
+
+## 1. Why not a mode
+
+Slipwai has five dials and none of them is rigour, and that is deliberate:
+
+| Dial | What it moves | What it leaves alone |
+|---|---|---|
+| Skiff or liner | The size of the cloud stack | `make verify`, the release modes, the images. [The reference](reference/the-skiff-and-the-liner.md) says so in its last section |
+| The telegraph | Boilers, delegates, bunker, stage budgets | The gates. `bar` gets *stricter* as the run slows |
+| Sail or cruise, and `upstream` | Who answers, and whether the three upstream stops wait | What the stages are |
+| The release mode | How dark a merge is | What a merge must pass |
+| Quickstarts and axes | What is generated | The loop that runs in it |
+
+A `prototype` profile beside `standard` and `event-modelling`, or a rigour number under the telegraph, would
+be a standing exemption, which rule 5 in `AGENTS.md` forbids by name. The release-mode design derives
+behaviour from a fact about the product because *a setting that somebody must remember to change is wrong
+each time they forget*; a prototype flag left on is a product built without gates. And each stage a mode
+would skip exists because skipping it produced a named failure in the first attempt: screens nobody drew
+reached a demo, examples nothing wrote were demoed. A mode brings those back under a switch, and every skill
+and check grows an "unless prototype" branch.
+
+Two readings of "prototype" remain, and they get different answers:
+
+- **Answer a question, then throw the code away.** A spike. The story-splitting skill already defines it:
+  timeboxed, explicitly disposable, acceptance criteria phrased as answered questions. That belongs inside
+  the loop as a slice kind whose branch never merges, and it is **not this plan**: section 5 lists it as the
+  thing to do next.
+- **Get a person to a thing they can play with, before anything is specified.** This plan.
+
+## 2. What exists today
+
+The front door is `slipwai generate --brief <dir>`, or the board's *Everything else* field on the start
+form. `design_docs.py` sorts the folder:
+
+- **The requirements document is found by name, then by heading.** `prd.md`, `prd.txt`, `requirements.md`
+  or `brief.md` wins; otherwise any `.md` or `.txt` whose name or first heading says PRD, requirement or
+  product brief. Relative links from it to files in the folder are rewritten to where they land.
+- **Everything else lands under `docs/design/`**, at most 200 files and 50 MB, and nothing outside the
+  folder travels. `commands/mockups.md` reads the directory before drawing and is told to *follow it rather
+  than invent one*.
+- **Handed-over surfaces are reviewed, not redrawn.** The surfaces stage storyboards them where they are,
+  `passage.surface_pages` reads the pages the storyboard embeds, and `drawn_states` reads each page's
+  `<title>` as the surface and each `<article class="state">`'s `<h2>` as a state. The board's approve
+  button writes `mock-states.md` from that, one verdict per state.
+- **The draft lists what the document did not settle** under `## Assumptions`, so a brief has a score the
+  moment it is drafted.
+
+Two things the loop wants have no door at generation: domain facts, which live in `.specify/domain/` and
+are *cited, never summarised*; and people, the actors a story signs in as, which live as JSON under
+`specs/<feature>/people/` and cannot exist before the draft makes the feature directory.
+
+## 3. The contract
+
+One folder. Its shape, as a prototyping tool must write it and as `slipwai brief check` (21.2) reads it:
+
+```
+<brief>/
+  prd.md             the requirements document: what it must do, how to tell it works, out of scope
+  people.md          one heading per person, with role and what they do      (21.3)
+  domain.md          facts true whether or not this product exists, cited    (21.4)
+  look/              a stylesheet, a brand sheet, a logo: the direction to follow
+  surfaces/
+    <surface>.html   one page per surface, no framework, no build step
+```
+
+A surface page carries `<title>` naming the surface and one `<article class="state">` per state, headed by
+an `<h2>` naming the state. That is the whole contract for a screen, and it is what the board reads today.
+Two optional attributes make the hand-over richer without changing what the keel reads: `data-decided="person"`
+or `data-decided="proposed"` on the article, which the board shows beside the state (21.5); and a `<link>` to
+`../look/*.css`, which the storyboard then serves from where it is.
+
+What the contract does **not** carry: code. A prototype that arrives as a React application is a brownfield
+repository, and its door is `slipwai adopt`, with a survey and a convergence map. That is a worse route for a
+first feature than a folder of static states, and the plan does not make it better.
+
+## 4. The prototyping tool
+
+It is the board's first page, and it is entirely optional: a door beside the start page, never in front
+of it. Slipwai as it is used today — the start page with nothing in *Everything else*, `slipwai generate`
+with no `--brief`, the draft from a document somebody wrote by hand — does not change by one line, and
+that is held by the tests that run the interview with no brief. The only thing the page and the rest of the
+board share is section 3: it writes the folder, and everything after it reads the folder. It was planned as a separate tool that never
+imports the keel, for a different user with a different output; the aim since 2026-11-05 is one
+non-technical person from describing the product through to delivery, and from the brief door on that
+person's face is already the board — *Everything else* on the start page, `./init` and `/draft` run from
+it, the storyboard approved on the Voyage page, Continue the build a button. A separate tool would put a
+folder path between them and all of that. Its working title in the mock is *Sketch*. What it has to do:
+
+1. **Draw a prototype the person can play**, from what they say. Not screens: a thing with taps. The mock's
+   fourth frame is the shape — one screen per surface, the states reachable by doing things, two people to
+   sign in as.
+2. **Walk the states.** Loading, empty, populated, partial, error, recovery, permission denied, offline: the
+   same list the mock-up researcher asks per surface. It asks the ones a person has to answer, proposes the
+   ones every good version of a screen has, and writes each as a state with who decided it. Nobody draws a
+   loading state unprompted, and the builder builds every state whether or not somebody talked about it.
+3. **Write decisions as they happen.** Every "no, grey it" is a line in `prd.md`. The draft's assumptions
+   count is the metric.
+4. **Keep facts apart from choices.** *A checkout lasts two years* goes in `domain.md`; *show the keelboats
+   greyed* goes in `prd.md`. The keel's own domain module makes this distinction the whole point, and the
+   person who has never written a spec is exactly the person who knows the facts.
+5. **Name the people.** Role, name, what they do. They become the people files and the demo as the actor.
+6. **Record what is out of scope**, which a prototype never records and the split always needs.
+7. **Check before hand-over, in plain words.** Green for what the builder can start without asking, amber for
+   what it will decide and say. The person never opens the folder; the developer can.
+8. **Export static state pages**, not the prototype's code. The prototype is for the person to play with. What
+   crosses the boundary is one page per surface, one block per state.
+
+Its first version is a conversational session the board runs the way it runs the draft — one headless
+session of the installed harness, with the person present in the page — using the toolkit's own skills:
+`frontend-design`, `storyboard`, `find-gaps` in its design-mock mode; the mock-up stage's researcher and
+draughtsman, run before a project exists. It writes the folder of section 3 under the board's own
+directory and hands it to the start page as the *Everything else* answer, so the person presses one button
+and never sees a path. The folder is still the seam: an outside tool that writes the same shape comes in by
+the same door, and `slipwai brief check` is the acceptance for both.
+
+## 5. The slices
+
+Keel side first, because a tool cannot target a contract nobody has written down. Sizes as in the other
+plans: S is a morning, M a day, L two or three.
+
+| Slice | What lands | Size | Status |
+|---|---|---|---|
+| 21.1 | `docs/reference/the-brief.md`, and the fixture brief the page points at | S | done |
+| 21.2 | `slipwai brief check <dir>`, and the page readers moved to `drawn.py` | M | done |
+| 21.3 | People in the brief: `people.md` becomes `specs/<feature>/people/` at the draft | M | done |
+| 21.4 | Domain facts in the brief: `domain.md` lands as `.specify/domain/brief.md` | S | done |
+| 21.5 | Who decided a state: `data-decided` read, counted on the board, written to `mock-states.md` | S | done |
+| 21.6 | The prototyping conversation, as the board's first page. **The record, 2026-11-05:** one real brief (club boat bookings) through the page in three turns, the hand-over button, the start page, `generate`, `./init`, `/draft` and `make surfaces` on the laptop-trial preset with a React browser app. Assumptions after the draft: **10**, seven of them the brief's own `## Open` lines carried through and three the draft added. Storyboard: 4 surfaces, 27 states, 10 decided by a person and 17 proposed, reviewed and not redrawn. **Approved the first time: yes** — 27 of 27 states on 2026-11-06, by the reviewer, with the audit's gaps carried as open questions: a link-expired state, a booking under way, My bookings' offline and loading, and the two emails. The approval started the event model over the Agent Client Protocol on Claude Code, from the board, without a terminal | L | done |
+| 21.6a | The session that writes a brief: a conversation the board runs in a workspace of its own | M | done |
+| 21.6b | The page: the conversation, the brief counting itself up, the prototype to play | M | done |
+| 21.6c | Check and hand over: the plain-words check, and the button that fills the start page | S | done |
+| 21.6d | The record: one real brief through the page and the two numbers, written here | S | done 2026-11-06 |
+| 21.7 | The right questions: a question set in the session's prompt, and a pre-made document reviewed against it and taken as the start | M | done |
+
+### 21.1 `docs/reference/the-brief.md` — S
+
+The contract of section 3 as a reference page, in the shape of the other reference pages: what is read,
+by which module, and what each refusal says. Links from `runsheet-generate.md` and the board's *Everything
+else* help text. No code changes.
+
+### 21.2 `slipwai brief check <dir>` — M
+
+Reads a folder the way `generate --brief` would and prints what it found, before anything is generated:
+
+```
+requirements document: prd.md, by name
+surfaces: 3, states: 16, each with a heading
+look: look/look.css
+people: 2   facts: 2, cited
+the draft will have to assume: 1 — one booking per member per day (prd.md leaves it open)
+```
+
+- It calls `design_docs.briefed` and `passage`'s page readers, so what it prints is what the stage will read.
+- A surface page with no `<article class="state">` is reported as one state, `shown`, which is what
+  `drawn_states` does, and the line says so.
+- "Will have to assume" is a heuristic over `prd.md`: a question mark in a heading or a bullet, `TBD`,
+  `open:`, and a `## Open` section. The line names the file and the heading. It is not the draft.
+- Every refusal ends with the command or edit that fixes it.
+- Tests: a fixture brief under `tests/fixtures/brief/`; a brief with no PRD prints the "written in the
+  agent" line; an oversized folder refuses with the count.
+
+### 21.3 People in the brief — M
+
+`people.md` in the folder, one `##` heading per person with `role:` and a line of what they do. The draft
+writes `specs/<feature>/people/<username>.json` from it, in the shape `try_it.people()` reads, with a
+generated password and no email. `draft.md` names the file; `check-try` already refuses a username the realm
+holds. A brief with no `people.md` changes nothing.
+
+### 21.4 Domain facts in the brief — S
+
+`domain.md` in the folder is copied to `.specify/domain/brief.md` at generation, with a first line saying
+where it came from. The skipper's citation rule needs no change: a fact there is a fact to cite.
+
+### 21.5 Who decided a state — S
+
+`drawn_states` reads `data-decided` on a state article where it is present. The voyage's storyboard card
+shows it beside the state. `record_verdict` writes it into `mock-states.md` as a trailing `(decided by
+<who>)` on the state line, so the split and the example map can see which states a person chose and which
+were proposed.
+
+### 21.6 The prototyping conversation, as the board's first page — L
+
+A page beside the start page, in this repository, offered and never required: a person who has a
+document, or nothing, takes the start page as they do today. It runs the eight steps of section 4 as a
+board session and writes the folder of section 3 under the board's directory. The three frames of the mock —
+describe it, walk the states, check and hand over — are its three faces, and hand-over is a button that
+fills the start page's *Everything else* answer. It runs its session the way `draft.py` runs the draft and
+the surfaces stage runs its draughtsman: the harness's own session, the toolkit's skills, the board
+reading what it says. Its acceptance test is one real brief through the page, `generate --brief`, `/draft`
+and `make surfaces` on a laptop-trial quickstart, with the two numbers recorded: assumptions after the
+draft, and whether the storyboard was approved the first time. Where it does not reach: a person still
+installs slipwai, Docker and a harness to have a board at all. That is section 6's last line and a plan of
+its own.
+
+## 6. What this plan does not do
+
+- **It does not change how slipwai is used today.** Every door this plan adds is optional and beside the
+  one that exists: `--brief` and *Everything else* are blank by default, the brief check is a verb nobody
+  has to run, the domain and people doors act only where the folder carried the file, the decided-state
+  mark is read only where a page says it, and the first page (21.6) is a door beside the start page, never
+  in front of it. A project started as today, with a document or with nothing, is generated, drafted, drawn
+  and built exactly as it was.
+- **It does not add a mode, a profile or a telegraph number.** Section 1.
+- **It does not build the spike slice kind.** That is the right answer to the other reading of "prototype":
+  a slice with a question and a timebox, whose branch is kept as a ref and never merges, whose output is a
+  finding under `docs/spikes/`. It needs a chart entry kind, a command and one refusal, and it is a plan of
+  its own.
+- **It does not accept a prototype's code.** A code prototype is an adoption.
+- **It does not change the storyboard stop.** The person still approves, surface by surface, on the board.
+  The brief makes the drawings theirs; it does not skip the look.
+- **It does not make the board reachable without a terminal.** Through to delivery for a non-technical
+  person is blocked by installation — a Python CLI, Docker, a harness and its login, a cloud target — not
+  by where the prototyping conversation lives. 21.6 is a better front door onto the same step; a board a
+  person can have without a terminal is a plan of its own, and a bigger one. Phase 22, the board on the
+  Agent Client Protocol (`acp-plan.md`), takes its first two steps and no more: what runs the board's
+  sessions picked on a settings page rather than found in a shell, and an agent installed from there;
+  the board itself is still started from a terminal.
+
+## 7. Open points
+
+- Whether `people.md` should also let a brief name an existing realm user, for a brief written against a
+  product that already has one.
+- Whether the tool should emit `given/when/then` examples per state for the event-modelling profile, or leave
+  that to the model stage. Leaving it is the default: the model derives examples from approved surfaces, and
+  a second source of examples is a second thing to keep in step.
+- The tool's name. *Sketch* is the mock's working title and nothing more.
+
+## 8. The build
+
+Written on 2026-11-04 from the code on `main` at `be3e9b1`, module by module. Every slice is one branch off
+`main`, one pull request, one `changelog.d/` fragment and a commit ending `Slice-done: 21.<n>`, with
+`make progress` run after it so the main plan's phase 21 row is ticked in the same commit; the fast
+gate inside the slice, `make verify` once before the merge, the same as every other phase. A new module
+gets its `TIERS` line in `scripts/check-structure.py` in the commit that adds it.
+
+### The order
+
+Two tracks, both starting from 21.1:
+
+```
+21.1 the page and the fixture
+  ├── 21.2 brief check, and drawn.py ── 21.5 data-decided
+  └── 21.4 domain.md ──────────────────── 21.3 people.md
+21.6a the session ── 21.6b the page ── 21.6c check and hand over ── 21.6d the record
+```
+
+- **21.1 first** because the fixture it adds is what 21.2's tests read line for line, what 21.4 and 21.3
+  generate from, and what 21.6 has to reproduce.
+- **21.2 before 21.5** because 21.2 moves the page readers out of `passage.py` into `drawn.py`, and 21.5
+  edits them there. `passage.py` stands at 449 of its 450 lines; a change to the readers where they are
+  would be a budget argument instead of a slice.
+- **21.4 before 21.3** because both touch the `--brief` block of `cli_generate.py`, 21.4 is the smaller
+  change, and 21.3 then rebases onto a settled shape. The two tracks do not touch each other's files.
+- **21.6 last and elsewhere.** The tool targets a released keel, and its first job is to make `slipwai brief
+  check` print the fixture's six lines for a brief it wrote itself.
+
+### The fixture: `tests/fixtures/brief/`
+
+The club boat bookings brief from the mock, written as the tool would export it and no larger than the
+contract needs:
+
+```
+tests/fixtures/brief/
+  prd.md             the decisions Sam made; a `## Open` section with one line, so the assume heuristic has one thing to find
+  people.md          `## Sam` role: member; `## Jo` role: bosun; one sentence each
+  domain.md          two facts, each with a line saying where it came from (the club's rules), so both read as cited
+  look/look.css      the club blue, one font, nothing else
+  look/logo.svg
+  surfaces/book-a-boat.html             7 states
+  surfaces/my-bookings.html             5 states
+  surfaces/boat-out-of-service.html     4 states
+```
+
+Each page carries `<title>`, `<link rel="stylesheet" href="../look/look.css">`, and one
+`<article class="state" data-decided="person|proposed">` per state with its `<h2>`. The count of each
+`data-decided` value is ten `person` and six `proposed`, asserted by 21.5. The page under
+`docs/reference/` links this folder as the worked example, the way the quickstarts are the reference's other
+worked examples.
+
+### 21.1 — the page and the fixture
+
+- `docs/reference/the-brief.md`, new, in the shape of the other reference pages: the folder; how the
+  requirements document is found (`PRD_NAMES`, `PRD_WORDS`, the first heading) and what happens when none
+  is; where everything else lands and the two limits; a surface page, its `<title>`, its articles and the
+  `shown` state a page with no article gets; the two optional attributes; what the folder does not carry,
+  and why that is `adopt`; a table of which module reads each file at which stage; and every refusal with
+  the command or edit that fixes it. The page describes the code as it is, so the `people.md`,
+  `domain.md` and `data-decided` rows say *planned, 21.3* and so on until each slice turns its row present
+  tense in its own pull request.
+- A row in `docs/reference/README.md`; the *1.1: from a document* bullet of `docs/guide/runsheet-generate.md`
+  links the page; the *Everything else* question's `why` in `interview_page.py` ends with the page's path.
+  `tests/test_interview_page.py` is read first for a pinned copy of that text.
+- `tests/fixtures/brief/` as above, and one case in `tests/test_design_docs.py`: `briefed(fixture)` finds
+  `prd.md` by name and seven other files.
+- Fragment `21.1-the-brief-reference.md`, PATCH, catch-up nothing.
+
+### 21.2 — `slipwai brief check <dir>`
+
+- `src/slipwai/drawn.py`, new, edge tier beside `passage`: the four regexes, `_plain`, `_surface_name`,
+  `surface_pages`, a new `page_states(page) -> tuple[str, list[str]]` that `drawn_states` is then a loop
+  over, and `record_verdict`. `passage.py` imports the four public names back so `bridge.py`,
+  `upstream.py`, `voyage_page.py` and `tests/test_passage.py` keep their imports, and its budget line comes
+  down to what is left. Nothing changes behaviour; `test_passage` is the proof.
+- `src/slipwai/brief_check.py`, new, edge tier beside `design_docs`: `people(path)` (one `## ` heading per
+  person, a `role:` line), `facts(path)` (one `## ` heading per fact, cited where a line says where it came
+  from, which is the shape `.specify/domain/README.md` asks for), `assumptions(prd)` (a question mark in a
+  heading or a bullet, `TBD`, `open:`, a `## Open` section; each named by file and heading), and
+  `report(home) -> list[str]`. It calls `design_docs.briefed`, `design_docs.weighed` and
+  `drawn.page_states`, so what it prints is what the stage will read. The lines, exactly:
+
+  ```
+  requirements document: prd.md, by name
+  surfaces: 3, states: 16, each with a heading
+  look: look/look.css
+  people: 2   facts: 2, cited
+  the draft will have to assume: 1 — one booking per member per day (prd.md, ## Open)
+  ```
+
+  A folder with no document says `requirements document: none; the specification is written in the agent`
+  and exits 0, the answer `generate` gives. A page with no article says `1 state (shown: the page has no
+  <article class="state">)`. Not a directory and over the limits are refusals, exit 1, each ending with the
+  fix. `people` and `facts` are read here, before 21.3 and 21.4 do anything with them, so the output is
+  stable from this slice on.
+- `src/slipwai/cli_brief.py`, new: `brief_main(argv)`, `prog="slipwai brief"`, the one sub-verb `check`;
+  `brief` in `VERBS` and a row in `dispatch`'s tuple in `cli.py`.
+- Tests, all fast: `tests/test_brief_check.py` over the fixture's six lines; no document; no `surfaces/`;
+  a page with no article; `FILES + 1` files refused with the count; the four assumption shapes, and a
+  heading that is a question counted once. `tests/test_cli.py`: `slipwai brief` alone prints usage naming
+  `check`.
+- `docs/reference/the-brief.md` gains *What `slipwai brief check` says*; the runsheet's 1.1 bullet says to
+  run it before `generate`.
+- Fragment `21.2-brief-check.md`, MINOR, catch-up nothing: it is a verb of the command.
+
+### 21.5 — who decided a state
+
+- `drawn.py`: `_ARTICLE` keeps the opening tag's attributes as a group; `page_states` returns each state
+  with its `data-decided` value or `""`; `drawn_states` keeps its shape as a projection, and a new
+  `decided_states` carries the value. `record_verdict` writes `- <state> — approved (decided by sam)` and
+  `- <state> — parked: <why> (decided by sam)` where the value is present and the line it writes today
+  where it is not. The three readers of that line — `check-surfaces.py`'s `STATE`, `agents/surfaces.py`'s
+  `VERDICT`, `agents/feedback.py` — match `— approved` and `— parked` with a word boundary and are not
+  touched; one test runs `check-surfaces.py`'s regex over a line with the suffix to prove it.
+- `voyage_page.py`'s `verdict_form`: where any state carries the attribute, the note gains one line, `16
+  states: 10 decided by Sam, 6 proposed`, and nothing otherwise. The file stands at 785 of 790 lines; the
+  line is written inside that or the budget moves with its reason in the same commit.
+- `brief_check.py`'s surfaces line gains `, 10 decided by a person, 6 proposed` where any page carries it.
+- `assets/toolkit/commands/mockups.md`: one sentence saying a handed-over page may carry `data-decided`
+  and a redraw keeps it. `tests/fixtures/command-pages.sha256` is taken again with
+  `PYTHONPATH=src:tests python3 tests/command_pages.py`.
+- Tests: `test_passage` (the suffix written, a page without the attribute unchanged, a parked line keeps
+  the suffix after the reason), `test_voyage` (the count line), `test_brief_check` (the fixture's split).
+- Fragment `21.5-decided-states.md`, MINOR; catch-up `slipwai migrate`, which brings the command page.
+
+### 21.4 — domain facts in the brief
+
+- `cli_generate.py`, the `--brief` block: a `domain.md` at the folder's top is taken out of `rest` before
+  the rest is weighed, and written through `files`, the way `docs/prd.md` is, as `.specify/domain/brief.md`
+  with a first line: *Handed over with the brief as `domain.md`. A fact here is cited by its heading, like
+  any other file in this directory.* `domain_files` already writes the directory's `README.md` on every
+  profile, so nothing else is scaffolded. The `brief:` line printed at generation names the copy.
+- Tests, in `tests/test_design_docs.py`, following the case there that generates and reads the tree: a
+  generate from the fixture lands `.specify/domain/brief.md` with that first line and both headings, and
+  no `docs/design/domain.md`; a brief without one writes nothing. That module already shells out to
+  `generate` and is not in `SLOW`; if `make unit` slows for it, it moves to `SLOW` in the same commit.
+- `the-brief.md`'s `domain.md` row turns present tense.
+- Fragment `21.4-brief-domain.md`, MINOR; catch-up for a project generated from a brief before this:
+  `cp docs/design/domain.md .specify/domain/brief.md`.
+
+### 21.3 — people in the brief
+
+- `people.md` already travels, as `docs/design/people.md`; the keel changes nothing at generation.
+- `assets/toolkit/commands/draft.md` gains a step after the assumptions step: where `docs/design/people.md`
+  exists, write `specs/<feature>/people/<username>.json` per `## ` heading, in the shape `try_it.py`'s
+  `declared_people` reads — `username` from the heading, lowercased; `name`; a generated password, sixteen
+  characters, never reused; `realm`; `roles` from the `role:` line; no `email` — and name each file in the
+  say-back and under a `## People` heading in the specification. The one line to settle at the keyboard is
+  `realm`: it is read from `docker/keycloak/realms/`, against `try_it.py`'s own reading, and the step says
+  what a project with no sign-in server writes. `check-try` (20.1) already refuses a username a realm holds.
+- `brief_check.people` (21.2) and this step read the same shape; `the-brief.md` states it once, and both
+  cite the page.
+- Tests: `command-pages.sha256` taken again; a prose test in the style of `tests/test_skills.py` that
+  `draft.md` names `docs/design/people.md` and `specs/<feature>/people/`; `test_brief_check` already holds
+  the fixture's two people.
+- Fragment `21.3-brief-people.md`, MINOR; catch-up `slipwai migrate` for the page, and a project whose
+  draft has already run writes the files by hand from `docs/design/people.md`.
+
+### 21.6 — the board's first page
+
+Written on 2026-11-05 from the code on `brief-21-3`, after the user asked for the build to start ahead of
+the release the outline waited on. Four slices, each its own commit with a `Slice-done: 21.6a` to `21.6d`
+trailer; the main plan's `21.6` row is a heading over them and ticks itself when the four are done.
+
+**What it stands on, read before writing a line.** The console (`console.py`, `console_page.py`) is the
+precedent and the shape: one conversation on the board, held as turns, run as a headless session of
+Claude Code (`claude -p … --output-format stream-json`, resumed by session id), polled at one JSON route,
+with a stand-in command as the test seam. The console can read and cannot do; the first page's session
+can read and write, inside one folder, and nothing else. `brief_check.report(home)` is the brief counting
+itself up. `assets.SLIPWAI` (`~/.slipwai`) is where this machine keeps what is its own and not a project's.
+The start page is `interview_page.py`, whose `brief` question is a path. The tab bar is `page_shell.TABS`.
+Every module here lands in the `edge` tier beside `console`, and `bridge.py` is at 907 of 910: its two new
+lines hand straight to the page's own module, and its budget line says so.
+
+**What it is not.** Not a toolkit script: there is no project for one to live in. Not harness-neutral in
+its first version: the console already runs on Claude Code alone and says so when `claude` is not on the
+path, and the first page says the same sentence; other harnesses follow when their headless sessions can
+be resumed. Not a door in front of the start page: a tab beside it, section 6.
+
+#### 21.6a — the session
+
+- `src/slipwai/brief_session.py`, from `console.py`'s shape: a `Sketch` (the module's name for one
+  conversation; the product's name is open point 3) with `turns`, `said(since)`, `ask(message)`, `reset()`,
+  `run()` and `take(line)`, and these differences. **Its cwd is a workspace of its own**,
+  `~/.slipwai/sketches/<slug>/`, made at `ask` where it does not exist, with `brief/` for the folder of
+  section 3 and `prototype/` beside it for the thing with taps, so the prototype's code never travels as
+  design material. **Its tools are** `Read,Write,Edit,Glob,Grep`, which Claude Code confines to the cwd
+  in a print session; the system prompt names the two folders and refuses everything outside them.
+  **Its system prompt is the eight steps** of section 4, as `assets/brief/sketch.md`, with the contract
+  folded in by reading `docs/reference/the-brief.md`'s folder block, so the two cannot drift; the skills
+  `frontend-design`, `storyboard` and `find-gaps` are projected from `assets/toolkit/skills/` into
+  `<workspace>/.claude/skills/` before the first turn, the way `./init` projects them into a project. **After
+  each answer** it reads `brief_check.report(<workspace>/brief)` where the folder exists and keeps the
+  lines as the sketch's `check`, so the page shows the count without a second route.
+- `SKETCHES` by slug, as `CONSOLES` by root; `for_slug(slug)`; a slug from the product's name the way
+  `naming` makes one.
+- `tests/test_brief_session.py` over a stand-in agent that writes `brief/prd.md` and a surface page and
+  says something: the workspace is made with the two folders and the skills, the question is the command's
+  last argument, the tools are the five, the second question resumes, the check is the fixture's lines
+  where the stand-in copied the fixture in, the folder is confined (`../` in a slug is refused).
+- Fragment `21.6a-brief-session.md`, MINOR; catch-up nothing.
+
+#### 21.6b — the page
+
+- `src/slipwai/brief_page.py`: `/brief` renders the page in the shell with the tab bar; its card is
+  `console_page.py`'s conversation with the words changed, and beside it the brief counting itself up
+  (the five lines of the check, or *nothing yet*) and the prototype embedded (`<iframe>` of
+  `/brief/files/<slug>/prototype/index.html`, or the surface pages where there is no prototype yet). The
+  header carries the four steps as the mock draws them — Describe, Walk the states, Check, Hand over — with
+  the one the conversation is at marked; the session says which by a line it prints, `step: <n>`, which
+  `take` reads and keeps. A sketch is named by its slug in the address, `/brief?sketch=<slug>`, and the
+  page with none lists the sketches this machine has and a field for a new one's name.
+- `page_shell.TABS` gains `("/brief", "Describe a product")` after *Start a project*; `bridge.py` gains
+  one GET line and one POST line that hand `/brief…` to `brief_page.route(...)`, and `# budget: 920`.
+- `/brief/files/<slug>/<path>` serves a file from the workspace, confined to it, with the type by suffix:
+  what the iframe and the surface pages' stylesheets load.
+- `tests/test_brief_page.py` with `BoardTest`: the tab is on the bar, the page renders empty and with a
+  sketch, the JSON route carries turns, check and step, a file is served and `..` is refused, the published
+  (read-only) copy has no ask.
+- Fragment `21.6b-brief-page.md`, MINOR; catch-up nothing.
+
+#### 21.6c — check and hand over
+
+- The Check face: the check's five lines rendered in plain words with green and amber, as the mock's
+  Handover frame draws them — green where the draft can start without asking, amber for what it will
+  decide and say, which is the `assume` line; the refusal, where the folder is not yet one, as the sentence
+  the verb prints.
+- The Hand over button: a link to `/generate?brief=<workspace>/brief`; `interview_page.interview` takes
+  the query's `brief` as the field's answer, and nothing else about the start page changes. The person
+  presses one button and sees the start page with its last field filled.
+- `tests/test_brief_page.py` grows the two; `tests/test_interview_page.py` proves the query fills the field
+  and that the page with no query is byte for byte what it was.
+- Fragment `21.6c-hand-over.md`, MINOR; catch-up nothing.
+
+#### 21.7 — the right questions, and a document to start from
+
+Asked for on 2026-11-05, after the first live run: "we need to ensure we ask the right questions", and a
+person who already has a document must be able to start from it, have its quality checked, and have it
+taken into the conversation. The model is `deanpeters/Product-Manager-Skills`' `prd-development` skill,
+at the user's word: the one-sentence summary written first and refined last, the problem with its
+evidence, why now, one primary measure with what to watch and what must not get worse, stories with "what
+if they skip a step" and "out of order", out of scope with a reason on each line, dependencies and risks,
+open questions, gaps tagged where they fall, a check against earlier sections before moving on, and a
+self-assessment at the end. The others were read critically and four things taken: the reviewer's five
+issue types from `carollrollroll/prd-skill` (contradiction, gap, dangling reference, overreach, unowned
+decision) for step 0; the per-feature three-way check from `GarrusHuang/prd-writer` (where the data comes
+from, the rule, what happens when it fails), asked and never gated; *when* and *what job* from
+`DivikWu/product-requirement-craft`'s problem framing; and the vague-word rule from GitHub's
+`awesome-copilot` PRD skill. Left out of all of them: priorities, timelines, roadmaps, technical sections,
+metrics frameworks, document formats, completeness scores and sign-off checklists — each is another
+stage's job here or a product manager's artefact, and the brief keeps its four headings.
+
+- **The question set**, folded into step 3 of `assets/brief/sketch.md` and nowhere else, so the one prompt
+  stays the one place: what problem, for whom, why now, the one measure that must move and what must not
+  get worse, what is out of scope and why; and per feature, where the data comes from, the rule, and what
+  happens when it fails, with "what if they skip a step" and "what if they do it out of order" asked of
+  every flow. Asked in the person's words, one or two at a time, never as a form. The live run's seven
+  open questions are the test: a session with the set asks them before it draws the second version.
+- **A document to start from.** The page with no sketch gains a big box under the name for the first thing
+  the person says, and a button for a document they already have, which lands as `brief/prd.md` before
+  the first turn; the conversation begins from either without another word typed. Step 0 of the prompt,
+  where that file exists or the first message is itself a document: read it as a senior reviewer would against the question set — gaps,
+  contradictions, references to nothing, decisions nobody owns — write every miss under `## Open`, say
+  what the document settled and what it did not, and only then draw. A document good enough has few open
+  lines and the page says so in the same amber line it already has; nothing new to read.
+- `brief_page.py` takes the second field; `brief_session.py` writes the document in before `prepared`;
+  `tests/test_brief_page.py` and `tests/test_brief_session.py` grow one test each; the prompt test holds
+  the question set's headings. Fragment `21.7-the-right-questions.md`, MINOR. Both doors optional, section 6.
+
+#### 21.6d — the record
+
+- One real brief through the page on this machine, `generate --brief`, `/draft` and `make surfaces` on a
+  laptop-trial quickstart, with the two numbers written into section 5's heading row: assumptions after the
+  draft, and whether the storyboard was approved the first time. The commit carries the numbers and nothing
+  else, with `Slice-done: 21.6d`.
+
+#### What left this phase
+
+21.8 to 21.10 — the board on the Agent Client Protocol, an agent installed from its settings page, and
+the stages over the protocol — were planned here on 2026-11-05 and moved the same day to phase 22,
+[the ACP plan](acp-plan.md), to be built before 21.6d's record is taken. The split was the user's:
+"what we're currently looking at" and "porting existing work to ACP", the port first.
+
+### What to watch
+
+- **Budgets.** `passage.py` 449/450 until 21.2 moves the readers; `voyage_page.py` 785/790 at 21.5.
+- **Typecheck.** The vendored mypy wants Python 3.14: `PYTHONPATH=.python-tools python3.14 -m mypy`.
+- **The ten captain and cruise-question tests** that fail on this machine fail on `main` too; a slice does
+  not own them, and `make verify` in CI is the reading that counts.
+- **Words.** The folder is *the brief*; the tool is unnamed; nothing here is a mode, a profile or a rigour.

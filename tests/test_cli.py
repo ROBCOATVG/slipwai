@@ -46,6 +46,13 @@ class VersionTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, 2)
         self.assertIn("a verb is required: " + ", ".join(VERBS), err.getvalue())
 
+    def test_brief_alone_says_that_check_is_its_verb(self) -> None:
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as raised, contextlib.redirect_stderr(err):
+            main_with(["brief"])
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("check", err.getvalue())
+
     def test_a_verb_this_copy_has_not_got_is_refused_rather_than_half_run(self) -> None:
         err = io.StringIO()
         with self.assertRaises(SystemExit) as raised, contextlib.redirect_stderr(err):

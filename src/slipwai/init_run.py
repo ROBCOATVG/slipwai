@@ -27,12 +27,14 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 540 — one runner for every child the board starts: assessment of a feature, and runs of steps that go on
+# budget: 610 — one runner for every child the board starts, and the file check an exit code does not make:
+# assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
 # lines of command, prose and verdict beside the others, which is what makes them comparable; split by
@@ -123,6 +125,13 @@ class Step:
     #: Whether a failure ends the run there. The gate's does not: the baseline its red first run writes is
     #: still committed, and the run still ends failed.
     stops: bool = True
+    #: A step run in this process rather than as a child — a stage over the Agent Client Protocol
+    #: (`stage_session.py`) — given the fitting to say its lines into; its return is the exit status.
+    session: Callable[[Any], int] | None = None
+    #: Asked once the command exited 0: a sentence where it did not do what it said — a draft with no
+    #: specification — which ends the step failed, or nothing where all is well. A child's exit code is
+    #: the child's word; the file is the board's.
+    check: Callable[[], str] | None = None
 
 
 def init_step(where: Path, harness: str, repository: str | None,
@@ -139,7 +148,10 @@ DRAFT = ["make", "draft"]
 DRAFTING = ("Drafting the constitution and the first specification from docs/prd.md — `make draft`, a headless "
             "session of the coding agent in the project. It stops at the specification: read it, then "
             "Continue the build.")
-#: What the Draw the surfaces button runs: the first half of `/mockups` — the research, the wireframes and
+DRAFTING_ACP = ("Drafting the constitution and the first specification from docs/prd.md — the project's agent "
+                "over the Agent Client Protocol, from this board. Where only you can decide, it asks here; "
+                "answer on the card. It stops at the specification: read it, then Continue the build.")
+#: What the Draw the storyboard button runs: the first half of `/mockups` — the research, the wireframes and
 #: the storyboard — in a headless session, and then a stop. The second half is a person looking at one
 #: surface at a time, which is the stage rather than a step on the way to it, and is why nothing here marks
 #: anything approved. Before the model deliberately: `project/ladder.py` has the review there, because a
@@ -154,9 +166,15 @@ MODELLING = ("Modelling — `make model-next`: the event model from the approved
 DRAWING = ("Drawing the surfaces — `make surfaces`: the research, the wireframes and the storyboard in a "
            "headless session of the coding agent. It stops at the storyboard, which is where you come in: "
            "nothing is approved by a session nobody was in.")
+DRAWING_ACP = ("Drawing the surfaces — the project's agent over the Agent Client Protocol, from this board: the "
+               "research, the wireframes and the storyboard, with what it reads and writes shown as it goes. "
+               "Where only you can decide, it asks here. It stops at the storyboard, which is where you come in.")
 ASSESS = ["make", "assess"]
 ASSESSING = ("Assessing the next feature — `make assess`: Spec Kit decides whether the idea handed to /sail "
              "deserves a specification, and writes one only when the verdict is go.")
+ASSESSING_ACP = ("Assessing the next feature — the project's agent over the Agent Client Protocol, from this "
+                 "board: whether the idea deserves a specification, written only when the verdict is go. Where "
+                 "only you can decide, it asks here.")
 #: What the button runs: the chart and the split in a second session, `/cruise` enabled, the fleet cast off.
 LAUNCH = ["make", "launch"]
 LAUNCHING = ("Continuing the build — `make launch`: the chart and the split in a headless session, then /cruise "
@@ -237,6 +255,7 @@ class Fitting:
         self.code: int | None = None
         self.began = time.monotonic()
         self.stopped: float | None = None
+        self.stage: Any = None  # the stage over the protocol running now, for its cards on the board
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
@@ -319,16 +338,22 @@ class Fitting:
             if index or not announced:
                 self.say(step.announced)
             last = final and index == len(steps) - 1
-            try:
-                child, reading, ours = self.child(step.argv)
-            except OSError as fault:
-                self.say(f"{' '.join(step.argv)} could not be run here: {fault}", code=1)
-                return 1
-            with child:  # closed and waited on by the context manager, so a long run leaks no pipe
-                self.read(reading)
-                code = child.wait()
-            if ours:
-                os.close(reading)
+            if step.session is not None:
+                code = step.session(self)
+            else:
+                try:
+                    child, reading, ours = self.child(step.argv)
+                except OSError as fault:
+                    self.say(f"{' '.join(step.argv)} could not be run here: {fault}", code=1)
+                    return 1
+                with child:  # closed and waited on by the context manager, so a long run leaks no pipe
+                    self.read(reading)
+                    code = child.wait()
+                if ours:
+                    os.close(reading)
+            if not code and step.check and (left := step.check()):
+                self.say(left)
+                code = 1
             ends = bool(code) and step.stops
             self.say(step.ended(code), code=(code or failed) if ends or last else None)
             if ends:
@@ -373,10 +398,64 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
     agent was named to draft with. Returned rather than awaited: what it says is read by polling."""
     steps = [init_step(where, harness, repository, extensions)] if harness else []
     if steps and prd:
-        steps.append(Step(DRAFT, DRAFTING, drafted, "draft"))
+        steps.append(draft_step(where))
     fitting = Fitting(where, steps, said)
     fitting.thread.start()
     return fitting
+
+
+def stage_step(where: Path, command: str, argument: str, argv: list[str], announced: str, over: str,
+               ended: Callable[[int], str], key: str, limit: float = 1800.0,
+               prompt: str | Callable[[], str] | None = None, done: str = "", undone: str = "",
+               **held: Any) -> Step:
+    """A stage: over the protocol where this board can launch the project's agent, so the agent can ask the
+    person what only they can decide and the board can see it work; the headless child where it cannot.
+
+    `prompt` is the stage's own words where it has no command file — the model's — or what gets them from
+    the project; one that gets nothing leaves the stage to the child. `done` and `undone` are what the
+    stage says at its end over the protocol, where `ended`'s words about a `make` that never ran would be
+    wrong. `held` is the session's: `before`, `after`, `pid`, `stage`."""
+    from .stage_session import StageSession, launchable  # noqa: PLC0415 — the edge tier, reached from here only
+
+    if launchable(where) is None:
+        return Step(argv, announced, ended, key, check=held.get("after"))
+    words = prompt() if callable(prompt) else prompt
+    if prompt is not None and not words:
+        return Step(argv, announced, ended, key, check=held.get("after"))
+    session = StageSession(where, command, argument, limit=limit, prompt=words or "", **held)
+    if done:
+        def ended(code: int) -> str:
+            return done if code == 0 else undone
+    return Step([], over, ended, key, session=session.run)
+
+
+def draft_step(where: Path) -> Step:
+    def undrafted() -> str:
+        # An agent that read AGENTS.md's setup step as an order to stop ended its turn cleanly, with nothing
+        # drafted, and the stage said the specification was there to read. The file is the reading.
+        return "" if any((where / "specs").glob("*/spec.md")) else (
+            "The session ended without a specification under specs/; its lines above say where it stopped. "
+            "Draft the specification tries once more.")
+    return stage_step(where, "draft", "docs/prd.md", DRAFT, DRAFTING, DRAFTING_ACP, drafted, "draft",
+                      after=undrafted,
+                      done="The draft is done. The specification is under specs/: read it, and Continue the "
+                           "build charts and splits it and casts off.",
+                      undone="The draft stopped short; its lines above say where. Draft the specification tries "
+                             "once more, or write it with the agent.")
+
+
+def draft(where: Path, said: list[str] | None = None) -> Fitting:
+    """The draft run again, in the background: what the board's Draft the specification button starts, on a
+    project with a document and no specification — a draft that stopped short, or a project made without one."""
+    fitting = Fitting(where, [draft_step(where)], said)
+    fitting.thread.start()
+    return fitting
+
+
+def first_feature(where: Path) -> str:
+    """The feature `make surfaces` draws when none is named: the first with a specification."""
+    found = sorted((where / "specs").glob("*/spec.md")) if (where / "specs").is_dir() else []
+    return found[0].parent.name if found else ""
 
 
 def adopted(where: Path, delivery: str, harness: str | None, said: list[str] | None = None,
@@ -429,7 +508,10 @@ def assessed(code: int) -> str:
 
 def assess(where: Path, slug: str, said: list[str] | None = None) -> Fitting:
     """One captured idea assessed, in the background: what the voyage's next-feature button starts."""
-    fitting = Fitting(where, [Step([*ASSESS, f"SLUG={slug}"], ASSESSING, assessed, "assess")], said)
+    step = stage_step(where, "assess", slug, [*ASSESS, f"SLUG={slug}"], ASSESSING, ASSESSING_ACP, assessed, "assess",
+                      done="The assessment is done. Where the verdict was go, the specification is under specs/.",
+                      undone="The assessment stopped short; its lines above say where.")
+    fitting = Fitting(where, [step], said)
     fitting.thread.start()
     return fitting
 
@@ -445,21 +527,19 @@ def triaged(code: int) -> str:
     return f"`make triage` exited {code}. Its last lines say why; Triage on the Feedback card tries again."
 
 
-def triage(where: Path, said: list[str] | None = None) -> Fitting:
-    """The feedback nobody has proposed a route for, read in the background: what Send on the board starts."""
-    fitting = Fitting(where, [Step(TRIAGE, TRIAGING, triaged, "triage")], said)
-    fitting.thread.start()
-    return fitting
-
-
 def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitting:
-    """The surfaces drawn, in the background: what the board's Draw the surfaces button starts.
+    """The surfaces drawn, in the background: what the board's Draw the storyboard button starts.
 
     `feature` names the one to draw, which a redraw after a disapproval needs: `make surfaces` on its own
     draws the first specification, and the storyboard turned down may not be that one.
     """
     argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
-    fitting = Fitting(where, [Step(argv, DRAWING, drew, "surfaces")], said)
+    step = stage_step(where, "mockups", feature or first_feature(where), argv, DRAWING, DRAWING_ACP, drew,
+                      "surfaces", limit=900.0, pid="surfaces.pid", stage="",
+                      done="The surfaces are drawn. The storyboard is below: open it, then Approve or "
+                           "Disapprove it on this page. That verdict is what the model and the chart read.",
+                      undone="The drawing stopped short; nothing was approved. Its lines above say where.")
+    fitting = Fitting(where, [step], said)
     fitting.thread.start()
     return fitting
 
@@ -502,20 +582,6 @@ def outside_session(root: Path) -> dict | None:
             return {"where": str(root), "lines": [said], "step": step, "at": 1, "seconds": seconds,
                     "done": False, "code": None}
     return None
-
-
-def begin_model(where: Path, said: list[str] | None = None) -> Fitting:
-    """The model begun, in the background: what approving a storyboard starts on an event-modelling project."""
-    fitting = Fitting(where, [Step(MODEL, MODELLING, began_model, "model")], said)
-    fitting.thread.start()
-    return fitting
-
-
-def launch(where: Path, said: list[str] | None = None) -> Fitting:
-    """The build continued, in the background: what the board's button starts, carrying the receipt so far."""
-    fitting = Fitting(where, [Step(LAUNCH, LAUNCHING, launched, "launch")], said)
-    fitting.thread.start()
-    return fitting
 
 
 def init_flag(parser: argparse.ArgumentParser) -> None:

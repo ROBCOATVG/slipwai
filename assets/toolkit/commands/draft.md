@@ -57,13 +57,25 @@ same script after `./init` where a PRD was given when the project was generated.
    `commands/cruise.md` decides — recommended first, and written down — and record each such decision in
    the specification under its own `## Assumptions` heading, so that a person reading the specification sees
    what was decided for them before anything is built on it.
-4. **Run the gates the drafts answer to** — `{{make}} check-speckit` and `{{make}} check-constitution` — and
+4. **Declare the people the brief names.** Where `docs/design/people.md` exists — one `## ` heading per
+   person, a `role:` line and a sentence of what they do, the shape slipwai's `docs/reference/the-brief.md`
+   states — and `docker/keycloak/realms/` holds a realm, write one `specs/<feature>/people/<username>.json`
+   per heading, in the shape the try-it stories sign in as and `{{make}} check-try` holds: `username` is
+   the heading, lowercased; `name` is the heading as written; `password` is sixteen characters generated
+   here and never reused; `realm` is the `realm` value of that realm file — where there are several, the
+   one the browser app's issuer names; `roles` is the `role:` line; no `email`. List them under a
+   `## People` heading in the specification, one line each with the role and what they do, so a story that
+   signs in as one is read against who they are. A project with no realm folder has nothing to sign in
+   to: write the `## People` heading from the file all the same, say under it that no sign-in was
+   declared, and write no JSON. A username a realm already holds is the realm's — `check-try` refuses the
+   file — so skip it and say so.
+5. **Run the gates the drafts answer to** — `{{make}} check-speckit` and `{{make}} check-constitution` — and
    fix what they refuse.
-5. **Commit on the current branch**, as `Draft the constitution and the first specification from
+6. **Commit on the current branch**, as `Draft the constitution and the first specification from
    docs/prd.md`. Then say: the feature directory, how many requirements and criteria it holds, every
-   assumption made, and that `/launch` — the board's **Continue the build** — is the next step. End the
+   assumption made, every person declared and the file each was written to, and that `/launch` — the board's **Continue the build** — is the next step. End the
    session. Do not chart, split, plan, mock up or implement: those are the launch's, after a person has read
    this.
-6. **A further feature is not this command.** Hand it to `/sail`. That session captures it, asks whether
+7. **A further feature is not this command.** Hand it to `/sail`. That session captures it, asks whether
    it is a new feature, and assesses it. `{{make}} assess SLUG=<slug>` is the headless half, and it runs
    only after `docs/intake/<slug>/confirmed` exists.

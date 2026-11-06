@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My bookings</title>
+<link rel="stylesheet" href="../look/look.css">
+</head>
+<body>
+<h1>My bookings</h1>
+
+<article class="state" data-decided="proposed">
+  <h2>Loading</h2>
+  <p class="note">Finding your bookings…</p>
+</article>
+
+<article class="state" data-decided="person">
+  <h2>Empty</h2>
+  <p class="note">You have no bookings. Book a boat from the first page.</p>
+</article>
+
+<article class="state" data-decided="person">
+  <h2>Populated</h2>
+  <div class="boat"><span>Kestrel · Saturday 8 November, morning</span><button>Cancel</button></div>
+</article>
+
+<article class="state" data-decided="person">
+  <h2>Cancelled</h2>
+  <p>Kestrel on Saturday morning is cancelled. The half day is free for everyone again.</p>
+</article>
+
+<article class="state" data-decided="proposed">
+  <h2>Cancel failed</h2>
+  <p class="note">The booking is still yours. Try again.</p>
+</article>
+</body>
+</html>

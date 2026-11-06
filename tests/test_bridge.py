@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import tempfile
 import threading
 import time
@@ -30,7 +31,9 @@ from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 700 — every route the board answers, driven against `board_fixture`: the fleet pages, the
+# budget: 775 — every route the board answers, the draft that runs by itself, the question that reads
+# once among them, driven against
+# `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
 # *window* is — a seat each, the stop, who answers — is `test_run_window`, which this stopped being able to
 # hold; the fixture moved out with it rather than being copied, which is what the one-suite rule was for.
@@ -87,6 +90,19 @@ class PageTest(Fixture):
         # And a note, which needs no answer, can be put away with Done.
         self.assertIn('data-dismiss="ORD"', said)
 
+    def test_a_question_reads_once_in_its_own_words_with_its_slice_and_a_clock(self) -> None:
+        """A stage's question showed three times, with its instant raw beside it."""
+        self.deck("ORD", logs.entry("question", fairway="ORD", id="D13", slice="chart",
+                                    what="Confirm one context for the 16 slices? See decisions.md#d13.",
+                                    t="2026-11-06T15:45:17.501701+00:00"))
+        said = self.rendered()
+        card = said[said.index("Waiting on you"):said.index("Streams")]
+        self.assertIn("<b>Confirm one context for the 16 slices? See decisions.md#d13.</b>", card)
+        self.assertIn('<span class="tag">chart · D13</span>', card)
+        self.assertNotIn("15:45:17.501701", card, "the instant reads as a clock, not as it was written")
+        self.assertEqual(card.count("Confirm one context"), 2, "once in the row, once in the folded log line")
+        self.assertIn("<summary>what the stream said</summary>", card)
+
     def test_a_message_from_a_person_is_escaped_and_never_rendered_as_markup(self) -> None:
         self.deck("ORD", logs.entry("told", fairway="ORD", message="<script>alert(1)</script>"))
         self.assertNotIn("<script>alert(1)</script>", self.rendered())
@@ -135,6 +151,19 @@ class ServerTest(BoardTest):
         self.assertEqual(code, 200)
         self.assertEqual([e.fields["message"] for e in self.read("ORD") if e.kind == "told"],
                          ["from the page"])
+
+    def test_an_answer_to_a_question_is_the_decision_that_closes_it(self) -> None:
+        """The box under a question wrote a note beside it, and the question stood until somebody wrote the
+        decision line by hand."""
+        self.deck("ORD", logs.entry("question", fairway="ORD", id="D13", slice="chart", what="One context?"))
+        self.assertIn('data-question="D13"', self.rendered())
+        code, said = self.post("/tell", {"fairway": "ORD", "message": "Yes, one context.", "question": "D13"})
+        self.assertEqual((code, said), (200, "answered D13"))
+        taken = [e for e in self.read("ORD") if e.kind == "decision"]
+        self.assertEqual([(e.fields["id"], e.fields["what"], e.fields["decided_by"]) for e in taken],
+                         [("D13", "Yes, one context.", "human")])
+        self.assertNotIn("Needs an answer", self.rendered(), "answered: the question is off the card")
+        self.assertEqual(self.post("/tell", {"fairway": "ORD", "message": "x", "question": "../D"})[0], 400)
 
     def test_a_note_for_the_host_is_dismissed_from_the_page(self) -> None:
         """A session's note needs no answer, and nothing but a `read` receipt takes it off Waiting on you."""
@@ -277,6 +306,15 @@ class LandingTest(BoardTest):
         assignment — and it is made to the window that generated and to no other."""
         self.assertEqual(self.land()[0], 200)
         self.assertEqual(self.seats()[self.seat].root, self.made)
+
+    def test_a_window_whose_project_was_deleted_goes_back_to_the_harbour(self) -> None:
+        """It answered every request with `[Errno 2] No such file or directory` until the seat was dropped."""
+        self.land()
+        shutil.rmtree(self.made)
+        code, said = self.get("/voyage")
+        self.assertEqual(code, 200)
+        self.assertEqual(self.seats()[self.seat].root, self.root)
+        self.assertNotIn("No such file", said)
 
     def test_it_lands_with_the_receipt_for_what_it_made(self) -> None:
         self.land()
@@ -518,7 +556,10 @@ class LandingTest(BoardTest):
         self.assertFalse(json.loads(self.get("/voyage.json")[1])["drawable"])
         (self.made / "specs/001-demo/mockups/mock-states.md").write_text(
             "## Surface: Discover\n- Populated \u2014 parked: no styling at all\n", encoding="utf-8")
-        self.assertTrue(json.loads(self.get("/voyage.json")[1])["drawable"])
+        found = json.loads(self.get("/voyage.json")[1])
+        self.assertTrue(found["drawable"])
+        self.assertEqual(found["waiting"], {"count": 1, "href": "#draw",
+                                            "text": "The specification is ready: read it, then draw the storyboard"})
         # Not while a redraw this board did not start is running: that offered a second drawing over the first.
         (self.made / ".slipwai").mkdir(exist_ok=True)
         (self.made / ".slipwai/surfaces.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
@@ -526,6 +567,31 @@ class LandingTest(BoardTest):
         (self.made / ".slipwai/surfaces.pid").unlink()
         self.assertEqual(self.post("/draw", {}), (200, "drawing the surfaces"))
         self.assertIn("drawing 001-demo again", self._until("surfaces")["lines"])
+
+    def test_a_document_with_no_specification_is_drafted_by_itself_once_and_the_button_is_the_retry(self) -> None:
+        """A draft that stopped short exited 0 and said the specification was there. The file is the reading,
+        and nobody holds a draft off: the poll starts it the moment there is a document and no specification."""
+        self.land()
+        self._until("init")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["draftable"], "no document, nothing to draft")
+        (self.made / "Makefile").write_text("draft:\n\t@echo 'nothing drafted'\n", encoding="utf-8")
+        (self.made / "docs").mkdir(exist_ok=True)
+        (self.made / "docs/prd.md").write_text("# Demo\n", encoding="utf-8")
+        self.get("/voyage.json")  # the poll is the clock: it presses the draft
+        receipt = self._until("draft")
+        self.assertIn("nothing drafted", receipt["lines"])
+        self.assertTrue(receipt["code"], "a draft that drafted nothing ended badly, whatever `make` said")
+        found = json.loads(self.get("/voyage.json")[1])
+        self.assertTrue(found["draftable"], "nothing drafted: offered again, by hand")
+        self.assertEqual(found["waiting"]["href"], "#draft")
+        self.assertEqual(self._until("draft")["step"], "draft")
+        self.assertIn('id="draft"', self.get("/voyage")[1])
+        self.assertEqual(self.post("/draft", {}), (200, "drafting the specification"))
+        self.assertIn("nothing drafted", self._until("draft")["lines"])
+        (self.made / "specs/001-demo").mkdir(parents=True)
+        (self.made / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
+        self.assertFalse(json.loads(self.get("/voyage.json")[1])["draftable"])
+        self.assertEqual(self.post("/draft", {})[0], 400)
 
     def test_a_launch_that_failed_can_be_continued_again(self) -> None:
         """A `make launch` that exited non-zero cast nothing off. It used to leave the button gone for the life
@@ -694,3 +760,4 @@ class StreamDrawerTest(Fixture):
     def test_a_person_s_message_is_still_escaped_inside_the_drawer(self) -> None:
         self.deck("ORD", logs.entry("told", fairway="ORD", message="<script>alert(1)</script>"))
         self.assertNotIn("<script>alert(1)</script>", self.rendered())
+

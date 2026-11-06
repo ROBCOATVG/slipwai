@@ -86,13 +86,17 @@ class NextStepTest(Fixture):
 class Board:
     """The bridge as `advance` sees it: a project, its running child, and the buttons' own guards."""
 
-    def __init__(self, root: Path, drawable: bool = False, launchable: bool = False) -> None:
-        self.root, self.fitting, self.launched = root, None, False
-        self._drawable, self._launchable = drawable, launchable
+    def __init__(self, root: Path, drawable: bool = False, launchable: bool = False,
+                 draftable: bool = False) -> None:
+        self.root, self.fitting, self.launched, self.drafted = root, None, False, False
+        self._drawable, self._launchable, self._draftable = drawable, launchable, draftable
         self.verdicts: list[str] = []
 
     def drawable(self) -> bool:
         return self._drawable
+
+    def draftable(self) -> bool:
+        return self._draftable
 
     def launchable(self) -> bool:
         return self._launchable

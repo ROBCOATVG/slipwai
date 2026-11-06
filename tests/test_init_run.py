@@ -17,8 +17,9 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai.init_run import DECLINED, Fitting, adopted, command, ended, launch, start
+from slipwai.init_run import DECLINED, Fitting, adopted, command, ended, start
 from slipwai.session_log import folded_line
+from slipwai.stage_steps import launch
 
 
 def project(says: list[str], code: int = 0) -> Path:
@@ -95,6 +96,12 @@ class AdoptedTest(unittest.TestCase):
 class BackgroundTest(unittest.TestCase):
     """The board's face: a child that outlives the request, read by polling."""
 
+    def setUp(self) -> None:
+        # The draft is a child here, never a session of whatever agent this machine happens to have.
+        patched = mock.patch("slipwai.stage_session.launchable", return_value=None)
+        patched.start()
+        self.addCleanup(patched.stop)
+
     def test_every_line_the_child_said_is_tailed_in_order(self) -> None:
         fitting = start(project(["first", "second", "third"]), "claude")
         lines = finished(fitting)["lines"]
@@ -152,12 +159,23 @@ class BackgroundTest(unittest.TestCase):
         """The second step the answers asked for: `make draft`, in the project, after `./init` — and only
         after it ended well, because a draft in a tree Spec Kit never reached is a session with no commands."""
         root = with_makefile(project(["init ran"]), {"draft": "drafted the specification"})
+        (root / "specs/001-demo").mkdir(parents=True)
+        (root / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
         said = finished(start(root, "claude", prd=True))
         self.assertEqual(said["code"], 0)
         lines = said["lines"]
         self.assertLess(lines.index("init ran"), lines.index("drafted the specification"))
         self.assertTrue(any("make draft" in line and "Drafting" in line for line in lines), lines)
         self.assertIn("read it", lines[-1])
+
+    def test_a_draft_that_wrote_no_specification_ends_failed_whatever_make_said(self) -> None:
+        """One agent stopped at AGENTS.md's setup step, exited 0, and the stage said the specification was
+        there. The file is the reading, not the exit code."""
+        root = with_makefile(project(["init ran"]), {"draft": "stopped before drafting"})
+        said = finished(start(root, "claude", prd=True))
+        self.assertEqual(said["code"], 1)
+        self.assertTrue(any("ended without a specification" in line for line in said["lines"]), said["lines"])
+        self.assertIn("`make draft` exited 1", said["lines"][-1])
 
     def test_a_failed_init_does_not_go_on_to_draft(self) -> None:
         root = with_makefile(project(["init failed"], code=3), {"draft": "should not run"})

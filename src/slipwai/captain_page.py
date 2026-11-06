@@ -27,18 +27,18 @@ STYLE = """
 @media (max-width:860px){.panes{grid-template-columns:minmax(0,1fr)}}
 .panes>*{min-width:0}
 .pick{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--rule);margin:-4px 0 12px}
-.pick button{font:inherit;font-size:.88rem;border:0;background:none;color:var(--ink-2);padding:7px 12px;
+.pick button{font:inherit;font-size:.88rem;border:0;background:none;color:var(--ink-2);padding:8px 12px;
   border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
 .pick button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--teal);font-weight:500}
 .pick small{font-family:var(--mono);color:var(--ink-3);margin-left:6px}
 @media (max-width:1100px){.pick small{display:none}}
 .filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
-.filters .lbl{font-size:.72rem;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+.filters .lbl{font-size:.78rem;color:var(--ink-3)}
 .f{font:inherit;font-size:.8rem;border:1px solid var(--rule);background:var(--paper);color:var(--ink-2);
-  border-radius:999px;padding:2px 10px;cursor:pointer}
+  border-radius:8px;padding:2px 10px;cursor:pointer}
 .f[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .filters input{flex:1 1 160px;min-width:0;font:inherit;font-size:.84rem;padding:4px 10px;border:1px solid var(--rule);
-  border-radius:7px;background:var(--paper);color:var(--ink)}
+  border-radius:8px;background:var(--paper);color:var(--ink)}
 .tl{max-height:70vh;overflow:auto}
 .slicehead{display:flex;gap:10px;align-items:baseline;margin:14px 0 2px;padding-bottom:3px;
   border-bottom:1px solid var(--rule-2);font-size:.8rem;color:var(--ink-3)}
@@ -46,7 +46,7 @@ STYLE = """
 .row{display:grid;grid-template-columns:70px 66px minmax(0,1fr);gap:0 10px;padding:5px 4px;border-radius:6px}
 .row:hover{background:var(--rule-2)}
 .row .t{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);font-variant-numeric:tabular-nums}
-.who{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:4px;
+.who{font-size:.72rem;padding:2px 6px;border-radius:4px;
   text-align:center;align-self:start;background:var(--rule-2);color:var(--ink-2)}
 .who.captain{background:var(--teal-soft);color:var(--teal)}
 .who.person{background:var(--brass-soft);color:var(--brass)}
@@ -56,7 +56,7 @@ STYLE = """
 .row.flag{background:var(--brass-soft)}
 .rawbtn{font:inherit;font-size:.74rem;border:0;background:none;color:var(--ink-3);padding:0 0 0 6px;
   cursor:pointer;text-decoration:underline dotted}
-.raw{display:none;grid-column:3;margin-top:5px;background:var(--rule-2);border-radius:6px;padding:7px 10px;
+.raw{display:none;grid-column:3;margin-top:5px;background:var(--rule-2);border-radius:6px;padding:8px 10px;
   font-family:var(--mono);font-size:.76rem;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink-2)}
 .row.open .raw{display:block}
 .spent{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:.78rem;color:var(--ink-2);margin-top:3px;
@@ -67,11 +67,11 @@ STYLE = """
 .bar .g{background:var(--teal)}
 pre.out{margin:0;max-height:70vh;overflow:auto;background:var(--rule-2);border-radius:8px;padding:12px 14px;
   font-family:var(--mono);font-size:.78rem;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
-.rail h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:500;
+.rail h3{font-size:.8rem;color:var(--ink-3);font-weight:500;
   margin:0 0 8px}
 .rail .card{margin-top:0}.rail .card+.card{margin-top:14px}
 .needs{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:.84rem}
-.needs li{border:1px solid var(--rule);border-radius:8px;padding:7px 9px;overflow-wrap:anywhere}
+.needs li{border:1px solid var(--rule);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere}
 .needs .clip{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden;margin-top:4px}
 .live{font-size:.82rem;color:var(--ink-3)}
 .head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}

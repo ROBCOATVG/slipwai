@@ -34,6 +34,7 @@ from pathlib import Path
 
 from . import identity, quickstart
 from .assets import DEFAULT_OUTPUT, relaunch
+from .brief_check import service, shape_of
 from .browser_app import frontend_menu
 from .catalog import (
     CATALOG,
@@ -49,6 +50,7 @@ from .catalog import (
 from .cli_generate import DECLINE, quickstart_menu, unavailable_quickstarts
 from .cli_offered import not_installed_frameworks, not_installed_languages
 from .cli_prompts import PROFILE_GUIDANCE
+from .design_docs import briefed, carried
 from .errors import GenerationError
 from .extension_install import catalogue
 from .harness import detect, keys, name_of
@@ -57,7 +59,8 @@ from .services import FIRST_SERVICE, FIRST_WEB
 from .shell_environment import login_environment
 from .targets import managed, offered_backends
 
-# budget: 460 — this is the interview's one list of questions, held in step with the terminal question for
+# budget: 490 — the shape a brief's two lines give is passed on from here, and
+# this is the interview's one list of questions, held in step with the terminal question for
 # question (`InStepTest` walks it), and the half that turns the answers back into the flags `generate` takes.
 # Split, the question and the flag it becomes would be in two files, which is the drift the pairing exists
 # to prevent — and the two questions that are not one flag each, the quickstart that fills in many and the
@@ -229,7 +232,8 @@ def asked(answers: Mapping[str, str], root: Path | None = None) -> list[Question
                              "sorted: whichever file reads as the requirements document becomes "
                              "docs/prd.md and everything else lands under docs/design/, which the mock-up "
                              "stage reads before it draws a surface — where it finds a direction there, "
-                             "it follows it rather than inventing one"))
+                             "it follows it rather than inventing one. The folder's shape is "
+                             "docs/reference/the-brief.md"))
     return said
 
 
@@ -431,6 +435,27 @@ def repository_for(answers: Mapping[str, str]) -> str | None:
     return named if named and managed(CATALOG, chosen(answers)["target"]) else None
 
 
+def brief_flags(answers: Mapping[str, str], folder: Path) -> list[str]:
+    """`--brief`, and `--shape` from the brief's two lines where the target is one the keel deploys: a shape
+    is a deployment's, and `generate` refuses one for a project that goes nowhere."""
+    flags = ["--brief", str(folder)]
+    carried(folder)  # the prototype a person played goes with the brief, so the builder draws to match it
+    if managed(CATALOG, chosen(answers)["target"]):
+        flags += shape_flag(folder)
+    return flags
+
+
+def shape_flag(folder: Path) -> list[str]:
+    """`--shape` from the brief's own two lines under *Who runs it*, where the brief has them; nothing where
+    it does not, and `generate` starts small as it does."""
+    try:
+        document, _rest = briefed(folder)
+    except (OSError, GenerationError):
+        return []
+    shape = shape_of(service(document)) if document else ""
+    return ["--shape", shape] if shape else []
+
+
 def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
     """Generate, by running the verb. Whether it worked, and what it said either way.
 
@@ -451,7 +476,7 @@ def run(answers: Mapping[str, str], root: Path) -> tuple[bool, str]:
         # so the folder is already where the verb can read it: carrying its bytes through a browser and
         # writing them back would be a copy nobody asked for, with a size limit nobody needs.
         if (folder := str(answers.get("brief") or "").strip()):
-            argv += ["--brief", folder]
+            argv += brief_flags(answers, Path(folder))
         done = subprocess.run([*relaunch(), "generate", *argv], cwd=str(root),
                               capture_output=True, text=True, env=login_environment())
     return done.returncode == 0, (done.stdout + done.stderr).strip()

@@ -24,8 +24,11 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from .init_run import draw, launch, outside_session
+from .fleet_page import plural, waiting_on_you
+from .init_run import draft, draw, outside_session
 from .passage import record_verdict, specifications, storyboards, surfaces
+from .stage_session import running
+from .stage_steps import launch
 from .wheel import orders
 
 #: The setting, and the value that advances rather than stops.
@@ -82,6 +85,12 @@ def advance(board: Any) -> None:
         return  # another window's poll is already pressing it
     try:
         running = board.fitting
+        # The draft is not a step a person holds off: a document with no specification is drafted the
+        # moment the board sees it, once. What a draft that drafted nothing leaves is the button, and a line.
+        if board.draftable() and not board.drafted:
+            board.drafted = True
+            board.fitting = draft(board.root, running.said()["lines"] if running else None)
+            return
         done = not running or (running.said()["done"] and not running.said()["code"])
         step = next_step(board.root, done and not outside_session(board.root), board.drawable(), board.launchable())
         lines = running.said()["lines"] if running else None
@@ -94,3 +103,49 @@ def advance(board: Any) -> None:
             board.fitting = launch(board.root, lines)
     finally:
         PRESSING.release()
+
+
+def open_asks(board: Any) -> int:
+    """The cards a running stage has put up and nobody has answered."""
+    session = running(board)
+    if session is None:
+        return 0
+    turns = session.said(0)["turns"]
+    asked = {t["ask"]["id"] for t in turns if t.get("kind") in ("permission", "question") and t.get("ask")}
+    answered = {t["ask"]["id"] for t in turns if t.get("kind") == "answered" and t.get("ask")}
+    return len(asked - answered)
+
+
+def on_voyage(board: Any, fleet: dict[str, Any], able: dict[str, bool]) -> dict[str, Any]:
+    """What the Voyage waits on a person for: one count, and the first thing in its own words with the way
+    to it. `able` is the flags that show the strip's buttons, so the words here and the button there agree.
+
+    A question on a card and a slice parked on somebody are counted each; a button the page is offering is
+    one thing, whichever it is, because the stages come one at a time. A stage still running offers no
+    button and is not a wait, which is what `able` already says.
+    """
+    held: list[tuple[int, str, str]] = []
+    asked = open_asks(board)
+    if asked:
+        held.append((asked, "The agent asks you something" if asked == 1 else f"The agent asks you {asked} things",
+                     "#stage-asks"))
+    on_you = waiting_on_you(fleet)
+    if on_you:
+        held.append((on_you, f"{plural(on_you, 'slice')} waiting on you", "#tab-work"))
+    fitting = getattr(board, "fitting", None)
+    approving = unjudged(board.root) if fitting is None or fitting.said()["done"] else ""
+    if approving:
+        held.append((1, f"The storyboard for {approving} is drawn: approve it or send it back", "#tab-screens"))
+    elif able.get("draftable"):
+        held.append((1, "The draft ended without a specification: draft it again", "#draft"))
+    elif able.get("drawable"):
+        held.append((1, "The specification is ready: read it, then draw the storyboard", "#draw"))
+    elif able.get("modelable"):
+        held.append((1, "The storyboard is approved: model it", "#model"))
+    elif able.get("launchable"):
+        held.append((1, "The storyboard is approved: continue the build", "#launch"))
+    elif able.get("castable"):
+        held.append((1, "The chart is split: cast off the fleet", "#cast-off"))
+    if not held:
+        return {"count": 0, "text": "", "href": ""}
+    return {"count": sum(n for n, _, _ in held), "text": held[0][1], "href": held[0][2]}

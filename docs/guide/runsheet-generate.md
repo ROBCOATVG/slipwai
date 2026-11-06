@@ -44,7 +44,7 @@ where no command covers the step.
 
 | # | Where | Command | Done when |
 |---|---|---|---|
-| 1.1 | terminal *or* board | `slipwai generate` — or `slipwai`, then *Start a project* | it prints `created: <path>` and runs `./init` in the new project |
+| 1.1 | terminal *or* board | `slipwai generate` — or `slipwai`, then *Start from a PRD* | it prints `created: <path>` and runs `./init` in the new project |
 | 1.2 | terminal | `cd <name>` | you are at the project's root; start your coding agent here |
 | 1.3 | terminal | `./init`, only if 1.1 did not run it | Spec Kit, the skills and the commands are installed for your agent |
 | 1.4 | agent | `/verify` | it says `verify: all gates passed` |
@@ -59,6 +59,8 @@ where no command covers the step.
 - **1.1: from a document.** The last two questions take a requirements document, or the folder that
   contains it (`--prd <file>`, `--brief <dir>`). The command copies the document in as `docs/prd.md`. On
   the board, the first specification is then drafted from it for you, and Phase 2 starts at 2.3.
+  [The brief](../reference/the-brief.md) says what the folder may hold and how it is sorted, and
+  `slipwai brief check <dir>` says what will be read from it before you generate.
 - **1.1: for scripts and CI.** Every answer is also a flag: for example,
   `slipwai generate bookings --quickstart laptop-trial`, or each axis one by one.
   `slipwai generate --help` lists the flags. The flag form does not run `./init` unless you give `--init`.
@@ -76,7 +78,7 @@ where no command covers the step.
 | 2.1 | agent | `/sail` | it has asked you to ratify the constitution, and `make check-constitution` passes |
 | 2.2 | agent | `/speckit-specify <the feature, in a sentence or two>` | `specs/<feature>/spec.md` exists |
 | 2.3 | agent *or* board | `/sail` — or **Open spec**, then read it | the specification is clarified, checked and its gaps answered |
-| 2.4 | agent *or* board | `/mockups` — or **Draw the surfaces**, then **Approve storyboard** | every surface state is approved, parked with its question, or `n/a` with a reason |
+| 2.4 | agent *or* board | `/mockups` — or **Draw the storyboard**, then **Approve storyboard** | every surface state is approved, parked with its question, or `n/a` with a reason |
 | 2.5 | agent *or* board | the event-modeling skill | `docs/event-model/model.yaml` names the commands, events and read models; standard profile: skip |
 | 2.6 | agent *or* board | `/sail` — it writes the chart on the standard profile and renders it from the model on the event-modelling profile — or **Continue the build**, which in the agent is `/launch` | `check-chart` passes: every mark typed, one setter each |
 | 2.7 | agent | `/sail` | the first slice reaches its demo and asks you to accept it |

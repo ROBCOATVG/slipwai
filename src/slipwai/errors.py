@@ -103,3 +103,8 @@ def blame(error: BaseException) -> str:
     if isinstance(error, KeyboardInterrupt):
         raise error
     return failure(error)
+
+
+class Busy(ValueError):
+    """A conversation's turn is under way, so a second message cannot go in yet. Not a refusal of the
+    message: the page waits and sends it when the turn ends, however many windows are open on the run."""

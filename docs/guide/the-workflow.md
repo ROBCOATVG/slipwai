@@ -21,7 +21,7 @@ the "Writes" column exists. Nobody types a status. [The board](the-board.md) des
 | 2 | Init | `./init` | The interview, when it ends | `.specify/integration.json` | No |
 | 3 | Constitution | The agent, in a headless session | `/draft`, or `/speckit-constitution` | `.specify/memory/constitution.md` | No. Read it afterwards |
 | 4 | Specification | The agent, in the same draft | `/draft`, or `/sail` with the next feature | `specs/<feature>/spec.md` | Yes, by default. See [the upstream setting](#the-upstream-setting) |
-| 5 | Storyboard | The agent draws. You give the verdict | **Draw the surfaces** (`make surfaces`), or `/mockups` | `specs/<feature>/mockups/*.html`, then `mock-states.md` | Yes, by default |
+| 5 | Storyboard | The agent draws. You give the verdict | **Draw the storyboard** (`make surfaces`), or `/mockups` | `specs/<feature>/mockups/*.html`, then `mock-states.md` | Yes, by default |
 | 6 | Event model | The agent, on the event-modelling profile only | Approving the storyboard (`make model-next`), or the modelling skill | `docs/event-model/model.yaml` | Yes, by default |
 | 7 | Chart and split | The agent, in a headless session | **Continue the build** (`make launch`), or `/launch` | `specs/<feature>/chart.yaml` and the slices | No |
 | 8 | Slices | The fleet: one captain per fairway, and one harbourmaster per machine | `/launch` casts off. **Cast off the fleet** (`make cruise`), or `/cruise` | Deck logs and the harbour log | Only when a captain parks |
@@ -49,7 +49,7 @@ idea that is waiting.
 
 ## Step 5: the storyboard
 
-1. Press **Draw the surfaces**. The board runs `make surfaces`. A headless session researches each screen,
+1. Press **Draw the storyboard**. The board runs `make surfaces`. A headless session researches each screen,
    draws a wireframe for each one, and writes a storyboard page that links them.
 2. Open the storyboard and read every state of every screen.
 3. Give one verdict for the whole storyboard:

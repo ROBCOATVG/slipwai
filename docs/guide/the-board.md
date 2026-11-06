@@ -30,11 +30,17 @@ one window moves that window only.
 The button **Install this board** appears when your browser offers to install the page as an app. The theme
 toggle is remembered in your browser.
 
+Beside them, **Tell me when it waits on me** asks your browser, once, to let the board notify you. From then
+on a wait that begins while you are in another window — a storyboard to approve, a question on a card, a
+brief ready to hand over — is a notification; click it and the window comes to the front at the thing that
+waits. It is off until you press it, and your browser remembers the answer.
+
 ---
 
 ## The tabs
 
-The board has four tabs. The Voyage is a separate window, so that you can leave it open.
+The board has six tabs. The three in the middle are the three ways in, in the order a person arrives: with an
+idea, with a document, with a codebase. The Voyage is a separate window, so that you can leave it open.
 
 ### Board
 
@@ -44,7 +50,23 @@ The board has four tabs. The Voyage is a separate window, so that you can leave 
   opens the Voyage for this project in a new window.
 - **Start something** — links to the next two tabs, with the command that does the same job.
 
-### Start a project
+### Start from an idea
+
+This is for a person who has no document. Type what the product does. The agent draws a prototype that you
+can click through on the same page, writes the brief beside it, and asks only what it cannot work out. The
+header shows the four steps: describe, walk the states, check, hand over.
+
+- **The brief, as the start page will read it** counts what the brief has settled and what the build will
+  have to assume. Green lines need no question. Amber lines are what the draft will decide and say it did.
+- **Read the brief as a document** opens the requirements document, the people or the facts as a page.
+- **Hand over** appears once the brief has a document, and is marked when the agent says the brief is
+  ready. It opens the next tab with the brief's answers filled in: a confirm page that shows what the brief
+  settled, with every extension on this machine ticked. **Make it** makes the project. **Change something**
+  opens the whole form.
+- **New conversation** starts the sketch again. A sketch keeps its conversation, so a window opened later
+  shows the same turns.
+
+### Start from a PRD
 
 This is the `slipwai generate` interview as a form. The questions come in the same order and offer the
 same answers.
@@ -56,7 +78,7 @@ same answers.
   you gave a requirements document, the board then runs `make draft`. The card **Made &lt;name&gt;** shows
   what `./init` and `make draft` print while they run.
 
-### Adopt a repository
+### Start from a codebase
 
 This installs the method around code that already exists.
 
@@ -72,6 +94,16 @@ state. **Install** installs it in the same way as `slipwai install`. A package f
 trusted yet has a checkbox **accept &lt;publisher&gt;**. Tick it to trust that publisher. An installed
 package that has a newer version says so.
 
+### Settings
+
+This names the coding agent that runs the board's conversations, over the Agent Client Protocol: the brief,
+the stages a project runs from the board, and the question box on the Voyage. **Runs on** lists every agent
+this machine can launch, with where each was found or what is missing. *Auto* takes the first that is ready,
+else the first found. Beside it, the model, where the agent offered a choice. Under each agent: **Make
+ready**, which does the handshake once and shows what the agent said of itself, **Sign in** for each way
+the agent offers, and **Install** where the agent is not on this machine. The answers are saved to
+`~/.slipwai/board.json`. A project's own `./init` answer still wins for its question box.
+
 ---
 
 ## The Voyage window
@@ -80,6 +112,12 @@ The Voyage shows where one project stands and how its run is going. Its title is
 *Voyage · &lt;project&gt;*. It updates itself: it asks the board for news every 2.5 seconds while a stage is
 working, and every 8 seconds when nothing is working. When the project gains a new kind of file, such as a
 first storyboard, the window reloads itself.
+
+When something waits on you, a strip appears under the title saying what — *The specification is ready: read
+it, then draw the storyboard*, *The storyboard for 001-… is drawn: approve it or send it back*, *The agent asks
+you something*, *2 slices waiting on you* — with **Go to it** beside the words. The count goes on the tab's
+title, *(1) Voyage · …*, and on the installed board's badge. The first page does the same when a card asks
+you something, and when the brief is ready to hand over.
 
 The cards come in this order, from the top.
 
@@ -102,7 +140,7 @@ buttons for the next step. Each button appears only when it can be pressed.
 
 | Button | Runs | Appears when |
 |---|---|---|
-| **Draw the surfaces** | `make surfaces` | There is a specification, nothing is drawn yet, and the board is not running anything |
+| **Draw the storyboard** | `make surfaces` | There is a specification, nothing is drawn yet, and the board is not running anything |
 | **Continue the build** | `make launch` | The active feature has a specification and no chart. On the event-modelling profile it needs a model too. Nothing on the board is running or failed |
 | **Cast off the fleet** | `make cruise` | There are slices to work, the fleet is not running, and the board is not running anything |
 | **Stop the fleet** | `make cruise-stop` | Part of the fleet is running. It asks each captain to stop. The captain ends the stage it is running, writes a `stopped` line naming its slice, and gives its claim back. The slice is carried on when the fleet is cast off again |
@@ -259,10 +297,12 @@ The newest lines from every log, newest at the bottom.
 
 ## What the board does by itself
 
-The board starts something without a button press in two cases only:
+The board starts something without a button press in three cases only:
 
 1. **After Generate.** It runs `./init`, and `make draft` when the project starts from a requirements
    document.
+   A project with a document and no specification is drafted the moment the board sees it, once: nobody
+   holds a draft off. A draft that drafts nothing leaves **Draft the specification**, which runs it again.
 2. **When `upstream` is `advance`.** Each time a window polls, the board checks whether the step before
    ended well and nothing is running. If so, it presses the next upstream button: draw, approve, or continue
    the build. Only one window presses at a time.

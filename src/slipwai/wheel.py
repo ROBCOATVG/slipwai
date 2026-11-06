@@ -51,6 +51,11 @@ STOPS: tuple[tuple[str, str, dict[str, str]], ...] = (
     # this card has always been read for.
     ("upstream", "The specification, storyboard and model",
      {"park": "stop for me at each", "advance": "advance on their own"}),
+    # Not a stop either, but the one switch a person has over how a captain runs, and the card is the one
+    # place on the board they set this file from.
+    ("sessions", "A captain's session",
+     {"print": "the agent's print mode, as before",
+      "protocol": "over the Agent Client Protocol: its work shown as it goes, a stop that stops"}),
 )
 #: The value that means a person is asked. A stop sitting on this is `/sail`'s answer to it.
 ASKS = "park"

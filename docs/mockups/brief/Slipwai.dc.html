@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Voyage · club-boats</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#172129;background:#f1f3f4;font-size:14px;line-height:1.45}
+a{color:#0f6b6b}a:hover{color:#0a4f4f}
+</style>
+</helmet>
+<div style="min-height: 920px; max-width: 1280px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 0; padding: 0 20px 60px; background: #f1f3f4">
+
+  <header style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 0 14px; border-bottom: 1px solid #d9e0e4">
+    <div style="display: flex; flex-direction: column; gap: 3px">
+      <h1 style="margin: 0; font-size: 21.6px; font-weight: 600">Voyage · club-boats</h1>
+      <span style="font-size: 13.6px; color: #7a8891">now: storyboard · waiting on you · 0 of 3 slots</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <button type="button" style="font-size: 12.8px; padding: 6px 12px; border-radius: 8px; border: 1px solid #d9e0e4; background: #fcfcfb; color: #4a5862">Install this board</button>
+      <div role="group" aria-label="Theme" style="display: flex; border: 1px solid #d9e0e4; border-radius: 8px; padding: 2px; background: #e9eef1">
+        <span style="font-size: 12.5px; padding: 4px 10px; border-radius: 6px; background: #fcfcfb; color: #172129">Auto</span>
+        <span style="font-size: 12.5px; padding: 4px 10px; color: #4a5862">Light</span>
+        <span style="font-size: 12.5px; padding: 4px 10px; color: #4a5862">Dark</span>
+      </div>
+      <svg role="img" aria-label="slipwai" width="44" height="44" viewBox="0 0 44 44" style="color: #0f6b6b"><path d="M6 30 h32 l-4 8 h-24 z" fill="currentColor"></path><rect x="14" y="20" width="14" height="10" rx="2" fill="currentColor"></rect><rect x="24" y="12" width="4" height="9" fill="currentColor"></rect><circle cx="26" cy="8" r="2.5" fill="#8a6d24"></circle></svg>
+    </div>
+  </header>
+
+  <nav aria-label="Board" style="display: flex; gap: 4px; margin-top: 14px; border-bottom: 1px solid #d9e0e4">
+    <a href="#board" style="font-size: 14px; color: #4a5862; text-decoration: none; padding: 8px 14px">The board ↗</a>
+  </nav>
+
+  <section aria-label="The stages" style="background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 16px; margin-top: 18px; display: flex; flex-direction: column; gap: 12px">
+    <h2 style="margin: 0; font-size: 15px; font-weight: 600">club-boats</h2>
+    <div style="position: relative; padding-top: 6px">
+      <div aria-hidden="true" style="position: absolute; left: 6%; right: 6%; top: 20px; height: 3px; background: #d9e0e4; border-radius: 2px"></div>
+      <ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); position: relative">
+        <sc-for list="{{stages}}" as="s" hint-placeholder-count="9">
+          <li style="display: grid; gap: 6px; justify-items: center; text-align: center; padding: 0 6px; min-width: 0">
+            <span style="{{s.dot}}">{{s.mark}}</span>
+            <b style="{{s.name}}">{{s.title}}</b>
+            <small style="font-size: 11.8px; color: #7a8891; line-height: 1.3">{{s.detail}}</small>
+            <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.2px; color: #7a8891; overflow-wrap: anywhere">{{s.file}}</span>
+          </li>
+        </sc-for>
+      </ol>
+    </div>
+    <div style="border-top: 1px solid #e9eef1; padding-top: 12px; display: grid; gap: 8px">
+      <p style="margin: 0">{{now}}</p>
+      <a href="#spec" style="justify-self: start; font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid #0f6b6b; background: transparent; color: #0f6b6b; text-decoration: none">Open specs/001-book-a-boat/spec.md</a>
+    </div>
+  </section>
+
+  <section aria-label="What to expect" style="background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 16px; margin-top: 18px; display: flex; flex-direction: column; gap: 10px">
+    <h2 style="margin: 0; font-size: 15px; font-weight: 600">What to expect</h2>
+    <div style="border-left: 3px solid #8a6d24; padding-left: 12px; display: flex; flex-direction: column; gap: 3px">
+      <span style="font-size: 12.8px; font-weight: 500; color: #8a6d24">Now · Storyboard</span>
+      <p style="margin: 0; font-size: 14.4px; color: #4a5862">{{expect}}</p>
+    </div>
+    <span style="font-size: 13.6px; color: #0f6b6b">▸ Every stage, in order</span>
+  </section>
+
+  <div role="tablist" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 18px; border-bottom: 1px solid #d9e0e4">
+    <span style="font-size: 14px; color: #4a5862; padding: 8px 14px; border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; margin-bottom: -1px">Work</span>
+    <span style="font-size: 14px; color: #4a5862; padding: 8px 14px; border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; margin-bottom: -1px">Try it &amp; feedback</span>
+    <span style="font-size: 14px; color: #172129; font-weight: 600; padding: 8px 14px; border: 1px solid #d9e0e4; border-bottom: 0; border-radius: 8px 8px 0 0; margin-bottom: -1px; background: #fcfcfb">Screens</span>
+    <span style="font-size: 14px; color: #4a5862; padding: 8px 14px; border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; margin-bottom: -1px">Model</span>
+    <span style="font-size: 14px; color: #4a5862; padding: 8px 14px; border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; margin-bottom: -1px">Fleet</span>
+    <span style="font-size: 14px; color: #4a5862; padding: 8px 14px; border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; margin-bottom: -1px">Decisions <span style="font-size: 11.5px; padding: 0 6px; border-radius: 999px; background: #f1e9d2; color: #8a6d24">1 unread</span></span>
+  </div>
+
+  <section aria-label="Screens" style="background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 16px; margin-top: 18px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 600">Storyboard</h2>
+      <span style="font-size: 13px; color: #7a8891">three surfaces Sam made, embedded where they are under docs/design/surfaces/</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+      <sc-for list="{{mocks}}" as="m" hint-placeholder-count="3">
+        <div style="display: grid; gap: 4px; border: 1px solid #d9e0e4; border-radius: 8px; padding: 8px; background: #fcfcfb">
+          <div style="aspect-ratio: 4 / 3; border-radius: 4px; background: #ffffff; border: 1px solid #e9eef1; display: flex; flex-direction: column; gap: 6px; padding: 10px; box-sizing: border-box">
+            <span style="height: 10px; width: 60%; background: #dcecea; border-radius: 3px"></span>
+            <span style="height: 8px; width: 40%; background: #e9eef1; border-radius: 3px"></span>
+            <span style="height: 22px; width: 100%; background: #e9eef1; border-radius: 4px; margin-top: auto"></span>
+          </div>
+          <b style="font-size: 13.4px">{{m.title}}</b>
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11.5px; color: #7a8891">{{m.file}}</span>
+          <span style="font-size: 12.5px; color: #4a5862">{{m.states}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{open}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+        <button type="button" onClick="{{approve}}" style="font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid #0f6b6b; background: #0f6b6b; color: #fff; min-height: 44px">Approve storyboard</button>
+        <button type="button" onClick="{{disapprove}}" style="font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid #d9e0e4; background: #fcfcfb; color: #4a5862; min-height: 44px">Disapprove, with a reason</button>
+        <span style="font-size: 12.8px; color: #7a8891">Sam already saw every state. This is the first time being wrong costs anything.</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{asking}}" hint-placeholder-val="{{false}}">
+      <div style="display: grid; gap: 8px; max-width: 560px">
+        <label for="why" style="font-size: 13.6px; color: #4a5862; font-weight: 500">What should change? A reason is required.</label>
+        <input id="why" type="text" value="{{why}}" onChange="{{typed}}" placeholder="e.g. the empty state should still show the boats" style="font-size: 14px; padding: 8px 10px; border: 1px solid #d9e0e4; border-radius: 8px; background: #fcfcfb; color: #172129">
+        <div style="display: flex; gap: 8px">
+          <button type="button" onClick="{{park}}" style="font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid #0f6b6b; background: #0f6b6b; color: #fff; min-height: 44px">Park it</button>
+          <button type="button" onClick="{{cancel}}" style="font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid #d9e0e4; background: #fcfcfb; color: #4a5862; min-height: 44px">Back</button>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{decided}}" hint-placeholder-val="{{false}}">
+      <div style="display: grid; gap: 4px; padding: 10px 12px; border-radius: 8px; background: #f1f3f4; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px; color: #4a5862">
+        <span style="font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; color: #172129">{{verdictLine}}</span>
+        <span>{{verdictFile}}</span>
+        <span style="font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 12.5px; color: #7a8891">Both buttons lock once there is a verdict. To change it, edit mock-states.md.</span>
+      </div>
+    </sc-if>
+  </section>
+
+  <section aria-label="What the brief did" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px">
+    <div style="background: #172129; color: #e6ecef; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 12.5px; color: #808e97">The developer, ten minutes earlier</span>
+      <pre style="margin: 0; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px; line-height: 1.55; white-space: pre; overflow-x: auto"><span style="color: #808e97">$</span> slipwai generate club-boats --quickstart internal-tool \
+    --brief ~/briefs/club-boat-bookings
+brief: prd.md is the requirements document; 7 other file(s) carried as design material
+created: /Users/dev/code/club-boats
+
+<span style="color: #808e97">&gt;</span> /draft
+specs/001-book-a-boat/spec.md: 9 requirements, 14 acceptance criteria
+<span style="color: #d2b465">Assumptions: 1</span> — one booking per member per day
+
+<span style="color: #808e97">&gt;</span> make surfaces
+3 pages handed over, reviewed against research.md, none redrawn
+storyboard.html — <span style="color: #d2b465">waiting on you</span></pre>
+    </div>
+    <div style="background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 600">What the brief saved</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13.6px; color: #4a5862; line-height: 1.45">
+        <span><b style="color: #172129; font-weight: 500">Four ticks came from the folder.</b> PRD, constitution, specification and storyboard are files the brief put there or the draft wrote from it.</span>
+        <span><b style="color: #172129; font-weight: 500">No redraw.</b> The research half of the mock-up stage reviewed three pages instead of drawing them.</span>
+        <span><b style="color: #172129; font-weight: 500">One assumption, not twelve.</b> It is on the spec's first page, and Sam can answer it from this board.</span>
+        <span><b style="color: #172129; font-weight: 500">Two facts cited.</b> The skipper never parks on "how long does a checkout last".</span>
+        <span><b style="color: #172129; font-weight: 500">Nothing after this button changed.</b> The model, the chart, the slices, the gates, and the demo Sam accepts.</span>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { verdict: '', asking: false, why: '' };
+  }
+  renderVals() {
+    var self = this;
+    var verdict = this.state.verdict;
+    var done = 'width: 30px; height: 30px; border-radius: 50%; border: 3px solid #0f6b6b; background: #0f6b6b; color: #fff; display: grid; place-items: center; font-size: 11.5px';
+    var todo = 'width: 30px; height: 30px; border-radius: 50%; border: 3px solid #d9e0e4; background: #fcfcfb; color: #7a8891; display: grid; place-items: center; font-size: 11.5px; opacity: .75';
+    var waiting = 'width: 30px; height: 30px; border-radius: 50%; border: 3px solid #b4432f; background: #b4432f; color: #fff; display: grid; place-items: center; font-size: 11.5px';
+    var working = 'width: 30px; height: 30px; border-radius: 50%; border: 3px solid #8a6d24; background: #f1e9d2; color: #8a6d24; display: grid; place-items: center; font-size: 11.5px';
+    var name = 'font-size: 13.4px; line-height: 1.2';
+    var nameWait = 'font-size: 13.4px; line-height: 1.2; color: #b4432f';
+    var nameWork = 'font-size: 13.4px; line-height: 1.2; color: #8a6d24';
+    var brk = function (path) { return path.replace(/\//g, '/​'); };
+    var storyboardState = verdict === 'approved' ? 'done' : (verdict === 'parked' ? 'parked' : 'waiting');
+    var modelState = verdict === 'approved' ? 'working' : 'todo';
+    var stages = [
+      { title: 'PRD', state: 'done', mark: '✓', detail: '4,812 bytes, from the brief', file: 'docs/prd.md' },
+      { title: 'Init', state: 'done', mark: '✓', detail: 'Spec Kit installed', file: '.specify/integration.json' },
+      { title: 'Constitution', state: 'done', mark: '✓', detail: 'ratified', file: '.specify/memory/constitution.md' },
+      { title: 'Specification', state: 'done', mark: '✓', detail: '1 feature, 1 assumption', file: 'specs/001-book-a-boat/spec.md' },
+      { title: 'Storyboard', state: storyboardState,
+        mark: storyboardState === 'done' ? '✓' : '■',
+        detail: storyboardState === 'done' ? '16 of 16 states approved' : (storyboardState === 'parked' ? 'parked: ' + this.state.why : '3 surfaces handed over'),
+        file: 'specs/001-book-a-boat/mockups/mock-states.md' },
+      { title: 'Event model', state: modelState, mark: modelState === 'working' ? '●' : '6',
+        detail: modelState === 'working' ? 'modelling from the approved surfaces' : 'after the storyboard', file: 'docs/event-model/model.yaml' },
+      { title: 'Chart & split', state: 'todo', mark: '7', detail: 'fairways, marks and slices', file: 'specs/001-book-a-boat/chart.yaml' },
+      { title: 'Slices', state: 'todo', mark: '8', detail: 'the fleet, under /cruise', file: 'deck logs' },
+      { title: 'Accepted', state: 'todo', mark: '9', detail: 'every capability demoed, as Sam', file: 'accepted lines' }
+    ].map(function (s) {
+      var dot = s.state === 'done' ? done : (s.state === 'waiting' || s.state === 'parked' ? waiting : (s.state === 'working' ? working : todo));
+      var nm = s.state === 'waiting' || s.state === 'parked' ? nameWait : (s.state === 'working' ? nameWork : name);
+      return { title: s.title, mark: s.mark, detail: s.detail, file: brk(s.file), dot: dot, name: nm };
+    });
+    var now = 'Now: storyboard — waiting on you: 3 surfaces, 16 states, drawn by Sam in Sketch. Next: approve it, and the board runs make model-next.';
+    if (verdict === 'approved') { now = 'Now: event model — the board is running make model-next. Next: Continue the build, which charts and splits the feature.'; }
+    if (verdict === 'parked') { now = 'Now: storyboard — parked with your reason. Next: /mockups in the agent draws it again, following docs/design/.'; }
+    return {
+      stages: stages,
+      now: now,
+      expect: 'The surfaces came in with the brief, so the drawing half of this stage was a review, not a drawing. Approve, and the model stage starts at once on this profile. Disapprove with a reason, and the next drawing knows what to change.',
+      mocks: [
+        { title: 'Book a boat', file: brk('docs/design/surfaces/book-a-boat.html'), states: '7 states · 5 decided by Sam, 2 proposed' },
+        { title: 'My bookings', file: brk('docs/design/surfaces/my-bookings.html'), states: '5 states · 4 decided by Sam, 1 proposed' },
+        { title: 'Boat out of service', file: brk('docs/design/surfaces/boat-out-of-service.html'), states: '4 states · as the bosun' }
+      ],
+      open: verdict === '' && !this.state.asking,
+      asking: this.state.asking,
+      decided: verdict !== '',
+      why: this.state.why,
+      typed: function (e) { self.setState({ why: e.target.value }); },
+      approve: function () { self.setState({ verdict: 'approved' }); },
+      disapprove: function () { self.setState({ asking: true }); },
+      cancel: function () { self.setState({ asking: false }); },
+      park: function () { if ((self.state.why || '').trim()) { self.setState({ verdict: 'parked', asking: false }); } },
+      verdictLine: verdict === 'approved' ? 'Approved: every drawn state is marked approved. The model stage started.' : 'Parked: every drawn state is marked parked, with your reason.',
+      verdictFile: verdict === 'approved'
+        ? '## Surface: Book a boat\n- empty — approved (decided by Sam)\n- not checked out — approved (decided by Sam)\n- booking failed — approved (proposed)'
+        : '## Surface: Book a boat\n- empty — parked: ' + this.state.why
+    };
+  }
+}
+</script>
+</body>
+</html>

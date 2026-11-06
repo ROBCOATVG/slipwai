@@ -36,7 +36,11 @@ import uuid
 from collections.abc import Sequence
 from pathlib import Path
 
+from .board_agent import BoardAgent
+from .board_settings import Launch, chosen, read
+from .errors import Busy
 from .fleet import board
+from .harness import acp_environment
 from .shell_environment import login_environment
 
 #: The tools the session is given, and the only ones. A list rather than a deny-list: a tool added to the
@@ -51,6 +55,9 @@ LIMIT = 300
 FOLD = 8000
 #: Turns kept. A conversation older than this has been scrolled past, and the board holds no archive.
 KEPT = 400
+#: Where a project keeps the console's session over the protocol: its id and the agent's stderr, under the
+#: board's own folder and not loose in the tree.
+SESSION_KEPT = ".slipwai/console"
 
 ROLE = """You are answering a person at the bridge of this project's board, in a console. You are the
 harbourmaster, speaking in the first person and in plain words — say `waiting on you`, not `parked`, unless the
@@ -94,11 +101,14 @@ def brief(root: Path) -> str:
 class Console:
     """One conversation: what has been said, whether an answer is being written, and the session behind it."""
 
-    def __init__(self, root: Path, command: Sequence[str] | None = None) -> None:
+    def __init__(self, root: Path, command: Sequence[str] | None = None, launch: Launch | None = None) -> None:
         self.root = root
         # A seam rather than a mock: a test hands in a command that prints the agent's stream, and the
         # real run builds its own. Whatever it is, the question is its last argument.
         self.command = list(command) if command else None
+        self.launch = launch  # the agent over the protocol; a test hands one in, the board reads its settings
+        self.agent: BoardAgent | None = None
+        self.on = ""
         self.turns: list[dict] = []
         self.dropped = 0  # turns said and since let go of, so `since` keeps meaning the same thing
         self.session = ""
@@ -129,9 +139,9 @@ class Console:
         return [found, "-p", asked, "--output-format", "stream-json", "--verbose", "--tools", TOOLS,
                 "--allowedTools", TOOLS, "--append-system-prompt", system, *resume]
 
-    def say(self, role: str, text: str, kind: str = "text") -> None:
+    def say(self, role: str, text: str, kind: str = "text", more: dict | None = None) -> None:
         with self.lock:
-            self.turns.append({"role": role, "kind": kind, "text": text})
+            self.turns.append({"role": role, "kind": kind, "text": text, **(more or {})})
             if len(self.turns) > KEPT:
                 cut = len(self.turns) - KEPT
                 del self.turns[:cut]
@@ -141,29 +151,75 @@ class Console:
         """The turns after the `since`th this conversation has said, and whether it is still writing one."""
         with self.lock:
             held = max(since - self.dropped, 0)
-            return {"turns": self.turns[held:], "at": self.dropped + len(self.turns), "busy": self.busy}
+            return {"turns": self.turns[held:], "at": self.dropped + len(self.turns), "busy": self.busy,
+                    "agent": self.on, "thinking": bool(self.agent is not None and self.agent.thinking),
+                    "model": self.agent.model if self.agent is not None else ""}
 
     def ask(self, message: str) -> str:
         """Put a question to the harbourmaster, or say why it cannot be: it is empty, or one is under way."""
         message = message.strip()
         if not message:
-            raise ValueError("ask the harbourmaster something")
+            raise ValueError("ask something first")
         with self.lock:
             if self.busy:
-                raise ValueError("the harbourmaster is still answering the last question")
+                raise Busy("the harbourmaster is still answering the last question")
             self.busy = True
             if not self.session:
                 self.session = str(uuid.uuid4())
         self.say("person", message)
+        launch = None if self.command else self.launch or chosen(read(), self.root, self.environment().get("PATH"))
+        if launch is not None and launch.able:
+            threading.Thread(target=self.drive, args=(launch, message), daemon=True).start()
+            return "asked"
         argv = self.argv(message)
         if argv is None:
-            self.say("harbourmaster", "There is no `claude` on this machine's path, and the console is a session of "
-                     "it. Install Claude Code, or start the board from a shell that has it.", "error")
+            self.say("harbourmaster", "There is no agent this board can run: nothing on the Settings tab can be "
+                     "launched, and `claude` is not on this machine's path. Install one, or start the board from "
+                     "a shell that has it.", "error")
             with self.lock:
                 self.busy = False
             return "no agent"
         threading.Thread(target=self.run, args=(argv,), daemon=True).start()
         return "asked"
+
+    def drive(self, launch: Launch, message: str) -> None:
+        """One question over the protocol: the brief and the role at the head of the first prompt, the board's
+        fold with every question, the agent's updates as turns as they arrive. Reads only. Never raises."""
+        try:
+            if self.agent is None:
+                self.agent = BoardAgent(launch, self.root, "harbourmaster", self.say_from, reads_only=True,
+                                        kept=self.root / SESSION_KEPT,
+                                        env={**self.environment(), **acp_environment(launch.key)})
+                self.on = launch.name
+            loaded = self.agent.session is not None or self.agent.begin()
+            self.on = self.agent.named
+            asked = f"{message}\n\n---\nThe board as it stands now, folded from the logs:\n{snapshot(self.root)}"
+            if not (self.begun or loaded):
+                asked = f"{brief(self.root)}\n\n{ROLE}".strip() + f"\n\n---\n\n{asked}"
+            stop = self.agent.turn(asked, LIMIT)
+            self.begun = self.begun or stop != "fault"
+        except Exception as fault:  # noqa: BLE001 — a console stuck on busy is one nobody can type in
+            self.say("harbourmaster", f"The session could not be started: {fault}", "error")
+            self.agent = None
+        finally:
+            with self.lock:
+                self.busy = False
+
+    def say_from(self, role: str, kind: str, text: str, more: dict | None) -> None:
+        self.say(role, text, kind, more)
+
+    def answer(self, number: str, answer: str | None) -> bool:
+        return self.agent is not None and self.agent.answer(number, answer)
+
+    def cancel(self) -> str:
+        if self.agent is not None:
+            self.agent.cancel()
+            return "stopped"
+        with self.lock:
+            child = self.child
+        if child is not None:
+            child.kill()
+        return "stopped"
 
     def run(self, argv: list[str]) -> None:
         """Run the session to its end, turning what it prints into turns. Never raises: the last thing this
@@ -219,6 +275,10 @@ class Console:
             child = self.child
         if child is not None:
             child.kill()
+        if self.agent is not None:
+            self.agent.cancel()
+            self.agent.forget()
+            self.agent = None
         with self.lock:
             self.turns, self.dropped, self.session, self.begun = [], self.dropped + len(self.turns), "", False
         return "cleared"
@@ -233,6 +293,16 @@ def reading(part: dict) -> str:
 
 #: One console per project the board is looking at. The board has one conversation per tree for the reason it
 #: has one `./init` per tree: the thing being asked about is the project's, not the window's.
+def answered(talking: Console, where: str, held: dict) -> str:
+    """A card's answer or a stop, from the dock: an option, a question's words, a decline, or the cancel."""
+    if where == "/console/cancel":
+        return talking.cancel()
+    given = None if held.get("decline") else held.get("option") or held.get("answer")
+    if not talking.answer(str(held.get("id") or ""), None if given is None else str(given)):
+        raise ValueError("nothing is waiting on that answer")
+    return "answered"
+
+
 CONSOLES: dict[Path, Console] = {}
 _HELD = threading.Lock()
 

@@ -37,7 +37,7 @@ from .cli_prompts import (
     prompt_target,
 )
 from .cli_quickstart import fetches, files_with_record, missing
-from .design_docs import DESIGN, briefed, handed_over, referenced, weighed
+from .design_docs import DESIGN, FACTS, briefed, domain_facts, handed_over, referenced, weighed
 from .errors import GenerationError
 from .loaded_targets import answer
 from .preflight import check as check_requirements
@@ -266,6 +266,7 @@ def prd_files(args: Any, apps: list[Any]) -> tuple[dict[str, str] | None, dict[s
     given = getattr(args, "prd", None)
     design = getattr(args, "design", None)
     carry = handed_over(str(design)) if design is not None else {}
+    facts: str | None = None
     # One folder with everything in it, sorted here rather than by the person handing it over: the
     # document that reads as the PRD, and everything else as the material it stands on. `--prd` and
     # `--design` still win where somebody named either, because an explicit answer is never second-guessed.
@@ -276,6 +277,7 @@ def prd_files(args: Any, apps: list[Any]) -> tuple[dict[str, str] | None, dict[s
             raise GenerationError(f"--brief {home} is not a directory; it is the folder your product "
                                   f"requirements document and its design material are in")
         found, rest = briefed(home)
+        rest, facts = domain_facts(home, rest)
         given = given if given is not None else found
         if not carry:
             carry = weighed({f"{DESIGN}/{one.relative_to(home).as_posix()}": one for one in rest},
@@ -283,18 +285,20 @@ def prd_files(args: Any, apps: list[Any]) -> tuple[dict[str, str] | None, dict[s
         print(f"brief: {home} — "
               + (f"{found.relative_to(home).as_posix()} is the requirements document" if found
                  else "no requirements document in it, so the specification is written in the agent")
-              + f"; {len(rest)} other file(s) carried as design material")
+              + f"; {len(rest)} other file(s) carried as design material"
+              + (f"; domain.md lands as {FACTS}" if facts else ""))
     if given is None:
         # Design material on its own is an answer, not a mistake: `commands/mockups.md` reads
         # `docs/design/` whether or not a PRD exists, so a brand sheet handed over with the specification
         # written in the agent afterwards is a direction the mock-up stage follows just the same.
-        if carry:
+        if carry or facts:
             if files is None:
                 from .scaffold import project_files
                 files = project_files(args.name, args.profile, args.target, apps,
                                       shape=getattr(args, "shape", None))
             from .project.docs_index import docs_index
-            files = {**files, "docs/README.md": docs_index(files, sorted(carry))}
+            files = {**files, **({FACTS: facts} if facts else {}),
+                     "docs/README.md": docs_index(files, sorted(carry))}
         return files, carry
     path = Path(given).expanduser()
     try:
@@ -310,7 +314,7 @@ def prd_files(args: Any, apps: list[Any]) -> tuple[dict[str, str] | None, dict[s
         files = project_files(args.name, args.profile, args.target, apps, shape=getattr(args, "shape", None))
     cited, text = referenced(path.resolve(), text, home)
     from .project.docs_index import docs_index
-    files = {**files, PRD: text}
+    files = {**files, PRD: text, **({FACTS: facts} if facts else {})}
     # The folder second, so a file named both ways is the one `--design` points at: the flag is the more
     # deliberate of the two, and the reference it overrides still resolves to the same place.
     carry = {**cited, **carry}

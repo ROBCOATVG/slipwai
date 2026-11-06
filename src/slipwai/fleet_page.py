@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
+from .fleet import instant
 from .fleet_record import NOTHING, clock_of
 from .page_shell import esc
 
@@ -33,7 +34,7 @@ STYLE = """
 .headline h2{font-size:1.05rem;margin:0;display:flex;gap:10px;align-items:flex-start;line-height:1.35}
 .headline .dot{width:10px;height:10px;border-radius:50%;flex:none;margin-top:7px;background:var(--ink-3)}
 .headline.teal .dot{background:var(--teal)}.headline.brass .dot{background:var(--brass)}
-.headline.blue .dot{background:#1d4f8f}.headline.red .dot{background:var(--critical)}
+.headline.blue .dot{background:var(--paused)}.headline.red .dot{background:var(--critical)}
 .headline p{margin:8px 0 0;color:var(--ink-2);font-size:.9rem}
 .headline .acts{display:flex;flex-direction:column;gap:8px;min-width:200px}
 .procs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
@@ -42,12 +43,10 @@ STYLE = """
 .proc .w{font-size:.8rem;color:var(--ink-2);margin-top:6px}
 .counts{display:flex;gap:18px;flex-wrap:wrap;font-size:.85rem;color:var(--ink-2);margin-top:12px}
 .counts b{color:var(--ink)}
-.chip.paused{background:#d6e6f8;color:#1d4f8f}
-:root:has(#t-dark:checked) .chip.paused{background:#1b2f4a;color:#9cc3ef}
-@media (prefers-color-scheme:dark){:root:has(#t-auto:checked) .chip.paused{background:#1b2f4a;color:#9cc3ef}}
-.group{border:1px solid var(--rule);border-radius:10px;padding:14px 16px;margin-top:12px;background:var(--paper)}
+.chip.paused{background:var(--paused-soft);color:var(--paused)}
+.group{border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-top:12px;background:var(--paper)}
 .group .head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
-.group h3{font-size:.95rem;font-weight:600;margin:0}
+.group h3{font-size:.95rem;font-weight:500;margin:0}
 .group .meta{color:var(--ink-3);font-size:.82rem;margin-top:4px}
 .group .prog{height:6px;border-radius:3px;background:var(--rule-2);overflow:hidden;margin-top:10px}
 .group .prog i{display:block;height:100%;background:var(--teal)}
@@ -61,9 +60,9 @@ STYLE = """
 .needs .how{font-size:.78rem;color:var(--ink-3);text-align:right;white-space:nowrap}
 .needs .how button{font:inherit;font-size:.78rem;padding:3px 10px;border-radius:6px;border:1px solid var(--rule);
   background:var(--paper);color:var(--ink-2);cursor:pointer}
-.then{margin-top:10px;padding:8px 10px;border-radius:7px;background:var(--ground);font-size:.85rem;color:var(--ink-2)}
+.then{margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--ground);font-size:.85rem;color:var(--ink-2)}
 .then b{color:var(--ink)}
-.quiet-button{font:inherit;padding:8px 14px;border-radius:7px;border:1px solid var(--rule);background:var(--paper);
+.quiet-button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--rule);background:var(--paper);
   color:var(--ink-2);cursor:pointer;white-space:nowrap}
 .quiet-button:hover{border-color:var(--teal);color:var(--ink)}
 @media (max-width:720px){.headline{grid-template-columns:1fr}.needs li{grid-template-columns:20px 1fr}
@@ -100,10 +99,10 @@ document.addEventListener('click', event => {
 
 def when(stamp: str, now: datetime | None = None) -> str:
     """A log instant as a clock, with the day where it is not today: `17:40`, `17:40 yesterday`, `Mon 17:40`."""
-    try:
-        at = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC).astimezone()
-    except (ValueError, TypeError):
+    read = instant(stamp)
+    if read is None:
         return ""
+    at = read.astimezone()
     today = (now or datetime.now(UTC)).astimezone().date()
     days = (today - at.date()).days
     if days == 0:
@@ -225,6 +224,13 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
             f"{plural(merged, 'slice')} merged so far. The processes below say what would start things again.")
 
 
+def waiting_on_you(found: dict) -> int:
+    """How many things wait on a person: the parks not paused, and the questions and hand-backs no park groups."""
+    on_you = len([g for g in found.get("groups") or [] if g.get("paused") != "yes"])
+    return on_you + len([row for row in found.get("inbox") or []
+                         if row.get("kind") in LISTED and row.get("grouped") != "yes"])
+
+
 def live_sub(found: dict) -> str:
     """The short line in the page header: the state in a word, and the numbers that matter."""
     counts = found.get("counts") or {}
@@ -232,10 +238,7 @@ def live_sub(found: dict) -> str:
     word = {"teal": "working", "brass": "stopped", "blue": "paused", "red": "stalled", "grey": "quiet"}[colour]
     if _sentence.startswith("Built:"):
         word = "built"
-    on_you = len([g for g in found.get("groups") or [] if g.get("paused") != "yes"])
-    on_you += len([row for row in found.get("inbox") or []
-                   if row.get("kind") in LISTED and row.get("grouped") != "yes"])
-    bits = [word, f"{on_you} waiting on you"]
+    bits = [word, f"{waiting_on_you(found)} waiting on you"]
     if counts.get("paused"):
         bits.append(f"{counts['paused']} paused")
     slots = counts.get("slots")

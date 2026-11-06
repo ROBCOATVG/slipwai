@@ -29,7 +29,19 @@ protocol too, opt-in: the toolkit carries the keel's client (`make shared` write
 and `scripts/agents/drive.py` gives a session a process's face for the captain's watch; `SLIPWAI_ACP=1`
 takes the initialised harness's launch row, any other value a command, unset is the print mode as it was.
 The suite's stand-in drives a slice through the captain's gate on it. The board turning it on for a project
-waits on a proven row (22.6). 22.8 is built: *Make ready* on the Settings tab does the handshake through the client and keeps the
+waits on a proven row (22.6 — now proven, so that switch is the next change).
+
+**22.6, taken 2026-11-06** on a second board served from this tree on another port, so the conversation on the
+first board was not dropped. The Claude adapter: *Make ready* 3.8 s; a brief drawn in 27 turns — a prototype,
+`brief/prd.md` with 13 proposals and 2 open questions. OpenCode: *Make ready* 0.7 s; on its free model it thought
+for minutes and was stopped; signed in to OpenAI by the person and set to GPT-6.1 Sol fast from the board, a brief
+in 13 turns — a prototype, a brief with 22 proposals and 6 open questions, people, domain, look, surfaces. Neither
+agent asked anything through `elicitation/create`: both wrote their questions under `## Open`, as the prompt
+allows; the asking rule is the stages', not the first page's, and whether an agent takes it is the number 21.6d
+still owes. Found on the way, and fixed the same day: a page script broken by a Python escape, *Auto* taking the
+first `npx` row over the agents the machine had, thoughts drawn as turns, tool calls drawn raw, and nothing
+saying which agent and model a conversation was on. Also proven: Amp installed from its archive by the board
+answered its handshake in 0.9 s. 22.8 is built: *Make ready* on the Settings tab does the handshake through the client and keeps the
 agent's name, version, time and sign-in methods on the row; *Sign in* is `authenticate`, or the line to run for a
 terminal method; *Install* fetches the registry's archive for this platform, checks its sha256 and unpacks it
 under `~/.slipwai/agents/`, which `acp_launch` then finds. Nothing in 22.8 has been exercised against a real
@@ -171,7 +183,7 @@ the gates inside. The main plan's phase 22 table is the one `make progress` tick
 | 22.3 | `/settings`: *Runs on* and the agent's own model options, remembered in `~/.slipwai/board.json`; a project's init answer wins for its console | M | todo |
 | 22.4 | The first page over the protocol: `Sketch` on an `acp.Session`, the role at the head of the first prompt, tool cards, a plan, permission and question cards, Stop, the session loaded across a restart | L | todo |
 | 22.5 | The console over the protocol: the same on the Voyage page | M | todo |
-| 22.6 | The live run: one brief through the first page on Claude's adapter and one on a native agent, recorded here | S | todo |
+| 22.6 | The live run: one brief through the first page on Claude's adapter and one on a native agent, recorded here | S | done 2026-11-06; the rows carry the proof |
 | 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives; each shows its progress, asks the person instead of assuming, and stops on a cancel; the headless path kept where a harness has no `acp` row | L | done 2026-11-05; the captain's path opt-in by `SLIPWAI_ACP` until a row is proven |
 | 22.8 | Install from the settings page: an agent put on this machine from its manifest — `npx` needs only Node, a binary archive is fetched and its sha256 checked — and its sign-in started through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | M | done 2026-11-05: `agent_ready.py`, `agent_install.py`; three manifests give no checksum and get the link |
 

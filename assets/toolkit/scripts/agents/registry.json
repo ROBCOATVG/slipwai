@@ -318,9 +318,10 @@
           "package": "@agentclientprotocol/claude-agent-acp"
         },
         "via": "adapter: claude-agent-acp, over the Claude Agent SDK",
-        "proven": false,
+        "proven": true,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
-        "probed": "2026-11-05, through the keel's client in a scratch folder: handshake 0.4 s, loadSession true, no auth method (the installed Claude Code's login), config options mode, model, effort and fast, one prompt answered end_turn in 2.2 s; the first launch fetches the package over npx"
+        "probed": "2026-11-05, through the keel's client in a scratch folder: handshake 0.4 s, loadSession true, no auth method (the installed Claude Code's login), config options mode, model, effort and fast, one prompt answered end_turn in 2.2 s; the first launch fetches the package over npx",
+        "proof": "2026-11-06, from the board's first page on a second board over this tree: Make ready 3.8 s (adapter 0.101.0); one brief (bike repair bookings) drawn in 27 turns — a prototype, brief/prd.md with 13 proposals and 2 open questions, people.md — tool calls and words as cards; the agent wrote the brief through a shell heredoc rather than a write tool, and asked nothing through elicitation"
       }
     },
     {
@@ -1607,7 +1608,7 @@
           ]
         },
         "via": "native",
-        "proven": false,
+        "proven": true,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
         "probed": "2026-11-05, through the keel's client in a scratch folder: handshake 1.7 s, loadSession true, auth method opencode-login, config options model and mode, one prompt answered end_turn in 2.6 s with thought and message chunks and a usage update",
         "version": "2.2.5",
@@ -1661,7 +1662,8 @@
             "sha256": "2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8"
           }
         },
-        "archiveSource": "https://github.com/agentclientprotocol/registry, opencode/agent.json, read 2026-11-05"
+        "archiveSource": "https://github.com/agentclientprotocol/registry, opencode/agent.json, read 2026-11-05",
+        "proof": "2026-11-06, from the board's first page on a second board over this tree: Make ready 0.7 s (OpenCode 2.2.5, sign-in method opencode-login); on its free model Big Pickle a brief thought for minutes and was stopped; signed in to OpenAI and set to GPT-6.1 Sol fast from the board, one brief (tool library loans) drawn in 13 turns — a prototype, brief/prd.md with 22 proposals and 6 open questions, people.md, domain.md, look, surfaces; thoughts streamed and hidden, tool calls as one line each"
       }
     },
     {

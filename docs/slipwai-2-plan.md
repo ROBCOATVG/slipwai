@@ -1606,7 +1606,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 189 of 197 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 9/11, phase 22 5/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 191 of 197 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 6/8, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/5, phase 18 2/2, phase 21 9/11, phase 22 7/8. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2545,8 +2545,8 @@ files and gates are in [the ACP plan](acp-plan.md); this table is the one `make 
 | 22.4 | The first page over the protocol: `Sketch` on an `acp.Session`, the role at the head of the first prompt, tool cards, a plan, permission and question cards, Stop, the session loaded across a restart | new (owner, 2026-11-05) | L | `tests/test_brief_session.py` runs over the stand-in agent; `tests/test_brief_page.py` proves the cards, the answer route, the cancel and the load | done |
 | 22.5 | The console over the protocol, the same on the Voyage page, the project's harness first | new (owner, 2026-11-05) | M | The console's tests run over the stand-in agent | done |
 | 22.6 | The live run: one brief through the first page on Claude's adapter and one on a native agent, the rows marked proven and the runs recorded in the ACP plan | new (owner, 2026-11-05) | S | Two rows `proven: true` with dates, and the ACP plan's status line carries both runs |  |
-| 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives, each with progress, a permission by policy, a question on the page and a cancel; the headless path kept where a harness has no `acp` row | new (owner, 2026-11-05) | L | The draft on a live project asks on the page instead of writing an assumption, and the count after it is lower than 21.6d's |  |
-| 22.8 | Install from the settings page: an `npx` agent launched with Node alone, a binary agent fetched for this platform with its sha256 checked, sign-in through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | new (owner, 2026-11-05) | M | One agent installed and signed in from the page on a machine that had none, its row marked proven |  |
+| 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives, each with progress, a permission by policy, a question on the page and a cancel; the headless path kept where a harness has no `acp` row | new (owner, 2026-11-05) | L | The draft on a live project asks on the page instead of writing an assumption, and the count after it is lower than 21.6d's | done |
+| 22.8 | Install from the settings page: an `npx` agent launched with Node alone, a binary agent fetched for this platform with its sha256 checked, sign-in through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | new (owner, 2026-11-05) | M | One agent installed and signed in from the page on a machine that had none, its row marked proven | done |
 
 ### Risks the plan carries, and where each is caught
 

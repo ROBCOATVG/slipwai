@@ -18,7 +18,7 @@ separate columns and neither is ever derived from the other. A capability under 
 no flag at all and still has a demo.
 
     python3 scripts/agents/capabilities.py          # every capability, with what it is waiting for
-    python3 scripts/agents/capabilities.py --gates  # only the ones owed their gates now
+    python3 scripts/agents/capabilities.py --gates  # only the ones owed their gates now (`--json` for the board)
     python3 scripts/agents/capabilities.py --due    # only the ones owed a demo now
 """
 from __future__ import annotations
@@ -146,6 +146,10 @@ def main(argv: list[str]) -> int:
     rows = state(charted, lines(feature), cleared(feature, list(slices_by_capability(charted))))
     if "--gates" in argv:
         owed = gates_due(rows)
+        if "--json" in argv:
+            # The board's port: which capabilities are whole and ungated, so it never says *Built* over them.
+            print(json.dumps({"v": V, "feature": feature, "owed": [row["capability"] for row in owed]}))
+            return 0
         print(f"capabilities: {len(owed)} owed their gates")
         for row in owed:
             print(f"  {row['capability']} — {', '.join(row['slices'])}")

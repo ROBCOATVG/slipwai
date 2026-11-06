@@ -139,7 +139,7 @@ class LoopTest(unittest.TestCase):
         config = json.loads(harbour.read_text(encoding="utf-8"))
         # And one slice at a time: these cases are the loop's wiring — claim, dispatch, ask, answer — and
         # `test_captain_abreast.py` is where a fairway's slices run abreast, each in a berth of its own.
-        harbour.write_text(json.dumps({**config, "wait_bound": 0.05, "abreast": 1}, indent=2) + "\n",
+        harbour.write_text(json.dumps({**config, "wait_bound": 0.05, "abreast": 1, "ci": "off"}, indent=2) + "\n",
                            encoding="utf-8")
 
     @classmethod

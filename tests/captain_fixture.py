@@ -105,7 +105,7 @@ class Fixture(unittest.TestCase):
         # its answer, and where they do not the captain should give up quickly rather than sit out the
         # hour a real harbour allows.
         (self.root / "harbour.json").write_text(json.dumps(
-            {"stages": {"default": {"minutes": minutes, "tokens": 400}}, "wait_bound": 0.05, **held}),
+            {"stages": {"default": {"minutes": minutes, "tokens": 400}}, "wait_bound": 0.05, "ci": "off", **held}),
             encoding="utf-8")
 
     def harbour(self, *entries: logs.Entry) -> None:

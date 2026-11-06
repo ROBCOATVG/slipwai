@@ -20,7 +20,8 @@ from datetime import UTC, datetime
 from .fleet_record import NOTHING, clock_of
 from .page_shell import esc
 
-# budget: 360 — the headline over every state a fleet can be in, a build merged whole among them
+# budget: 375 — the headline over every state a fleet can be in, a build merged whole and one merged but
+# ungated among them
 
 #: The word on a group for its cause, in the words a person uses rather than the record's.
 CAUSES = {"limit": "paused", "host": "on main", "question": "a question", "demo": "demo sent back",
@@ -196,6 +197,14 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
         # Built, and said so: recap merged every slice and this read `Stopped. Nothing runs until one of
         # them is answered` over follow-ups no slice was waiting for.
         merged = int(counts.get("merged") or 0)
+        owed = found.get("gates_owed") or []
+        if owed:
+            # Merged is not finished while a whole capability is ungated: recap's board said *Built* over eight
+            # capabilities none of which had been through converge, gaps, design, adversary, mutation or a walk.
+            many = "1 capability owed its" if len(owed) == 1 else f"{len(owed)} capabilities owed their"
+            return ("brass", f"Merged, not yet gated: {many} gates — {', '.join(owed)}.",
+                    "`/sail` takes each through converge, gaps, design review, adversary, mutation and the walk, "
+                    "then to its demo.")
         return ("grey", f"Built: every stream has merged what it claimed, {plural(merged, 'slice')} in all.",
                 f"{plural(len(on_you), 'thing')} left for you below; none of them holds a slice." if on_you
                 else "Nothing is waiting on you.")

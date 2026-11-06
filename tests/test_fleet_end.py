@@ -28,6 +28,20 @@ class EndTest(Fixture):
         self.assertTrue(headline(found)[1].startswith("Built: every stream has merged what it claimed"))
         self.assertTrue(fleet_sub(found).startswith("built"))
 
+    def test_merged_is_not_built_while_a_whole_capability_is_owed_its_gates(self) -> None:
+        """recap's board said Built over eight capabilities none of which had been through its gates."""
+        self.deck("ORD",
+                  logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(700)),
+                  logs.entry("merged", fairway="ORD", slice="ORD-01", commit="abc123", t=when(600)))
+        found = {**self.board(), "gates_owed": ["take-orders"]}
+        colour, sentence, under = headline(found)
+        self.assertEqual(colour, "brass")
+        self.assertEqual(sentence, "Merged, not yet gated: 1 capability owed its gates — take-orders.")
+        self.assertIn("/sail", under)
+        found["gates_owed"] = ["take-orders", "bill-orders"]
+        self.assertEqual(headline(found)[1],
+                         "Merged, not yet gated: 2 capabilities owed their gates — take-orders, bill-orders.")
+
     def test_a_merge_with_a_sibling_still_claimed_is_not_finished(self) -> None:
         self.deck("ORD",
                   logs.entry("claimed", fairway="ORD", slice="ORD-01", t=when(700)),

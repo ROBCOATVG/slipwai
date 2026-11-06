@@ -35,7 +35,7 @@ class Fixture(unittest.TestCase):
         place = self.root / "scripts/agents"
         place.mkdir(parents=True)
         for name in ("harbourmaster.py", "logs.py", "berths.py", "telegraph.py", "claims.py",
-                     "travel.py", "inbox.py"):
+                     "travel.py", "inbox.py", "capabilities.py"):
             (place / name).write_text((AGENTS / name).read_text(encoding="utf-8"), encoding="utf-8")
         self.script = place / "harbourmaster.py"
 
@@ -111,7 +111,8 @@ class MergeFixture(Fixture):
     def setUp(self) -> None:
         super().setUp()
         (self.root / "project.json").write_text(json.dumps({"layout": {"delivery": "."}}), encoding="utf-8")
-        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main"}), encoding="utf-8")
+        # `ci: off`: a fixture has no remote, and a forge nobody can ask now parks a merge unless told not to ask.
+        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", "ci": "off"}), encoding="utf-8")
         self.git("init", "--quiet", "--initial-branch=main")
         # The repository's own identity, as any repository somebody has committed in has. Without it a
         # rebase that replays a commit cannot write one, and git only guesses from the hostname where the

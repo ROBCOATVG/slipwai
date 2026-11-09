@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Mapping
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from .shell_environment import git_bash, login_environment, windows_python
@@ -151,9 +152,12 @@ def needs(route: str, answers: Mapping[str, str] | None = None) -> list[str]:
 
 
 def everything(path: str | None = None) -> list[Found]:
-    """Every tool, looked for on one reading of the login `PATH` rather than one per tool."""
+    """Every tool, looked for on one reading of the login `PATH` rather than one per tool, and asked at once:
+    seven `--version`s in a row kept Settings from answering for longer than a Windows runner's five seconds,
+    and a person waits for the same sum. In the table's order whatever order they answer in."""
     path = login_environment().get("PATH", "") if path is None else path
-    return [found(tool, path) for tool in TOOLS]
+    with ThreadPoolExecutor(max_workers=len(TOOLS)) as pool:
+        return list(pool.map(lambda tool: found(tool, path), TOOLS))
 
 
 def lacking(route: str, answers: Mapping[str, str] | None = None, look=None) -> list[Found]:

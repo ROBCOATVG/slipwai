@@ -31,12 +31,19 @@ from slipwai.shell_environment import login_environment  # noqa: E402
 
 PROFILES = ("standard", "event-modelling")
 SHELL_CHECK = """SHELL := /bin/bash
+ifeq ($(OS),Windows_NT)
+.SHELLFLAGS := -hc
+endif
 .PHONY: one two
 one:
 \t@echo "one: $$BASH_VERSION" | grep -q 'one: [0-9]'
 two: one
 \t@[[ "$$(printf 'a\\n' | sed 's/a/b/')" == b ]] && echo "bash, sed and [[ ]] from Make"
+\t./plain-script
 """
+#: A line with no shell characters, naming a `#!` script: what the event model's `tsx` line is. Native Make
+#: starts such a line itself unless `.SHELLFLAGS` sends it to bash, which is what the project's Makefile does.
+PLAIN_SCRIPT = "#!/bin/sh\necho 'a #! script, from a plain line'\n"
 
 
 def step(title: str) -> None:
@@ -93,6 +100,8 @@ def main() -> int:
         area = Path(scratch)
         step("SHELL := /bin/bash, under this Make")
         (area / "Makefile").write_text(SHELL_CHECK, encoding="utf-8", newline="\n")
+        (area / "plain-script").write_text(PLAIN_SCRIPT, encoding="utf-8", newline="\n")
+        (area / "plain-script").chmod(0o755)
         run(["make", "two"], area, env)
         for profile in PROFILES:
             step(f"A {profile} project: generated, then its gate")

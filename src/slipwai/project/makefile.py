@@ -332,6 +332,11 @@ demo-down: ## Stop the demo, keeping any volume
     phony_integration = " ".join(f"test-integration-{s.name}" for s in suites) if len(suites) > 1 else ""
     return f"""# Local and CI entry points. Compatible with GNU Make 3.81 (the macOS default).
 SHELL := /bin/bash
+# Windows' native Make starts a line with no shell characters in it itself, where Windows cannot run a
+# script like `tsx`; any flags but `-c` or `-ec` send every line to bash. `-h` is on in bash anyway.
+ifeq ($(OS),Windows_NT)
+.SHELLFLAGS := -hc
+endif
 .DEFAULT_GOAL := help
 {service_variables}
 .PHONY: help

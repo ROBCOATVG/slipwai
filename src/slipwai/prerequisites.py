@@ -167,7 +167,7 @@ def lacking(route: str, answers: Mapping[str, str] | None = None, look=None) -> 
         return []
     if look is None:
         path = login_environment().get("PATH", "")
-        rows = [found(BY_KEY[key], path) for key in keys]
-    else:
-        rows = [look(BY_KEY[key]) for key in keys]
+        look = lambda tool: found(tool, path)  # noqa: E731 — the one way a tool is asked here
+    with ThreadPoolExecutor(max_workers=len(keys)) as pool:  # at once, as `everything` asks them
+        rows = list(pool.map(lambda key: look(BY_KEY[key]), keys))
     return [one for one in rows if one.state != "found"]

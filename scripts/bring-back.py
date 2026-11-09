@@ -112,6 +112,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # harness, by name.
        "acp", "board_settings", "settings_page", "board_agent", "turn_cards", "stage_session", "stage_steps",
        "agent_ready", "agent_install", "handover",
+       # The app and the machine it lands on (phase 23).
+       "prerequisites", "tool_install", "machine_card", "first_run", "app", "update_strip",
        # Reading a drafted document on the board. The experiment had no board to read one on.
        "spec_page",
        # Whether a pid file's process is running, asked without the signal Windows reads as Ctrl-C.

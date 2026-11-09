@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import parse_qs
 
-from . import agent_install, agent_ready
+from . import agent_install, agent_ready, machine_card
 from .board_settings import AUTO, Launch, Settings, chosen, launches, preferred, read, write
 from .harness import acp_row, name_of
 from .page_shell import document, esc
@@ -182,11 +182,15 @@ def page(settings: Settings, found: list[Launch], now: Launch | None) -> str:
             f'<form class="ask-page"><div class="agents">{rows}</div>{model_field(settings, now)}'
             f'<button class="go" type="submit">Save</button></form>'
             f'<p class="now">{esc(state)}</p><p class="said" hidden></p></div>')
-    return document("Settings", "What runs behind the board", f"<style>{STYLE}</style>{body}", SCRIPT, now="/settings")
+    return document("Settings", "What runs behind the board",
+                    f"<style>{STYLE}{machine_card.STYLE}</style>{body}{machine_card.card()}",
+                    SCRIPT + machine_card.SCRIPT, now="/settings")
 
 
 def route_get(bridge: Any, where: str, query: str) -> bool:
     """Answer a GET of this page's — the page, or a make-ready run's lines — or say it was not one."""
+    if machine_card.route_get(bridge, where, query):
+        return True
     if where in ("/settings/ready.json", "/settings/install.json"):
         import json  # noqa: PLC0415 — one route's answer
 
@@ -204,6 +208,8 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
 
 def route_post(bridge: Any, where: str, held: dict) -> bool:
     """Answer a POST of this page's — the save, or make ready — or say it was not one."""
+    if machine_card.route_post(bridge, where, held):
+        return True
     if where in ("/settings/ready", "/settings/install"):
         key = str(held.get("key") or "")
         begun = (agent_ready.begin(key, str(held.get("method") or "")) if where == "/settings/ready"

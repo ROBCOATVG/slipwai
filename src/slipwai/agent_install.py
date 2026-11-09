@@ -19,6 +19,7 @@ import tarfile
 import threading
 import urllib.request
 import zipfile
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -96,53 +97,17 @@ class Installing:
                 self.done = True
 
     def fetch(self) -> Path:
-        url = str(self.archive["url"])
-        name = url.rsplit("/", 1)[-1] or "archive"
-        self.home.mkdir(parents=True, exist_ok=True)
-        file = self.home / name
-        self.say(f"Fetching {url}")
-        with urllib.request.urlopen(url, timeout=120) as reading, file.open("wb") as writing:  # noqa: S310 — the registry's URL
-            shutil.copyfileobj(reading, writing)
-        self.say(f"Fetched {file.stat().st_size:,} bytes.")
-        return file
+        return fetched(str(self.archive["url"]), self.home, self.say)
 
     def check(self, file: Path) -> None:
         wanted = str(self.archive.get("sha256") or "").lower()
         if not wanted:
             raise ValueError("the registry's manifest gives no sha256 for this platform, so the archive cannot be "
                              "checked and was not unpacked")
-        digest = hashlib.sha256()
-        with file.open("rb") as reading:
-            for chunk in iter(lambda: reading.read(1 << 20), b""):
-                digest.update(chunk)
-        if digest.hexdigest() != wanted:
-            file.unlink(missing_ok=True)
-            raise ValueError(f"the archive's sha256 is {digest.hexdigest()[:12]}…, not the {wanted[:12]}… the registry "
-                             f"gives; it was thrown away")
-        self.say("Checksum matches the registry's.")
+        checked(file, wanted, "the registry", self.say)
 
     def unpack(self, file: Path) -> dict[str, Any]:
-        place = self.home / "unpacked"
-        shutil.rmtree(place, ignore_errors=True)
-        place.mkdir(parents=True)
-        name = file.name.lower()
-        if name.endswith((".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar")):
-            with tarfile.open(file) as held:
-                for member in held.getmembers():
-                    if member.name.startswith("/") or ".." in Path(member.name).parts:
-                        raise ValueError(f"the archive reaches outside itself ({member.name}); not unpacked")
-                try:
-                    held.extractall(place, filter="data")
-                except TypeError:  # pragma: no cover — a Python before the filter; the names were checked above
-                    held.extractall(place)
-        elif name.endswith(".zip"):
-            with zipfile.ZipFile(file) as held:
-                for entry in held.namelist():
-                    if entry.startswith("/") or ".." in Path(entry).parts:
-                        raise ValueError(f"the archive reaches outside itself ({entry}); not unpacked")
-                held.extractall(place)
-        else:  # a raw binary: the file itself is the command
-            shutil.copy(file, place / Path(str(self.archive["cmd"])).name)
+        place = unpacked(file, self.home / "unpacked", str(self.archive["cmd"]))
         command = place / str(self.archive["cmd"]).replace("\\", "/").removeprefix("./")
         if not command.is_file():
             raise ValueError(f"the archive holds no {self.archive['cmd']}; not installed")
@@ -157,6 +122,58 @@ class Installing:
     def state(self) -> dict[str, Any]:
         with self.lock:
             return {"key": self.key, "lines": list(self.lines), "done": self.done}
+
+
+def fetched(url: str, into: Path, say: Callable[[str], None]) -> Path:
+    """The archive at `url`, downloaded into `into`. Shared with `tool_install`, which fetches Git and Node
+    the same way."""
+    name = url.rsplit("/", 1)[-1] or "archive"
+    into.mkdir(parents=True, exist_ok=True)
+    file = into / name
+    say(f"Fetching {url}")
+    with urllib.request.urlopen(url, timeout=120) as reading, file.open("wb") as writing:  # noqa: S310 — a publisher's URL
+        shutil.copyfileobj(reading, writing)
+    say(f"Fetched {file.stat().st_size:,} bytes.")
+    return file
+
+
+def checked(file: Path, wanted: str, whose: str, say: Callable[[str], None]) -> None:
+    """Refuse, and throw the file away, where its sha256 is not the one `whose` gives."""
+    digest = hashlib.sha256()
+    with file.open("rb") as reading:
+        for chunk in iter(lambda: reading.read(1 << 20), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != wanted.lower():
+        file.unlink(missing_ok=True)
+        raise ValueError(f"the archive's sha256 is {digest.hexdigest()[:12]}…, not the {wanted[:12]}… {whose} "
+                         f"gives; it was thrown away")
+    say(f"Checksum matches {whose}'s.")
+
+
+def unpacked(file: Path, place: Path, raw_name: str = "") -> Path:
+    """The archive unpacked into `place`, emptied first; refused where an entry reaches outside it. A file
+    that is no archive is a raw binary, copied in as `raw_name`."""
+    shutil.rmtree(place, ignore_errors=True)
+    place.mkdir(parents=True)
+    name = file.name.lower()
+    if name.endswith((".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar.xz", ".txz", ".tar")):
+        with tarfile.open(file) as held:
+            for member in held.getmembers():
+                if member.name.startswith("/") or ".." in Path(member.name).parts:
+                    raise ValueError(f"the archive reaches outside itself ({member.name}); not unpacked")
+            try:
+                held.extractall(place, filter="data")
+            except TypeError:  # pragma: no cover — a Python before the filter; the names were checked above
+                held.extractall(place)
+    elif name.endswith(".zip"):
+        with zipfile.ZipFile(file) as held:
+            for entry in held.namelist():
+                if entry.startswith("/") or ".." in Path(entry).parts:
+                    raise ValueError(f"the archive reaches outside itself ({entry}); not unpacked")
+            held.extractall(place)
+    else:  # a raw binary: the file itself is the command
+        shutil.copy(file, place / Path(raw_name or file.name).name)
+    return place
 
 
 RUNNING: dict[str, Installing] = {}

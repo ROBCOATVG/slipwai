@@ -134,6 +134,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # the board is set to run them on, and the page that sets it.
               "acp", "board_settings", "settings_page", "board_agent", "turn_cards", "stage_session",
               "stage_steps", "agent_ready", "agent_install",
+              # What a route needs on the machine, the board installing it where the machine has none, and
+              # the app opened from a download: placing itself, registering the board, opening it.
+              "prerequisites", "tool_install", "machine_card", "first_run", "app", "update_strip",
               "bridge", "bridge_page", "fleet_page", "timeline_page",
               "cli_bridge", "cli_start",
               "interview_page",

@@ -131,6 +131,8 @@ color:var(--ink-3)}
 .ask input:disabled{color:var(--ink-3);cursor:not-allowed}
 .ask .path{flex:1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
 .ask .path button{white-space:nowrap}
+.card.lacking{border-color:var(--brass)}
+.lacking-note{color:var(--brass);font-size:.88rem}
 dl{display:grid;grid-template-columns:1fr auto;gap:6px 16px;margin:0;font-size:.88rem}
 dt{color:var(--ink-2)}
 dd{margin:0;text-align:right}

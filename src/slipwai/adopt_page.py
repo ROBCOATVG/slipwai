@@ -40,6 +40,7 @@ from .folder_field import folder_field
 from .interview_form import field_html
 from .interview_page import extensions_asked, init_asked
 from .layout import Layout
+from .machine_card import lacking_line
 from .page_shell import document, esc
 from .platform import with_platform
 from .project.big_picture_page import big_picture_files
@@ -247,7 +248,7 @@ document.addEventListener('click', async event => {
 
 def page(answers: Mapping[str, str], title: str = "Start from a codebase") -> str:
     """The adoption tab: pick a directory, look at it, and only then adopt it."""
-    body = picker(str(answers.get("root") or ""), answers) + '<div id="report"></div>'
+    body = lacking_line("/adopt") + picker(str(answers.get("root") or ""), answers) + '<div id="report"></div>'
     return document(title, "what it found, and what it would write, before it writes it",
                     body, SCRIPT, now="/adopt")
 

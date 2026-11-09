@@ -15,9 +15,9 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 440 — the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
+# budget: 465 — the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
 # each group carries its own heading, count and the rows under it, so the page is a little longer than one
-# that listed them flat.
+# that listed them flat. The made card carries a reply box for a stage that has ended, and the script that sends it.
 from __future__ import annotations
 
 import json

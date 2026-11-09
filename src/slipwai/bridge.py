@@ -71,7 +71,7 @@ from .folder_choice import chosen
 from .ground_card import card as ground_card
 from .ground_card import record as record_ground
 from .harbour import config
-from .init_run import Fitting, kept_line, outside_session
+from .init_run import Fitting, kept_line, outside_session, resumed
 from .init_run import adopted as adopted_init
 from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
@@ -151,10 +151,10 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 965 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 975 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
-# one fairway's log window and its poll.
+# one fairway's log window and its poll. A stage kept from before a restart is offered and resumed here too.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
 # And Try it's routes, `/try.json`, `/try` and the walks it shows, each handing straight to `try_card.py`.
 # And Feedback's, `/feedback.json` and `/feedback`, handing to `feedback_card.py`, and the triage it starts.
@@ -739,6 +739,8 @@ class Bridge(BaseHTTPRequestHandler):
                 return
             if settings_post(self, where, held):
                 return
+            if where == "/stage/say" and self.fitting is None and (command := kept_stage(self.root)):
+                self.fitting = resumed(self.root, command)  # a stage kept from before a restart, carried on
             if stage_post(self, where, held):
                 return
             if where == "/generate/ask":

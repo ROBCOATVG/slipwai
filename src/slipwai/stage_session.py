@@ -233,11 +233,6 @@ def route_post(bridge: Any, where: str, held: dict) -> bool:
     if where not in ("/stage/answer", "/stage/cancel", "/stage/say"):
         return False
     stage = running(bridge)
-    if stage is None and where == "/stage/say" and bridge.fitting is None and (command := kept_stage(bridge.root)):
-        from .init_run import resumed  # noqa: PLC0415 — init_run reaches this module, not the other way
-
-        bridge.fitting = resumed(bridge.root, command)
-        stage = running(bridge)
     if stage is None:
         bridge.send(400, "no stage is running", "text/plain; charset=utf-8")
         return True

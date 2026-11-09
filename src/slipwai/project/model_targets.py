@@ -13,7 +13,8 @@ from __future__ import annotations
 # What every target that runs the TypeScript pipeline needs first. Repeated per recipe rather than shared
 # through a prerequisite, so each target is one thing to read; with the tree already installed it costs
 # about a second and asks the registry nothing.
-INSTALL = "npm --prefix scripts/event-model install --no-audit --no-fund --loglevel=error"
+# From inside the folder rather than with `--prefix`, which npm on Windows reads its `package.json` around.
+INSTALL = "cd scripts/event-model && npm install --no-audit --no-fund --loglevel=error"
 TSX = "scripts/event-model/node_modules/.bin/tsx"
 
 MODEL_TARGETS = f"""

@@ -34,7 +34,7 @@ from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 610 — one runner for every child the board starts, and the file check an exit code does not make:
+# budget: 625 — one runner for every child the board starts, and the file check an exit code does not make:
 # assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
@@ -42,6 +42,8 @@ from .shell_environment import login_environment
 # step they would be five modules of twelve lines and one import list each.
 # it: `./init`, the draft, the launch and the cast-off. A module per step would be four copies of the pty,
 # the tail and the receipt, which is the duplication the steps were made one runner to avoid.
+# Raised from 610 for `windows_argv`: on Windows every child starts through Git's bash, found on its own
+# PATH, and that belongs beside the one place children are started.
 
 #: What a child writes when it believes it is on a terminal — which, through a pseudo-terminal, it does.
 #: Stripped rather than rendered: the card is a log of what was said, not a terminal emulator.

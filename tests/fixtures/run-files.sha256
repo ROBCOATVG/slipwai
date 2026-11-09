@@ -7,6 +7,7 @@
 # why: 2026-11-09 001fff112e2f6aa5 24.4: models.py and benchmark.py start their sibling scripts with PYTHON, which is "python3" wherever sys.platform is not win32 — the argv macOS and Linux ran before.
 # why: 2026-11-09 a89a3c4b51ee4793 24.5: init passes --script sh to Spec Kit only where uname -s says MINGW, MSYS or CYGWIN; on Darwin and Linux the case matches nothing and specify gets the arguments it had.
 # why: 2026-11-09 628ad48c4fc19d99 24.8: try_it ends an app's group through end_tree, os.killpg with the same signals off Windows; moorings links through link_folder and is_link, os.symlink and is_symlink off Windows (isjunction is False there); the harbourmaster's symlink_to line is unchanged off Windows.
+# why: 2026-11-09 16780b2335a643ce 24.11: the event model's npm install runs as 'cd scripts/event-model && npm install' instead of 'npm --prefix scripts/event-model install', which npm on Windows ignores; each recipe line is its own shell, so the same tree is installed in the same place on macOS and Linux.
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -16,7 +17,6 @@
 0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a  event-modelling-postgres-toy-serve  scripts/event-model/requirements.txt
 0f1df3607fe53ae1e2b32518fe3d89d87abc2356448d4838e9ef370c88991db2  event-modelling-memory-none  scripts/event-model/validate.ts
 0f1df3607fe53ae1e2b32518fe3d89d87abc2356448d4838e9ef370c88991db2  event-modelling-postgres-toy-serve  scripts/event-model/validate.ts
-0fac8691e54a6f11a575059e0456c8c2de1db7449abf68ce5e0590f2e60cd7f7  event-modelling-postgres-toy-serve  Makefile
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  event-modelling-memory-none  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  event-modelling-postgres-toy-serve  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-memory-none  scripts/agents/triage.py
@@ -92,6 +92,7 @@
 526a3fcaf97d8201724982c3190cf6d4d212f2cfbda0fe2e3219f811d5979962  event-modelling-postgres-toy-serve  scripts/event-model/drawio.ts
 52f0245cd6a36d141cbf614ce89c7c36a8770f29ed5928c73741368dd7f93184  event-modelling-memory-none  scripts/event-model/check.ts
 52f0245cd6a36d141cbf614ce89c7c36a8770f29ed5928c73741368dd7f93184  event-modelling-postgres-toy-serve  scripts/event-model/check.ts
+55bdb8e92bdb80006268ea78375d4ac740b6cce135d60e2482b007d96bd939b2  event-modelling-postgres-toy-serve  Makefile
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  event-modelling-memory-none  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  event-modelling-postgres-toy-serve  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  standard-memory-none  scripts/agents/command_text.py
@@ -104,6 +105,7 @@
 6378514a076a3d423bf5303bca15094cd69f2cd102c3fcb3e16025fa8eeb3d51  standard-postgres-toy-serve  scripts/agents/abreast.py
 65a025d41b1b105492b1b28fa450efddf4b320a4dcefc89a8233bc428b4326b9  event-modelling-memory-none  scripts/event-model/check.py
 65a025d41b1b105492b1b28fa450efddf4b320a4dcefc89a8233bc428b4326b9  event-modelling-postgres-toy-serve  scripts/event-model/check.py
+6b191af29f366323f7b09b41fc11d4d8186a157b35a6d56568a7ebd32eded899  event-modelling-memory-none  Makefile
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-memory-none  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-postgres-toy-serve  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-memory-none  scripts/test_benchmark.py
@@ -140,7 +142,6 @@
 79f2716e87aa968540282945008361988192bd7c4321d2e519782d09ab636b6f  event-modelling-postgres-toy-serve  scripts/agents/clearance.py
 79f2716e87aa968540282945008361988192bd7c4321d2e519782d09ab636b6f  standard-memory-none  scripts/agents/clearance.py
 79f2716e87aa968540282945008361988192bd7c4321d2e519782d09ab636b6f  standard-postgres-toy-serve  scripts/agents/clearance.py
-7f3e9aca8167e2817f853d5b4ef4b57ae55719cc6b8d2925e1f40fdfe96adfcb  event-modelling-memory-none  Makefile
 8141aa2fc87a65316e5a8dd73dde701b25cd734ef0be0dd203e6ea66abded629  event-modelling-memory-none  scripts/check-slice-scope.py
 8141aa2fc87a65316e5a8dd73dde701b25cd734ef0be0dd203e6ea66abded629  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
 8141aa2fc87a65316e5a8dd73dde701b25cd734ef0be0dd203e6ea66abded629  standard-memory-none  scripts/check-slice-scope.py

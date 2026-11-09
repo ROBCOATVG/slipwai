@@ -1606,7 +1606,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 196 of 196 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 7/7, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/4, phase 18 2/2, phase 21 11/11, phase 22 9/9. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 204 of 220 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 7/7, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/4, phase 18 2/2, phase 21 11/11, phase 22 9/9, phase 23 8/11, phase 24 0/13. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2549,6 +2549,49 @@ files and gates are in [the ACP plan](acp-plan.md); this table is the one `make 
 | 22.7 | The stages over the protocol: draft first, then the surfaces, assess, the event model, triage, the adoption steps and the captain's drives, each with progress, a permission by policy, a question on the page and a cancel; the headless path kept where a harness has no `acp` row | new (owner, 2026-11-05) | L | The draft on a live project asks on the page instead of writing an assumption, and the count after it is lower than 21.6d's | done |
 | 22.8 | Install from the settings page: an `npx` agent launched with Node alone, a binary agent fetched for this platform with its sha256 checked, sign-in through `authenticate`; the one line to run shown where the machine lacks what the manifest needs | new (owner, 2026-11-05) | M | One agent installed and signed in from the page on a machine that had none, its row marked proven | done |
 | 22.9 | The captain's protocol path turned on per project from the board: `sessions` in `.specify/cruise.json`, print or protocol, set on the Who answers card and read by the captain's switch | new (owner, 2026-11-06) | S | A project set to `protocol` runs its captains over the Agent Client Protocol with nothing in the environment; one set to `print`, or never set, runs them as before | done |
+
+### Phase 23. Download, double-click, done
+
+A non-technical person meets slipwai as an app they download and open, and the first thing they see is
+the board; the command line does not change. The design, the three pieces and each slice's files and
+gates are in [the double-click plan](double-click-plan.md); this table is the one `make progress` ticks.
+
+| Slice | What | From | Size | Done when | Status |
+|---|---|---|---|---|---|
+| 23.1 | The prerequisites audit: what a project made or adopted from the board needs on the machine, per route and per package, as `prerequisites.py`'s table | new (owner, 2026-11-09) | S | Every row names the code that needs it; a test fails when a language package declares a tool the table lacks | todo | done |
+| 23.2 | The tag's release, which already carries the CLI executables, also carries the app: the `.dmg` and `slipwai-board.exe`, smoked, with their `.sha256` | new (owner, 2026-11-09) | S | A release candidate tag carries the files | todo | done |
+| 23.3 | The app face: `Slipwai.app` and `slipwai-board.exe`, windowed, opening the board without a terminal | new (owner, 2026-11-09) | M | The executable smoke gains an app mode that reads `/board.json`; the CLI smoke is unchanged | todo | done |
+| 23.4 | The first launch: place, register the login service from the placed copy, open; *Remove from this machine* on Settings | new (owner, 2026-11-09) | M | `tests/test_first_run.py` proves each branch; a bare `slipwai` in a terminal is byte for byte what it was | todo | done |
+| 23.5 | macOS signed, notarised and stapled, in a `.dmg` | new (owner, 2026-11-09) | M | A downloaded `.dmg` opens on a clean macOS account with no Gatekeeper refusal | todo |  |
+| 23.6 | Windows: both executables Authenticode-signed | new (owner, 2026-11-09) | S | `Get-AuthenticodeSignature` verifies both | todo |  |
+| 23.7 | *This machine*: the card on Settings and the check at the top of the three start pages | new (owner, 2026-11-09) | M | The settings and start pages' tests prove found, missing and the route-specific check; a machine with everything sees nothing new | todo | done |
+| 23.8 | Install from the board, only where the machine has no copy or one too old: Git and Node under `~/.slipwai/tools/`, checksum-checked, on the board's children's `PATH` only | new (owner, 2026-11-09) | M | `tests/test_prerequisites.py` proves the checksum refusal and the `PATH`, and that a machine with a good copy is offered no install and fetches nothing; an old copy gets a newer one ahead of it | todo | done |
+| 23.9 | The update strip: a newer release said, with the link | new (owner, 2026-11-09) | S | An older board shows it, the same version shows nothing, no network shows nothing | todo | done |
+| 23.10 | The live run: a clean macOS account and a clean Windows VM, download to a generated project with its gate passing, timed | new (owner, 2026-11-09) | S | The two times and every prompt met are in the double-click plan's status line | todo |  |
+| 23.11 | The guide opens with the download for a person with no terminal; every command line stays where it is | new (owner, 2026-11-09) | S | `make test-docs` passes; the terminal steps are unchanged | todo | done |
+
+### Phase 24. Projects on Windows, through Git Bash
+
+A Windows project runs the same files as a Mac one, under the bash Git for Windows brings and an MSYS Make,
+both put there by the board; on macOS and Linux nothing behaves differently, and a fence makes every byte
+that changes say why. The design and the gap analysis are in [the Windows plan](windows-plan.md); this
+table is the one `make progress` ticks.
+
+| Slice | What | From | Size | Done when | Status |
+|---|---|---|---|---|---|
+| 24.1 | The fence: digests of every file macOS and Linux run, each change carrying why behaviour there is unchanged; their generated-gate jobs stay required | new (owner, 2026-11-09) | S | A digest that moves without its reason fails the build | todo |  |
+| 24.2 | Git with bash on Windows: full Git for Windows used where it is, PortableGit installed where it is not | new (owner, 2026-11-09) | M | An install on windows-latest leaves a working `bash` | todo |  |
+| 24.3 | Make for Git Bash: a spike between MSYS2's `make` and ezwinports' build, then the install it picks | new (owner, 2026-11-09) | M | A Makefile with `SHELL := /bin/bash` runs from the board's `PATH` on windows-latest | todo |  |
+| 24.4 | `python3` in both worlds: an `sh` shim for bash, `sys.executable` at the seven sites Windows programs start it from | new (owner, 2026-11-09) | S | A test per site on windows-latest; POSIX argv unchanged | todo |  |
+| 24.5 | The board starts projects through bash on Windows: `bash ./init`, `--script sh` to Spec Kit, `core.longpaths` | new (owner, 2026-11-09) | S | A generated project's `./init` runs to the end from the board on windows-latest | todo |  |
+| 24.6 | `.gitattributes` keeping the POSIX scripts at LF | new (owner, 2026-11-09) | S | A clone with `core.autocrlf=true` checks `init` out with LF and it runs | todo |  |
+| 24.7 | The languages' path lists joined with the platform's separator, python first | new (owner, 2026-11-09) | S | `make typecheck` and `make test` pass on a python project on windows-latest | todo |  |
+| 24.8 | The toolkit on Windows: Try it's process trees, the moorings' links, the ratchet's `sh` | new (owner, 2026-11-09) | S | Each under a test on windows-latest; POSIX paths unchanged | todo |  |
+| 24.9 | The board on Windows: the tool table's Windows rows and *Open a terminal here* in place of the WSL note | new (owner, 2026-11-09) | M | The prerequisites and settings tests prove the rows and the button | todo |  |
+| 24.10 | Agents the person starts themselves: the projection names the board's tools path on Windows | new (owner, 2026-11-09) | S | The projection test proves the line on Windows and its absence elsewhere | todo |  |
+| 24.11 | CI on windows-latest: a project per language, `bash ./init` and `make verify`; MSYS path conversions fixed as found | new (owner, 2026-11-09) | M | The job is green and required | todo |  |
+| 24.12 | The Windows app published once 24.11 is green, and the live run on a clean Windows machine | new (owner, 2026-11-09) | S | The release carries `slipwai-board.exe`; the run is recorded | todo |  |
+| 24.13 | The guides: a Windows section, no WSL anywhere | new (owner, 2026-11-09) | S | `make test-docs` passes; the macOS and Linux steps are unchanged | todo |  |
 
 ### Risks the plan carries, and where each is caught
 

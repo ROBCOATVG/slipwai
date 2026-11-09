@@ -4,6 +4,15 @@
 page covers the first ten minutes: install the command, answer its questions, and see the gate pass. The
 next page, [your first feature](first-feature.md), covers the other five minutes.
 
+**No terminal, on a Mac?** Download **Slipwai** (`.dmg`) from the releases page and open it. On a Mac, drag it to Applications first, or press **Move** when it asks. The pilot build is not signed
+yet, so the first time it is refused: open System Settings → Privacy & Security and press **Open Anyway**. The
+board opens in your browser and keeps running each time you log in. Its **Settings** tab shows what this
+machine still needs, such as Git, Python or Node. Where one is missing or too old it offers **Install**.
+Where you already have a good one, it uses yours. Then go to [the same interview, on the board](#the-same-interview-on-the-board).
+The Windows app follows once projects run on Windows natively.
+
+The rest of this page is the terminal's way, and it is unchanged.
+
 You need these before you start:
 
 - Python 3.11 or newer

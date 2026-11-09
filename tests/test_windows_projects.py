@@ -33,11 +33,12 @@ class StartTest(unittest.TestCase):
 
     def test_a_script_goes_through_bash_found_on_the_childs_path(self) -> None:
         argv = init_run.windows_argv(["./init", "--integration", "codex"], str(self.tools))
-        self.assertEqual(argv, [str(self.tools / f"bash{self.suffix}"), "./init", "--integration", "codex"])
+        self.assertEqual([argv[0].lower(), *argv[1:]],
+                         [str(self.tools / f"bash{self.suffix}").lower(), "./init", "--integration", "codex"])
 
     def test_a_program_is_found_on_the_childs_path(self) -> None:
-        self.assertEqual(init_run.windows_argv(["make", "draft"], str(self.tools)),
-                         [str(self.tools / f"make{self.suffix}"), "draft"])
+        argv = init_run.windows_argv(["make", "draft"], str(self.tools))
+        self.assertEqual([argv[0].lower(), *argv[1:]], [str(self.tools / f"make{self.suffix}").lower(), "draft"])
         self.assertEqual(init_run.windows_argv(["absent"], str(self.tools)), ["absent"])
 
 

@@ -27,6 +27,7 @@ class PlacedTest(unittest.TestCase):
     def setUp(self) -> None:
         self.home = Path(tempfile.mkdtemp())
 
+    @unittest.skipIf(os.name == "nt", "a POSIX path resolves onto a drive on Windows")
     def test_macos_wants_an_applications_folder(self) -> None:
         inside = "Slipwai.app/Contents/MacOS/slipwai"
         self.assertTrue(first_run.placed(Path("/Applications") / inside, "darwin", self.home))

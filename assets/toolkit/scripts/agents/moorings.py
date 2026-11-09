@@ -201,6 +201,11 @@ def leave(root: Path, berth: Path) -> str:
     """Remove a merged slice's worktree, or say why it was kept. Never the project's own checkout."""
     if berth.resolve() == root.resolve():
         return ""
+    logs = berth / ".slipwai/logs"
+    if os.name == "nt" and is_link(logs):  # pragma: no cover - the other platform's branch
+        # Git reads the junction as a folder of the worktree's own and keeps the berth; `rmdir` takes the
+        # junction alone, and the deck logs it joins are not touched.
+        os.rmdir(logs)
     gone = git(root, "worktree", "remove", str(berth))
     if gone.returncode != 0:
         said = (gone.stderr or gone.stdout).strip().splitlines()

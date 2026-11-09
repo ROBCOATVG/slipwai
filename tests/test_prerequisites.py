@@ -275,9 +275,9 @@ class WindowsTest(unittest.TestCase):
         assert shim is not None
         self.assertEqual(shim.read_text(), f'#!/bin/sh\nexec "{python.as_posix()}" "$@"\n')
         self.assertTrue(json.loads((shim.parents[1] / "tool.json").read_text())["first"])
-        self.assertIsNone(tool_install.windows_shims(self.area / "tools",
-                                                     look=lambda tool: Found(tool, "found", str(python), "3")))
-
+        with mock.patch.object(sys, "platform", "darwin"):
+            self.assertIsNone(tool_install.windows_shims(self.area / "tools",
+                                                         look=lambda tool: Found(tool, "found", str(python), "3")))
 
     def test_a_python_script_is_started_with_python3_and_on_windows_with_python_exe(self) -> None:
         self.assertEqual(shell_environment.python3("darwin"), "python3")

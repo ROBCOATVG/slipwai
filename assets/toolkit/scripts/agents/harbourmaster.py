@@ -578,7 +578,10 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
         if rebased.returncode != 0:
             paths = conflicting()
             git("rebase", "--abort", where=SCRATCH)
-            return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or 'files git did not name'}. "
+            # Where git names no file it did not stop on a conflict, and its own last line is the reason.
+            said = [line for line in (rebased.stderr or rebased.stdout or "").splitlines() if line.strip()]
+            unnamed = f"files git did not name ({said[-1].strip()})" if said else "files git did not name"
+            return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or unnamed}. "
                         f"The rebase was aborted, so nothing is half-done; resolve it in your own berth and "
                         f"ask again"), True, "", False
         started = time.monotonic()

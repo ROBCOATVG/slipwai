@@ -127,7 +127,8 @@ def register(root: Path, home: Path | None = None,
     """Write the login service, unless the one there already names this copy. The lines `install` said."""
     wanted = at_login.service(root, HOST, PORT, home)
     try:
-        if wanted.path.read_text(encoding="utf-8") == wanted.text:
+        # Line endings aside: on Windows the file is written with CRLF and read back with LF.
+        if wanted.path.read_text(encoding="utf-8").replace("\r\n", "\n") == wanted.text.replace("\r\n", "\n"):
             return []
     except OSError:
         pass

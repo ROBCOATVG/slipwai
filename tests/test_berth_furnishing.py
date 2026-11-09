@@ -81,7 +81,7 @@ class BerthTest(unittest.TestCase):
         (berth / ".slipwai/logs/feature/fairway.jsonl").write_text('{"kind": "demo"}\n', encoding="utf-8")
         found, said = self.module.berth(self.root, "L02", "slice/L02", "main")
         self.assertEqual(found.resolve(), berth.resolve())
-        self.assertTrue((berth / ".slipwai/logs").is_symlink(), "every later line lands in the shared log")
+        self.assertTrue(self.module.is_link(berth / ".slipwai/logs"), "every later line lands in the shared log")
         aside = [path for path in (berth / ".slipwai").iterdir() if path.name.startswith("logs.unread-")]
         self.assertEqual(len(aside), 1)
         self.assertEqual((aside[0] / "feature/fairway.jsonl").read_text(encoding="utf-8"), '{"kind": "demo"}\n')

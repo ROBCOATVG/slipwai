@@ -1,16 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_submodules
 
 
 root = Path(SPECPATH)
+# `collect_submodules` below imports the package to list it, and nothing installs it where the build's
+# Python looks: without this it lists almost nothing, and every module only a language package imports —
+# `slipwai.project.composition`, say — is left out of the executable, which then cannot load a language.
+sys.path.insert(0, str(root / "src"))
 
-analysis = Analysis(
-    [str(root / "src/slipwai/__main__.py")],
-    pathex=[str(root / "src")],
-    binaries=[],
-    datas=[
+DATAS = [
         (str(root / "assets"), "assets"),
         (str(root / "catalog.json"), "."),
         (str(root / "VERSION"), "."),
@@ -23,19 +24,31 @@ analysis = Analysis(
         (str(root / "docs/rename.json"), "docs"),
         # The worked quickstarts `generate` offers before its first question, read from beside the keel.
         (str(root / "docs/reference"), "docs/reference"),
-    ],
-    # A language package is loaded from the package directory at run time and imports the keel by name,
-    # so every keel module stays in the executable whether or not a static import from `__main__`
-    # reaches it. The executable bundles no package: it is the keel alone, the same as the wheel, so
-    # there is one artefact to build and sign and no bundled copy to drift from the chandlery's.
-    hiddenimports=collect_submodules("slipwai"),
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[],
-    excludes=[],
-    noarchive=False,
-    optimize=0,
-)
+]
+
+
+def analysed(entry):
+    """One keel, analysed from `entry`: the command's `__main__`, or the app's `app.py`."""
+    return Analysis(
+        [str(root / entry)],
+        pathex=[str(root / "src")],
+        binaries=[],
+        datas=DATAS,
+        # A language package is loaded from the package directory at run time and imports the keel by name,
+        # so every keel module stays in the executable whether or not a static import from `__main__`
+        # reaches it. The executable bundles no package: it is the keel alone, the same as the wheel, so
+        # there is one artefact to build and sign and no bundled copy to drift from the chandlery's.
+        hiddenimports=collect_submodules("slipwai"),
+        hookspath=[],
+        hooksconfig={},
+        runtime_hooks=[],
+        excludes=[],
+        noarchive=False,
+        optimize=0,
+    )
+
+
+analysis = analysed("src/slipwai/__main__.py")
 pyz = PYZ(analysis.pure)
 
 executable = EXE(
@@ -51,3 +64,21 @@ executable = EXE(
     upx=False,
     console=True,
 )
+
+# The app (phase 23): the same keel from `app.py`, windowed, so a double-click opens the board and no
+# terminal. A bundle on macOS, built as a folder because that is the shape an `.app` and its signature
+# want; one file on Windows, which places itself on first launch. Linux keeps the command alone.
+if sys.platform in ("darwin", "win32"):
+    app = analysed("src/slipwai/app.py")
+    app_pyz = PYZ(app.pure)
+    if sys.platform == "darwin":
+        app_exe = EXE(app_pyz, app.scripts, [], exclude_binaries=True, name="slipwai", debug=False,
+                      bootloader_ignore_signals=False, strip=False, upx=False, console=False)
+        collected = COLLECT(app_exe, app.binaries, app.datas, strip=False, upx=False, name="slipwai-app")
+        BUNDLE(collected, name="Slipwai.app", bundle_identifier="ai.slipwai.app",
+               version=(root / "VERSION").read_text(encoding="utf-8").strip(),
+               info_plist={"LSMinimumSystemVersion": "12.0", "NSHighResolutionCapable": True,
+                           "CFBundleDisplayName": "slipwai"})
+    else:
+        EXE(app_pyz, app.scripts, app.binaries, app.datas, [], name="slipwai-board", debug=False,
+            bootloader_ignore_signals=False, strip=False, upx=False, console=False)

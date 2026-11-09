@@ -100,7 +100,7 @@ test-wheel: wheel ## Install the wheel outside the checkout and exercise its bun
 	@for wheel in dist/slipwai-*.whl; do python3 scripts/smoke-wheel.py "$$wheel" || exit; done
 
 test-executable: executable ## Build it, then prove it scaffolds with Git alone
-	python3 scripts/smoke-executable.py dist/slipwai$(if $(filter Windows_NT,$(OS)),.exe,)
+	python3 scripts/smoke-executable.py dist/slipwai$(if $(filter Windows_NT,$(OS)),.exe,) $(if $(filter Windows_NT,$(OS)),--app dist/slipwai-board.exe,$(if $(filter Darwin,$(shell uname -s)),--app dist/Slipwai.app,))
 
 .PHONY: starters
 starters: ## Materialise every starter combination under build/ for inspection

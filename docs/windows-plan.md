@@ -8,7 +8,15 @@ smaller road: "i think that may be good enough without messing around with full 
 project runs the very same files as a Mac one, under the bash that Git for Windows brings, with Make beside
 it, and the board puts both there with no administrator and no terminal.
 
-**Status, 2026-11-09:** planned. Nothing built. The gap analysis behind it is section 5.
+**Status, 2026-11-09:** built on `double-click-23`, waiting on its first windows-latest run. 24.1 (the
+fence) is done. 24.2 to 24.6, 24.8, 24.9, 24.11's job and 24.13 are written and green on macOS; each is
+ticked when the `windows-project` job proves it. 24.3's spike chose ezwinports' Make: a zip the standard
+library opens, pinned by the sha256 SourceForge publishes, where MSYS2's is a `.zst` no Python before 3.14
+can read; whether it honours `SHELL := /bin/bash` is the job's first step. 24.7 is a commit on the python
+package's `windows-path-separator` branch (`MYPYPATH` joined with `;` under Git's bash); no other package
+joins a path list. 24.10 is folded into 24.9: the projection writes committed files, and a person's tools
+path does not belong in every clone, so an agent the person starts gets the board's tools by being started
+from *Open a terminal here*. 24.12 waits for the job. The gap analysis behind the plan is section 5.
 
 **The principle the plan serves:** a Windows person gets the same project, the same gates and the same board
 as everyone else, and **on macOS and Linux nothing behaves differently.** A file a Mac or Linux machine runs

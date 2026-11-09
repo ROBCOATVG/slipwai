@@ -773,10 +773,20 @@ def free_ports(where: Path) -> list[str]:
     return others
 
 
+def end_tree(pid: int, hard: bool) -> None:
+    """SIGTERM, or SIGKILL where `hard`, to an app's process group. Windows has no process groups to signal,
+    so there the tree is ended through `taskkill /T`, as the harness ends a session's."""
+    if os.name == "nt":  # pragma: no cover - the other platform's branch
+        subprocess.run(["taskkill", "/T", *(["/F"] if hard else []), "/PID", str(pid)], capture_output=True,
+                       check=False)
+        return
+    os.killpg(pid, signal.SIGKILL if hard else signal.SIGTERM)
+
+
 def stop_apps(state: dict) -> None:
     for pid in (state.get("pids") or {}).values():
         try:
-            os.killpg(int(pid), signal.SIGTERM)
+            end_tree(int(pid), hard=False)
         except (OSError, ValueError):
             continue
     deadline = time.monotonic() + 8
@@ -784,7 +794,7 @@ def stop_apps(state: dict) -> None:
         time.sleep(0.3)
     for pid in (state.get("pids") or {}).values():
         try:
-            os.killpg(int(pid), signal.SIGKILL)
+            end_tree(int(pid), hard=True)
         except (OSError, ValueError):
             continue
     state["pids"] = {}

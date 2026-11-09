@@ -548,7 +548,14 @@ def furnish(where: Path) -> None:
         if target.exists() or git("check-ignore", "-q", f"tools/{installed.name}/").returncode != 0:
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.symlink_to(installed, target_is_directory=installed.is_dir())
+        if sys.platform != "win32":
+            target.symlink_to(installed, target_is_directory=installed.is_dir())
+        elif installed.is_dir():  # a symlink there needs Developer Mode or an administrator; a junction does not
+            import _winapi  # noqa: PLC0415 — Windows only
+
+            _winapi.CreateJunction(str(installed), str(target))
+        else:
+            shutil.copy2(installed, target)
 
 
 def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:

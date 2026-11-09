@@ -45,6 +45,30 @@ from pathlib import Path
 EXCLUDED = "/.slipwai/logs"
 
 
+def is_link(path: Path) -> bool:
+    """Whether `path` is a link to a folder elsewhere: a symlink, or on Windows the junction made in its place."""
+    if path.is_symlink():
+        return True
+    is_junction = getattr(os.path, "isjunction", None)  # Python 3.12 and later
+    if is_junction is not None:
+        return bool(is_junction(path))
+    try:
+        return bool(getattr(os.lstat(path), "st_file_attributes", 0) & 0x400)  # a reparse point
+    except OSError:
+        return False
+
+
+def link_folder(target: Path, link: Path) -> None:
+    """`link` pointing at the folder `target`: a symlink, except on Windows, where a symlink needs Developer
+    Mode or an administrator and a junction, which needs neither, stands in."""
+    if os.name == "nt":  # pragma: no cover - the other platform's branch
+        import _winapi  # noqa: PLC0415 — Windows only
+
+        _winapi.CreateJunction(str(target), str(link))
+        return
+    os.symlink(target, link, target_is_directory=True)
+
+
 def git(root: Path, *argv: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *argv], cwd=root, capture_output=True, text=True, check=False,
                           encoding="utf-8", errors="replace")
@@ -67,7 +91,7 @@ def linked(root: Path, berth: Path) -> str:
     logs = berth / ".slipwai/logs"
     shared = root / ".slipwai/logs"
     shared.mkdir(parents=True, exist_ok=True)
-    if logs.is_symlink() or berth.resolve() == root.resolve():
+    if is_link(logs) or berth.resolve() == root.resolve():
         return ""
     said = ""
     if logs.is_dir():
@@ -84,7 +108,7 @@ def linked(root: Path, berth: Path) -> str:
             said = f"{logs} had lines a session wrote before it was linked; they are kept at {aside}"
     logs.parent.mkdir(parents=True, exist_ok=True)
     try:
-        os.symlink(shared.resolve(), logs, target_is_directory=True)
+        link_folder(shared.resolve(), logs)
     except OSError as fault:
         return f"{logs} could not be linked to the project's deck logs ({fault})"
     common = git(root, "rev-parse", "--git-common-dir").stdout.strip()
@@ -106,7 +130,10 @@ def furnished(root: Path, berth: Path) -> str:
     env, here = root / ".env", berth / ".env"
     if env.is_file() and not here.exists() and not here.is_symlink():
         try:
-            os.symlink(env.resolve(), here)
+            if os.name == "nt":  # a file symlink there needs Developer Mode or an administrator
+                shutil.copy2(env, here)
+            else:
+                os.symlink(env.resolve(), here)
         except OSError as fault:
             faults.append(f".env could not be linked ({fault})")
     projector = berth / "scripts/agents/project.py"

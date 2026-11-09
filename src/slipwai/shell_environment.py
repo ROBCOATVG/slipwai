@@ -9,12 +9,18 @@ given what the login shell has, read once, with this process's own variables kep
 **The tools the board installed.** Git, Python or Node the board fetched live under `~/.slipwai/tools/`,
 where no shell looks. One fetched because the machine had none goes on the end of a child's `PATH`. One
 fetched because the machine's copy was too old goes at the front, or the old copy would still be found.
+
+**Git's bash, on Windows.** A project's own scripts run under the bash Git for Windows carries, and the
+commands its recipes call — `sed`, `grep`, `find`, `sort` — are the ones beside that bash in Git's
+`usr/bin`. That folder goes at the very front of a child's `PATH`, or Windows' own `find` and `sort` in
+`System32` would be the ones a recipe found. Nothing changes on macOS or Linux.
 """
 from __future__ import annotations
 
 import json
 import os
 import subprocess
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -73,11 +79,27 @@ def board_tools(home: Path | None = None, first: bool = False) -> list[str]:
     return found
 
 
-def with_tools(held: dict[str, str], home: Path | None = None) -> dict[str, str]:
+def git_bash(path: str) -> Path | None:
+    """The `usr/bin` of the first Git for Windows on `path` that carries bash — the folder Git Bash itself
+    puts first — or None where every Git on it is one without (MinGit) or there is none. Git's `git.exe`
+    sits in `cmd/`, `bin/` or `mingw64/bin/` under the folder Git was installed or unpacked in."""
+    for part in path.split(";"):
+        folder = Path(part.strip().strip('"')) if part.strip() else None
+        if folder is None or not (folder / "git.exe").is_file():
+            continue
+        for root in (folder.parent, folder.parent.parent):
+            if (root / "usr/bin/bash.exe").is_file():
+                return root / "usr/bin"
+    return None
+
+
+def with_tools(held: dict[str, str], home: Path | None = None, system: str | None = None) -> dict[str, str]:
     """`held` with the board's own tools on its `PATH`: ahead of everything where they replace an old copy,
-    after everything otherwise."""
+    after everything otherwise, and on Windows Git's `usr/bin` ahead of them all."""
     ahead, after = board_tools(home, first=True), board_tools(home)
-    if not ahead and not after:
+    if not ahead and not after and (system or sys.platform) != "win32":
         return held
     paths = [*ahead, *held.get("PATH", "").split(os.pathsep), *after]
+    if (system or sys.platform) == "win32" and (bash := git_bash(";".join(paths))) is not None:
+        paths.insert(0, str(bash))
     return {**held, "PATH": os.pathsep.join(dict.fromkeys(part for part in paths if part))}

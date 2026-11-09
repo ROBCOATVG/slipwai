@@ -62,6 +62,8 @@ WINDOWS = ('<p class="lacking-note">A project\'s own scripts need a POSIX shell,
 def where_line(one: Found) -> str:
     if one.state == "found":
         return f"{one.version or 'found'} at {one.where}"
+    if one.lacks:
+        return f"{one.version} at {one.where}, which has no {one.lacks}: a project's scripts run in Git's bash"
     if one.state == "old":
         need = ".".join(str(part) for part in one.tool.minimum)
         return f"{one.version} at {one.where}, which is too old: it needs {need} or newer"
@@ -79,9 +81,10 @@ def acts(one: Found) -> str:
                 f'then reload this page.</span>')
     said = ("opens Apple's installer for the developer tools" if how == "apple"
             else "from its publisher, checked against their checksum, kept in ~/.slipwai/tools")
-    if one.state == "old":
+    if one.state == "old" and not one.lacks:
         said += "; used by the board ahead of yours, which is left as it is"
-    label = f"{'Install a newer' if one.state == 'old' else 'Install'} {one.tool.name}"
+    label = (f"Install {one.tool.name} with {one.lacks}" if one.lacks
+             else f"{'Install a newer' if one.state == 'old' else 'Install'} {one.tool.name}")
     return (f'<span class="acts"><button type="button" data-tool="{esc(one.tool.key)}">{esc(label)}'
             f'</button><span>{esc(said)}</span></span><span class="doing" hidden></span>')
 
@@ -99,13 +102,19 @@ def card(rows: list[Found] | None = None) -> str:
             f'<div class="tools">{items}</div>{WINDOWS if sys.platform == "win32" else ""}</div>')
 
 
+def state_words(one: Found) -> str:
+    if one.lacks:
+        return f"no {one.lacks}"
+    return "too old" if one.state == "old" else "not installed"
+
+
 def lacking_line(route: str, answers: Mapping[str, str] | None = None, look=None, inline: bool = False) -> str:
     """The line atop a start page whose route needs something the machine lacks; `""` where it has it all.
     `inline` is the paragraph form, for a card that is re-rendered whole when an answer changes."""
     missing = lacking(route, answers, look)
     if not missing:
         return ""
-    named = ", ".join(f"{one.tool.name} ({'too old' if one.state == 'old' else 'not installed'})" for one in missing)
+    named = ", ".join(f"{one.tool.name} ({state_words(one)})" for one in missing)
     said = (f'This machine needs something first: {esc(named)}. <a href="/settings#machine">Settings</a> says '
             f'what each is for and installs what is missing.')
     if inline:

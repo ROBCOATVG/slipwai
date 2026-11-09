@@ -12,6 +12,11 @@ the developer tools, so it is not run at all until `xcode-select -p` says the to
 
 **A copy too old is reported, not replaced.** The board installs only where the machine has no copy
 (`tool_install`); an old one is named with the version needed and left alone.
+
+**On Windows** a project's scripts run under Git's bash, so Git counts only where a Git on the `PATH`
+carries one: MinGit has none, and is reported for what it lacks rather than its version. Python there is
+`python`, not `python3`, and the `python3.exe` in `WindowsApps` is the Store's stub, which opens the Store;
+it is passed over.
 """
 from __future__ import annotations
 
@@ -22,7 +27,7 @@ import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from .shell_environment import login_environment
+from .shell_environment import git_bash, login_environment
 
 #: The Python a project's scripts need, which is the keel's own floor (`pyproject.toml`).
 PYTHON_FLOOR = (3, 11)
@@ -86,6 +91,8 @@ class Found:
     state: str
     where: str = ""
     version: str = ""
+    #: What a copy found lacks, where that and not its version is why it will not do: `bash`, for MinGit.
+    lacks: str = ""
 
 
 def version_of(text: str) -> tuple[int, ...]:
@@ -102,13 +109,23 @@ def developer_tools() -> bool:
         return False
 
 
-def found(tool: Tool, path: str | None = None) -> Found:
+def located(command: str, path: str, system: str) -> str | None:
+    """Where `command` is on `path`: on Windows `python` for `python3`, and never the Store's stub."""
+    if system != "win32":
+        return shutil.which(command, path=path)
+    command = "python" if command == "python3" else command
+    kept = ";".join(part for part in path.split(";") if "windowsapps" not in part.lower())
+    return shutil.which(command, path=kept)
+
+
+def found(tool: Tool, path: str | None = None, system: str | None = None) -> Found:
     """Whether the machine has a usable copy of `tool` on the board's children's `PATH`, and which."""
     path = login_environment().get("PATH", "") if path is None else path
-    where = shutil.which(tool.command, path=path)
+    system = system or sys.platform
+    where = located(tool.command, path, system)
     if not where:
         return Found(tool, "missing")
-    if (sys.platform == "darwin" and tool.command in APPLE_SHIMS and where == f"/usr/bin/{tool.command}"
+    if (system == "darwin" and tool.command in APPLE_SHIMS and where == f"/usr/bin/{tool.command}"
             and not developer_tools()):
         return Found(tool, "missing")
     try:
@@ -119,6 +136,8 @@ def found(tool: Tool, path: str | None = None) -> Found:
         return Found(tool, "missing", where)
     version = version_of(done.stdout or done.stderr)
     said = ".".join(str(part) for part in version)
+    if system == "win32" and tool.key == "git" and git_bash(path) is None:
+        return Found(tool, "old", where, said, lacks="bash")
     return Found(tool, "old" if tool.minimum and version < tool.minimum else "found", where, said)
 
 

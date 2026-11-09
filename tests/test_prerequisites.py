@@ -4,9 +4,11 @@ What is proved: a tool is found by asking it its version on the `PATH` given, to
 missing where it is absent or will not answer; macOS's developer-tools shims are not run without the tools;
 each route needs what the audit found, Node only on the event-modelling profile or a Node language; the
 installer refuses wherever the machine has a good copy and fetches nothing, and puts one installed over an
-old copy ahead of it; Node, MinGit and Python archives are
+old copy ahead of it; Node, PortableGit and Python archives are
 picked with their publishers' checksums; an install unpacks under the board's tools and lands on the end of a
-child's `PATH`; and the floors agree with what the keel declares.
+child's `PATH`; and the floors agree with what the keel declares. On Windows, with the platform pretended:
+Git counts only with bash beside it, and Git's `usr/bin` goes first on a child's `PATH`; Python is `python`
+and never the Store's stub; Make is ezwinports' pinned build; and bash gets a `python3` shim that goes first.
 """
 from __future__ import annotations
 
@@ -114,14 +116,31 @@ class ArchiveTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             tool_install.node_archive(index, sums, "win32", "x64")
 
-    def test_mingit_needs_githubs_checksum(self) -> None:
-        asset = {"name": "MinGit-2.51.0-64-bit.zip", "browser_download_url": "https://x/MinGit.zip",
+    def test_portable_git_not_mingit_and_needs_githubs_checksum(self) -> None:
+        asset = {"name": "PortableGit-2.51.0-64-bit.7z.exe", "browser_download_url": "https://x/PortableGit.7z.exe",
                  "digest": "sha256:beef"}
-        busy = {**asset, "name": "MinGit-2.51.0-busybox-64-bit.zip"}
-        got = tool_install.mingit_archive({"tag_name": "v2.51.0.windows.1", "assets": [busy, asset]}, "64-bit")
+        mingit = {**asset, "name": "MinGit-2.51.0-64-bit.zip", "digest": "sha256:dead"}
+        got = tool_install.portable_git_archive({"tag_name": "v2.51.0.windows.1", "assets": [mingit, asset]},
+                                                "64-bit")
         self.assertEqual((got["sha256"], got["bin"]), ("beef", "cmd"))
         with self.assertRaises(ValueError):
-            tool_install.mingit_archive({"assets": [{**asset, "digest": None}]}, "64-bit")
+            tool_install.portable_git_archive({"assets": [{**asset, "digest": None}]}, "64-bit")
+        with self.assertRaises(ValueError):
+            tool_install.portable_git_archive({"assets": [mingit]}, "64-bit")
+
+    def test_make_on_windows_is_the_pinned_build(self) -> None:
+        self.assertRegex(tool_install.MAKE_W32["sha256"], r"^[0-9a-f]{64}$")
+        self.assertTrue(tool_install.MAKE_W32["name"].endswith(".zip"))
+        with mock.patch.object(sys, "platform", "win32"):
+            self.assertEqual(tool_install.way("make"), "archive")
+        with mock.patch.object(sys, "platform", "linux"):
+            self.assertEqual(tool_install.way("make"), "")
+
+    def test_python_on_windows_keeps_python_exe_at_the_top(self) -> None:
+        name = "cpython-3.13.9+20261101-x86_64-pc-windows-msvc-install_only.tar.gz"
+        got = tool_install.python_archive({"assets": [{"name": name, "browser_download_url": "https://x/p",
+                                                       "digest": "sha256:ab"}]}, "x86_64-pc-windows-msvc")
+        self.assertEqual(got["bin"], "python")
 
     def test_python_is_the_newest_313_for_this_machine(self) -> None:
         def asset(version: str) -> dict:
@@ -192,6 +211,71 @@ class InstallTest(unittest.TestCase):
         said = self.run_install("0" * 64, url).state()["lines"]
         self.assertTrue(said[-1].startswith("! the archive's sha256"))
         self.assertFalse((self.tools / "node/tool.json").exists())
+
+
+class WindowsTest(unittest.TestCase):
+    """Windows, pretended: what can be proved without one. The windows-latest job runs the rest for real."""
+
+    def setUp(self) -> None:
+        self.area = Path(tempfile.mkdtemp())
+
+    def git(self, name: str, bash: bool) -> Path:
+        """A Git tree as Git for Windows lays one out: `cmd/git.exe`, and `usr/bin/bash.exe` unless MinGit."""
+        root = self.area / name
+        (root / "cmd").mkdir(parents=True)
+        (root / "cmd/git.exe").write_bytes(b"")
+        if bash:
+            (root / "usr/bin").mkdir(parents=True)
+            (root / "usr/bin/bash.exe").write_bytes(b"")
+        return root
+
+    def test_git_bash_is_the_first_git_on_the_path_that_carries_bash(self) -> None:
+        mingit, full = self.git("MinGit", bash=False), self.git("Git", bash=True)
+        self.assertEqual(shell_environment.git_bash(f"{mingit / 'cmd'};{full / 'cmd'}"), full / "usr/bin")
+        self.assertIsNone(shell_environment.git_bash(str(mingit / "cmd")))
+
+    def test_gits_usr_bin_goes_ahead_of_system32(self) -> None:
+        full = self.git("Git", bash=True)
+        env = shell_environment.with_tools({"PATH": os.pathsep.join(["/windows/system32", str(full / "cmd")])},
+                                           self.area / "tools", system="win32")
+        self.assertEqual(env["PATH"].split(os.pathsep)[0], str(full / "usr/bin"))
+        mac = shell_environment.with_tools({"PATH": str(full / "cmd")}, self.area / "tools", system="darwin")
+        self.assertEqual(mac["PATH"], str(full / "cmd"))
+
+    def test_git_without_bash_is_named_for_what_it_lacks(self) -> None:
+        mingit = self.git("MinGit", bash=False)
+        answered = mock.Mock(returncode=0, stdout="git version 2.51.0.windows.1", stderr="")
+        with mock.patch("slipwai.prerequisites.shutil.which", return_value=str(mingit / "cmd/git.exe")), \
+                mock.patch("slipwai.prerequisites.subprocess.run", return_value=answered):
+            one = found(BY_KEY["git"], str(mingit / "cmd"), system="win32")
+        self.assertEqual((one.state, one.lacks), ("old", "bash"))
+        with mock.patch.object(tool_install, "way", return_value="archive"):
+            self.assertIn("Install Git with bash", machine_card.card([one]))
+        with mock.patch("slipwai.tool_install.Installing") as made, \
+                mock.patch.object(tool_install, "way", return_value="archive"):
+            tool_install.begin("git", self.area, look=lambda tool: one)
+        self.assertFalse(made.call_args.kwargs["first"])
+
+    def test_python_is_python_and_never_the_stores_stub(self) -> None:
+        asked = []
+
+        def which(command: str, path: str = "") -> None:
+            asked.append((command, path))
+
+        with mock.patch("slipwai.prerequisites.shutil.which", side_effect=which):
+            prerequisites.located("python3", r"C:\Python313;C:\Users\a\AppData\Local\Microsoft\WindowsApps", "win32")
+        self.assertEqual(asked, [("python", r"C:\Python313")])
+
+    def test_bash_gets_a_python3_that_goes_first(self) -> None:
+        python = self.area / "Python313/python.exe"
+        with mock.patch.object(sys, "platform", "win32"):
+            shim = tool_install.windows_shims(self.area / "tools",
+                                              look=lambda tool: Found(tool, "found", str(python), "3.13.1"))
+        assert shim is not None
+        self.assertEqual(shim.read_text(), f'#!/bin/sh\nexec "{python.as_posix()}" "$@"\n')
+        self.assertTrue(json.loads((shim.parents[1] / "tool.json").read_text())["first"])
+        self.assertIsNone(tool_install.windows_shims(self.area / "tools",
+                                                     look=lambda tool: Found(tool, "found", str(python), "3")))
 
 
 class CardTest(unittest.TestCase):

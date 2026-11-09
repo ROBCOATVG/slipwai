@@ -103,6 +103,13 @@ class LinkTest(unittest.TestCase):
         record = json.loads((self.tools / "slipwai/tool.json").read_text())
         self.assertEqual(record["bin"], str(link.parent))
 
+    def test_on_windows_a_cmd_and_a_wrapper_bash_can_start(self) -> None:
+        link = first_run.link_command(self.exe, self.tools, path="/nowhere", system="win32")
+        assert link is not None
+        self.assertEqual(link.name, "slipwai")
+        self.assertTrue((link.parent / "slipwai.cmd").is_file())
+        self.assertTrue(link.read_text().startswith("#!/bin/sh\n"))
+
     def test_a_slipwai_of_their_own_means_no_link(self) -> None:
         theirs = Path(tempfile.mkdtemp())
         (theirs / "slipwai").write_text("#!/bin/sh\n", encoding="utf-8")

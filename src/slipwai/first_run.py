@@ -31,7 +31,7 @@ import webbrowser
 from collections.abc import Callable
 from pathlib import Path
 
-from . import at_login
+from . import at_login, tool_install
 from .cli_start import HOST, PORT, open_board, running
 from .shell_environment import TOOLS, login_environment
 
@@ -152,13 +152,13 @@ def link_command(executable: Path | None = None, tools: Path | None = None, path
     if theirs and Path(theirs).parent.resolve() != folder.resolve():
         return None
     folder.mkdir(parents=True, exist_ok=True)
+    # A wrapper, not a symlink: a frozen bundle finds its files from its own path. On Windows a `.cmd` too,
+    # for PowerShell and cmd; the wrapper is the one Git's bash, where a project's recipes run, can start.
     if system == "win32":
-        link = folder / "slipwai.cmd"
-        link.write_text(f'@"{here}" %*\r\n', encoding="utf-8")
-    else:
-        link = folder / "slipwai"  # a wrapper, not a symlink: a frozen bundle finds its files from its own path
-        link.write_text(f'#!/bin/sh\nexec "{here}" "$@"\n', encoding="utf-8")
-        link.chmod(0o755)
+        (folder / "slipwai.cmd").write_text(f'@"{here}" %*\r\n', encoding="utf-8")
+    link = folder / "slipwai"
+    link.write_text(f'#!/bin/sh\nexec "{here.as_posix()}" "$@"\n', encoding="utf-8", newline="\n")
+    link.chmod(0o755)
     (home / "tool.json").write_text(json.dumps({"bin": str(folder), "version": "", "at": str(here)}) + "\n",
                                     encoding="utf-8")
     return link
@@ -203,6 +203,7 @@ def start(home: Path | None = None, system: str | None = None,
         subprocess.Popen(start_copy(where, system))  # noqa: S603 — the copy just placed
         return "moved"
     link_command()
+    tool_install.windows_shims()
     said = register(root, home)
     if running() or wait_for_board():
         open_page(f"http://{HOST}:{PORT}/")

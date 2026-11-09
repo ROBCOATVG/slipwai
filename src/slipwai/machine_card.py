@@ -43,34 +43,43 @@ STYLE = """
 """
 
 SCRIPT = """
-document.querySelectorAll('[data-tool]').forEach(one => one.addEventListener('click', async event => {
-  event.preventDefault();
-  const doing = one.closest('.tool').querySelector('.doing');
-  one.disabled = true;
-  const answer = await fetch('/settings/tool', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                                                body: JSON.stringify({key: one.dataset.tool})});
-  doing.textContent = await answer.text(); doing.hidden = false;
-  if (!answer.ok || answer.status === 202) { one.disabled = false; return; }
-  const poll = async () => {
-    const state = await (await fetch('/settings/tool.json?key=' + encodeURIComponent(one.dataset.tool))).json();
-    doing.textContent = state.lines.join('\\n');
-    if (state.done) location.reload(); else setTimeout(poll, 800);
-  };
-  poll();
-}));
-document.querySelectorAll('[data-command]').forEach(one => one.addEventListener('click', async () => {
-  const said = one.parentElement.querySelector('.doing');
-  const answer = await fetch('/settings/terminal-command', {method: 'POST',
-    headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: one.dataset.command})});
-  said.textContent = await answer.text(); said.hidden = false;
-  if (answer.ok) setTimeout(() => location.reload(), 2500);
-}));
-document.querySelectorAll('[data-terminal]').forEach(one => one.addEventListener('click', async () => {
-  const said = one.parentElement.querySelector('.doing');
-  const answer = await fetch('/settings/terminal', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                                                    body: '{}'});
-  said.textContent = await answer.text(); said.hidden = false;
-}));
+function bindMachine(scope) {
+  scope.querySelectorAll('[data-tool]').forEach(one => one.addEventListener('click', async event => {
+    event.preventDefault();
+    const doing = one.closest('.tool').querySelector('.doing');
+    one.disabled = true;
+    const answer = await fetch('/settings/tool', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                  body: JSON.stringify({key: one.dataset.tool})});
+    doing.textContent = await answer.text(); doing.hidden = false;
+    if (!answer.ok || answer.status === 202) { one.disabled = false; return; }
+    const poll = async () => {
+      const state = await (await fetch('/settings/tool.json?key=' + encodeURIComponent(one.dataset.tool))).json();
+      doing.textContent = state.lines.join('\\n');
+      if (state.done) location.reload(); else setTimeout(poll, 800);
+    };
+    poll();
+  }));
+  scope.querySelectorAll('[data-command]').forEach(one => one.addEventListener('click', async () => {
+    const said = one.parentElement.querySelector('.doing');
+    const answer = await fetch('/settings/terminal-command', {method: 'POST',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: one.dataset.command})});
+    said.textContent = await answer.text(); said.hidden = false;
+    if (answer.ok) setTimeout(() => location.reload(), 2500);
+  }));
+  scope.querySelectorAll('[data-terminal]').forEach(one => one.addEventListener('click', async () => {
+    const said = one.parentElement.querySelector('.doing');
+    const answer = await fetch('/settings/terminal', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                      body: '{}'});
+    said.textContent = await answer.text(); said.hidden = false;
+  }));
+}
+// The card is asked for after the page is up: each tool answers its version in its own time, and Settings
+// waited for the slowest of them before it showed anything.
+const machine = document.querySelector('[data-machine]');
+if (machine) fetch('/settings/machine.html').then(answer => answer.text()).then(html => {
+  machine.outerHTML = html;
+  bindMachine(document.getElementById('machine'));
+});
 """
 
 
@@ -149,6 +158,11 @@ def acts(one: Found) -> str:
             f'</button><span>{esc(said)}</span></span><span class="doing" hidden></span>')
 
 
+#: What Settings shows until the card is ready: it is fetched from `/settings/machine.html` once the page is up.
+PLACEHOLDER = ('<div id="machine" class="card" data-machine><h2>This machine</h2>'
+               '<p class="empty">Looking at what this machine has…</p></div>')
+
+
 def card(rows: list[Found] | None = None) -> str:
     """The card, for Settings."""
     rows = everything() if rows is None else rows
@@ -192,6 +206,9 @@ def lacking_line(route: str, answers: Mapping[str, str] | None = None, look=None
 
 
 def route_get(bridge: Any, where: str, query: str) -> bool:
+    if where == "/settings/machine.html":
+        bridge.send(200, card(), "text/html; charset=utf-8")
+        return True
     if where != "/settings/tool.json":
         return False
     key = (parse_qs(query).get("key") or [""])[0]

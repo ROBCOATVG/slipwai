@@ -568,7 +568,7 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
 
 #: What a stage's session is run with beside its command, where that is not the defaults: the drawing writes
 #: the pid file another window reads and tells its hooks no stage. A resumed session is run the same way.
-RESUMED = {"mockups": {"pid": "surfaces.pid", "stage": "", "limit": 900.0}}
+RESUMED: dict[str, dict[str, Any]] = {"mockups": {"pid": "surfaces.pid", "stage": "", "limit": 900.0}}
 
 
 def kept_line(command: str) -> str:

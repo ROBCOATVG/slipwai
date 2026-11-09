@@ -1606,7 +1606,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 204 of 220 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 7/7, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/4, phase 18 2/2, phase 21 11/11, phase 22 9/9, phase 23 8/11, phase 24 0/13. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 205 of 220 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 7/7, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/4, phase 18 2/2, phase 21 11/11, phase 22 9/9, phase 23 8/11, phase 24 1/13. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2579,7 +2579,7 @@ table is the one `make progress` ticks.
 
 | Slice | What | From | Size | Done when | Status |
 |---|---|---|---|---|---|
-| 24.1 | The fence: digests of every file macOS and Linux run, each change carrying why behaviour there is unchanged; their generated-gate jobs stay required | new (owner, 2026-11-09) | S | A digest that moves without its reason fails the build | todo |  |
+| 24.1 | The fence: digests of every file macOS and Linux run, each change carrying why behaviour there is unchanged; their generated-gate jobs stay required | new (owner, 2026-11-09) | S | A digest that moves without its reason fails the build | todo | done |
 | 24.2 | Git with bash on Windows: full Git for Windows used where it is, PortableGit installed where it is not | new (owner, 2026-11-09) | M | An install on windows-latest leaves a working `bash` | todo |  |
 | 24.3 | Make for Git Bash: a spike between MSYS2's `make` and ezwinports' build, then the install it picks | new (owner, 2026-11-09) | M | A Makefile with `SHELL := /bin/bash` runs from the board's `PATH` on windows-latest | todo |  |
 | 24.4 | `python3` in both worlds: an `sh` shim for bash, `sys.executable` at the seven sites Windows programs start it from | new (owner, 2026-11-09) | S | A test per site on windows-latest; POSIX argv unchanged | todo |  |

@@ -8,15 +8,20 @@ smaller road: "i think that may be good enough without messing around with full 
 project runs the very same files as a Mac one, under the bash that Git for Windows brings, with Make beside
 it, and the board puts both there with no administrator and no terminal.
 
-**Status, 2026-11-09:** built on `double-click-23`, waiting on its first windows-latest run. 24.1 (the
-fence) is done. 24.2 to 24.6, 24.8, 24.9, 24.11's job and 24.13 are written and green on macOS; each is
-ticked when the `windows-project` job proves it. 24.3's spike chose ezwinports' Make: a zip the standard
+**Status, 2026-11-09:** built, and a generated project gates green on windows-latest. 24.1 to 24.6, 24.8,
+24.9, 24.11, 24.12's publishing and 24.13 are done: the `windows-project` job installs Make through the
+board, proves `SHELL := /bin/bash` and a `#!` script on a plain recipe line, and runs `make verify` on a
+project per profile. What the runs found, each fixed: npm on Windows ignores `--prefix`, so the event
+model installs from inside its folder; native Make starts a line with no shell characters itself, so the
+Makefile sets `.SHELLFLAGS := -hc` on Windows and every line goes to bash; and `text` in `.gitattributes`
+rewrote a committed `.pyc`, so it is `text=auto`. 24.3's spike chose ezwinports' Make — a zip the standard
 library opens, pinned by the sha256 SourceForge publishes, where MSYS2's is a `.zst` no Python before 3.14
-can read; whether it honours `SHELL := /bin/bash` is the job's first step. 24.7 is a commit on the python
-package's `windows-path-separator` branch (`MYPYPATH` joined with `;` under Git's bash); no other package
-joins a path list. 24.10 is folded into 24.9: the projection writes committed files, and a person's tools
-path does not belong in every clone, so an agent the person starts gets the board's tools by being started
-from *Open a terminal here*. 24.12 waits for the job. The gap analysis behind the plan is section 5.
+can read — and `.SHELLFLAGS` is what makes it behave as a Unix Make would. 24.7 is merged in the python
+package (`MYPYPATH` joined with `;` under Git's bash) and is ticked when a Python project gates there; no
+other package joins a path list. 24.10 is folded into 24.9: the projection writes committed files, and a
+person's tools path does not belong in every clone, so an agent the person starts gets the board's tools
+by being started from *Open a terminal here*. Left: the live run on a clean Windows machine (24.12). The
+gap analysis behind the plan is section 5.
 
 **The principle the plan serves:** a Windows person gets the same project, the same gates and the same board
 as everyone else, and **on macOS and Linux nothing behaves differently.** A file a Mac or Linux machine runs

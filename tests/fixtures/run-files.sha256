@@ -5,9 +5,8 @@
 #
 # why: 2026-11-09 7406116f1e78db81 The fence is put up over today's tree, before any change for Windows.
 # why: 2026-11-09 001fff112e2f6aa5 24.4: models.py and benchmark.py start their sibling scripts with PYTHON, which is "python3" wherever sys.platform is not win32 — the argv macOS and Linux ran before.
+# why: 2026-11-09 a89a3c4b51ee4793 24.5: init passes --script sh to Spec Kit only where uname -s says MINGW, MSYS or CYGWIN; on Darwin and Linux the case matches nothing and specify gets the arguments it had.
 
-054337742b3f4d0c3e48a184b37d65f39c658fae17dc50bb354f94c1c1c1f713  event-modelling-memory-none  init
-054337742b3f4d0c3e48a184b37d65f39c658fae17dc50bb354f94c1c1c1f713  standard-memory-none  init
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  standard-memory-none  .githooks/pre-push
@@ -112,8 +111,6 @@
 6378514a076a3d423bf5303bca15094cd69f2cd102c3fcb3e16025fa8eeb3d51  standard-postgres-toy-serve  scripts/agents/abreast.py
 65a025d41b1b105492b1b28fa450efddf4b320a4dcefc89a8233bc428b4326b9  event-modelling-memory-none  scripts/event-model/check.py
 65a025d41b1b105492b1b28fa450efddf4b320a4dcefc89a8233bc428b4326b9  event-modelling-postgres-toy-serve  scripts/event-model/check.py
-66aa75c8a1a703de1fd2393b3cdae9d85d5d33171f7a97f8cda1bd975c34f118  event-modelling-postgres-toy-serve  init
-66aa75c8a1a703de1fd2393b3cdae9d85d5d33171f7a97f8cda1bd975c34f118  standard-postgres-toy-serve  init
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-memory-none  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-postgres-toy-serve  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-memory-none  scripts/test_benchmark.py
@@ -155,6 +152,8 @@
 8141aa2fc87a65316e5a8dd73dde701b25cd734ef0be0dd203e6ea66abded629  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
 8141aa2fc87a65316e5a8dd73dde701b25cd734ef0be0dd203e6ea66abded629  standard-memory-none  scripts/check-slice-scope.py
 8141aa2fc87a65316e5a8dd73dde701b25cd734ef0be0dd203e6ea66abded629  standard-postgres-toy-serve  scripts/check-slice-scope.py
+821f84c24cfa46e50179e2999306ce2b7c4999b02147f5f977e52e2325b7d930  event-modelling-memory-none  init
+821f84c24cfa46e50179e2999306ce2b7c4999b02147f5f977e52e2325b7d930  standard-memory-none  init
 86738d3e275d5bf14528f900c4366d19b11206c5b8fda8b33de76086fe834f82  event-modelling-memory-none  scripts/event-model/package.json
 86738d3e275d5bf14528f900c4366d19b11206c5b8fda8b33de76086fe834f82  event-modelling-postgres-toy-serve  scripts/event-model/package.json
 8858776d582cdf8288b54f726332df78adc8b6f02a0c761f309df0bcc0561b41  event-modelling-memory-none  scripts/event-model/mermaid.ts
@@ -197,6 +196,8 @@
 98857e9c688ce24e0758c9f602d185617a51a8c6259a9299b31f01ffc6c526a1  event-modelling-postgres-toy-serve  scripts/agents/session.py
 98857e9c688ce24e0758c9f602d185617a51a8c6259a9299b31f01ffc6c526a1  standard-memory-none  scripts/agents/session.py
 98857e9c688ce24e0758c9f602d185617a51a8c6259a9299b31f01ffc6c526a1  standard-postgres-toy-serve  scripts/agents/session.py
+9b1b06d938a25e8ff6218840129ea97778ba581e6b568105e5b5234577728c94  event-modelling-postgres-toy-serve  init
+9b1b06d938a25e8ff6218840129ea97778ba581e6b568105e5b5234577728c94  standard-postgres-toy-serve  init
 9d85a3f4bb66e76e12aaa443ee3f2e47c1ab104ade852b128dfb74e208462dfa  event-modelling-memory-none  scripts/event-model/workspace.ts
 9d85a3f4bb66e76e12aaa443ee3f2e47c1ab104ade852b128dfb74e208462dfa  event-modelling-postgres-toy-serve  scripts/event-model/workspace.ts
 9deb13adb7aecb563e45836e5582b28cb690814e08be0ccfac2ac6b806015ea7  standard-postgres-toy-serve  Makefile

@@ -217,6 +217,8 @@ run_specify() {
   # projections reinstalls the same Spec Kit rather than moving to upstream HEAD. SPECIFY_SOURCE overrides it.
   recorded=$(sed -n 's/.*"speckitSource": *"\\([^"]*\\)".*/\\1/p' project.json 2>/dev/null | head -n 1)
   source=${SPECIFY_SOURCE:-${recorded:-__SPECKIT_SOURCE__}}
+  # Under Git's bash on Windows Spec Kit would pick its PowerShell scripts; every other script here is sh.
+  case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) set -- --script sh "$@" ;; esac
   if command -v specify >/dev/null 2>&1; then
     specify init --here --force "$@"
     return

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from . import githooks
@@ -276,6 +277,8 @@ def write_project(
 def commit_all(repository: Path, message: str) -> None:
     """Make `repository` a Git repository on `main` with everything in it as one commit."""
     subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repository, check=True)
+    if sys.platform == "win32":  # `node_modules` passes Windows' 260-character limit without it
+        subprocess.run(["git", "config", "core.longpaths", "true"], cwd=repository, check=True)
     # Before the commit, because `core.hooksPath` is per-checkout config and not a file: it travels with
     # no clone, no worktree and no cloud runner, so the one rule that holds whoever is driving would
     # otherwise be installed nowhere. Never fatal, and never over somebody else's hook path.

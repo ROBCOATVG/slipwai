@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -105,10 +106,22 @@ def ended(code: int, harness: str | None, repository: str | None = None) -> str:
             f"its own, which is why it runs after. Run it again when whatever stopped it is fixed.")
 
 
+def windows_argv(argv: list[str], path: str) -> list[str]:
+    """`argv` as Windows can start it: a `./script` through Git's bash, which reads the shebang Windows
+    cannot, and the program found on the child's own `PATH`, which `CreateProcess` never looks at — it
+    searches the board's, where the tools the board installed are not."""
+    if argv and argv[0].startswith("./"):
+        argv = ["bash", *argv]
+    return [shutil.which(argv[0], path=path) or argv[0], *argv[1:]] if argv else argv
+
+
 def here(root: Path, harness: str | None = None) -> int:
     """`./init` as a child of this terminal, sharing its standard input so Spec Kit can ask its question."""
     print(f"\n{announced(root, harness)}")
-    done = subprocess.run(command(harness), cwd=root, check=False)
+    argv = command(harness)
+    if sys.platform == "win32":
+        argv = windows_argv(argv, login_environment().get("PATH", ""))
+    done = subprocess.run(argv, cwd=root, check=False)
     print(ended(done.returncode, harness))
     return done.returncode
 
@@ -274,7 +287,7 @@ class Fitting:
         env = {**login_environment(), **PLAIN}
         shape: dict = {"cwd": self.where, "stdin": subprocess.DEVNULL, "stderr": subprocess.STDOUT, "env": env}
         if sys.platform == "win32":  # pragma: no cover — the pty path is what every other platform takes
-            child = subprocess.Popen(argv, stdout=subprocess.PIPE, **shape)
+            child = subprocess.Popen(windows_argv(argv, env.get("PATH", "")), stdout=subprocess.PIPE, **shape)
             return child, child.stdout.fileno() if child.stdout else -1, False
         import pty  # noqa: PLC0415 — POSIX only, and only this method opens one
         reader, writer = pty.openpty()

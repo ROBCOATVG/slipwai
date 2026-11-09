@@ -376,5 +376,6 @@ There are two verifiers, one for each kind of channel. This was decided on 2026-
 ## The keel ships none
 
 Version 1 carried three extensions in its own `catalog.json`. They are packages now:
-`ROBCOATVG/slipwai-extension-codegraph`, `-uipro` and `-ux-gates`. If an extension lived in the keel,
-every project would carry its description, whether anybody wanted it or not.
+`ROBCOATVG/slipwai-extension-codegraph`, `-uipro` and `-ux-gates`. `-unslop` was a package from the
+start. If an extension lived in the keel, every project would carry its description, whether anybody
+wanted it or not.

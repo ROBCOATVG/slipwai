@@ -278,6 +278,21 @@ class WindowsTest(unittest.TestCase):
                                                      look=lambda tool: Found(tool, "found", str(python), "3")))
 
 
+    def test_a_python_script_is_started_with_python3_and_on_windows_with_python_exe(self) -> None:
+        self.assertEqual(shell_environment.python3("darwin"), "python3")
+        self.assertEqual(shell_environment.python3("linux"), "python3")
+        with mock.patch.object(shell_environment, "windows_python", return_value=r"C:\Python313\python.exe"):
+            self.assertEqual(shell_environment.python3("win32"), r"C:\Python313\python.exe")
+        with mock.patch.object(shell_environment, "windows_python", return_value=None):
+            self.assertEqual(shell_environment.python3("win32"), sys.executable)
+
+    def test_nothing_the_keel_or_the_toolkit_starts_names_python3_itself(self) -> None:
+        """Every site goes through `python3()` or the toolkit's `PYTHON`, which keep `python3` off Windows."""
+        named = re.compile(r'\[\s*"python3"\s*,')
+        sites = [*(ROOT / "src/slipwai").rglob("*.py"), *(ROOT / "assets/toolkit").rglob("*.py")]
+        offenders = [str(one.relative_to(ROOT)) for one in sites if named.search(one.read_text(encoding="utf-8"))]
+        self.assertEqual(offenders, [])
+
 class CardTest(unittest.TestCase):
     """The card offers Install for a tool the machine lacks or has only too old, never over a good copy."""
 

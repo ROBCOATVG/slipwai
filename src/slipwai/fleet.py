@@ -65,7 +65,7 @@ from .logs import (
     paused,
     unmerged,
 )
-from .shell_environment import login_environment
+from .shell_environment import login_environment, python3
 from .timeline import spans
 
 
@@ -512,6 +512,8 @@ def project_python() -> str:
     The walk is spelled out rather than borrowed from `shutil.which`, which a suite elsewhere stands in for."""
     import os
 
+    if sys.platform == "win32":  # the `python3` there is bash's shim, which no Windows program can start
+        return python3()
     for directory in (login_environment().get("PATH") or "").split(os.pathsep):
         candidate = Path(directory) / "python3"
         if directory and candidate.is_file() and os.access(candidate, os.X_OK):

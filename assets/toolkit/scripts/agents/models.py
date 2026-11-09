@@ -43,6 +43,8 @@ def project_root(script: Path, depth: int) -> Path:
 ROOT = project_root(Path(__file__).resolve(), 2)
 REGISTRY = Path(__file__).with_name("registry.json")
 PROJECT = Path(__file__).with_name("project.py")
+#: `python3` on macOS and Linux; this interpreter on Windows, whose `python3` is a shim only bash can start.
+PYTHON = sys.executable if sys.platform == "win32" else "python3"
 MODELS = ROOT / ".specify/models.json"
 INTEGRATION = ROOT / ".specify/integration.json"
 # Every stage the table may name, in ladder order, keyed by the command the stage runs. The factory writes
@@ -224,7 +226,7 @@ def reproject() -> None:
     """
     if not INTEGRATION.is_file():
         return
-    done = subprocess.run(["python3", str(PROJECT)], cwd=ROOT, text=True, capture_output=True)
+    done = subprocess.run([PYTHON, str(PROJECT)], cwd=ROOT, text=True, capture_output=True)
     if done.returncode != 0:
         print(f"the projections still carry the old model — run `make agents`: {done.stderr.strip()}",
               file=sys.stderr)

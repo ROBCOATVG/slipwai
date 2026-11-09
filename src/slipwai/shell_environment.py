@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from collections.abc import Mapping
@@ -91,6 +92,23 @@ def git_bash(path: str) -> Path | None:
             if (root / "usr/bin/bash.exe").is_file():
                 return root / "usr/bin"
     return None
+
+
+def windows_python(path: str) -> str | None:
+    """The `python.exe` on a Windows `path`, passing over `WindowsApps`, whose `python3.exe` and
+    `python.exe` are the Store's stubs that open the Store."""
+    kept = ";".join(part for part in path.split(";") if "windowsapps" not in part.lower())
+    return shutil.which("python", path=kept)
+
+
+def python3(system: str | None = None) -> str:
+    """What this process starts a project's Python script with: `python3` on macOS and Linux, as always.
+    A Windows program starts only `.exe` files, so there it is the `python.exe` the board's children find —
+    the one bash's `python3` shim starts — or, outside a frozen app, this process's own."""
+    if (system or sys.platform) != "win32":
+        return "python3"
+    found = windows_python(with_tools(dict(os.environ)).get("PATH", ""))
+    return found or ("python" if getattr(sys, "frozen", False) else sys.executable)
 
 
 def with_tools(held: dict[str, str], home: Path | None = None, system: str | None = None) -> dict[str, str]:

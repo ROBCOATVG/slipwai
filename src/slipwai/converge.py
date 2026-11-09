@@ -32,6 +32,7 @@ from .project.adopted import OWN, WRITTEN, agents_block, gitignore_block
 from .project.gitignore import build_artifacts
 from .replay import Replay, git, replay
 from .scaffold import NO_MAINTENANCE, project_files
+from .shell_environment import python3
 from .unlabel import Refresh
 
 AGENTS_MARKERS = ("<!-- extension:delivery:begin -->", "<!-- extension:delivery:end -->")
@@ -91,7 +92,7 @@ def check(root: Path) -> Check:
     gate = None
     checker = root / layout.under("scripts/check-convergence.py")
     if checker.is_file() and layout.moved:
-        result = subprocess.run(["python3", str(checker)], cwd=root, text=True, capture_output=True, check=False)
+        result = subprocess.run([python3(), str(checker)], cwd=root, text=True, capture_output=True, check=False)
         if result.returncode != 0:
             gate = (result.stderr.strip() or result.stdout.strip())
     return Check(name, layout, below, gate, clashes(root, document, adoption, layout) if layout.moved else [], reasons)

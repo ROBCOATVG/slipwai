@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 
 from .harness import Agent, from_spec_kit, name_of, unproven_line
+from .shell_environment import python3
 
 
 def agent_line(agent: Agent) -> str:
@@ -112,7 +113,7 @@ def reproject(root: Path, delivery: str) -> str | None:
         script = f"{delivery}/{relative}" if delivery != "." else relative
         if not (root / script).is_file():
             continue
-        done = subprocess.run(["python3", script], cwd=root, text=True, capture_output=True, check=False)
+        done = subprocess.run([python3(), script], cwd=root, text=True, capture_output=True, check=False)
         if done.returncode != 0:
             return done.stderr.strip() or done.stdout.strip() or "no reason given"
     return None

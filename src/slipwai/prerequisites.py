@@ -27,7 +27,7 @@ import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from .shell_environment import git_bash, login_environment
+from .shell_environment import git_bash, login_environment, windows_python
 
 #: The Python a project's scripts need, which is the keel's own floor (`pyproject.toml`).
 PYTHON_FLOOR = (3, 11)
@@ -113,9 +113,7 @@ def located(command: str, path: str, system: str) -> str | None:
     """Where `command` is on `path`: on Windows `python` for `python3`, and never the Store's stub."""
     if system != "win32":
         return shutil.which(command, path=path)
-    command = "python" if command == "python3" else command
-    kept = ";".join(part for part in path.split(";") if "windowsapps" not in part.lower())
-    return shutil.which(command, path=kept)
+    return windows_python(path) if command == "python3" else shutil.which(command, path=path)
 
 
 def found(tool: Tool, path: str | None = None, system: str | None = None) -> Found:

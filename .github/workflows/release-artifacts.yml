@@ -42,8 +42,10 @@ jobs:
           set -eu
           ./scripts/build-executable
           suffix=''
-          if [ "$RUNNER_OS" = Windows ]; then suffix='.exe'; fi
-          python scripts/smoke-executable.py "dist/slipwai$suffix"
+          app=''
+          if [ "$RUNNER_OS" = Windows ]; then suffix='.exe'; app='--app dist/slipwai-board.exe'; fi
+          if [ "$RUNNER_OS" = macOS ]; then app='--app dist/Slipwai.app'; fi
+          python scripts/smoke-executable.py "dist/slipwai$suffix" $app
           git rev-parse HEAD > dist/slipwai-revision.txt
       - uses: actions/upload-artifact@v7
         with:

@@ -171,10 +171,21 @@ jobs:
           set -eu
           ./scripts/build-executable
           suffix=''
-          if [ "$RUNNER_OS" = Windows ]; then suffix='.exe'; fi
-          python scripts/smoke-executable.py "dist/slipwai$suffix"
+          app=''
+          if [ "$RUNNER_OS" = Windows ]; then suffix='.exe'; app='--app dist/slipwai-board.exe'; fi
+          if [ "$RUNNER_OS" = macOS ]; then app='--app dist/Slipwai.app'; fi
+          python scripts/smoke-executable.py "dist/slipwai$suffix" $app
           mkdir -p release
           cp "dist/slipwai$suffix" "release/slipwai-$(cat VERSION)-${{ matrix.name }}$suffix"
+          # The app, for a person with no terminal: a disk image with the bundle and the Applications
+          # folder to drag it to on macOS, the one windowed file on Windows (double-click-plan.md, 23.2).
+          if [ "$RUNNER_OS" = macOS ]; then
+            mkdir -p dmg && cp -R dist/Slipwai.app dmg/ && ln -s /Applications dmg/Applications
+            hdiutil create -volname slipwai -srcfolder dmg -ov -format UDZO \
+              "release/Slipwai-$(cat VERSION)-${{ matrix.name }}.dmg"
+          fi
+          # slipwai-board.exe is built and smoked above but not published: a board on Windows cannot make
+          # a project until phase 24's Windows job is green (windows-plan.md, 24.11).
           cd release && for file in slipwai-*; do python -c "import hashlib,sys; p=sys.argv[1]; print(hashlib.sha256(open(p,'rb').read()).hexdigest() + '  ' + p)" "$file" > "$file.sha256"; done
       - uses: actions/upload-artifact@v7
         with:
@@ -223,4 +234,4 @@ jobs:
           case "$GITHUB_REF_NAME" in *dev*|*a*|*b*|*rc*) prerelease='--prerelease' ;; esac
           gh release create "$GITHUB_REF_NAME" release/* dist/* --repo "$GITHUB_REPOSITORY" \
             --title "slipwai ${GITHUB_REF_NAME#v}" --verify-tag $prerelease \
-            --notes "Install with \`pip install slipwai==${GITHUB_REF_NAME#v}\` or download the executable for your platform below. Each has a .sha256 beside it. CHANGELOG.md has what changed."
+            --notes "No terminal? On a Mac, download Slipwai (.dmg) and open it: the board opens in your browser. This build is unsigned: the first time, open System Settings > Privacy & Security and press Open Anyway. Otherwise install with \`pip install slipwai==${GITHUB_REF_NAME#v}\` or download the executable for your platform below. Each has a .sha256 beside it. CHANGELOG.md has what changed."

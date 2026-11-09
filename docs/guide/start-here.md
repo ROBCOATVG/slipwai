@@ -19,7 +19,9 @@ longer on Windows than on a Mac or Linux. The Windows build is on the releases p
 after its Windows gate passed.
 
 On either system, the app gives the board and the agents it starts a `slipwai` command. To type `slipwai`
-in a terminal you opened yourself, install the command as in step 1.
+in a terminal you opened yourself, install the command as in step 1. On a Mac you can instead press
+**Add slipwai to my terminal** on the **Settings** tab, which adds one line to your shell's profile, and
+**Remove** takes it out again.
 
 The rest of this page is the terminal's way, and it is unchanged.
 

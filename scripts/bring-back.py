@@ -114,6 +114,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "agent_ready", "agent_install", "handover",
        # The app and the machine it lands on (phase 23).
        "prerequisites", "tool_install", "machine_card", "first_run", "app", "update_strip",
+       "terminal_command",
        # Reading a drafted document on the board. The experiment had no board to read one on.
        "spec_page",
        # Whether a pid file's process is running, asked without the signal Windows reads as Ctrl-C.

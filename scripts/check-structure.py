@@ -137,6 +137,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # What a route needs on the machine, the board installing it where the machine has none, and
               # the app opened from a download: placing itself, registering the board, opening it.
               "prerequisites", "tool_install", "machine_card", "first_run", "app", "update_strip",
+              "terminal_command",
               "bridge", "bridge_page", "fleet_page", "timeline_page",
               "cli_bridge", "cli_start",
               "interview_page",

@@ -4,7 +4,9 @@ What is proved: a copy is placed only in an Applications folder on macOS, never 
 the per-user programs folder on Windows; a declined move serves the board from this process and registers
 nothing; a placed copy registers the login service once and leaves an identical one alone; `slipwai` is linked
 for the board's children only where the machine has none of its own; the app with any argument is the command;
-and the strip says a newer version once and nothing without one.
+the strip says a newer version once and nothing without one; and on a Mac, asked, `slipwai` goes into the
+shell's profile as one marked block at the end of the `PATH`, comes out again leaving the profile as it was,
+and is never offered over a `slipwai` of the person's own.
 """
 from __future__ import annotations
 
@@ -18,7 +20,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import app, first_run, update_strip
+from slipwai import app, first_run, machine_card, terminal_command, update_strip
 
 
 class PlacedTest(unittest.TestCase):
@@ -150,6 +152,54 @@ class StripTest(unittest.TestCase):
         self.assertIsNone(newer.now(background=False))
         self.assertIsNone(newer.now(background=False))
         self.assertEqual(len(asked), 1)
+
+
+
+class TerminalCommandTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.home = Path(tempfile.mkdtemp())
+        self.tools = self.home / ".slipwai/tools"
+        (self.tools / "slipwai/bin").mkdir(parents=True)
+        (self.tools / "slipwai/bin/slipwai").write_text("#!/bin/sh\n", encoding="utf-8")
+        (self.tools / "slipwai/bin/slipwai").chmod(0o755)
+        self.profile = self.home / ".zprofile"
+        self.mine = 'eval "$(/opt/homebrew/bin/brew shellenv)"\n'
+        self.profile.write_text(self.mine, encoding="utf-8")
+
+    def state(self, path: str = "/usr/bin") -> str:
+        with mock.patch.object(sys, "platform", "darwin"):
+            return terminal_command.state(self.home, "/bin/zsh", self.tools, path)
+
+    def test_added_at_the_end_of_path_and_removed_leaving_the_profile_as_it_was(self) -> None:
+        self.assertEqual(self.state(), "absent")
+        terminal_command.add(self.home, "/bin/zsh")
+        text = self.profile.read_text(encoding="utf-8")
+        self.assertTrue(text.startswith(self.mine))
+        self.assertIn('export PATH="$PATH:$HOME/.slipwai/tools/slipwai/bin"', text)
+        self.assertEqual(self.state(), "added")
+        terminal_command.add(self.home, "/bin/zsh")
+        self.assertEqual(self.profile.read_text(encoding="utf-8"), text, "asked twice, added once")
+        terminal_command.remove(self.home, "/bin/zsh")
+        self.assertEqual(self.profile.read_text(encoding="utf-8"), self.mine)
+
+    def test_bash_has_its_own_profile_and_another_shell_is_told_the_line(self) -> None:
+        terminal_command.add(self.home, "/bin/bash")
+        self.assertTrue(terminal_command.added(self.home / ".bash_profile"))
+        self.assertIn("add this line", terminal_command.add(self.home, "/opt/homebrew/bin/fish"))
+
+    def test_never_offered_over_their_own_slipwai_or_off_a_mac(self) -> None:
+        theirs = Path(tempfile.mkdtemp())
+        (theirs / "slipwai").write_text("#!/bin/sh\n", encoding="utf-8")
+        (theirs / "slipwai").chmod(0o755)
+        self.assertEqual(self.state(str(theirs)), "theirs")
+        with mock.patch.object(sys, "platform", "linux"):
+            self.assertEqual(terminal_command.state(self.home, "/bin/zsh", self.tools, "/usr/bin"), "none")
+
+    def test_the_card_offers_add_then_remove(self) -> None:
+        self.assertIn('data-command="add"', machine_card.command_row("absent", self.profile))
+        self.assertIn('data-command="remove"', machine_card.command_row("added", self.profile))
+        self.assertEqual(machine_card.command_row("theirs", self.profile), "")
+        self.assertIn(machine_card.esc(terminal_command.LINE), machine_card.command_row("unsupported", None))
 
 
 if __name__ == "__main__":

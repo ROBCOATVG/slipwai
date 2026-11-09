@@ -10,7 +10,9 @@ so a machine with everything sees those pages exactly as before.
 
 **On Windows, a terminal.** The tools the board installed are on its children's `PATH` and never the
 system's, so the person's own terminal has none of them. The card offers *Open a terminal here* instead:
-Git Bash, in the project this window shows, started with the board's `PATH`.
+Git Bash, in the project this window shows, started with the board's `PATH`. **On a Mac**, where the app
+is the way in, it offers *Add slipwai to my terminal*: one marked block in the shell's profile, taken out
+again by *Remove* (`terminal_command`).
 """
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
 
-from . import tool_install
+from . import terminal_command, tool_install
 from .page_shell import esc
 from .prerequisites import Found, everything, lacking
 from .shell_environment import git_bash, login_environment
@@ -56,6 +58,13 @@ document.querySelectorAll('[data-tool]').forEach(one => one.addEventListener('cl
   };
   poll();
 }));
+document.querySelectorAll('[data-command]').forEach(one => one.addEventListener('click', async () => {
+  const said = one.parentElement.querySelector('.doing');
+  const answer = await fetch('/settings/terminal-command', {method: 'POST',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: one.dataset.command})});
+  said.textContent = await answer.text(); said.hidden = false;
+  if (answer.ok) setTimeout(() => location.reload(), 2500);
+}));
 document.querySelectorAll('[data-terminal]').forEach(one => one.addEventListener('click', async () => {
   const said = one.parentElement.querySelector('.doing');
   const answer = await fetch('/settings/terminal', {method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -80,6 +89,24 @@ def terminal_row(window: Path | None) -> str:
     return ('<div class="acts"><button type="button" data-terminal>Open a terminal here</button><span>Git Bash, in '
             'the project this window shows, with the tools the board installed: <code>make</code>, '
             '<code>python3</code> and <code>slipwai</code> work there.</span><span class="doing" hidden></span></div>')
+
+
+def command_row(state: str, file: Path | None) -> str:
+    """The card's last row on a Mac: `slipwai` for the person's own terminal, asked for, or taken back."""
+    where = f"~/{file.name}" if file is not None else "your shell's profile"
+    if state == "absent":
+        return (f'<div class="acts"><button type="button" data-command="add">Add slipwai to my terminal</button>'
+                f'<span>The board and its agents have <code>slipwai</code>; this gives it to terminals you open '
+                f'too, with one marked line in {esc(where)}. A <code>slipwai</code> you install later still '
+                f'comes first.</span><span class="doing" hidden></span></div>')
+    if state == "added":
+        return (f'<div class="acts"><span><code>slipwai</code> is in your terminal, from {esc(where)}.</span>'
+                f'<button type="button" data-command="remove">Remove</button><span class="doing" hidden></span>'
+                f'</div>')
+    if state == "unsupported":
+        return (f'<p class="lacking-note">For <code>slipwai</code> in your own terminal, add this line to your '
+                f'shell\'s profile: <code>{esc(terminal_command.LINE)}</code></p>')
+    return ""
 
 
 def open_terminal(root: Path, window: Path | None = None) -> str:
@@ -132,8 +159,16 @@ def card(rows: list[Found] | None = None) -> str:
     return (f'<div id="machine" class="card"><h2>This machine</h2><p>What the board\'s routes need here. The board '
             f'installs a tool only where the machine has none, or only one too old, and never changes one you '
             f'installed.</p>'
-            f'<div class="tools">{items}</div>{terminal_row(git_bash_window()) if sys.platform == "win32" else ""}'
-            f'</div>')
+            f'<div class="tools">{items}</div>{last_row()}</div>')
+
+
+def last_row() -> str:
+    """What follows the tools: a terminal on Windows, `slipwai` for the person's own terminal on a Mac."""
+    if sys.platform == "win32":
+        return terminal_row(git_bash_window())
+    if sys.platform == "darwin":
+        return command_row(terminal_command.state(), terminal_command.profile())
+    return ""
 
 
 def state_words(one: Found) -> str:
@@ -165,6 +200,10 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
 
 
 def route_post(bridge: Any, where: str, held: dict) -> bool:
+    if where == "/settings/terminal-command" and sys.platform == "darwin":
+        action = terminal_command.add if held.get("action") == "add" else terminal_command.remove
+        bridge.send(200, action(), "text/plain; charset=utf-8")
+        return True
     if where == "/settings/terminal" and sys.platform == "win32":
         bridge.send(200, open_terminal(bridge.root), "text/plain; charset=utf-8")
         return True

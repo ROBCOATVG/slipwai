@@ -9,7 +9,7 @@ project runs the very same files as a Mac one, under the bash that Git for Windo
 it, and the board puts both there with no administrator and no terminal.
 
 **Status, 2026-11-09:** built, and a generated project gates green on windows-latest. 24.1 to 24.6, 24.8,
-24.9, 24.11, 24.12's publishing and 24.13 are done: the `windows-project` job installs Make through the
+24.9, 24.11, 24.12's publishing and 24.13 are done: the `project` job's Windows row installs Make through the
 board, proves `SHELL := /bin/bash` and a `#!` script on a plain recipe line, and runs `make verify` on a
 project per profile. What the runs found, each fixed: npm on Windows ignores `--prefix`, so the event
 model installs from inside its folder; native Make starts a line with no shell characters itself, so the

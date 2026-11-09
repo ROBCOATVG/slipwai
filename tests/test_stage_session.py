@@ -93,6 +93,23 @@ class StageTest(unittest.TestCase):
         self.assertEqual(slow.cancel(), "stopped")
         self.assertEqual(finished(fitting)["code"], 1, "a stopped stage ends as a failed step")
 
+    def test_a_reply_after_the_stage_ended_is_one_more_turn_of_its_session(self) -> None:
+        stage = StageSession(self.root, "surfaces", launch=STAND_IN)
+        fitting = Fitting(self.root, [Step([], "Drawing.", lambda code: f"ended {code}", "surfaces", session=stage.run)])
+        self.assertFalse(fitting.reply("too soon"), "nothing to reply to before the stage has run")
+        fitting.thread.start()
+        before = finished(fitting)
+        self.assertTrue(before["talk"])
+        self.assertTrue(fitting.reply("yes, that is what I meant"))
+        self.assertFalse(fitting.reply("and again"), "a second press while the first runs starts nothing")
+        said = finished(fitting)
+        self.assertEqual(said["code"], 0)
+        after = said["lines"][len(before["lines"]):]
+        self.assertEqual(after[0], "› yes, that is what I meant")
+        self.assertIn("Drawn: yes, that is what I meant", after)
+        self.assertNotIn("earlier: hello again", after, "the loaded session's replay is not said again")
+        self.assertTrue(stage.said()["done"])
+
     def test_with_nothing_to_launch_the_draft_is_the_headless_child(self) -> None:
         with mock.patch.object(stage_session, "launchable", return_value=None):
             step = draft_step(self.root)
@@ -151,6 +168,28 @@ class StageRoutesTest(BoardTest):
         page = self.get("/voyage")[1]
         self.assertIn('id="stage-asks"', page)
         self.assertIn('id="stage-stop"', page)
+        self.assertIn('<div id="stage-reply">', page, "an ended stage can be answered on its card")
+        self.assertEqual(self.post("/stage/say", {"message": " "})[0], 400)
+        before = fitting.said()["at"]
+        self.assertEqual(self.post("/stage/say", {"message": "green, then"}), (200, "said"))
+        self.assertIn("Drawn: green, then", finished(fitting)["lines"][before:])
+
+    def test_a_stage_kept_from_before_a_restart_is_offered_and_carried_on(self) -> None:
+        self.assertEqual(self.post("/stage/say", {"message": "hello"})[0], 400, "nothing kept, nothing to say to")
+        with mock.patch.object(stage_session, "launchable", return_value=STAND_IN):
+            first = Fitting(self.root, [Step([], "Drawing.", lambda code: f"ended {code}", "surfaces",
+                                             session=StageSession(self.root, "mockups").run)])
+            first.thread.start()
+            finished(first)
+            receipt = json.loads(self.get("/init.json")[1])  # this board never ran it: a restarted one
+            self.assertEqual((receipt["at"], receipt["talk"], receipt["step"]), (1, True, "mockups"))
+            self.assertIn('<div id="stage-reply">', self.get("/voyage")[1])
+            self.assertEqual(self.post("/stage/say", {"message": "the organiser does"}), (200, "said"))
+            bench = self.server.RequestHandlerClass.bench  # type: ignore[attr-defined]
+            said = finished(bench.outfit(self.root.resolve()).fitting)
+        self.assertEqual(said["code"], 0)
+        self.assertEqual(said["lines"][1], "› the organiser does")
+        self.assertIn("Drawn: the organiser does", said["lines"])
 
 
 if __name__ == "__main__":

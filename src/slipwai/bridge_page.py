@@ -101,9 +101,27 @@ if (fitting) {
     }
     const launch = document.getElementById('launch');
     if (launch) launch.hidden = !said.launchable;
+    replying.hidden = !(said.talk && said.done);
     paint();
     if (running) setTimeout(poll, 700);
   };
+  // What the person says back once a stage has ended: one more turn of its session, whose lines land on
+  // this receipt, so the card runs again from here.
+  const replying = document.getElementById('stage-reply');
+  let listen = () => {};
+  replying.querySelector('form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const box = replying.querySelector('input');
+    if (!box.value.trim()) return;
+    const answer = await fetch('/stage/say', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                               body: JSON.stringify({message: box.value.trim()})});
+    if (!answer.ok) { alert(await answer.text()); return; }
+    box.value = '';
+    replying.hidden = true;
+    running = true; seconds = 0;
+    chip.dataset.state = 'running'; chip.className = 'chip running';
+    paint(); poll(); listen();
+  });
   poll();
   // A stage over the Agent Client Protocol asks on cards: a permission the board could not grant, a
   // question only the person can answer. Polled beside the lines while the run goes on.
@@ -123,6 +141,7 @@ if (fitting) {
       if (!said.done || running) setTimeout(cards, 900);
     };
     stop.addEventListener('click', () => post('/stage/cancel', {}));
+    listen = cards;
     cards();
   }
 }
@@ -378,10 +397,16 @@ def fitting_card(made: dict, verb: str = "Made") -> str:
     # The button is on the card whether or not it can be pressed yet, hidden until the poll says the draft
     # has ended well; a specification a person has read is what pressing it means.
     launch = f'<button class="go" id="launch"{"" if made.get("launchable") else " hidden"}>Continue the build</button>'
+    # A stage over the protocol kept its session, so once it has ended what it said can be answered here, as
+    # on the first page: a question the agent asked in its words rather than on a card has somewhere to go.
+    talk = made.get("talk") and made["done"]
+    reply = (f'<div id="stage-reply"{"" if talk else " hidden"}><form class="ask">'
+             f'<input placeholder="Reply, or tell it what to do next…" autocomplete="off" aria-label="Reply">'
+             f'<button class="go" type="submit">Reply</button></form></div>')
     return (f'<div class="card" id="fitting"><h2>{esc(verb)} {esc(Path(str(made["where"])).name)}</h2>'
             f'<p class="empty">{esc(made["where"])} — {chip}</p>'
             f'<pre class="said" id="fitting-said" data-tail data-at="{esc(made["at"])}">'
-            f'{esc(said)}\n</pre><div class="turns" id="stage-asks"></div>'
+            f'{esc(said)}\n</pre><div class="turns" id="stage-asks"></div>{reply}'
             f'<div class="ask">{launch}<button type="button" class="stop" id="stage-stop" hidden>Stop</button>'
             f'</div></div>')
 

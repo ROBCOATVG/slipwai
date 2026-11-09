@@ -361,6 +361,26 @@ class Fitting:
             failed = failed or code
         return failed
 
+    def reply(self, message: str) -> bool:
+        """What the person said back once the stage had ended, as one more turn of its session: the run is
+        going again from here, its clock from naught, and ends where that turn does. False, and nothing
+        started, while the run is still going — two presses of Reply are one turn."""
+        with self.lock:
+            if self.stage is None or self.code is None or not self.stage.done:
+                return False
+            self.code, self.stopped, self.began = None, None, time.monotonic()
+        self.say(f"› {message}")
+        self.thread = threading.Thread(target=self.followed, args=(message,), daemon=True)
+        self.thread.start()
+        return True
+
+    def followed(self, message: str) -> None:
+        code = self.stage.follow(self, message)
+        if code:
+            self.say("The reply stopped short; its lines above say where.", code=code)
+        else:
+            self.stop(0)
+
     def say(self, line: str, code: int | None = None) -> None:
         with self.lock:
             self.lines.append(line)
@@ -389,7 +409,9 @@ class Fitting:
             return {"where": str(self.where), "lines": self.lines[kept:], "step": self.step,
                     "at": self.dropped + len(self.lines),
                     "seconds": round((self.stopped or time.monotonic()) - self.began, 1),
-                    "done": self.code is not None, "code": self.code}
+                    "done": self.code is not None, "code": self.code,
+                    # A stage over the protocol keeps its session, so what it said can be answered.
+                    "talk": self.stage is not None}
 
 
 def start(where: Path, harness: str | None = None, said: list[str] | None = None,
@@ -541,6 +563,28 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
                       undone="The drawing stopped short; nothing was approved. Its lines above say where.")
     fitting = Fitting(where, [step], said)
     fitting.thread.start()
+    return fitting
+
+
+#: What a stage's session is run with beside its command, where that is not the defaults: the drawing writes
+#: the pid file another window reads and tells its hooks no stage. A resumed session is run the same way.
+RESUMED = {"mockups": {"pid": "surfaces.pid", "stage": "", "limit": 900.0}}
+
+
+def kept_line(command: str) -> str:
+    return f"The {command} stage's session is kept from an earlier run of this board. Reply to carry it on."
+
+
+def resumed(where: Path, command: str) -> Fitting:
+    """A stage's kept session, after the board that ran it was restarted: an ended run with that stage in it,
+    which is what a reply carries on. Its one line is the one the card showed before there was a run."""
+    from .stage_session import StageSession  # noqa: PLC0415 — the edge tier, reached from here only
+
+    fitting = Fitting(where, [])
+    fitting.lines = [kept_line(command)]
+    fitting.stage = StageSession(where, command, **RESUMED.get(command, {}))
+    fitting.stage.done = True
+    fitting.stop(0)
     return fitting
 
 

@@ -125,6 +125,22 @@ class StageSession:
             return 2
         self.lines = fitting.say
         fitting.stage = self
+        return self.session(fitting, launch, self.words(), first=True)
+
+    def follow(self, fitting: Any, message: str) -> int:
+        """What the person said after the stage ended — an answer to a question the agent asked in its words
+        rather than on a card, or one more thing to do — as one more turn of the same session, loaded from
+        where the stage kept it, its lines on the same receipt."""
+        launch = self.launch or launchable(self.root)
+        if launch is None:
+            fitting.say("No agent this board can launch, so there is no session to say that to.")
+            return 2
+        self.done = False
+        self.lines = fitting.say
+        return self.session(fitting, launch, message, first=False)
+
+    def session(self, fitting: Any, launch: Launch, words: str, first: bool) -> int:
+        """The session begun or loaded, one turn of `words`, and closed: zero where the agent ended its turn."""
         marker = self.root / ".slipwai" / self.pid if self.pid else None
         try:
             if marker is not None:
@@ -135,11 +151,19 @@ class StageSession:
                 env["SLIPWAI_STAGE"] = self.stage
             self.agent = BoardAgent(launch, self.root, "agent", self.say, kept=self.root / KEPT / self.command,
                                     env=env)
-            self.agent.begin()
-            model = self.agent.model
-            fitting.say(f"On {self.agent.named}, over the Agent Client Protocol"
-                        + (f", model {model}." if model else "."))
-            stop = self.agent.turn(self.words(), self.limit)
+            if first:
+                self.agent.begin()
+                model = self.agent.model
+                fitting.say(f"On {self.agent.named}, over the Agent Client Protocol"
+                            + (f", model {model}." if model else "."))
+            else:
+                # A load replays the conversation, which the receipt already shows; it is kept off the lines.
+                self.lines = None
+                loaded = self.agent.begin()
+                self.lines = fitting.say
+                if not loaded:
+                    fitting.say("! The stage's session could not be loaded; this reply starts a new one.")
+            stop = self.agent.turn(words, self.limit)
             if stop == "end_turn" and self.after and (left := self.after()):
                 fitting.say(f"! {left}")
                 stop = "short"
@@ -176,6 +200,16 @@ class StageSession:
 EMPTY = {"turns": [], "at": 0, "done": True, "command": ""}
 
 
+def kept_stage(root: Path) -> str:
+    """The stage whose session this project kept most recently, by its command; empty where none was kept.
+    A board restarted after a stage has lost the run, and this is what it can still carry on."""
+    try:
+        kept = [one for one in (root / KEPT).iterdir() if (one / "session").is_file()]
+    except OSError:
+        return ""
+    return max(kept, key=lambda one: (one / "session").stat().st_mtime).name if kept else ""
+
+
 def running(bridge: Any) -> StageSession | None:
     fitting = bridge.fitting
     return getattr(fitting, "stage", None) if fitting is not None else None
@@ -195,12 +229,27 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
 
 
 def route_post(bridge: Any, where: str, held: dict) -> bool:
-    """A card's answer or a stop for the running stage, from the board."""
-    if where not in ("/stage/answer", "/stage/cancel"):
+    """A card's answer, a stop for the running stage, or a reply to one that has ended, from the board."""
+    if where not in ("/stage/answer", "/stage/cancel", "/stage/say"):
         return False
     stage = running(bridge)
+    if stage is None and where == "/stage/say" and bridge.fitting is None and (command := kept_stage(bridge.root)):
+        from .init_run import resumed  # noqa: PLC0415 — init_run reaches this module, not the other way
+
+        bridge.fitting = resumed(bridge.root, command)
+        stage = running(bridge)
     if stage is None:
         bridge.send(400, "no stage is running", "text/plain; charset=utf-8")
+        return True
+    if where == "/stage/say":
+        message = str(held.get("message") or "").strip()
+        if not message:
+            bridge.send(400, "say something first", "text/plain; charset=utf-8")
+        elif not bridge.fitting.reply(message):
+            bridge.send(409, "the stage is still going; what it asks is answered on its cards",
+                        "text/plain; charset=utf-8")
+        else:
+            bridge.send(200, "said", "text/plain; charset=utf-8")
         return True
     if where == "/stage/cancel":
         bridge.send(200, stage.cancel(), "text/plain; charset=utf-8")

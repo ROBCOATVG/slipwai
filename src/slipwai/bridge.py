@@ -71,7 +71,7 @@ from .folder_choice import chosen
 from .ground_card import card as ground_card
 from .ground_card import record as record_ground
 from .harbour import config
-from .init_run import Fitting, outside_session
+from .init_run import Fitting, kept_line, outside_session
 from .init_run import adopted as adopted_init
 from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
@@ -114,6 +114,7 @@ from .seats import Bench, Outfit, Seat, parameter
 from .settings_page import route_get as settings_get
 from .settings_page import route_post as settings_post
 from .spec_page import page as spec
+from .stage_session import kept_stage
 from .stage_session import route_get as stage_get
 from .stage_session import route_post as stage_post
 from .stage_steps import begin_model
@@ -552,6 +553,12 @@ class Bridge(BaseHTTPRequestHandler):
                 held["launchable"] = False
                 held["root"] = str(self.root)
                 return held
+            if command := kept_stage(self.root):
+                # A stage this board ran before a restart: its session is kept, and the card offers to carry
+                # it on, with the one line a resumed run begins with so the count matches once it does.
+                return {"where": str(self.root), "lines": [] if since >= 1 else [kept_line(command)], "at": 1,
+                        "done": True, "code": 0, "step": command, "seconds": 0, "talk": True,
+                        "root": str(self.root), "launchable": self.launchable()}
             return {"lines": [], "at": 0, "done": True, "step": "", "root": str(self.root),
                     "launchable": self.launchable()}
         said = self.fitting.said(since)
@@ -707,7 +714,7 @@ class Bridge(BaseHTTPRequestHandler):
 
     def made(self) -> dict | None:
         """What this board last made, for the card that says so — nothing, on a board that has made nothing."""
-        if self.fitting or outside_session(self.root):
+        if self.fitting or outside_session(self.root) or kept_stage(self.root):
             return self.receipt()
         return None
 

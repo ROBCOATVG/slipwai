@@ -8,7 +8,8 @@ old copy ahead of it; Node, PortableGit and Python archives are
 picked with their publishers' checksums; an install unpacks under the board's tools and lands on the end of a
 child's `PATH`; and the floors agree with what the keel declares. On Windows, with the platform pretended:
 Git counts only with bash beside it, and Git's `usr/bin` goes first on a child's `PATH`; Python is `python`
-and never the Store's stub; Make is ezwinports' pinned build; and bash gets a `python3` shim that goes first.
+and never the Store's stub; Make is ezwinports' pinned build; bash gets a `python3` shim that goes first;
+and the card offers Git Bash in the project, with the board's `PATH`, in place of WSL.
 """
 from __future__ import annotations
 
@@ -292,6 +293,26 @@ class WindowsTest(unittest.TestCase):
         sites = [*(ROOT / "src/slipwai").rglob("*.py"), *(ROOT / "assets/toolkit").rglob("*.py")]
         offenders = [str(one.relative_to(ROOT)) for one in sites if named.search(one.read_text(encoding="utf-8"))]
         self.assertEqual(offenders, [])
+
+    def test_a_terminal_is_offered_where_git_has_bash_and_opened_in_the_project(self) -> None:
+        full = self.git("Git", bash=True)
+        (full / "git-bash.exe").write_bytes(b"")
+        window = machine_card.git_bash_window(str(full / "cmd"))
+        self.assertEqual(window, full / "git-bash.exe")
+        self.assertIsNone(machine_card.git_bash_window(str(self.git("MinGit", bash=False) / "cmd")))
+        self.assertIn("data-terminal", machine_card.terminal_row(window))
+        self.assertNotIn("data-terminal", machine_card.terminal_row(None))
+        with mock.patch.object(machine_card.subprocess, "Popen") as opened, \
+                mock.patch.object(machine_card, "login_environment", return_value={}):
+            machine_card.open_terminal(self.area / "shop", window)
+        self.assertEqual(opened.call_args.args[0], [str(window), f"--cd={self.area / 'shop'}"])
+
+    def test_the_card_on_windows_names_no_wsl(self) -> None:
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(machine_card, "git_bash_window", return_value=None):
+            card = machine_card.card([])
+        self.assertNotIn("WSL", card)
+        self.assertIn("Install Git with bash above", card)
 
 class CardTest(unittest.TestCase):
     """The card offers Install for a tool the machine lacks or has only too old, never over a good copy."""

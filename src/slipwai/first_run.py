@@ -103,7 +103,7 @@ def place_windows(executable: Path, environ: dict[str, str] | None = None,
     """Copy the executable into the per-user programs folder and put a shortcut in the Start menu."""
     folder = programs(environ)
     folder.mkdir(parents=True, exist_ok=True)
-    where = folder / executable.name
+    where = folder / "slipwai-board.exe"  # one name, whatever the download was called: a new version replaces it
     shutil.copy2(executable, where)
     held = os.environ if environ is None else environ
     menu = Path(held.get("APPDATA") or Path.home() / "AppData/Roaming") / "Microsoft/Windows/Start Menu/Programs"

@@ -125,7 +125,7 @@ jobs:
 
   # A generated project gated on Windows, the way the board gates it there: Make installed through the
   # board's own installer, Git's bash from the runner's Git for Windows, every command on the board's PATH
-  # (docs/windows-plan.md, 24.11). Until this is green the Windows app is built but not published.
+  # (docs/windows-plan.md, 24.11). The Windows app is published because this job is green.
   windows-project:
     runs-on: windows-latest
     steps:
@@ -209,9 +209,12 @@ jobs:
             hdiutil create -volname slipwai -srcfolder dmg -ov -format UDZO \
               "release/Slipwai-$(cat VERSION)-${{ matrix.name }}.dmg"
           fi
-          # slipwai-board.exe is built and smoked above but not published: a board on Windows cannot make
-          # a project until phase 24's Windows job is green (windows-plan.md, 24.11).
-          cd release && for file in slipwai-*; do python -c "import hashlib,sys; p=sys.argv[1]; print(hashlib.sha256(open(p,'rb').read()).hexdigest() + '  ' + p)" "$file" > "$file.sha256"; done
+          # Published now that the windows-project job makes and gates a project there (windows-plan.md, 24.12).
+          if [ "$RUNNER_OS" = Windows ]; then
+            cp dist/slipwai-board.exe "release/Slipwai-$(cat VERSION)-${{ matrix.name }}.exe"
+          fi
+          # `Slipwai-*` too: the apps are capitalised, and the dmg had gone out with no checksum beside it.
+          cd release && for file in slipwai-* Slipwai-*; do python -c "import hashlib,sys; p=sys.argv[1]; print(hashlib.sha256(open(p,'rb').read()).hexdigest() + '  ' + p)" "$file" > "$file.sha256"; done
       - uses: actions/upload-artifact@v7
         with:
           name: executable-${{ matrix.name }}
@@ -259,4 +262,4 @@ jobs:
           case "$GITHUB_REF_NAME" in *dev*|*a*|*b*|*rc*) prerelease='--prerelease' ;; esac
           gh release create "$GITHUB_REF_NAME" release/* dist/* --repo "$GITHUB_REPOSITORY" \
             --title "slipwai ${GITHUB_REF_NAME#v}" --verify-tag $prerelease \
-            --notes "No terminal? On a Mac, download Slipwai (.dmg) and open it: the board opens in your browser. This build is unsigned: the first time, open System Settings > Privacy & Security and press Open Anyway. Otherwise install with \`pip install slipwai==${GITHUB_REF_NAME#v}\` or download the executable for your platform below. Each has a .sha256 beside it. CHANGELOG.md has what changed."
+            --notes "No terminal? On a Mac, download Slipwai (.dmg) and open it: the board opens in your browser. This build is unsigned: the first time, open System Settings > Privacy & Security and press Open Anyway. On Windows, download Slipwai (.exe) and open it; it is unsigned too, so press More info, then Run anyway. Otherwise install with \`pip install slipwai==${GITHUB_REF_NAME#v}\` or download the executable for your platform below. Each has a .sha256 beside it. CHANGELOG.md has what changed."

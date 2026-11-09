@@ -1606,7 +1606,7 @@ Added 2026-10-07:
 
 ## 11. The implementation plan
 
-**Progress: 205 of 220 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 7/7, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/4, phase 18 2/2, phase 21 11/11, phase 22 9/9, phase 23 8/11, phase 24 1/13. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
+**Progress: 214 of 220 slices done** — phase 1 6/6, phase 2 9/9, phase 3 22/22, phase 4 7/7, phase 5 29/29, phase 6 14/14, phase 7 18/18, phase 8 7/7, phase 9 8/8, phase 10 6/6, phase 11 5/5, phase 12 5/5, phase 13 5/5, phase 14 6/6, phase 15 15/15, phase 16 8/8, phase 17 4/4, phase 18 2/2, phase 21 11/11, phase 22 9/9, phase 23 8/11, phase 24 10/13. Written by `scripts/progress.py` from the history; run `make progress` after a slice merges.
 
 This section turns section 7's phases into slices. A slice here is one pull request to the fork's `main`: a few
 hours of work, one module or one skill, reviewed and refactored before it merges, with the fast checks per
@@ -2580,18 +2580,18 @@ table is the one `make progress` ticks.
 | Slice | What | From | Size | Done when | Status |
 |---|---|---|---|---|---|
 | 24.1 | The fence: digests of every file macOS and Linux run, each change carrying why behaviour there is unchanged; their generated-gate jobs stay required | new (owner, 2026-11-09) | S | A digest that moves without its reason fails the build | todo | done |
-| 24.2 | Git with bash on Windows: full Git for Windows used where it is, PortableGit installed where it is not | new (owner, 2026-11-09) | M | An install on windows-latest leaves a working `bash` | todo |  |
-| 24.3 | Make for Git Bash: a spike between MSYS2's `make` and ezwinports' build, then the install it picks | new (owner, 2026-11-09) | M | A Makefile with `SHELL := /bin/bash` runs from the board's `PATH` on windows-latest | todo |  |
-| 24.4 | `python3` in both worlds: an `sh` shim for bash, `sys.executable` at the seven sites Windows programs start it from | new (owner, 2026-11-09) | S | A test per site on windows-latest; POSIX argv unchanged | todo |  |
-| 24.5 | The board starts projects through bash on Windows: `bash ./init`, `--script sh` to Spec Kit, `core.longpaths` | new (owner, 2026-11-09) | S | A generated project's `./init` runs to the end from the board on windows-latest | todo |  |
-| 24.6 | `.gitattributes` keeping the POSIX scripts at LF | new (owner, 2026-11-09) | S | A clone with `core.autocrlf=true` checks `init` out with LF and it runs | todo |  |
+| 24.2 | Git with bash on Windows: full Git for Windows used where it is, PortableGit installed where it is not | new (owner, 2026-11-09) | M | An install on windows-latest leaves a working `bash` | todo | done |
+| 24.3 | Make for Git Bash: a spike between MSYS2's `make` and ezwinports' build, then the install it picks | new (owner, 2026-11-09) | M | A Makefile with `SHELL := /bin/bash` runs from the board's `PATH` on windows-latest | todo | done |
+| 24.4 | `python3` in both worlds: an `sh` shim for bash, `sys.executable` at the seven sites Windows programs start it from | new (owner, 2026-11-09) | S | A test per site on windows-latest; POSIX argv unchanged | todo | done |
+| 24.5 | The board starts projects through bash on Windows: `bash ./init`, `--script sh` to Spec Kit, `core.longpaths` | new (owner, 2026-11-09) | S | A generated project's `./init` runs to the end from the board on windows-latest | todo | done |
+| 24.6 | `.gitattributes` keeping the POSIX scripts at LF | new (owner, 2026-11-09) | S | A clone with `core.autocrlf=true` checks `init` out with LF and it runs | todo | done |
 | 24.7 | The languages' path lists joined with the platform's separator, python first | new (owner, 2026-11-09) | S | `make typecheck` and `make test` pass on a python project on windows-latest | todo |  |
-| 24.8 | The toolkit on Windows: Try it's process trees, the moorings' links, the ratchet's `sh` | new (owner, 2026-11-09) | S | Each under a test on windows-latest; POSIX paths unchanged | todo |  |
-| 24.9 | The board on Windows: the tool table's Windows rows and *Open a terminal here* in place of the WSL note | new (owner, 2026-11-09) | M | The prerequisites and settings tests prove the rows and the button | todo |  |
+| 24.8 | The toolkit on Windows: Try it's process trees, the moorings' links, the ratchet's `sh` | new (owner, 2026-11-09) | S | Each under a test on windows-latest; POSIX paths unchanged | todo | done |
+| 24.9 | The board on Windows: the tool table's Windows rows and *Open a terminal here* in place of the WSL note | new (owner, 2026-11-09) | M | The prerequisites and settings tests prove the rows and the button | todo | done |
 | 24.10 | Agents the person starts themselves: the projection names the board's tools path on Windows | new (owner, 2026-11-09) | S | The projection test proves the line on Windows and its absence elsewhere | todo |  |
-| 24.11 | CI on windows-latest: a project per language, `bash ./init` and `make verify`; MSYS path conversions fixed as found | new (owner, 2026-11-09) | M | The job is green and required | todo |  |
+| 24.11 | CI on windows-latest: a project per language, `bash ./init` and `make verify`; MSYS path conversions fixed as found | new (owner, 2026-11-09) | M | The job is green and required | todo | done |
 | 24.12 | The Windows app published once 24.11 is green, and the live run on a clean Windows machine | new (owner, 2026-11-09) | S | The release carries `slipwai-board.exe`; the run is recorded | todo |  |
-| 24.13 | The guides: a Windows section, no WSL anywhere | new (owner, 2026-11-09) | S | `make test-docs` passes; the macOS and Linux steps are unchanged | todo |  |
+| 24.13 | The guides: a Windows section, no WSL anywhere | new (owner, 2026-11-09) | S | `make test-docs` passes; the macOS and Linux steps are unchanged | todo | done |
 
 ### Risks the plan carries, and where each is caught
 

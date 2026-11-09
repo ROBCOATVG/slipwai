@@ -3,7 +3,8 @@
 What is proved, with Windows pretended where it must be: a `./script` the board starts goes through `bash`,
 and every program is looked up on the child's own `PATH` (`CreateProcess` searches the parent's); `./init`
 asks Spec Kit for its sh scripts only under Git's bash, which `uname -s` names; and a repository the keel
-makes on Windows allows long paths. The windows-latest job runs a generated project for real.
+makes on Windows allows long paths; and a generated project, cloned with `core.autocrlf=true` as Git for
+Windows clones, checks `init` out with LF. The windows-latest job runs a generated project for real.
 """
 from __future__ import annotations
 
@@ -74,6 +75,25 @@ class LongPathsTest(unittest.TestCase):
     def test_long_paths_on_windows_and_nothing_new_elsewhere(self) -> None:
         self.assertEqual(self.config("win32"), "true")
         self.assertEqual(self.config("darwin"), "")
+
+
+
+class LineEndingTest(unittest.TestCase):
+    def test_a_clone_with_autocrlf_keeps_the_scripts_at_lf(self) -> None:
+        source = Path(tempfile.mkdtemp())
+        (source / ".gitattributes").write_text(scaffold.GITATTRIBUTES, encoding="utf-8")
+        for path in ("init", "scripts/verify", "scripts/agents/run.py", "apps/service/scripts/verify",
+                     ".githooks/pre-push", "Makefile", "README.md"):
+            (source / path).parent.mkdir(parents=True, exist_ok=True)
+            (source / path).write_bytes(b"#!/bin/sh\nset -eu\n")
+        with mock.patch.object(scaffold.githooks, "install"):
+            scaffold.commit_all(source, "first")
+        clone = Path(tempfile.mkdtemp()) / "clone"
+        subprocess.run(["git", "-c", "core.autocrlf=true", "clone", "-q", str(source), str(clone)], check=True)
+        for path in ("init", "scripts/verify", "scripts/agents/run.py", "apps/service/scripts/verify",
+                     ".githooks/pre-push", "Makefile"):
+            self.assertNotIn(b"\r", (clone / path).read_bytes(), path)
+        self.assertIn(b"\r\n", (clone / "README.md").read_bytes(), "the control: an unnamed file does get CRLF")
 
 
 if __name__ == "__main__":

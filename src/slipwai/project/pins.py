@@ -73,6 +73,21 @@ indent_style = tab
 trim_trailing_whitespace = false
 """
 
+# What Git does to line endings on checkout, for the files sh and bash run. Git for Windows installs with
+# `core.autocrlf=true`, which checks every text file out with CRLF, and `sh` stops at `set -eu\r` on the
+# first line of `./init`. Only the scripts are named: `* text=auto` would renormalise every file a project
+# already has, which is a diff nobody asked for. On macOS and Linux these files are LF either way.
+GITATTRIBUTES = """# Scripts that sh and bash run keep LF on every checkout, Windows included.
+init text eol=lf
+*.sh text eol=lf
+Makefile text eol=lf
+*.mk text eol=lf
+mvnw text eol=lf
+scripts/** text eol=lf
+**/scripts/** text eol=lf
+.githooks/** text eol=lf
+"""
+
 
 def pin_files(apps: list[App]) -> dict[str, str]:
     """The pin files this project's toolchains have, keyed by path.

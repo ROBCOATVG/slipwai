@@ -23,7 +23,10 @@ FROZEN = bool(getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"))
 BUNDLE = Path(__file__).resolve().parent / "_bundle"
 INSTALLED = BUNDLE.is_dir()
 if FROZEN:
-    ROOT = Path(sys._MEIPASS)  # type: ignore[attr-defined]
+    # Where the data really is: a macOS app keeps it in `Contents/Resources` and links it from `_MEIPASS`
+    # (`Contents/Frameworks`), and a root on the link's side would make every asset look like an escape to
+    # `inside`. Elsewhere `assets/` is a plain folder and this is `_MEIPASS` itself.
+    ROOT = (Path(sys._MEIPASS) / "assets").resolve().parent  # type: ignore[attr-defined]
 elif INSTALLED:
     ROOT = BUNDLE
 else:

@@ -18,7 +18,7 @@ from .init_run import Fitting, Step, stage_step
 from .layout import Layout, layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import adoption_of
-from .shell_environment import login_environment
+from .shell_environment import login_environment, python3
 from .stage_steps import knows
 from .strategy_steps import CONTINUE, home_of, name_of, stack_of
 
@@ -93,7 +93,7 @@ def step_prompt(root: Path, layout: Layout, taken: str, why: str) -> str:
     if not knows(root / layout.under(STEP), "--prompt"):
         return ""
     try:
-        said = subprocess.run(["python3", layout.under(STEP), "--prompt", taken, why], cwd=root, capture_output=True,
+        said = subprocess.run([python3(), layout.under(STEP), "--prompt", taken, why], cwd=root, capture_output=True,
                               text=True, env=login_environment(), timeout=30, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return ""

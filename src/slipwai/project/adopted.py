@@ -36,7 +36,7 @@ WRITTEN = ".written"
 # one is the worst of them — and none is something the method needs in order to work.
 OWN = (
     "README.md", "AGENTS.md", "CLAUDE.md", ".gitignore", ".claude/settings.json", f"{PACKAGES}/.gitkeep",
-    ".editorconfig", ".nvmrc", ".python-version", "LICENSE", "SECURITY.md", "renovate.json",
+    ".editorconfig", ".gitattributes", ".nvmrc", ".python-version", "LICENSE", "SECURITY.md", "renovate.json",
     ".github/PULL_REQUEST_TEMPLATE.md",
 )
 

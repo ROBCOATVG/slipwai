@@ -548,7 +548,14 @@ def furnish(where: Path) -> None:
         if target.exists() or git("check-ignore", "-q", f"tools/{installed.name}/").returncode != 0:
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.symlink_to(installed, target_is_directory=installed.is_dir())
+        if sys.platform != "win32":
+            target.symlink_to(installed, target_is_directory=installed.is_dir())
+        elif installed.is_dir():  # a symlink there needs Developer Mode or an administrator; a junction does not
+            import _winapi  # noqa: PLC0415 — Windows only
+
+            _winapi.CreateJunction(str(installed), str(target))
+        else:
+            shutil.copy2(installed, target)
 
 
 def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:
@@ -571,7 +578,10 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
         if rebased.returncode != 0:
             paths = conflicting()
             git("rebase", "--abort", where=SCRATCH)
-            return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or 'files git did not name'}. "
+            # Where git names no file it did not stop on a conflict, and its own last line is the reason.
+            said = [line for line in (rebased.stderr or rebased.stdout or "").splitlines() if line.strip()]
+            unnamed = f"files git did not name ({said[-1].strip()})" if said else "files git did not name"
+            return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or unnamed}. "
                         f"The rebase was aborted, so nothing is half-done; resolve it in your own berth and "
                         f"ask again"), True, "", False
         started = time.monotonic()

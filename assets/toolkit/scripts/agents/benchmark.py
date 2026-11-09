@@ -51,6 +51,8 @@ def project_root(script: Path, depth: int) -> Path:
 ROOT = project_root(Path(__file__).resolve(), 2)
 REGISTRY = Path(__file__).with_name("registry.json")
 MODELS = Path(__file__).with_name("models.py")
+#: `python3` on macOS and Linux; this interpreter on Windows, whose `python3` is a shim only bash can start.
+PYTHON = sys.executable if sys.platform == "win32" else "python3"
 INTEGRATION = ROOT / ".specify/integration.json"
 RECORD = "benchmark.json"
 OVERVIEW = "benchmark.md"
@@ -145,7 +147,7 @@ def task_counts(directory: Path) -> dict[str, int] | None:
 
 def planned(stage: str) -> str | None:
     """The line `models.py` gives before the stage — what was meant to run it."""
-    result = subprocess.run(["python3", str(MODELS), stage], cwd=ROOT, text=True, capture_output=True)
+    result = subprocess.run([PYTHON, str(MODELS), stage], cwd=ROOT, text=True, capture_output=True)
     return result.stdout.strip().splitlines()[-1] if result.returncode == 0 and result.stdout.strip() else None
 
 

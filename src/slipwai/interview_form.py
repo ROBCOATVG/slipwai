@@ -27,6 +27,7 @@ from .interview_page import (
     init_asked,
     repository_asked,
 )
+from .machine_card import lacking_line
 from .page_shell import WORKS, document, esc
 
 
@@ -73,6 +74,7 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
         rows += field_html(offered)
     rows += field_html(repository_asked(answers))
     return (f'<div class="card" id="interview"><h2>Start from a PRD</h2>'
+            f'{lacking_line("/generate", answers, inline=True)}'
             f'<form class="ask-page">{rows}</form>'
             f'<div class="ask"><button class="go" id="generate">Generate</button></div>'
             f'<pre class="said" id="said" data-tail hidden></pre></div>')

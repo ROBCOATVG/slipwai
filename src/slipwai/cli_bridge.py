@@ -7,6 +7,7 @@ import webbrowser
 from collections.abc import Callable
 from pathlib import Path
 
+from . import tool_install
 from .assets import this_command
 from .at_login import board_install as install_board
 from .at_login import remove as remove_at_login
@@ -83,6 +84,7 @@ def bridge_main(argv: list[str]) -> None:
         print(f"bridge: http://{parsed.host}:{parsed.port}/  — already open, so this opened a tab on it")
         return
     print(f"bridge: http://{parsed.host}:{parsed.port}  — ctrl-c to stop")
+    tool_install.windows_shims()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

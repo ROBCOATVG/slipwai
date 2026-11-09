@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import quote
 
+from . import update_strip
 from .assets import this_command
 from .folder_choice import asking
 from .folder_field import SCRIPT as CHOOSING
@@ -113,5 +114,5 @@ def standing(root: str, name: str, now: str, project: bool) -> str:
 
 def landing(root: str, name: str, now: str, project: bool) -> str:
     """The Board: looking at, where that stands, what can be started."""
-    body = f"{looking(root)}{standing(root, name, now, project)}{starting_points()}"
+    body = f"{update_strip.banner()}{looking(root)}{standing(root, name, now, project)}{starting_points()}"
     return document("Board", "start here", body, SCRIPT, now="/")

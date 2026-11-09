@@ -33,7 +33,7 @@ from .init_run import (
     triaged,
 )
 from .passage import modelled, split
-from .shell_environment import login_environment
+from .shell_environment import login_environment, python3
 
 MODELLING_ACP = ("Modelling — the project's agent over the Agent Client Protocol, from this board: the event "
                  "model from the approved storyboard, with what it reads and writes shown as it goes. The "
@@ -68,7 +68,7 @@ def model_prompt(where: Path) -> str:
     if not knows(where / "scripts/agents/model.py", PROMPT_FLAG):
         return ""
     try:
-        said = subprocess.run(["python3", "scripts/agents/model.py", PROMPT_FLAG], cwd=where, capture_output=True,
+        said = subprocess.run([python3(), "scripts/agents/model.py", PROMPT_FLAG], cwd=where, capture_output=True,
                               text=True, env=login_environment(), timeout=30, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -137,7 +137,7 @@ def launch_steps(where: Path) -> list[Step]:
                                             "captain for; a park in its lines names what you have to decide.")
         steps.append(stage_step(where, "launch", "", LAUNCH, LAUNCHING, LAUNCHING_ACP, charted, "launch",
                                 after=unsplit))
-    steps.append(Step(["python3", "scripts/agents/cruise.py", "--set", "enabled=true"], ENABLING, enabled, "launch"))
+    steps.append(Step([python3(), "scripts/agents/cruise.py", "--set", "enabled=true"], ENABLING, enabled, "launch"))
     steps.append(Step(CRUISE, CRUISING, cast, "launch"))
     return steps
 

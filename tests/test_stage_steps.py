@@ -27,6 +27,7 @@ from slipwai.init_run import CRUISE, LAUNCH, MODEL, TRIAGE, Fitting, Step, outsi
 from slipwai.layout import Layout
 from slipwai.next_steps import Step as Next
 from slipwai.passage import split
+from slipwai.shell_environment import python3
 from slipwai.stage_session import StageSession
 from slipwai.stage_steps import NOBODY, begin_model, launch, launch_steps, model_prompt, model_step, triage_step
 
@@ -124,7 +125,7 @@ class StageStepsTest(unittest.TestCase):
     def test_a_launch_is_the_chart_and_split_over_the_protocol_then_the_two_processes_that_cast_off(self) -> None:
         steps = launch_steps(self.root)
         self.assertEqual([one.argv for one in steps],
-                         [[], ["python3", "scripts/agents/cruise.py", "--set", "enabled=true"], CRUISE])
+                         [[], [python3(), "scripts/agents/cruise.py", "--set", "enabled=true"], CRUISE])
         self.assertIsNotNone(steps[0].session)
         (self.root / "specs" / "001-x").mkdir(parents=True)
         (self.root / "specs" / "001-x" / "chart.yaml").write_text("slices: []\n", encoding="utf-8")

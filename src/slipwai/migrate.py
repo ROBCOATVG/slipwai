@@ -38,6 +38,7 @@ from .migration_result import Migration
 from .relocate import relocate
 from .replay import Replay, git, replay
 from .scaffold import NO_MAINTENANCE
+from .shell_environment import python3
 from .unlabel import Refresh, read_page, unlabel
 
 # Project extension guidance first, then agent files: explicit paths avoid a project-defined make target.
@@ -180,9 +181,9 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
             for candidate in extensions.iterdir()
         )
     if (root / extension_projector).is_file() and extension_elected:
-        commands.append(["python3", extension_projector])
+        commands.append([python3(), extension_projector])
     if (root / agent_projector).is_file() and (root / PROJECTED).is_file():
-        commands.append(["python3", agent_projector])
+        commands.append([python3(), agent_projector])
     for command in commands:
         projected = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False)
         if projected.returncode != 0:

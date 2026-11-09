@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from . import githooks
@@ -46,7 +47,7 @@ from .project.languages import language_files
 from .project.makefile import makefile
 from .project.metadata import metadata
 from .project.pin_commands import pin_command_files
-from .project.pins import pin_files
+from .project.pins import GITATTRIBUTES, pin_files
 from .project.pruner import pruner
 from .project.readme import readme
 from .project.renovate import renovate_config
@@ -163,6 +164,7 @@ def project_files(
             generated[".github/workflows/production.yml"] = promotion_workflow(bool(web_apps(apps)), target, auth0)
         generated[".github/workflows/rollback.yml"] = rollback_workflow(target, auth0, shape or "liner")
     generated.update(pin_files(apps))
+    generated[".gitattributes"] = GITATTRIBUTES
     generated.update(repository_files(project_name, profile, apps, target))
     generated.update(agent_files(layout))
     generated.update(decision_files())
@@ -276,6 +278,8 @@ def write_project(
 def commit_all(repository: Path, message: str) -> None:
     """Make `repository` a Git repository on `main` with everything in it as one commit."""
     subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repository, check=True)
+    if sys.platform == "win32":  # `node_modules` passes Windows' 260-character limit without it
+        subprocess.run(["git", "config", "core.longpaths", "true"], cwd=repository, check=True)
     # Before the commit, because `core.hooksPath` is per-checkout config and not a file: it travels with
     # no clone, no worktree and no cloud runner, so the one rule that holds whoever is driving would
     # otherwise be installed nowhere. Never fatal, and never over somebody else's hook path.

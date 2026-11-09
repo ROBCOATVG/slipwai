@@ -95,7 +95,8 @@ class StageTest(unittest.TestCase):
 
     def test_a_reply_after_the_stage_ended_is_one_more_turn_of_its_session(self) -> None:
         stage = StageSession(self.root, "surfaces", launch=STAND_IN)
-        fitting = Fitting(self.root, [Step([], "Drawing.", lambda code: f"ended {code}", "surfaces", session=stage.run)])
+        fitting = Fitting(self.root, [Step([], "Drawing.", lambda code: f"ended {code}", "surfaces",
+                                           session=stage.run)])
         self.assertFalse(fitting.reply("too soon"), "nothing to reply to before the stage has run")
         fitting.thread.start()
         before = finished(fitting)

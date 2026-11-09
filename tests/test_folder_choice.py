@@ -149,6 +149,22 @@ class RouteTest(BoardTest):
         self.assertIn('data-choose="root"', page)
         self.assertIn("fetch('/choose'", page)
 
+    def test_the_folder_the_board_looks_at_is_chosen_too(self) -> None:
+        """Choosing it is the move, so there is no Look here to press after the dialog."""
+        with mock.patch("slipwai.folder_field.asking", return_value=["osascript"]), \
+                mock.patch("slipwai.landing_page.asking", return_value=["osascript"]):
+            page = self.get("/")[1]
+        self.assertIn('data-choose="attach"', page)
+        self.assertRegex(page, r'<input id="attach"[^>]* readonly')
+        self.assertNotIn('id="attach-go"', page)
+
+    def test_with_no_dialog_the_folder_looked_at_is_typed_and_looked_at(self) -> None:
+        with mock.patch("slipwai.folder_field.asking", return_value=[]), \
+                mock.patch("slipwai.landing_page.asking", return_value=[]):
+            page = self.get("/")[1]
+        self.assertNotIn('data-choose="attach"', page)
+        self.assertIn('id="attach-go"', page)
+
     def test_with_no_dialog_on_the_machine_the_folder_is_typed(self) -> None:
         with mock.patch("slipwai.folder_field.asking", return_value=[]):
             page = self.get("/generate")[1]

@@ -8,9 +8,13 @@ what it is looking at and offers the two ways in rather than a table of streams 
 """
 from __future__ import annotations
 
+from pathlib import Path
 from urllib.parse import quote
 
 from .assets import this_command
+from .folder_choice import asking
+from .folder_field import SCRIPT as CHOOSING
+from .folder_field import folder_field
 from .page_shell import document, esc
 
 #: What can be started from here: the page, the verb, and why.
@@ -38,7 +42,12 @@ document.addEventListener('click', event => {
     if (box && box.value.trim()) send('/attach', {root: box.value.trim()});
   }
 });
-"""
+// A folder picked in the machine's chooser moves this window there at once: picking it was the decision.
+document.addEventListener('change', event => {
+  if (event.target.id === 'attach' && event.target.readOnly && event.target.value.trim())
+    send('/attach', {root: event.target.value.trim()});
+});
+""" + CHOOSING
 
 
 def starting_points(command: str | None = None) -> str:
@@ -67,7 +76,16 @@ def looking(root: str) -> str:
     It moves *this window* and no other. Each window on this board has a seat of its own, so a second one
     opened on another project is a second view rather than the same one re-pointed — which is what makes
     two projects at once a thing a person can do.
+
+    The folder is chosen the way every other folder on the board is, with this machine's own dialog, and
+    choosing it is the move — there is nothing left to confirm. Only where there is no dialog to open is
+    the path typed, and then Look here is what moves it.
     """
+    if asking(Path.home()):
+        return ('<div class="card" id="looking"><h2>Looking at</h2>'
+                f'<div class="ask">{folder_field("attach", root)}</div>'
+                '<p class="empty">The project folder this window shows. Choose another folder to switch. '
+                "Only this window changes; other windows stay on their own projects.</p></div>")
     return ('<div class="card" id="looking"><h2>Looking at</h2>'
             f'<div class="ask"><input id="attach" value="{esc(root)}">'
             '<button class="go" id="attach-go">Look here</button></div>'

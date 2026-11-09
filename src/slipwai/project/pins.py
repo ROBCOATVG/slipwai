@@ -76,16 +76,18 @@ trim_trailing_whitespace = false
 # What Git does to line endings on checkout, for the files sh and bash run. Git for Windows installs with
 # `core.autocrlf=true`, which checks every text file out with CRLF, and `sh` stops at `set -eu\r` on the
 # first line of `./init`. Only the scripts are named: `* text=auto` would renormalise every file a project
-# already has, which is a diff nobody asked for. On macOS and Linux these files are LF either way.
-GITATTRIBUTES = """# Scripts that sh and bash run keep LF on every checkout, Windows included.
-init text eol=lf
-*.sh text eol=lf
-Makefile text eol=lf
-*.mk text eol=lf
-mvnw text eol=lf
-scripts/** text eol=lf
-**/scripts/** text eol=lf
-.githooks/** text eol=lf
+# already has, which is a diff nobody asked for. `text=auto`, not `text`: a folder such as `scripts/` can
+# hold a binary — a committed `__pycache__/*.pyc` — and `text` would rewrite its CR LF bytes, leaving the
+# file modified for good and every rebase refused. On macOS and Linux these files are LF either way.
+GITATTRIBUTES = """# Scripts that sh and bash run keep LF on every checkout, Windows included; binaries are left alone.
+init text=auto eol=lf
+*.sh text=auto eol=lf
+Makefile text=auto eol=lf
+*.mk text=auto eol=lf
+mvnw text=auto eol=lf
+scripts/** text=auto eol=lf
+**/scripts/** text=auto eol=lf
+.githooks/** text=auto eol=lf
 """
 
 

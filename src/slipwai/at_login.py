@@ -176,7 +176,8 @@ def install(root: Path, host: str = "127.0.0.1", port: int = 8099, home: Path | 
     """Write this platform's service and load it. The lines to print, including anything that went wrong."""
     one = service(root, host, port, home)
     one.path.parent.mkdir(parents=True, exist_ok=True)
-    one.path.write_text(one.text, encoding="utf-8")
+    # Written as given: the Windows file already says `\r\n`, and newline translation made it `\r\r\n`.
+    one.path.write_text(one.text, encoding="utf-8", newline="")
     wrong = ran(one.load, run)
     said = [f"The board starts with you now: {one.kind} at {one.path}.",
             f"It serves http://{host}:{port}/ from {root.resolve()}, and the page itself attaches "

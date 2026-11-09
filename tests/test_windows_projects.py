@@ -87,14 +87,21 @@ class LineEndingTest(unittest.TestCase):
                      ".githooks/pre-push", "Makefile", "README.md"):
             (source / path).parent.mkdir(parents=True, exist_ok=True)
             (source / path).write_bytes(b"#!/bin/sh\nset -eu\n")
+        # A binary under scripts/ with CR LF in it, as a committed `.pyc` is: left byte for byte as it was.
+        binary = b"\x00\xa7\r\n\r\n\x01binary\r\n"
+        (source / "scripts/agents/__pycache__").mkdir(parents=True)
+        (source / "scripts/agents/__pycache__/run.cpython-311.pyc").write_bytes(binary)
         with mock.patch.object(scaffold.githooks, "install"):
             scaffold.commit_all(source, "first")
+        self.assertEqual(subprocess.run(["git", "status", "--porcelain"], cwd=source, capture_output=True,
+                                        text=True).stdout, "", "nothing reads as modified after the commit")
         clone = Path(tempfile.mkdtemp()) / "clone"
         subprocess.run(["git", "-c", "core.autocrlf=true", "clone", "-q", str(source), str(clone)], check=True)
         for path in ("init", "scripts/verify", "scripts/agents/run.py", "apps/service/scripts/verify",
                      ".githooks/pre-push", "Makefile"):
             self.assertNotIn(b"\r", (clone / path).read_bytes(), path)
         self.assertIn(b"\r\n", (clone / "README.md").read_bytes(), "the control: an unnamed file does get CRLF")
+        self.assertEqual((clone / "scripts/agents/__pycache__/run.cpython-311.pyc").read_bytes(), binary)
 
 
 if __name__ == "__main__":

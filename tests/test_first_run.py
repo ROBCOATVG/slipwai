@@ -83,7 +83,7 @@ class RegisterTest(unittest.TestCase):
         def install(root, host, port, at):
             one = first_run.at_login.service(root, host, port, at)
             one.path.parent.mkdir(parents=True, exist_ok=True)
-            one.path.write_text(one.text, encoding="utf-8")
+            one.path.write_text(one.text, encoding="utf-8", newline="")
             written.append(one.path)
             return ["written"]
 

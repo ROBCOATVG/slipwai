@@ -9,7 +9,17 @@ yet, so the first time it is refused: open System Settings → Privacy & Securit
 board opens in your browser and keeps running each time you log in. Its **Settings** tab shows what this
 machine still needs, such as Git, Python or Node. Where one is missing or too old it offers **Install**.
 Where you already have a good one, it uses yours. Then go to [the same interview, on the board](#the-same-interview-on-the-board).
-The Windows app follows once projects run on Windows natively.
+
+**No terminal, on Windows?** Download `slipwai-board.exe` from the releases page and open it. It copies
+itself into your own programs folder, adds Slipwai to the Start menu, and opens the board. A project on
+Windows runs under Git Bash, the shell that comes with Git for Windows. The **Settings** tab installs Git
+with bash, and Make, where the machine has none. Its **Open a terminal here** button opens Git Bash in your
+project with those tools ready: `make`, `python3` and `slipwai` all work there. A project's checks take
+longer on Windows than on a Mac or Linux. The Windows build is on the releases page from the first release
+after its Windows gate passed.
+
+On either system, the app gives the board and the agents it starts a `slipwai` command. To type `slipwai`
+in a terminal you opened yourself, install the command as in step 1.
 
 The rest of this page is the terminal's way, and it is unchanged.
 

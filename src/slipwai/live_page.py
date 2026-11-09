@@ -27,7 +27,7 @@ STYLE = """
   font-size:.86rem;overflow-x:auto}
 #now .rows>div{padding:8px 10px;border-top:1px solid var(--rule-2);display:flex;flex-direction:column;gap:2px;
   min-width:0}
-#now .rows>.h{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);border-top:0;
+#now .rows>.h{font-size:.78rem;font-weight:500;color:var(--ink-3);border-top:0;
   padding-top:0}
 #now .sid{font-family:var(--mono);font-weight:500}
 #now .sub,.lane-name .sub{color:var(--ink-3);font-size:.78rem}
@@ -36,7 +36,7 @@ STYLE = """
 .role.main{background:var(--teal-soft);color:var(--teal)}
 .warn{display:inline-block;font-size:.72rem;padding:1px 8px;border-radius:999px;width:fit-content;margin-top:2px}
 .warn.amber{background:var(--brass-soft);color:var(--brass)}
-.warn.red{background:transparent;border:1px solid #b4432f;color:#b4432f}
+.warn.red{background:transparent;border:1px solid var(--critical);color:var(--critical)}
 .ago{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);font-variant-numeric:tabular-nums}
 .live-dot{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:500;color:var(--teal)}
 .live-dot::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--teal);
@@ -66,7 +66,7 @@ WINDOW_STYLE = """
   max-height:520px;overflow:auto}
 .feed li{display:grid;grid-template-columns:62px 64px minmax(0,1fr);gap:8px}
 .feed .t{color:var(--ink-3)}.feed .k{color:var(--brass)}.feed .k.said{color:var(--teal)}
-.feed .k.failed{color:#b4432f}.feed .k.stage{color:var(--ink);font-weight:500}
+.feed .k.failed{color:var(--critical)}.feed .k.stage{color:var(--ink);font-weight:500}
 .two{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start}
 @media (max-width:860px){.two{grid-template-columns:1fr}}
 .facts-list{margin:0;padding-left:18px;display:grid;gap:6px;font-size:.88rem}

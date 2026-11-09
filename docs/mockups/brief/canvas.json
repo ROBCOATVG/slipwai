@@ -1,0 +1,94 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-04T10:05:00Z"
+  },
+  "title": "Brief Compiler Mock",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 1000,
+      "title": "1 · Describe it, with the prototype",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "States.dc.html": {
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 920,
+      "title": "2 · Walk the states",
+      "expand": "fill"
+    },
+    "Handover.dc.html": {
+      "x": 2720,
+      "y": 0,
+      "w": 1280,
+      "h": 920,
+      "title": "3 · Check and hand over",
+      "expand": "fill"
+    },
+    "Slipwai.dc.html": {
+      "x": 4080,
+      "y": 0,
+      "w": 1280,
+      "h": 1000,
+      "title": "4 · Slipwai takes it from here",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Prototype.dc.html": {
+      "x": 5440,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "The prototype Sam plays",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "States.dc.html",
+    "Handover.dc.html",
+    "Slipwai.dc.html",
+    "Prototype.dc.html"
+  ],
+  "notes": {
+    "title": {
+      "x": 0,
+      "y": -300,
+      "text": "Prototype → brief → slipwai: one session, one folder, one build — on the board's own tokens",
+      "kind": "title1",
+      "maxW": 5830
+    },
+    "who": {
+      "x": 0,
+      "y": 1120,
+      "w": 620,
+      "text": "Sam runs bookings at a sailing club and has never written a spec. Boards 1 to 3 are the prototyping tool, working title Sketch, drawn on slipwai's tokens: Plex, teal and brass, 8px controls, 12px cards. Board 4 is the real Voyage page after the polish, with the folder's four ticks and the file beneath each one. Press Play on it and approve or park the storyboard.",
+      "fill": "teal"
+    },
+    "contract": {
+      "x": 2720,
+      "y": 1040,
+      "w": 620,
+      "text": "The contract the folder meets: a PRD found by name or heading, everything else under docs/design/, one HTML page per surface with <title> for the name and an <article class=\"state\"> with an <h2> per state. Only people.md and domain.md need a new door in the keel.",
+      "fill": "orange"
+    },
+    "play": {
+      "x": 5440,
+      "y": 960,
+      "w": 390,
+      "text": "Press Play on this frame. Book Kestrel in the morning, look at My bookings, cancel it. Sign in as Jo the bosun, take Sandpiper out of service, sign back in as Sam. The same prototype sits inside board 1.",
+      "fill": "green"
+    }
+  },
+  "designSystems": []
+}

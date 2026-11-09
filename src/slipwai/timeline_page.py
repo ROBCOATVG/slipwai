@@ -33,12 +33,10 @@ STYLE = """
 .tl-bar{position:absolute;top:7px;height:16px;border-radius:3px;min-width:2px}
 .tl-bar.run{background:var(--teal)}
 .tl-bar.park{background:var(--brass);height:6px;top:12px}
-.tl-bar.pause{background:#d6e6f8;border:1px dashed #1d4f8f;box-sizing:border-box}
-:root:has(#t-dark:checked) .tl-bar.pause{background:#1b2f4a}
-@media (prefers-color-scheme:dark){:root:has(#t-auto:checked) .tl-bar.pause{background:#1b2f4a}}
+.tl-bar.pause{background:var(--paused-soft);border:1px dashed var(--paused);box-sizing:border-box}
 .tl-lbl{position:absolute;font-size:.7rem;white-space:nowrap;font-family:var(--mono);pointer-events:none}
 .tl-lbl.in{top:9px;color:#fff;padding-left:4px;overflow:hidden;max-width:100%}
-.tl-lbl.pause{color:#1d4f8f}
+.tl-lbl.pause{color:var(--paused)}
 .dense .tl-lbl.in{display:none}
 /* A bar too narrow for its label says it, and when, over itself while hovered: the title, drawn at once
    rather than after the browser's own pause. */
@@ -49,9 +47,10 @@ STYLE = """
 .tl-future{position:absolute;top:0;bottom:0;background:rgba(23,33,41,.05)}
 .tl-mark{position:absolute;top:0;bottom:0;width:2px}
 .tl-mark.limit{background:var(--critical)}.tl-mark.now{background:var(--ink)}
-.tl-mark.reset{background:#1d4f8f;opacity:.8}.tl-mark.person{width:0;top:-8px;bottom:auto;color:var(--brass)}
+.tl-mark.reset{background:var(--paused);opacity:.8}.tl-mark.person{width:0;top:-8px;bottom:auto;color:var(--brass)}
 .tl-mark .tl-lbl{top:-18px;left:4px}
-.tl-mark.limit .tl-lbl{color:var(--critical)}.tl-mark.reset .tl-lbl{color:#1d4f8f}.tl-mark.now .tl-lbl{color:var(--ink)}
+.tl-mark.limit .tl-lbl{color:var(--critical)}.tl-mark.reset .tl-lbl{color:var(--paused)}
+.tl-mark.now .tl-lbl{color:var(--ink)}
 .tl-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:.8rem;color:var(--ink-2)}
 .tl-legend span{display:inline-flex;align-items:center;gap:6px}
 .tl-legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
@@ -174,7 +173,8 @@ def timeline_card(found: dict, controls: bool) -> str:
                '</select></label>') if controls else ""
     legend = ('<div class="tl-legend"><span><i style="background:var(--teal)"></i>a session working</span>'
               '<span><i style="background:var(--brass)"></i>parked on you</span>'
-              '<span><i style="background:#d6e6f8;border:1px dashed #1d4f8f"></i>paused, with a time</span>'
+              '<span><i style="background:var(--paused-soft);border:1px dashed var(--paused)"></i>'
+              'paused, with a time</span>'
               '<span><i style="background:var(--critical)"></i>the harness refused the run</span>'
               '<span style="color:var(--brass)">▲ you cleared a park</span></div>')
     return (f'<div class="card" id="timeline"><div class="tl-head"><h2>Timeline</h2>{chooser}</div>'

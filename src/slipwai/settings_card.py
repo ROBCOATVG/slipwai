@@ -44,7 +44,7 @@ STYLE = """
 .settings .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center}
 .settings .row small{grid-column:1 / -1;color:var(--ink-3);font-size:.76rem;margin-top:-4px}
 .settings .row .dial{margin:0}
-.settings .where{font-family:ui-monospace,Menlo,monospace;font-size:.74rem;color:var(--ink-3);
+.settings .where{font-family:var(--mono);font-size:.74rem;color:var(--ink-3);
   margin:14px 0 0;padding-top:10px;border-top:1px solid var(--rule-2)}
 .settings .dial .now.asks{background:var(--brass);border-color:var(--brass)}
 /* Twenty-two stages is a table, not twenty-two dials: a hundred buttons in a tab is a wall. */
@@ -53,7 +53,7 @@ STYLE = """
 .settings .stages select{font:inherit;font-size:.82rem;padding:3px 6px;border-radius:6px;
   border:1px solid var(--rule);background:var(--paper);color:var(--ink)}
 .settings .stages .fell{color:var(--ink-3)}
-.settings .stages .key{font-family:ui-monospace,Menlo,monospace;font-style:normal;
+.settings .stages .key{font-family:var(--mono);font-style:normal;
   font-size:.74rem;color:var(--ink-3)}
 @media (max-width:600px){.settings .row{grid-template-columns:1fr}}
 """
@@ -64,7 +64,7 @@ def rules(keys: list[str]) -> str:
     the project has rather than a list written out here."""
     return "".join(
         f"#tab-{key}:checked~.bar label[for=tab-{key}]{{color:var(--teal);border-color:var(--rule);"
-        f"background:var(--paper);font-weight:600}}"
+        f"background:var(--paper);font-weight:500}}"
         f"#tab-{key}:checked~.panels>[data-panel={key}]{{display:block}}" for key in keys)
 
 

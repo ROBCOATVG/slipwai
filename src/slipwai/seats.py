@@ -50,6 +50,9 @@ class Outfit:
 
     fitting: Fitting | None = None
     launched: bool = False
+    #: Whether this board has started the draft here by itself. Once: a draft that drafts nothing is a stop
+    #: a person reads, not a loop the poll runs.
+    drafted: bool = False
 
 
 class Bench:

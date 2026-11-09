@@ -127,18 +127,29 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # The board, as a page a person answers from: the render, the server and the verb — and
               # what bare `slipwai` does, which is open that same board. `seats` is the one piece of state
               # that server has, which is a window each: every route beside it is a fold of files on disk.
-              "page_shell", "seats", "console", "console_page", "bridge", "bridge_page", "fleet_page", "timeline_page",
+              "page_shell", "seats", "console", "console_page", "attention",
+              # The conversation that writes a brief before a project exists, on the console's shape.
+              "brief_session", "brief_page",
+              # The Agent Client Protocol's client half: the session behind the board's conversations, what
+              # the board is set to run them on, and the page that sets it.
+              "acp", "board_settings", "settings_page", "board_agent", "turn_cards", "stage_session",
+              "stage_steps", "agent_ready", "agent_install",
+              "bridge", "bridge_page", "fleet_page", "timeline_page",
               "cli_bridge", "cli_start",
               "interview_page",
               # The interview's rows, split from its questions at the seam that module's budget names:
               # which control a question gets depends on its kind, never on which flag it becomes.
-              "interview_form", "adopt_page", "ground_card", "stack_proposal", "strategy_form", "adoption_run",
+              "interview_form", "handover",
+              "adopt_page", "ground_card", "stack_proposal", "strategy_form", "adoption_run",
               "adoption_flow", "adoption_card",
               # The machine's own folder chooser, which a browser may not be and never could be, and the
               # one control every page that asks for a folder shows.
               "folder_choice", "folder_field",
               # Where the project stands, read for the board's Voyage window: the stages, the slices, the
               # model, and who answers at each stop of the run.
+              # A surface page read as the board reads it, in one place: the Voyage window, the upstream
+              # stop and `brief check` all approve or count the same states.
+              "drawn",
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
               # One captain's own window: its deck and harbour lines as one timeline, and its output.
               "captain_page",
@@ -154,6 +165,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "upstream",
               # What a handed-over document stands on, carried in with it.
               "design_docs",
+              # The same folder read before it is handed over, and the verb that prints the reading.
+              "brief_check", "cli_brief",
               # And the documents that window links to, rendered rather than served: a person asked to say
               # a specification is good is shown the specification, not its markup.
               "spec_page",

@@ -17,8 +17,9 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 615 — every column of the board folded from the logs, including what waits on a person: a park,
-# a deck log nobody can read,
+# budget: 635 — every column of the board folded from the logs, an instant read in either shape it is
+# written, including what waits on a person: a park,
+# a deck log nobody can read, a last-seen age said in the unit a person reads it in,
 # a told, the decisions nobody has read, a question a headless stage posted and nobody has answered, and the
 # capabilities whole and owed their gates
 # yet, beside a stream that was stopped and the several slices one stream now has in flight at once, and
@@ -249,11 +250,25 @@ def for_someone_else(entry: Entry) -> bool:
     return not re.match(r"the\s+(host|person|human|owner)\b", addressed.group(1).strip(), re.IGNORECASE)
 
 
+def instant(stamp: str) -> datetime | None:
+    """An ISO instant as the logs write it — `…Z` — or as another writer did, with an offset and
+    microseconds; None where it is neither. A question a stage asked carried the second shape, and the
+    page showed it raw."""
+    try:
+        return datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except (ValueError, TypeError):
+        pass
+    try:
+        when = datetime.fromisoformat(str(stamp))
+    except (ValueError, TypeError):
+        return None
+    return when if when.tzinfo else when.replace(tzinfo=UTC)
+
+
 def minutes_since(stamp: str, now: datetime | None = None) -> float | None:
     """Minutes since an ISO instant, or None where it is not one this can read."""
-    try:
-        when = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
-    except (ValueError, TypeError):
+    when = instant(stamp)
+    if when is None:
         return None
     return ((now or datetime.now(UTC)) - when).total_seconds() / 60.0
 
@@ -357,6 +372,13 @@ def pressure(config: dict, harbour: list[Entry]) -> dict[str, object]:
     }
 
 
+def ago(minutes: float) -> str:
+    """`12622m ago` is a number nobody reads: minutes under an hour, hours under two days, days after that."""
+    if minutes < 60:
+        return f"{minutes:.0f}m ago"
+    return f"{minutes / 60:.0f}h ago" if minutes < 48 * 60 else f"{minutes / 1440:.0f}d ago"
+
+
 def berths(found: list[Fairway], bound: float = STALL_MINUTES,
            now: datetime | None = None, ready: dict[tuple[str, str], list[str]] | None = None,
            clearance_faults: set[str] | None = None) -> list[dict[str, object]]:
@@ -376,7 +398,7 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
             "queued": ", ".join(one.queued(bound, now)) or NOTHING,
             "state": state_of(one, bound, now, count),
             "waiting": count if count is not None else NOTHING,
-            "last": f"{since:.0f}m ago" if since is not None else NOTHING,
+            "last": ago(since) if since is not None else NOTHING,
             "tokens": one.tokens if one.tokens is not None else NOTHING,
             "merged": len(one.merged),
             "marks": len(one.marks),
@@ -410,7 +432,9 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
                 row.update(needs=need_rows(e, one.needs_met(e)), cause="host", grouped="yes", by="told")
             waiting.append(row)
         waiting += [{"fairway": one.name, "kind": "question",
-                     "what": f"{e.fields.get('id')} ({e.fields.get('slice')}): {e.fields.get('what')}", "t": e.t}
+                     "what": f"{e.fields.get('id')} ({e.fields.get('slice')}): {e.fields.get('what')}", "t": e.t,
+                     "asked": str(e.fields.get("what") or ""), "id": str(e.fields.get("id") or ""),
+                     "slice": str(e.fields.get("slice") or "")}
                     for e in one.asked]
         if one.unreviewed:
             # One row per stream, not one per decision: twenty decisions are one thing a person sits down

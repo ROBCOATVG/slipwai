@@ -24,6 +24,8 @@ CARRIED = ("captain.py", "clearance.py", "inbox.py", "logs.py", "berths.py", "id
            # module that decides which one and the registry that module reads. Every case here sets
            # `SLIPWAI_SAIL`, so neither is consulted — but the import has to resolve.
            "harness.py", "registry.json",
+           # A drive over the Agent Client Protocol, and the client it rides on, where `SLIPWAI_ACP` says so.
+           "drive.py", "acp.py",
            # The claim a captain takes before it writes `claimed`, and what travels between machines when
            # a lapsed one is taken over.
            "claims.py", "travel.py",

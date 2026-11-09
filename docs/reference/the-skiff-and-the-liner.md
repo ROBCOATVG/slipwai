@@ -65,6 +65,8 @@ deploy job never uses the registry, because the liner migrates with an ECS task 
 If you do not give `--shape`:
 
 - **A new project starts as a skiff.**
+- **A brief with the two lines under `## Who runs it` decides it** ([the brief](the-brief.md)): a staff tool
+  whose outage is an annoyance is a skiff, anything else a liner. The start page passes `--shape` from them.
 - An existing manifest keeps the shape that it has, in `shape` in `project.json`.
 - A manifest without the `shape` field reads as `liner`. That was the contract before shapes existed, and
   it must never shrink a project that already holds data without anybody noticing.

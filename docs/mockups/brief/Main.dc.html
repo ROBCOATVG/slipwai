@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sketch: describe the feature</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#172129;background:#f1f3f4}
+a{color:#0f6b6b}a:hover{color:#0A4F4F}
+</style>
+</helmet>
+<div style="min-height: 1000px; max-width: 1280px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; background: #f1f3f4">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 14px 24px; background: #fcfcfb; border-bottom: 1px solid #d9e0e4">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="display: inline-block; width: 28px; height: 28px; border-radius: 8px; background: #0f6b6b"></span>
+      <strong style="font-size: 16px">Sketch</strong>
+      <span style="color: #4a5862">·</span>
+      <span style="font-size: 15px">Club boat bookings</span>
+    </div>
+    <nav aria-label="Steps" style="display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto">
+      <span style="padding: 6px 12px; border-radius: 999px; background: #0f6b6b; color: #FFFFFF; font-size: 13px; font-weight: 600">1 Describe</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #e9eef1; color: #172129; font-size: 13px">2 Walk the states</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #e9eef1; color: #172129; font-size: 13px">3 Check</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #e9eef1; color: #172129; font-size: 13px">4 Hand over</span>
+    </nav>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; padding: 20px 24px; flex: 1">
+
+    <section aria-label="Conversation" style="flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 12px; background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 18px">
+        <div style="display: flex; flex-direction: column; gap: 14px; flex: 1">
+
+          <div style="align-self: flex-end; max-width: 85%; background: #dcecea; border-radius: 12px 12px 2px 12px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+            Members should be able to book one of the club boats for a morning or an afternoon. Only members who have done the checkout for that type of boat.
+          </div>
+
+          <div style="align-self: flex-start; max-width: 85%; background: #f1f3f4; border-radius: 12px 12px 12px 2px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+            I have drawn a first version on the right. Tap through it: book a boat, look at your bookings, cancel one. Before we go on, who else touches this? The office? Somebody who looks after the boats?
+          </div>
+
+          <div style="align-self: flex-end; max-width: 85%; background: #dcecea; border-radius: 12px 12px 2px 12px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+            The bosun takes a boat out of service when it needs work. Members must not be able to book it then.
+          </div>
+
+          <div style="align-self: flex-start; max-width: 85%; background: #f1f3f4; border-radius: 12px 12px 12px 2px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+            Added. Sign in as Jo the bosun at the top of the prototype and take a boat out. Then sign back in as Sam and see what a member sees. Is "checked out on a boat type" something the club already records, or does this product invent it?
+          </div>
+
+          <div style="align-self: flex-end; max-width: 85%; background: #dcecea; border-radius: 12px 12px 2px 12px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+            Already recorded, on paper in the clubhouse. A checkout lasts two years.
+          </div>
+
+          <div style="align-self: flex-start; max-width: 85%; background: #f1f3f4; border-radius: 12px 12px 12px 2px; padding: 10px 14px; font-size: 14px; line-height: 1.45">
+            That is a fact about the club, not a choice for this product, so I have put it under facts. The builder will cite it instead of guessing. One thing I cannot tell from what you said: can a member hold two bookings on the same day? Try it in the prototype and tell me what should happen.
+          </div>
+        </div>
+
+        <form style="display: flex; gap: 8px; margin-top: 8px">
+          <label for="say" style="position: absolute; left: -9999px">Say what happens next</label>
+          <input id="say" type="text" placeholder="Say what happens next…" style="flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid #d9e0e4; border-radius: 8px; font-size: 14px; background: #fcfcfb">
+          <button type="button" style="padding: 12px 18px; border: 0; border-radius: 8px; background: #0f6b6b; color: #FFFFFF; font-size: 14px; font-weight: 600; min-height: 44px">Send</button>
+        </form>
+      </div>
+
+      <aside aria-label="Brief so far" style="background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+        <strong style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: #4a5862">Brief so far</strong>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+          <div style="display: flex; flex-direction: column"><span style="font-size: 22px; font-weight: 600">3</span><span style="font-size: 12px; color: #4a5862">surfaces</span></div>
+          <div style="display: flex; flex-direction: column"><span style="font-size: 22px; font-weight: 600">9</span><span style="font-size: 12px; color: #4a5862">states</span></div>
+          <div style="display: flex; flex-direction: column"><span style="font-size: 22px; font-weight: 600">6</span><span style="font-size: 12px; color: #4a5862">decisions</span></div>
+          <div style="display: flex; flex-direction: column"><span style="font-size: 22px; font-weight: 600">2</span><span style="font-size: 12px; color: #4a5862">people</span></div>
+          <div style="display: flex; flex-direction: column"><span style="font-size: 22px; font-weight: 600">1</span><span style="font-size: 12px; color: #4a5862">fact</span></div>
+          <div style="display: flex; flex-direction: column"><span style="font-size: 22px; font-weight: 600; color: #8a6d24">1</span><span style="font-size: 12px; color: #8a6d24">open question</span></div>
+        </div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.4; color: #172129">Open: <em>can a member hold two bookings on one day?</em> Left open, the builder will assume an answer and say so.</p>
+        <p style="margin: 0; font-size: 12px; line-height: 1.4; color: #4a5862">The prototype is the thing Sam plays with. The brief is what Sketch writes down while Sam plays. Only the brief is handed over; the prototype's screens are exported as static pages, one per surface, one block per state.</p>
+      </aside>
+    </section>
+
+    <section aria-label="The prototype" style="flex: 0 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 10px; align-items: center">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; width: 100%; max-width: 390px">
+        <strong style="font-size: 15px">The prototype</strong>
+        <span style="font-size: 12px; color: #4a5862">tap anything · press Play if it does not respond</span>
+      </div>
+      <dc-import name="Prototype" hint-size="390px,844px"></dc-import>
+      <p style="margin: 0; max-width: 390px; font-size: 12px; line-height: 1.4; color: #4a5862">Drawn from what Sam said so far. Every tap Sam makes that surprises them is a question Sketch asks next.</p>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

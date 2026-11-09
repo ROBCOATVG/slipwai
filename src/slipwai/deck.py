@@ -120,6 +120,26 @@ def tell(root: Path, fairway: str, message: str, slice_id: str = "", by: str = "
     return f"told {slice_id or fairway}"
 
 
+def answer(root: Path, fairway: str, question: str, message: str) -> str:
+    """A person's answer to a `question`, written as the `decision` that closes it — by its id, which is
+    how `fleet.Fairway.asked` tells an open question from an answered one. A `told` was what the box under
+    a question used to write, and it answered nothing: the question stayed, and the words became a note."""
+    if not fairway or not message.strip():
+        raise ValueError("an answer needs a stream to go to and something to say")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,40}", question):
+        raise ValueError(f"{question!r} is not a question's id")
+    feature = feature_of(root, fairway)
+    if not feature:
+        raise ValueError(f"{fairway} has no log here, so there is nowhere for this to go")
+    path = root / deck_path(feature, fairway)
+    with path.open("a", encoding="utf-8") as handle:
+        # `decided_by: human` is how the captain records a person's answer too; a decision a person took is
+        # not one they have still to read.
+        handle.write(entry("decision", fairway=fairway, id=question, what=message.strip(),
+                           decided_by="human").line())
+    return f"answered {question}"
+
+
 def mark_read(root: Path, fairway: str, stamps: list[str]) -> str:
     """Write a `read` receipt for each decision named by its instant, or say why none could be written.
 

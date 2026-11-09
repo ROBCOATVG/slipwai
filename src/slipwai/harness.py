@@ -22,9 +22,11 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from .assets import TOOLKIT_ROOT
+from .assets import SLIPWAI, TOOLKIT_ROOT
 
 REGISTRY = TOOLKIT_ROOT / "scripts/agents/registry.json"
+#: Where the board installs an agent from its archive (`agent_install.py`): `<key>/launch.json` says what to run.
+INSTALLED = SLIPWAI / "agents"
 # Where Spec Kit records the integration `./init` installed. Written by `specify init` and by nothing this
 # factory generates, so its `integration` is not a reading of the tree but a person's answer to `./init`'s
 # own question — the strongest evidence there is, and the one that closes the gap where `adopt` could not
@@ -186,3 +188,68 @@ def unproven_line(key: str) -> str:
             f"different claim from having worked. The captain's controls depend on no harness hook — it "
             f"reads the last line itself, diffs the controlled files and owns the waits — so what is at "
             f"risk is a second belt, not the run")
+
+
+# -- the Agent Client Protocol ---------------------------------------------------------------------------
+# A harness's `acp` row says how it is launched as an agent over stdio: an `npx` package with its arguments,
+# which needs only Node on PATH, or a `binary` already installed. Copied from the protocol's own registry
+# on the date the row says. The board's sessions (`acp.py`) are built from what this returns, so the keel
+# names no agent of its own.
+
+def acp_row(key: str) -> dict | None:
+    """The harness's launch row, or `None` where the registry records none (and an `acpReason` says why)."""
+    row = row_of(key).get("acp")
+    return row if isinstance(row, dict) else None
+
+
+def acp_keys() -> tuple[str, ...]:
+    """Every harness with a launch row, in the registry's order."""
+    return tuple(row["key"] for row in registry() if isinstance(row.get("acp"), dict))
+
+
+def acp_launch(key: str, path: str | None = None) -> tuple[list[str], str]:
+    """The argv that starts this harness as an agent on this machine, and a sentence saying where it came
+    from — or an empty argv and a sentence saying what is missing. `path` is the PATH to look on; the
+    board passes its login shell's, because its own is `launchd`'s and holds nothing a person installed."""
+    import shutil  # noqa: PLC0415 — only this one function looks on PATH, and only the board calls it
+
+    row = acp_row(key)
+    if row is None:
+        why = str(row_of(key).get("acpReason") or "the registry records no way to launch it as an agent")
+        return [], f"{name_of(key)}: {why}"
+    env = row.get("npx", {}).get("env") if isinstance(row.get("npx"), dict) else None
+    if isinstance(row.get("npx"), dict):
+        found = shutil.which("npx", path=path)
+        if not found:
+            package = row["npx"]["package"]
+            return [], f"{name_of(key)} is launched with `npx {package}`, and there is no `npx` on PATH: install Node"
+        argv = [found, "--yes", str(row["npx"]["package"]), *[str(a) for a in row["npx"].get("args") or []]]
+        return argv, f"{name_of(key)} over `npx` at {found}" + (f", with {', '.join(env)} set" if env else "")
+    binary = row["binary"] if isinstance(row.get("binary"), dict) else {}
+    command = str(binary.get("cmd") or "")
+    found = shutil.which(command, path=path) if command else None
+    if found:
+        return [found, *[str(a) for a in binary.get("args") or []]], f"{name_of(key)} at {found}"
+    put = installed_launch(key)
+    if put:
+        return put, f"{name_of(key)} installed by the board, at {put[0]}"
+    return [], f"{name_of(key)} is launched as `{command}`, which is not on PATH"
+
+
+def installed_launch(key: str) -> list[str]:
+    """The argv of an agent the board installed from its archive, or nothing where it did not."""
+    try:
+        held = json.loads((INSTALLED / key / "launch.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    command = str(held.get("cmd") or "") if isinstance(held, dict) else ""
+    if not command or not Path(command).is_file():
+        return []
+    return [command, *[str(a) for a in held.get("args") or []]]
+
+
+def acp_environment(key: str) -> dict[str, str]:
+    """What the launch row says to set in the agent's environment, if anything."""
+    row = acp_row(key) or {}
+    npx = row["npx"] if isinstance(row.get("npx"), dict) else {}
+    return {str(k): str(v) for k, v in (npx.get("env") or {}).items()}

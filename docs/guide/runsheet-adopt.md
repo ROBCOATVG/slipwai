@@ -34,7 +34,7 @@ gate runs the commands that your build already has, so the gate needs what those
 | # | Where | Command | Done when |
 |---|---|---|---|
 | 1.1 | terminal | `git status` | nothing to commit. `adopt` refuses a tree that is not clean, and a directory that is not a Git repository |
-| 1.2 | terminal *or* board | `slipwai adopt --integration claude` — or `slipwai`, then *Adopt a repository* | it lists the directories that build, asks where your CI runs, commits, and runs `./adopt/init` |
+| 1.2 | terminal *or* board | `slipwai adopt --integration claude` — or `slipwai`, then *Start from a codebase* | it lists the directories that build, asks where your CI runs, commits, and runs `./adopt/init` |
 | 1.3 | terminal | `git add -A && git commit -m "Install Spec Kit"` | `git status` is clean |
 
 - **1.2: the one question.** Where CI runs is a fact about your forge, not about your code. So it is the

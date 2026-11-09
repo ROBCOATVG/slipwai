@@ -6,13 +6,16 @@ that proves it appears, and only then.
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.passage import current, drawn, modelled, record_verdict, stages
+from slipwai.passage import current, drawn, modelled, record_verdict, stages, surfaces
+
+ROOT = Path(__file__).resolve().parents[1]
 
 CONSTITUTION = ".specify/memory/constitution.md"
 
@@ -117,7 +120,7 @@ class StagesTest(unittest.TestCase):
 
     def test_surfaces_drawn_and_nothing_approved_is_waiting_on_a_person_rather_than_still_to_do(self) -> None:
         """The reading was `mock-states.md` or nothing, and that file is written at the *end* of the stage.
-        Between the drawing and the verdicts — which is where the board's Draw the surfaces button leaves a
+        Between the drawing and the verdicts — which is where the board's Draw the storyboard button leaves a
         project, and where a person is the only thing holding it up — the strip said *to do*."""
         made = {**INIT, "specs__001-demo__spec.md": "# Demo\n",
                 "specs__001-demo__mockups__basket.html": "<title>Mock: Basket</title>\n"}
@@ -130,7 +133,7 @@ class StagesTest(unittest.TestCase):
 
     def test_a_storyboard_with_no_surface_pages_is_not_drawn_so_the_board_can_draw_again(self) -> None:
         """The board reads a page per surface. A storyboard on its own read as drawn, so Approve was offered and
-        refused, and Draw the surfaces — which waits for nothing drawn — never came back."""
+        refused, and Draw the storyboard — which waits for nothing drawn — never came back."""
         made = {**INIT, "specs__001-demo__spec.md": "# Demo\n",
                 "specs__001-demo__mockups__storyboard.html": "<title>Storyboard</title><section>Basket</section>\n"}
         root = tree(**made)
@@ -198,6 +201,32 @@ class StoryboardVerdictTest(unittest.TestCase):
         self.assertIn("## Surface: Discover tables near you\n- shown \u2014 approved\n", text)
         self.assertNotIn("secret", text)
 
+    def test_who_decided_a_state_is_written_after_the_verdict_where_the_page_says(self) -> None:
+        """After it, so the gate that reads the line — `check-surfaces.py`'s own regex, read here from the
+        script — still matches the verdict at a word boundary. A page that does not say is written as before."""
+        root = tree(**{"specs__001-demo__mockups__book.html": (
+            '<title>Book</title><article class="state" data-decided="person"><h2>Empty</h2></article>'
+            '<article class="state" data-decided="proposed"><h2>Loading</h2></article>'
+            '<article class="state" data-decided="Sam"><h2>Booked</h2></article>'
+            '<article class="state"><h2>Failed</h2></article>')})
+        record_verdict(root, "001-demo", "parked", "grey the keelboats")
+        text = (root / "specs/001-demo/mockups/mock-states.md").read_text(encoding="utf-8")
+        self.assertIn("- Empty \u2014 parked: grey the keelboats (decided by a person)\n", text)
+        self.assertIn("- Loading \u2014 parked: grey the keelboats (proposed)\n", text)
+        self.assertIn("- Booked \u2014 parked: grey the keelboats (decided by Sam)\n", text)
+        self.assertIn("- Failed \u2014 parked: grey the keelboats\n", text)
+        record_verdict(root, "001-demo", "approved")
+        text = (root / "specs/001-demo/mockups/mock-states.md").read_text(encoding="utf-8")
+        self.assertIn("- Empty \u2014 approved (decided by a person)\n", text)
+        script = (ROOT / "assets/toolkit/scripts/check-surfaces.py").read_text(encoding="utf-8")
+        spelled = re.search(r'^STATE = re.compile\(r"(.+?)", re.MULTILINE\)$', script, re.MULTILINE)
+        assert spelled is not None
+        gate = re.compile(spelled.group(1), re.MULTILINE)
+        self.assertEqual([(found.group("state"), found.group("verdict")) for found in gate.finditer(text)],
+                         [("Empty", "approved"), ("Loading", "approved"), ("Booked", "approved"),
+                          ("Failed", "approved")])
+        self.assertEqual(surfaces(root), (4, 4, 0))
+
     def test_a_feature_that_was_not_drawn_cannot_be_approved(self) -> None:
         with self.assertRaises(ValueError):
             record_verdict(tree(), "../secret", "approved")
@@ -237,7 +266,7 @@ class ExpectationTest(unittest.TestCase):
         self.assertEqual(accepted.state, "todo")
         self.assertIn("no capability has been through its gates", accepted.detail)
         self.assertIn("/sail", accepted.next)
-        self.assertIn("2 of 2 merged; left for you: 1 note(s) for you",
+        self.assertIn("2 of 2 merged; left for you: 1 note for you",
                       next(one.detail for one in found if one.key == "slices"))
 
     def test_modelled_reads_the_slices_key_as_text(self) -> None:

@@ -14,6 +14,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -29,6 +30,15 @@ class Fixture(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp())
         (self.root / ".slipwai").mkdir()
+        # No stage here is ever a session of whatever agent this machine happens to have: a board under test
+        # runs its stages as the children it always ran, unless a test hands a stage its own stand-in agent.
+        launchable = mock.patch("slipwai.stage_session.launchable", return_value=None)
+        launchable.start()
+        self.addCleanup(launchable.stop)
+        # Nor what this machine's own board installed under ~/.slipwai/agents: a row is able by the fake PATH alone.
+        installed = mock.patch("slipwai.harness.INSTALLED", Path(tempfile.mkdtemp()) / "agents")
+        installed.start()
+        self.addCleanup(installed.stop)
         (self.root / "harbour.json").write_text(harbour_config(), encoding="utf-8")
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
 

@@ -12,7 +12,7 @@ matter and the rest are about them:
 
 It generates projects, so it is in the Makefile's `SLOW` list.
 """
-# budget: 400 — the two gates, the driver that works the terminal interview, and the table saying where
+# budget: 425 — the two gates, the driver that works the terminal interview, and the table saying where
 # each of the page's questions is in what that interview printed. The table is the seam the first gate
 # reads, so a suite split away from it would leave the pairing described in one file and checked in another.
 from __future__ import annotations
@@ -296,7 +296,28 @@ class ServedTest(unittest.TestCase):
                 return answer.code, answer.read().decode("utf-8")
 
     def test_the_interview_is_a_page_on_the_board_s_own_server(self) -> None:
-        self.assertIn("Start a new project", self.get("/generate"))
+        self.assertIn("Start from a PRD", self.get("/generate"))
+
+    def test_the_draft_follows_init_when_the_brief_carried_the_document(self) -> None:
+        """Not only when one was given in the PRD field: the first live run stopped after `./init`."""
+        from slipwai.interview_form import drafts
+        with tempfile.TemporaryDirectory() as made:
+            where = Path(made)
+            self.assertFalse(drafts({}, where))
+            self.assertTrue(drafts({"prd": "# A document"}, where))
+            (where / "docs").mkdir()
+            (where / "docs" / "prd.md").write_text("# From the brief\n", encoding="utf-8")
+            self.assertTrue(drafts({}, where))
+
+    def test_the_address_may_carry_the_brief_s_folder_and_nothing_else_changes(self) -> None:
+        """The first page's hand-over opens the start page with its last field filled; a start page opened
+        the old way is byte for byte the page it was."""
+        from slipwai.interview_form import from_query
+        self.assertEqual(from_query("brief=%2Ftmp%2Fclub%2Fbrief&name=x"), {"brief": "/tmp/club/brief"})
+        self.assertEqual(from_query(""), {})
+        filled = self.get("/generate?brief=%2Ftmp%2Fclub%2Fbrief")
+        self.assertIn(f'name="brief" value="{Path("/tmp/club/brief")}"', filled)
+        self.assertEqual(self.get("/generate"), self.get("/generate?seat=w"), "the page with no brief is what it was")
 
     def test_the_served_interview_proposes_the_board_s_own_root_as_the_output_parent(self) -> None:
         self.assertIn(f'value="{self.root.resolve()}"', self.get("/generate"))

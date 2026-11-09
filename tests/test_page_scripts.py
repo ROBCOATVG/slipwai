@@ -1,44 +1,70 @@
-"""Every script the board serves, parsed.
+"""Every page's script parses as JavaScript.
 
-Nothing else in this suite would notice a broken one. A browser reports a SyntaxError to its own console
-and to nobody else: the page still renders, every test still passes, and the half of the board that moves
-simply stops moving. That is exactly how it went — `'\\n'` written in a Python string that is not raw is a
-real newline by the time a browser sees it, so one `join` closed no quote, the whole script was a syntax
-error, and the first person to find out was the one watching a card that never updated.
-
-A string literal that runs off the end of its line is the whole of that class of fault, and counting quotes
-catches it without asking this suite to carry a JavaScript engine.
+A page's script is a Python string, and a Python escape that is not a JavaScript one — a `\\n` that became
+a real newline inside a quoted string — broke the Settings tab's every button on 2026-11-06 with nothing in
+the suite to say so. Node reads each script the way a browser would; where there is no Node, this is skipped.
 """
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.bridge_page import SCRIPT
-from slipwai.interview_form import SCRIPT as ASK
-from slipwai.page_shell import REGISTER, WORKER_SOURCE
+from slipwai import (
+    adopt_page,
+    attention,
+    bridge_page,
+    brief_page,
+    captain_page,
+    chandlery_page,
+    console_page,
+    fleet_page,
+    landing_page,
+    live_page,
+    settings_page,
+    timeline_page,
+    turn_cards,
+    voyage_page,
+)
 
-SCRIPTS = {"bridge_page": SCRIPT, "interview_page": ASK,
-           "page_shell.REGISTER": REGISTER, "page_shell.WORKER": WORKER_SOURCE}
+SCRIPTS = {
+    "adopt_page": adopt_page.SCRIPT, "attention": attention.SCRIPT, "bridge_page": bridge_page.SCRIPT,
+    "brief_page": brief_page.SCRIPT,
+    "captain_page": captain_page.SCRIPT, "chandlery_page": chandlery_page.SCRIPT, "console_page": console_page.SCRIPT,
+    "fleet_page": fleet_page.SCRIPT, "landing_page": landing_page.SCRIPT, "live_page.strip": live_page.STRIP_SCRIPT,
+    "live_page.window": live_page.WINDOW_SCRIPT, "settings_page": settings_page.SCRIPT,
+    "timeline_page": timeline_page.SCRIPT, "turn_cards": turn_cards.SCRIPT, "voyage_page": voyage_page.SCRIPT,
+    "voyage_page.model": voyage_page.MODEL_SCRIPT,
+}
 
 
-class ScriptTest(unittest.TestCase):
-    def test_no_line_of_any_script_leaves_a_string_open(self) -> None:
+@unittest.skipUnless(shutil.which("node"), "no node on this machine to parse with")
+class PageScriptsTest(unittest.TestCase):
+    def test_every_page_script_parses(self) -> None:
+        here = Path(tempfile.mkdtemp())
         for name, script in SCRIPTS.items():
-            for number, line in enumerate(script.splitlines(), 1):
-                for quote in ("'", '"'):
-                    with self.subTest(script=name, line=number, quote=quote):
-                        bare = re.sub(r"\\.", "", line.partition("//")[0])
-                        self.assertEqual(bare.count(quote) % 2, 0, line)
+            with self.subTest(name):
+                file = here / f"{name}.js"
+                file.write_text(script, encoding="utf-8")
+                said = subprocess.run(["node", "--check", str(file)], capture_output=True, text=True, check=False)
+                self.assertEqual(said.returncode, 0, f"{name}: {said.stderr[:400]}")
 
-    def test_a_newline_in_a_script_is_an_escape_and_never_the_character(self) -> None:
-        """The same fault said the other way round, which is the way it will come back."""
+    def test_a_guarded_name_is_declared_hoisted(self) -> None:
+        """`typeof name === 'function'` is how one block asks whether another has given it a function. A
+        `const` is in its dead zone until its own line runs, and `typeof` on it throws rather than saying
+        `undefined`: the Voyage's stage card asked for `drawTurn` that way on 2026-11-06, the throw ended
+        the page's script there, and the console dock below it was never wired. A `function` is hoisted."""
         for name, script in SCRIPTS.items():
-            with self.subTest(script=name):
-                self.assertNotIn("join('\n", script)
+            for asked in set(re.findall(r"typeof (\w+) === 'function'", script)):
+                with self.subTest(f"{name}: {asked}"):
+                    self.assertIn(f"function {asked}(", script,
+                                  f"{asked} is asked for before its line: declare it with `function`")
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     unittest.main()

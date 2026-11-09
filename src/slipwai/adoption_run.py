@@ -14,10 +14,12 @@ from pathlib import Path
 
 from . import next_steps
 from .errors import GenerationError
-from .init_run import Fitting, Step
+from .init_run import Fitting, Step, stage_step
 from .layout import Layout, layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import adoption_of
+from .shell_environment import login_environment
+from .stage_steps import knows
 from .strategy_steps import CONTINUE, home_of, name_of, stack_of
 
 #: The steps by the first word of their action in `next_steps`, which is how the voyage knows which is now.
@@ -84,13 +86,33 @@ def home_steps(root: Path) -> list[Step]:
     return steps
 
 
-def agent_steps(layout: Layout, now: next_steps.Step) -> list[Step]:
-    """The step that is now, where only the agent can take it, handed to a headless session."""
+def step_prompt(root: Path, layout: Layout, taken: str, why: str) -> str:
+    """The step's prompt, from the project's own script; empty where the script has no `--prompt`, which
+    leaves the step to the headless child that script is. Read off the script's text first: one written
+    before the flag would take `--prompt` for the step's name and run it."""
+    if not knows(root / layout.under(STEP), "--prompt"):
+        return ""
+    try:
+        said = subprocess.run(["python3", layout.under(STEP), "--prompt", taken, why], cwd=root, capture_output=True,
+                              text=True, env=login_environment(), timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return said.stdout.strip() if said.returncode == 0 else ""
+
+
+def agent_steps(layout: Layout, now: next_steps.Step, root: Path) -> list[Step]:
+    """The step that is now, where only the agent can take it: a session of the project's agent over the
+    Agent Client Protocol where the board can launch it, so the step can ask what only the person can say;
+    a headless session where it cannot."""
     taken = now.action[:-len(IN_THE_AGENT)]
-    return [Step([sys.executable, layout.under(STEP), taken, now.why],
-                 f"Handing {taken} to a headless session — it reads the strategy's playbook, takes this step and "
-                 "stops.", lambda code: "" if code == 0 else f"The session stopped ({code}); what it said is above.",
-                 "agent")]
+    return [stage_step(root, "adopt-step", "", [sys.executable, layout.under(STEP), taken, now.why],
+                       f"Handing {taken} to a headless session — it reads the strategy's playbook, takes this "
+                       "step and stops.",
+                       f"Taking {taken} with the project's agent over the Agent Client Protocol, from this board — "
+                       "it reads the strategy's playbook, takes this step, asks here where only you can decide, "
+                       "and stops.",
+                       lambda code: "" if code == 0 else f"The session stopped ({code}); what it said is above.",
+                       "agent", prompt=lambda: step_prompt(root, layout, taken, now.why))]
 
 
 def now_of(root: Path) -> tuple[Layout, next_steps.Step | None]:
@@ -123,7 +145,7 @@ class Chain(Fitting):
                 return
             tried.add(now.action)
             try:
-                steps = agent_steps(layout, now) if key == AGENT else home_steps(self.where)
+                steps = agent_steps(layout, now, self.where) if key == AGENT else home_steps(self.where)
             except GenerationError as refused:
                 self.say(str(refused), code=1)
                 return
@@ -139,7 +161,7 @@ def chain(root: Path, said: list[str] | None = None) -> Fitting:
         raise GenerationError("the step that is now needs you; read the card again")
     if key_of(now.action) == AGENT and not (root / layout.under(STEP)).is_file():
         raise GenerationError(f"{layout.under(STEP)} is not here: `slipwai adopt --refresh` writes it")
-    first = agent_steps(layout, now) if key_of(now.action) == AGENT else home_steps(root)
+    first = agent_steps(layout, now, root) if key_of(now.action) == AGENT else home_steps(root)
     fitting = Chain(root, [Step([], first[0].announced, lambda code: "", "agent")], said)
     fitting.thread.start()
     return fitting

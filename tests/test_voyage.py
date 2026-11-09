@@ -4,8 +4,8 @@ The picture is draw.io's and the file is the project's: what is proved is that t
 caption by the id the renderer gave it, strokes it and nothing else, and hands the file back untouched
 wherever it cannot be sure — and that the words around the picture say what is missing.
 """
-# budget: 660 — the paused chip, beside the fold, the mock-ups, the screenshots and the storyboard verdict one voyage
-# page is held to,
+# budget: 680 — who decided each state, the paused chip, beside the fold, the mock-ups, the screenshots and
+# the storyboard verdict one voyage page is held to,
 # the design files a storyboard links that the board serves beside it, a step it did not start,
 # and how far into its budget a drawing is, and a fleet at work read as working
 # and a waiting slice's card, opened on its park and its questions with a box aimed at it
@@ -328,6 +328,19 @@ class BuiltScreensPageTest(unittest.TestCase):
             self.assertIn('data-verdict="approved" disabled', closed, mark)
             self.assertIn('data-verdict="parked" disabled', closed, mark)
 
+    def test_the_note_counts_who_decided_each_state_where_the_pages_say(self) -> None:
+        from slipwai.voyage_page import verdict_form
+        root = Path(tempfile.mkdtemp())
+        home = root / "specs/001-demo/mockups"
+        home.mkdir(parents=True)
+        (home / "book.html").write_text(
+            '<article class="state" data-decided="person"><h2>Empty</h2></article>'
+            '<article class="state" data-decided="person"><h2>Full</h2></article>'
+            '<article class="state" data-decided="proposed"><h2>Loading</h2></article>', encoding="utf-8")
+        self.assertIn("3 states: 2 decided by a person, 1 proposed.", verdict_form(root, "001-demo"))
+        (home / "book.html").write_text('<article class="state"><h2>Empty</h2></article>', encoding="utf-8")
+        self.assertNotIn("decided", verdict_form(root, "001-demo"))
+
     def test_a_storyboard_with_no_surface_pages_offers_no_verdict_and_says_why(self) -> None:
         """Approve on a storyboard alone was a button the server refused: there is no state on it to mark."""
         from slipwai.voyage_page import verdict_form
@@ -338,7 +351,7 @@ class BuiltScreensPageTest(unittest.TestCase):
         said = verdict_form(root, "001-demo")
         self.assertNotIn("data-verdict", said)
         self.assertIn("no page per surface", said)
-        self.assertIn("Draw the surfaces", said)
+        self.assertIn("Draw the storyboard", said)
 
     def test_a_locked_verdict_button_looks_locked(self) -> None:
         """A disabled control keeps the attribute and loses the teal of a button that can be pressed."""

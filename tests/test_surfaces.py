@@ -282,7 +282,7 @@ class BudgetTest(unittest.TestCase):
             code = self.module.main(["001-orders"])
         self.assertEqual(code, 1)
         self.assertIn("neither has a page per surface beside it nor shows one", err.getvalue())
-        self.assertIn("Draw the surfaces again", err.getvalue())
+        self.assertIn("Draw the storyboard again", err.getvalue())
 
     def test_mock_ups_the_storyboard_shows_from_docs_design_are_drawn(self) -> None:
         """Handed-over mock-ups storyboarded rather than redrawn are the surfaces, as the board reads them."""

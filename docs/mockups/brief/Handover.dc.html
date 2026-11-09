@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sketch: check and hand over</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#172129;background:#f1f3f4}
+a{color:#0f6b6b}a:hover{color:#0A4F4F}
+</style>
+</helmet>
+<div style="min-height: 920px; max-width: 1280px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; background: #f1f3f4">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 14px 24px; background: #fcfcfb; border-bottom: 1px solid #d9e0e4">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="display: inline-block; width: 28px; height: 28px; border-radius: 8px; background: #0f6b6b"></span>
+      <strong style="font-size: 16px">Sketch</strong>
+      <span style="color: #4a5862">·</span>
+      <span style="font-size: 15px">Club boat bookings</span>
+    </div>
+    <nav aria-label="Steps" style="display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto">
+      <span style="padding: 6px 12px; border-radius: 999px; background: #e9eef1; color: #172129; font-size: 13px">1 Describe</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #e9eef1; color: #172129; font-size: 13px">2 Walk the states</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #0f6b6b; color: #FFFFFF; font-size: 13px; font-weight: 600">3 Check</span>
+      <span style="padding: 6px 12px; border-radius: 999px; background: #0f6b6b; color: #FFFFFF; font-size: 13px; font-weight: 600">4 Hand over</span>
+    </nav>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; padding: 20px 24px; flex: 1">
+
+    <section aria-label="What Sam sees" style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+      <div style="background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-size: 20px">Ready to hand over?</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #172129">This is the check the builder will run on what you made. Green means the builder can start without asking you. Amber means it will decide something for you and tell you what it decided.</p>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: #e4f0e8"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 999px; background: #2e7d4f; margin-top: 6px; flex-shrink: 0"></span><span><strong>What you want</strong> is written down: 9 things it must do, 14 ways to tell they work.</span></div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: #e4f0e8"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 999px; background: #2e7d4f; margin-top: 6px; flex-shrink: 0"></span><span><strong>3 screens, 16 states.</strong> Every state has a drawing and says who decided it.</span></div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: #e4f0e8"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 999px; background: #2e7d4f; margin-top: 6px; flex-shrink: 0"></span><span><strong>2 people:</strong> a member and the bosun. The builder will demo it to you as each of them.</span></div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: #e4f0e8"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 999px; background: #2e7d4f; margin-top: 6px; flex-shrink: 0"></span><span><strong>2 facts about the club</strong>, kept apart from your choices, so the builder cites them instead of guessing.</span></div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: #e4f0e8"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 999px; background: #2e7d4f; margin-top: 6px; flex-shrink: 0"></span><span><strong>A look:</strong> the club's blue, one typeface, the logo you dropped in.</span></div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: #f1e9d2"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 999px; background: #8a6d24; margin-top: 6px; flex-shrink: 0"></span><span><strong>1 thing left open:</strong> can a member hold two bookings on one day? <a href="#open">Answer it</a>, or let the builder assume one and tell you.</span></div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: #e4f0e8"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 999px; background: #2e7d4f; margin-top: 6px; flex-shrink: 0"></span><span><strong>Out of scope, in writing:</strong> paying for bookings, and the race calendar.</span></div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px">
+          <button type="button" style="padding: 12px 20px; border: 0; border-radius: 8px; background: #0f6b6b; color: #FFFFFF; font-size: 14px; font-weight: 600; min-height: 44px">Hand over to the builder</button>
+          <button type="button" style="padding: 12px 20px; border: 1px solid #d9e0e4; border-radius: 8px; background: #fcfcfb; color: #172129; font-size: 14px; min-height: 44px">Download the folder</button>
+          <span style="align-self: center; font-size: 12px; color: #4a5862">Sam never opens the folder. The developer can.</span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-label="What the developer sees" style="flex: 1 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+      <div style="background: #172129; color: #E6E9EC; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+        <strong style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #9AA4AE">The folder, as exported</strong>
+        <pre style="margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.5; white-space: pre; overflow-x: auto">club-boat-bookings/
+├── prd.md              ← found by name; every decision Sam made
+├── people.md           ← member, bosun          (new door)
+├── domain.md           ← checkout lasts 2 years (new door)
+├── look/
+│   ├── look.css        ← the direction the drawing follows
+│   └── logo.svg
+└── surfaces/
+    ├── book-a-boat.html        7 states
+    ├── my-bookings.html        5 states
+    └── boat-out-of-service.html 4 states</pre>
+      </div>
+
+      <div style="background: #172129; color: #E6E9EC; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+        <strong style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #9AA4AE">surfaces/book-a-boat.html, the part the board reads</strong>
+        <pre style="margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.5; white-space: pre; overflow-x: auto">&lt;title&gt;Book a boat&lt;/title&gt;
+&lt;link rel="stylesheet" href="../look/look.css"&gt;
+
+&lt;article class="state"&gt;
+  &lt;h2&gt;Empty&lt;/h2&gt;              &lt;!-- decided by Sam --&gt;
+  …
+&lt;/article&gt;
+&lt;article class="state"&gt;
+  &lt;h2&gt;Not checked out&lt;/h2&gt;    &lt;!-- decided by Sam --&gt;
+  …
+&lt;/article&gt;
+&lt;article class="state"&gt;
+  &lt;h2&gt;Booking failed&lt;/h2&gt;     &lt;!-- proposed by Sketch --&gt;
+  …
+&lt;/article&gt;</pre>
+      </div>
+
+      <div style="background: #fcfcfb; border: 1px solid #d9e0e4; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+        <strong style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #4a5862">What slipwai brief check would print</strong>
+        <pre style="margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; color: #172129">requirements document: prd.md, by name
+surfaces: 3, states: 16, each with a heading
+look: look/look.css
+people: 2   facts: 2, cited
+the draft will have to assume: 1
+  — one booking per member per day (left open)</pre>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":920}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

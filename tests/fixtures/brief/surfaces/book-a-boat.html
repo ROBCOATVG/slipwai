@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Book a boat</title>
+<link rel="stylesheet" href="../look/look.css">
+</head>
+<body>
+<h1>Book a boat</h1>
+
+<article class="state" data-decided="proposed">
+  <h2>Loading</h2>
+  <p class="note">Finding today's boats…</p>
+</article>
+
+<article class="state" data-decided="person">
+  <h2>Empty</h2>
+  <p class="note">You have no bookings yet. Pick a boat and a half day below.</p>
+  <div class="boat"><span>Kestrel · Dinghy · 2 crew</span><span><button>Morning</button> <button>Afternoon</button></span></div>
+  <div class="boat"><span>Tern · Dinghy · 2 crew</span><span><button>Morning</button> <button>Afternoon</button></span></div>
+</article>
+
+<article class="state" data-decided="person">
+  <h2>Populated</h2>
+  <div class="boat"><span>Kestrel · Dinghy · 2 crew</span><span><button>Morning</button> <span class="note">Afternoon taken</span></span></div>
+  <div class="boat"><span>Tern · Dinghy · 2 crew</span><span><button>Morning</button> <button>Afternoon</button></span></div>
+</article>
+
+<article class="state" data-decided="person">
+  <h2>Out of service</h2>
+  <div class="boat greyed"><span>Sandpiper · Keelboat · 4 crew</span><span class="note">Out of service since 2 November, set by Jo</span></div>
+</article>
+
+<article class="state" data-decided="person">
+  <h2>Not checked out</h2>
+  <div class="boat greyed"><span>Sandpiper · Keelboat · 4 crew</span><span class="note">Not checked out on keelboats. Ask the training officer.</span></div>
+</article>
+
+<article class="state" data-decided="person">
+  <h2>Booked</h2>
+  <p>Kestrel is yours on Saturday morning. It is under <em>My bookings</em>.</p>
+</article>
+
+<article class="state" data-decided="proposed">
+  <h2>Booking failed</h2>
+  <p class="note">Nothing was saved. Try again.</p>
+</article>
+</body>
+</html>

@@ -222,7 +222,7 @@ class ServedTest(Fixture):
 
     def test_the_board_asks_for_a_directory_rather_than_assuming_this_one(self) -> None:
         said = self.get("/adopt")
-        self.assertIn("Adopt a repository", said)
+        self.assertIn("Start from a codebase", said)
         self.assertIn('name="root"', said)
 
     def test_the_board_links_to_it_rather_than_naming_a_command(self) -> None:

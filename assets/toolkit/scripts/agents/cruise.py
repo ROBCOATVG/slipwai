@@ -66,6 +66,7 @@ CHOICES: dict[str, tuple[str, ...]] = {
     "hand": ("browser", "http", "cli"),
     "unblock": ("bosun", "park"),
     "upstream": ("park", "advance"),
+    "sessions": ("print", "protocol"),
 }
 # Free text, or null: the model the ladder itself runs on, passed through the harness row's own `modelFlag`.
 TEXTS = ("model",)
@@ -77,11 +78,11 @@ TEXTS = ("model",)
 # takes them out, because a setting nothing reads is worse than one that was never there.
 DEFAULTS: dict[str, Any] = {
     "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
-    "hand": "browser", "unblock": "bosun", "upstream": "park", "model": None,
+    "hand": "browser", "unblock": "bosun", "upstream": "park", "sessions": "print", "model": None,
 }
 # Settings that arrived after projects already had this file. Absent is the default rather than a finding, so
 # a project written before one existed still passes `make check-agents`; `--set` writes it in.
-LATER = ("upstream",)
+LATER = ("upstream", "sessions")
 CONTROLS = {
     "enabled": "whether `/cruise` runs at all; `false` is a refusal that says so",
     "decide": "who answers a product question: the host where the stage recommends an answer or a standing "
@@ -98,6 +99,9 @@ CONTROLS = {
                 "as each ends well",
     "model": "the model the iteration itself runs on — the driver, and every stage `.specify/models.json` maps to "
              "`host`; null is the harness's default, which nobody at the wheel chooses",
+    "sessions": "how a captain starts a session: the harness's print mode, as it always has; or over the Agent C"
+                "lient Protocol, which shows its work as it goes and stops on a cancel — needs a harness with a "
+                "launch row this machine can make, proven on Claude Code and OpenCode",
 }
 
 

@@ -10,7 +10,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+from urllib.parse import parse_qs, quote
 
+from . import handover
+from .brief_session import SKETCHES
 from .errors import GenerationError
 from .folder_field import SCRIPT as CHOOSING
 from .folder_field import folder_field
@@ -69,7 +72,7 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
     if (offered := extensions_asked(answers)) is not None:
         rows += field_html(offered)
     rows += field_html(repository_asked(answers))
-    return (f'<div class="card" id="interview"><h2>Start a new project</h2>'
+    return (f'<div class="card" id="interview"><h2>Start from a PRD</h2>'
             f'<form class="ask-page">{rows}</form>'
             f'<div class="ask"><button class="go" id="generate">Generate</button></div>'
             f'<pre class="said" id="said" data-tail hidden></pre></div>')
@@ -162,8 +165,70 @@ def nothing(refused: GenerationError) -> str:
             "<dd>this page asks its questions the moment there is one</dd></dl></div>")
 
 
-def page(answers: Mapping[str, str], title: str = "Start a new project", root: Path | None = None) -> str:
-    """The interview as a page of its own. 14.4 makes it a tab of the board; the questions do not change."""
+def from_query(query: str) -> dict[str, str]:
+    """The two things the address may carry: the brief's folder, which the first page's hand-over fills, and
+    `edit`, which asks for the whole form rather than the hand-over's few lines.
+
+    Only those. The start page with no query is what it always was, and an answer typed into an address is
+    still an answer a person reads on the page before pressing.
+    """
+    asked = parse_qs(query)
+    folder = (asked.get("brief") or [""])[0].strip()
+    held = {"brief": folder} if folder else {}
+    if folder and (asked.get("edit") or [""])[0]:
+        held["edit"] = "1"
+    return held
+
+
+def drafts(answers: Mapping[str, str], where: Path) -> bool:
+    """Whether the draft follows `./init`: a document was given, or the brief carried one.
+
+    The second is read off the project rather than off the answers, because sorting the folder is
+    `generate`'s and the one fact that matters here is whether it wrote `docs/prd.md`. The first live run
+    through the first page generated, ran `./init`, and stopped there: the answers had a brief and no PRD.
+    """
+    return bool(str(answers.get("prd") or "").strip()) or (where / "docs" / "prd.md").is_file()
+
+
+def confirm(held: Mapping[str, str]) -> str:
+    """The hand-over's page: what the brief settled and what the builder takes as read, in a few lines,
+    one button to make it and one to change something. The answers ride in a hidden form, so the one
+    script this page has posts them exactly as it posts the long form's."""
+    lines = "".join(f"<li>{esc(line)}</li>" for line in handover.said(dict(held)))
+    # The dev tooling is the one choice kept on this page, every row ticked: it is `./init`'s own question
+    # and the brief cannot answer it, so it is asked here rather than elected silently or not at all.
+    tooling = extensions_asked(held)
+    hidden = "".join(f'<input type="hidden" name="{esc(key)}" value="{esc(value)}">'
+                     for key, value in held.items() if key != "edit" and (key != "extensions" or not tooling))
+    folder = str(held.get("brief") or "")
+    return (f'<div class="card" id="interview"><h2>Make {esc(str(held.get("name") or "it"))}</h2>'
+            f'<p>From the brief at <code>{esc(folder)}</code>. Everything below was settled there or is the '
+            f'smallest start; the dev tooling is the one thing left to you, and it is all ticked.</p>'
+            f'<ul class="settled">{lines}</ul>'
+            f'<form class="ask-page">{hidden}{field_html(tooling) if tooling else ""}</form>'
+            f'<div class="ask"><button class="go" id="generate">Make it</button>'
+            f'<a class="quiet-link" href="/generate?brief={quote(folder)}&amp;edit=1">Change something</a>'
+            f'{reading_link(Path(folder))}</div>'
+            f'<pre class="said" id="said" data-tail hidden></pre></div>')
+
+
+def reading_link(folder: Path) -> str:
+    """A link to read the brief's document on the board, where the brief is a sketch's; nothing otherwise,
+    since the board reads a sketch's folder and no other."""
+    if folder.name != "brief" or folder.parent.parent != SKETCHES:
+        return ""
+    return f'<a class="quiet-link" href="/brief/read?sketch={quote(folder.parent.name)}">Read the brief</a>'
+
+
+def page(answers: Mapping[str, str], title: str = "Start from a PRD", root: Path | None = None) -> str:
+    """The interview as a page of its own. 14.4 makes it a tab of the board; the questions do not change.
+    From a brief it is a confirmation first, and the questions only on *Change something*."""
+    folder = str(answers.get("brief") or "").strip()
+    if folder:
+        held = {**handover.answers(Path(folder)), **{k: v for k, v in answers.items() if k != "brief"}}
+        if not answers.get("edit"):
+            return document(title, "from the brief", confirm(held), SCRIPT, now="/generate")
+        answers = {k: v for k, v in held.items() if k != "edit"}
     try:
         body, sub = form(answers, root), f"{len(asked(answers))} questions, read from the catalogue"
     except GenerationError as refused:

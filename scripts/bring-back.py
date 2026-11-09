@@ -75,7 +75,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "fleet_page", "fleet_record", "timeline", "timeline_page",
        # The console on the Voyage window: a read-only session of the project's agent, briefed as the
        # harbourmaster, and the dock that talks to it. Version 2's; version 1 had no board to put it on.
-       "console", "console_page", "conformance.frontends",
+       "console", "console_page", "attention", "conformance.frontends",
        # Pointing a checkout at the hooks it carries. Version 2's: version 1 had no hook that held a push,
        # and `core.hooksPath` is per-checkout, so nothing about it could have been brought back.
        "githooks",
@@ -106,6 +106,12 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "strategy_record", "stack_proposal", "strategy_form", "strategy_steps", "adoption_run",
        # Carrying in what a PRD cites. The experiment had no PRD to start from.
        "design_docs",
+       # The brief read before it is handed over, and the page reader the board and that check share.
+       "drawn", "brief_check", "brief_session", "brief_page", "cli_brief",
+       # The Agent Client Protocol's client half, and what the board runs it on. The experiment had one
+       # harness, by name.
+       "acp", "board_settings", "settings_page", "board_agent", "turn_cards", "stage_session", "stage_steps",
+       "agent_ready", "agent_install", "handover",
        # Reading a drafted document on the board. The experiment had no board to read one on.
        "spec_page",
        # Whether a pid file's process is running, asked without the signal Windows reads as Ctrl-C.

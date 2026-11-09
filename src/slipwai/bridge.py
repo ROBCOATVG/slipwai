@@ -48,18 +48,21 @@ from .adopt_page import run as adopt
 from .adoption_card import adoption_card, strategy_dates
 from .adoption_flow import gate_when_grounded, take_step
 from .bridge_page import page, payload
+from .brief_page import route_get as brief_get
+from .brief_page import route_post as brief_post
 from .captain_page import number
 from .captain_page import page as captain
 from .captain_page import payload as captain_json
 from .chandlery_page import put
 from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
+from .console import answered as console_answer
 from .console import for_root as console_for
 from .decision_log import card as decision_card
 from .decision_log import mark as mark_decisions
-from .deck import dismiss, mark_read, tell, tick_need
+from .deck import answer, dismiss, mark_read, tell, tick_need
 from .dials import set_dial
-from .errors import GenerationError
+from .errors import Busy, GenerationError
 from .feedback_card import act as feedback_act
 from .feedback_card import card as feedback_card
 from .feedback_card import payload as feedback_payload
@@ -68,16 +71,15 @@ from .folder_choice import chosen
 from .ground_card import card as ground_card
 from .ground_card import record as record_ground
 from .harbour import config
-from .init_run import Fitting, begin_model, outside_session
+from .init_run import Fitting, outside_session
 from .init_run import adopted as adopted_init
 from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
+from .init_run import draft as draft_specification
 from .init_run import draw as draw_surfaces
-from .init_run import launch as continue_build
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
-from .init_run import triage as begin_triage
-from .interview_form import form
+from .interview_form import drafts, form, from_query
 from .interview_form import page as interview
 from .interview_page import NO_INIT, destination, elected_in, repository_for
 from .interview_page import run as generate
@@ -109,13 +111,20 @@ from .passage import (
 )
 from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
+from .settings_page import route_get as settings_get
+from .settings_page import route_post as settings_post
 from .spec_page import page as spec
+from .stage_session import route_get as stage_get
+from .stage_session import route_post as stage_post
+from .stage_steps import begin_model
+from .stage_steps import launch as continue_build
+from .stage_steps import triage as begin_triage
 from .telegraph import Refused
 from .try_card import VIDEOS, WALK_ROUTE, trunk_head, walk_file
 from .try_card import act as try_act
 from .try_card import card as try_card
 from .try_card import payload as try_payload
-from .upstream import advance
+from .upstream import advance, on_voyage
 from .voyage import (
     MOCK_ROUTE,
     SCREEN_ROUTE,
@@ -141,7 +150,7 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 910 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 965 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll.
@@ -172,7 +181,7 @@ APP_FILES: dict[str, tuple[Callable[[], str], str]] = {
 #: The pages a person sits on, each of which is given a seat on arrival. The data routes are not here on
 #: purpose: a poll carries the seat of the page that made it, and a `curl /board.json` carries none and
 #: should read the board rather than be redirected into a seat it would then have to keep.
-SEATED: tuple[str, ...] = ("", "/index.html", "/voyage", "/captain", "/generate", "/adopt", "/packages")
+SEATED: tuple[str, ...] = ("", "/index.html", "/voyage", "/captain", "/generate", "/adopt", "/packages", "/settings")
 
 
 class Bridge(BaseHTTPRequestHandler):
@@ -221,8 +230,13 @@ class Bridge(BaseHTTPRequestHandler):
     @property
     def root(self) -> Path:
         """Which directory this request's window is a view of. Read fresh per request and never cached,
-        which is what lets a seat be moved with a sentence rather than a restart."""
-        return self.seat().root
+        which is what lets a seat be moved with a sentence rather than a restart. A window whose project
+        was deleted under it goes back to the harbour, as a new window would, rather than to an error."""
+        where = self.seat().root
+        if where.is_dir():
+            return where
+        self.look(self.bench.start)
+        return self.bench.start
 
     def look(self, where: Path) -> None:
         """Point this request's window at a directory, and no other window with it."""
@@ -249,6 +263,15 @@ class Bridge(BaseHTTPRequestHandler):
     @launched.setter
     def launched(self, one: bool) -> None:
         self.outfit(starting=True).launched = one
+
+    @property
+    def drafted(self) -> bool:
+        """Whether this board has drafted the specification here by itself; it does so once."""
+        return self.outfit().drafted
+
+    @drafted.setter
+    def drafted(self, one: bool) -> None:
+        self.outfit(starting=True).drafted = one
 
     def log_message(self, format: str, *args: Any) -> None:
         """Quiet. The run's log is the log; a request line per reload is noise over the top of it."""
@@ -302,6 +325,12 @@ class Bridge(BaseHTTPRequestHandler):
             return
         if where == "/console.json" and self.controls:
             self.send(200, json.dumps(console_for(self.root).said(since(query))), "application/json; charset=utf-8")
+            return
+        if self.controls and brief_get(self, where, query):  # the first page's own routes: `brief_page.py`
+            return
+        if self.controls and settings_get(self, where, query):  # what runs behind the board: `settings_page.py`
+            return
+        if self.controls and stage_get(self, where, query):  # a stage over the protocol: `stage_session.py`
             return
         if where == "/voyage" and self.controls:
             self.send(200, self.voyage())
@@ -402,7 +431,7 @@ class Bridge(BaseHTTPRequestHandler):
         # than on a server of its own because the two things a person does before there is anything to
         # watch are the two the board could not do.
         if where == "/generate" and self.controls:
-            self.send(200, interview({}, root=self.root))
+            self.send(200, interview(from_query(query), root=self.root))
             return
         if where == "/adopt" and self.controls:
             self.send(200, adoption({"root": str(self.root.resolve())}))
@@ -450,7 +479,7 @@ class Bridge(BaseHTTPRequestHandler):
         self.look(where)
         self.launched = False
         self.fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
-                               repository_for(answers), prd=bool(str(answers.get("prd") or "").strip()),
+                               repository_for(answers), prd=drafts(answers, where),
                                extensions=elected_in(answers))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
 
@@ -572,6 +601,12 @@ class Bridge(BaseHTTPRequestHandler):
             return "approved; continuing the build"
         return said
 
+    def draftable(self) -> bool:
+        """Whether the specification can be drafted from here: a document, no specification, and nothing running
+        — a draft that stopped short, or a project made without one, has a button rather than a command."""
+        idle = (not self.fitting or self.fitting.said()["done"]) and not outside_session(self.root)
+        return (self.root / "docs/prd.md").is_file() and not specifications(self.root) and idle
+
     def drawable(self) -> bool:
         """Whether the surfaces can be drawn from here: a specification to draw them from, nothing drawn
         yet or a storyboard a person turned down, and no child of this board already on its way.
@@ -629,7 +664,7 @@ class Bridge(BaseHTTPRequestHandler):
                       decision_card(self.root),
                       points=feedback_points(self.root), adopting=(adopting := adoption_card(
                           self.root, bool(self.fitting and not self.fitting.said()["done"]))),
-                      dates="" if adopting else strategy_dates(self.root))
+                      dates="" if adopting else strategy_dates(self.root), draftable=self.draftable())
 
     def triaging(self) -> bool:
         """Whether this board's child is the triage session, reading what a person said."""
@@ -648,9 +683,13 @@ class Bridge(BaseHTTPRequestHandler):
 
     def voyage_json(self) -> str:
         found, rows, _, fleet, _ = self.voyage_parts()
-        return voyage_payload(found, self.launchable(), any(one.state == "working" for one in found),
-                              self.castable(rows, fleet), self.stoppable(fleet), self.drawable(),
-                              self.made_of(rows, fleet)[1], self.modelable())
+        able = {"launchable": self.launchable(), "castable": self.castable(rows, fleet),
+                "stoppable": self.stoppable(fleet), "drawable": self.drawable(), "modelable": self.modelable(),
+                "draftable": self.draftable()}
+        return voyage_payload(found, able["launchable"], any(one.state == "working" for one in found),
+                              able["castable"], able["stoppable"], able["drawable"],
+                              self.made_of(rows, fleet)[1], able["modelable"], waiting=on_voyage(self, fleet, able),
+                              draftable=able["draftable"])
 
     def attach(self, named: str) -> str:
         """Point this board at another directory, or say why it cannot be.
@@ -689,6 +728,12 @@ class Bridge(BaseHTTPRequestHandler):
             held = self.body()
             # The path without its query, because the seat rides there: `/tell?seat=hVn0` is the tell route.
             where = self.path.partition("?")[0].rstrip("/")
+            if brief_post(self, where, held):
+                return
+            if settings_post(self, where, held):
+                return
+            if stage_post(self, where, held):
+                return
             if where == "/generate/ask":
                 # The questions again, for the answers given so far: one of them decides what the next one
                 # offers, and which that is, is the catalogue's business and not the browser's.
@@ -817,6 +862,12 @@ class Bridge(BaseHTTPRequestHandler):
                 said = record_verdict(self.root, str(held.get("feature", "")), str(held.get("verdict", "")),
                                       str(held.get("reason", "")))
                 said = self.after_storyboard(said)
+            elif where == "/draft":
+                if not self.draftable():
+                    raise ValueError("nothing to draft: the specification is drafted from docs/prd.md, once, "
+                                     "and this project has one already or has no document")
+                self.fitting = draft_specification(self.root, self.fitting.said()["lines"] if self.fitting else None)
+                said = "drafting the specification"
             elif where == "/draw":
                 if not self.drawable():
                     raise ValueError("nothing to draw: the surfaces are drawn from a specification under "
@@ -845,9 +896,13 @@ class Bridge(BaseHTTPRequestHandler):
                 said = console_for(self.root).ask(str(held.get("message", "")))
             elif where == "/console/reset":
                 said = console_for(self.root).reset()
+            elif where in ("/console/answer", "/console/cancel"):
+                said = console_answer(console_for(self.root), where, held)
             elif where == "/tell":
-                said = tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")),
-                            str(held.get("slice", "")))
+                said = (answer(self.root, str(held.get("fairway", "")), str(held["question"]),
+                               str(held.get("message", ""))) if held.get("question") else
+                        tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")),
+                             str(held.get("slice", ""))))
             # The receipt the decision ceiling counts, for the decisions a person has read on this page.
             elif where == "/read":
                 stamps = held.get("decisions")
@@ -882,6 +937,9 @@ class Bridge(BaseHTTPRequestHandler):
             else:
                 self.send(404, "No such control.", "text/plain; charset=utf-8")
                 return
+        except Busy as wait:  # a turn under way in this conversation: the page waits, whichever window asked
+            self.send(409, str(wait), "text/plain; charset=utf-8")
+            return
         except (ValueError, Refused, GenerationError, OSError) as fault:
             self.send(400, str(fault) or type(fault).__name__, "text/plain; charset=utf-8")
             return

@@ -21,6 +21,7 @@ import re
 from pathlib import Path
 
 from .errors import GenerationError
+from .project.domain import DOMAIN
 
 #: Where handed-over material lands, beside the document that cites it.
 DESIGN = "docs/design"
@@ -139,6 +140,57 @@ def briefed(home: Path) -> tuple[Path | None, list[Path]]:
         if says_it_is_one(path):
             return path, [one for one in found if one != path]
     return None, found
+
+
+#: The drawing a person played: one page, inside the brief once it travels, beside it while it is drawn.
+PLAYED = "prototype/index.html"
+
+
+def played(folder: Path) -> Path | None:
+    """The prototype that goes with this brief, or nothing: inside the folder once carried, else the
+    sketch's own beside it. A sketch draws it beside the brief so the agent can redraw it as often as asked
+    without the brief's reading counting it; hand-over is what brings it in."""
+    for home in (folder, folder.parent if folder.name == "brief" else None):
+        if home is not None and (home / PLAYED).is_file():
+            return home / PLAYED
+    return None
+
+
+def carried(folder: Path) -> Path | None:
+    """The prototype copied into the brief, so it lands under `docs/design/` with the rest, and the path it
+    took; nothing where there is none. The one artefact a person approved by playing it was the one the
+    builder never saw: the surfaces are state inventories, and the storyboard framed those."""
+    found = played(folder)
+    if found is None or found.is_relative_to(folder):
+        return found
+    landed = folder / PLAYED
+    landed.parent.mkdir(parents=True, exist_ok=True)
+    landed.write_bytes(found.read_bytes())
+    return landed
+
+
+#: Where the brief's `domain.md` lands: beside the project's own domain files, as one of them.
+FACTS = f"{DOMAIN}/brief.md"
+HANDED_FACTS = ("*Handed over with the brief as `domain.md`. A fact here is cited by its heading, like any "
+                "other file in this directory.*\n\n")
+
+
+def domain_facts(home: Path, rest: list[Path]) -> tuple[list[Path], str | None]:
+    """The brief's `domain.md` lifted out of the material: what still travels, and the fact file's text.
+
+    A fact is cited, not drawn, so it does not land under `docs/design/` with the wireframes: it lands in
+    `.specify/domain/`, where the README says a decision cites a fact by its heading, and the skipper
+    reads it there rather than guessing what the business already knows. Only the folder's own top-level
+    `domain.md` is the fact file; one deeper is whatever its author meant by it.
+    """
+    fact = next((one for one in rest if one.parent == home and one.name.lower() == "domain.md"), None)
+    if fact is None:
+        return rest, None
+    try:
+        text = fact.read_text(encoding="utf-8")
+    except UnicodeDecodeError as error:
+        raise GenerationError(f"--brief {home}: domain.md is not UTF-8 text; a fact file is Markdown") from error
+    return [one for one in rest if one != fact], HANDED_FACTS + text
 
 
 def handed_over(named: str) -> dict[str, Path]:

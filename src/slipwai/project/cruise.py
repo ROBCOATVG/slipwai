@@ -64,6 +64,10 @@ SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
     ("upstream", ("park", "advance"), "park",
      "the steps above the chart — the drafted specification, the storyboard and the event model: stop at "
      "each for a person, or have the board start the next one, and approve the storyboard, as each ends well"),
+    ("sessions", ("print", "protocol"), "print",
+     "how a captain starts a session: the harness's print mode, as it always has; or over the Agent C"
+     "lient Protocol, which shows its work as it goes and stops on a cancel — needs a harness with a "
+     "launch row this machine can make, proven on Claude Code and OpenCode"),
     # `stuck_after`, `max_iterations`, `max_hours` and `poll_minutes` were here until 7.7d and are not any
     # more: each was a budget on a loop that no longer exists. What bounds a run is the telegraph
     # (`harbour.json`), which is one lever rather than four numbers nobody set.

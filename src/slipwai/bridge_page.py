@@ -15,7 +15,7 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 410 — the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
+# budget: 440 — the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
 # each group carries its own heading, count and the rows under it, so the page is a little longer than one
 # that listed them flat.
 from __future__ import annotations
@@ -28,7 +28,7 @@ from .console_page import SCRIPT as CONSOLE_SCRIPT
 from .fleet import NOTHING, inbox_detail  # noqa: F401 - NOTHING is read by name by the pages built on this
 from .fleet_page import SCRIPT as FLEET_SCRIPT
 from .fleet_page import STYLE as FLEET_STYLE
-from .fleet_page import headline_card, parks_table, waiting_card
+from .fleet_page import headline_card, parks_table, waiting_card, when
 from .fleet_page import live_sub as fleet_sub
 
 # PLAIN, STYLE and THEME are read by name here — and `PLAIN` by the suite, which is where the board's
@@ -105,6 +105,26 @@ if (fitting) {
     if (running) setTimeout(poll, 700);
   };
   poll();
+  // A stage over the Agent Client Protocol asks on cards: a permission the board could not grant, a
+  // question only the person can answer. Polled beside the lines while the run goes on.
+  const asks = document.getElementById('stage-asks'), stop = document.getElementById('stage-stop');
+  if (asks && typeof drawTurn === 'function') {
+    const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                 body: JSON.stringify(body)});
+    const reply = (id, body) => post('/stage/answer', {id, ...body});
+    let seen = 0;
+    const cards = async () => {
+      let said;
+      try { said = await (await fetch('/stage.json?since=' + seen)).json(); } catch (fault) { return; }
+      seen = said.at;
+      const shown = t => ['permission', 'question', 'answered'].includes(t.kind);
+      said.turns.filter(shown).forEach(t => drawTurn(asks, t, reply));
+      stop.hidden = said.done;
+      if (!said.done || running) setTimeout(cards, 900);
+    };
+    stop.addEventListener('click', () => post('/stage/cancel', {}));
+    cards();
+  }
 }
 
 document.addEventListener('click', event => {
@@ -113,7 +133,8 @@ document.addEventListener('click', event => {
   const say = event.target.closest('[data-tell]');
   if (say) {
     const box = document.getElementById(say.dataset.box || 'tell-' + say.dataset.tell);
-    if (box && box.value.trim()) send('/tell', {fairway: say.dataset.tell, message: box.value.trim()});
+    if (box && box.value.trim()) send('/tell', {fairway: say.dataset.tell, message: box.value.trim(),
+                                              ...(say.dataset.question ? {question: say.dataset.question} : {})});
   }
   const read = event.target.closest('[data-read]');
   if (read) send('/read', {fairway: read.dataset.read, decisions: read.dataset.stamps.split(',')});
@@ -243,19 +264,32 @@ def inbox_row(index: int, row: dict, controls: bool, streams: dict | None, group
     name, detail = str(row["fairway"]), inbox_detail(row)
     # A park brings its own slice's lines, without heartbeats; anything else shows the stream's tail.
     lines = row["lines"] if "lines" in row else (streams or {}).get(name) or []
-    log = "".join(f'<li><span class="when">{esc(when)}</span> {esc(what)}</li>' for when, what in lines[-20:])
+    log = "".join(f'<li><span class="when">{esc(when(str(at)) or at)}</span> {esc(what)}</li>'
+                  for at, what in lines[-20:])
     # A note needs no answer, only to be seen: Done writes its `read` receipt and it leaves the list. A
     # hand-back with needs is not done until trunk has them, so Done is not offered on one.
     done = (f'<button data-dismiss="{esc(name)}" data-told="{esc(row["t"])}">Done</button>'
             if row["kind"] == "told" and not row.get("needs") else "")
+    # The box under a question answers it: the id rides on the button, and the answer is the decision that
+    # closes the question rather than a note beside it.
+    asks = f' data-question="{esc(str(row.get("id") or ""))}"' if row["kind"] == "question" and row.get("id") else ""
     box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
-           f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}">Send</button>{done}</div>'
+           f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}"{asks}>Send</button>{done}</div>'
            if controls and row["kind"] != "unreadable" else "")
-    full = f'<p class="why">{esc(detail)}</p>' if headline(detail) != detail else ""
-    return (f'<details class="log"><summary><b>{esc(headline(detail))}</b> '
-            f'<span class="tag">{esc(name)}</span> <span class="mono">{esc(row["t"])}</span></summary>'
-            f'{full}{needs_list(row, controls)}<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}'
-            f'</ol>{box}</details>')
+    # A question is its own words, whole, once: the id and the slice it came from are a tag beside it, and
+    # the log line it was read from — the same words again, in field syntax — is folded away under it.
+    asking = row["kind"] == "question" and bool(row.get("asked"))
+    shown = str(row["asked"]) if asking else headline(detail)
+    full = f'<p class="why">{esc(detail)}</p>' if not asking and headline(detail) != detail else ""
+    where = (f' <span class="tag">{esc(" · ".join(part for part in (row.get("slice"), row.get("id")) if part))}'
+             f'</span>' if asking else "")
+    at = when(str(row["t"])) or str(row["t"])
+    story = f'<ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}</ol>'
+    if asking:
+        story = f'<details class="log"><summary>what the stream said</summary>{story}</details>'
+    return (f'<details class="log"><summary><b>{esc(shown)}</b> '
+            f'<span class="tag">{esc(name)}</span>{where} <span class="mono">{esc(at)}</span></summary>'
+            f'{full}{needs_list(row, controls)}{story}{box}</details>')
 
 
 def needs_list(row: dict, controls: bool) -> str:
@@ -347,7 +381,9 @@ def fitting_card(made: dict, verb: str = "Made") -> str:
     return (f'<div class="card" id="fitting"><h2>{esc(verb)} {esc(Path(str(made["where"])).name)}</h2>'
             f'<p class="empty">{esc(made["where"])} — {chip}</p>'
             f'<pre class="said" id="fitting-said" data-tail data-at="{esc(made["at"])}">'
-            f'{esc(said)}\n</pre><div class="ask">{launch}</div></div>')
+            f'{esc(said)}\n</pre><div class="turns" id="stage-asks"></div>'
+            f'<div class="ask">{launch}<button type="button" class="stop" id="stage-stop" hidden>Stop</button>'
+            f'</div></div>')
 
 
 def live_sub(found: dict) -> str:

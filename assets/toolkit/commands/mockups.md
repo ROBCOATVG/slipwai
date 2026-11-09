@@ -18,7 +18,7 @@ Everything this stage writes lives under `specs/<feature>/mockups/`.
 **Typed by a person**, this file is the rules from here down, both halves of it, in the session you are in.
 
 **In a session dispatched by `scripts/agents/surfaces.py`** (`SLIPWAI_STAGE=surfaces` in the environment —
-the board's **Draw the surfaces** button, or `{{make}} surfaces`), **run sections 1 and 2 and stop at the
+the board's **Draw the storyboard** button, or `{{make}} surfaces`), **run sections 1 and 2 and stop at the
 storyboard.** Nobody is in that session: there is no one to show a surface to, so the stop in section 2 is
 where it ends, and section 3 is not yours to write. Do not create `mock-states.md`, and do not mark a state
 `approved`, `parked` or `n/a` — a verdict is the one thing here that only a person can give, and a file of
@@ -88,6 +88,11 @@ Then one of two things, depending on what was in the directory.
 
 - **A person handed over mock-ups.** Review each against the note. One finding list per mock-up, in the
   shape the `/gaps` stage uses, so one triage reads both. Do not redraw them.
+- **A person handed over a prototype** (`docs/design/prototype/index.html`): the drawing they approved by
+  playing it. The storyboard embeds it first, as the thing to play, and every surface drawn or reviewed
+  follows its look and layout; a surface page that says a state in words the prototype shows is reviewed
+  against the prototype, not the words. It is not a surface: it has no state articles, the board asks for
+  no verdict on it, and nothing is built from its code.
 - **The directory was empty.** Draft them: one static HTML file per surface, from the note. No framework and
   no build step, because the point is a file a person opens in a browser and points at. Load
   `skills/frontend-design/SKILL.md` for this, read through *How much rigour a mock-up gets* below, which
@@ -99,7 +104,9 @@ Then one of two things, depending on what was in the directory.
   `<title>` naming it, and each state an `<article class="state">` headed by an `<h2>` naming the state — that
   is what the board reads when a person approves the drawing, one verdict per state. The storyboard
   (`storyboard.html`) embeds or links those pages: the ones beside it, or — where a person handed the mock-ups
-  over in `docs/design/` — those pages where they are, which the board then reads as the surfaces. A storyboard
+  over in `docs/design/` — those pages where they are, which the board then reads as the surfaces. A handed-over
+  article may carry `data-decided="person"` or `data-decided="proposed"`, saying who chose the state; keep it
+  on a redraw, because the board counts it and writes it after each verdict. A storyboard
   with the surfaces drawn inside it and no page to show is nothing anybody can approve, and the stage refuses it
   as nothing drawn.
 

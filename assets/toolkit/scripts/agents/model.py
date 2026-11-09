@@ -5,6 +5,7 @@ The chart is drawn from the model, so this does not chart, split or cast off. On
 `SLIPWAI_STAGE=model`, reading the specification and the states a person has just approved.
 
     python3 scripts/agents/model.py
+    python3 scripts/agents/model.py --prompt    # say the prompt and stop: the board runs it over the protocol
 """
 from __future__ import annotations
 
@@ -73,7 +74,9 @@ def slices_named(text: str) -> bool:
 
 
 def main(argv: list[str]) -> int:
-    del argv
+    if argv == ["--prompt"]:
+        print(PROMPT)
+        return 0
     if profile() != "event-modelling":
         print("model: this project is not event-modelling; the chart is the next step, and approving the "
               "storyboard starts it", file=sys.stderr)

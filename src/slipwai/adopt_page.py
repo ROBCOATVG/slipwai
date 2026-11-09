@@ -194,7 +194,7 @@ def report(seen: dict, plan: dict[str, list[str]] | None, fault: str = "") -> st
 def picker(root: str, answers: Mapping[str, str] | None = None) -> str:
     """The directory, asked for with this machine's folder dialog, where it has one."""
     return (
-        '<div class="card" id="pick"><h2>Adopt a repository you already have</h2>'
+        '<div class="card" id="pick"><h2>Start from a codebase</h2>'
         '<form class="ask-page"><div class="q"><label for="root">The repository\'s directory</label>'
         + folder_field("root", root, required=True) +
         '<div class="why">A clean Git repository with no project.json of its own. Nothing in it is read '
@@ -245,7 +245,7 @@ document.addEventListener('click', async event => {
 """
 
 
-def page(answers: Mapping[str, str], title: str = "Adopt a repository") -> str:
+def page(answers: Mapping[str, str], title: str = "Start from a codebase") -> str:
     """The adoption tab: pick a directory, look at it, and only then adopt it."""
     body = picker(str(answers.get("root") or ""), answers) + '<div id="report"></div>'
     return document(title, "what it found, and what it would write, before it writes it",

@@ -123,6 +123,31 @@ jobs:
         env:
           MERMAID_PUPPETEER_CONFIG: /tmp/mermaid-puppeteer.json
 
+  # A generated project gated on Windows, the way the board gates it there: Make installed through the
+  # board's own installer, Git's bash from the runner's Git for Windows, every command on the board's PATH
+  # (docs/windows-plan.md, 24.11). Until this is green the Windows app is built but not published.
+  windows-project:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      # The event-modelling profile's gate checks the model with Node, as it does anywhere.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The runner has GnuWin32's and Strawberry's Make on PATH; the board would use a good copy as it is,
+      # so they go, and the Make this proves is the one the board installs.
+      - name: No Make but the board's
+        shell: pwsh
+        run: |
+          $kept = ($env:PATH -split ';') | Where-Object { -not (Test-Path (Join-Path $_ 'make.exe')) }
+          "PATH=$($kept -join ';')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - run: python scripts/windows-gate.py
+
   # A release, built on each platform it ships for and smoked there, from the tagged commit. Only on a tag,
   # and only in this repository: a fork's tag builds nothing, because a fork has no PyPI project to send it to.
   distributions:

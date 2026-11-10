@@ -232,8 +232,9 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then
             cp dist/slipwai-board.exe "release/Slipwai-$version-${{ matrix.name }}.exe"
           fi
-          # `Slipwai-*` too: the apps are capitalised, and the dmg had gone out with no checksum beside it.
-          cd release && for file in slipwai-* Slipwai-*; do python -c "import hashlib,sys; p=sys.argv[1]; print(hashlib.sha256(open(p,'rb').read()).hexdigest() + '  ' + p)" "$file" > "$file.sha256"; done
+          # Every file in release/, by Python and not a shell glob: `slipwai-* Slipwai-*` passed the literal
+          # `Slipwai-*` on Linux, which has no app, and on Windows, whose names do not differ by case.
+          cd release && python -c "import hashlib,os; [open(p + '.sha256', 'w', newline='\n').write(hashlib.sha256(open(p, 'rb').read()).hexdigest() + '  ' + p + '\n') for p in sorted(os.listdir('.'))]"
       - uses: actions/upload-artifact@v7
         with:
           name: executable-${{ matrix.name }}

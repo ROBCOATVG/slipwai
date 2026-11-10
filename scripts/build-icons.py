@@ -66,7 +66,7 @@ def ico(master: Path, work: Path) -> None:
     header = struct.pack("<HHH", 0, 1, len(images))
     offset = len(header) + 16 * len(images)
     entries, data = b"", b""
-    for size, image in zip(ICO_SIZES, images):
+    for size, image in zip(ICO_SIZES, images, strict=True):
         # A width or height of 256 is written as 0: the field is one byte.
         side = size % 256
         entries += struct.pack("<BBBBHHII", side, side, 0, 0, 1, 32, len(image), offset + len(data))

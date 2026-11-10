@@ -450,11 +450,13 @@ class Fitting:
 
 
 def start(where: Path, harness: str | None = None, said: list[str] | None = None,
-          repository: str | None = None, prd: bool = False, extensions: tuple[str, ...] = ()) -> Fitting:
-    """`./init` begun in the background — and the draft after it, where a PRD came with the answers and an
-    agent was named to draft with. Returned rather than awaited: what it says is read by polling."""
+          repository: str | None = None, prd: bool = False, extensions: tuple[str, ...] = (),
+          committed: tuple[Step, ...] = ()) -> Fitting:
+    """`./init` begun in the background, then `committed` — what goes once its work is a commit — and the
+    draft after them, where a PRD came with the answers and an agent was named to draft with. Returned
+    rather than awaited: what it says is read by polling."""
     steps = ([init_step(where, harness, repository, extensions),
-              *committing(where, command(harness, repository, extensions))] if harness else [])
+              *committing(where, command(harness, repository, extensions)), *committed] if harness else [])
     if steps and prd:
         steps.append(draft_step(where))
     fitting = Fitting(where, steps, said)

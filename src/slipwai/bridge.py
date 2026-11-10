@@ -121,7 +121,7 @@ from .stage_steps import begin_model
 from .stage_steps import launch as continue_build
 from .stage_steps import triage as begin_triage
 from .telegraph import Refused
-from .trunk_remote import ASK, add_remote, given, no_ci, unasked
+from .trunk_remote import ASK, add_remote, given, no_ci, publishing, unasked
 from .trunk_remote import card as remote_card
 from .try_card import VIDEOS, WALK_ROUTE, trunk_head, walk_file
 from .try_card import act as try_act
@@ -485,7 +485,7 @@ class Bridge(BaseHTTPRequestHandler):
         out = "\n".join(line for line in (out, given(where, remote_for(answers))) if line)
         self.fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
                                repository_for(answers), prd=drafts(answers, where),
-                               extensions=elected_in(answers))
+                               extensions=elected_in(answers), committed=publishing(where))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
 
     def active_feature(self) -> Path | None:

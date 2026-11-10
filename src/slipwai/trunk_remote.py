@@ -9,15 +9,23 @@ Cast off and Continue the build, once, rather than at the first merge after a da
 """
 from __future__ import annotations
 
+import re
+import shutil
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 from .cli_telegraph import read, write
 from .errors import GenerationError
+from .init_run import Step
 from .page_shell import esc
 from .project.harbour import CONFIG
+from .shell_environment import login_environment
 
 #: What Cast off and Continue the build say while the question stands, and what the card says above them.
+#: A remote on GitHub, as `owner/name`, in either spelling git takes: `git@github.com:o/n.git` or `https://...`.
+GITHUB = re.compile(r"github\.com[:/](?P<repository>[^/\s]+/[^/\s]+?)(?:\.git)?/?$")
+
 ASK = ("This repository has no remote, so the harbourmaster can read no CI before a merge and would refuse "
        "every one the fleet asks for. Add the remote trunk's CI runs on, or say this project has no CI.")
 
@@ -42,11 +50,12 @@ def unasked(root: Path) -> bool:
     return not has_remote(root) and not ci_off(root)
 
 
-def add_remote(root: Path, url: str) -> str:
+def add_remote(root: Path, url: str, now: bool = True) -> str:
     """`origin`, set to the URL a person gave; what to do next, or a refusal saying why not.
 
-    Added and not pushed: the repository may not exist on the forge yet, and the harbourmaster pushes trunk
-    there with its first merge. Until it does, a forge it cannot read refuses that merge and says so."""
+    Then published — created on GitHub where it is missing, and main pushed — so the forge has a trunk whose
+    CI the harbourmaster can read before the first merge. Not `now` when the project is still being made:
+    `publishing` does it once `./init`'s work is committed."""
     url = url.strip()
     if not url:
         raise ValueError("a remote is a URL: git@github.com:you/name.git, or https://github.com/you/name.git")
@@ -57,8 +66,69 @@ def add_remote(root: Path, url: str) -> str:
     if done.returncode != 0:
         said = (done.stderr or done.stdout).strip().splitlines()
         raise ValueError(f"git would not add it: {said[-1] if said else 'it gave no reason'}")
-    return (f"origin is {url}. The harbourmaster reads trunk's CI there before every merge; push main to it "
-            "(`git push -u origin main`) once the repository exists.")
+    lines: list[str] = []
+    if now:
+        publish(root, lines.append)
+    return " ".join([f"origin is {url}.", *lines])
+
+
+def publish(root: Path, say: Callable[[str], None]) -> None:
+    """`main` pushed to `origin`, the repository created on GitHub first where it is not there: what the cloud
+    targets' `bootstrap.py push` has always done at the end of `./init`, for a target that deploys nothing.
+
+    game-club-manager-new was given a remote on the board and nothing ever created it: a remote that does not
+    exist is one the harbourmaster cannot read trunk's CI on, so its first merge would have been refused.
+    Private, as the cloud targets make it. Anything that goes wrong is said, never raised — the project is
+    made either way, and pushing is one command a person can run afterwards."""
+    url = remote_url(root)
+    if not url:
+        return
+    env = login_environment(root=root)
+
+    def run(*argv: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(list(argv), cwd=root, env=env, capture_output=True, text=True, check=False)
+
+    found = GITHUB.search(url)
+    if found and shutil.which("gh", path=env.get("PATH")) and run("gh", "repo", "view", found["repository"]).returncode:
+        made = run("gh", "repo", "create", found["repository"], "--private")
+        if made.returncode:
+            say(f"{found['repository']} is not on GitHub and could not be created ({last_line(made)}). Create it, "
+                "empty, then `git push -u origin main`; until then the fleet's first merge is refused.")
+            return
+        say(f"Created {found['repository']} on GitHub, private.")
+    pushed = run("git", "push", "-u", "origin", "HEAD")
+    if pushed.returncode:
+        say(f"main was not pushed to {url} ({last_line(pushed)}). Once the repository exists and you can push to "
+            "it, `git push -u origin main`; until then the fleet's first merge is refused.")
+        return
+    say(f"Pushed main to {url}. Each merge the fleet makes is pushed there, and trunk's CI is read there.")
+
+
+def publishing(root: Path) -> tuple[Step, ...]:
+    """The step that publishes, for after `./init`'s commit; none where there is no `origin` to publish to —
+    a target that deploys is given its remote by `./init` itself, and its bootstrap pushes."""
+    if not has_remote(root):
+        return ()
+    return (Step([], "", lambda code: "", "init", stops=False,
+                 session=lambda fitting: published(root, fitting.say)),)
+
+
+def published(root: Path, say: Callable[[str], None]) -> int:
+    """`publish` as a step: always 0, because what went wrong is said and the project is made either way."""
+    publish(root, say)
+    return 0
+
+
+def remote_url(root: Path) -> str:
+    """`origin` as it was given, not as `insteadOf` rewrites it: the forge is named by what the person typed."""
+    done = subprocess.run(["git", "config", "--get", "remote.origin.url"], cwd=root, capture_output=True,
+                          text=True, check=False)
+    return done.stdout.strip() if done.returncode == 0 else ""
+
+
+def last_line(done: subprocess.CompletedProcess[str]) -> str:
+    said = (done.stderr or done.stdout).strip().splitlines()
+    return said[-1] if said else f"exit {done.returncode}"
 
 
 def given(root: Path, url: str) -> str:
@@ -69,7 +139,7 @@ def given(root: Path, url: str) -> str:
     if not url.strip():
         return ""
     try:
-        return add_remote(root, url)
+        return add_remote(root, url, now=False)
     except ValueError as refused:
         return f"The remote was not added ({refused}); the board asks for it again before the fleet sails."
 

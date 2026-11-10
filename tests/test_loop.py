@@ -285,7 +285,12 @@ class LoopTest(unittest.TestCase):
         harbour = self.project / "harbour.json"
         was = harbour.read_text(encoding="utf-8")
         self.addCleanup(harbour.write_text, was, encoding="utf-8")
-        harbour.write_text(json.dumps({**json.loads(was), "wait_bound": 1.0}, indent=2) + "\n",
+        # And `boilers: 0`, so the harbourmaster lights no captain of its own. The one here was started by
+        # hand and has no pid file, so the harbourmaster's relight reads `ordering` as unlit and starts a
+        # second captain — from its own environment, with no `SLIPWAI_SAIL`, which finds no harness and
+        # parks ORD-01 under the first one. Whichever of the two got there first decided the case, and on a
+        # slow Windows runner it was the second.
+        harbour.write_text(json.dumps({**json.loads(was), "wait_bound": 1.0, "boilers": 0}, indent=2) + "\n",
                            encoding="utf-8")
 
         gate = self.project / "gate"

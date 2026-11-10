@@ -69,6 +69,8 @@ executable = EXE(
 # terminal. A bundle on macOS, built as a folder because that is the shape an `.app` and its signature
 # want; one file on Windows, which places itself on first launch. Linux keeps the command alone.
 if sys.platform in ("darwin", "win32"):
+    # The mark, made by `scripts/build-icons.py`; given no icon, PyInstaller stamps on its own Python one.
+    icons = root / "assets" / "brand"
     app = analysed("src/slipwai/app.py")
     app_pyz = PYZ(app.pure)
     if sys.platform == "darwin":
@@ -76,9 +78,11 @@ if sys.platform in ("darwin", "win32"):
                       bootloader_ignore_signals=False, strip=False, upx=False, console=False)
         collected = COLLECT(app_exe, app.binaries, app.datas, strip=False, upx=False, name="slipwai-app")
         BUNDLE(collected, name="Slipwai.app", bundle_identifier="ai.slipwai.app",
+               icon=str(icons / "slipwai.icns"),
                version=(root / "VERSION").read_text(encoding="utf-8").strip(),
                info_plist={"LSMinimumSystemVersion": "12.0", "NSHighResolutionCapable": True,
                            "CFBundleDisplayName": "slipwai"})
     else:
         EXE(app_pyz, app.scripts, app.binaries, app.datas, [], name="slipwai-board", debug=False,
-            bootloader_ignore_signals=False, strip=False, upx=False, console=False)
+            bootloader_ignore_signals=False, strip=False, upx=False, console=False,
+            icon=str(icons / "slipwai.ico"))

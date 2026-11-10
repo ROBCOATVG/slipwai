@@ -12,6 +12,7 @@
 # why: 2026-11-09 5b5c6f2aa0d51bd8 Off Windows: moorings.leave removes a junction only on os.name nt, and the harbourmaster's refused-rebase message adds git's own last line where it named no file; neither changes what runs on macOS or Linux.
 # why: 2026-11-10 7d4301fb5aae4164 Not Windows work, and deliberately a change on every platform: check-slice-scope lets a slice write specs/<feature>/people/ (sail.md rung 12 already told it to) and, on the event profile, the chart check-chart holds to the model, as it lets model.drawio through; logs.py refuses a fleet-ticked need with no check on write and reads one already written as a person's, as fleet.py tell already refused it.
 # why: 2026-11-10 f81a3ff6cd1ddce5 Not Windows work, and deliberately a change on every platform: under /cruise the captain resumes a parked slice as answered by decisions only when its newest park was waiting on questions undecided when it was written, the rule the harbourmaster already clears by; a park written after the decisions no longer re-dispatches the slice every turn.
+# why: 2026-11-10 3136b0a202ff0d6f harbourmaster: a remote with no trunk yet is given trunk by the first merge, instead of every merge staying local; a remote that has trunk, and a harbour with none, are unchanged
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -60,10 +61,6 @@
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  event-modelling-postgres-toy-serve  scripts/check-imports.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  standard-memory-none  scripts/check-imports.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  standard-postgres-toy-serve  scripts/check-imports.py
-32a96b835e77808adaa03c95fcebdb7949d54fcaa826d86de75f617041c9c25a  event-modelling-memory-none  scripts/agents/harbourmaster.py
-32a96b835e77808adaa03c95fcebdb7949d54fcaa826d86de75f617041c9c25a  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
-32a96b835e77808adaa03c95fcebdb7949d54fcaa826d86de75f617041c9c25a  standard-memory-none  scripts/agents/harbourmaster.py
-32a96b835e77808adaa03c95fcebdb7949d54fcaa826d86de75f617041c9c25a  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 335d6af2156e4cc1574df4e846d14b9fdde70fb19c055b96bf9ddfc074afab47  event-modelling-memory-none  scripts/extensions/hooks.py
 335d6af2156e4cc1574df4e846d14b9fdde70fb19c055b96bf9ddfc074afab47  event-modelling-postgres-toy-serve  scripts/extensions/hooks.py
 335d6af2156e4cc1574df4e846d14b9fdde70fb19c055b96bf9ddfc074afab47  standard-memory-none  scripts/extensions/hooks.py
@@ -287,6 +284,10 @@ d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  event-modellin
 d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  standard-memory-none  scripts/check-surfaces.py
 d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  standard-postgres-toy-serve  scripts/check-surfaces.py
 d973e12b3230c638c0be655f63eada922aca2f9e2f7e4f62a4062c0a2d41cced  standard-memory-none  Makefile
+dbfba80378a00278ae37f5e8eb3f0fae10db5da3632d8dd21ce37891e1659c94  event-modelling-memory-none  scripts/agents/harbourmaster.py
+dbfba80378a00278ae37f5e8eb3f0fae10db5da3632d8dd21ce37891e1659c94  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
+dbfba80378a00278ae37f5e8eb3f0fae10db5da3632d8dd21ce37891e1659c94  standard-memory-none  scripts/agents/harbourmaster.py
+dbfba80378a00278ae37f5e8eb3f0fae10db5da3632d8dd21ce37891e1659c94  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 ddea391c5aae40020bcd93122c4c07382c2d23adb6487a0ec4b9e6cc4fcce421  event-modelling-memory-none  scripts/agents/harness.py
 ddea391c5aae40020bcd93122c4c07382c2d23adb6487a0ec4b9e6cc4fcce421  event-modelling-postgres-toy-serve  scripts/agents/harness.py
 ddea391c5aae40020bcd93122c4c07382c2d23adb6487a0ec4b9e6cc4fcce421  standard-memory-none  scripts/agents/harness.py

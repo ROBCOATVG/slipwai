@@ -24,6 +24,7 @@ from .catalog import CATALOG
 from .design_docs import PRD_NAMES, PRD_WORDS, briefed, played, weighed
 from .drawn import SHOWN, decided_states, page_states
 from .errors import GenerationError
+from .quickstart import answered, carried, find
 from .targets import managed
 
 #: Where the pages are, and where the look is, in a folder that follows the reference page.
@@ -132,16 +133,23 @@ def service(prd: Path) -> dict[str, str | bool]:
     return {"used_by": one(used, STAFF, CUSTOMERS, "staff", "customers"),
             "when_down": one(down, ANNOYANCE, EMERGENCY, "annoyance", "emergency"),
             "runs_on": place_of(runs.group("said")) if runs else "",
+            "runs_named": named_in(runs.group("said")) if runs else "",
             "proposed": any("(proposed)" in found.group("said").lower() for found in (used, down, runs) if found)}
 
 
 def clouds() -> dict[str, str]:
-    """Every managed target by key, with what the catalogue calls it: its label up to the dash.
+    """Every cloud a brief can name, by target key, with what the catalogue calls it — its label up to the
+    dash — or `""` where its package is not installed.
 
-    Read off the catalogue rather than listed here, so the keel names no cloud and a target added to the
-    catalogue is a place a brief can say with no edit to this module."""
-    return {key: str(entry.get("label", key)).split(" — ")[0].strip()
-            for key, entry in CATALOG["targets"].items() if managed(CATALOG, key)}
+    The installed managed targets, and every target a carried quickstart starts on that this machine has no
+    package for: a brief that names a cloud this machine cannot reach yet is still a brief that named it, and
+    the hand-over says what it needs rather than reading the line as not said. Read off the catalogue and the
+    quickstarts rather than listed here, so the keel names no cloud."""
+    known = CATALOG["targets"]
+    named = {key: str(entry.get("label", key)).split(" — ")[0].strip()
+             for key, entry in known.items() if managed(CATALOG, key)}
+    wanted = {answered(find(name)).get("target", "") for name in carried()}
+    return {**{key: "" for key in sorted(wanted) if key and key not in known}, **named}
 
 
 def place_of(said: str) -> str:
@@ -150,11 +158,26 @@ def place_of(said: str) -> str:
 
     The earliest mention wins, rather than the first place listed: a person who writes "one cloud, not the
     other" has said the first, and reading in the list's order could answer the opposite of what they wrote."""
-    head = said.lower().split("—")[0].split(" - ")[0]
-    places = [*((key, (key, name.lower())) for key, name in clouds().items()), *ELSEWHERE]
-    found = [(hit.start(), place) for place, words in places for word in words
-             if (hit := re.search(rf"\b{re.escape(word)}\b", head))]
+    found = mentions(said)
     return min(found)[1] if found else ""
+
+
+def named_in(said: str) -> str:
+    """The words a `Where it runs:` line names its place in, as the person wrote them, capitals and all."""
+    found = mentions(said)
+    if not found:
+        return ""
+    start, _place, end = min(found)
+    return said[start:end]
+
+
+def mentions(said: str) -> list[tuple[int, str, int]]:
+    """Each place a line names before its first dash, as (where it starts, the place, where it ends)."""
+    head = said.lower().split("—")[0].split(" - ")[0]
+    places = [*((key, tuple(word for word in (key, name.lower()) if word)) for key, name in clouds().items()),
+              *ELSEWHERE]
+    return [(hit.start(), place, hit.end()) for place, words in places for word in words
+            if (hit := re.search(rf"\b{re.escape(word)}\b", head))]
 
 
 def shape_of(found: dict[str, str | bool]) -> str:
@@ -174,7 +197,8 @@ def runs_line(found: dict[str, str | bool]) -> str:
              else "the full stack, with a staging environment")
     down = "an annoyance" if found["when_down"] == "annoyance" else "an emergency"
     runs_on = str(found.get("runs_on") or "")
-    place = RUNS_IN.get(runs_on) or (f", in your {clouds()[runs_on]} account" if runs_on in clouds() else "")
+    cloud = clouds().get(runs_on) or str(found.get("runs_named") or runs_on)
+    place = RUNS_IN.get(runs_on) or (f", in your {cloud} account" if runs_on in clouds() else "")
     guessed = " (proposed)" if found["proposed"] else ""
     return f"runs for: {found['used_by']}, {down} when it is down — {where}{place}{guessed}"
 

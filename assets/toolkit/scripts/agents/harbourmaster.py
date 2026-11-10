@@ -338,6 +338,18 @@ def gate() -> list[str]:
     return ["make", "verify"] if delivery == "." else ["make", "-f", f"{delivery}/Makefile", "verify"]
 
 
+#: The way past a forge that could not be asked, which depends on whether there is a remote to ask.
+UNREAD_WITHOUT_REMOTE = ("Give the repository a remote its CI runs on, or say `\"ci\": \"off\"` in harbour.json "
+                         "if this project has no CI")
+UNREAD_WITH_REMOTE = ("The repository `origin` names may not exist on the forge yet, or `gh` is not signed in "
+                      "to it: create it, empty, or run `gh auth login`; or say `\"ci\": \"off\"` in "
+                      "harbour.json if this project has no CI")
+
+
+def has_origin() -> bool:
+    return git("remote", "get-url", "origin").returncode == 0
+
+
 def base() -> str:
     """What to rebase onto: the remote's trunk where there is one, else the local branch."""
     name = trunk()
@@ -358,7 +370,11 @@ def advance(name: str, commit: str) -> tuple[str, str, bool]:
     must decide, so `merge` reads it as *gate it again on the new trunk* rather than as a refusal.
 
     Pushed where there is a remote, because then nobody's working tree is touched and every checkout catches
-    up on its own next fetch. With no remote there is only the local ref — and if the person's own checkout
+    up on its own next fetch. A remote with no trunk on it yet — a repository made empty on the forge, which
+    is what a board-given remote usually is — is given trunk by this push, and the local branch is moved as
+    well so the two start equal: game-club-manager merged locally for a day with a remote nothing was ever
+    pushed to, because only a remote that already had trunk was pushed to. With no remote there is only the
+    local ref — and if the person's own checkout
     is sitting on trunk, moving the ref under it would leave their working tree looking like a mass
     deletion, so that case is a fast-forward in their checkout.
 
@@ -375,6 +391,10 @@ def advance(name: str, commit: str) -> tuple[str, str, bool]:
         if pushed.returncode == 0:
             return "", "", False
         return last_line(pushed), "", bool(MOVED_UNDER.search(pushed.stderr or ""))
+    if has_origin():
+        pushed = git("push", "origin", f"{commit}:refs/heads/{name}")
+        if pushed.returncode != 0:
+            return last_line(pushed), "", bool(MOVED_UNDER.search(pushed.stderr or ""))
     head = git("symbolic-ref", "--quiet", "--short", "HEAD")
     if head.returncode == 0 and head.stdout.strip() == name:
         moved = git("merge", "--ff-only", commit)
@@ -948,9 +968,8 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified", trunk_why: str = 
         # with a CI workflow that would have failed from its first commit. `waiting` is green-trunk, so the
         # park clears on the first pass the forge can be read and trunk is not red.
         return [logs.entry("refused", harbour=True, fairway=fairway, request=request,
-                           why=f"trunk's CI cannot be read here, so nothing merges blind: {trunk_why}. Give the "
-                               f"repository a remote its CI runs on, or say `\"ci\": \"off\"` in harbour.json if "
-                               f"this project has no CI",
+                           why=f"trunk's CI cannot be read here, so nothing merges blind: {trunk_why}. "
+                               f"{UNREAD_WITH_REMOTE if has_origin() else UNREAD_WITHOUT_REMOTE}",
                            resolve=False, waiting=GREEN_TRUNK, **spent)]
     slice_id = slice_asked(entry)
     if not slice_id:

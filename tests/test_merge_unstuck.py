@@ -4,6 +4,9 @@ Each was a refusal with `resolve: false`, which a captain reads as *nobody in a 
 parks on — and a park waits for a person. A red trunk that had since gone green, a push that lost a race to
 somebody else's push, and a merge ref still held by a machine that had died: each is something this process
 can see resolve, so each now resolves without anybody being asked.
+
+And one way trunk went nowhere without anybody being told: a remote with no trunk on it yet was never pushed
+to, so every merge stayed on this machine.
 """
 from __future__ import annotations
 
@@ -149,6 +152,19 @@ class PushRaceTest(ForgeFixture):
         self.assertTrue(answer.fields["resolve"], "a park for a slice nothing is wrong with")
         self.assertIn("4 times", str(answer.fields["why"]))
         self.assertEqual(self.on_the_forge("ordering.txt"), "")
+
+
+class FirstPushTest(ForgeFixture):
+    def test_a_remote_with_no_trunk_yet_is_given_trunk_by_the_first_merge(self) -> None:
+        self.slice_branch("ORD-01", "ordering.txt", "ordering\n")
+        self.ask("ORD-01")
+        done = self.run_once()
+        answer = self.answer()
+        self.assertEqual(answer.kind, "granted", f"{answer.fields}\n{done.stdout}{done.stderr}")
+        self.assertEqual(self.on_the_forge("ordering.txt"), "ordering\n",
+                         "the merge stayed on this machine and the remote was never given trunk")
+        self.assertEqual(self.head("main"), self.git("rev-parse", "main", where=self.forge).stdout.strip(),
+                         "the local trunk and the remote's did not start equal")
 
 
 class MergeLeaseTest(MergeFixture):

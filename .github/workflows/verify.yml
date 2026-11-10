@@ -162,8 +162,11 @@ jobs:
 
   # A release, built on each platform it ships for and smoked there, from the tagged commit. Only on a tag,
   # and only in this repository: a fork's tag builds nothing, because a fork has no PyPI project to send it to.
+  # On a release tag, what `publish` puts out. On every push to main, the same builds as a dev build: kept on
+  # the run for a fortnight, published nowhere, and named for main's snapshot version and the commit, so a
+  # person can try the app from main without a release and nobody mistakes one for the other.
   distributions:
-    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'ROBCOATVG/slipwai'
+    if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && github.repository == 'ROBCOATVG/slipwai'
     needs: [gate, docs, project]
     strategy:
       fail-fast: false
@@ -185,6 +188,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: The tag is the version the tree carries
+        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
           set -eu
@@ -212,18 +216,21 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then suffix='.exe'; app='--app dist/slipwai-board.exe'; fi
           if [ "$RUNNER_OS" = macOS ]; then app='--app dist/Slipwai.app'; fi
           python scripts/smoke-executable.py "dist/slipwai$suffix" $app
+          # A dev build from main carries the commit too: main's VERSION is the next snapshot for every commit.
+          version="$(cat VERSION)"
+          case "$GITHUB_REF" in refs/tags/v*) ;; *) version="$version-${GITHUB_SHA::7}" ;; esac
           mkdir -p release
-          cp "dist/slipwai$suffix" "release/slipwai-$(cat VERSION)-${{ matrix.name }}$suffix"
+          cp "dist/slipwai$suffix" "release/slipwai-$version-${{ matrix.name }}$suffix"
           # The app, for a person with no terminal: a disk image with the bundle and the Applications
           # folder to drag it to on macOS, the one windowed file on Windows (double-click-plan.md, 23.2).
           if [ "$RUNNER_OS" = macOS ]; then
             mkdir -p dmg && cp -R dist/Slipwai.app dmg/ && ln -s /Applications dmg/Applications
             hdiutil create -volname slipwai -srcfolder dmg -ov -format UDZO \
-              "release/Slipwai-$(cat VERSION)-${{ matrix.name }}.dmg"
+              "release/Slipwai-$version-${{ matrix.name }}.dmg"
           fi
           # Published now that the project job's Windows row makes and gates a project there (windows-plan.md, 24.12).
           if [ "$RUNNER_OS" = Windows ]; then
-            cp dist/slipwai-board.exe "release/Slipwai-$(cat VERSION)-${{ matrix.name }}.exe"
+            cp dist/slipwai-board.exe "release/Slipwai-$version-${{ matrix.name }}.exe"
           fi
           # `Slipwai-*` too: the apps are capitalised, and the dmg had gone out with no checksum beside it.
           cd release && for file in slipwai-* Slipwai-*; do python -c "import hashlib,sys; p=sys.argv[1]; print(hashlib.sha256(open(p,'rb').read()).hexdigest() + '  ' + p)" "$file" > "$file.sha256"; done
@@ -232,10 +239,12 @@ jobs:
           name: executable-${{ matrix.name }}
           path: release/*
           if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/v') && 90 || 14 }}
       - if: matrix.name == 'linux-x64'
         uses: actions/upload-artifact@v7
         with:
           name: python-distributions
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/v') && 90 || 14 }}
           path: |
             dist/slipwai-*.whl
             dist/slipwai-*.tar.gz
@@ -246,6 +255,9 @@ jobs:
   # for the tag, carrying the executables and their checksums. A version is spent the moment PyPI has it, so
   # this runs last, behind every platform's gate and every platform's smoke.
   publish:
+    # Its own guard and not only `distributions'`: that job runs on main too now, and a version is spent the
+    # moment PyPI has it.
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'ROBCOATVG/slipwai'
     needs: [distributions]
     runs-on: ubuntu-latest
     environment:

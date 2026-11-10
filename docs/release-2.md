@@ -85,3 +85,18 @@ environment `pypi`. Until it is set up, `publish` fails at the upload, after the
 before then spends its number without a release.
 
 A fork's tag builds nothing: both jobs are limited to `ROBCOATVG/slipwai`.
+
+## A dev build from main
+
+Every push to `main` runs `distributions` too, after the same gate, and stops there: `publish` runs on a tag
+alone. Its files are named for main's snapshot version and the commit — `Slipwai-2.1.0.dev0-1a2b3c4-windows-x64.exe`,
+`Slipwai-…-macos-arm64.dmg` and the `slipwai-…` executables, each with its `.sha256` — and are kept on the
+run for 14 days as the `executable-<platform>` artifacts (a tag's for 90). To try the app from main, open the
+latest `verify` run on `main` in the Actions tab, or:
+
+```sh
+gh run download --repo ROBCOATVG/slipwai -n executable-windows-x64 \
+  "$(gh run list --repo ROBCOATVG/slipwai --workflow verify.yml --branch main --event push --limit 1 --json databaseId -q '.[0].databaseId')"
+```
+
+They are unsigned, as the release's are, so Gatekeeper and SmartScreen ask once.

@@ -15,6 +15,7 @@ import tempfile
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest import mock
 
 from slipwai.activity import caption, fold, lines_of, live, log_path, stamp, task_of
 from slipwai.assets import TOOLKIT_ROOT
@@ -279,6 +280,12 @@ class BoardTest(unittest.TestCase):
 
     def test_the_window_is_lanes_a_feed_and_a_summary(self) -> None:
         now = datetime.now(UTC)
+        # One instant for both draws compared below: each reads the clock, and a lane's width is a share of
+        # the hour up to now, so a draw a moment later was 97.78% where the first was 97.77% — on Windows,
+        # where the runner is slow enough between the two for the second to tick over.
+        pinned = mock.patch("slipwai.live_page.now_stamp", return_value=now.timestamp())
+        pinned.start()
+        self.addCleanup(pinned.stop)
 
         def ago(minutes: float) -> str:
             return (now - timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")

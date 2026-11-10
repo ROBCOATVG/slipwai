@@ -11,7 +11,7 @@ service on this machine, a real store in one file, nothing to install. The page 
 lines, with one button to make it and one to change something.
 
 Where it runs has to be settled here. A deployment's shape can be moved after generation; the place it
-deploys to cannot, so a brief that said AWS and was generated on the laptop would have to start again.
+deploys to cannot, so a brief that named a cloud and was generated on the laptop would have to start again.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from pathlib import Path
 
 from .board_settings import chosen as agent_chosen
 from .board_settings import read
-from .brief_check import runs_line, sections, service, shape_of
+from .brief_check import clouds, runs_line, sections, service, shape_of
 from .browser_app import frontend_menu
 from .catalog import CATALOG, families
 from .design_docs import briefed, played
@@ -31,7 +31,7 @@ from .interview_page import extensions_offered
 from .language_directory import directory
 from .language_install import builtin, installed
 from .loaded_targets import answer, loaded
-from .quickstart import Quickstart, answered, find
+from .quickstart import Quickstart, answered, carried, find
 from .shell_environment import login_environment
 from .target_protocol import TOOLS
 from .targets import managed
@@ -43,9 +43,19 @@ SLUG = re.compile(r"[^a-z0-9._-]+")
 STORES = {"sqlite": "a real store in one file", "memory": "no store kept between runs", "postgres": "Postgres"}
 TRUTH = {"events": "keeping every change as its history", "state": "keeping current state"}
 PLACES = {"none": "on this machine, deployed nowhere", "existing": "on infrastructure somebody else runs"}
-#: Where it runs, in the brief's words, as the quickstart that starts there. Nowhere, or not said, is `BASE`.
-STARTS = {"aws": "aws-customer-product", "azure": "azure-staff-service", "platform": "existing-platform-service"}
-SAID = {"aws": "AWS", "azure": "Azure", "platform": "a platform another team runs"}
+#: Another team's platform, as the quickstart that starts there; a staff screen there is the internal tool.
+#: A cloud starts from the carried quickstart that targets it. Nowhere, or not said, is `BASE`.
+PLATFORM = "existing-platform-service"
+INTERNAL = "internal-tool"
+
+
+def starts(place: str) -> str:
+    """The carried quickstart a brief's place starts from, or `""` for one that starts from `BASE`."""
+    if place == "platform":
+        return PLATFORM
+    if place not in clouds():
+        return ""
+    return next((name for name in carried() if answered(find(name)).get("target") == place), "")
 
 
 def short_of(one: Quickstart) -> list[str]:
@@ -73,14 +83,17 @@ def destination(found: dict, pages: bool) -> tuple[str, str]:
     this machine cannot reach yet starts on the laptop and says what it needs, rather than generating a
     project that cannot be bootstrapped from here; that line is what the board installs from, later."""
     place = str(found.get("runs_on") or "")
-    if place not in STARTS:
+    name = starts(place)
+    if not name:
         return BASE, ""
-    name = "internal-tool" if place == "platform" and found.get("used_by") == "staff" and pages else STARTS[place]
+    if name == PLATFORM and found.get("used_by") == "staff" and pages:
+        name = INTERNAL
     lacking = short_of(find(name))
     if not lacking:
         return name, ""
     needs = lacking[0] if len(lacking) == 1 else ", ".join(lacking[:-1]) + " and " + lacking[-1]
-    return BASE, (f"You said {SAID[place]}. This machine cannot start there yet: it needs {needs}. "
+    said = clouds().get(place, "a platform another team runs")
+    return BASE, (f"You said {said}. This machine cannot start there yet: it needs {needs}. "
                   f"Starting on this machine for now.")
 
 
@@ -141,7 +154,7 @@ def said(held: dict[str, str]) -> list[str]:
     if not shape:
         lines.append("Who runs it is not said yet; the first build starts small, one environment.")
     elif managed(CATALOG, target):
-        # Not `capitalize`, which lowers everything after the first letter: "your aws account".
+        # Not `capitalize`, which lowers everything after the first letter, the cloud's own name among it.
         lines.append(runs_line(found).replace("runs for: ", "For ", 1) + ".")
     else:
         # Sized only where something is deployed: on the laptop, the size is what it will be when it goes live.

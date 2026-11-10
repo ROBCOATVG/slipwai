@@ -20,9 +20,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from .catalog import CATALOG
 from .design_docs import PRD_NAMES, PRD_WORDS, briefed, played, weighed
 from .drawn import SHOWN, decided_states, page_states
 from .errors import GenerationError
+from .targets import managed
 
 #: Where the pages are, and where the look is, in a folder that follows the reference page.
 SURFACES = "surfaces"
@@ -44,12 +46,11 @@ CUSTOMERS = ("customer", "public", "member", "client", "visitor", "resident", "p
 ANNOYANCE = ("annoyance", "inconvenience", "nuisance", "wait")
 EMERGENCY = ("emergency", "incident", "outage", "lost")
 #: The third line, where it runs, in the person's words: their own cloud, a platform another team runs, or
-#: nowhere yet. Read in this order, so "Azure, not AWS" is Azure and "AWS, eventually; just trying it now" is
-#: AWS: the first place named is the one meant. Absent, or none of these, is a brief that has not said.
+#: nowhere yet. The first place named is the one meant. Absent, or none of these, is a brief that has not said.
 RUNS_ON = re.compile(r"^\s*[-*]\s+where it runs:\s*(?P<said>.+?)\s*$", re.MULTILINE | re.IGNORECASE)
-PLACES = (("aws", ("aws", "amazon")), ("azure", ("azure", "microsoft")),
-          ("platform", ("platform", "another team", "other team", "kubernetes", "cluster", "existing")),
-          ("nowhere", ("nowhere", "not yet", "try", "laptop", "this machine", "my machine", "locally")))
+#: The two places that are not a cloud. A cloud is a managed target's, and its words are the catalogue's.
+ELSEWHERE = (("platform", ("platform", "another team", "other team", "kubernetes", "cluster", "existing")),
+             ("nowhere", ("nowhere", "not yet", "try", "laptop", "this machine", "my machine", "locally")))
 UNSETTLED = re.compile(r"\?\s*$|\bTBD\b|^\s*open:", re.IGNORECASE)
 
 
@@ -134,13 +135,24 @@ def service(prd: Path) -> dict[str, str | bool]:
             "proposed": any("(proposed)" in found.group("said").lower() for found in (used, down, runs) if found)}
 
 
-def place_of(said: str) -> str:
-    """Where a `Where it runs:` line says, as `aws`, `azure`, `platform` or `nowhere`; `""` where it names none.
+def clouds() -> dict[str, str]:
+    """Every managed target by key, with what the catalogue calls it: its label up to the dash.
 
-    The earliest mention wins, rather than the first place in `PLACES`: a person who writes "Azure, not AWS"
-    has said Azure, and reading for AWS first would have answered the opposite of what they wrote."""
+    Read off the catalogue rather than listed here, so the keel names no cloud and a target added to the
+    catalogue is a place a brief can say with no edit to this module."""
+    return {key: str(entry.get("label", key)).split(" — ")[0].strip()
+            for key, entry in CATALOG["targets"].items() if managed(CATALOG, key)}
+
+
+def place_of(said: str) -> str:
+    """Where a `Where it runs:` line says: a managed target's key, `platform` or `nowhere`; `""` where it
+    names none.
+
+    The earliest mention wins, rather than the first place listed: a person who writes "one cloud, not the
+    other" has said the first, and reading in the list's order could answer the opposite of what they wrote."""
     head = said.lower().split("—")[0].split(" - ")[0]
-    found = [(hit.start(), place) for place, words in PLACES for word in words
+    places = [*((key, (key, name.lower())) for key, name in clouds().items()), *ELSEWHERE]
+    found = [(hit.start(), place) for place, words in places for word in words
              if (hit := re.search(rf"\b{re.escape(word)}\b", head))]
     return min(found)[1] if found else ""
 
@@ -161,14 +173,15 @@ def runs_line(found: dict[str, str | bool]) -> str:
     where = ("one environment, the smallest" if shape == "skiff"
              else "the full stack, with a staging environment")
     down = "an annoyance" if found["when_down"] == "annoyance" else "an emergency"
-    place = RUNS_IN.get(str(found.get("runs_on") or ""), "")
+    runs_on = str(found.get("runs_on") or "")
+    place = RUNS_IN.get(runs_on) or (f", in your {clouds()[runs_on]} account" if runs_on in clouds() else "")
     guessed = " (proposed)" if found["proposed"] else ""
     return f"runs for: {found['used_by']}, {down} when it is down — {where}{place}{guessed}"
 
 
-#: Where it runs, as the check's line says it: in the person's own terms, after the size.
-RUNS_IN = {"aws": ", in your AWS account", "azure": ", in your Azure subscription",
-           "platform": ", on a platform another team runs", "nowhere": ", on this machine for now"}
+#: Where it runs, as the check's line says it: in the person's own terms, after the size. A cloud says its
+#: own name, from `clouds`.
+RUNS_IN = {"platform": ", on a platform another team runs", "nowhere": ", on this machine for now"}
 
 
 def how_found(document: Path, home: Path) -> str:

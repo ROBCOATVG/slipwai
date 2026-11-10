@@ -26,6 +26,8 @@ from pathlib import Path
 from urllib.parse import quote
 
 from .assets import this_command
+from .board_build import Build
+from .board_build import read as read_build
 from .bridge import serve
 from .errors import refuse
 
@@ -76,11 +78,18 @@ def running(host: str = HOST, port: int = PORT, timeout: float = 0.5) -> bool:
     not "is this port taken" but "is the board already up", and the answer decides whether a verb joins it
     or binds one. `Server` is `http.server`'s own header, which the bridge names itself in.
     """
+    return serving(host, port, timeout)[0]
+
+
+def serving(host: str = HOST, port: int = PORT, timeout: float = 0.5) -> tuple[bool, Build | None]:
+    """Whether a board is serving there, and the build it says it runs — `None` from one too old to say."""
     try:
         with urllib.request.urlopen(f"http://{host}:{port}/board.json", timeout=timeout) as answer:
-            return str(answer.headers.get("Server", "")).startswith("slipwai")
+            if not str(answer.headers.get("Server", "")).startswith("slipwai"):
+                return False, None
+            return True, read_build(answer.headers)
     except (OSError, ValueError):  # HTTPError and URLError are both OSError; a bad URL is a ValueError
-        return False
+        return False, None
 
 
 def looking_at(root: Path, at: str = "/") -> str:

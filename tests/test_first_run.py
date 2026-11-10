@@ -3,7 +3,10 @@
 What is proved: a copy is placed only in an Applications folder on macOS, never on a translocated path, and in
 the per-user programs folder on Windows; a declined move serves the board from this process and registers
 nothing; a placed copy registers the login service once and leaves an identical one alone; `slipwai` is linked
-for the board's children only where the machine has none of its own; the app with any argument is the command;
+for the board's children only where the machine has none of its own; a board answering from this copy's path
+but another file — the one an install replaced — is stopped and its service loaded again before the board is
+opened, and a board from another path is left alone; on Windows the running file is moved aside for the new
+one; the board names the file it runs on every answer; the app with any argument is the command;
 the strip says a newer version once and nothing without one; and on a Mac, asked, `slipwai` goes into the
 shell's profile as one marked block at the end of the `PATH`, comes out again leaving the profile as it was,
 and is never offered over a `slipwai` of the person's own.
@@ -14,13 +17,15 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import app, first_run, machine_card, terminal_command, update_strip
+from slipwai import app, board_build, cli_start, first_run, machine_card, terminal_command, update_strip
+from slipwai.board_build import Build
 
 
 class PlacedTest(unittest.TestCase):
@@ -70,9 +75,91 @@ class PlacedTest(unittest.TestCase):
         with mock.patch.object(first_run, "placed", return_value=True), \
                 mock.patch.object(first_run, "link_command"), \
                 mock.patch.object(first_run, "register", return_value=["written"]), \
+                mock.patch.object(first_run, "serving", return_value=(True, Build("/elsewhere/slipwai", "1"))), \
                 mock.patch.object(first_run, "running", return_value=True):
             self.assertEqual(first_run.start(self.home, "darwin", open_page=opened.append), "registered")
         self.assertEqual(opened, ["http://127.0.0.1:8099/"])
+
+    def launched(self, board: Build | None, system: str = "darwin") -> tuple[str, mock.MagicMock]:
+        with mock.patch.object(first_run, "placed", return_value=True), \
+                mock.patch.object(first_run, "link_command"), \
+                mock.patch.object(first_run, "register", return_value=[]), \
+                mock.patch.object(first_run, "serving", return_value=(True, board)), \
+                mock.patch.object(first_run, "renew", return_value=["loaded"]) as renewed, \
+                mock.patch.object(first_run, "running", return_value=True):
+            return first_run.start(self.home, system, open_page=lambda url: None), renewed
+
+    def test_a_board_this_install_replaced_is_renewed_before_it_is_opened(self) -> None:
+        here = board_build.executable()
+        went, renewed = self.launched(Build(str(here), "an-older-file", 4242))
+        self.assertEqual(went, "renewed")
+        renewed.assert_called_once()
+
+    def test_the_installed_board_and_someone_elses_are_left_alone(self) -> None:
+        here = board_build.executable()
+        for board in (Build(str(here), board_build.build_of(here)), Build("/opt/their/slipwai", "x")):
+            went, renewed = self.launched(board)
+            self.assertEqual(went, "opened")
+            renewed.assert_not_called()
+
+    def test_a_board_too_old_to_say_is_renewed_on_a_mac_only(self) -> None:
+        self.assertEqual(self.launched(None, "darwin")[0], "renewed")
+        went, renewed = self.launched(None, "win32")
+        self.assertEqual(went, "opened")
+        renewed.assert_not_called()
+
+
+class RenewTest(unittest.TestCase):
+    def renew(self, system: str) -> tuple[list[int], list[str]]:
+        stopped: list[int] = []
+        said = first_run.renew(Path("/home"), Build("x", "y", 4242), system, install=lambda *_: ["loaded"],
+                               stop=stopped.append, gone=lambda: True)
+        return stopped, said
+
+    def test_on_windows_the_board_is_stopped_by_its_process_then_the_service_written(self) -> None:
+        self.assertEqual(self.renew("win32"), ([4242], ["loaded"]))
+
+    def test_on_a_mac_reloading_the_service_is_what_stops_it(self) -> None:
+        self.assertEqual(self.renew("darwin"), ([], ["loaded"]))
+
+
+class PlaceWindowsTest(unittest.TestCase):
+    def test_the_running_copy_is_moved_aside_for_the_new_one(self) -> None:
+        local = Path(tempfile.mkdtemp())
+        environ = {"LOCALAPPDATA": str(local), "APPDATA": str(local)}
+        folder = first_run.programs(environ)
+        folder.mkdir(parents=True)
+        (folder / "slipwai-board.exe").write_text("old", encoding="utf-8")
+        (folder / "slipwai-board.1.old").write_text("older", encoding="utf-8")
+        new = local / "download.exe"
+        new.write_text("new", encoding="utf-8")
+        where = first_run.place_windows(new, environ, run=mock.MagicMock())
+        self.assertEqual(where.read_text(encoding="utf-8"), "new")
+        self.assertEqual([one.read_text(encoding="utf-8") for one in folder.glob("slipwai-board.*.old")], ["old"])
+
+
+class BoardBuildTest(unittest.TestCase):
+    def test_every_answer_names_the_file_the_board_runs(self) -> None:
+        server = cli_start.serve(Path(tempfile.mkdtemp()), "127.0.0.1", 0)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            up, board = cli_start.serving("127.0.0.1", server.server_address[1], timeout=5)
+        finally:
+            server.shutdown()
+            server.server_close()
+        self.assertTrue(up)
+        self.assertEqual(board, Build(str(board_build.executable()), board_build.STARTED.build, os.getpid()))
+
+    def test_the_same_path_holding_another_file_is_replaced(self) -> None:
+        here = Path(tempfile.mkdtemp()) / "slipwai"
+        here.write_text("old", encoding="utf-8")
+        board = Build(str(here), board_build.build_of(here))
+        self.assertFalse(board_build.replaced(board, here))
+        (here.parent / "new").write_text("newer", encoding="utf-8")
+        os.replace(here.parent / "new", here)
+        self.assertTrue(board_build.replaced(board, here))
+        self.assertFalse(board_build.replaced(Build("/somewhere/else", "x"), here))
+        self.assertFalse(board_build.replaced(None, here))
 
 
 class RegisterTest(unittest.TestCase):

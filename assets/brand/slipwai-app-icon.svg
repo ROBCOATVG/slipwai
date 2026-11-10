@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- The app's icon: the mark on a tile cut to the macOS icon grid, 824 square inside 1024 with room for
+       the shadow, so it sits the size of every other icon in the Dock. `scripts/build-icons` makes the
+       .icns and .ico the spec hands PyInstaller from this file. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fdfcf8"/>
+      <stop offset="1" stop-color="#ece7da"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#tile)" filter="url(#shadow)"/>
+  <g transform="translate(163 198) scale(21)">
+    <path d="M24 1.4 l1.15 2.6 2.6 1.15 -2.6 1.15 -1.15 2.6 -1.15 -2.6 -2.6 -1.15 2.6 -1.15z" fill="#8a6d24"/>
+    <circle cx="21.5" cy="7.9" r="1.05" fill="#8a6d24" opacity=".55"/>
+    <circle cx="20.1" cy="9.9" r=".65" fill="#8a6d24" opacity=".32"/>
+    <rect x="17.6" y="10.6" width="4.6" height="7" rx="1.3" fill="#0f6b6b"/>
+    <rect x="17.6" y="12.4" width="4.6" height="1.7" fill="#8a6d24"/>
+    <rect x="6.6" y="12.1" width="9.8" height="5.5" rx="1.9" fill="#0f6b6b"/>
+    <circle cx="11.5" cy="14.85" r="1.6" fill="#fcfcfb"/>
+    <path d="M2.2 17.6h24.3l3.1-1.5a1.05 1.05 0 0 1 1.47 1.18l-.97 4.2A4.1 4.1 0 0 1 26.07 24.6H8a4.1 4.1 0 0 1-4-3.12z"
+          fill="#0f6b6b"/>
+    <path d="M2.6 27.6q2.7-1.7 5.4 0t5.4 0 5.4 0 5.4 0" fill="none" stroke="#0f6b6b" stroke-width="1.9"
+          stroke-linecap="round" opacity=".4"/>
+  </g>
+</svg>

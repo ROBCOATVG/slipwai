@@ -150,7 +150,7 @@ class BackgroundTest(unittest.TestCase):
         (root / "init").write_text("#!/bin/sh\necho \"path=$PATH\"\necho \"token=$TOKEN\"\n", encoding="utf-8")
         (root / "init").chmod(0o755)
         login = {"PATH": "/opt/tools/bin:/usr/bin:/bin", "TOKEN": "from-login"}
-        with mock.patch("slipwai.init_run.login_environment", lambda: login):
+        with mock.patch("slipwai.init_run.login_environment", lambda root=None: login):
             said = finished(start(root, "claude"), seconds=10.0)
         self.assertIn("path=/opt/tools/bin:/usr/bin:/bin", said["lines"])
         self.assertIn("token=from-login", said["lines"])

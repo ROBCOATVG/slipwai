@@ -94,7 +94,7 @@ def step_prompt(root: Path, layout: Layout, taken: str, why: str) -> str:
         return ""
     try:
         said = subprocess.run([python3(), layout.under(STEP), "--prompt", taken, why], cwd=root, capture_output=True,
-                              text=True, env=login_environment(), timeout=30, check=False)
+                              text=True, env=login_environment(root=root), timeout=30, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return ""
     return said.stdout.strip() if said.returncode == 0 else ""

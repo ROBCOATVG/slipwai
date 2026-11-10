@@ -123,7 +123,7 @@ def open_terminal(root: Path, window: Path | None = None) -> str:
     window = git_bash_window() if window is None else window
     if window is None:
         return "There is no Git with bash on this machine yet: install it above first."
-    subprocess.Popen([str(window), f"--cd={root}"], env=login_environment(),  # noqa: S603 — Git's own window
+    subprocess.Popen([str(window), f"--cd={root}"], env=login_environment(root=root),  # noqa: S603 — Git's own window
                      creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
     return f"Git Bash is open in {root}."
 

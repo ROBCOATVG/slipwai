@@ -287,7 +287,7 @@ class Fitting:
         # The login shell's environment, as `generate`'s child is given it: a board started by a login
         # service has `PATH=/usr/bin:/bin`, and `./init` run with that found neither brew nor uv nor the
         # cloud's own tools on a machine that had every one of them, and fell through to the system pip.
-        env = {**login_environment(), **PLAIN}
+        env = {**login_environment(root=self.where), **PLAIN}
         shape: dict = {"cwd": self.where, "stdin": subprocess.DEVNULL, "stderr": subprocess.STDOUT, "env": env}
         if sys.platform == "win32":  # pragma: no cover — the pty path is what every other platform takes
             child = subprocess.Popen(windows_argv(argv, env.get("PATH", "")), stdout=subprocess.PIPE, **shape)

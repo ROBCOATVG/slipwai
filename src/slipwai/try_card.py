@@ -178,7 +178,7 @@ def act(root: Path, verb: str, key: str = "", value: str = "") -> str:
     home = root / ".slipwai/try-it"
     home.mkdir(parents=True, exist_ok=True)
     with (home / "board.log").open("a", encoding="utf-8") as out:
-        subprocess.Popen(argv, cwd=root, env=login_environment(), stdout=out, stderr=subprocess.STDOUT,
+        subprocess.Popen(argv, cwd=root, env=login_environment(root=root), stdout=out, stderr=subprocess.STDOUT,
                          stdin=subprocess.DEVNULL, start_new_session=True)
     return f"Try it: {verb}"
 

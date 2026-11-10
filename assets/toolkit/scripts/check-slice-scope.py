@@ -10,7 +10,7 @@ script says so and exits 0 — which is why `make verify` runs it everywhere.
 What a slice's change may contain — everything since the branch left `main`, committed or not:
 
 - **its own record**, `specs/<feature>/slices/<id>/**`, and the feature's cumulative artifacts — `spec.md`,
-  `story-split.md`, `contracts/`, `checklists/`, `adversary-log.md`, `decisions.md`, `slices/README.md` — which
+  `story-split.md`, `contracts/`, `checklists/`, `people/`, `adversary-log.md`, `decisions.md`, `slices/README.md` — which
   every slice amends and the host merges in split order. `decisions.md` is among them because `/cruise` writes
   a decision where the ladder took it, which during a slice's stages is the slice's branch, and `check-decisions`
   wants every `Written to` path in the tree, which for a slice's artifacts is only true there;
@@ -19,7 +19,9 @@ What a slice's change may contain — everything since the branch left `main`, c
   against cannot move underneath it; `docs/event-model/mockups/` is per screen and open;
 - **the committed canvas, `docs/event-model/model.drawio`**, because it is rendered from the model the slice
   just changed and `check-drawio` fails the branch until it is: that gate holds it to `model.yaml`, so it can
-  carry nothing of the slice's own. The host regenerates it again after each merge;
+  carry nothing of the slice's own. The host regenerates it again after each merge. The chart,
+  `specs/<feature>/chart.yaml`, is allowed on the same terms on that profile: `check-chart` holds it to what
+  `make chart` renders from the model;
 - **a new ADR under `docs/adr/`**: a decision taken during the slice whose reversal would be a migration is
   written there at `Proposed`, by `/cruise` or by the slice's own planning. New files only — an ADR that exists
   is never edited; superseding one is the host's, on `main`;
@@ -85,7 +87,9 @@ SLICE_BRANCH = re.compile(r"^slice/(?P<id>[A-Za-z0-9][A-Za-z0-9._-]*)$")
 SPECS = "specs"
 CANONICAL_SLOTS = ("plan.md", "research.md", "data-model.md", "quickstart.md", "tasks.md")
 FEATURE_SHARED = ("spec.md", "story-split.md", "adversary-log.md", "decisions.md")
-FEATURE_SHARED_DIRECTORIES = ("contracts", "checklists")
+#: `people/` is the story's: `commands/sail.md` rung 12 has a slice write the person its story signs in as there,
+#: and game-club-manager's PE-01 was refused here for doing what the command said.
+FEATURE_SHARED_DIRECTORIES = ("contracts", "checklists", "people")
 MIGRATION_DIRECTORIES = ("migrations", "migration")
 MIGRATION_NAME = re.compile(r"^(?:\d+_|V\d+__)")
 MIGRATION_SUFFIXES = {".sql", ".js", ".ts", ".py"}
@@ -283,9 +287,15 @@ class Scope:
             )
         if rest[0] in FEATURE_SHARED or rest[0] in FEATURE_SHARED_DIRECTORIES:
             return None
+        if rest == ["chart.yaml"] and self.model is not None:
+            # On the event profile `make chart` renders it from the model and `check-chart` holds it there, as
+            # `check-drawio` holds the canvas: a slice that changed its own block has to re-render it to pass
+            # `verify`, and can put nothing else in it. DS-03 was refused by one gate or the other whichever it
+            # did. On the standard profile it is written by `/chart`, held to nothing, and stays the host's.
+            return None
         return (
             f"{path}: not a slice's to write. A slice amends `spec.md`, `story-split.md`, `contracts/`, "
-            f"`checklists/`, `adversary-log.md`, `decisions.md` and its own `slices/{self.slice_id}/`."
+            f"`checklists/`, `people/`, `adversary-log.md`, `decisions.md` and its own `slices/{self.slice_id}/`."
         )
 
     def model_violations(self) -> list[str]:

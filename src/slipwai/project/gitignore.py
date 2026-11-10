@@ -77,6 +77,9 @@ def build_artifacts(event: bool, apps: list[App], target: str = "none") -> str:
     # needs no browser, and `check-drawio` proves it current inside `verify` — so it is not listed here.
     event_artifacts = (
         "scripts/event-model/node_modules/\n"
+        # `make model`'s `npm install` writes it in every berth, and nothing ships one: untracked, it was a
+        # file `check-slice-scope` held against every slice branch.
+        "scripts/event-model/package-lock.json\n"
         "scripts/event-model/.mermaid-cli/\n"
         "docs/event-model/model.mmd\n"
         "docs/event-model/model.svg\n"
@@ -144,6 +147,10 @@ def build_artifacts(event: bool, apps: list[App], target: str = "none") -> str:
         # `pre-push` hook read on a checkout that has only what git carries.
         + "".join(f".slipwai/{name}\n" for name in RUN_STATE)
         + ".specify-tools/\n.delivery-tools/\n"
+        # What Python writes beside every gate script it imports, in every berth, whatever the backend: left
+        # out, `check-slice-scope` refused every slice for a folder none of them wrote. Once: a Python
+        # backend's own answer has it already.
+        + ("" if "__pycache__/\n" in language_artifacts else "__pycache__/\n")
         # The canonical slot the installed Spec Kit plan and tasks commands resolve to, one per feature. Since
         # 1.15.0 it is a link into `specs/<feature>/slices/<id>/`, where a slice's record lives from the day it
         # is planned, so two slices of one feature never overwrite each other's plan. The link is local

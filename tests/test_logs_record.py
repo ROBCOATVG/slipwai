@@ -43,6 +43,18 @@ class RecordTest(unittest.TestCase):
         with self.assertRaises(logs.Unreadable):
             logs.read(blank)
 
+    def test_a_need_the_fleet_ticks_with_nothing_to_tick_it_by_is_read_as_a_person_s(self) -> None:
+        """game-club-manager's CL-01 handed back three; the board offered no Done and nothing else ticked them."""
+        line = json.dumps({"v": logs.V, "t": logs.now(), "kind": "told", "fairway": "clubs", "by": "captain",
+                           "message": "CL-01 needs four shared surfaces",
+                           "needs": [{"what": "a typed post", "by": "fleet"},
+                                     {"what": "flag", "by": "fleet",
+                                      "check": {"kind": "text", "path": ".env.example", "has": "FLAG="}}]})
+        self.assertEqual([need["by"] for need in logs.read(line).fields["needs"]], ["person", "fleet"])
+        with self.assertRaises(logs.Unreadable) as refused:
+            logs.entry("parked", fairway="clubs", why="x", cause="host", needs=[{"what": "x", "by": "fleet"}])
+        self.assertIn("no check", str(refused.exception))
+
     def test_a_full_record_round_trips(self) -> None:
         needs = [{"what": "context: catch-up on LB6..LB10 in docs/event-model/model.yaml", "by": "fleet",
                   "check": {"kind": "text", "path": "docs/event-model/model.yaml", "has": "context: catch-up"}},

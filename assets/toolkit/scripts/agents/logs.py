@@ -25,10 +25,11 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 510 — the park record (cause, until, needs, then) and the shape each field is held to, beside
+# budget: 530 — the park record (cause, until, needs, then) and the shape each field is held to, beside
 # the whole vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
-# and a park written when a need was a sentence, read as the record it now is
+# and a park written when a need was a sentence, read as the record it now is. And a need
+# the fleet was to tick with no check, read as a person's
 from __future__ import annotations
 
 import json
@@ -314,6 +315,10 @@ def shaped(body: dict) -> None:
             raise Unreadable(f"need {index} is ticked by one of {', '.join(TICKERS)}; this one says "
                              f"{need.get('by')!r}")
         check = need.get("check")
+        if check is None and need.get("by") == "fleet":
+            # `fleet.py tell` refuses this too; a line written past it is read as a person's (`read`).
+            raise Unreadable(f"need {index} is ticked by the fleet and has no check: the harbourmaster ticks "
+                             f"only what it can check on trunk, so without one it is a person's")
         if check is None:
             continue
         if not isinstance(check, dict) or check.get("kind") not in CHECKS:
@@ -356,6 +361,22 @@ def written_before_needs_were_records(body: dict) -> dict:
                              for need in needs]}
 
 
+def unchecked_fleet_needs_as_persons(body: dict) -> dict:
+    """A need the fleet was to tick with no check to tick it by, read as a person's.
+
+    Read and never written: `entry` refuses one. game-club-manager's CL-01 handed back three — a typed
+    `post`, the brand values, a lock file — that the harbourmaster had nothing to run against trunk for, and
+    the board offered no Done because the fleet was to tick them, so the hand-back sat under *Waiting on
+    you* for good once all three had landed. Nobody but a person can say such a need is met.
+    """
+    needs = body.get("needs")
+    if not isinstance(needs, list) or not any(isinstance(need, dict) and need.get("by") == "fleet"
+                                              and need.get("check") is None for need in needs):
+        return body
+    return body | {"needs": [need | {"by": "person"} if isinstance(need, dict) and need.get("by") == "fleet"
+                             and need.get("check") is None else need for need in needs]}
+
+
 def read(line: str, harbour: bool = False) -> Entry:
     """One line back, or a refusal that says which rule it broke and what to do about it."""
     text = line.strip()
@@ -381,7 +402,7 @@ def read(line: str, harbour: bool = False) -> Entry:
         raise Unreadable(f"a {kind!r} line carries {', '.join(required)}; this one has no "
                          f"{', '.join(missing)}")
     if kind in ("parked", "told"):
-        body = written_before_needs_were_records(body)
+        body = unchecked_fleet_needs_as_persons(written_before_needs_were_records(body))
     closed(kind, body)
     known = {*COMMON, *required}
     return Entry(kind=kind, t=str(body.get("t", "")),

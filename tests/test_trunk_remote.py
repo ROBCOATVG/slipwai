@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +22,8 @@ from slipwai import trunk_remote
 URL = "https://github.com/me/demo"
 
 
+@unittest.skipIf(sys.platform == "win32", "the stand-in `gh` is a shell script, which Windows does not run "
+                 "by that name: it finds the runner's own gh.exe instead, which would ask the real GitHub")
 class PublishTest(unittest.TestCase):
     def setUp(self) -> None:
         self.dir = tempfile.TemporaryDirectory()

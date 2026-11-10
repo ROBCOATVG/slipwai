@@ -81,7 +81,7 @@ from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
 from .interview_form import drafts, form, from_query
 from .interview_form import page as interview
-from .interview_page import NO_INIT, destination, elected_in, repository_for
+from .interview_page import NO_INIT, destination, elected_in, remote_for, repository_for
 from .interview_page import run as generate
 from .landing_page import landing
 from .live_page import strip_html, strip_payload
@@ -121,6 +121,8 @@ from .stage_steps import begin_model
 from .stage_steps import launch as continue_build
 from .stage_steps import triage as begin_triage
 from .telegraph import Refused
+from .trunk_remote import ASK, add_remote, given, no_ci, unasked
+from .trunk_remote import card as remote_card
 from .try_card import VIDEOS, WALK_ROUTE, trunk_head, walk_file
 from .try_card import act as try_act
 from .try_card import card as try_card
@@ -151,11 +153,12 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 975 — one server and every route the board answers, the need tick and the timeline among them,
+# budget: 990 — one server and every route the board answers, the need tick and the timeline among them,
 # each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll. A stage kept from before a restart is offered and resumed here too.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
+# Raised from 975 for the remote: added when the project is made, and asked for before the fleet sails.
 # And Try it's routes, `/try.json`, `/try` and the walks it shows, each handing straight to `try_card.py`.
 # And Feedback's, `/feedback.json` and `/feedback`, handing to `feedback_card.py`, and the triage it starts.
 # And what each slice is doing now: `/now.json`, `/slice` and `/slice.json`, handing to `live_page.py`.
@@ -479,6 +482,7 @@ class Bridge(BaseHTTPRequestHandler):
         named = answers.get("init") or NO_INIT
         self.look(where)
         self.launched = False
+        out = "\n".join(line for line in (out, given(where, remote_for(answers))) if line)
         self.fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
                                repository_for(answers), prd=drafts(answers, where),
                                extensions=elected_in(answers))
@@ -671,7 +675,8 @@ class Bridge(BaseHTTPRequestHandler):
                       decision_card(self.root),
                       points=feedback_points(self.root), adopting=(adopting := adoption_card(
                           self.root, bool(self.fitting and not self.fitting.said()["done"]))),
-                      dates="" if adopting else strategy_dates(self.root), draftable=self.draftable())
+                      dates="" if adopting else remote_card(self.root) + strategy_dates(self.root),
+                      draftable=self.draftable())
 
     def triaging(self) -> bool:
         """Whether this board's child is the triage session, reading what a person said."""
@@ -817,6 +822,8 @@ class Bridge(BaseHTTPRequestHandler):
                 _, rows, _, fleet, _ = self.voyage_parts()
                 if not self.castable(rows, fleet):
                     raise ValueError("nothing to cast off: no split to work, or the fleet is already running")
+                if unasked(self.root):
+                    raise ValueError(ASK)
                 self.fitting = start_fleet(self.root, self.fitting.said()["lines"] if self.fitting else None)
                 said = "casting off"
             # The pair of Cast off, and the one control here that ends something. It asks rather than kills:
@@ -892,8 +899,13 @@ class Bridge(BaseHTTPRequestHandler):
                                      "and before a model exists")
                 self.fitting = begin_model(self.root, self.fitting.said()["lines"] if self.fitting else None)
                 said = "modelling"
+            # Where trunk's CI is read, settled before the fleet sails: `trunk_remote` says why it is asked.
+            elif where == "/remote":
+                said = add_remote(self.root, str(held.get("url", "")))
+            elif where == "/ci-off":
+                said = no_ci(self.root)
             elif where == "/launch":
-                refused = self.held_back()
+                refused = self.held_back() or (ASK if unasked(self.root) else "")
                 if refused:
                     raise ValueError(refused)
                 self.launched = True

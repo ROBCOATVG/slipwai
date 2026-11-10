@@ -105,6 +105,21 @@ class CaptainTest(captain_fixture.Fixture):
         self.assertEqual((self.root / "skipper-ran").read_text(), "Q1", done.stdout + done.stderr)
         self.assertIn("ORD-01 is through its gate and merged", done.stdout)
 
+    def test_a_park_written_after_its_questions_were_decided_is_not_resumed_by_them(self) -> None:
+        """game-club-manager's CL-01, DS-03 and PE-01: built, parked on a merge only a person could grant,
+        and resumed every turn as answered by decisions taken the day before — over a hundred claims each."""
+        self.cruise()
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),
+                  logs.entry("question", fairway="ORD", slice="ORD-01", id="Q1", what="sync or async?",
+                             t="2026-10-20T08:15:00Z"),
+                  logs.entry("decision", fairway="ORD", id="Q1", what="sync", t="2026-10-20T08:20:00Z"),
+                  logs.entry("parked", fairway="ORD", slice="ORD-01", cause="host", t="2026-10-20T09:00:00Z",
+                             why="ORD-01 is built; the merge waits on a person"))
+        self.grant("ORD-01")
+        done = self.sail_with("ORD", self.sail(WORKS), skipper())
+        self.assertNotIn("ORD-01 is through its gate", done.stdout, done.stdout + done.stderr)
+        self.assertEqual(len([e for e in self.read("ORD") if e.kind == "claimed"]), 1, done.stdout)
+
     def test_a_question_the_skipper_left_open_is_not_put_to_it_again(self) -> None:
         self.cruise()
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),

@@ -424,8 +424,8 @@ def repository_asked(answers: Mapping[str, str]) -> Question:
             "repository the project is pushed to, so `./init` pushes there as its last step; left empty, "
             "`./init --repository <url>` picks it up whenever you like."
             if managed(CATALOG, chosen(answers)["target"]) else
-            "this target bootstraps no pipeline, so `./init` is not given this and nothing is pushed. The "
-            "repository is yours to make when you want one; a target that deploys uses it the moment it has it.")
+            "this target bootstraps no pipeline, so nothing is pushed: the board adds it as `origin`, where the "
+            "fleet reads trunk's CI before every merge. Left empty, the board asks before the fleet sails.")
 
 
 def repository_for(answers: Mapping[str, str]) -> str | None:
@@ -433,6 +433,12 @@ def repository_for(answers: Mapping[str, str]) -> str | None:
     a target that bootstraps nothing never had one, and the flag would reach Spec Kit and be refused."""
     named = (answers.get("repository") or "").strip()
     return named if named and managed(CATALOG, chosen(answers)["target"]) else None
+
+
+def remote_for(answers: Mapping[str, str]) -> str:
+    """The repository the board adds as `origin` itself: the one typed for a target `./init` hands nothing."""
+    named = (answers.get("repository") or "").strip()
+    return "" if managed(CATALOG, chosen(answers)["target"]) else named
 
 
 def brief_flags(answers: Mapping[str, str], folder: Path) -> list[str]:

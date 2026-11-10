@@ -243,6 +243,9 @@ SCRIPT = BOARD_SCRIPT + """
   setTimeout(poll, 2500);
   document.addEventListener('click', event => {
     if (event.target.id === 'cast-off') { event.target.disabled = true; send('/cast-off', {}); }
+    const url = event.target.id === 'remote-add' && document.getElementById('remote-url').value.trim();
+    if (url) { event.target.disabled = true; send('/remote', {url}); }
+    if (event.target.id === 'ci-off') { event.target.disabled = true; send('/ci-off', {}); }
     if (event.target.id === 'draw') { event.target.disabled = true; send('/draw', {}); }
     if (event.target.id === 'draft') { event.target.disabled = true; send('/draft', {}); }
     if (event.target.id === 'model') { event.target.disabled = true; send('/model', {}); }

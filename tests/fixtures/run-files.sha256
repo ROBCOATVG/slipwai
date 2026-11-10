@@ -12,6 +12,7 @@
 # why: 2026-11-09 5b5c6f2aa0d51bd8 Off Windows: moorings.leave removes a junction only on os.name nt, and the harbourmaster's refused-rebase message adds git's own last line where it named no file; neither changes what runs on macOS or Linux.
 # why: 2026-11-10 7d4301fb5aae4164 Not Windows work, and deliberately a change on every platform: check-slice-scope lets a slice write specs/<feature>/people/ (sail.md rung 12 already told it to) and, on the event profile, the chart check-chart holds to the model, as it lets model.drawio through; logs.py refuses a fleet-ticked need with no check on write and reads one already written as a person's, as fleet.py tell already refused it.
 # why: 2026-11-10 f81a3ff6cd1ddce5 Not Windows work, and deliberately a change on every platform: under /cruise the captain resumes a parked slice as answered by decisions only when its newest park was waiting on questions undecided when it was written, the rule the harbourmaster already clears by; a park written after the decisions no longer re-dispatches the slice every turn.
+# why: 2026-11-10 684573bdc7ecc7a6 moorings.berth tries git worktree add again only when git refused over a sibling's half-made .git/worktrees entry; a successful add, and every other refusal, does exactly what it did
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -92,6 +93,10 @@
 43ffc90eea6f5607551ebb8f435c6ed5533791e0b67795ffb2ad84c70f574771  event-modelling-postgres-toy-serve  scripts/event-model/drawio.test.ts
 465a16b3b31be36666885749bb4651d3ce54f522cd7fac991a3676eedcbe48ba  event-modelling-memory-none  scripts/event-model/render.ts
 465a16b3b31be36666885749bb4651d3ce54f522cd7fac991a3676eedcbe48ba  event-modelling-postgres-toy-serve  scripts/event-model/render.ts
+46b5ef4f04f88419f459daa4aa1432ee2306387133834d0bbeba30d8075c4435  event-modelling-memory-none  scripts/agents/moorings.py
+46b5ef4f04f88419f459daa4aa1432ee2306387133834d0bbeba30d8075c4435  event-modelling-postgres-toy-serve  scripts/agents/moorings.py
+46b5ef4f04f88419f459daa4aa1432ee2306387133834d0bbeba30d8075c4435  standard-memory-none  scripts/agents/moorings.py
+46b5ef4f04f88419f459daa4aa1432ee2306387133834d0bbeba30d8075c4435  standard-postgres-toy-serve  scripts/agents/moorings.py
 526a3fcaf97d8201724982c3190cf6d4d212f2cfbda0fe2e3219f811d5979962  event-modelling-memory-none  scripts/event-model/drawio.ts
 526a3fcaf97d8201724982c3190cf6d4d212f2cfbda0fe2e3219f811d5979962  event-modelling-postgres-toy-serve  scripts/event-model/drawio.ts
 52f0245cd6a36d141cbf614ce89c7c36a8770f29ed5928c73741368dd7f93184  event-modelling-memory-none  scripts/event-model/check.ts
@@ -181,10 +186,6 @@
 94e8ca23a31d4c06df54fbd4867d657de6a95bcbd291b0d7d458ffb1dfb76ddd  event-modelling-postgres-toy-serve  scripts/agents/run-state.py
 94e8ca23a31d4c06df54fbd4867d657de6a95bcbd291b0d7d458ffb1dfb76ddd  standard-memory-none  scripts/agents/run-state.py
 94e8ca23a31d4c06df54fbd4867d657de6a95bcbd291b0d7d458ffb1dfb76ddd  standard-postgres-toy-serve  scripts/agents/run-state.py
-975f343ad8e98777f0284c5eca5d502db2e90bacdf2fdc04a8446e97d60256d5  event-modelling-memory-none  scripts/agents/moorings.py
-975f343ad8e98777f0284c5eca5d502db2e90bacdf2fdc04a8446e97d60256d5  event-modelling-postgres-toy-serve  scripts/agents/moorings.py
-975f343ad8e98777f0284c5eca5d502db2e90bacdf2fdc04a8446e97d60256d5  standard-memory-none  scripts/agents/moorings.py
-975f343ad8e98777f0284c5eca5d502db2e90bacdf2fdc04a8446e97d60256d5  standard-postgres-toy-serve  scripts/agents/moorings.py
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  event-modelling-memory-none  scripts/agents/benchmark.py
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  event-modelling-postgres-toy-serve  scripts/agents/benchmark.py
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  standard-memory-none  scripts/agents/benchmark.py

@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from typing import Any
@@ -64,6 +65,25 @@ class BerthTest(unittest.TestCase):
         self.assertEqual((berth / ".env").read_text(encoding="utf-8"), "SECRET=1\n")
         status = subprocess.run(["git", "status", "--porcelain"], cwd=berth, capture_output=True, text=True)
         self.assertEqual(status.stdout.strip(), "", "nothing the berth was given shows up as a change")
+
+    def test_a_sibling_s_half_made_worktree_is_waited_out_and_not_parked_on(self) -> None:
+        """Windows CI parked L03 on `failed to read .git/worktrees/<L04>/commondir`: L04's berth was being
+        made at the same instant. Git is made to refuse once that way here, and the berth is made anyway."""
+        real, refused = self.module.git, list[tuple[str, ...]]()
+
+        def git_once_racing(root: Path, *argv: str) -> subprocess.CompletedProcess[str]:
+            if argv[:2] == ("worktree", "add") and not refused:
+                refused.append(argv)
+                return subprocess.CompletedProcess(argv, 128, "", "fatal: failed to read "
+                                                   ".git/worktrees/project-L04/commondir: No error\n")
+            return real(root, *argv)
+
+        self.module.git = git_once_racing
+        self.module.time = types.SimpleNamespace(sleep=lambda seconds: None)
+        berth, said = self.module.berth(self.root, "L03", "slice/L03", "main")
+        self.assertEqual(len(refused), 1)
+        self.assertIsNotNone(berth, said)
+        self.assertTrue((berth / ".claude/commands/drive.md").is_file())
 
     def test_a_berth_in_the_way_says_both_steps_that_carry_the_slice_on(self) -> None:
         """Nothing re-checks the berth, and a slice with an open park is skipped: hr-test-2's L04 was moved

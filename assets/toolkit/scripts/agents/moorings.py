@@ -39,6 +39,7 @@ import shutil
 import subprocess
 import sys
 import time
+import time
 from pathlib import Path
 
 #: What every worktree's `.slipwai/logs` link is excluded as, in the repository's shared `info/exclude`.
@@ -187,14 +188,31 @@ def berth(root: Path, slice_id: str, branch: str, base: str) -> tuple[Path | Non
             return None, (f"{found} is already there and is not a worktree on {branch}. Move it, or "
                           f"check {branch} out in it, then answer this park (say go) and the slice is "
                           f"carried on")
-        exists = git(root, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").returncode == 0
-        made = (git(root, "worktree", "add", "--quiet", str(found), branch) if exists
-                else git(root, "worktree", "add", "--quiet", "-b", branch, str(found), base or "HEAD"))
+        made = add_worktree(root, found, branch, base)
         if made.returncode != 0:
             said = (made.stderr or made.stdout).strip().splitlines()
             return None, f"a worktree for {branch} could not be made: {said[-1] if said else 'git failed'}"
     notes = [note for note in (linked(root, found), furnished(root, found)) if note]
     return found, "; ".join(notes)
+
+
+def add_worktree(root: Path, found: Path, branch: str, base: str) -> subprocess.CompletedProcess[str]:
+    """`git worktree add`, tried again where a sibling's was half-made at the same instant.
+
+    Captains abreast make their berths together, and git reads every other worktree's admin folder while it
+    makes one: on Windows a sibling's `.git/worktrees/<name>/commondir` can be there and still empty, and
+    git refuses with `failed to read ... commondir`. The berth was then parked as unmakeable for a race that
+    was over a moment later. Whether the branch exists is asked each time, because `-b` makes it before the
+    worktree and a failed attempt can leave it behind.
+    """
+    for attempt in range(4):
+        exists = git(root, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").returncode == 0
+        made = (git(root, "worktree", "add", "--quiet", str(found), branch) if exists
+                else git(root, "worktree", "add", "--quiet", "-b", branch, str(found), base or "HEAD"))
+        if made.returncode == 0 or "worktrees/" not in (made.stderr or "") or found.exists():
+            return made
+        time.sleep(0.25 * (attempt + 1))
+    return made
 
 
 def leave(root: Path, berth: Path) -> str:

@@ -96,7 +96,26 @@ annoyance — …` or `- When it is down: an emergency — …`. A staff tool wh
 as [a skiff](the-skiff-and-the-liner.md), one environment on the smallest compute; anything else starts as
 a liner, the full stack. The first page works the two out from what was said and drawn and writes them
 `(proposed)`, which the check shows amber; where it cannot tell, it asks the two questions in plain words.
-The start page passes the answer to `generate --shape`; a brief without the lines starts small, as before.
+
+A third line says where it runs: `- Where it runs: in our AWS account`, `in our Azure subscription`, `on a
+platform another team runs`, or `nowhere yet, I just want to try it`. The hand-over starts from the
+quickstart that place names:
+
+| Where it runs | Quickstart |
+|---|---|
+| AWS | `aws-customer-product` |
+| Azure | `azure-staff-service` |
+| A platform another team runs | `existing-platform-service`, or `internal-tool` for a staff screen |
+| Nowhere yet, or not said | `laptop-trial`, as before |
+
+It does so only where this machine can reach the place: the quickstart's languages and its target are
+installed, and the target's own tools are on the PATH. Where any is missing, the hand-over starts on this
+machine and says what it needs ("You said AWS. This machine cannot start there yet: it needs the AWS CLI").
+On a target the keel deploys, the shape the first two lines give is passed to `generate --shape`; on this
+machine nothing is deployed, and the page says what the build will be when it goes live.
+
+Where it runs is settled before the project is made because it cannot be changed after: a deployment's
+shape can be moved later (`converge --shape`), but the place it deploys to cannot.
 
 The page a brief is handed over on asks nothing the brief has answered. The one thing it keeps is the dev
 tooling — `./init`'s own menu, which no brief can answer — with every extension this machine has ticked;

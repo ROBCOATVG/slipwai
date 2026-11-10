@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
+from email.message import Message
 from pathlib import Path
 from urllib.parse import quote, unquote
 
@@ -59,14 +61,13 @@ def headers() -> list[tuple[str, str]]:
     return [(EXECUTABLE, quote(STARTED.executable)), (BUILD, STARTED.build), (PID, str(os.getpid()))]
 
 
-def read(said: object) -> Build | None:
+def read(said: Message | Mapping[str, str]) -> Build | None:
     """The build a board's answer names, from its headers; `None` from a board too old to say."""
-    get = getattr(said, "get", None)
-    where = get(EXECUTABLE) if get else None
+    where = said.get(EXECUTABLE)
     if not where:
         return None
-    pid = str(get(PID) or "")
-    return Build(unquote(where), str(get(BUILD) or ""), int(pid) if pid.isdigit() else 0)
+    pid = str(said.get(PID) or "")
+    return Build(unquote(str(where)), str(said.get(BUILD) or ""), int(pid) if pid.isdigit() else 0)
 
 
 def replaced(board: Build | None, here: Path | None = None) -> bool:

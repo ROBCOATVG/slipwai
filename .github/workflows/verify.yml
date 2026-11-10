@@ -31,10 +31,15 @@ jobs:
     # 3.11 is the floor `pyproject.toml` promises, so the gate runs on the floor rather than on whatever is
     # newest: a syntax or a standard-library call that needs 3.12 is a broken promise, and only the floor
     # catches it.
+    #
+    # Four shards a platform, each a quarter of the test modules (`scripts/test-shard.py`): on one process
+    # the suite took 27 minutes on Windows and 13 to 16 elsewhere, and a run is as long as its slowest job.
+    # Shard 0 also runs the checks that are not tests, once a platform.
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        shard: [0, 1, 2, 3]
     runs-on: ${{ matrix.os }}
     steps:
       # The whole history, not the default shallow one: `scripts/progress.py --check` reads `git log` for
@@ -52,42 +57,43 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
 
-      # On Unix the gate runs exactly as it runs on a laptop, `.python-tools` install and all, because a CI
-      # gate that is a different command from the local one is a gate people stop trusting.
+      # On Unix the gate runs as it runs on a laptop, `.python-tools` install and all, because a CI gate
+      # that is a different command from the local one is a gate people stop trusting: `make verify` is
+      # these checks and `make test`, and the shards are `make test TESTS=…`.
       - if: runner.os != 'Windows'
-        run: make verify
+        run: ./scripts/verify --install-only
+      - if: runner.os != 'Windows' && matrix.shard == 0
+        run: make lint typecheck check-structure check-shared check-release
+      - if: runner.os != 'Windows'
+        run: make test TESTS="$(python3 scripts/test-shard.py ${{ matrix.shard }} 4 | tr '\n' ' ')"
 
-      # Windows runs the same four checks without make. `make` and a POSIX `scripts/verify` are not a given
+      # Windows runs the same checks without make. `make` and a POSIX `scripts/verify` are not a given
       # there, and what Windows has to prove is that *slipwai* works on it, not that the keel's Makefile
       # does — nobody running the command on Windows will ever type `make`.
       - if: runner.os == 'Windows'
         run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
-      - if: runner.os == 'Windows'
+      - if: runner.os == 'Windows' && matrix.shard == 0
         run: python -m ruff check src scripts tests
-      - if: runner.os == 'Windows'
+      - if: runner.os == 'Windows' && matrix.shard == 0
         run: python -m compileall -q src scripts tests
-      - if: runner.os == 'Windows'
+      - if: runner.os == 'Windows' && matrix.shard == 0
         run: python -m mypy
-      - if: runner.os == 'Windows'
+      - if: runner.os == 'Windows' && matrix.shard == 0
         run: python scripts/check-structure.py
-      # The loop suite on its own first. The whole run's summary is where a failure's message is printed,
-      # and a run interrupted before its end prints none; this suite's verdict is on the log either way.
       - if: runner.os == 'Windows'
-        run: python -m unittest -v test_loop
+        shell: bash
+        run: python -m unittest -v $(python scripts/test-shard.py ${{ matrix.shard }} 4 | tr '\r\n' '  ')
         env:
           PYTHONPATH: src;tests
-        continue-on-error: true
-      - if: runner.os == 'Windows'
-        run: python -m unittest discover -s tests -v
-        env:
-          PYTHONPATH: src
 
       # The command itself, on every platform: installed the way a user installs it, then asked what it is
       # through both routes. This is the step that catches a packaging mistake the gate above cannot see —
       # a file left out of the wheel, an entry point that does not resolve, a console script that is not on
       # PATH.
-      - run: python -m pip install --disable-pip-version-check -e .
-      - name: The installed command says which keel it is
+      - if: matrix.shard == 0
+        run: python -m pip install --disable-pip-version-check -e .
+      - if: matrix.shard == 0
+        name: The installed command says which keel it is
         shell: bash
         run: |
           set -eu
@@ -123,11 +129,16 @@ jobs:
         env:
           MERMAID_PUPPETEER_CONFIG: /tmp/mermaid-puppeteer.json
 
-  # A generated project gated on Windows, the way the board gates it there: Make installed through the
-  # board's own installer, Git's bash from the runner's Git for Windows, every command on the board's PATH
-  # (docs/windows-plan.md, 24.11). The Windows app is published because this job is green.
-  windows-project:
-    runs-on: windows-latest
+  # A generated project gated the way the board gates it, on every platform a person runs the board from:
+  # Make from the machine, or on Windows installed through the board's own installer with Git's bash; every
+  # command on the board's PATH (docs/windows-plan.md, 24.11). The Windows app is published because the
+  # Windows row is green.
+  project:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -139,20 +150,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # The runner has GnuWin32's and Strawberry's Make on PATH; the board would use a good copy as it is,
-      # so they go, and the Make this proves is the one the board installs.
+      # The Windows runner has GnuWin32's and Strawberry's Make on PATH; the board would use a good copy as
+      # it is, so they go, and the Make this proves is the one the board installs.
       - name: No Make but the board's
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $kept = ($env:PATH -split ';') | Where-Object { -not (Test-Path (Join-Path $_ 'make.exe')) }
           "PATH=$($kept -join ';')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - run: python scripts/windows-gate.py
+      - run: python scripts/project-gate.py
 
   # A release, built on each platform it ships for and smoked there, from the tagged commit. Only on a tag,
   # and only in this repository: a fork's tag builds nothing, because a fork has no PyPI project to send it to.
   distributions:
     if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'ROBCOATVG/slipwai'
-    needs: [gate, docs]
+    needs: [gate, docs, project]
     strategy:
       fail-fast: false
       matrix:
@@ -209,7 +221,7 @@ jobs:
             hdiutil create -volname slipwai -srcfolder dmg -ov -format UDZO \
               "release/Slipwai-$(cat VERSION)-${{ matrix.name }}.dmg"
           fi
-          # Published now that the windows-project job makes and gates a project there (windows-plan.md, 24.12).
+          # Published now that the project job's Windows row makes and gates a project there (windows-plan.md, 24.12).
           if [ "$RUNNER_OS" = Windows ]; then
             cp dist/slipwai-board.exe "release/Slipwai-$(cat VERSION)-${{ matrix.name }}.exe"
           fi

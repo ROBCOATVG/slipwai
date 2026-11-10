@@ -130,6 +130,18 @@ class SettingsPageTest(BoardTest):
         self.assertIn("not on PATH", page)
         self.assertIn("The board&#x27;s conversations run on", page)
 
+    def test_the_machine_card_is_asked_for_after_the_page_and_never_holds_it_up(self) -> None:
+        """Seven tools asked their versions held Settings past five seconds on Windows; the page now shows
+        a placeholder and fetches the card, so no tool's answer is between a person and the page."""
+        with mock.patch("slipwai.machine_card.everything", side_effect=AssertionError("asked on the page")):
+            page = self.get("/settings")[1]
+        self.assertIn("data-machine", page)
+        self.assertIn("fetch('/settings/machine.html')", page)
+        with mock.patch("slipwai.machine_card.everything", return_value=[]):
+            status, card = self.get("/settings/machine.html")
+        self.assertEqual(status, 200)
+        self.assertIn('<div id="machine" class="card"><h2>This machine</h2>', card)
+
     def test_saving_writes_the_file_and_the_page_says_so(self) -> None:
         self.assertEqual(self.post("/settings/save", {"runs_on": "opencode"}), (200, "saved"))
         self.assertEqual(read(self.file).runs_on, "opencode")

@@ -183,7 +183,7 @@ def page(settings: Settings, found: list[Launch], now: Launch | None) -> str:
             f'<button class="go" type="submit">Save</button></form>'
             f'<p class="now">{esc(state)}</p><p class="said" hidden></p></div>')
     return document("Settings", "What runs behind the board",
-                    f"<style>{STYLE}{machine_card.STYLE}</style>{body}{machine_card.card()}",
+                    f"<style>{STYLE}{machine_card.STYLE}</style>{body}{machine_card.PLACEHOLDER}",
                     SCRIPT + machine_card.SCRIPT, now="/settings")
 
 

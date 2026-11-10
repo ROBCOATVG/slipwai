@@ -505,7 +505,7 @@ def clearance_ready(root: Path, feature: str = "") -> tuple[str, dict[str, list[
     return feature, {str(f): [str(s) for s in ids] for f, ids in ready.items()}, ""
 
 
-def project_python() -> str:
+def project_python(root: Path | None = None) -> str:
     """The interpreter the project's own scripts run under: the `python3` the login shell finds, which is the
     one `./init` installed PyYAML into — not this process's, which is the keel's own environment and reads
     no YAML by design. The keel's as a fallback, so a machine with no other python still gets an answer.
@@ -514,7 +514,7 @@ def project_python() -> str:
 
     if sys.platform == "win32":  # the `python3` there is bash's shim, which no Windows program can start
         return python3()
-    for directory in (login_environment().get("PATH") or "").split(os.pathsep):
+    for directory in (login_environment(root=root).get("PATH") or "").split(os.pathsep):
         candidate = Path(directory) / "python3"
         if directory and candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate)
@@ -546,8 +546,8 @@ def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:
         if not supported:
             return feature, {}, ("the project's clearance script has no offline JSON query port. "
                                  "Run `slipwai migrate` to update it")
-        done = subprocess.run([project_python(), "-B", str(script.resolve()), "--json", "--feature", feature],
-                              capture_output=True, text=True, timeout=15, env=login_environment())
+        done = subprocess.run([project_python(root), "-B", str(script.resolve()), "--json", "--feature", feature],
+                              capture_output=True, text=True, timeout=15, env=login_environment(root=root))
         try:
             result = json.loads(done.stdout)
         except ValueError as fault:
@@ -575,8 +575,8 @@ def gates_owed(root: Path) -> list[str]:
     if not script.is_file() or "--json" not in script.read_text(encoding="utf-8"):
         return []
     try:
-        done = subprocess.run([project_python(), "-B", str(script), "--gates", "--json"],
-                              capture_output=True, text=True, timeout=15, env=login_environment())
+        done = subprocess.run([project_python(root), "-B", str(script), "--gates", "--json"],
+                              capture_output=True, text=True, timeout=15, env=login_environment(root=root))
         result = json.loads(done.stdout)
     except (OSError, ValueError, subprocess.TimeoutExpired):
         return []

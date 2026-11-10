@@ -146,7 +146,7 @@ class StageSession:
             if marker is not None:
                 marker.parent.mkdir(parents=True, exist_ok=True)
                 marker.write_text(f"{os.getpid()}\n{time.time():.0f}\n", encoding="utf-8")
-            env = {**login_environment(), **acp_environment(launch.key)}
+            env = {**login_environment(root=self.root), **acp_environment(launch.key)}
             if self.stage:
                 env["SLIPWAI_STAGE"] = self.stage
             self.agent = BoardAgent(launch, self.root, "agent", self.say, kept=self.root / KEPT / self.command,

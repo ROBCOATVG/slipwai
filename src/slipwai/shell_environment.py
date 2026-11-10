@@ -38,9 +38,34 @@ def account_shell() -> str:
         return ""
 
 
-def login_environment(current: Mapping[str, str] | None = None, shell: str | None = None) -> dict[str, str]:
+def login_environment(current: Mapping[str, str] | None = None, shell: str | None = None,
+                      root: Path | None = None) -> dict[str, str]:
     """This process's environment with the login shell's `PATH` and exports under it. A shell that cannot be
-    asked — none named, or one that does not answer in time — leaves the environment as it was."""
+    asked — none named, or one that does not answer in time — leaves the environment as it was. Given the
+    project a child runs in, that project's own venv goes first (`in_project`)."""
+    return in_project(from_login(current, shell), root)
+
+
+def project_venv(root: Path) -> Path | None:
+    """The venv `./init` makes where `python3` refuses pip (PEP 668: Homebrew's, a recent Debian's), and
+    installs PyYAML into, or None where it made none."""
+    folder = root / ".delivery-tools/venv" / ("Scripts" if os.name == "nt" else "bin")
+    return folder if folder.is_dir() else None
+
+
+def in_project(held: dict[str, str], root: Path | None) -> dict[str, str]:
+    """`held` with the project's venv first on its `PATH`. `./init` tells a person to put it there when it
+    makes one, and a child of the board has nobody to tell: it found the system `python3`, which has no
+    PyYAML and will not take it, and the project's scripts stopped at their first `import yaml`."""
+    venv = project_venv(root) if root is not None else None
+    if venv is None:
+        return held
+    return {**held, "PATH": os.pathsep.join([str(venv), *(part for part in held.get("PATH", "").split(os.pathsep)
+                                                           if part and part != str(venv))])}
+
+
+def from_login(current: Mapping[str, str] | None = None, shell: str | None = None) -> dict[str, str]:
+    """`login_environment` for no project in particular."""
     held = dict(os.environ if current is None else current)
     # `SHELL` first; then the account's own shell, because a process `launchd` starts — the board at login —
     # is given no `SHELL` at all, and without one it ran with `/usr/bin:/bin` and found nothing a person installs.

@@ -69,7 +69,7 @@ def model_prompt(where: Path) -> str:
         return ""
     try:
         said = subprocess.run([python3(), "scripts/agents/model.py", PROMPT_FLAG], cwd=where, capture_output=True,
-                              text=True, env=login_environment(), timeout=30, check=False)
+                              text=True, env=login_environment(root=where), timeout=30, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return ""
     return said.stdout.strip().replace(NOBODY, "").strip() if said.returncode == 0 else ""

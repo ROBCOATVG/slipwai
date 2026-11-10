@@ -58,6 +58,50 @@ class HandoverTest(unittest.TestCase):
         self.assertTrue(any("One service, bookings, in python with a real store in one file" in line for line in lines))
         self.assertTrue(any(line.startswith("Built with stand-in") for line in lines), lines)
 
+    def where(self, said: str) -> None:
+        """The brief's *Who runs it*, with a third line saying where."""
+        prd = self.folder / "prd.md"
+        text = prd.read_text(encoding="utf-8")
+        marker = "- When it is down:"
+        at = text.index("\n", text.index(marker)) + 1
+        prd.write_text(text[:at] + f"- Where it runs: {said}\n" + text[at:], encoding="utf-8")
+
+    def test_a_brief_that_says_aws_starts_there_where_this_machine_can_reach_it(self) -> None:
+        """Every brief was generated for the laptop: the target was always `none`, so the shape was dropped (#47)."""
+        self.where("in our AWS account")
+        with mock.patch.object(handover, "short_of", return_value=[]):
+            held = handover.answers(self.folder)
+            lines = handover.said(held)
+        self.assertEqual(held["target"], "aws")
+        self.assertEqual(held["who"], "staff", "who signs in is still the brief's")
+        self.assertTrue(any(line.endswith("in your AWS account.") for line in lines), lines)
+        self.assertFalse(any("This machine cannot start there" in line for line in lines), lines)
+
+    def test_a_place_this_machine_cannot_reach_starts_on_the_laptop_and_says_what_it_needs(self) -> None:
+        self.where("in our AWS account")
+        with mock.patch.object(handover, "short_of", return_value=["the AWS CLI", "OpenTofu 1.12"]):
+            held = handover.answers(self.folder)
+            lines = handover.said(held)
+        self.assertEqual(held["target"], "none")
+        self.assertIn("You said AWS. This machine cannot start there yet: it needs the AWS CLI and OpenTofu 1.12. "
+                      "Starting on this machine for now.", lines)
+
+    def test_another_team_s_platform_is_the_internal_tool_for_a_staff_screen(self) -> None:
+        self.where("on a platform another team runs")
+        with mock.patch.object(handover, "short_of", return_value=[]):
+            self.assertEqual(handover.destination(
+                {"runs_on": "platform", "used_by": "staff"}, True)[0], "internal-tool")
+            self.assertEqual(handover.destination(
+                {"runs_on": "platform", "used_by": "customers"}, True)[0], "existing-platform-service")
+            self.assertEqual(handover.answers(self.folder)["target"], "existing")
+        self.assertEqual(handover.destination({"runs_on": "nowhere"}, True), ("laptop-trial", ""))
+        self.assertEqual(handover.destination({}, True), ("laptop-trial", ""), "not said is today's start")
+
+    def test_the_laptop_says_what_it_will_be_when_it_goes_live_not_that_it_is_deployed(self) -> None:
+        """The page said "the full stack, with a staging environment" and then "deployed nowhere"."""
+        lines = handover.said(handover.answers(self.folder))
+        self.assertIn("For staff, an annoyance when it is down: when it goes live it will be one environment.", lines)
+
     def test_the_prototype_beside_the_brief_is_carried_in_and_said(self) -> None:
         """The page a person played was left behind at hand-over; the builder saw state inventories in words."""
         played = self.folder.parent / "prototype" / "index.html"

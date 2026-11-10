@@ -14,7 +14,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.brief_check import assumptions, facts, people, report, service, shape_of
+from slipwai.brief_check import assumptions, facts, people, place_of, report, service, shape_of
 from slipwai.cli_brief import brief_main
 from slipwai.design_docs import FILES
 from slipwai.errors import GenerationError
@@ -108,6 +108,23 @@ class ReadersTest(unittest.TestCase):
         self.assertEqual(report(home)[4], "runs for: not said yet — who uses it, and what an afternoon without it is")
         self.assertEqual(report(tree(**{"brand.md": "# B\n"}))[4], "runs for: not said yet — who uses it, and what an "
                                                                "afternoon without it is")
+
+    def test_where_it_runs_is_a_third_line_read_as_the_first_place_it_names(self) -> None:
+        """A brief never said where its product runs, so every one was generated for the laptop (#47)."""
+        home = tree(**{"prd.md": "# P\n\n## Who runs it\n\n- Used by: customers — anyone in town\n"
+                                 "- When it is down: an emergency — the desk cannot serve anyone\n"
+                                 "- Where it runs: in our AWS account (proposed)\n"})
+        found = service(home / "prd.md")
+        self.assertEqual((found["runs_on"], found["proposed"]), ("aws", True))
+        self.assertEqual(report(home)[4], "runs for: customers, an emergency when it is down — the full stack, with a "
+                                          "staging environment, in your AWS account (proposed)")
+        for said, place in (("Azure, not AWS", "azure"), ("on a platform another team runs", "platform"),
+                            ("nowhere yet, I just want to try it", "nowhere"), ("a country club server", ""),
+                            ("AWS eventually; just trying it now", "aws")):
+            with self.subTest(said=said):
+                self.assertEqual(place_of(said), place)
+        self.assertEqual(service(tree(**{"prd.md": "# P\n"}) / "prd.md")["runs_on"], "",
+                         "a brief without the line has not said, and starts as it always did")
 
     def test_the_start_page_passes_the_shape_only_to_a_target_the_keel_deploys(self) -> None:
         from slipwai.interview_page import brief_flags, shape_flag

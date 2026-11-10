@@ -43,6 +43,13 @@ STAFF = ("staff", "team", "colleague", "named people", "volunteer", "internal", 
 CUSTOMERS = ("customer", "public", "member", "client", "visitor", "resident", "patient", "anyone")
 ANNOYANCE = ("annoyance", "inconvenience", "nuisance", "wait")
 EMERGENCY = ("emergency", "incident", "outage", "lost")
+#: The third line, where it runs, in the person's words: their own cloud, a platform another team runs, or
+#: nowhere yet. Read in this order, so "Azure, not AWS" is Azure and "AWS, eventually; just trying it now" is
+#: AWS: the first place named is the one meant. Absent, or none of these, is a brief that has not said.
+RUNS_ON = re.compile(r"^\s*[-*]\s+where it runs:\s*(?P<said>.+?)\s*$", re.MULTILINE | re.IGNORECASE)
+PLACES = (("aws", ("aws", "amazon")), ("azure", ("azure", "microsoft")),
+          ("platform", ("platform", "another team", "other team", "kubernetes", "cluster", "existing")),
+          ("nowhere", ("nowhere", "not yet", "try", "laptop", "this machine", "my machine", "locally")))
 UNSETTLED = re.compile(r"\?\s*$|\bTBD\b|^\s*open:", re.IGNORECASE)
 
 
@@ -111,6 +118,7 @@ def service(prd: Path) -> dict[str, str | bool]:
     body = next((text for title, text in sections(prd) if title.strip().lower() == "who runs it"), "")
     used = USED_BY.search(body)
     down = WHEN_DOWN.search(body)
+    runs = RUNS_ON.search(body)
 
     def one(found: re.Match[str] | None, first: tuple[str, ...], second: tuple[str, ...], a: str, b: str) -> str:
         if found is None:
@@ -122,7 +130,19 @@ def service(prd: Path) -> dict[str, str | bool]:
         return b if any(word in head for word in second) else ""
     return {"used_by": one(used, STAFF, CUSTOMERS, "staff", "customers"),
             "when_down": one(down, ANNOYANCE, EMERGENCY, "annoyance", "emergency"),
-            "proposed": any("(proposed)" in found.group("said").lower() for found in (used, down) if found)}
+            "runs_on": place_of(runs.group("said")) if runs else "",
+            "proposed": any("(proposed)" in found.group("said").lower() for found in (used, down, runs) if found)}
+
+
+def place_of(said: str) -> str:
+    """Where a `Where it runs:` line says, as `aws`, `azure`, `platform` or `nowhere`; `""` where it names none.
+
+    The earliest mention wins, rather than the first place in `PLACES`: a person who writes "Azure, not AWS"
+    has said Azure, and reading for AWS first would have answered the opposite of what they wrote."""
+    head = said.lower().split("—")[0].split(" - ")[0]
+    found = [(hit.start(), place) for place, words in PLACES for word in words
+             if (hit := re.search(rf"\b{re.escape(word)}\b", head))]
+    return min(found)[1] if found else ""
 
 
 def shape_of(found: dict[str, str | bool]) -> str:
@@ -141,8 +161,14 @@ def runs_line(found: dict[str, str | bool]) -> str:
     where = ("one environment, the smallest" if shape == "skiff"
              else "the full stack, with a staging environment")
     down = "an annoyance" if found["when_down"] == "annoyance" else "an emergency"
+    place = RUNS_IN.get(str(found.get("runs_on") or ""), "")
     guessed = " (proposed)" if found["proposed"] else ""
-    return f"runs for: {found['used_by']}, {down} when it is down — {where}{guessed}"
+    return f"runs for: {found['used_by']}, {down} when it is down — {where}{place}{guessed}"
+
+
+#: Where it runs, as the check's line says it: in the person's own terms, after the size.
+RUNS_IN = {"aws": ", in your AWS account", "azure": ", in your Azure subscription",
+           "platform": ", on a platform another team runs", "nowhere": ", on this machine for now"}
 
 
 def how_found(document: Path, home: Path) -> str:

@@ -98,6 +98,21 @@ class OwnedPathsTest(unittest.TestCase):
         self.assertFalse([path for path in changed if "logs.unread-" in path], changed)
         self.assertIn("stray.txt", changed, "anything else untracked is still the slice's")
 
+    def test_the_person_a_story_signs_in_as_is_the_slice_s_to_write(self) -> None:
+        """`commands/sail.md` rung 12 has a slice write it, and the gate refused PE-01 for doing so."""
+        self.assertIsNone(self.scope("ORD-01").violation("specs/ordering/people/priya.json", "A"))
+
+    def test_the_chart_is_a_slice_s_to_re_render_where_the_model_renders_it(self) -> None:
+        """`check-chart` holds it to the model on the event profile, as `check-drawio` holds the canvas, so
+        DS-03 was refused by one gate or the other whatever it did."""
+        scope = self.scope("ORD-01")
+        scope.model = {"slices": []}
+        self.assertIsNone(scope.violation("specs/ordering/chart.yaml", "M"))
+
+    def test_on_the_standard_profile_the_chart_stays_the_host_s(self) -> None:
+        """Written by `/chart` there, and held to nothing a slice's change has to agree with."""
+        self.assertIsNotNone(self.scope("ORD-01").violation("specs/ordering/chart.yaml", "M"))
+
     def test_a_slice_may_not_touch_what_another_fairway_owns(self) -> None:
         found = self.scope("ORD-01").fairway_violation("apps/billing/src/invoice.ts")
         assert found is not None

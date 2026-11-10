@@ -34,7 +34,7 @@ from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 670 — one runner for every child the board starts, and the file check an exit code does not make:
+# budget: 690 — one runner for every child the board starts, and the file check an exit code does not make:
 # assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
@@ -45,6 +45,8 @@ from .shell_environment import login_environment
 # A stage that has ended takes a reply as one more turn, and one kept from before a restart is resumed.
 # And for `windows_argv`: on Windows every child starts through Git's bash, found on its own
 # PATH, and that belongs beside the one place children are started.
+# And for `committing`: what `./init` wrote, committed after it as `adopted` already does, which is one
+# more pair of steps beside the init step and belongs with it.
 
 #: What a child writes when it believes it is on a terminal — which, through a pseudo-terminal, it does.
 #: Stripped rather than rendered: the card is a log of what was said, not a terminal emulator.
@@ -154,6 +156,23 @@ def init_step(where: Path, harness: str, repository: str | None,
               extensions: tuple[str, ...] = ()) -> Step:
     return Step(command(harness, repository, extensions), announced(where, harness, repository, extensions),
                 lambda code: ended(code, harness, repository), "init")
+
+
+def committing(where: Path, argv: list[str]) -> list[Step]:
+    """What `./init` wrote, committed after it as one change by the person, as `adopted` does.
+
+    Nobody is at a terminal to be told to commit it. game-club-manager's Spec Kit stayed untracked on main,
+    so every berth lacked `.specify/integration.json`, its projection installed Spec Kit again there, and
+    `check-slice-scope` refused every slice for files none of them wrote. The person's commit, not the
+    keel's: `replay` reads the keel's newest back as its merge base."""
+    if not (where / ".git").exists():
+        return []
+    said = " ".join(argv)
+    return [Step(["git", "add", "-A"], "", lambda code: "", "init"),
+            Step(["git", "commit", "-q", "-m", f"Install Spec Kit and the agent's projections ({argv[0]})"], "",
+                 lambda code: (f"What `{said}` wrote is committed as one change." if code == 0 else
+                               f"Committing what `{said}` wrote stopped ({code}); commit it before casting off: "
+                               "a slice's berth starts from the last commit."), "init")]
 
 
 #: The step after `./init` where a PRD came with the answers: the constitution and the first specification,
@@ -434,7 +453,8 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
           repository: str | None = None, prd: bool = False, extensions: tuple[str, ...] = ()) -> Fitting:
     """`./init` begun in the background — and the draft after it, where a PRD came with the answers and an
     agent was named to draft with. Returned rather than awaited: what it says is read by polling."""
-    steps = [init_step(where, harness, repository, extensions)] if harness else []
+    steps = ([init_step(where, harness, repository, extensions),
+              *committing(where, command(harness, repository, extensions))] if harness else [])
     if steps and prd:
         steps.append(draft_step(where))
     fitting = Fitting(where, steps, said)

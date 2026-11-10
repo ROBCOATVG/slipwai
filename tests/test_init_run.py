@@ -8,6 +8,7 @@ keel owns — the command it builds, the lines it says, and the tail the board r
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 import time
@@ -188,6 +189,27 @@ class BackgroundTest(unittest.TestCase):
         said = finished(start(root, "claude"))
         self.assertEqual(said["code"], 0)
         self.assertNotIn("should not run", said["lines"])
+
+    def test_what_init_wrote_is_committed_so_a_berth_cut_from_main_has_it(self) -> None:
+        """Left untracked, Spec Kit was installed again in every berth and every slice's scope gate failed."""
+        root = project(["init ran"])
+        (root / "init").write_text("#!/bin/sh\nmkdir -p .specify\necho '{}' > .specify/integration.json\n",
+                                   encoding="utf-8")
+        person = {"GIT_AUTHOR_NAME": "P", "GIT_AUTHOR_EMAIL": "p@x", "GIT_COMMITTER_NAME": "P",
+                  "GIT_COMMITTER_EMAIL": "p@x"}
+        with mock.patch.dict("os.environ", person):
+            subprocess.run(["git", "init", "-q", "-b", "main"], cwd=root, check=True)
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "Scaffold"], cwd=root, check=True)
+            said = finished(start(root, "claude"))
+        self.assertEqual(said["code"], 0, said["lines"])
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True)
+        self.assertEqual(status.stdout, "")
+        tracked = subprocess.run(["git", "ls-files", ".specify"], cwd=root, capture_output=True, text=True)
+        self.assertEqual(tracked.stdout.split(), [".specify/integration.json"])
+
+    def test_a_project_that_is_no_repository_has_nothing_committed_and_is_not_failed_for_it(self) -> None:
+        self.assertEqual(finished(start(project(["init ran"]), "claude"))["code"], 0)
 
     def test_continuing_the_build_is_make_launch_carrying_the_receipt_so_far(self) -> None:
         root = with_makefile(project([]), {"launch": "cast off"})

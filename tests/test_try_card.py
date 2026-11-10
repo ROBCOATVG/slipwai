@@ -197,6 +197,14 @@ class GeneratedTest(unittest.TestCase):
         self.assertIn(".slipwai/walks/\n", files[".gitignore"])
         self.assertIn("scripts/agents/try_it.py", files)
 
+    def test_what_the_gates_and_make_model_write_in_a_berth_is_ignored_once(self) -> None:
+        """Untracked, each was a file `check-slice-scope` refused every slice branch for."""
+        selection = resolve_selection({"persistence": "postgres"}, "event-modelling", "toy-plain", "none")
+        ignored = project_files("shop", "event-modelling", "none",
+                                default_apps("toy-plain", "none", selection))[".gitignore"].splitlines()
+        self.assertEqual(ignored.count("__pycache__/"), 1)
+        self.assertIn("scripts/event-model/package-lock.json", ignored)
+
     @unittest.skipUnless(checkout_packages.installed("typescript"), "the browser app is written with TypeScript's")
     def test_the_browser_app_listens_where_try_it_tells_it(self) -> None:
         selection = resolve_selection({"persistence": "postgres", "http": "fastify"}, "event-modelling",

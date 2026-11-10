@@ -421,8 +421,9 @@ cumulative artifacts (`spec.md`, `story-split.md`, `contracts/`, `checklists/`, 
 `people/` — one JSON file per person a story signs in as — and
 `decisions.md`, where `/cruise` records a decision taken during the slice), its own block of `model.yaml`
 with the committed canvas `model.drawio` regenerated from it (`{{make}} model-drawio` — `check-drawio`
-holds the canvas to the model, so a slice that advanced its block cannot pass `verify` without it), the
-mockups, the code and tests of the service that owns it — one bounded context where the service holds
+holds the canvas to the model, so a slice that advanced its block cannot pass `verify` without it) and, on the
+event-modelling profile, the chart `specs/<feature>/chart.yaml` re-rendered the same way (`{{make}} chart`,
+which `check-chart` holds to the model), the mockups, the code and tests of the service that owns it — one bounded context where the service holds
 several — the context's events module *additively*, **new** migration files named by a timestamp
 (`date -u +%Y%m%d%H%M`, so two slices never mint the same name), a **new** ADR under `docs/adr/` at
 `Proposed` (never an edit to one that stands), and the composition root. Nothing else —

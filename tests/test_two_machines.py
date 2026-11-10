@@ -194,7 +194,9 @@ subprocess.run(["git", "commit", "--quiet", "-m", "implement " + sys.argv[1]], c
                 encoding="utf-8").splitlines())
             expected = [f"{fairway}-01", f"{fairway}-02"]
             self.assertEqual([e.fields["slice"] for e in entries if e.kind == "claimed"], expected)
-            self.assertEqual([e.fields["slice"] for e in entries if e.kind == "merged"], expected)
+            # Merged both, in either order: run abreast, whichever slice reaches the harbourmaster first lands
+            # first, and the order was asserted once and failed now and then on a runner.
+            self.assertEqual(sorted(e.fields["slice"] for e in entries if e.kind == "merged"), expected)
             self.assertFalse(any(e.kind == "taken-over" for e in entries))
             self.assertIn('"kind": "merged"', self.carried(f"refs/slipwai/logs/{fairway}"))
             self.assertEqual(self.checked_git("show", "-s", "--format=%s",

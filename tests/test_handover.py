@@ -15,7 +15,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import board_settings, design_docs, handover
+from slipwai import board_settings, brief_check, design_docs, handover
 from slipwai.board_settings import Launch
 from slipwai.interview_form import from_query, page
 
@@ -85,6 +85,20 @@ class HandoverTest(unittest.TestCase):
         self.assertEqual(held["target"], "none")
         self.assertIn("You said AWS. This machine cannot start there yet: it needs the AWS CLI and OpenTofu 1.12. "
                       "Starting on this machine for now.", lines)
+
+    def test_a_cloud_whose_package_is_not_installed_is_still_the_place_said_and_says_so(self) -> None:
+        """Read off the installed targets alone, a brief naming a cloud this machine had no package for read
+        as not said, and started on the laptop without a word about why."""
+        self.where("in our AWS account")
+        targets = {key: entry for key, entry in brief_check.CATALOG["targets"].items() if key != "aws"}
+        loaded = {key: one for key, one in handover.loaded().items() if key != "aws"}
+        with mock.patch.dict(brief_check.CATALOG, {"targets": targets}), \
+                mock.patch.object(handover, "loaded", return_value=loaded):
+            held = handover.answers(self.folder)
+            lines = handover.said(held)
+        self.assertEqual(held["target"], "none")
+        self.assertTrue(any(line.startswith("You said AWS. This machine cannot start there yet: it needs")
+                            and "the aws target" in line for line in lines), lines)
 
     def test_another_team_s_platform_is_the_internal_tool_for_a_staff_screen(self) -> None:
         self.where("on a platform another team runs")

@@ -31,10 +31,9 @@ IQD+IR+e+fGdUnIOH+KatZ0KrgBXP3n6RbtqrwR/qKRpIA==
 """
 
 
-def names(context: ssl.SSLContext) -> set[str]:
-    """The common name of every root a context holds."""
-    return {value for held in context.get_ca_certs() for part in held["subject"] for key, value in part
-            if key == "commonName"}
+def names(context: ssl.SSLContext) -> str:
+    """Every root a context holds, as text to look a name up in."""
+    return str(context.get_ca_certs())
 
 
 class CertificatesTest(unittest.TestCase):

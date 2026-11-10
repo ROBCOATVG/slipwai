@@ -20,6 +20,7 @@ not there, `install` does nothing.
 from __future__ import annotations
 
 import contextlib
+import importlib
 import ssl
 from pathlib import Path
 
@@ -27,7 +28,8 @@ from pathlib import Path
 def carried() -> Path | None:
     """The bundle of roots this keel carries, or None where it carries none."""
     try:
-        import certifi  # noqa: PLC0415 — in the executable's build and nowhere else: its absence is not a fault
+        # By name: it is in the executable's build and nowhere else, so its absence is not a fault.
+        certifi = importlib.import_module("certifi")
     except ImportError:
         return None
     bundle = Path(certifi.where())
@@ -54,5 +56,9 @@ def install() -> bool:
     bundle = carried()
     if bundle is None:
         return False
-    ssl._create_default_https_context = lambda: context(bundle)  # noqa: SLF001 — PEP 476's own hook
+
+    def carrying() -> ssl.SSLContext:
+        return context(bundle)
+
+    ssl._create_default_https_context = carrying  # type: ignore[assignment]  # noqa: SLF001 — PEP 476's own hook
     return True

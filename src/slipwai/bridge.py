@@ -47,6 +47,7 @@ from .adopt_page import page as adoption
 from .adopt_page import run as adopt
 from .adoption_card import adoption_card, strategy_dates
 from .adoption_flow import gate_when_grounded, take_step
+from .board_build import headers as board_headers
 from .bridge_page import page, payload
 from .brief_page import route_get as brief_get
 from .brief_page import route_post as brief_post
@@ -285,6 +286,8 @@ class Bridge(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(data)))
+        for name, value in board_headers():  # which file this board runs: `board_build.py` says why
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(data)
 

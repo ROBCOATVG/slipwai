@@ -12,7 +12,11 @@ that true, and each is skipped where it is already done:
 2. **Register.** `at_login.install` from the placed copy, so the board starts with the person from now on.
    Where a service already exists and names another copy — an older download, a moved app — it is
    rewritten; where it names this one, it is left alone.
-3. **Open.** The board, on the home folder, in the default browser.
+3. **Renew.** A board already serving from this copy's path but from another file is one this install
+   replaced: the person dragged a new app over the old one, and the old board kept running the old file
+   from the Trash. It is stopped and the service loaded again, so the board opened is the one installed.
+   A board from another path — someone's own `slipwai` — is left alone (`board_build` says how it is told).
+4. **Open.** The board, on the home folder, in the default browser.
 
 A person who declines the move gets the board anyway, served by this process for as long as it runs, and
 nothing registered: a service pointing at a path that will vanish is worse than none.
@@ -21,9 +25,11 @@ Nothing here runs for the command line. `app.main` calls it only for the app ope
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -32,7 +38,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 from . import at_login, tool_install
-from .cli_start import HOST, PORT, open_board, running
+from .board_build import Build, replaced
+from .cli_start import HOST, PORT, open_board, running, serving
 from .shell_environment import TOOLS, login_environment
 
 #: The question the move is asked with, in the dialog's own words.
@@ -104,6 +111,14 @@ def place_windows(executable: Path, environ: dict[str, str] | None = None,
     folder = programs(environ)
     folder.mkdir(parents=True, exist_ok=True)
     where = folder / "slipwai-board.exe"  # one name, whatever the download was called: a new version replaces it
+    # Windows will not overwrite an executable that is running, and the board an older copy started is. It
+    # will rename one, so the old file is moved aside for the new one, and the placed copy renews the board.
+    for aside in folder.glob("slipwai-board.*.old"):
+        with contextlib.suppress(OSError):  # still running: it goes on a later launch
+            aside.unlink()
+    if where.exists():
+        with contextlib.suppress(OSError):
+            os.replace(where, folder / f"slipwai-board.{os.getpid()}.old")
     shutil.copy2(executable, where)
     held = os.environ if environ is None else environ
     menu = Path(held.get("APPDATA") or Path.home() / "AppData/Roaming") / "Microsoft/Windows/Start Menu/Programs"
@@ -174,6 +189,32 @@ def wait_for_board(seconds: float = 15.0, up: Callable[[], bool] = running,
     return up()
 
 
+def stale(board: Build | None, system: str) -> bool:
+    """Whether the board answering is one this install replaced. A board too old to say which file it runs
+    is renewed on macOS, where renewing is reloading the service — which reaches only the service's own
+    board, and a board of someone's own then keeps its port. On Windows it would mean stopping a process
+    this cannot name, so that one is left until the next sign-in."""
+    if board is None:
+        return system == "darwin"
+    return replaced(board)
+
+
+def renew(root: Path, board: Build | None, system: str, home: Path | None = None,
+          install: Callable[..., list[str]] = at_login.install,
+          stop: Callable[[int], None] = lambda pid: os.kill(pid, signal.SIGTERM),
+          gone: Callable[[], bool] = lambda: wait_for_board(10.0, lambda: not running())) -> list[str]:
+    """The replaced board stopped and the service loaded again from this copy. The lines `install` said.
+
+    On macOS loading it is `bootout` and `bootstrap`, and `bootout` is what ends the service's board: killing
+    the process instead would have launchd start it again at once. Elsewhere the board is stopped by the
+    process it named — on Windows nothing else can stop it — and the service written again."""
+    if system != "darwin" and board is not None and board.pid and board.pid != os.getpid():
+        with contextlib.suppress(OSError):
+            stop(board.pid)
+        gone()
+    return install(root, HOST, PORT, home)
+
+
 def serve_here(root: Path, open_page: Callable[[str], object] = webbrowser.open) -> None:
     """The board served by this process, as bare `slipwai` does: for as long as the app runs."""
     server = open_board(root, open_page=open_page)
@@ -188,7 +229,8 @@ def serve_here(root: Path, open_page: Callable[[str], object] = webbrowser.open)
 def start(home: Path | None = None, system: str | None = None,
           open_page: Callable[[str], object] = webbrowser.open,
           run: Callable[..., subprocess.CompletedProcess] = subprocess.run) -> str:
-    """The whole launch. Says which way it went — `moved`, `here`, `registered` or `opened` — for the suite."""
+    """The whole launch. Says which way it went — `moved`, `here`, `registered`, `renewed` or `opened` — for
+    the suite."""
     system = system or sys.platform
     root = Path.home() if home is None else home
     if not placed(system=system, home=home):
@@ -205,8 +247,12 @@ def start(home: Path | None = None, system: str | None = None,
     link_command()
     tool_install.windows_shims()
     said = register(root, home)
+    up, board = serving()
+    renewed = up and stale(board, system)
+    if renewed:
+        said = renew(root, board, system, home)
     if running() or wait_for_board():
         open_page(f"http://{HOST}:{PORT}/")
-        return "registered" if said else "opened"
+        return "renewed" if renewed else "registered" if said else "opened"
     serve_here(root, open_page)
     return "here"

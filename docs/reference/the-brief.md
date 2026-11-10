@@ -97,16 +97,17 @@ as [a skiff](the-skiff-and-the-liner.md), one environment on the smallest comput
 a liner, the full stack. The first page works the two out from what was said and drawn and writes them
 `(proposed)`, which the check shows amber; where it cannot tell, it asks the two questions in plain words.
 
-A third line says where it runs: `- Where it runs: in our AWS account`, `in our Azure subscription`, `on a
-platform another team runs`, or `nowhere yet, I just want to try it`. The hand-over starts from the
-quickstart that place names:
+A third line says where it runs: `- Where it runs: in our own <cloud> account`, `on a platform another team
+runs`, or `nowhere yet, I just want to try it`. The hand-over starts from the quickstart that place names:
 
 | Where it runs | Quickstart |
 |---|---|
-| AWS | `aws-customer-product` |
-| Azure | `azure-staff-service` |
+| A cloud | the carried quickstart whose target is that cloud — today `aws-customer-product` for AWS and `azure-staff-service` for Azure |
 | A platform another team runs | `existing-platform-service`, or `internal-tool` for a staff screen |
 | Nowhere yet, or not said | `laptop-trial`, as before |
+
+A cloud is a target the catalogue deploys to, or one a carried quickstart starts on, so a brief naming a
+cloud whose package is not installed is still read as naming it.
 
 It does so only where this machine can reach the place: the quickstart's languages and its target are
 installed, and the target's own tools are on the PATH. Where any is missing, the hand-over starts on this

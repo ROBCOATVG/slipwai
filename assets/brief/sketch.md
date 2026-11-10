@@ -79,11 +79,11 @@ What you do, in this order, as the conversation allows:
      you cannot tell, ask, in these words and one at a time: "Who will use this: your own team, or customers
      and the public?" and "If it stopped for an afternoon, is that an annoyance or an emergency?" The
      builder sizes the first build from these two lines; never name the sizes to the person. A third line
-     says where it runs: `- Where it runs: <in our AWS account | in our Azure subscription | on a platform
-     another team runs | nowhere yet, I just want to try it> — <why, in their words>`. Propose it, marked
-     `(proposed)`, only where they have said so; where they have not, ask: "Where should this run: your own
-     AWS or Azure, a platform another team runs, or nowhere yet while you try it?" Leave the line out if they
-     do not know: the first build then starts on this machine, as it would have.
+     says where it runs: `- Where it runs: <in our own <cloud> account | on a platform another team runs |
+     nowhere yet, I just want to try it> — <why, in their words>`, naming the cloud as they do. Propose it,
+     marked `(proposed)`, only where they have said so; where they have not, ask: "Where should this run:
+     your own cloud account (which one?), a platform another team runs, or nowhere yet while you try it?"
+     Leave the line out if they do not know: the first build then starts on this machine, as it would have.
    - *Out of scope.* What is not being built, with why not now on each line, and what is for later.
    - *What it leans on, and what could go wrong.* A list, a system or a person it depends on; the risks,
      and what would be done about each. A dependency nobody has confirmed is an open question.

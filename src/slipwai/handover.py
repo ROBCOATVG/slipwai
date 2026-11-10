@@ -67,7 +67,7 @@ def short_of(one: Quickstart) -> list[str]:
     have = {*families(), *installed(directory()), *builtin()}
     lacking = [f"the {each.name} language" for each in one.languages if each.name not in have]
     target = answered(one).get("target", "")
-    if not managed(CATALOG, target):
+    if target in CATALOG["targets"] and not managed(CATALOG, target):
         return lacking
     if target not in loaded():
         return [*lacking, f"the {target} target"]
@@ -92,7 +92,8 @@ def destination(found: dict, pages: bool) -> tuple[str, str]:
     if not lacking:
         return name, ""
     needs = lacking[0] if len(lacking) == 1 else ", ".join(lacking[:-1]) + " and " + lacking[-1]
-    said = clouds().get(place, "a platform another team runs")
+    said = (clouds().get(place) or str(found.get("runs_named") or place)
+            if place in clouds() else "a platform another team runs")
     return BASE, (f"You said {said}. This machine cannot start there yet: it needs {needs}. "
                   f"Starting on this machine for now.")
 

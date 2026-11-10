@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from slipwai import first_run
+from slipwai import certificates, first_run
 from slipwai.cli import main as command
 
 #: Where an app with no terminal says what it would have printed.
@@ -36,6 +36,8 @@ def quiet() -> None:
 def main(argv: list[str] | None = None) -> None:
     asked = arguments(sys.argv[1:] if argv is None else argv)
     quiet()
+    # A first launch fetches before it reaches the command, so the app says it here as well.
+    certificates.install()
     if asked:
         sys.argv = [sys.argv[0], *asked]
         command()

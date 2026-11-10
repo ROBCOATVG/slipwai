@@ -14,7 +14,7 @@ if [ "$(uname -s)" = Linux ]; then
 fi
 
 if ! PYTHONPATH="$tools${PYTHONPATH:+:$PYTHONPATH}" "$build_python" -c \
-  'import PyInstaller; assert PyInstaller.__version__ == "6.22.2"' >/dev/null 2>&1; then
+  'import PyInstaller, certifi; assert PyInstaller.__version__ == "6.22.2"; assert certifi.__version__ == "2026.10.23"' >/dev/null 2>&1; then
   "$build_python" -m pip install --disable-pip-version-check --target "$tools" -r requirements-build.txt
 fi
 

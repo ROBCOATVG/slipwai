@@ -40,6 +40,20 @@ class SpecTest(unittest.TestCase):
         almost none of it and the executable would ship with most of itself missing."""
         self.assertIn('collect_submodules("slipwai")', self.spec)
 
+    def test_it_carries_the_roots_it_verifies_against(self) -> None:
+        """A new Windows holds too few roots to verify the index or Node, so the executable carries its own
+        (`slipwai/certificates.py`). The recipe imports the package, so a build without it stops; it names
+        the bundle among what it carries; and the build pins it."""
+        self.assertRegex(self.spec, r"(?m)^import certifi\b")
+        self.assertIn('collect_data_files("certifi")', self.spec)
+        self.assertRegex((REPOSITORY / "requirements-build.txt").read_text(encoding="utf-8"), r"(?m)^certifi==")
+
+    def test_both_doors_install_them(self) -> None:
+        """The command and the app each start their own process, and each fetches."""
+        for door, call in (("cli.py", "carry_certificates()"), ("app.py", "certificates.install()")):
+            with self.subTest(door=door):
+                self.assertIn(call, (REPOSITORY / "src/slipwai" / door).read_text(encoding="utf-8"))
+
     def test_the_entry_point_is_the_one_python_m_uses(self) -> None:
         self.assertIn("src/slipwai/__main__.py", self.spec)
 

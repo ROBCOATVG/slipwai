@@ -16,6 +16,7 @@ from .catalog import (
     families,
 )
 from .catalog_checks import validate_catalog
+from .certificates import install as carry_certificates
 from .cli_add import (
     add_frontend_main,
     add_service_main,
@@ -79,6 +80,9 @@ def main() -> None:
     `add-frontend`, `describe-service`, `migrate` and `replay` from inside one that does; `upgrade` from
     anywhere, about the command itself rather than about any project. Each verb owns its parser, so
     `slipwai generate --help` is the generator's flags and nothing else's."""
+    # Before any verb can fetch: a built keel verifies HTTPS against the roots it carries as well as the
+    # machine's, which on a new Windows are too few to verify anything (`certificates`).
+    carry_certificates()
     try:
         validate_catalog(CATALOG)
     except RegistryError as error:

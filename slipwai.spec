@@ -2,7 +2,11 @@
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_submodules
+# The roots the executable verifies HTTPS against, beside the machine's own (`slipwai/certificates.py`).
+# Imported here so that a build without them stops, rather than making an executable that cannot fetch
+# on a new Windows.
+import certifi  # noqa: F401
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 
 root = Path(SPECPATH)
@@ -24,6 +28,8 @@ DATAS = [
         (str(root / "docs/rename.json"), "docs"),
         # The worked quickstarts `generate` offers before its first question, read from beside the keel.
         (str(root / "docs/reference"), "docs/reference"),
+        # `cacert.pem`, where `certifi.where()` looks for it.
+        *collect_data_files("certifi"),
 ]
 
 
@@ -38,7 +44,7 @@ def analysed(entry):
         # so every keel module stays in the executable whether or not a static import from `__main__`
         # reaches it. The executable bundles no package: it is the keel alone, the same as the wheel, so
         # there is one artefact to build and sign and no bundled copy to drift from the chandlery's.
-        hiddenimports=collect_submodules("slipwai"),
+        hiddenimports=[*collect_submodules("slipwai"), "certifi"],
         hookspath=[],
         hooksconfig={},
         runtime_hooks=[],

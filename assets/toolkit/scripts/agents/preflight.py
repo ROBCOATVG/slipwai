@@ -85,8 +85,8 @@ def writable(path: str) -> bool:
 
 
 def python_checks() -> list[dict]:
-    found = [check("python", sys.version_info >= (3, 10), f"{sys.executable} is Python {sys.version.split()[0]}",
-                   "put a python3 of 3.10 or newer first on PATH (a non-interactive macOS shell finds /usr/bin/python3 first)")]
+    found = [check("python", sys.version_info >= (3, 11), f"{sys.executable} is Python {sys.version.split()[0]}",
+                   "put a python3 of 3.11 or newer first on PATH (a non-interactive macOS shell finds /usr/bin/python3 first)")]
     try:
         import yaml  # noqa: F401
         found.append(check("pyyaml", True, "PyYAML imports, so clearance and the chart can be read"))

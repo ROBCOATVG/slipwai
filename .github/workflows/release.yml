@@ -1,0 +1,128 @@
+name: release
+
+# `make release`, from the Actions tab, and the snapshot `main` opens after it. Nothing here decides anything:
+# `scripts/tag-release.py` is the script a laptop runs, and every refusal in it holds unchanged — a version is
+# spent the moment it is pushed, and a runner is no more careful than a person. What this supplies is the
+# hands: a checkout of `main`, an identity to commit with, and a token whose push is an ordinary user's.
+#
+# That last part is why this needs `RELEASE_TOKEN` rather than the job's own `github.token`. The release is
+# published by the run the `v*` tag starts (`verify.yml`'s publish job), and GitHub starts no workflow for a
+# push made with a workflow's own token: the tag would be pushed with nothing built from it — a spent version
+# and no release, the one state this repository cannot undo. A personal access token's push is a person's,
+# so the tag starts `verify.yml` exactly as it does from a laptop.
+#
+# Version 1 had this workflow, for the Gitea mirror, and it went with the rest when slipwai 2 was brought back
+# from empty. It never opened the next snapshot; that was a commit somebody remembered to make by hand
+# (`Main carries 2.0.2.dev0 after the 2.0.1 release`). It is made here, in the same push as the release, so
+# `main` is never left carrying a version that has already been spent.
+#
+# Two guards a laptop does not need, because a click is cheaper than a command and a mis-click spends a
+# number: the release is typed out and held against what `main` carries, and the commit about to be tagged
+# must already have a green `verify` run of its own.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The release to cut, e.g. 2.1.0 — must be the one main is a snapshot of'
+        required: true
+      mode:
+        description: 'dry-run writes nothing; cut-the-release spends the version and cannot be undone'
+        type: choice
+        required: true
+        default: dry-run
+        options:
+          - dry-run
+          - cut-the-release
+
+permissions:
+  contents: read
+  actions: read
+
+# Never two at once, and never cancelled: a release half-made is worse than one that waited.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # The canonical repository only: a fork has no `RELEASE_TOKEN` and no business spending a number.
+    if: github.repository == 'ROBCOATVG/slipwai'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # A release is cut from `main` whatever branch the dispatch form was left on.
+          ref: main
+          # The whole history and every tag: the script reads the last release out of them and refuses a tag
+          # this repository already has.
+          fetch-depth: 0
+          # The push below authenticates as `RELEASE_TOKEN`. Left persisted, the job's own token would be the
+          # one the push used, and the tag would start nothing — see the note at the top.
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Confirm the number being spent is the one main carries
+        env:
+          # Through the environment rather than interpolated into the script: a dispatch input is somebody's
+          # typing, and typing does not belong in a shell line.
+          ASKED: ${{ inputs.version }}
+        run: |
+          carried=$(PYTHONPATH=src python3 -c 'from slipwai.versions import base; print(base(open("VERSION").read().strip()) or "")')
+          if [ "$carried" != "$ASKED" ]; then
+            echo "::error::main carries VERSION $(cat VERSION), a snapshot of ${carried:-no release this can read}, and the dispatch asked for '$ASKED'. Cutting a release is spending a number, so the two have to agree: dispatch again with $carried, or raise what main carries first."
+            exit 1
+          fi
+          echo "main carries $(cat VERSION), a snapshot of $carried, which is what was asked for."
+
+      - name: Confirm the commit about to be tagged is already green
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          head=$(git rev-parse HEAD)
+          state=$(gh api "repos/$REPOSITORY/actions/workflows/verify.yml/runs?head_sha=$head&event=push" \
+            --jq '[.workflow_runs[] | select(.status == "completed")][0].conclusion // "none"')
+          if [ "$state" != "success" ]; then
+            echo "::error::${head:0:12} is the head of main and its verify run says '$state'. A release names a commit the gate has passed; wait for the run, or fix main and release the commit that fixes it."
+            exit 1
+          fi
+          echo "${head:0:12} passed verify."
+
+      - name: Cut the release and open the next snapshot
+        env:
+          MODE: ${{ inputs.mode }}
+          RELEASE: ${{ inputs.version }}
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          GIT_AUTHOR_NAME: ${{ github.actor }}
+          GIT_COMMITTER_NAME: ${{ github.actor }}
+          GIT_AUTHOR_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
+          GIT_COMMITTER_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
+        run: |
+          set -eu
+          next=$(PYTHONPATH=src python3 -c "from slipwai.versions import next_snapshot; print(next_snapshot('$RELEASE'))")
+          if [ "$MODE" != "cut-the-release" ]; then
+            python3 scripts/tag-release.py --dry-run
+            echo "dry run: would tag v$RELEASE, then open $next on main"
+            [ -n "${RELEASE_TOKEN:-}" ] || echo "::warning::No RELEASE_TOKEN secret: a real release would stop before the push."
+            exit 0
+          fi
+          if [ -z "${RELEASE_TOKEN:-}" ]; then
+            echo "::error::No RELEASE_TOKEN secret, so nothing here could push. Add a fine-grained personal access token with Contents read and write on this repository under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          python3 scripts/tag-release.py
+          # The next snapshot, and the guide's `slipwai --version` line with it: `scripts/test-docs.py` holds
+          # the page to what the command prints, and a snapshot prints its release's number as its prefix.
+          printf '%s\n' "$next" > VERSION
+          shown=${next%.dev0}
+          sed -i -E "s/^slipwai [0-9]+\.[0-9]+\.[0-9]+$/slipwai $shown/" docs/guide/start-here.md
+          git add VERSION docs/guide/start-here.md
+          git commit -m "Main carries $next after the $RELEASE release"
+          # One push, atomic: the release commit, its tag and the snapshot land together or not at all.
+          git push --atomic "https://x-access-token:${RELEASE_TOKEN}@github.com/${REPOSITORY}.git" \
+            HEAD:refs/heads/main "refs/tags/v$RELEASE"
+          echo "v$RELEASE is pushed; its verify run publishes it. main now carries $next."

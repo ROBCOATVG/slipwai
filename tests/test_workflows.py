@@ -160,5 +160,32 @@ class PackageWorkflowTest(unittest.TestCase):
         self.assertNotIn("slipwai_v2_Fork", self.workflow)
 
 
+
+class ReleaseTest(unittest.TestCase):
+    """The release cut from the Actions tab: `make release`'s script, pushed as a person, and the next snapshot."""
+
+    def setUp(self) -> None:
+        self.release = read("release.yml")
+
+    def test_it_is_only_ever_started_by_hand(self) -> None:
+        self.assertRegex(self.release, r"on:\s*\n\s*workflow_dispatch:")
+        self.assertNotRegex(self.release, r"\n  (push|pull_request|schedule):")
+
+    def test_it_pushes_with_a_person_s_token_so_the_tag_starts_the_publish(self) -> None:
+        """GitHub starts no workflow for a push made with a workflow's own token: the tag would be spent
+        with nothing built from it."""
+        self.assertIn("persist-credentials: false", self.release)
+        self.assertIn("x-access-token:${RELEASE_TOKEN}@github.com", self.release)
+
+    def test_the_tagged_commit_has_passed_the_gate_and_the_number_is_the_one_main_carries(self) -> None:
+        self.assertIn("workflows/verify.yml/runs?head_sha=", self.release)
+        self.assertIn("from slipwai.versions import base", self.release)
+
+    def test_it_runs_the_laptop_s_script_and_opens_the_next_snapshot_in_the_same_push(self) -> None:
+        self.assertIn("python3 scripts/tag-release.py\n", self.release)
+        self.assertIn("next_snapshot", self.release)
+        self.assertIn("git push --atomic", self.release)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

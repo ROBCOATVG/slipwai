@@ -11,6 +11,7 @@
 # why: 2026-11-09 d2a8de915041746c 24.3: the root Makefile sets .SHELLFLAGS := -hc inside ifeq ($(OS),Windows_NT); OS is unset on macOS and Linux, so the block is skipped and SHELL := /bin/bash runs every line as before.
 # why: 2026-11-09 5b5c6f2aa0d51bd8 Off Windows: moorings.leave removes a junction only on os.name nt, and the harbourmaster's refused-rebase message adds git's own last line where it named no file; neither changes what runs on macOS or Linux.
 # why: 2026-11-10 7d4301fb5aae4164 Not Windows work, and deliberately a change on every platform: check-slice-scope lets a slice write specs/<feature>/people/ (sail.md rung 12 already told it to) and, on the event profile, the chart check-chart holds to the model, as it lets model.drawio through; logs.py refuses a fleet-ticked need with no check on write and reads one already written as a person's, as fleet.py tell already refused it.
+# why: 2026-11-10 f81a3ff6cd1ddce5 Not Windows work, and deliberately a change on every platform: under /cruise the captain resumes a parked slice as answered by decisions only when its newest park was waiting on questions undecided when it was written, the rule the harbourmaster already clears by; a park written after the decisions no longer re-dispatches the slice every turn.
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -136,10 +137,6 @@
 74ba4ce93d9a1845d349ba1dd8ed72bcede381837ae67bdd502dd39c52a1ff89  event-modelling-postgres-toy-serve  scripts/check-migration.py
 74ba4ce93d9a1845d349ba1dd8ed72bcede381837ae67bdd502dd39c52a1ff89  standard-memory-none  scripts/check-migration.py
 74ba4ce93d9a1845d349ba1dd8ed72bcede381837ae67bdd502dd39c52a1ff89  standard-postgres-toy-serve  scripts/check-migration.py
-75c8084291acc14d64d54ca7826266894ed0f28d5cc809db3f620a5d219b797c  event-modelling-memory-none  scripts/agents/captain.py
-75c8084291acc14d64d54ca7826266894ed0f28d5cc809db3f620a5d219b797c  event-modelling-postgres-toy-serve  scripts/agents/captain.py
-75c8084291acc14d64d54ca7826266894ed0f28d5cc809db3f620a5d219b797c  standard-memory-none  scripts/agents/captain.py
-75c8084291acc14d64d54ca7826266894ed0f28d5cc809db3f620a5d219b797c  standard-postgres-toy-serve  scripts/agents/captain.py
 787e3d1480f01bd922746c846b2bdaf5647ca29a1d4628010a05c30694122d01  event-modelling-memory-none  scripts/agents/drive.py
 787e3d1480f01bd922746c846b2bdaf5647ca29a1d4628010a05c30694122d01  event-modelling-postgres-toy-serve  scripts/agents/drive.py
 787e3d1480f01bd922746c846b2bdaf5647ca29a1d4628010a05c30694122d01  standard-memory-none  scripts/agents/drive.py
@@ -322,6 +319,10 @@ fbf91ff542a759670f916be44e2122fcbb1ccf342e4326605b878fbbe6201426  event-modellin
 fbf91ff542a759670f916be44e2122fcbb1ccf342e4326605b878fbbe6201426  event-modelling-postgres-toy-serve  scripts/agents/draft.py
 fbf91ff542a759670f916be44e2122fcbb1ccf342e4326605b878fbbe6201426  standard-memory-none  scripts/agents/draft.py
 fbf91ff542a759670f916be44e2122fcbb1ccf342e4326605b878fbbe6201426  standard-postgres-toy-serve  scripts/agents/draft.py
+fd0e240007ef08aab85784f3c4f57724806c51833c139c4cfa8c8b59ddb9e24a  event-modelling-memory-none  scripts/agents/captain.py
+fd0e240007ef08aab85784f3c4f57724806c51833c139c4cfa8c8b59ddb9e24a  event-modelling-postgres-toy-serve  scripts/agents/captain.py
+fd0e240007ef08aab85784f3c4f57724806c51833c139c4cfa8c8b59ddb9e24a  standard-memory-none  scripts/agents/captain.py
+fd0e240007ef08aab85784f3c4f57724806c51833c139c4cfa8c8b59ddb9e24a  standard-postgres-toy-serve  scripts/agents/captain.py
 fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  event-modelling-memory-none  scripts/agents/sail.py
 fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  event-modelling-postgres-toy-serve  scripts/agents/sail.py
 fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  standard-memory-none  scripts/agents/sail.py

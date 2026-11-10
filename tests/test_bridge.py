@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import threading
 import time
@@ -31,7 +32,7 @@ from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
 from slipwai.telegraph import MEANS
 
-# budget: 775 — every route the board answers, the draft that runs by itself, the question that reads
+# budget: 795 — every route the board answers, the draft that runs by itself, the question that reads
 # once among them, driven against
 # `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
@@ -42,6 +43,7 @@ from slipwai.telegraph import MEANS
 # Fifteen more for the storyboard's design files, served at the path they have in the project.
 # Twenty for Done on a note for the host, which is a `read` receipt written from the page.
 # and an answer from a red card naming the slice it is for
+# Twenty for where trunk's CI is read: the remote a form gives, and the question before casting off.
 
 
 class TellTest(Fixture):
@@ -667,6 +669,31 @@ class LandingTest(BoardTest):
         self.assertIn("captain started", receipt["lines"])
         self.assertEqual(receipt["step"], "cruise")
         del module
+
+    def test_a_harbour_with_no_remote_asks_where_ci_is_read_before_it_casts_off(self) -> None:
+        """game-club-manager built three slices and merged none: its harbour had no remote, and the
+        harbourmaster refuses every merge it cannot check. Asked here, before a day of work, not at the end."""
+        self.land()
+        subprocess.run(["git", "init", "-q"], cwd=self.made, check=True)
+        (self.made / "harbour.json").write_text('{"v": 1}\n', encoding="utf-8")
+        rows = [{"slice": "S01", "state": "todo", "title": "", "why": "", "fairway": "", "clearance": "blocked",
+                 "feature": "001-demo"}]
+        self.patch("folded", lambda root, feature="": (rows, ""))
+        self.assertIn('id="remote-card"', self.get("/voyage")[1])
+        code, said = self.post("/cast-off", {})
+        self.assertEqual(code, 400)
+        self.assertIn("no remote", said)
+        self.assertEqual(self.post("/ci-off", {})[0], 200)
+        self.assertEqual(json.loads((self.made / "harbour.json").read_text(encoding="utf-8"))["ci"], "off")
+        self.assertNotIn('id="remote-card"', self.get("/voyage")[1])
+
+    def test_a_remote_typed_for_a_target_that_deploys_nothing_is_added_when_the_project_is_made(self) -> None:
+        """Only a target that deploys was handed it, so every other project's remote went nowhere."""
+        subprocess.run(["git", "init", "-q"], cwd=self.made, check=True)
+        self.post("/generate/run", {"name": "demo", "init": "none", "repository": "git@example.com:me/demo.git"})
+        found = subprocess.run(["git", "remote", "get-url", "origin"], cwd=self.made, capture_output=True,
+                               text=True)
+        self.assertEqual(found.stdout.strip(), "git@example.com:me/demo.git")
 
     def test_the_viewer_is_served_from_the_copy_the_board_keeps_or_the_page_says_why(self) -> None:
         import slipwai.bridge as module

@@ -1038,6 +1038,24 @@ def settled(found: list[logs.Entry], slice_id: str) -> bool:
         and not open_questions(found, slice_id)
 
 
+def park_waited_on_questions(found: list[logs.Entry], parks: list[logs.Entry]) -> bool:
+    """Whether the newest of a slice's open parks was waiting on its questions: one asked by then and not yet
+    decided by then, the rule the harbourmaster clears such a park by.
+
+    A park written after every question was decided is about something else. game-club-manager's CL-01,
+    DS-03 and PE-01 were built and waiting on a merge, and every turn resumed them as answered by decisions
+    taken the day before: the session re-entered, found nothing to do, parked on the host again, and was
+    resumed again — over a hundred claims a stream, a paid session each time.
+    """
+    if not parks:
+        return False
+    park = parks[-1]
+    slice_id = str(park.fields.get("slice", ""))
+    settled_then = {str(e.fields.get("id", "")) for e in found if e.kind == "decision" and e.t <= park.t}
+    return any(e.kind == "question" and e.t <= park.t and str(e.fields.get("slice", "")) == slice_id
+               and str(e.fields.get("id", "")) not in settled_then for e in found)
+
+
 def decide_parked(feature: str, fairway: str, held: dict[str, str]) -> list[str]:
     """Put the open questions of every slice parked on its own to the skipper, once each, under `/cruise`.
     The slices whose every question is now decided.
@@ -1078,7 +1096,9 @@ def decide_parked(feature: str, fairway: str, held: dict[str, str]) -> list[str]
     for thread in threads:
         thread.join()
     found = entries(feature, fairway)
-    answered = [slice_id for slice_id in held if settled(found, slice_id)]
+    parks = logs.open_parks(found, harbour_entries(), fairway)
+    answered = [slice_id for slice_id in held if settled(found, slice_id) and park_waited_on_questions(
+        found, [e for e in parks if str(e.fields.get("slice", "")) == slice_id])]
     for slice_id in answered:
         ids = sorted({str(e.fields.get("id", "")) for e in found
                       if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id})

@@ -138,6 +138,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # the app opened from a download: placing itself, registering the board, opening it.
               "prerequisites", "tool_install", "machine_card", "first_run", "app", "update_strip",
               "terminal_command",
+              # Where trunk's CI is read, asked before the fleet sails rather than at its first merge.
+              "trunk_remote",
               "bridge", "bridge_page", "fleet_page", "timeline_page",
               "cli_bridge", "cli_start",
               "interview_page",

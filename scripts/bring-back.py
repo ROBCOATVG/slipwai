@@ -106,6 +106,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "strategy_record", "stack_proposal", "strategy_form", "strategy_steps", "adoption_run",
        # Carrying in what a PRD cites. The experiment had no PRD to start from.
        "design_docs",
+       # Where trunk's CI is read, asked before the fleet sails. The experiment merged with no CI to read.
+       "trunk_remote",
        # The brief read before it is handed over, and the page reader the board and that check share.
        "drawn", "brief_check", "brief_session", "brief_page", "cli_brief",
        # The Agent Client Protocol's client half, and what the board runs it on. The experiment had one

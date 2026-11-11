@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from . import harness_cli
 from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
@@ -451,11 +452,13 @@ class Fitting:
 
 def start(where: Path, harness: str | None = None, said: list[str] | None = None,
           repository: str | None = None, prd: bool = False, extensions: tuple[str, ...] = (),
-          committed: tuple[Step, ...] = ()) -> Fitting:
+          committed: tuple[Step, ...] = (), installs: bool = False) -> Fitting:
     """`./init` begun in the background, then `committed` — what goes once its work is a commit — and the
     draft after them, where a PRD came with the answers and an agent was named to draft with. Returned
     rather than awaited: what it says is read by polling."""
-    steps = ([init_step(where, harness, repository, extensions),
+    missing = harness_cli.parts(harness) if installs else []  # the harness's own command, where the board asks
+    steps = ([*(Step(*part, "init", stops=False) for part in missing),
+              init_step(where, harness, repository, extensions),
               *committing(where, command(harness, repository, extensions)), *committed] if harness else [])
     if steps and prd:
         steps.append(draft_step(where))

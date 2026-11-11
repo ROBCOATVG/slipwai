@@ -20,7 +20,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import board_settings, machine_card, tool_install
+from slipwai import board_settings, machine_card, shell_environment, tool_install
 from slipwai.agent_install import fetched
 
 
@@ -124,6 +124,26 @@ class FeedbackTest(unittest.TestCase):
         self.assertIn("if (!answer.ok && (await asked()).done)", script,
                       "refused as already being installed: that install is followed, not a dead end")
         self.assertIn("document.createElement('progress')", script)
+
+    def test_the_board_s_own_path_has_the_tools_it_installed(self) -> None:
+        """On a machine whose only Git was the board's, generate made the project and then said `[WinError 2]
+        The system cannot find the file specified`: the board asked `git` whether there was a remote, by
+        name, and a bare name is looked for on the board's own path, where its tools were not."""
+        mine = self.tools / "git/unpacked/cmd"
+        mine.mkdir(parents=True)
+        (self.tools / "git/tool.json").write_text(json.dumps({"bin": str(mine), "first": False}))
+        held = {"PATH": os.pathsep.join(["/usr/bin", "/bin"])}
+        shell_environment.adopt_tools(held, self.tools)
+        self.assertEqual(held["PATH"].split(os.pathsep), ["/usr/bin", "/bin", str(mine)], "on the end: theirs first")
+        shell_environment.adopt_tools(held, self.tools)
+        self.assertEqual(held["PATH"].count(str(mine)), 1, "asked again at every install, added once")
+        own = {"PATH": "/usr/bin"}
+        with mock.patch.object(tool_install, "adopt_tools", lambda home: shell_environment.adopt_tools(own, home)):
+            held_install, found = self.installing()
+            with mock.patch.object(held_install, "archive", return_value=found):
+                held_install.run()
+        self.assertIn(str(self.tools / "node/unpacked/node-v24.0.0-darwin-arm64/bin"), own["PATH"],
+                      "a tool is found by the board from its install, not from the board's next start")
 
     def test_a_tool_installed_since_the_board_started_is_on_the_path_it_looks_on(self) -> None:
         """The board installed Node and went on saying there was no `npx`, until it was started again."""

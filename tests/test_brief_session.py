@@ -244,6 +244,24 @@ class SketchTest(unittest.TestCase):
         self.assertEqual(opened.call_args.kwargs["encoding"], "utf-8")
         self.assertTrue(self.sketch.begun, "the turn was heard to its end, so the next one resumes the session")
 
+    def test_an_answer_stopped_at_the_limit_says_so_and_the_next_one_resumes(self) -> None:
+        """A turn that had spoken and was then stopped at the limit ended with no word: the page showed a
+        conversation that had stopped, mid-drawing, and nothing about why."""
+        script = self.area / "slow.py"
+        script.write_text(
+            "import json, sys, time\n"
+            "print(json.dumps({'type': 'assistant', 'message': {'content': [\n"
+            "    {'type': 'text', 'text': 'Now the drawing itself.'}]}}), flush=True)\n"
+            "time.sleep(60)\n", encoding="utf-8")
+        self.sketch = Sketch("club-boats", [sys.executable, str(script)])
+        with mock.patch.object(brief_session, "LIMIT", 1):
+            self.sketch.ask("go")
+            said = self.settle()
+        self.assertEqual([(t["kind"], t["text"][:40]) for t in said["turns"][1:]],
+                         [("text", "Now the drawing itself."), ("error", "This answer was stopped after 0 minutes,")])
+        self.assertIn("carry on", said["turns"][-1]["text"])
+        self.assertTrue(self.sketch.begun, "it had answered, so the next thing said resumes the session")
+
     def test_nothing_said_and_a_second_turn_under_way_are_refused(self) -> None:
         with self.assertRaises(ValueError):
             self.sketch.ask("   ")

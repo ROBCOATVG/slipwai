@@ -59,8 +59,11 @@ BROUGHT = "Here is the document I already have, in brief/prd.md. Read it first."
 #: The two lines the prompt asks the session to print, so the page can follow it.
 STEP = re.compile(r"^step:\s*([1-4])\s*$", re.MULTILINE)
 READY = "The brief is ready to hand over."
-#: How long one answer may take: a drawing is longer than a handful of file reads.
-LIMIT = 900
+#: How long one answer may take: a drawing is longer than a handful of file reads. A document a person
+#: brought is reviewed, corrected and drawn in one answer, and the first one of fifty kilobytes took ten
+#: minutes over a single reply and was stopped at fifteen with the drawing half written. The Stop button is
+#: how a person ends one sooner.
+LIMIT = 3600
 KEPT = 400
 
 
@@ -299,7 +302,14 @@ class Sketch:
             self.child = subprocess.Popen(argv, cwd=self.home, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                           stderr=subprocess.STDOUT, text=True, env=self.environment(),
                                           start_new_session=True, **AGENT_TEXT)
-            timer = threading.Timer(LIMIT, self.child.kill)
+            late = threading.Event()
+            child = self.child
+
+            def stopped() -> None:
+                late.set()
+                child.kill()
+
+            timer = threading.Timer(LIMIT, stopped)
             timer.start()
             try:
                 answered = False
@@ -308,7 +318,12 @@ class Sketch:
                 self.child.wait()
             finally:
                 timer.cancel()
-            if self.child.returncode and not answered:
+            if late.is_set():
+                # Said, because a turn that had already spoken ended here with no word at all: the page
+                # showed a conversation that had stopped, and nothing about why or what to do next.
+                self.say("sketch", f"This answer was stopped after {LIMIT // 60} minutes, before it was finished. "
+                         "What it wrote is kept. Say `carry on` to pick it up where it stopped.", "error")
+            elif self.child.returncode and not answered:
                 self.say("sketch", f"The session ended with status {self.child.returncode} and said nothing.", "error")
             self.begun = self.begun or answered
         except OSError as fault:

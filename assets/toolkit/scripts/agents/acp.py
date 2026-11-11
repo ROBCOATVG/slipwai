@@ -58,7 +58,16 @@ OnQuestion = Callable[[dict[str, Any]], "tuple[str, dict[str, Any] | None]"]
 
 
 class Fault(RuntimeError):
-    """The session cannot go on: the agent is gone, or answered with an error, or did not answer in time."""
+    """The session cannot go on: the agent is gone, or answered with an error, or did not answer in time.
+    `code` is the error's own, where the agent gave one: `SIGNED_OUT` is the protocol's for nobody signed in."""
+
+    code = 0
+
+
+SIGNED_OUT = -32000  # the protocol's error code for a request refused because nobody is signed in
+#: Said at `initialize`: this client can have a terminal sign-in run. An agent told nothing offers none, which
+#: for one with no other is no way to sign in. The `_meta` spelling has the agent name the whole command.
+TERMINAL_SIGN_IN: dict[str, Any] = {"auth": {"terminal": True}, "_meta": {"terminal-auth": True}}
 
 
 @dataclass
@@ -145,7 +154,7 @@ class Session:
         threading.Thread(target=self.read, daemon=True).start()
         said = self.call("initialize", {"protocolVersion": PROTOCOL, "clientInfo": {"name": "slipwai", "version": "2"},
                                         "clientCapabilities": {"fs": {"readTextFile": False, "writeTextFile": False},
-                                                               "terminal": False}}, waits)
+                                                               "terminal": False, **TERMINAL_SIGN_IN}}, waits)
         if said.get("protocolVersion") != PROTOCOL:
             raise Fault(f"the agent speaks protocol version {said.get('protocolVersion')!r}, not {PROTOCOL}")
         able = said.get("agentCapabilities") or {}
@@ -187,7 +196,10 @@ class Session:
                 self.waiting.pop(number, None)
         if "error" in box:
             error = box["error"] or {}
-            raise Fault(f"the agent refused {method}: {error.get('message') or error}")
+            fault = Fault(f"the agent refused {method}: {error.get('message') or error}")
+            code = error.get("code") if isinstance(error, dict) else None
+            fault.code = code if isinstance(code, int) else 0
+            raise fault
         if "gone" in box:
             raise Fault(self.gone())
         return dict(box.get("result") or {})

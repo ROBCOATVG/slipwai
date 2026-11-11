@@ -16,6 +16,10 @@ needs, the row already says so, and this does not start.
 """
 from __future__ import annotations
 
+import os
+import shlex
+import subprocess
+import sys
 import threading
 import time
 from datetime import UTC, datetime
@@ -31,7 +35,11 @@ from .shell_environment import login_environment
 #: Where the handshake's session lives, one folder per agent: its cwd, and under it the client's keep.
 HOME = SLIPWAI / "ready"
 #: What the page keeps of a sign-in method: enough to show it and to run it, nothing the agent did not say.
-METHOD_FIELDS = ("id", "name", "description", "type", "args", "env")
+METHOD_FIELDS = ("id", "name", "description", "type", "args", "env", "_meta")
+#: Where the board can open a window for a sign-in that is a terminal's; elsewhere the page says the line.
+WINDOWED = sys.platform in ("win32", "darwin")
+#: How long a sign-in in a window is waited on: a browser, an account, perhaps a code pasted back.
+SIGN_IN_LIMIT = 900.0
 
 
 class Readying:
@@ -44,7 +52,7 @@ class Readying:
         self.home = (HOME if home is None else home) / key
         self.settings_path = settings_path
         self.lines: list[str] = []
-        self.done = False
+        self.done = self.failed = False
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
@@ -52,8 +60,38 @@ class Readying:
         with self.lock:
             self.lines.append(line)
 
+    def terminal(self, method: dict[str, Any]) -> None:
+        """A sign-in that is a command of the agent's, run in a window of its own and waited on: the agent
+        opens the browser from there, and takes a pasted code there where the browser cannot call back."""
+        name = str(method.get("name") or method.get("id"))
+        env = {**login_environment(), **acp_environment(self.key),
+               **{str(k): str(v) for k, v in (method.get("env") or {}).items()}}
+        self.say(f"A window is open to sign in: {name}. Finish there and in the browser it opens; this page waits.")
+        signed = False
+        try:
+            status = in_a_window(sign_in_argv(self.launch, method), env, self.home)
+            signed = status == 0
+            self.say(f"Signed in, by {name}." if signed
+                     else f"! The sign-in ended with status {status}: nobody is signed in. Press it again to retry.")
+        except (OSError, subprocess.SubprocessError) as fault:
+            self.say(f"! The sign-in could not be run: {fault}")
+        finally:
+            if signed:
+                settings = read(self.settings_path)
+                found = settings.ready.get(self.key, {})
+                today = datetime.now(UTC).strftime("%Y-%m-%d")
+                settings.ready[self.key] = {**found, "signed_in": {**found.get("signed_in", {}), self.method: today}}
+                write(settings, self.settings_path)
+            with self.lock:
+                self.done, self.failed = True, not signed
+
     def run(self) -> None:
         self.home.mkdir(parents=True, exist_ok=True)
+        kept = read(self.settings_path).ready.get(self.key, {}).get("auth") or []
+        method = next((one for one in kept if one.get("id") == self.method and one.get("type") == "terminal"), None)
+        if method is not None:
+            self.terminal(method)
+            return
         env = {**login_environment(), **acp_environment(self.key)}
         session = acp.Session(self.launch.argv, self.home, lambda update: None, lambda call, options: None,
                               lambda params: ("decline", None), env=env, kept=self.home / acp.KEPT)
@@ -91,11 +129,11 @@ class Readying:
             settings.ready[self.key] = {**settings.ready.get(self.key, {}), **record}
             write(settings, self.settings_path)
             with self.lock:
-                self.done = True
+                self.done, self.failed = True, bool(record["fault"])
 
     def state(self) -> dict[str, Any]:
         with self.lock:
-            return {"key": self.key, "lines": list(self.lines), "done": self.done}
+            return {"key": self.key, "lines": list(self.lines), "done": self.done, "failed": self.failed}
 
 
 RUNNING: dict[str, Readying] = {}
@@ -125,11 +163,49 @@ def begin(key: str, method: str = "", home: Path | None = None, settings_path: P
 
 def state(key: str) -> dict[str, Any]:
     held = RUNNING.get(key)
-    return held.state() if held is not None else {"key": key, "lines": [], "done": True}
+    return held.state() if held is not None else {"key": key, "lines": [], "done": True, "failed": False}
+
+
+def sign_in_argv(launch: Launch, method: dict[str, Any]) -> list[str]:
+    """The command of a method of the terminal kind. Where the agent named the whole of it (`_meta`'s
+    `terminal-auth`) that is it: an agent fetched by `npx` is a script in a cache, and only the agent knows
+    where. Otherwise the agent's own command with the method's arguments in place of the launch's, as the
+    registry's authentication page says."""
+    named = (method.get("_meta") or {}).get("terminal-auth") or {}
+    if named.get("command"):
+        return [str(named["command"]), *[str(a) for a in named.get("args") or []]]
+    head = launch.argv[0] if launch.argv else launch.key
+    return [head, *[str(a) for a in method.get("args") or []]]
 
 
 def sign_in_line(launch: Launch, method: dict[str, Any]) -> str:
-    """What a person runs for a method of the terminal kind: the agent's own command with the method's
-    arguments in place of the launch's, as the registry's authentication page says."""
-    head = launch.argv[0] if launch.argv else launch.key
-    return " ".join([head, *[str(a) for a in method.get("args") or []]])
+    """What a person runs for a method of the terminal kind, where the board has no window to run it in."""
+    return " ".join(sign_in_argv(launch, method))
+
+
+def in_a_window(argv: list[str], env: dict[str, str], home: Path, limit: float = SIGN_IN_LIMIT) -> int:
+    """`argv` run in a terminal window of its own, waited on; its exit status. On Windows a console of the
+    child's own; on a Mac a script Terminal opens, which leaves the status in a file for this to find."""
+    if sys.platform == "win32":
+        child = subprocess.Popen(argv, env=env, cwd=home,  # noqa: S603 — the agent's own sign-in command
+                                 creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
+        try:
+            return child.wait(limit)
+        except subprocess.TimeoutExpired:
+            child.kill()
+            raise
+    if sys.platform != "darwin":
+        raise OSError(f"there is no window to open here; run it in a terminal: {' '.join(argv)}")
+    script, status = home / "sign-in.command", home / "sign-in.status"
+    status.unlink(missing_ok=True)
+    sets = "".join(f"export {name}={shlex.quote(value)}\n" for name, value in env.items()
+                   if name == "PATH" or name not in os.environ)
+    script.write_text(f"#!/bin/sh\n{sets}{shlex.join(argv)}\necho $? > {shlex.quote(str(status))}\n", encoding="utf-8")
+    script.chmod(0o700)
+    subprocess.run(["/usr/bin/open", str(script)], check=True)  # noqa: S603 — Terminal, on the board's own script
+    ends = time.monotonic() + limit
+    while time.monotonic() < ends:
+        if status.is_file() and status.read_text(encoding="utf-8").strip():
+            return int(status.read_text(encoding="utf-8").strip())
+        time.sleep(0.5)
+    raise subprocess.TimeoutExpired(argv, limit)

@@ -143,9 +143,13 @@ def main():
         message = json.loads(line)
         number, method, params = message.get("id"), message.get("method"), message.get("params") or {}
         if method == "initialize":
+            # A sign-in run in a terminal is offered only to a client that says it can run one, as the
+            # Claude adapter does: a client that said nothing was offered no way to sign in at all.
+            able = ((params.get("clientCapabilities") or {}).get("auth") or {}).get("terminal") is True
             send(id=number, result={"protocolVersion": params.get("protocolVersion"),
                                     "agentInfo": {"name": "stand-in", "version": "0.1"},
-                                    "agentCapabilities": {"loadSession": True}, "authMethods": METHODS})
+                                    "agentCapabilities": {"loadSession": True},
+                                    "authMethods": METHODS if able else METHODS[:1]})
         elif method == "authenticate":
             if params.get("methodId") == "login":
                 send(id=number, result={})
@@ -166,6 +170,9 @@ def main():
             send(id=number, result={"configOptions": options})
         elif method == "session/prompt":
             words = " ".join(str(block.get("text", "")) for block in params.get("prompt") or [])
+            if words.strip().endswith("signed out"):
+                send(id=number, error={"code": -32000, "message": "Authentication required"})
+                continue
             send(id=number, result={"stopReason": turn(number, params["sessionId"], words)})
         elif number is not None:
             send(id=number, error={"code": -32601, "message": f"{method} is not known here"})

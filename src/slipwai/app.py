@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from slipwai import certificates, first_run
+from slipwai import certificates, first_run, splash
 from slipwai.cli import main as command
 
 #: Where an app with no terminal says what it would have printed.
@@ -38,7 +38,11 @@ def main(argv: list[str] | None = None) -> None:
     quiet()
     # A first launch fetches before it reaches the command, so the app says it here as well.
     certificates.install()
+    # The picture is for a double-click. Whatever this process starts — the board's children, an agent's
+    # `slipwai` — is this same file as the command, and opens without it.
+    splash.quiet_children()
     if asked:
+        splash.close()
         sys.argv = [sys.argv[0], *asked]
         command()
         return

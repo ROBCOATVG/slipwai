@@ -116,6 +116,8 @@ class ShapeTest(unittest.TestCase):
         self.assertIn("Startup", str(one.path))
         self.assertIn("bridge", one.text)
         self.assertIn("next sign-in", one.at_next)
+        # Nobody opened the app at sign-in: the board starts without the picture a double-click shows.
+        self.assertIn("set PYINSTALLER_SUPPRESS_SPLASH_SCREEN=1\r\n", one.text)
 
 
 class InstallTest(unittest.TestCase):

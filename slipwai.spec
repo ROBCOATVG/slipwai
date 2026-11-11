@@ -33,8 +33,9 @@ DATAS = [
 ]
 
 
-def analysed(entry):
-    """One keel, analysed from `entry`: the command's `__main__`, or the app's `app.py`."""
+def analysed(entry, also=()):
+    """One keel, analysed from `entry`: the command's `__main__`, or the app's `app.py`. `also` names what
+    one build imports by name and the other does not have."""
     return Analysis(
         [str(root / entry)],
         pathex=[str(root / "src")],
@@ -44,7 +45,7 @@ def analysed(entry):
         # so every keel module stays in the executable whether or not a static import from `__main__`
         # reaches it. The executable bundles no package: it is the keel alone, the same as the wheel, so
         # there is one artefact to build and sign and no bundled copy to drift from the chandlery's.
-        hiddenimports=[*collect_submodules("slipwai"), "certifi"],
+        hiddenimports=[*collect_submodules("slipwai"), "certifi", *also],
         hookspath=[],
         hooksconfig={},
         runtime_hooks=[],
@@ -77,7 +78,9 @@ executable = EXE(
 if sys.platform in ("darwin", "win32"):
     # The mark, made by `scripts/build-icons.py`; given no icon, PyInstaller stamps on its own Python one.
     icons = root / "assets" / "brand"
-    app = analysed("src/slipwai/app.py")
+    # `pyi_splash` is how the Windows app changes the words on its opening picture (`slipwai/splash.py`),
+    # which imports it by name: PyInstaller cannot draw one on macOS, and the module is not there.
+    app = analysed("src/slipwai/app.py", also=["pyi_splash"] if sys.platform == "win32" else [])
     app_pyz = PYZ(app.pure)
     if sys.platform == "darwin":
         app_exe = EXE(app_pyz, app.scripts, [], exclude_binaries=True, name="slipwai", debug=False,
@@ -89,6 +92,14 @@ if sys.platform in ("darwin", "win32"):
                info_plist={"LSMinimumSystemVersion": "12.0", "NSHighResolutionCapable": True,
                            "CFBundleDisplayName": "slipwai"})
     else:
-        EXE(app_pyz, app.scripts, app.binaries, app.datas, [], name="slipwai-board", debug=False,
+        # The picture shown from the moment the file is opened, while it unpacks itself: seconds in which
+        # nothing of the keel runs yet and nothing else is on the screen. The words go under the name, in
+        # the room `scripts/build-icons.py` leaves for them; `slipwai/splash.py` changes them and takes the
+        # picture down, before the board's page opens: until then it is over every other window.
+        opening = Splash(str(icons / "slipwai-splash.png"), binaries=app.binaries, datas=app.datas,
+                         text_pos=(174, 128), text_size=-15, text_color="#5b5648",
+                         text_default="Opening...")
+        EXE(app_pyz, app.scripts, opening, opening.binaries, app.binaries, app.datas, [], name="slipwai-board",
+            debug=False,
             bootloader_ignore_signals=False, strip=False, upx=False, console=False,
             icon=str(icons / "slipwai.ico"))

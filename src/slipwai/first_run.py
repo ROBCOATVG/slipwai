@@ -37,7 +37,7 @@ import webbrowser
 from collections.abc import Callable
 from pathlib import Path
 
-from . import at_login, tool_install
+from . import at_login, splash, tool_install
 from .board_build import Build, replaced
 from .cli_start import HOST, PORT, open_board, running, serving
 from .shell_environment import TOOLS, login_environment
@@ -125,7 +125,9 @@ def place_windows(executable: Path, environ: dict[str, str] | None = None,
     link = menu / "slipwai.lnk"
     script = (f"$s = (New-Object -ComObject WScript.Shell).CreateShortcut('{link}'); "
               f"$s.TargetPath = '{where}'; $s.Save()")
-    run(["powershell", "-NoProfile", "-Command", script], capture_output=True, check=False)
+    # No window: the app has no console, so Windows would open one for PowerShell — blank, and gone again.
+    run(["powershell", "-NoProfile", "-Command", script], capture_output=True, check=False,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return where
 
 
@@ -169,10 +171,13 @@ def link_command(executable: Path | None = None, tools: Path | None = None, path
     folder.mkdir(parents=True, exist_ok=True)
     # A wrapper, not a symlink: a frozen bundle finds its files from its own path. On Windows a `.cmd` too,
     # for PowerShell and cmd; the wrapper is the one Git's bash, where a project's recipes run, can start.
+    # On Windows both say `splash.QUIET` first: the app is the command here, and the command shows no picture.
+    quiet = f"{splash.QUIET}=1 " if system == "win32" else ""
     if system == "win32":
-        (folder / "slipwai.cmd").write_text(f'@"{here}" %*\r\n', encoding="utf-8")
+        (folder / "slipwai.cmd").write_text(f'@setlocal\r\n@set {splash.QUIET}=1\r\n@"{here}" %*\r\n',
+                                             encoding="utf-8")
     link = folder / "slipwai"
-    link.write_text(f'#!/bin/sh\nexec "{here.as_posix()}" "$@"\n', encoding="utf-8", newline="\n")
+    link.write_text(f'#!/bin/sh\n{quiet}exec "{here.as_posix()}" "$@"\n', encoding="utf-8", newline="\n")
     link.chmod(0o755)
     (home / "tool.json").write_text(json.dumps({"bin": str(folder), "version": "", "at": str(here)}) + "\n",
                                     encoding="utf-8")
@@ -233,17 +238,25 @@ def start(home: Path | None = None, system: str | None = None,
     the suite."""
     system = system or sys.platform
     root = Path.home() if home is None else home
+
+    def opened(url: str) -> object:  # the picture is over every window: down before the page is up
+        splash.close()
+        return open_page(url)
+
     if not placed(system=system, home=home):
         if system == "darwin":
             app = bundle()
             if app is None or not ask_move(run):
-                serve_here(root, open_page)
+                serve_here(root, opened)
                 return "here"
             where = move_app(app, home, run)
         else:
+            splash.say("Installing slipwai...")
             where = place_windows(Path(sys.executable).resolve(), run=run)
-        subprocess.Popen(start_copy(where, system))  # noqa: S603 — the copy just placed
+        # As a double-click starts it: with the picture, which this process's other children go without.
+        subprocess.Popen(start_copy(where, system), env=splash.shown())  # noqa: S603 — the copy just placed
         return "moved"
+    splash.say("Starting the board...")
     link_command()
     tool_install.windows_shims()
     said = register(root, home)
@@ -251,8 +264,10 @@ def start(home: Path | None = None, system: str | None = None,
     renewed = up and stale(board, system)
     if renewed:
         said = renew(root, board, system, home)
-    if running() or wait_for_board():
-        open_page(f"http://{HOST}:{PORT}/")
+    # On Windows the service is a file in the Startup folder, and nothing reads it until the next sign-in:
+    # waiting for its board was fifteen seconds of nothing before this process served the board itself.
+    if running() or (system != "win32" and wait_for_board()):
+        opened(f"http://{HOST}:{PORT}/")
         return "renewed" if renewed else "registered" if said else "opened"
-    serve_here(root, open_page)
+    serve_here(root, opened)
     return "here"

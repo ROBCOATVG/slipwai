@@ -24,7 +24,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import app, board_build, cli_start, first_run, machine_card, terminal_command, update_strip
+from slipwai import app, board_build, cli_start, first_run, machine_card, splash, terminal_command, update_strip
 from slipwai.board_build import Build
 
 
@@ -69,6 +69,44 @@ class PlacedTest(unittest.TestCase):
                 mock.patch.object(first_run.subprocess, "Popen") as started:
             self.assertEqual(first_run.start(self.home, "darwin"), "moved")
         self.assertEqual(started.call_args.args[0], ["open", "-n", str(moved)])
+
+    def test_on_windows_nothing_waits_for_a_service_that_starts_at_the_next_sign_in(self) -> None:
+        """The Startup folder is read at sign-in and not before, so the wait for its board was fifteen seconds
+        of nothing: the launch serves the board itself at once. A Mac's service is loaded there and then, and
+        is still waited for."""
+        for system, waits in (("win32", 0), ("darwin", 1)):
+            with self.subTest(system=system), \
+                    mock.patch.object(first_run, "placed", return_value=True), \
+                    mock.patch.object(first_run, "link_command"), \
+                    mock.patch.object(first_run.tool_install, "windows_shims"), \
+                    mock.patch.object(first_run, "register", return_value=["written"]), \
+                    mock.patch.object(first_run, "serving", return_value=(False, None)), \
+                    mock.patch.object(first_run, "running", return_value=False), \
+                    mock.patch.object(first_run, "wait_for_board", return_value=False) as waited, \
+                    mock.patch.object(first_run, "serve_here") as served:
+                self.assertEqual(first_run.start(self.home, system), "here")
+            self.assertEqual(waited.call_count, waits)
+            served.assert_called_once()
+
+    def test_the_placed_copy_is_started_with_its_picture_and_the_page_opens_without_it(self) -> None:
+        """This process's children go without the picture — they are the command — and the one that is the
+        app being opened does not. The picture is over every window, so it is down before the page is up."""
+        with mock.patch.object(first_run, "placed", return_value=False), \
+                mock.patch.object(first_run, "place_windows", return_value=Path("slipwai-board.exe")), \
+                mock.patch.dict(os.environ, {splash.QUIET: "1"}), \
+                mock.patch.object(first_run.subprocess, "Popen") as started:
+            self.assertEqual(first_run.start(self.home, "win32"), "moved")
+        self.assertNotIn(splash.QUIET, started.call_args.kwargs["env"])
+        went: list[str] = []
+        with mock.patch.object(first_run, "placed", return_value=True), \
+                mock.patch.object(first_run, "link_command"), \
+                mock.patch.object(first_run.tool_install, "windows_shims"), \
+                mock.patch.object(first_run, "register", return_value=[]), \
+                mock.patch.object(first_run, "serving", return_value=(True, Build("/elsewhere/slipwai", "1"))), \
+                mock.patch.object(first_run, "running", return_value=True), \
+                mock.patch.object(first_run.splash, "close", side_effect=lambda: went.append("picture down")):
+            first_run.start(self.home, "win32", open_page=lambda url: went.append("page up"))
+        self.assertEqual(went, ["picture down", "page up"])
 
     def test_a_placed_copy_registers_and_opens_the_board(self) -> None:
         opened: list[str] = []
@@ -133,8 +171,11 @@ class PlaceWindowsTest(unittest.TestCase):
         (folder / "slipwai-board.1.old").write_text("older", encoding="utf-8")
         new = local / "download.exe"
         new.write_text("new", encoding="utf-8")
-        where = first_run.place_windows(new, environ, run=mock.MagicMock())
+        run = mock.MagicMock()
+        where = first_run.place_windows(new, environ, run=run)
         self.assertEqual(where.read_text(encoding="utf-8"), "new")
+        # The app has no console, and without this Windows opens one for PowerShell: blank, then gone.
+        self.assertEqual(run.call_args.kwargs["creationflags"], getattr(first_run.subprocess, "CREATE_NO_WINDOW", 0))
         self.assertEqual([one.read_text(encoding="utf-8") for one in folder.glob("slipwai-board.*.old")], ["old"])
 
 
@@ -199,6 +240,14 @@ class LinkTest(unittest.TestCase):
         self.assertEqual(link.name, "slipwai")
         self.assertTrue((link.parent / "slipwai.cmd").is_file())
         self.assertTrue(link.read_text().startswith("#!/bin/sh\n"))
+        # The app is the command here, and the command shows no picture: both say so before they start it.
+        self.assertIn(f"{splash.QUIET}=1 exec ", link.read_text())
+        self.assertIn(f"@set {splash.QUIET}=1\r\n", (link.parent / "slipwai.cmd").read_bytes().decode())
+
+    def test_off_windows_the_wrapper_is_what_it_was(self) -> None:
+        link = first_run.link_command(self.exe, self.tools, path="/nowhere", system="darwin")
+        assert link is not None
+        self.assertEqual(link.read_text(), f'#!/bin/sh\nexec "{self.exe.resolve().as_posix()}" "$@"\n')
 
     def test_a_slipwai_of_their_own_means_no_link(self) -> None:
         theirs = Path(tempfile.mkdtemp())
@@ -215,6 +264,13 @@ class AppTest(unittest.TestCase):
             app.main(["bridge", "--serve"])
         command.assert_called_once()
         start.assert_not_called()
+
+    def test_whatever_it_starts_opens_without_the_picture(self) -> None:
+        with mock.patch.object(app, "command"), mock.patch.object(sys, "argv", ["slipwai"]), \
+                mock.patch.dict(os.environ):
+            os.environ.pop(splash.QUIET, None)
+            app.main(["bridge", "--serve"])
+            self.assertEqual(os.environ[splash.QUIET], "1")
 
     def test_with_nothing_it_is_the_first_launch(self) -> None:
         with mock.patch.object(app, "command") as command, mock.patch.object(app.first_run, "start") as start:

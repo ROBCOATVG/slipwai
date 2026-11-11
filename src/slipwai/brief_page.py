@@ -133,7 +133,7 @@ SCRIPT = """
       const before = drawn;
       said.turns.forEach(draw);
       at = said.at; busy = said.busy;
-      drawWaiting(log, busy, said.thinking);
+      drawWaiting(log, busy, said.thinking, said.doing, said.for);
       if (said.turns.length || busy) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
       paint(said);
       if (frame && drawn !== before) { frame.hidden = false; frame.src = frame.dataset.src + '?v=' + Date.now(); }

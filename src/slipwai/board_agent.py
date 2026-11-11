@@ -21,7 +21,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .acp import KEPT, Fault, Session, kept_session, once, policy
+from .acp import KEPT, SIGNED_OUT, Fault, Session, kept_session, once, policy
 from .board_settings import Launch, offered, read
 
 #: role, kind, text, and the fields the kind carries (`tool`, `plan`, `ask`).
@@ -29,6 +29,9 @@ Say = Callable[[str, str, str, "dict[str, Any] | None"], None]
 #: How long a card waits for the person before it is answered with nothing. A permission left for an hour
 #: is a turn nobody is coming back to.
 ASK_LIMIT = 3600.0
+#: Said in place of the agent's bare "Authentication required": where the sign-in is, and what to do after it.
+SIGN_IN_FIRST = ("The agent is not signed in on this machine yet. Open Settings and press Sign in under the agent "
+                 "the board runs on (press Make ready there first, if it shows no Sign in), then say this again.")
 #: The tool kinds a read-only session is allowed without asking; every other kind it is refused, and told.
 READS = ("read", "search", "think", "fetch")
 
@@ -160,7 +163,8 @@ class BoardAgent:
             stop = self.session.prompt(text, timeout)
         except Fault as fault:
             self.flush()
-            self.say(self.who, "error", str(fault), None)
+            # The agent's own words are kept after the board's: some carry what to do (a code to enter).
+            self.say(self.who, "error", f"{SIGN_IN_FIRST} ({fault})" if fault.code == SIGNED_OUT else str(fault), None)
             self.close()
             return "fault"
         self.flush()

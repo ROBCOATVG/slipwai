@@ -9,7 +9,8 @@ for its console. Nothing else moves here: the theme stays in the corner of every
 
 Under each agent this machine can launch: *Make ready*, which does the handshake once ahead of the first
 conversation (`agent_ready.py`) and shows what the agent said of itself; and a *Sign in* per way the agent
-offers, or the one line to run where the way is a terminal's.
+offers. A way that is a terminal's is run in a window the board opens, on Windows and a Mac, and is the one
+line to run elsewhere.
 """
 from __future__ import annotations
 
@@ -69,7 +70,7 @@ SCRIPT = """
       const poll = async () => {
         const state = await (await fetch(where + '.json?key=' + encodeURIComponent(body.key))).json();
         doing.textContent = state.lines.join('\\n');
-        if (state.done) location.reload(); else setTimeout(poll, 800);
+        if (!state.done) setTimeout(poll, 800); else if (!state.failed) location.reload();
       };
       poll();
     };
@@ -97,6 +98,11 @@ def ready_line(one: Launch, found: dict) -> str:
     signed = found.get("signed_in") or {}
     if not methods:
         how = "no sign-in needed"
+    elif found.get("signed_out"):
+        how = "nobody is signed in to it: press a Sign in below"
+    elif not signed:
+        how = ("not signed in from here; if a conversation says so, sign in by: "
+               + ", ".join(str(m.get("name") or m.get("id")) for m in methods))
     else:
         how = "sign-in: " + ", ".join(f"{m.get('name') or m.get('id')}" + (" (done)" if m.get("id") in signed else "")
                                       for m in methods)
@@ -124,18 +130,20 @@ def install_acts(one: Launch, found: dict) -> str:
 
 
 def acts(one: Launch, found: dict) -> str:
-    """The row's buttons: Make ready, and a Sign in per method of the agent's kind; the line to run for one
-    of the terminal kind. A row this machine cannot launch offers its install instead."""
+    """The row's buttons: Make ready, and a Sign in per method the agent offers. One of the terminal kind is
+    run in a window the board opens, where it can open one; elsewhere it is the line to run. A row this
+    machine cannot launch offers its install instead."""
     if not one.able:
         return install_acts(one, found)
     buttons = [f'<button type="button" data-ready="{esc(one.key)}">'
                f'{"Make ready again" if found and not found.get("fault") else "Make ready"}</button>']
     for method in found.get("auth") or []:
-        if method.get("type", "agent") == "terminal":
+        if agent_ready.terminal_kind(method) and not agent_ready.WINDOWED:
             buttons.append(f'<span>{esc(str(method.get("name") or method.get("id")))}: run '
                            f'<code>{esc(agent_ready.sign_in_line(one, method))}</code> in a terminal</span>')
         else:
             buttons.append(f'<button type="button" data-ready="{esc(one.key)}" '
+                           f'title="{esc(str(method.get("description") or ""))}" '
                            f'data-method="{esc(str(method.get("id")))}">'
                            f'Sign in: {esc(str(method.get("name") or method.get("id")))}</button>')
     return f'<span class="acts">{"".join(buttons)}</span><span class="doing" hidden></span>'
@@ -217,7 +225,8 @@ def route_post(bridge: Any, where: str, held: dict) -> bool:
         if isinstance(begun, str):
             bridge.send(400, begun, "text/plain; charset=utf-8")
         elif isinstance(begun, agent_ready.Readying):
-            bridge.send(200, f"Making {begun.launch.name} ready…", "text/plain; charset=utf-8")
+            bridge.send(200, f"Signing in to {begun.launch.name}…" if begun.method
+                        else f"Making {begun.launch.name} ready…", "text/plain; charset=utf-8")
         else:
             bridge.send(200, f"Installing {name_of(key)}…", "text/plain; charset=utf-8")
         return True

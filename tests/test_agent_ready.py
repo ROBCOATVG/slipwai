@@ -2,12 +2,15 @@
 
 What is proved: the handshake's answer is kept — the agent's name and version, the time, whether it loads
 a session, the ways to sign in — and shown on the page; a sign-in by a method of the agent's kind is the
-agent's `authenticate`; a method of the terminal kind is the line to run; an agent that cannot start is a
+agent's `authenticate`; a method of the terminal kind is run in a window and waited on, by the command the
+agent named, and is the line to run where the board has no window; a sign-in given up on records nobody;
+a conversation refused for want of a sign-in says where to sign in; an agent that cannot start is a
 recorded fault, not a crash; and nothing starts for an agent this machine cannot launch.
 """
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 import time
@@ -18,7 +21,8 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 from board_fixture import BoardTest
 
-from slipwai import agent_ready, board_settings
+from slipwai import agent_ready, board_settings, settings_page
+from slipwai.board_agent import SIGN_IN_FIRST, BoardAgent
 from slipwai.board_settings import Launch, read
 
 AGENT = Path(__file__).resolve().parent / "fixtures" / "acp_agent.py"
@@ -63,11 +67,126 @@ class ReadyTest(unittest.TestCase):
         assert isinstance(signed, agent_ready.Readying)
         self.assertIn("Signed in, by login.", settled(signed)["lines"])
         self.assertIn("login", read(self.file).ready["stand-in"]["signed_in"])
-        with mock.patch.object(agent_ready, "launch_for", return_value=STAND_IN):
-            refused = agent_ready.begin("stand-in", method="setup")
-        assert isinstance(refused, agent_ready.Readying)
-        self.assertIn("! the agent refused authenticate: setup is not a way to sign in", settled(refused)["lines"])
         self.assertEqual(agent_ready.sign_in_line(STAND_IN, found["auth"][1]), f"{sys.executable} --setup")
+
+    def made_ready(self) -> None:
+        with mock.patch.object(agent_ready, "launch_for", return_value=STAND_IN):
+            begun = agent_ready.begin("stand-in")
+        assert isinstance(begun, agent_ready.Readying)
+        settled(begun)
+
+    def signing_in(self, status: int | Exception) -> tuple[dict, mock.Mock]:
+        window = mock.Mock(side_effect=[status])
+        with mock.patch.object(agent_ready, "launch_for", return_value=STAND_IN), \
+                mock.patch.object(agent_ready, "in_a_window", window):
+            begun = agent_ready.begin("stand-in", method="setup")
+            assert isinstance(begun, agent_ready.Readying)
+            return settled(begun), window
+
+    def test_a_sign_in_that_is_a_terminal_s_is_run_in_a_window_and_waited_on(self) -> None:
+        """A fresh machine had the agent and nobody signed in to it: the only sign-in the agent has is a
+        command, the board never said it could run one, and so the agent offered none."""
+        self.made_ready()
+        state, window = self.signing_in(0)
+        self.assertEqual(window.call_args.args[0], [sys.executable, "--setup"])
+        self.assertEqual((state["lines"][-1], state["failed"]), ("Signed in, by Set up.", False))
+        self.assertIn("setup", read(self.file).ready["stand-in"]["signed_in"])
+        self.assertEqual(read(self.file).ready["stand-in"]["agent"], "stand-in", "what was found is kept")
+
+    def test_a_sign_in_given_up_on_is_said_and_nobody_is_recorded_as_signed_in(self) -> None:
+        self.made_ready()
+        state, _ = self.signing_in(1)
+        self.assertTrue(state["failed"])
+        self.assertIn("ended with status 1: nobody is signed in", state["lines"][-1])
+        state, _ = self.signing_in(OSError("no such file"))
+        self.assertEqual(state["lines"][-1], "! The sign-in could not be run: no such file")
+        self.assertNotIn("signed_in", read(self.file).ready["stand-in"])
+
+    def test_the_command_is_the_one_the_agent_named_where_it_named_one(self) -> None:
+        """Each row is what a real agent said at its handshake. No one rule of "the named command" or "the
+        launch with the arguments" is right for all of them: `npx --cli auth login` is not Claude Code's
+        sign-in, `opencode --login` prints its help, and Qoder names `node login`."""
+        real = sys.executable  # a command that is there, as an agent's own `node` is
+
+        def named(command: str, *args: str) -> dict:
+            return {"terminal-auth": {"command": command, "args": list(args)}}
+
+        npx, pack = ("/b/npx", "--yes"), "@qoder-ai/qodercli"
+        rows: list[tuple[dict, tuple[str, ...], dict, list[str]]] = [  # the row, the launch, the method, the command
+            ({"npx": {"package": "c-acp"}}, (*npx, "c-acp"),  # Claude Code: the script, then the arguments
+             {"type": "terminal", "args": ["--cli", "login"], "_meta": named(real, "/c/agent.js", "--cli", "login")},
+             [real, "/c/agent.js", "--cli", "login"]),
+            ({"npx": {"package": pack, "args": ["--acp"]}}, (*npx, pack, "--acp"),  # Qoder: `node login`
+             {"type": "terminal", "args": ["login"], "_meta": named(real, "login")}, [*npx, pack, "login"]),
+            ({"npx": {"package": "pi-acp"}}, (*npx, "pi-acp"),  # pi: a name `npx` never put on the path
+             {"type": "terminal", "args": ["--terminal-login"], "_meta": named("pi-acp-nowhere", "--terminal-login")},
+             [*npx, "pi-acp", "--terminal-login"]),
+            ({"binary": {"cmd": "opencode", "args": ["acp"]}}, ("/b/opencode", "acp"),  # OpenCode: not `--login`
+             {"type": "terminal", "args": ["--login"], "_meta": named(real, "auth", "login")}, [real, "auth", "login"]),
+            ({"binary": {"cmd": "kiro-cli", "args": ["acp", "--engine=v3"]}}, ("/b/kiro-cli", "acp", "--engine=v3"),
+             {"type": "terminal", "args": ["--login"]}, ["/b/kiro-cli", "--login"]),  # Kiro: names no command
+            ({"npx": {"package": "@github/copilot", "args": ["--acp"]}}, (*npx, "@github/copilot", "--acp"),
+             {"_meta": named(real, "login")}, [real, "login"]),  # Copilot: no type and no arguments
+            ({"npx": {"package": "@kilocode/cli", "args": ["acp"]}}, (*npx, "@kilocode/cli", "acp"),  # Kilo names
+             {"_meta": named(real, "auth", "login")}, [*npx, "@kilocode/cli", "auth", "login"]),  # another agent's
+        ]
+        for row, argv, method, wanted in rows:
+            theirs = {Path(real).name} if "kilocode" in str(row) else set()
+            with mock.patch.object(agent_ready, "acp_row", return_value=row), \
+                    mock.patch.object(agent_ready, "others", return_value=theirs):
+                self.assertEqual(agent_ready.sign_in_argv(Launch("one", "One", argv, ""), method), wanted)
+        self.assertIn("_meta", agent_ready.METHOD_FIELDS, "kept with the method, or the command is lost on a reload")
+
+    def test_a_method_that_names_a_command_is_a_terminal_s_whatever_its_type(self) -> None:
+        """Copilot gives its sign-in no type and a command: asked of the agent as `authenticate`, nothing."""
+        copilot = {"id": "copilot-login", "_meta": {"terminal-auth": {"command": "/c/copilot", "args": ["login"]}}}
+        self.assertTrue(agent_ready.terminal_kind(copilot))
+        self.assertTrue(agent_ready.terminal_kind({"id": "setup", "type": "terminal", "args": ["--setup"]}))
+        self.assertFalse(agent_ready.terminal_kind({"id": "chat-gpt", "_meta": {"api-key": {"provider": "x"}}}))
+
+    def test_a_bare_command_is_found_on_the_board_s_path(self) -> None:
+        """OpenCode names its sign-in `opencode`: a window started with a bare name looks on its own path."""
+        self.made_ready()
+        bare = {"id": "setup", "type": "terminal",
+                "_meta": {"terminal-auth": {"command": Path(sys.executable).name, "args": ["--setup"]}}}
+        settings = read(self.file)
+        settings.ready["stand-in"]["auth"] = [bare]
+        board_settings.write(settings, self.file)
+        with mock.patch.object(agent_ready, "login_environment",
+                               return_value={"PATH": str(Path(sys.executable).parent)}):
+            _, window = self.signing_in(0)
+        self.assertEqual(Path(window.call_args.args[0][0]).parent, Path(sys.executable).parent)
+
+    def test_an_agent_that_opens_no_session_until_signed_in_is_made_ready_all_the_same(self) -> None:
+        """Gemini refuses `session/new` with nobody signed in. That was recorded as a fault, so *Auto*
+        passed it over and the page said it could not be made ready, when all it wanted was a sign-in."""
+        shut = Launch("stand-in", "Stand-in", (*STAND_IN.argv, "--signed-out"), "a script")
+        with mock.patch.object(agent_ready, "launch_for", return_value=shut):
+            begun = agent_ready.begin("stand-in")
+            assert isinstance(begun, agent_ready.Readying)
+            state = settled(begun)
+            found = read(self.file).ready["stand-in"]
+            self.assertEqual((found["fault"], found["signed_out"], state["failed"]), ("", True, False))
+            self.assertEqual([m["id"] for m in found["auth"]], ["login", "setup"])
+            self.assertEqual(state["lines"][-2], "Nobody is signed in to it yet: the agent refused session/new: "
+                             "nobody is signed in", "the agent's own words are kept: Droid's carry a code to enter")
+            self.assertIn("nobody is signed in to it: press a Sign in below", settings_page.ready_line(shut, found))
+            signed = agent_ready.begin("stand-in", method="login")
+            assert isinstance(signed, agent_ready.Readying)
+            self.assertIn("Signed in, by login.", settled(signed)["lines"])
+        self.assertFalse(read(self.file).ready["stand-in"]["signed_out"])
+
+    @unittest.skipUnless(sys.platform == "darwin", "the script Terminal opens is a Mac's")
+    def test_on_a_mac_the_window_is_a_script_that_leaves_its_status(self) -> None:
+        run = subprocess.run
+
+        def opened(argv: list[str], check: bool) -> None:
+            run(["/bin/sh", argv[1]], check=check)  # what Terminal does with it
+
+        with mock.patch.object(agent_ready.subprocess, "run", opened):
+            status = agent_ready.in_a_window(["/bin/sh", "-c", 'test "$SAID" = "a b" && exit 7'],
+                                             {"SAID": "a b", "PATH": "/usr/bin:/bin"}, self.root, limit=20)
+        self.assertEqual(status, 7)
 
     def test_an_agent_that_cannot_start_is_a_recorded_fault_and_an_unable_one_never_starts(self) -> None:
         with mock.patch.object(agent_ready, "launch_for", return_value=DIES):
@@ -79,7 +198,7 @@ class ReadyTest(unittest.TestCase):
         with mock.patch.object(agent_ready, "launch_for", return_value=unable):
             self.assertEqual(agent_ready.begin("goose"), "Goose cannot be made ready here: not on PATH")
         self.assertEqual(agent_ready.begin("zed"), "zed is not a harness the registry can launch")
-        self.assertEqual(agent_ready.state("zed"), {"key": "zed", "lines": [], "done": True})
+        self.assertEqual(agent_ready.state("zed"), {"key": "zed", "lines": [], "done": True, "failed": False})
 
 
 class ReadyPageTest(BoardTest):
@@ -105,10 +224,29 @@ class ReadyPageTest(BoardTest):
         with mock.patch("slipwai.settings_page.launches", return_value=[STAND_IN]):
             page = self.get("/settings")[1]
         self.assertIn("Ready: stand-in 0.1 answered in", page)
-        self.assertIn("sign-in: Sign in, Set up.", page)
+        self.assertIn("not signed in from here; if a conversation says so, sign in by: Sign in, Set up.", page)
         self.assertIn('data-method="login">Sign in: Sign in</button>', page)
-        self.assertIn("Set up: run <code>", page)
         self.assertIn(">Make ready again</button>", page)
+        for windowed, said in ((True, 'data-method="setup">Sign in: Set up</button>'), (False, "Set up: run <code>")):
+            with mock.patch("slipwai.settings_page.launches", return_value=[STAND_IN]), \
+                    mock.patch.object(agent_ready, "WINDOWED", windowed):
+                self.assertIn(said, self.get("/settings")[1])
+        self.assertIn("else if (!state.failed) location.reload();", settings_page.SCRIPT,
+                      "a sign-in that failed stays on the page: a reload took its reason with it")
+
+    def test_a_conversation_refused_for_want_of_a_sign_in_says_where_to_sign_in(self) -> None:
+        said: list[tuple[str, str]] = []
+
+        def say(who: str, kind: str, text: str, more: dict | None) -> None:
+            said.append((kind, text))
+
+        agent = BoardAgent(STAND_IN, self.root / "talk", "agent", say)
+        (self.root / "talk").mkdir()
+        self.addCleanup(agent.close)
+        self.assertEqual(agent.turn("signed out", 20), "fault")
+        self.assertEqual(said[-1], ("error", f"{SIGN_IN_FIRST} (the agent refused session/prompt: "
+                                             "Authentication required)"))
+        self.assertIn("Open Settings and press Sign in", SIGN_IN_FIRST)
 
 
 if __name__ == "__main__":

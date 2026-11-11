@@ -16,6 +16,9 @@
 # why: 2026-11-10 d1f1f2c4da4a92cc moorings.berth tries git worktree add again only when git refused over a sibling's half-made .git/worktrees entry; a successful add, and every other refusal, does exactly what it did
 # why: 2026-11-10 e257e81f23812fcf check-python and the fleet preflight now refuse Python 3.10 up front; the toolkit already imports 3.11-only names, so 3.10 failed later anyway, and 3.11 or newer behaves exactly as before
 # why: 2026-11-11 76707b774934bb56 acp.py opens an agent's pipes as UTF-8 by name; macOS and Linux read them as UTF-8 already, and a byte that is not UTF-8 is now replaced where it ended the reader
+# why: 2026-11-11 ea37558164d2a25f the stand-in agent offers a terminal sign-in only to a client that says it can run one, and refuses a prompt as signed out
+# why: 2026-11-11 bad785543f7a5824 the stand-in agent offers a terminal sign-in only to a client that says it can run one, and refuses a prompt as signed out
+# why: 2026-11-11 f066e7f867af051c the board's protocol client says it can have a terminal sign-in run, and a fault carries the agent's error code
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -30,16 +33,16 @@
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-memory-none  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-postgres-toy-serve  scripts/agents/triage.py
 11696dd449955f3b530b4c6685f2b2b986b744e7163e02591bc115799aa32602  event-modelling-memory-none  Makefile
-183890cb2f0486036344a04d5e231d9b59249c5123c89c555fd30b0ba837ece6  event-modelling-memory-none  scripts/agents/acp.py
-183890cb2f0486036344a04d5e231d9b59249c5123c89c555fd30b0ba837ece6  event-modelling-postgres-toy-serve  scripts/agents/acp.py
-183890cb2f0486036344a04d5e231d9b59249c5123c89c555fd30b0ba837ece6  standard-memory-none  scripts/agents/acp.py
-183890cb2f0486036344a04d5e231d9b59249c5123c89c555fd30b0ba837ece6  standard-postgres-toy-serve  scripts/agents/acp.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  event-modelling-memory-none  scripts/extensions/menu.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  event-modelling-postgres-toy-serve  scripts/extensions/menu.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  standard-memory-none  scripts/extensions/menu.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  standard-postgres-toy-serve  scripts/extensions/menu.py
 1d08c56491d300ebba3959802fa59f397ed1be25e20fcc2e32a50e5d2140ca95  event-modelling-memory-none  .claude/settings.json
 1d08c56491d300ebba3959802fa59f397ed1be25e20fcc2e32a50e5d2140ca95  standard-memory-none  .claude/settings.json
+1ddfc77e1398fa4e2b31766749e6fa70d33f57db7201473090adf9f5e44260b0  event-modelling-memory-none  scripts/agents/acp.py
+1ddfc77e1398fa4e2b31766749e6fa70d33f57db7201473090adf9f5e44260b0  event-modelling-postgres-toy-serve  scripts/agents/acp.py
+1ddfc77e1398fa4e2b31766749e6fa70d33f57db7201473090adf9f5e44260b0  standard-memory-none  scripts/agents/acp.py
+1ddfc77e1398fa4e2b31766749e6fa70d33f57db7201473090adf9f5e44260b0  standard-postgres-toy-serve  scripts/agents/acp.py
 1e0a22dfa89380f1edf51238c652e5a09f7afb599106ceefda7106e937a84447  event-modelling-memory-none  scripts/agents/model.py
 1e0a22dfa89380f1edf51238c652e5a09f7afb599106ceefda7106e937a84447  event-modelling-postgres-toy-serve  scripts/agents/model.py
 1e0a22dfa89380f1edf51238c652e5a09f7afb599106ceefda7106e937a84447  standard-memory-none  scripts/agents/model.py

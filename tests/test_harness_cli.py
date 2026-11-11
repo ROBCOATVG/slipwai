@@ -19,6 +19,9 @@ import checkout_packages  # noqa: F401
 
 from slipwai import bridge, harness, harness_cli, init_run, shell_environment
 
+#: What a command is found by on this system: Windows looks for a name with one of its own endings.
+EXE = ".cmd" if os.name == "nt" else ""
+
 
 class HarnessCliTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -29,7 +32,7 @@ class HarnessCliTest(unittest.TestCase):
 
     def on_path(self, *names: str) -> str:
         for name in names:
-            file = self.bin / name
+            file = self.bin / (name + EXE)
             file.write_text("#!/bin/sh\n", encoding="utf-8")
             file.chmod(0o755)
         return str(self.bin)
@@ -57,8 +60,8 @@ class HarnessCliTest(unittest.TestCase):
         self.assertEqual(argv[3], str(self.tools / "claude-cli"))
         self.assertEqual(harness_cli.install_argv("claude", self.on_path("npm", "claude"), self.tools), [],
                          "a machine that has the command is left exactly as it is")
-        (self.bin / "npm").unlink()
-        (self.bin / "claude").unlink()
+        (self.bin / f"npm{EXE}").unlink()
+        (self.bin / f"claude{EXE}").unlink()
         self.assertEqual(harness_cli.install_argv("claude", str(self.bin), self.tools), [], "nothing to install with")
         self.assertEqual(harness_cli.parts("zed", self.on_path("npm"), self.tools), [])
         self.assertEqual(harness_cli.parts(None), [])

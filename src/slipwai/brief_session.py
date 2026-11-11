@@ -42,6 +42,7 @@ from .console import reading
 from .errors import Busy, GenerationError
 from .harness import acp_environment, row_of
 from .shell_environment import login_environment
+from .turn_child import to_its_end, unheard
 
 #: Where this machine keeps its sketches: not a project's, so not under one.
 SKETCHES = SLIPWAI / "sketches"
@@ -59,9 +60,14 @@ BROUGHT = "Here is the document I already have, in brief/prd.md. Read it first."
 #: The two lines the prompt asks the session to print, so the page can follow it.
 STEP = re.compile(r"^step:\s*([1-4])\s*$", re.MULTILINE)
 READY = "The brief is ready to hand over."
-#: How long one answer may take: a drawing is longer than a handful of file reads.
-LIMIT = 900
+#: How long one answer may take: a drawing is longer than a handful of file reads. A document a person
+#: brought is reviewed, corrected and drawn in one answer, and the first one of fifty kilobytes took ten
+#: minutes over a single reply and was stopped at fifteen with the drawing half written. The Stop button is
+#: how a person ends one sooner.
+LIMIT = 3600
 KEPT = 400
+#: What follows the reason an answer ended early, where the session had begun and so can be resumed.
+CARRY_ON = " What it wrote is kept. Say `carry on` to pick it up where it stopped."
 
 
 def slug_of(name: str) -> str:
@@ -148,6 +154,7 @@ class Sketch:
         self.ready = False
         self.check: list[str] = checked(self.home)
         self.child: subprocess.Popen[str] | None = None
+        self.stopping = ""  # `stop` or `reset` while the person's own press is ending the child
         self.login: dict[str, str] | None = None
         self.lock = threading.Lock()
 
@@ -290,6 +297,7 @@ class Sketch:
         with self.lock:
             child = self.child
         if child is not None:
+            self.stopping = "stop"
             child.kill()
         return "stopped"
 
@@ -299,20 +307,17 @@ class Sketch:
             self.child = subprocess.Popen(argv, cwd=self.home, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                           stderr=subprocess.STDOUT, text=True, env=self.environment(),
                                           start_new_session=True, **AGENT_TEXT)
-            timer = threading.Timer(LIMIT, self.child.kill)
-            timer.start()
-            try:
-                answered = False
-                for line in self.child.stdout or []:
-                    answered = self.take(line) or answered
-                self.child.wait()
-            finally:
-                timer.cancel()
-            if self.child.returncode and not answered:
-                self.say("sketch", f"The session ended with status {self.child.returncode} and said nothing.", "error")
+            answered, why = to_its_end(self.child, self.take, LIMIT)
+            asked, self.stopping = self.stopping, ""
+            if asked == "stop":
+                self.say("sketch", "Stopped.", "error")
+            elif why and asked != "reset":
+                self.say("sketch", why + (CARRY_ON if answered else ""), "error")
             self.begun = self.begun or answered
         except OSError as fault:
             self.say("sketch", f"The session could not be started: {fault}", "error")
+        except Exception as fault:  # noqa: BLE001 — whatever ended the hearing is said, not left as a silence
+            self.say("sketch", unheard(fault), "error")
         finally:
             lines = checked(self.home)
             with self.lock:
@@ -355,6 +360,7 @@ class Sketch:
         with self.lock:
             child = self.child
         if child is not None:
+            self.stopping = "reset"
             child.kill()
         if self.agent is not None:
             self.agent.cancel()

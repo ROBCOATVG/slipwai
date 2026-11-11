@@ -75,6 +75,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "certificates",
        # The picture the Windows app shows while it unpacks, and the words under it. Version 2's.
        "splash",
+       # A turn's child heard to its end, and every way it can end said. Version 2's.
+       "turn_child",
        # The Fleet tab and the fold under it: the park record, the groups, the processes. Version 2's.
        "fleet_page", "fleet_record", "timeline", "timeline_page",
        # The console on the Voyage window: a read-only session of the project's agent, briefed as the

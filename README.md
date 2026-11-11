@@ -13,6 +13,11 @@
 **Slipwai creates product repositories and runs a delivery loop in them with coding agents.** Say the name
 as "slipway".
 
+**Download** a build for macOS, Windows or Linux:
+[the latest release](https://github.com/ROBCOATVG/slipwai/releases/latest), or
+[the latest dev build](https://github.com/ROBCOATVG/slipwai/releases/tag/dev). The dev build is the newest
+commit on `main`. It is replaced on every push, and it is not a release.
+
 ```console
 $ slipwai install typescript
 typescript installed from the slipwai chandlery 1.0.0, published by ROBCOATVG (verified)

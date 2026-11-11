@@ -99,8 +99,8 @@ if (fitting) {
       chip.dataset.state = said.code ? 'stopped' : 'done';
       chip.className = said.code ? 'chip stalled' : 'chip';
     }
-    const launch = document.getElementById('launch');
-    if (launch) launch.hidden = !said.launchable;
+    // The card's own button and, on the Voyage, the strip's: two elements, so two ids.
+    document.querySelectorAll('#launch, #launch-made').forEach(launch => { launch.hidden = !said.launchable; });
     replying.hidden = !(said.talk && said.done);
     paint();
     if (running) setTimeout(poll, 700);
@@ -159,7 +159,7 @@ document.addEventListener('click', event => {
   if (read) send('/read', {fairway: read.dataset.read, decisions: read.dataset.stamps.split(',')});
   const seen = event.target.closest('[data-dismiss]');
   if (seen) send('/dismiss', {fairway: seen.dataset.dismiss, told: seen.dataset.told});
-  if (event.target.id === 'launch') {
+  if (event.target.id === 'launch' || event.target.id === 'launch-made') {
     event.target.disabled = true;
     send('/launch', {});
   }
@@ -396,7 +396,8 @@ def fitting_card(made: dict, verb: str = "Made") -> str:
             f'{esc(state)} · {esc(clock(seconds))}</span>')
     # The button is on the card whether or not it can be pressed yet, hidden until the poll says the draft
     # has ended well; a specification a person has read is what pressing it means.
-    launch = f'<button class="go" id="launch"{"" if made.get("launchable") else " hidden"}>Continue the build</button>'
+    launch = (f'<button class="go" id="launch-made"{"" if made.get("launchable") else " hidden"}>'
+              f'Continue the build</button>')
     # A stage over the protocol kept its session, so once it has ended what it said can be answered here, as
     # on the first page: a question the agent asked in its words rather than on a card has somewhere to go.
     talk = made.get("talk") and made["done"]

@@ -111,7 +111,9 @@ def decisions(root: Path) -> list[Decision]:
         for line in (e for e in lines if e.kind == "decision"):
             what, ident = str(line.fields.get("what", "")), str(line.fields.get("id", ""))
             named = _NUMBER.match(what)
-            number = named.group(1) if named else ""
+            # The line's own `id` where its words do not open with the number: a launch's decisions carry
+            # `id: D9` and a sentence, and read as "D9 (not in decisions.md)" beside the entry they were.
+            number = named.group(1) if named else (ident if re.fullmatch(r"D\d+", ident) else "")
             entry = book.get(number, {})
             used.add(number)
             by = str(line.fields.get("decided_by", ""))

@@ -353,7 +353,9 @@ class LandingTest(BoardTest):
         (self.made / "specs/001-demo").mkdir(parents=True)
         (self.made / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
         self.assertTrue(json.loads(self.get("/voyage.json")[1])["launchable"])
-        self.assertIn('id="launch"', self.get("/voyage")[1])
+        page = self.get("/voyage")[1]
+        self.assertEqual(page.count('id="launch"'), 1, "the strip's button; one id, one element")
+        self.assertEqual(page.count('id="launch-made"'), 1, "the card's own, which the poll shows and hides too")
 
     def test_the_model_is_still_said_to_be_next_with_the_storyboard_in_front_of_it(self) -> None:
         """On the event profile the chart is drawn from the model, so there is nothing to press until

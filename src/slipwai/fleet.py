@@ -291,6 +291,12 @@ def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | Non
         # Asked to stop and said so. Not `stalled`, which is a captain that went quiet without a word, and
         # not `parked`, which waits on a person: lighting the fleet again carries the slice on.
         return "stopped"
+    # Lines, and none of them a captain's: a launch writes its decisions into the fairway they are about and
+    # a person's receipts follow, before any slice of it can start. game-club-manager's `nights` waited on
+    # sign-in with four such lines, and the board's headline was "Stalled: nights stopped writing without a
+    # word" over a fleet that was working.
+    if not any(e.kind in ("claimed", "heartbeat") for e in fairway.entries):
+        return "not started"
     # Everything it claimed is merged and nothing is in flight: finished, whatever was written after the last
     # merge. recap's catch-up took a person's read receipts after its fifteenth merge, and its row said
     # `stalled` — a captain gone quiet — about a stream with no work left in it.

@@ -237,7 +237,7 @@ that captain's own window, described below.
 | waiting on you | The fairway is parked |
 | done | Its last slice merged, and no slice of it waits |
 | idle | Its last slice merged, and its next slice waits on clearance |
-| not started | The fairway's log has no line yet |
+| not started | No captain has claimed a slice of the fairway yet. Its log may hold decisions the launch took for it |
 | clearance unavailable | Its last slice merged, and the board could not read clearance to say what is next |
 
 ### The captain window

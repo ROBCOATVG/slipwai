@@ -42,7 +42,7 @@ from .board_settings import Launch, chosen, read
 from .errors import Busy
 from .fleet import board
 from .harness import acp_environment
-from .shell_environment import login_environment
+from .shell_environment import login_environment, with_tools
 from .turn_child import to_its_end, unheard
 
 #: The tools the session is given, and the only ones. A list rather than a deny-list: a tool added to the
@@ -129,7 +129,7 @@ class Console:
         """The login shell's environment, asked once a conversation: a shell is started to answer it."""
         if self.login is None:
             self.login = login_environment(os.environ)
-        return self.login
+        return with_tools(self.login)  # read again each time: the board may have installed one since
 
     def argv(self, message: str) -> list[str] | None:
         """The command for one question, or nothing where this machine has no agent to ask."""

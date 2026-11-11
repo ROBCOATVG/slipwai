@@ -41,7 +41,7 @@ from .brief_check import report
 from .console import reading
 from .errors import Busy, GenerationError
 from .harness import acp_environment, row_of
-from .shell_environment import login_environment
+from .shell_environment import login_environment, with_tools
 from .turn_child import to_its_end, unheard
 
 #: Where this machine keeps its sketches: not a project's, so not under one.
@@ -161,7 +161,7 @@ class Sketch:
     def environment(self) -> dict[str, str]:
         if self.login is None:
             self.login = login_environment()
-        return self.login
+        return with_tools(self.login)  # read again each time: the board may have installed one since
 
     def argv(self, message: str) -> list[str] | None:
         """The command for one turn, or nothing where this machine has no agent to run it."""

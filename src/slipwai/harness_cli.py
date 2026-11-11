@@ -22,7 +22,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .harness import name_of, row_of
+from .harness import installed_launch, name_of, row_of
 from .shell_environment import TOOLS, adopt_tools, login_environment
 
 #: What a step is made of: the command, the line said before it, and the line said after it for its status.
@@ -75,7 +75,35 @@ def installed(key: str, code: int, tools: Path | None = None) -> str:
     return f"Installed `{held.get('cmd')}` {version} in {where}.".replace("  ", " ")
 
 
+def binary(key: str, command: str = "") -> Path | None:
+    """The folder of the agent the board installed, where that binary *is* the harness's command: opencode's
+    is `opencode`, which is what `headless` runs and Spec Kit looks for. Amp's is `amp-acp`, which is not.
+    `command` is the binary just installed; without it, the one the board's record names."""
+    command = command or next(iter(installed_launch(key)), "")
+    named = {key, str((row_of(key).get("headless") or {}).get("command") or "").split(" ")[0]}
+    return Path(command).parent if command and Path(command).stem in named else None
+
+
+def adopt_binary(key: str, tools: Path | None = None, command: str = "") -> bool:
+    """That folder recorded as a tool of the board's, so its children find the command; whether it was.
+
+    The board keeps an agent it installed under `~/.slipwai/agents/`, launches it by its whole path, and
+    put it on no path: on a machine whose only opencode was the board's, `./init` could not find it."""
+    where = binary(key, command)
+    if where is None:
+        return False
+    folder = home(key, tools)
+    folder.mkdir(parents=True, exist_ok=True)
+    record = {"bin": str(where), "version": "", "at": datetime.now(UTC).strftime("%Y-%m-%d"), "first": False}
+    (folder / "tool.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+    adopt_tools(home=folder.parent)
+    return True
+
+
 def parts(key: str | None, path: str | None = None, tools: Path | None = None) -> list[Part]:
-    """The step that installs the harness's command, as what a step is made of; none where nothing is to do."""
+    """The step that installs the harness's command, as what a step is made of; none where nothing is to do.
+    An agent the board installed that is the command already is put on the path first, and is nothing to do."""
+    if key:
+        adopt_binary(key, tools)
     argv = install_argv(key, path, tools) if key else []
     return [(argv, announced(str(key)), lambda code: installed(str(key), code, tools))] if argv else []

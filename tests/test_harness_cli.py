@@ -92,6 +92,28 @@ class HarnessCliTest(unittest.TestCase):
         self.assertIn(str(where), given.split(os.pathsep))
         self.assertIn(str(where), own["PATH"], "and the board itself, from now")
 
+    def test_an_agent_the_board_installed_that_is_the_command_is_put_on_the_path(self) -> None:
+        """On a machine whose only opencode was the one the board installed, `./init` could not find it:
+        the board keeps it under its agents, launches it by its whole path, and put it on no path."""
+        kept = self.root / "agents" / "opencode" / "unpacked"
+        kept.mkdir(parents=True)
+        (kept / "opencode").write_text("", encoding="utf-8")
+        (kept / "amp-acp").write_text("", encoding="utf-8")
+        own = {"PATH": "/usr/bin"}
+        with mock.patch.object(harness_cli, "adopt_tools", lambda home: shell_environment.adopt_tools(own, home)):
+            self.assertTrue(harness_cli.adopt_binary("opencode", self.tools, str(kept / "opencode")))
+            self.assertFalse(harness_cli.adopt_binary("amp", self.tools, str(kept / "amp-acp")),
+                             "an adapter's binary is not the harness's command")
+            self.assertTrue(harness_cli.adopt_binary("kiro-cli", self.tools, str(kept / "kiro-cli")),
+                            "named as the harness is, where no headless command is recorded")
+        self.assertIn(str(kept), own["PATH"].split(os.pathsep))
+        self.assertFalse((self.tools / "amp-cli").exists())
+        with mock.patch.object(harness_cli, "installed_launch", return_value=[str(kept / "opencode"), "acp"]), \
+                mock.patch.object(harness_cli, "adopt_tools", lambda home: None):
+            self.assertEqual(harness_cli.parts("opencode", self.on_path("npm"), self.root / "other"), [],
+                             "one installed before this: found at the next run, and nothing to install")
+        self.assertEqual(json.loads((self.root / "other/opencode-cli/tool.json").read_text())["bin"], str(kept))
+
     def test_an_install_that_failed_is_said_and_nothing_is_recorded(self) -> None:
         said = harness_cli.installed("claude", 1, self.tools)
         self.assertIn("`claude` could not be installed (npm ended 1)", said)

@@ -24,6 +24,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from . import harness_cli
 from .assets import SLIPWAI
 from .board_settings import read, write
 from .harness import acp_row, name_of
@@ -85,6 +86,9 @@ class Installing:
             self.check(file)
             launch = self.unpack(file)
             record["cmd"] = launch["cmd"]
+            # The agent that is the harness's own command — opencode — goes beside the board's other tools,
+            # on the path of what the board starts: Spec Kit looks for it, and a captain runs it by name.
+            harness_cli.adopt_binary(self.key, self.home.parent.parent / "tools", str(launch["cmd"]))
             self.say(f"Installed: {launch['cmd']}")
         except (OSError, ValueError, tarfile.TarError, zipfile.BadZipFile) as fault:
             record["fault"] = str(fault)

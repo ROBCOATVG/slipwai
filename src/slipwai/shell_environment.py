@@ -22,7 +22,7 @@ import os
 import shutil
 import subprocess
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 #: Where the board puts a tool the machine did not have: `<key>/tool.json` names its `bin` directory.
@@ -103,6 +103,21 @@ def board_tools(home: Path | None = None, first: bool = False) -> list[str]:
         if where and Path(where).is_dir() and ahead == first:
             found.append(where)
     return found
+
+
+def adopt_tools(environ: MutableMapping[str, str] | None = None, home: Path | None = None) -> None:
+    """The tools the board installed, on the end of this process's own `PATH`.
+
+    A child given `login_environment` finds them; a program this process starts by its bare name does not,
+    because the name is looked for on *this* process's `PATH`. On a machine whose only Git is the board's,
+    the first `git` the board ran itself — is there a remote? — was `[WinError 2] The system cannot find
+    the file specified`, said in place of the project that had just been made. On the end only: what the
+    machine has of its own is still found first, and nothing of Git's `usr/bin` shadows Windows' here."""
+    held = os.environ if environ is None else environ
+    parts = [part for part in held.get("PATH", "").split(os.pathsep) if part]
+    added = [where for where in (*board_tools(home, first=True), *board_tools(home)) if where not in parts]
+    if added:
+        held["PATH"] = os.pathsep.join([*parts, *added])
 
 
 def git_bash(path: str) -> Path | None:

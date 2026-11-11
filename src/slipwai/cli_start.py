@@ -30,6 +30,7 @@ from .board_build import Build
 from .board_build import read as read_build
 from .bridge import serve
 from .errors import refuse
+from .shell_environment import adopt_tools
 
 #: What the bridge binds, and what this binds with it: one board, one port.
 HOST = "127.0.0.1"
@@ -162,6 +163,7 @@ def start_main(argv: list[str], *, interactive: bool | None = None,
         print(f"board: http://{parsed.host}:{parsed.port}/  — already open, so this opened a tab on it")
         return True
     print(f"board: http://{parsed.host}:{server.server_address[1]}/  — ctrl-c to stop")
+    adopt_tools()  # the tools the board installed, for the programs it starts itself by name: `git`
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -44,7 +44,7 @@ from typing import Any
 
 from .agent_install import checked, fetched, unpacked
 from .prerequisites import BY_KEY, found
-from .shell_environment import TOOLS
+from .shell_environment import TOOLS, adopt_tools
 
 NODE_INDEX = "https://nodejs.org/dist/index.json"
 NODE_DIST = "https://nodejs.org/dist"
@@ -214,6 +214,7 @@ class Installing:
             record = {"bin": str(where), "version": archive["version"], "at": datetime.now(UTC).strftime("%Y-%m-%d"),
                       "first": self.first}
             (self.home / "tool.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+            adopt_tools(home=self.home.parent)  # the board's own `git` is found from now, not from a restart
             self.say(f"Installed {BY_KEY[self.key].name} {archive['version']} in {where}.")
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as fault:
             self.say(f"! {fault}")

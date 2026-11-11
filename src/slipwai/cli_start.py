@@ -127,6 +127,10 @@ def open_board(root: Path, host: str = HOST, port: int = PORT,
     if running(host, port):
         open_page(f"http://{host}:{port}{where}")
         return None
+    # The tools the board installed, for the programs it starts itself by name. Here, because every way a
+    # board is started comes through here: the command, the login service, and the app opened by a
+    # double-click. Done at the first two only, the app's board still had no `git`.
+    adopt_tools()
     server = serve(root, host, port)
     open_page(f"http://{host}:{server.server_address[1]}{where}")
     return server
@@ -163,7 +167,6 @@ def start_main(argv: list[str], *, interactive: bool | None = None,
         print(f"board: http://{parsed.host}:{parsed.port}/  — already open, so this opened a tab on it")
         return True
     print(f"board: http://{parsed.host}:{server.server_address[1]}/  — ctrl-c to stop")
-    adopt_tools()  # the tools the board installed, for the programs it starts itself by name: `git`
     try:
         server.serve_forever()
     except KeyboardInterrupt:

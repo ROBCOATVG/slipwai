@@ -15,6 +15,7 @@
 # why: 2026-11-10 3136b0a202ff0d6f harbourmaster: a remote with no trunk yet is given trunk by the first merge, instead of every merge staying local; a remote that has trunk, and a harbour with none, are unchanged
 # why: 2026-11-10 d1f1f2c4da4a92cc moorings.berth tries git worktree add again only when git refused over a sibling's half-made .git/worktrees entry; a successful add, and every other refusal, does exactly what it did
 # why: 2026-11-10 e257e81f23812fcf check-python and the fleet preflight now refuse Python 3.10 up front; the toolkit already imports 3.11-only names, so 3.10 failed later anyway, and 3.11 or newer behaves exactly as before
+# why: 2026-11-11 76707b774934bb56 acp.py opens an agent's pipes as UTF-8 by name; macOS and Linux read them as UTF-8 already, and a byte that is not UTF-8 is now replaced where it ended the reader
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -29,6 +30,10 @@
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-memory-none  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-postgres-toy-serve  scripts/agents/triage.py
 11696dd449955f3b530b4c6685f2b2b986b744e7163e02591bc115799aa32602  event-modelling-memory-none  Makefile
+183890cb2f0486036344a04d5e231d9b59249c5123c89c555fd30b0ba837ece6  event-modelling-memory-none  scripts/agents/acp.py
+183890cb2f0486036344a04d5e231d9b59249c5123c89c555fd30b0ba837ece6  event-modelling-postgres-toy-serve  scripts/agents/acp.py
+183890cb2f0486036344a04d5e231d9b59249c5123c89c555fd30b0ba837ece6  standard-memory-none  scripts/agents/acp.py
+183890cb2f0486036344a04d5e231d9b59249c5123c89c555fd30b0ba837ece6  standard-postgres-toy-serve  scripts/agents/acp.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  event-modelling-memory-none  scripts/extensions/menu.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  event-modelling-postgres-toy-serve  scripts/extensions/menu.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  standard-memory-none  scripts/extensions/menu.py
@@ -222,10 +227,6 @@ b1c6bcaa1dd5f3acc1ab4101aecc6ffda1a1fcf0870262ffbc1fec9ddc09fd46  event-modellin
 b1c6bcaa1dd5f3acc1ab4101aecc6ffda1a1fcf0870262ffbc1fec9ddc09fd46  event-modelling-postgres-toy-serve  scripts/agents/registry.json
 b1c6bcaa1dd5f3acc1ab4101aecc6ffda1a1fcf0870262ffbc1fec9ddc09fd46  standard-memory-none  scripts/agents/registry.json
 b1c6bcaa1dd5f3acc1ab4101aecc6ffda1a1fcf0870262ffbc1fec9ddc09fd46  standard-postgres-toy-serve  scripts/agents/registry.json
-b37949cc6c7ffc0daa91ae8519af8475e6e8e6f407d9a112f165a89c4244528d  event-modelling-memory-none  scripts/agents/acp.py
-b37949cc6c7ffc0daa91ae8519af8475e6e8e6f407d9a112f165a89c4244528d  event-modelling-postgres-toy-serve  scripts/agents/acp.py
-b37949cc6c7ffc0daa91ae8519af8475e6e8e6f407d9a112f165a89c4244528d  standard-memory-none  scripts/agents/acp.py
-b37949cc6c7ffc0daa91ae8519af8475e6e8e6f407d9a112f165a89c4244528d  standard-postgres-toy-serve  scripts/agents/acp.py
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-memory-none  scripts/event-model/render-drawio.ts
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-postgres-toy-serve  scripts/event-model/render-drawio.ts
 bf7c2b27ee05bca74faa74898df6df21074c5a30efde74d8da573bf59f91eb37  event-modelling-memory-none  scripts/check-crossing.py

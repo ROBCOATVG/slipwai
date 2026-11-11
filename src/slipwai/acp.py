@@ -41,6 +41,10 @@ FETCHING = 300.0
 ALLOW_ONCE = "allow_once"
 #: Where a session keeps its id and the agent's stderr, under the working directory it was given.
 KEPT = ".acp"
+#: How an agent's pipes are read and written: UTF-8, which is what every agent speaks. Left to the platform,
+#: Windows reads them as cp1252, where five bytes mean nothing: the first `❌` or `”` in a file the agent
+#: read ended the reader, and the page showed a session stopped that was still running.
+AGENT_TEXT: dict[str, Any] = {"encoding": "utf-8", "errors": "replace"}
 
 Update = dict[str, Any]
 OnUpdate = Callable[[Update], None]
@@ -131,7 +135,7 @@ class Session:
         try:
             self.child = subprocess.Popen(self.argv, cwd=self.cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                           stderr=self.errors, text=True, bufsize=1, env=self.env,
-                                          start_new_session=True)
+                                          start_new_session=True, **AGENT_TEXT)
         except OSError as fault:
             self.errors.close()
             raise Fault(f"the agent could not be started: {fault}") from fault

@@ -487,7 +487,7 @@ class Bridge(BaseHTTPRequestHandler):
         self.launched = False
         out = "\n".join(line for line in (out, given(where, remote_for(answers))) if line)
         self.fitting = fit_out(where, None if named == NO_INIT else named, out.splitlines(),
-                               repository_for(answers), prd=drafts(answers, where),
+                               repository_for(answers), prd=drafts(answers, where), installs=True,
                                extensions=elected_in(answers), committed=publishing(where))
         return "\n".join(self.fitting.said()["lines"]) if self.fitting else out
 

@@ -7,6 +7,7 @@ command; one that failed is said and `./init` is still tried.
 """
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import tempfile
@@ -16,7 +17,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import harness, harness_cli, init_run, shell_environment
+from slipwai import bridge, harness, harness_cli, init_run, shell_environment
 
 
 class HarnessCliTest(unittest.TestCase):
@@ -66,10 +67,13 @@ class HarnessCliTest(unittest.TestCase):
         part = (["npm", "install"], "Installing…", lambda code: "done")
         with mock.patch.object(harness_cli, "parts", return_value=[part]), \
                 mock.patch.object(init_run.Fitting, "run"):
-            fitting = init_run.start(self.root, "claude")
+            fitting = init_run.start(self.root, "claude", installs=True)
+            plain = init_run.start(self.root, "claude")
         first = [step.argv[:2] for step in fitting.steps[:2]]
         self.assertEqual(first, [["npm", "install"], ["./init", "--integration"]])
         self.assertFalse(fitting.steps[0].stops, "an install that failed leaves `./init` to say what it finds")
+        self.assertEqual(plain.steps[0].argv[:1], ["./init"], "only where the board asks: a run is not an install")
+        self.assertIn("installs=True", inspect.getsource(bridge.Bridge.land), "and the board asks")
 
     def test_a_finished_install_is_a_tool_the_board_s_children_find(self) -> None:
         folder = self.tools / "claude-cli"

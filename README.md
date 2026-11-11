@@ -13,10 +13,22 @@
 **Slipwai creates product repositories and runs a delivery loop in them with coding agents.** Say the name
 as "slipway".
 
-**Download** a build for macOS, Windows or Linux:
-[the latest release](https://github.com/ROBCOATVG/slipwai/releases/latest), or
+## Download or install
+
+There are two ways to get slipwai. Both give you the same board and make the same repositories.
+
+| | Use it when |
+| --- | --- |
+| **Download a build**: [the latest release](https://github.com/ROBCOATVG/slipwai/releases/latest) | You do not want to use a terminal. Open the `.dmg` on a Mac or the `.exe` on Windows. The board opens in your browser, and its **Settings** tab installs Git, Python or Node where the machine has none. On Linux the download is one executable file, and it needs only Git to create a project |
+| **Install with uv**: `uv tool install slipwai` | You work in a terminal. You get the `slipwai` command on your path, as in the example below, and `uv tool upgrade slipwai` updates it |
+
+The download does not put `slipwai` in a terminal that you open yourself. If you want both, install with
+uv as well, or on a Mac press **Add slipwai to my terminal** on the **Settings** tab.
+
+To try a change before it is released, download
 [the latest dev build](https://github.com/ROBCOATVG/slipwai/releases/tag/dev). The dev build is the newest
 commit on `main`. It is replaced on every push, and it is not a release.
+[Start here](docs/guide/start-here.md) gives each step for both ways.
 
 ```console
 $ slipwai install typescript

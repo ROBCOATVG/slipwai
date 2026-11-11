@@ -39,26 +39,54 @@ STYLE = """
 #machine .acts button{font:inherit;font-size:.78rem;padding:3px 10px;border-radius:8px;cursor:pointer;
   border:1px solid var(--rule);background:transparent;color:var(--ink-2)}
 #machine .acts button:hover{border-color:var(--teal);color:var(--ink)}
-#machine .doing{font-size:.8rem;color:var(--ink-2);white-space:pre-wrap;margin:6px 0 0}
+#machine .doing{font-size:.8rem;color:var(--ink-2);white-space:pre-wrap;margin:6px 0 0;overflow-wrap:anywhere}
+#machine .doing.failed{color:var(--critical)}
+#machine .doing .now{display:block;margin-top:4px;color:var(--ink);font-weight:500}
+#machine .doing progress{display:block;width:100%;max-width:340px;height:6px;margin-top:4px;accent-color:var(--teal)}
 """
 
 SCRIPT = """
 function bindMachine(scope) {
-  scope.querySelectorAll('[data-tool]').forEach(one => one.addEventListener('click', async event => {
-    event.preventDefault();
+  scope.querySelectorAll('[data-tool]').forEach(one => {
     const doing = one.closest('.tool').querySelector('.doing');
-    one.disabled = true;
-    const answer = await fetch('/settings/tool', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                                                  body: JSON.stringify({key: one.dataset.tool})});
-    doing.textContent = await answer.text(); doing.hidden = false;
-    if (!answer.ok || answer.status === 202) { one.disabled = false; return; }
-    const poll = async () => {
-      const state = await (await fetch('/settings/tool.json?key=' + encodeURIComponent(one.dataset.tool))).json();
+    const asked = async () => (await fetch('/settings/tool.json?key=' + encodeURIComponent(one.dataset.tool))).json();
+    // What has happened as lines, and under them what is happening now: the step in words, and a bar that
+    // fills where the step can be counted and moves where it cannot. A failure stays on the page, in the
+    // failure's colour, with the button back: reloading on every ending took the reason away with it.
+    const show = state => {
+      doing.hidden = !state.lines.length && !state.now;
+      doing.classList.toggle('failed', !!state.failed);
       doing.textContent = state.lines.join('\\n');
-      if (state.done) location.reload(); else setTimeout(poll, 800);
+      if (state.done) return;
+      const now = document.createElement('span'); now.className = 'now'; now.textContent = state.now || 'Working…';
+      const bar = document.createElement('progress');
+      if (state.fraction !== null && state.fraction !== undefined) { bar.max = 1; bar.value = state.fraction; }
+      doing.append(now, bar);
     };
-    poll();
-  }));
+    const poll = async () => {
+      let state;
+      try { state = await asked(); } catch (fault) { setTimeout(poll, 2000); return; }
+      show(state);
+      if (!state.done) { one.disabled = true; setTimeout(poll, 500); return; }
+      if (state.failed) { one.disabled = false; return; }
+      location.reload();
+    };
+    // An install begun before this page was loaded — a reload, a second window — is still this card's: it
+    // is picked up where it is, and one that failed since still says why.
+    asked().then(state => { if (!state.done) poll(); else if (state.failed) show(state); }).catch(() => {});
+    one.addEventListener('click', async event => {
+      event.preventDefault();
+      one.disabled = true;
+      doing.classList.remove('failed'); doing.textContent = 'Starting…'; doing.hidden = false;
+      const answer = await fetch('/settings/tool', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                    body: JSON.stringify({key: one.dataset.tool})});
+      const said = await answer.text();
+      if (answer.status === 202) { doing.textContent = said; one.disabled = false; return; }
+      // Refused because it is already being installed: that install is the one to follow, not a dead end.
+      if (!answer.ok && (await asked()).done) { doing.textContent = said; one.disabled = false; return; }
+      poll();
+    });
+  });
   scope.querySelectorAll('[data-command]').forEach(one => one.addEventListener('click', async () => {
     const said = one.parentElement.querySelector('.doing');
     const answer = await fetch('/settings/terminal-command', {method: 'POST',

@@ -124,15 +124,22 @@ class Installing:
             return {"key": self.key, "lines": list(self.lines), "done": self.done}
 
 
-def fetched(url: str, into: Path, say: Callable[[str], None]) -> Path:
+def fetched(url: str, into: Path, say: Callable[[str], None],
+            progress: Callable[[int, int], None] | None = None) -> Path:
     """The archive at `url`, downloaded into `into`. Shared with `tool_install`, which fetches Git and Node
-    the same way."""
+    the same way. `progress` is told how many bytes have come and how many there are to come (0 where the
+    publisher does not say): sixty megabytes on a slow line was a minute of one unchanging line."""
     name = url.rsplit("/", 1)[-1] or "archive"
     into.mkdir(parents=True, exist_ok=True)
     file = into / name
     say(f"Fetching {url}")
     with urllib.request.urlopen(url, timeout=120) as reading, file.open("wb") as writing:  # noqa: S310 — a publisher's URL
-        shutil.copyfileobj(reading, writing)
+        total, got = int(reading.headers.get("Content-Length") or 0), 0
+        for chunk in iter(lambda: reading.read(1 << 18), b""):
+            writing.write(chunk)
+            got += len(chunk)
+            if progress is not None:
+                progress(got, total)
     say(f"Fetched {file.stat().st_size:,} bytes.")
     return file
 

@@ -22,7 +22,7 @@ from pathlib import Path
 
 from .assets import SLIPWAI
 from .harness import acp_keys, acp_launch, from_spec_kit, name_of
-from .shell_environment import login_environment
+from .shell_environment import login_environment, with_tools
 
 SETTINGS = SLIPWAI / "board.json"
 #: The first agent this machine can launch, in the registry's order. What a board with no file runs on.
@@ -61,10 +61,18 @@ def write(settings: Settings, path: Path | None = None) -> None:
 
 
 @lru_cache(maxsize=1)
+def login_once() -> dict[str, str]:
+    """The login shell's environment, asked once a process: a shell is started to answer it."""
+    return login_environment(os.environ)
+
+
 def shell_path() -> str:
-    """The login shell's PATH, asked once a process. The board started at login has `launchd`'s, which
-    holds nothing a person installed, so an agent on this machine was "not on PATH" on a machine that had it."""
-    return login_environment(os.environ).get("PATH", os.environ.get("PATH", ""))
+    """The login shell's PATH, with the tools the board has installed as they are now. The board started at
+    login has `launchd`'s, which holds nothing a person installed, so an agent on this machine was "not on
+    PATH" on a machine that had it. The shell is asked once; the board's own tools are read every time,
+    because one of them may have been installed since: a board that had just installed Node went on saying
+    there was no `npx`, and would until it was started again."""
+    return with_tools(login_once()).get("PATH", os.environ.get("PATH", ""))
 
 
 @dataclass(frozen=True)

@@ -36,6 +36,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
@@ -157,12 +158,24 @@ class Installing:
         self.home = (TOOLS if home is None else home) / key
         self.lines: list[str] = []
         self.done = False
+        # The step under way, in words, since when, and how far through it where that can be counted. The
+        # lines are what has happened; this is what is happening, which is what a person waiting looks for.
+        self.now, self.since, self.got, self.total = "", time.monotonic(), 0, 0
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
     def say(self, line: str) -> None:
         with self.lock:
             self.lines.append(line)
+
+    def step(self, words: str) -> None:
+        """What is being done from here on, until the next step or the end."""
+        with self.lock:
+            self.now, self.since, self.got, self.total = words, time.monotonic(), 0, 0
+
+    def progress(self, got: int, total: int) -> None:
+        with self.lock:
+            self.got, self.total = got, total
 
     def archive(self) -> dict[str, str]:
         if self.key == "node":
@@ -175,18 +188,23 @@ class Installing:
 
     def run(self) -> None:
         try:
+            self.step("Asking the publisher for its newest release")
             archive = self.archive()
-            file = fetched(archive["url"], self.home, self.say)
+            self.step("Downloading")
+            file = fetched(archive["url"], self.home, self.say, self.progress)
             if "name" in archive:  # a URL that does not end in the file's name
                 file = file.replace(file.with_name(archive["name"]))
+            self.step("Checking it against the publisher's checksum")
             checked(file, archive["sha256"], "the publisher", self.say)
+            self.step("Unpacking")
             if file.name.endswith(".7z.exe"):
                 place = self.home / "unpacked"
                 self.say("Unpacking PortableGit…")
                 subprocess.run([str(file), f"-o{place}", "-y"], capture_output=True, timeout=900, check=True)
             else:
                 place = unpacked(file, self.home / "unpacked")
-            file.unlink(missing_ok=True)
+            self.step("Finishing")
+            discard(file)
             where = place / archive["bin"]
             if not where.is_dir():
                 raise ValueError(f"the archive holds no {archive['bin']}; not installed")
@@ -204,8 +222,36 @@ class Installing:
                 self.done = True
 
     def state(self) -> dict[str, Any]:
+        """What the page polls: the lines so far, whether it is over and whether it failed, and while it is
+        under way the step in words (`now`) with how far through it (`fraction`, where it can be counted)."""
         with self.lock:
-            return {"key": self.key, "lines": list(self.lines), "done": self.done}
+            failed = bool(self.lines) and self.lines[-1].startswith("!")
+            if self.done:
+                return {"key": self.key, "lines": list(self.lines), "done": True, "failed": failed,
+                        "now": "", "fraction": None}
+            waited = int(time.monotonic() - self.since)
+            if self.total:
+                how = f": {self.got / 1e6:.0f} of {self.total / 1e6:.0f} MB"
+            elif self.got:
+                how = f": {self.got / 1e6:.0f} MB so far"
+            else:
+                how = f"… {waited} s" if waited >= 3 else "…"
+            return {"key": self.key, "lines": list(self.lines), "done": False, "failed": False,
+                    "now": self.now + how if self.now else "",
+                    "fraction": round(self.got / self.total, 3) if self.total else None}
+
+
+def discard(file: Path, tries: int = 10, wait: float = 0.5) -> None:
+    """The archive thrown away once it is unpacked, where it can be. Windows refused the first PortableGit —
+    *Access is denied*, its self-extractor a moment gone and a virus scanner still reading it — and that
+    refusal was reported as the install's: Git sat unpacked and unrecorded, and the card said nothing. An
+    archive that will not go is tidying left undone, not a tool that was not installed."""
+    for _ in range(tries):
+        try:
+            file.unlink(missing_ok=True)
+            return
+        except OSError:
+            time.sleep(wait)
 
 
 def shim(file: Path, target: Path) -> Path:
@@ -271,4 +317,5 @@ def begin(key: str, home: Path | None = None, look=found,
 
 def state(key: str) -> dict[str, Any]:
     held = RUNNING.get(key)
-    return held.state() if held is not None else {"key": key, "lines": [], "done": True}
+    return held.state() if held is not None else {"key": key, "lines": [], "done": True, "failed": False,
+                                                  "now": "", "fraction": None}

@@ -32,8 +32,8 @@ import uuid
 from collections.abc import Sequence
 from pathlib import Path
 
+from .acp import AGENT_TEXT, kept_session
 from .acp import KEPT as SESSION_KEPT
-from .acp import kept_session
 from .assets import SLIPWAI, TOOLKIT_ROOT
 from .board_agent import BoardAgent
 from .board_settings import Launch, chosen, read
@@ -298,7 +298,7 @@ class Sketch:
         try:
             self.child = subprocess.Popen(argv, cwd=self.home, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                           stderr=subprocess.STDOUT, text=True, env=self.environment(),
-                                          start_new_session=True)
+                                          start_new_session=True, **AGENT_TEXT)
             timer = threading.Timer(LIMIT, self.child.kill)
             timer.start()
             try:

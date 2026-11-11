@@ -36,6 +36,7 @@ import uuid
 from collections.abc import Sequence
 from pathlib import Path
 
+from .acp import AGENT_TEXT
 from .board_agent import BoardAgent
 from .board_settings import Launch, chosen, read
 from .errors import Busy
@@ -231,7 +232,7 @@ class Console:
         try:
             self.child = subprocess.Popen(argv, cwd=self.root, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                           stderr=subprocess.STDOUT, text=True, env=self.environment(),
-                                          start_new_session=True)
+                                          start_new_session=True, **AGENT_TEXT)
             timer = threading.Timer(LIMIT, self.child.kill)
             timer.start()
             try:

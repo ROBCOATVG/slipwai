@@ -10,12 +10,15 @@ which opens the browser, and the page waits and says how it ended. On Linux the 
 now the whole command the agent named rather than `npx` with the arguments. A conversation refused for want
 of a sign-in says where to sign in instead of the bare refusal.
 
-The sign-in follows what each agent offers, checked against Codex, Gemini, Copilot and OpenCode as well as
-Claude Code. A sign-in that names a command is run as one whatever type the agent gave it: Copilot gives
-none, and was asked to sign in over the protocol, which did nothing. A command named bare (`opencode`) is
-found on the board's path. An agent that opens no session until somebody signs in (Gemini) is made ready
-and offered its sign-ins, where it used to be recorded as one that could not be made ready and passed over
-by *Auto*.
+The sign-in follows what each agent offers, checked at the handshake of twenty-one of the registry's agents.
+A sign-in that names a command is run as one whatever type the agent gave it: Copilot, Auggie, Kilo and Kimi
+give none, and were asked to sign in over the protocol, which did nothing. The command is the one that
+works for that agent: the one it named where that says more than its arguments (`opencode auth login`, not
+`opencode --login`), the launch with the arguments where the named one is no command at all (Qoder's
+`node login`, pi's `pi-acp`), and never another agent's (Kilo names `opencode`). An agent that opens no
+session until somebody signs in — thirteen of them — is made ready and offered its sign-ins, where it used
+to be recorded as one that could not be made ready and passed over by *Auto*; what it said is kept, since
+Droid's carries the code to enter. An agent that gives no name of its own is called by the registry's.
 
 **Catch-up:** none. On a machine made ready by an older build, press *Make ready again* in *Settings* once:
 the ways to sign in are what the agent said at that handshake.

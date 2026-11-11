@@ -163,7 +163,8 @@ class BoardAgent:
             stop = self.session.prompt(text, timeout)
         except Fault as fault:
             self.flush()
-            self.say(self.who, "error", SIGN_IN_FIRST if fault.code == SIGNED_OUT else str(fault), None)
+            # The agent's own words are kept after the board's: some carry what to do (a code to enter).
+            self.say(self.who, "error", f"{SIGN_IN_FIRST} ({fault})" if fault.code == SIGNED_OUT else str(fault), None)
             self.close()
             return "fault"
         self.flush()

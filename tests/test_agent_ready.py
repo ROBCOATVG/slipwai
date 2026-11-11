@@ -103,12 +103,38 @@ class ReadyTest(unittest.TestCase):
         self.assertNotIn("signed_in", read(self.file).ready["stand-in"])
 
     def test_the_command_is_the_one_the_agent_named_where_it_named_one(self) -> None:
-        """An agent fetched by `npx` is a script in npm's cache: `npx --cli auth login` is not its sign-in."""
-        fetched = Launch("claude", "Claude Code", ("npx", "@agentclientprotocol/claude-agent-acp"), "npx")
-        method = {"id": "claude-ai-login", "type": "terminal", "args": ["--cli", "auth", "login"],
-                  "_meta": {"terminal-auth": {"command": "/n/node", "args": ["/c/agent.js", "--cli", "auth", "login"]}}}
-        self.assertEqual(agent_ready.sign_in_argv(fetched, method),
-                         ["/n/node", "/c/agent.js", "--cli", "auth", "login"])
+        """Each row is what a real agent said at its handshake. No one rule of "the named command" or "the
+        launch with the arguments" is right for all of them: `npx --cli auth login` is not Claude Code's
+        sign-in, `opencode --login` prints its help, and Qoder names `node login`."""
+        real = sys.executable  # a command that is there, as an agent's own `node` is
+
+        def named(command: str, *args: str) -> dict:
+            return {"terminal-auth": {"command": command, "args": list(args)}}
+
+        npx, pack = ("/b/npx", "--yes"), "@qoder-ai/qodercli"
+        rows: list[tuple[dict, tuple[str, ...], dict, list[str]]] = [  # the row, the launch, the method, the command
+            ({"npx": {"package": "c-acp"}}, (*npx, "c-acp"),  # Claude Code: the script, then the arguments
+             {"type": "terminal", "args": ["--cli", "login"], "_meta": named(real, "/c/agent.js", "--cli", "login")},
+             [real, "/c/agent.js", "--cli", "login"]),
+            ({"npx": {"package": pack, "args": ["--acp"]}}, (*npx, pack, "--acp"),  # Qoder: `node login`
+             {"type": "terminal", "args": ["login"], "_meta": named(real, "login")}, [*npx, pack, "login"]),
+            ({"npx": {"package": "pi-acp"}}, (*npx, "pi-acp"),  # pi: a name `npx` never put on the path
+             {"type": "terminal", "args": ["--terminal-login"], "_meta": named("pi-acp-nowhere", "--terminal-login")},
+             [*npx, "pi-acp", "--terminal-login"]),
+            ({"binary": {"cmd": "opencode", "args": ["acp"]}}, ("/b/opencode", "acp"),  # OpenCode: not `--login`
+             {"type": "terminal", "args": ["--login"], "_meta": named(real, "auth", "login")}, [real, "auth", "login"]),
+            ({"binary": {"cmd": "kiro-cli", "args": ["acp", "--engine=v3"]}}, ("/b/kiro-cli", "acp", "--engine=v3"),
+             {"type": "terminal", "args": ["--login"]}, ["/b/kiro-cli", "--login"]),  # Kiro: names no command
+            ({"npx": {"package": "@github/copilot", "args": ["--acp"]}}, (*npx, "@github/copilot", "--acp"),
+             {"_meta": named(real, "login")}, [real, "login"]),  # Copilot: no type and no arguments
+            ({"npx": {"package": "@kilocode/cli", "args": ["acp"]}}, (*npx, "@kilocode/cli", "acp"),  # Kilo names
+             {"_meta": named(real, "auth", "login")}, [*npx, "@kilocode/cli", "auth", "login"]),  # another agent's
+        ]
+        for row, argv, method, wanted in rows:
+            theirs = {Path(real).name} if "kilocode" in str(row) else set()
+            with mock.patch.object(agent_ready, "acp_row", return_value=row), \
+                    mock.patch.object(agent_ready, "others", return_value=theirs):
+                self.assertEqual(agent_ready.sign_in_argv(Launch("one", "One", argv, ""), method), wanted)
         self.assertIn("_meta", agent_ready.METHOD_FIELDS, "kept with the method, or the command is lost on a reload")
 
     def test_a_method_that_names_a_command_is_a_terminal_s_whatever_its_type(self) -> None:
@@ -142,7 +168,8 @@ class ReadyTest(unittest.TestCase):
             found = read(self.file).ready["stand-in"]
             self.assertEqual((found["fault"], found["signed_out"], state["failed"]), ("", True, False))
             self.assertEqual([m["id"] for m in found["auth"]], ["login", "setup"])
-            self.assertIn("Nobody is signed in to it yet.", state["lines"][-1])
+            self.assertEqual(state["lines"][-2], "Nobody is signed in to it yet: the agent refused session/new: "
+                             "nobody is signed in", "the agent's own words are kept: Droid's carry a code to enter")
             self.assertIn("nobody is signed in to it: press a Sign in below", settings_page.ready_line(shut, found))
             signed = agent_ready.begin("stand-in", method="login")
             assert isinstance(signed, agent_ready.Readying)
@@ -217,7 +244,8 @@ class ReadyPageTest(BoardTest):
         (self.root / "talk").mkdir()
         self.addCleanup(agent.close)
         self.assertEqual(agent.turn("signed out", 20), "fault")
-        self.assertEqual(said[-1], ("error", SIGN_IN_FIRST))
+        self.assertEqual(said[-1], ("error", f"{SIGN_IN_FIRST} (the agent refused session/prompt: "
+                                             "Authentication required)"))
         self.assertIn("Open Settings and press Sign in", SIGN_IN_FIRST)
 
 

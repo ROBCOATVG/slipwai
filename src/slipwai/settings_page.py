@@ -143,6 +143,7 @@ def acts(one: Launch, found: dict) -> str:
                            f'<code>{esc(agent_ready.sign_in_line(one, method))}</code> in a terminal</span>')
         else:
             buttons.append(f'<button type="button" data-ready="{esc(one.key)}" '
+                           f'title="{esc(str(method.get("description") or ""))}" '
                            f'data-method="{esc(str(method.get("id")))}">'
                            f'Sign in: {esc(str(method.get("name") or method.get("id")))}</button>')
     return f'<span class="acts">{"".join(buttons)}</span><span class="doing" hidden></span>'

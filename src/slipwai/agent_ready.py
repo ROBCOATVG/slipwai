@@ -30,7 +30,7 @@ from typing import Any
 from . import acp
 from .assets import SLIPWAI
 from .board_settings import Launch, launches, offered, read, write
-from .harness import acp_environment
+from .harness import acp_environment, acp_keys, acp_row
 from .shell_environment import login_environment
 
 #: Where the handshake's session lives, one folder per agent: its cwd, and under it the client's keep.
@@ -66,13 +66,13 @@ class Readying:
         opens the browser from there, and takes a pasted code there where the browser cannot call back."""
         name = str(method.get("name") or method.get("id"))
         env = {**login_environment(), **acp_environment(self.key),
-               **{str(k): str(v) for k, v in (method.get("env") or {}).items()}}
+               **{str(k): str(v) for k, v in (method.get("env") or {}).items()},
+               **{str(k): str(v) for k, v in (((method.get("_meta") or {}).get("terminal-auth") or {}).get("env")
+                                              or {}).items()}}
         self.say(f"A window is open to sign in: {name}. Finish there and in the browser it opens; this page waits.")
         signed = False
         try:
-            argv = sign_in_argv(self.launch, method)
-            # An agent may name its command bare (`opencode`): found on the board's path, not the window's.
-            argv[0] = shutil.which(argv[0], path=env.get("PATH")) or argv[0]
+            argv = sign_in_argv(self.launch, method, env.get("PATH"))
             status = in_a_window(argv, env, self.home)
             signed = status == 0
             self.say(f"Signed in, by {name}." if signed
@@ -106,10 +106,12 @@ class Readying:
         try:
             agent = session.start()
             seconds = round(time.monotonic() - started, 1)
-            record.update({"agent": agent.name, "version": agent.version, "seconds": seconds,
+            # An agent that gives no name of its own (Grok, CodeBuddy, Cursor) is called by the registry's.
+            name = self.launch.name if agent.name == self.launch.argv[0] else agent.name
+            record.update({"agent": name, "version": agent.version, "seconds": seconds,
                            "load_session": agent.load_session,
                            "auth": [{k: one[k] for k in METHOD_FIELDS if k in one} for one in agent.auth_methods]})
-            self.say(f"{agent.name} {agent.version} answered the handshake in {seconds} s.".replace("  ", " "))
+            self.say(f"{name} {agent.version} answered the handshake in {seconds} s.".replace("  ", " "))
             self.say("It can pick a conversation up where it left off." if agent.load_session
                      else "It starts every conversation afresh.")
             # A session too, closed at once: it is where the agent says which models it offers, and the
@@ -121,7 +123,8 @@ class Readying:
                 if fault.code != acp.SIGNED_OUT:
                     raise
                 record["signed_out"] = True
-                self.say("Nobody is signed in to it yet. Press a Sign in below, then Make ready again for its models.")
+                self.say(f"Nobody is signed in to it yet: {fault}")  # its own words: Droid's carry a code to enter
+                self.say("Press a Sign in below, then Make ready again for its models.")
             settings = read(self.settings_path)
             offered(settings, self.key, session.agent.config_options, self.settings_path)
             models = settings.offered.get(self.key) or []
@@ -185,16 +188,37 @@ def terminal_kind(method: dict[str, Any]) -> bool:
     return method.get("type") == "terminal" or bool((method.get("_meta") or {}).get("terminal-auth"))
 
 
-def sign_in_argv(launch: Launch, method: dict[str, Any]) -> list[str]:
-    """The command of a method of the terminal kind. Where the agent named the whole of it (`_meta`'s
-    `terminal-auth`) that is it: an agent fetched by `npx` is a script in a cache, and only the agent knows
-    where. Otherwise the agent's own command with the method's arguments in place of the launch's, as the
-    registry's authentication page says."""
+def launched_as(launch: Launch) -> list[str]:
+    """The launch without the arguments that make it an agent: `npx --yes <package>`, or the binary."""
+    row = acp_row(launch.key) or {}
+    how = row.get("npx") if isinstance(row.get("npx"), dict) else row.get("binary")
+    drop = len((how or {}).get("args") or []) if row else len(launch.argv) - 1
+    return list(launch.argv[:len(launch.argv) - drop]) or [launch.key]
+
+
+def sign_in_argv(launch: Launch, method: dict[str, Any], path: str | None = None) -> list[str]:
+    """The command of a method of the terminal kind, found on `path`.
+
+    The protocol's way is the agent's own launch with the method's arguments in place of the launch's. An
+    agent may also name a whole command (`_meta`'s `terminal-auth`), and agents differ in which of the two
+    is right: OpenCode's arguments are not ones its command takes and its named command is; Qoder names
+    `node login`, and pi a `pi-acp` that `npx` never put on the path. So the named command is taken where
+    it says something the arguments do not and can be found; otherwise the launch with the arguments."""
+    args = [str(a) for a in method.get("args") or []]
     named = (method.get("_meta") or {}).get("terminal-auth") or {}
-    if named.get("command"):
-        return [str(named["command"]), *[str(a) for a in named.get("args") or []]]
-    head = launch.argv[0] if launch.argv else launch.key
-    return [head, *[str(a) for a in method.get("args") or []]]
+    theirs = [str(a) for a in named.get("args") or []]
+    found = shutil.which(str(named["command"]), path=path) if named.get("command") else None
+    if found and Path(found).name in others(launch.key):  # Kilo names `opencode`: another agent's sign-in
+        return [*launched_as(launch), *theirs]
+    if found and (theirs != args or "args" not in method):
+        return [found, *theirs]
+    return [*launched_as(launch), *(args if "args" in method else theirs)]
+
+
+def others(key: str) -> set[str]:
+    """The commands the registry's other agents are launched as."""
+    rows = {one: acp_row(one) or {} for one in acp_keys() if one != key}
+    return {str(row["binary"]["cmd"]) for row in rows.values() if isinstance(row.get("binary"), dict)}
 
 
 def sign_in_line(launch: Launch, method: dict[str, Any]) -> str:

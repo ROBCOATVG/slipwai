@@ -93,9 +93,10 @@ are named for main's snapshot version and the commit — `Slipwai-2.1.0.dev0-1a2
 `Slipwai-…-macos-arm64.dmg` and the `slipwai-…` executables, each with its `.sha256`, and the wheel.
 
 `dev-snapshot` then publishes them as the `dev` prerelease, deleting the one before it and moving its tag to
-the commit, so <https://github.com/ROBCOATVG/slipwai/releases/tag/dev> always holds main's newest build, with
-no login and no expiry. A prerelease is never `releases/latest`. A run whose commit is no longer main's tip by
-the time it gets there publishes nothing: the newer run does. The `dev` tag moves with every push, so a clone
+the commit, so <https://github.com/ROBCOATVG/slipwai/releases/tag/dev> always holds main's newest build that
+passed, with no login and no expiry. A prerelease is never `releases/latest`. Every run publishes, whether or
+not main has moved on since; the one that stands aside is a run older than the snapshot already there, which
+is two runs finishing out of order. The `dev` tag moves with every push, so a clone
 that ran `git fetch --tags` once is told it would clobber it; `git fetch --tags --force` takes the new one.
 
 The same files are also kept on the run for 14 days as the `executable-<platform>` artifacts (a tag's for

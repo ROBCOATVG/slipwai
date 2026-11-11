@@ -20,7 +20,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import board_settings, machine_card, shell_environment, tool_install
+from slipwai import board_settings, cli_bridge, cli_start, first_run, machine_card, shell_environment, tool_install
 from slipwai.agent_install import fetched
 
 
@@ -144,6 +144,20 @@ class FeedbackTest(unittest.TestCase):
                 held_install.run()
         self.assertIn(str(self.tools / "node/unpacked/node-v24.0.0-darwin-arm64/bin"), own["PATH"],
                       "a tool is found by the board from its install, not from the board's next start")
+
+    def test_every_way_a_board_is_started_gives_it_its_tools(self) -> None:
+        """Done where the command and the login service start a board, and not where the app opened by a
+        double-click does: the app's board, the one a person on Windows has, still answered `[WinError 2]`."""
+        called: list[int] = []
+        server = mock.Mock(server_address=("127.0.0.1", 1))
+        with mock.patch.object(cli_start, "adopt_tools", lambda: called.append(1)), \
+                mock.patch.object(cli_start, "serve", return_value=server), \
+                mock.patch.object(cli_start, "running", return_value=False):
+            cli_start.open_board(self.tools, open_page=lambda url: None)
+        self.assertEqual(called, [1])
+        for starts in (first_run, cli_bridge):
+            self.assertIs(starts.open_board, cli_start.open_board, "the one door: nothing binds a board beside it")
+            self.assertFalse(hasattr(starts, "serve"))
 
     def test_a_tool_installed_since_the_board_started_is_on_the_path_it_looks_on(self) -> None:
         """The board installed Node and went on saying there was no `npx`, until it was started again."""

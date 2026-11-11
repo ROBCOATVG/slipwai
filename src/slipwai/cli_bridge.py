@@ -17,7 +17,6 @@ from .errors import GenerationError, refuse
 from .fleet import board
 from .harbour import config
 from .project.harbour import CONFIG
-from .shell_environment import adopt_tools
 
 
 def up(host: str, port: int, seconds: float = 10.0) -> Callable[[], bool]:
@@ -86,7 +85,6 @@ def bridge_main(argv: list[str]) -> None:
         return
     print(f"bridge: http://{parsed.host}:{parsed.port}  — ctrl-c to stop")
     tool_install.windows_shims()
-    adopt_tools()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

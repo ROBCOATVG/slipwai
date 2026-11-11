@@ -43,6 +43,7 @@ from .errors import Busy
 from .fleet import board
 from .harness import acp_environment
 from .shell_environment import login_environment
+from .turn_child import to_its_end, unheard
 
 #: The tools the session is given, and the only ones. A list rather than a deny-list: a tool added to the
 #: agent next year is then not a power this console quietly acquired.
@@ -120,6 +121,7 @@ class Console:
         self.begun = False
         self.busy = False
         self.child: subprocess.Popen[str] | None = None
+        self.stopping = ""  # `stop` or `reset` while the person's own press is ending the child
         self.login: dict[str, str] | None = None
         self.lock = threading.Lock()
 
@@ -223,6 +225,7 @@ class Console:
         with self.lock:
             child = self.child
         if child is not None:
+            self.stopping = "stop"
             child.kill()
         return "stopped"
 
@@ -233,21 +236,17 @@ class Console:
             self.child = subprocess.Popen(argv, cwd=self.root, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                           stderr=subprocess.STDOUT, text=True, env=self.environment(),
                                           start_new_session=True, **AGENT_TEXT)
-            timer = threading.Timer(LIMIT, self.child.kill)
-            timer.start()
-            try:
-                answered = False
-                for line in self.child.stdout or []:
-                    answered = self.take(line) or answered
-                self.child.wait()
-            finally:
-                timer.cancel()
-            if self.child.returncode and not answered:
-                self.say("harbourmaster", f"The session ended with status {self.child.returncode} and said nothing.",
-                         "error")
+            answered, why = to_its_end(self.child, self.take, LIMIT)
+            asked, self.stopping = self.stopping, ""
+            if asked == "stop":
+                self.say("harbourmaster", "Stopped.", "error")
+            elif why and asked != "reset":
+                self.say("harbourmaster", why, "error")
             self.begun = self.begun or answered
         except OSError as fault:
             self.say("harbourmaster", f"The session could not be started: {fault}", "error")
+        except Exception as fault:  # noqa: BLE001 — whatever ended the hearing is said, not left as a silence
+            self.say("harbourmaster", unheard(fault), "error")
         finally:
             with self.lock:
                 self.busy = False
@@ -279,6 +278,7 @@ class Console:
         with self.lock:
             child = self.child
         if child is not None:
+            self.stopping = "reset"
             child.kill()
         if self.agent is not None:
             self.agent.cancel()

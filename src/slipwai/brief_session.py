@@ -42,6 +42,7 @@ from .console import reading
 from .errors import Busy, GenerationError
 from .harness import acp_environment, row_of
 from .shell_environment import login_environment
+from .turn_child import to_its_end, unheard
 
 #: Where this machine keeps its sketches: not a project's, so not under one.
 SKETCHES = SLIPWAI / "sketches"
@@ -65,6 +66,8 @@ READY = "The brief is ready to hand over."
 #: how a person ends one sooner.
 LIMIT = 3600
 KEPT = 400
+#: What follows the reason an answer ended early, where the session had begun and so can be resumed.
+CARRY_ON = " What it wrote is kept. Say `carry on` to pick it up where it stopped."
 
 
 def slug_of(name: str) -> str:
@@ -151,6 +154,7 @@ class Sketch:
         self.ready = False
         self.check: list[str] = checked(self.home)
         self.child: subprocess.Popen[str] | None = None
+        self.stopping = ""  # `stop` or `reset` while the person's own press is ending the child
         self.login: dict[str, str] | None = None
         self.lock = threading.Lock()
 
@@ -293,6 +297,7 @@ class Sketch:
         with self.lock:
             child = self.child
         if child is not None:
+            self.stopping = "stop"
             child.kill()
         return "stopped"
 
@@ -302,32 +307,17 @@ class Sketch:
             self.child = subprocess.Popen(argv, cwd=self.home, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                           stderr=subprocess.STDOUT, text=True, env=self.environment(),
                                           start_new_session=True, **AGENT_TEXT)
-            late = threading.Event()
-            child = self.child
-
-            def stopped() -> None:
-                late.set()
-                child.kill()
-
-            timer = threading.Timer(LIMIT, stopped)
-            timer.start()
-            try:
-                answered = False
-                for line in self.child.stdout or []:
-                    answered = self.take(line) or answered
-                self.child.wait()
-            finally:
-                timer.cancel()
-            if late.is_set():
-                # Said, because a turn that had already spoken ended here with no word at all: the page
-                # showed a conversation that had stopped, and nothing about why or what to do next.
-                self.say("sketch", f"This answer was stopped after {LIMIT // 60} minutes, before it was finished. "
-                         "What it wrote is kept. Say `carry on` to pick it up where it stopped.", "error")
-            elif self.child.returncode and not answered:
-                self.say("sketch", f"The session ended with status {self.child.returncode} and said nothing.", "error")
+            answered, why = to_its_end(self.child, self.take, LIMIT)
+            asked, self.stopping = self.stopping, ""
+            if asked == "stop":
+                self.say("sketch", "Stopped.", "error")
+            elif why and asked != "reset":
+                self.say("sketch", why + (CARRY_ON if answered else ""), "error")
             self.begun = self.begun or answered
         except OSError as fault:
             self.say("sketch", f"The session could not be started: {fault}", "error")
+        except Exception as fault:  # noqa: BLE001 — whatever ended the hearing is said, not left as a silence
+            self.say("sketch", unheard(fault), "error")
         finally:
             lines = checked(self.home)
             with self.lock:
@@ -370,6 +360,7 @@ class Sketch:
         with self.lock:
             child = self.child
         if child is not None:
+            self.stopping = "reset"
             child.kill()
         if self.agent is not None:
             self.agent.cancel()

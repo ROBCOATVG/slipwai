@@ -81,7 +81,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   # asks about rather than with the answers it resolves to.
                   "quickstart",
                   "catalog_options", "loaded", "loaded_targets", "backends", "probes", "ecosystems", "npm_workspace",
-                  "examples", "harness",
+                  "examples", "harness", "harness_cli",
                   "images")),
     # One validated answer per axis, which applications a project has, and what they add up to being able
     # to do.

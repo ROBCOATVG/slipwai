@@ -19,6 +19,7 @@
 # why: 2026-11-11 ea37558164d2a25f the stand-in agent offers a terminal sign-in only to a client that says it can run one, and refuses a prompt as signed out
 # why: 2026-11-11 bad785543f7a5824 the stand-in agent offers a terminal sign-in only to a client that says it can run one, and refuses a prompt as signed out
 # why: 2026-11-11 f066e7f867af051c the board's protocol client says it can have a terminal sign-in run, and a fault carries the agent's error code
+# why: 2026-11-11 b19e297951d0d356 the registry names the npm package and the command of each harness's own CLI
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -122,6 +123,10 @@
 5b36a16c73e6ec306dd32188783214736a89500cdf8ad3fcc4645a8e25cd7820  standard-memory-none  scripts/agents/logs.py
 5b36a16c73e6ec306dd32188783214736a89500cdf8ad3fcc4645a8e25cd7820  standard-postgres-toy-serve  scripts/agents/logs.py
 5e43f7636d8c9f3c7df85d6a955a27f1ddc2cc4e59c87ca02d243f6dbd37268b  standard-postgres-toy-serve  Makefile
+620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  event-modelling-memory-none  scripts/agents/registry.json
+620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  event-modelling-postgres-toy-serve  scripts/agents/registry.json
+620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  standard-memory-none  scripts/agents/registry.json
+620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  standard-postgres-toy-serve  scripts/agents/registry.json
 62df8776b0632572acdf87f5f0cfff437156dc191ad28282b27149ade66c3874  event-modelling-memory-none  scripts/event-model/board-plan.ts
 62df8776b0632572acdf87f5f0cfff437156dc191ad28282b27149ade66c3874  event-modelling-postgres-toy-serve  scripts/event-model/board-plan.ts
 6378514a076a3d423bf5303bca15094cd69f2cd102c3fcb3e16025fa8eeb3d51  event-modelling-memory-none  scripts/agents/abreast.py
@@ -226,10 +231,6 @@ aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  event-modellin
 aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  event-modelling-postgres-toy-serve  scripts/check-speckit.py
 aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  standard-memory-none  scripts/check-speckit.py
 aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  standard-postgres-toy-serve  scripts/check-speckit.py
-b1c6bcaa1dd5f3acc1ab4101aecc6ffda1a1fcf0870262ffbc1fec9ddc09fd46  event-modelling-memory-none  scripts/agents/registry.json
-b1c6bcaa1dd5f3acc1ab4101aecc6ffda1a1fcf0870262ffbc1fec9ddc09fd46  event-modelling-postgres-toy-serve  scripts/agents/registry.json
-b1c6bcaa1dd5f3acc1ab4101aecc6ffda1a1fcf0870262ffbc1fec9ddc09fd46  standard-memory-none  scripts/agents/registry.json
-b1c6bcaa1dd5f3acc1ab4101aecc6ffda1a1fcf0870262ffbc1fec9ddc09fd46  standard-postgres-toy-serve  scripts/agents/registry.json
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-memory-none  scripts/event-model/render-drawio.ts
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-postgres-toy-serve  scripts/event-model/render-drawio.ts
 bf7c2b27ee05bca74faa74898df6df21074c5a30efde74d8da573bf59f91eb37  event-modelling-memory-none  scripts/check-crossing.py

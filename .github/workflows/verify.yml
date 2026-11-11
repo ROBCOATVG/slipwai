@@ -256,15 +256,15 @@ jobs:
   # for the tag, carrying the executables and their checksums. A version is spent the moment PyPI has it, so
   # this runs last, behind every platform's gate and every platform's smoke.
   dev-snapshot:
-    # Main's newest build where anyone can download it: the `dev` prerelease, replaced on every push. The
-    # run's own artifacts need a GitHub login and are gone in 14 days, and a person trying the app before a
-    # release has neither. A prerelease is never `releases/latest`, so the release page's newest stays the
-    # newest release.
+    # Main's newest build that passed, where anyone can download it: the `dev` prerelease, replaced by every
+    # push's run. The run's own artifacts need a GitHub login and are gone in 14 days, and a person trying
+    # the app before a release has neither. A prerelease is never `releases/latest`, so the release page's
+    # newest stays the newest release.
     if: github.ref == 'refs/heads/main' && github.repository == 'ROBCOATVG/slipwai'
     needs: [distributions]
     runs-on: ubuntu-latest
     # One at a time. Main's runs are never cancelled, so two can finish close together, and the older one is
-    # held to being main's tip below rather than to finishing first.
+    # held below to not replacing a newer one rather than to finishing first.
     concurrency:
       group: dev-snapshot
       cancel-in-progress: false
@@ -285,10 +285,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
-          if [ "$tip" != "$GITHUB_SHA" ]; then
-            echo "main is at $tip now, not $GITHUB_SHA: its own run publishes the snapshot."
-            exit 0
+          # Every build of main that passed replaces the snapshot, so it is always main's newest build
+          # that passed. Waiting for main's tip instead left it three merges behind: each run found a
+          # newer commit by the time it got here, and published nothing. The one build that stands
+          # aside is one older than what is already there, which is two runs finishing out of order.
+          held=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/dev" --jq .object.sha 2>/dev/null || true)
+          if [ -n "$held" ] && [ "$held" != "$GITHUB_SHA" ]; then
+            ahead=$(gh api "repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...$held" --jq .status 2>/dev/null || true)
+            if [ "$ahead" = "ahead" ]; then
+              echo "the snapshot is at $held, which is newer than $GITHUB_SHA: it stays."
+              exit 0
+            fi
           fi
           short=${GITHUB_SHA:0:7}
           gh release delete dev --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true

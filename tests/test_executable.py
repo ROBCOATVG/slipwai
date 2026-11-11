@@ -48,6 +48,18 @@ class SpecTest(unittest.TestCase):
         self.assertIn('collect_data_files("certifi")', self.spec)
         self.assertRegex((REPOSITORY / "requirements-build.txt").read_text(encoding="utf-8"), r"(?m)^certifi==")
 
+    def test_the_windows_app_shows_a_picture_while_it_unpacks(self) -> None:
+        """One file unpacks itself before any of the keel runs, and did so with nothing on the screen. The
+        recipe gives the Windows app the picture, the picture is there, and the module that changes its
+        words is carried by name — `slipwai/splash.py` imports it that way."""
+        self.assertIn('Splash(str(icons / "slipwai-splash.png")', self.spec)
+        self.assertIn("opening, opening.binaries", self.spec)
+        self.assertIn('"pyi_splash"', self.spec)
+        picture = (REPOSITORY / "assets/brand/slipwai-splash.png").read_bytes()
+        self.assertEqual(picture[:8], b"\x89PNG\r\n\x1a\n")
+        # Windows reads magenta in the picture as "see through here".
+        self.assertNotIn("ff00ff", (REPOSITORY / "scripts/build-icons.py").read_text(encoding="utf-8").lower())
+
     def test_both_doors_install_them(self) -> None:
         """The command and the app each start their own process, and each fetches."""
         for door, call in (("cli.py", "carry_certificates()"), ("app.py", "certificates.install()")):

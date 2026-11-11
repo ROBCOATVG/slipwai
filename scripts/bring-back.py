@@ -73,6 +73,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "bridge", "bridge_page", "cli_bridge", "cli_start", "whats_new", "deck", "brand",
        # The roots a built keel verifies HTTPS against, beside the machine's own. Version 2's.
        "certificates",
+       # The picture the Windows app shows while it unpacks, and the words under it. Version 2's.
+       "splash",
        # The Fleet tab and the fold under it: the park record, the groups, the processes. Version 2's.
        "fleet_page", "fleet_record", "timeline", "timeline_page",
        # The console on the Voyage window: a read-only session of the project's agent, briefed as the

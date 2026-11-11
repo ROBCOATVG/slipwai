@@ -26,6 +26,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 from .assets import relaunch, this_command
 from .cli_start import running
+from .splash import QUIET
 
 #: This command as a person types it here, for the lines that name it.
 SELF = this_command()
@@ -137,6 +138,8 @@ def startup(line: Sequence[str], home: Path, root: Path | None = None) -> Servic
         "a file in the Startup folder",
         home / "AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/slipwai-board.cmd",
         "@echo off\r\n"
+        # The app is the command here, and at sign-in nobody opened it: no picture (`splash`).
+        f"set {QUIET}=1\r\n"
         f"{where}"
         f'start "" /b {subprocess.list2cmdline(list(line))}\r\n',
         at_next="It starts at your next sign-in; until then, the command above is what runs it.",

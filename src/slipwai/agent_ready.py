@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import threading
@@ -69,7 +70,10 @@ class Readying:
         self.say(f"A window is open to sign in: {name}. Finish there and in the browser it opens; this page waits.")
         signed = False
         try:
-            status = in_a_window(sign_in_argv(self.launch, method), env, self.home)
+            argv = sign_in_argv(self.launch, method)
+            # An agent may name its command bare (`opencode`): found on the board's path, not the window's.
+            argv[0] = shutil.which(argv[0], path=env.get("PATH")) or argv[0]
+            status = in_a_window(argv, env, self.home)
             signed = status == 0
             self.say(f"Signed in, by {name}." if signed
                      else f"! The sign-in ended with status {status}: nobody is signed in. Press it again to retry.")
@@ -80,7 +84,8 @@ class Readying:
                 settings = read(self.settings_path)
                 found = settings.ready.get(self.key, {})
                 today = datetime.now(UTC).strftime("%Y-%m-%d")
-                settings.ready[self.key] = {**found, "signed_in": {**found.get("signed_in", {}), self.method: today}}
+                settings.ready[self.key] = {**found, "signed_out": False,
+                                            "signed_in": {**found.get("signed_in", {}), self.method: today}}
                 write(settings, self.settings_path)
             with self.lock:
                 self.done, self.failed = True, not signed
@@ -88,7 +93,7 @@ class Readying:
     def run(self) -> None:
         self.home.mkdir(parents=True, exist_ok=True)
         kept = read(self.settings_path).ready.get(self.key, {}).get("auth") or []
-        method = next((one for one in kept if one.get("id") == self.method and one.get("type") == "terminal"), None)
+        method = next((one for one in kept if one.get("id") == self.method and terminal_kind(one)), None)
         if method is not None:
             self.terminal(method)
             return
@@ -109,16 +114,24 @@ class Readying:
                      else "It starts every conversation afresh.")
             # A session too, closed at once: it is where the agent says which models it offers, and the
             # settings page shows those to pick from before the first conversation rather than after it.
-            session.new()
+            try:
+                session.new()
+                record["signed_out"] = False
+            except acp.Fault as fault:  # an agent that opens no session until somebody signs in: not a fault
+                if fault.code != acp.SIGNED_OUT:
+                    raise
+                record["signed_out"] = True
+                self.say("Nobody is signed in to it yet. Press a Sign in below, then Make ready again for its models.")
             settings = read(self.settings_path)
             offered(settings, self.key, session.agent.config_options, self.settings_path)
             models = settings.offered.get(self.key) or []
-            self.say(f"It offers {len(models[0].get('values') or [])} models to pick from on this page."
-                     if models else "It offers no model to pick; its own runs.")
+            if not record["signed_out"]:
+                self.say(f"It offers {len(models[0].get('values') or [])} models to pick from on this page."
+                         if models else "It offers no model to pick; its own runs.")
             if self.method:
                 session.authenticate(self.method)
-                record.setdefault("signed_in", {})
-                record["signed_in"] = {**record.get("signed_in", {}), self.method: record["at"]}
+                kept = settings.ready.get(self.key, {}).get("signed_in", {})
+                record.update(signed_in={**kept, self.method: record["at"]}, signed_out=False)
                 self.say(f"Signed in, by {self.method}.")
         except acp.Fault as fault:
             record["fault"] = str(fault)
@@ -164,6 +177,12 @@ def begin(key: str, method: str = "", home: Path | None = None, settings_path: P
 def state(key: str) -> dict[str, Any]:
     held = RUNNING.get(key)
     return held.state() if held is not None else {"key": key, "lines": [], "done": True, "failed": False}
+
+
+def terminal_kind(method: dict[str, Any]) -> bool:
+    """Whether the sign-in is a command somebody runs: said by its type, or — Copilot gives no type — by
+    its naming a command. Asked of the agent as an `authenticate`, such a method does nothing."""
+    return method.get("type") == "terminal" or bool((method.get("_meta") or {}).get("terminal-auth"))
 
 
 def sign_in_argv(launch: Launch, method: dict[str, Any]) -> list[str]:

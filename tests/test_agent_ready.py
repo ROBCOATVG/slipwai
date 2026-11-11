@@ -111,6 +111,44 @@ class ReadyTest(unittest.TestCase):
                          ["/n/node", "/c/agent.js", "--cli", "auth", "login"])
         self.assertIn("_meta", agent_ready.METHOD_FIELDS, "kept with the method, or the command is lost on a reload")
 
+    def test_a_method_that_names_a_command_is_a_terminal_s_whatever_its_type(self) -> None:
+        """Copilot gives its sign-in no type and a command: asked of the agent as `authenticate`, nothing."""
+        copilot = {"id": "copilot-login", "_meta": {"terminal-auth": {"command": "/c/copilot", "args": ["login"]}}}
+        self.assertTrue(agent_ready.terminal_kind(copilot))
+        self.assertTrue(agent_ready.terminal_kind({"id": "setup", "type": "terminal", "args": ["--setup"]}))
+        self.assertFalse(agent_ready.terminal_kind({"id": "chat-gpt", "_meta": {"api-key": {"provider": "x"}}}))
+
+    def test_a_bare_command_is_found_on_the_board_s_path(self) -> None:
+        """OpenCode names its sign-in `opencode`: a window started with a bare name looks on its own path."""
+        self.made_ready()
+        bare = {"id": "setup", "type": "terminal",
+                "_meta": {"terminal-auth": {"command": Path(sys.executable).name, "args": ["--setup"]}}}
+        settings = read(self.file)
+        settings.ready["stand-in"]["auth"] = [bare]
+        board_settings.write(settings, self.file)
+        with mock.patch.object(agent_ready, "login_environment",
+                               return_value={"PATH": str(Path(sys.executable).parent)}):
+            _, window = self.signing_in(0)
+        self.assertEqual(Path(window.call_args.args[0][0]).parent, Path(sys.executable).parent)
+
+    def test_an_agent_that_opens_no_session_until_signed_in_is_made_ready_all_the_same(self) -> None:
+        """Gemini refuses `session/new` with nobody signed in. That was recorded as a fault, so *Auto*
+        passed it over and the page said it could not be made ready, when all it wanted was a sign-in."""
+        shut = Launch("stand-in", "Stand-in", (*STAND_IN.argv, "--signed-out"), "a script")
+        with mock.patch.object(agent_ready, "launch_for", return_value=shut):
+            begun = agent_ready.begin("stand-in")
+            assert isinstance(begun, agent_ready.Readying)
+            state = settled(begun)
+            found = read(self.file).ready["stand-in"]
+            self.assertEqual((found["fault"], found["signed_out"], state["failed"]), ("", True, False))
+            self.assertEqual([m["id"] for m in found["auth"]], ["login", "setup"])
+            self.assertIn("Nobody is signed in to it yet.", state["lines"][-1])
+            self.assertIn("nobody is signed in to it: press a Sign in below", settings_page.ready_line(shut, found))
+            signed = agent_ready.begin("stand-in", method="login")
+            assert isinstance(signed, agent_ready.Readying)
+            self.assertIn("Signed in, by login.", settled(signed)["lines"])
+        self.assertFalse(read(self.file).ready["stand-in"]["signed_out"])
+
     @unittest.skipUnless(sys.platform == "darwin", "the script Terminal opens is a Mac's")
     def test_on_a_mac_the_window_is_a_script_that_leaves_its_status(self) -> None:
         run = subprocess.run

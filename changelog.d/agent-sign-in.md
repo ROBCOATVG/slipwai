@@ -11,6 +11,12 @@ PATCH
   sign-in, which opens the browser, and the page waits and says how it ended. On Linux the page gives the
   line to run, now the whole command the agent named rather than `npx` with the arguments. A conversation
   refused for want of a sign-in says where to sign in instead of the bare refusal.
+- **The sign-in works the way each agent offers it, not the way one does.** Checked against Codex, Gemini,
+  Copilot and OpenCode as well as Claude Code. A sign-in that names a command is run as one whatever type
+  the agent gave it (Copilot gives none, and was asked to sign in over the protocol, which did nothing). A
+  command named bare (`opencode`) is found on the board's path. An agent that opens no session until
+  somebody signs in (Gemini) is made ready and offered its sign-ins, where it used to be recorded as one
+  that could not be made ready and passed over by *Auto*.
 
 **Catch-up:** none. On a machine made ready by an older build, press *Make ready again* in *Settings* once:
 the ways to sign in are what the agent said at that handshake.

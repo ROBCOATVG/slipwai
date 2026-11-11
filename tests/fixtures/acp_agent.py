@@ -137,6 +137,7 @@ def drove(words):
 
 
 def main():
+    signed_out = "--signed-out" in sys.argv
     options = [{"id": "model", "type": "select", "category": "model", "name": "Model", "currentValue": "a",
                 "options": [{"name": "A", "value": "a"}, {"name": "B", "value": "b"}]}]
     for line in sys.stdin:
@@ -152,9 +153,12 @@ def main():
                                     "authMethods": METHODS if able else METHODS[:1]})
         elif method == "authenticate":
             if params.get("methodId") == "login":
+                signed_out = False
                 send(id=number, result={})
             else:
                 send(id=number, error={"code": -32602, "message": f"{params.get('methodId')} is not a way to sign in"})
+        elif method == "session/new" and signed_out:  # as Gemini does: no session for nobody
+            send(id=number, error={"code": -32000, "message": "nobody is signed in"})
         elif method == "session/new":
             send(id=number, result={"sessionId": "s-1", "configOptions": options})
         elif method == "session/load":

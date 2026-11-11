@@ -98,6 +98,8 @@ def ready_line(one: Launch, found: dict) -> str:
     signed = found.get("signed_in") or {}
     if not methods:
         how = "no sign-in needed"
+    elif found.get("signed_out"):
+        how = "nobody is signed in to it: press a Sign in below"
     elif not signed:
         how = ("not signed in from here; if a conversation says so, sign in by: "
                + ", ".join(str(m.get("name") or m.get("id")) for m in methods))
@@ -136,7 +138,7 @@ def acts(one: Launch, found: dict) -> str:
     buttons = [f'<button type="button" data-ready="{esc(one.key)}">'
                f'{"Make ready again" if found and not found.get("fault") else "Make ready"}</button>']
     for method in found.get("auth") or []:
-        if method.get("type", "agent") == "terminal" and not agent_ready.WINDOWED:
+        if agent_ready.terminal_kind(method) and not agent_ready.WINDOWED:
             buttons.append(f'<span>{esc(str(method.get("name") or method.get("id")))}: run '
                            f'<code>{esc(agent_ready.sign_in_line(one, method))}</code> in a terminal</span>')
         else:

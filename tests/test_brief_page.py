@@ -92,6 +92,13 @@ class FirstPageTest(BoardTest):
             self.get("/brief?name=%2F..%2F")
         self.assertEqual(refused.exception.code, 400)
 
+    def test_the_line_saying_nothing_is_drawn_goes_when_the_prototype_is_shown(self) -> None:
+        _, said = self.get("/brief?name=Club%20boats")
+        self.assertIn('<p class="none undrawn">Nothing drawn yet. Say what the product is.</p>', said)
+        _, page = self.get("/brief?sketch=club-boats")
+        self.assertIn("undrawn = page.querySelector('.undrawn')", page, "its own name, not the brief's `.none`")
+        self.assertIn("if (undrawn) undrawn.hidden = true;", page, "hidden in the step that shows the frame")
+
     def test_a_turn_is_asked_through_the_page_and_polled_back_with_the_step_and_the_check(self) -> None:
         code, said = self.post("/brief/ask", {"sketch": "club-boats", "message": "Members book a boat."})
         self.assertEqual((code, said), (200, "asked"))

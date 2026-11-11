@@ -57,11 +57,15 @@ button.stop{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var
 SCRIPT = """
 // The line at the foot of the log while the agent is busy: what it is doing now, in a word, breathing. It
 // is the one turn that is never kept — the next real turn replaces it, and the end of the turn removes it.
-function drawWaiting(log, busy, thinking) {
+// `doing` is the agent's own account where it gives one — the file it is writing and how much of it so
+// far — and `since` is how many seconds the answer has been under way, shown from the first whole minute:
+// a single reply can run ten minutes, and a line that never changes reads as a conversation that stopped.
+function drawWaiting(log, busy, thinking, doing, since) {
   let had = log.querySelector('.turn.waiting');
   if (!busy) { if (had) had.remove(); return; }
   if (!had) { had = document.createElement('div'); had.className = 'turn waiting'; }
-  had.textContent = thinking ? 'Thinking…' : 'Working…';
+  const long = since >= 60 ? ' · ' + Math.floor(since / 60) + ' min' : '';
+  had.textContent = (doing || (thinking ? 'Thinking…' : 'Working…')) + long;
   log.appendChild(had);
 }
 // An agent's words carry a little markdown — bold, code, bullets — and a person reading raw asterisks is

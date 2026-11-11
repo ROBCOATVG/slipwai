@@ -28,6 +28,7 @@ import re
 import shutil
 import subprocess
 import threading
+import time
 import uuid
 from collections.abc import Sequence
 from pathlib import Path
@@ -42,7 +43,7 @@ from .console import reading
 from .errors import Busy, GenerationError
 from .harness import acp_environment, row_of
 from .shell_environment import login_environment, with_tools
-from .turn_child import to_its_end, unheard
+from .turn_child import Doing, to_its_end, unheard
 
 #: Where this machine keeps its sketches: not a project's, so not under one.
 SKETCHES = SLIPWAI / "sketches"
@@ -155,6 +156,8 @@ class Sketch:
         self.check: list[str] = checked(self.home)
         self.child: subprocess.Popen[str] | None = None
         self.stopping = ""  # `stop` or `reset` while the person's own press is ending the child
+        self.doing = Doing()
+        self.asked = 0.0  # when the answer under way was asked for, on the monotonic clock
         self.login: dict[str, str] | None = None
         self.lock = threading.Lock()
 
@@ -173,7 +176,9 @@ class Sketch:
         resume = ["--resume", self.session] if self.begun else ["--session-id", self.session]
         # No MCP servers: a print session otherwise loads the person's own — a browser, a code index — and
         # the first live run spent its turns trying to open the prototype in one. The page shows it.
-        return [found, "-p", message, "--output-format", "stream-json", "--verbose", "--tools", TOOLS,
+        # Partial messages: a reply's pieces as they arrive, which `Doing` reads to say what it is doing now.
+        return [found, "-p", message, "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+                "--tools", TOOLS,
                 "--allowedTools", TOOLS, "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
                 "--append-system-prompt", role(self.home), *resume]
 
@@ -192,7 +197,11 @@ class Sketch:
             return {"turns": self.turns[held:], "at": self.dropped + len(self.turns), "busy": self.busy,
                     "step": self.step, "ready": self.ready, "check": list(self.check), "slug": self.slug,
                     "agent": self.on, "thinking": bool(self.agent is not None and self.agent.thinking),
-                    "model": self.agent.model if self.agent is not None else ""}
+                    "model": self.agent.model if self.agent is not None else "",
+                    # What it is doing now, and for how long this answer has been under way: a reply can be
+                    # ten minutes of one block, and a page that only says *Working…* looks like one that stopped.
+                    "doing": self.doing.now if self.busy else "",
+                    "for": int(time.monotonic() - self.asked) if self.busy else 0}
 
     def ask(self, message: str) -> str:
         """Say something to the session, or say why it cannot be said: nothing, or an answer under way."""
@@ -202,7 +211,7 @@ class Sketch:
         with self.lock:
             if self.busy:
                 raise Busy("the last answer is still being written")
-            self.busy = True
+            self.busy, self.asked, self.doing = True, time.monotonic(), Doing()
             if not self.session:
                 self.session = str(uuid.uuid4())
         self.say("person", message)
@@ -333,6 +342,7 @@ class Sketch:
             return False
         if not isinstance(event, dict):
             return False
+        self.doing.take(event)
         if event.get("type") == "assistant":
             spoke = False
             for part in (event.get("message") or {}).get("content") or []:

@@ -84,7 +84,9 @@ class StateTest(Fixture):
         self.assertEqual(self.board()["berths"][0]["state"], "stalled")
 
     def test_a_fairway_no_captain_has_worked_is_not_started_however_old_its_lines(self) -> None:
-        """A launch's decisions and a person's receipts are in the log before any slice of it starts."""
+        """A launch's decisions and a person's receipts are in the log before any slice of it starts.
+        game-club-manager's `nights` waited on sign-in with four such lines, and the Fleet tab's headline was
+        "Stalled: nights stopped writing without a word" over a fleet that was working."""
         self.deck("ORD", logs.entry("decision", fairway="ORD", id="D2", what="taken as it stands",
                                     decided_by="host (stage recommendation)", t=when(500)),
                   logs.entry("read", fairway="ORD", told=when(500), t=when(400)))

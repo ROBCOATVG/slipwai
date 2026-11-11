@@ -83,6 +83,25 @@ class OutputTest(CaptainFixture):
         self.printed("ORD", "a fresh start\n")
         self.assertEqual(output(self.root, "ORD", 10_000)[0], "a fresh start\n")
 
+    def test_a_session_s_events_are_said_in_words_and_its_plumbing_is_not_said(self) -> None:
+        """game-club-manager's first slice left two megabytes of JSON under *Captain output*."""
+        self.printed("ORD", "captain: ORD-01 dispatched\n"
+                     + json.dumps({"type": "system", "subtype": "hook_started", "hook_name": "SessionStart"}) + "\n"
+                     + json.dumps({"type": "assistant", "message": {"content": [
+                         {"type": "text", "text": "The example map is written."}]}}) + "\n")
+        said, _ = output(self.root, "ORD")
+        self.assertIn("captain: ORD-01 dispatched\n", said)
+        self.assertIn("The example map is written.", said)
+        self.assertNotIn("{", said)
+        self.assertNotIn("hook_started", said)
+
+    def test_half_a_line_is_left_for_the_poll_that_finds_the_rest_of_it(self) -> None:
+        self.printed("ORD", "captain: claimed\ncaptain: dis")
+        said, at = output(self.root, "ORD")
+        self.assertEqual((said, at), ("captain: claimed\n", len("captain: claimed\n")))
+        self.printed("ORD", "patched\n")
+        self.assertEqual(output(self.root, "ORD", at)[0], "captain: dispatched\n")
+
     def test_a_name_with_no_deck_log_reads_nothing(self) -> None:
         """Which also keeps the name a fairway's: it is never a path somebody typed."""
         self.assertEqual(output(self.root, "../../etc/passwd"), ("", 0))

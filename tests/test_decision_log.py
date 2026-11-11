@@ -67,7 +67,7 @@ class LogTest(unittest.TestCase):
                                     decided_by="host (stage recommendation)").line())
         ones = [one for one in decisions(self.root) if one.number == "D1"]
         self.assertEqual([one.title for one in ones], ["Are the connector writes built?"])
-        self.assertTrue(ones[0].key.startswith("deck:ORD:"), "the deck line, so its receipt is the one the ceiling counts")
+        self.assertTrue(ones[0].key.startswith("deck:ORD:"), "the deck line: its receipt is what the ceiling counts")
 
     def test_a_persons_own_answer_is_shown_with_the_question_it_answered_and_is_read(self) -> None:
         mine = next(one for one in decisions(self.root) if one.yours)

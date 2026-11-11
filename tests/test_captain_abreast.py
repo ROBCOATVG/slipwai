@@ -206,9 +206,7 @@ class ParkTest(Abreast):
         for slice_id, at in (("L02", "2026-10-01T09:01:00Z"), ("L03", "2026-10-01T09:02:00Z")):
             self.deck("LVR", logs.entry("claimed", fairway="LVR", slice=slice_id, t=OLD),
                       logs.entry("parked", fairway="LVR", slice=slice_id, why="logged out", t=at))
-        # The fleet was stopped while L02 was parked: the captain that ended wrote `stopped` after the park,
-        # and a cleared park under a `stopped` line was stepped past for the rest of the turn.
-        self.deck("LVR", logs.entry("stopped", fairway="LVR", slice="L02", t="2026-10-01T09:03:00Z"))
+        self.deck("LVR", logs.entry("stopped", fairway="LVR", slice="L02", t="2026-10-01T09:03:00Z"))  # fleet stopped
         self.slots(2)
         self.granted("L02", "L03", "L04")
         captain = subprocess.Popen([sys.executable, str(self.script), "LVR", "--once"], cwd=self.root,

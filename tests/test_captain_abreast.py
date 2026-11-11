@@ -106,9 +106,10 @@ class Abreast(Fixture):
                 "ABREAST_RECORD": str(self.record), **env}
 
     def notes(self) -> list[dict]:
-        """Every note the fake `/sail` sessions left, in the order they were written."""
-        found = [json.loads(path.read_text(encoding="utf-8"))
-                 for path in self.record.parent.glob(f"{self.record.stem}.*.json")]
+        """Every note the fake `/sail` sessions left, in order. One a session has opened and not yet written
+        is there and empty, and is not a note yet: read as one, it failed a poll on its JSON, on main."""
+        found = [json.loads(text) for path in self.record.parent.glob(f"{self.record.stem}.*.json")
+                 if (text := path.read_text(encoding="utf-8"))]
         return sorted(found, key=lambda row: row["at"])
 
     def windows(self) -> dict[str, tuple[float, float, str]]:

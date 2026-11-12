@@ -145,7 +145,17 @@ document.addEventListener('click', async event => {
   // `look` and not this window's seat, so the two are genuinely two — a Look here typed in this one later
   // moves this one, and the run goes on being watched where it was opened.
   const receipt = await (await fetch('/init.json')).json();
-  window.open('/voyage?look=' + encodeURIComponent(receipt.root), '_blank', 'noopener');
+  const where = '/voyage?look=' + encodeURIComponent(receipt.root);
+  // A browser lets a page open a tab for a few seconds after the click that asked, and a generate takes
+  // longer: the tab was refused without a word, and the run went on where nobody was looking. So the way
+  // there is on the page as well, said as what it is, whether or not the tab opened.
+  const opened = window.open(where, '_blank');
+  const link = document.createElement('a');
+  link.href = where; link.target = '_blank';
+  link.style.cssText = 'display:inline-block;margin-top:10px;font-weight:500';
+  link.textContent = opened ? 'The voyage is open in another tab: open it again'
+                            : 'Open the voyage: the project is being finished there';
+  said.after(link);
 });
 """
 

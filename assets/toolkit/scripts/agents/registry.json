@@ -1,5 +1,5 @@
 {
-  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what a captain needs to dispatch `/sail` for a slice — the command as a shell template with {prompt} and {permissions}, read the same way, or null with a `headlessReason` where none was verified, which the script reports rather than guessing a flag; `scripts/agents/harness.py` looks for the command's first word on PATH, and `prompt: \"slash\"` marks the one harness whose print mode is known to resolve `/cruise` itself (every other is asked to read the command file). `hooks` is the factory's fourth: whether this harness has a hook that fires when a turn ends and can refuse the end (`holds`), how, and the `projection` `scripts/agents/project.py` writes so that `scripts/agents/session.py before-stop` runs there — or null with a `why` where the file's shape was not read, and null altogether where nothing was verified. `projectMcp` is the factory's fifth: the project-scoped file this harness reads an MCP server from, its shape, and the flags a headless iteration needs for that file to be honoured in a checkout nobody has trusted — read the same way, or null with a `projectMcpReason`; `scripts/extensions/guidance.py` writes an extension's server into every installed harness's file, and `scripts/agents/captain.py` passes the flags when the file exists. `acp` is the factory's sixth: how this harness is launched as an Agent Client Protocol agent over stdio — an `npx` package with its arguments, or a `binary` on PATH with its arguments — copied from the protocol's own registry on the date `source` says, `via` saying native or through which adapter, `proven: false` until a session has run on it from the board; or null with an `acpReason`. `slipwai.harness.acp_launch` turns it into the argv this machine can make, or says what is missing. `acp.archive` is the registry's binary distribution per platform target — the archive's URL, its sha256 where the manifest gives one, the command inside it and its arguments — read from the manifest `acp.archiveSource` names; the board installs from it only where a sha256 is given.",
+  "_generated": "Derived from the Spec Kit integration registry; kept by hand since. `subagentModel` is the factory's own column: how this harness lets a sub-task run on a chosen model, read from the harness's documentation on the date each row says, or null where none was verified — which `scripts/agents/models.py` reports as every stage running on the host model. `agentFile` is the factory's too: where this harness reads a named agent type, and how that file spells the model, the write scope and the command scope — read the same way, or null where none was verified, which `scripts/agents/project.py` reports as a harness that gets no agent files. A null `commands` inside a row is the same kind of no: the file cannot bound what the delegate may run, and `commandsReason` says why. `mcp` inside the same row is how a delegate on that harness reaches this project's MCP servers, and `grant` is what its agent file has to name for an MCP tool to survive the tool list it writes — `null` there means nothing to name, not nothing to know, and `scripts/agents/project.py` stamps `reaches` into every projection so a silently withheld route is one somebody can read. `usage` is the factory's too: where the harness writes the tokens a session spent, which `scripts/agents/benchmark.py` reads between a stage's start and end, or null where none was verified. Do not hand-edit the projections it drives — see docs/agent-harnesses.md. `headless` is the factory's third column: how this harness runs one prompt non-interactively in a fresh session, which is what a captain needs to dispatch `/sail` for a slice — the command as a shell template with {prompt} and {permissions}, read the same way, or null with a `headlessReason` where none was verified, which the script reports rather than guessing a flag; `scripts/agents/harness.py` looks for the command's first word on PATH, and `prompt: \"slash\"` marks the one harness whose print mode is known to resolve `/cruise` itself (every other is asked to read the command file). `hooks` is the factory's fourth: whether this harness has a hook that fires when a turn ends and can refuse the end (`holds`), how, and the `projection` `scripts/agents/project.py` writes so that `scripts/agents/session.py before-stop` runs there — or null with a `why` where the file's shape was not read, and null altogether where nothing was verified. `projectMcp` is the factory's fifth: the project-scoped file this harness reads an MCP server from, its shape, and the flags a headless iteration needs for that file to be honoured in a checkout nobody has trusted — read the same way, or null with a `projectMcpReason`; `scripts/extensions/guidance.py` writes an extension's server into every installed harness's file, and `scripts/agents/captain.py` passes the flags when the file exists. `acp` is the factory's sixth: how this harness is launched as an Agent Client Protocol agent over stdio — an `npx` package with its arguments, or a `binary` on PATH with its arguments — copied from the protocol's own registry on the date `source` says, `via` saying native or through which adapter, `proven: false` until a session has run on it from the board; or null with an `acpReason`. `slipwai.harness.acp_launch` turns it into the argv this machine can make, or says what is missing. `acp.archive` is the registry's binary distribution per platform target — the archive's URL, its sha256 where the manifest gives one, the command inside it and its arguments — read from the manifest `acp.archiveSource` names; the board installs from it only where a sha256 is given. `cli` is the factory's seventh: the npm package that installs this harness's own command — the one Spec Kit looks for before it installs an integration, and the one `headless` runs — and the command's name, read from the package on the date `source` says; absent where none was verified. The board installs it under `~/.slipwai/tools/` where the machine has no such command (`slipwai.harness_cli`).",
   "speckitVersion": "0.16.1",
   "harnesses": [
     {
@@ -190,6 +190,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@augmentcode/auggie",
+        "cmd": "auggie",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -226,6 +231,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@ibm/bob",
+        "cmd": "bob",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -322,6 +332,11 @@
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
         "probed": "2026-11-05, through the keel's client in a scratch folder: handshake 0.4 s, loadSession true, no auth method (the installed Claude Code's login), config options mode, model, effort and fast, one prompt answered end_turn in 2.2 s; the first launch fetches the package over npx",
         "proof": "2026-11-06, from the board's first page on a second board over this tree: Make ready 3.8 s (adapter 0.101.0); one brief (bike repair bookings) drawn in 27 turns — a prototype, brief/prd.md with 13 proposals and 2 open questions, people.md — tool calls and words as cards; the agent wrote the brief through a shell heredoc rather than a write tool, and asked nothing through elicitation"
+      },
+      "cli": {
+        "npm": "@anthropic-ai/claude-code",
+        "cmd": "claude",
+        "source": "`npm view @anthropic-ai/claude-code bin`, read 2026-11-11"
       }
     },
     {
@@ -368,6 +383,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "cline",
+        "cmd": "cline",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -414,6 +434,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@tencent-ai/codebuddy-code",
+        "cmd": "codebuddy",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -484,6 +509,11 @@
         "via": "adapter: codex-acp",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@openai/codex",
+        "cmd": "codex",
+        "source": "`npm view @openai/codex bin`, read 2026-11-11"
       }
     },
     {
@@ -549,6 +579,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@github/copilot",
+        "cmd": "copilot",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -826,6 +861,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "droid",
+        "cmd": "droid",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -983,6 +1023,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@google/gemini-cli",
+        "cmd": "gemini",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -1115,6 +1160,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@xai-official/grok",
+        "cmd": "grok",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -1284,6 +1334,11 @@
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
         "note": "the manifest also offers a binary archive; `npx` needs only Node"
+      },
+      "cli": {
+        "npm": "@kilocode/cli",
+        "cmd": "kilo",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -1503,6 +1558,11 @@
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05",
         "note": "the same package as qodercli: Lingma was renamed Qoder CLI"
+      },
+      "cli": {
+        "npm": "@qoder-ai/qodercli",
+        "cmd": "qodercli",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -1707,6 +1767,11 @@
         "via": "adapter: pi-acp",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@earendil-works/pi-coding-agent",
+        "cmd": "pi",
+        "source": "`npm view @earendil-works/pi-coding-agent bin`, read 2026-11-11"
       }
     },
     {
@@ -1753,6 +1818,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@qoder-ai/qodercli",
+        "cmd": "qodercli",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {
@@ -1800,6 +1870,11 @@
         "via": "native",
         "proven": false,
         "source": "https://github.com/agentclientprotocol/registry, the agent's agent.json, read 2026-11-05"
+      },
+      "cli": {
+        "npm": "@qwen-code/qwen-code",
+        "cmd": "qwen",
+        "source": "the `bin` of the package's own package.json, as `npx` fetched it, read 2026-11-11"
       }
     },
     {

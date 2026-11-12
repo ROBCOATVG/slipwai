@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,7 +26,7 @@ from .project.sail_settings import CONFIG as SAIL_CONFIG
 from .project.sail_settings import CYCLES, DELEGATES
 from .project.sail_settings import SCRIPT as SAIL_SCRIPT
 from .project.stage_models import STAGES
-from .shell_environment import login_environment
+from .shell_environment import login_environment, project_python
 from .wheel import PATIENCE
 
 MODELS_CONFIG = ".specify/models.json"
@@ -141,7 +140,7 @@ def set_dial(root: Path, name: str, key: str, value: str) -> str:
     if not script.is_file():
         raise ValueError(f"{panel.script} is not in this project, so there is nothing to write the "
                          f"setting. It arrives with `./init`")
-    done = subprocess.run([sys.executable, str(script), "--set", f"{key}={value}"],  # noqa: S603 — the
+    done = subprocess.run([project_python(root), str(script), "--set", f"{key}={value}"],  # noqa: S603 — the
                           cwd=root, capture_output=True, text=True,                  # project's own script
                           timeout=PATIENCE, env=login_environment(), check=False)
     if done.returncode:

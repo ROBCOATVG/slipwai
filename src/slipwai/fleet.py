@@ -33,7 +33,6 @@ import ast
 import json
 import re
 import subprocess
-import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -65,7 +64,7 @@ from .logs import (
     paused,
     unmerged,
 )
-from .shell_environment import login_environment, python3
+from .shell_environment import login_environment, project_python
 from .timeline import spans
 
 
@@ -503,22 +502,6 @@ def clearance_ready(root: Path, feature: str = "") -> tuple[str, dict[str, list[
     if not isinstance(ready, dict) or any(not isinstance(ids, list) for ids in ready.values()):
         return feature, {}, "clearance returned no ready set"
     return feature, {str(f): [str(s) for s in ids] for f, ids in ready.items()}, ""
-
-
-def project_python(root: Path | None = None) -> str:
-    """The interpreter the project's own scripts run under: the `python3` the login shell finds, which is the
-    one `./init` installed PyYAML into — not this process's, which is the keel's own environment and reads
-    no YAML by design. The keel's as a fallback, so a machine with no other python still gets an answer.
-    The walk is spelled out rather than borrowed from `shutil.which`, which a suite elsewhere stands in for."""
-    import os
-
-    if sys.platform == "win32":  # the `python3` there is bash's shim, which no Windows program can start
-        return python3()
-    for directory in (login_environment(root=root).get("PATH") or "").split(os.pathsep):
-        candidate = Path(directory) / "python3"
-        if directory and candidate.is_file() and os.access(candidate, os.X_OK):
-            return str(candidate)
-    return sys.executable
 
 
 def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:

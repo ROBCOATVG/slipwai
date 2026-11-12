@@ -25,7 +25,6 @@ import datetime
 import json
 import shlex
 import subprocess
-import sys
 from collections.abc import Mapping
 from pathlib import Path
 from urllib.parse import quote
@@ -54,6 +53,7 @@ from .layout import Layout, layout_of
 from .manifest import read_manifest
 from .next_steps import BASELINE
 from .page_shell import esc
+from .shell_environment import project_python
 from .stack_proposal import Proposal
 from .strategy import SAYS
 from .strategy_form import form as strategy_form
@@ -90,7 +90,7 @@ def gate(root: Path, layout: Layout, said: list[str] | None = None) -> Fitting:
              stops=False),
         # A first run with nothing to hold writes no baseline, and the step is done once one exists: an empty one
         # says the same as none to the ratchet, and is the record that the gate has run here.
-        Step([sys.executable, "-c", "import pathlib, sys; p = pathlib.Path(sys.argv[1]); "
+        Step([project_python(root), "-c", "import pathlib, sys; p = pathlib.Path(sys.argv[1]); "
               "p.exists() or p.write_text('{}\\n', encoding='utf-8')", baseline], "", lambda code: "", "verify"),
         Step(["git", "add", "--", baseline], "", lambda code: "", "verify"),
         Step(["git", "commit", "-q", "-m", "Gate baseline", "--", baseline], "",

@@ -151,6 +151,22 @@ def python3(system: str | None = None) -> str:
     return found or ("python" if getattr(sys, "frozen", False) else sys.executable)
 
 
+def project_python(root: Path | None = None) -> str:
+    """The interpreter the project's own scripts run under: the `python3` the login shell finds, which is the
+    one `./init` installed PyYAML into — not this process's, which is the keel's own environment and reads
+    no YAML by design. The keel's as a fallback, so a machine with no other python still gets an answer.
+    The walk is spelled out rather than borrowed from `shutil.which`, which a suite elsewhere stands in for.
+    Never `sys.executable` where frozen: that is the slipwai executable itself, which takes a script's path for a
+    verb and refuses it."""
+    if sys.platform == "win32":  # the `python3` there is bash's shim, which no Windows program can start
+        return python3()
+    for directory in (login_environment(root=root).get("PATH") or "").split(os.pathsep):
+        candidate = Path(directory) / "python3"
+        if directory and candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return python3() if getattr(sys, "frozen", False) else sys.executable
+
+
 def with_tools(held: dict[str, str], home: Path | None = None, system: str | None = None) -> dict[str, str]:
     """`held` with the board's own tools on its `PATH`: ahead of everything where they replace an old copy,
     after everything otherwise, and on Windows Git's `usr/bin` ahead of them all."""

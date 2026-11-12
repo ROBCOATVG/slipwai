@@ -9,16 +9,16 @@ its run. Which step is which is read off its action, as `next_steps` words it.
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 from . import next_steps
+from .assets import relaunch
 from .errors import GenerationError
 from .init_run import Fitting, Step, stage_step
 from .layout import Layout, layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import adoption_of
-from .shell_environment import login_environment, python3
+from .shell_environment import login_environment, project_python, python3
 from .stage_steps import knows
 from .strategy_steps import CONTINUE, home_of, name_of, stack_of
 
@@ -60,7 +60,7 @@ def home_steps(root: Path) -> list[Step]:
         raise GenerationError("this repository has changes nobody has committed; commit or stash them first, so the "
                               "new home arrives as a commit of its own")
     name = name_of(where, f"{document.get('name') or root.name}-next").lower().replace("_", "-")
-    slipwai = [sys.executable, "-m", "slipwai"]
+    slipwai = relaunch()
     on = [f"--backend={stack['backend']}", f"--persistence={stack.get('persistence') or 'memory'}"]
     browser = stack.get("frontend") not in (None, "", "none")
     if place == "new-repo":
@@ -78,7 +78,8 @@ def home_steps(root: Path) -> list[Step]:
                          ["git", "add", "-A"],
                          ["git", "commit", "-q", "-m", f"Give the new home its browser app: {name}-web"]]
         where_to = f"apps/{name}"
-    steps = [Step(argv, f"Running {' '.join(argv[2:] if argv[0] == sys.executable else argv)}", lambda code: (
+    shown = len(slipwai)
+    steps = [Step(argv, f"Running {' '.join(argv[shown:] if argv[:shown] == slipwai else argv)}", lambda code: (
         "" if code == 0 else f"It stopped ({code}); what it said is above."), "home") for argv in commands]
     steps[-1] = Step(steps[-1].argv, steps[-1].announced, lambda code: (
         f"The new home is at {where_to}, current from day one: every new feature is built there."
@@ -105,7 +106,7 @@ def agent_steps(layout: Layout, now: next_steps.Step, root: Path) -> list[Step]:
     Agent Client Protocol where the board can launch it, so the step can ask what only the person can say;
     a headless session where it cannot."""
     taken = now.action[:-len(IN_THE_AGENT)]
-    return [stage_step(root, "adopt-step", "", [sys.executable, layout.under(STEP), taken, now.why],
+    return [stage_step(root, "adopt-step", "", [project_python(root), layout.under(STEP), taken, now.why],
                        f"Handing {taken} to a headless session — it reads the strategy's playbook, takes this "
                        "step and stops.",
                        f"Taking {taken} with the project's agent over the Agent Client Protocol, from this board — "

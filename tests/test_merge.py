@@ -76,6 +76,21 @@ class MergeTest(MergeFixture):
         self.assertTrue(answer.fields["resolve"])
         self.assertEqual(self.head("main"), self.trunk_was)
 
+    def test_the_gate_finds_what_extensions_installed_where_git_does_not_look(self) -> None:
+        """game-club-manager's first slice passed its gate in the berth and was refused twice at the merge:
+        `skills/unslop/` is ignored by Git, the scratch worktree had only `tools/` linked into it, and
+        `check-extensions` found the skill there in part."""
+        for install in ("tools/ux-gates/kit.json", "skills/unslop/SKILL.md"):
+            (self.root / install).parent.mkdir(parents=True)
+            (self.root / install).write_text("installed\n", encoding="utf-8")
+        (self.root / ".gitignore").write_text(".slipwai/\ntools/ux-gates/\nskills/unslop/\n", encoding="utf-8")
+        self.commit("two extensions elected, their installs ignored")
+        self.slice_branch("ORD-01", "Makefile",
+                          "verify:\n\t@test -f tools/ux-gates/kit.json && test -f skills/unslop/SKILL.md\n")
+        self.ask("ORD-01")
+        done = self.run_once()
+        self.assertEqual(self.answer().kind, "granted", f"{self.answer().fields}\n{done.stderr}")
+
     def test_a_branch_that_is_not_there_is_refused_and_is_not_a_berth_s_to_fix(self) -> None:
         self.ask("ORD-01")
         self.run_once()

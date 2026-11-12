@@ -155,3 +155,16 @@ def folded_line(line: str) -> list[str]:
     """One line on its own, with nothing remembered from the last: what a caller with no stream to hold
     gets, and what the card's tests read a single event through."""
     return Folder().fold(line)
+
+
+def said_plainly(root: Path, text: str) -> str:
+    """The captain's own lines as they came, and each session event in a person's words.
+
+    A captain whose sessions run in print mode has their event stream in its output: two megabytes of JSON
+    on game-club-manager's first slice, under a heading that promised the captain's lines and each turn's
+    closing message. An event is folded the way the *Made* card folds a stage's; plumbing says nothing.
+    """
+    folder, lines = Folder(root), []
+    for line in text.splitlines():
+        lines += folder.fold(line) if line.lstrip().startswith("{") else [line]
+    return "".join(one + "\n" for one in lines)

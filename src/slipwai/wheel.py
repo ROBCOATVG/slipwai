@@ -20,12 +20,11 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 from .project.cruise import SETTINGS
 from .project.cruise_record import SCRIPT
-from .shell_environment import login_environment
+from .shell_environment import login_environment, project_python
 
 #: Where the answers live, relative to the project.
 CONFIG = ".specify/cruise.json"
@@ -110,7 +109,7 @@ def set_stop(root: Path, name: str, value: str) -> str:
     if not script.is_file():
         raise ValueError(f"{SCRIPT} is not in this project, so there is nothing to write the answer. "
                          f"It arrives with `./init`")
-    done = subprocess.run([sys.executable, str(script), "--set", f"{name}={value}"],  # noqa: S603 — the
+    done = subprocess.run([project_python(root), str(script), "--set", f"{name}={value}"],  # noqa: S603 — the
                           cwd=root, capture_output=True, text=True,                   # project's own script
                           timeout=PATIENCE, env=login_environment(), check=False)
     if done.returncode:

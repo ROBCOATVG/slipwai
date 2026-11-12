@@ -553,29 +553,38 @@ def still_ours() -> bool:
     return found is not None and found.machine == logs.machine()
 
 
+#: Where an extension installs what Git ignores: a kit under `tools/`, a skill under `skills/`.
+INSTALLED_UNDER = ("tools", "skills")
+
+
 def furnish(where: Path) -> None:
-    """Link into the scratch worktree what extensions installed under `tools/` and Git ignores.
+    """Link into the scratch worktree what extensions installed under `tools/` or `skills/` and Git ignores.
 
     A worktree has the tracked tree and nothing else, and an extension's kit is ignored by Git on purpose
     (`tools/ux-gates/` is one), so the gate here reported it *not installed in this checkout* on every merge
     however well the berth was furnished. Linked rather than copied: the same install, read in place.
-    """
-    tools = ROOT / "tools"
-    if not tools.is_dir():
-        return
-    for installed in sorted(tools.iterdir()):
-        target = where / "tools" / installed.name
-        if target.exists() or git("check-ignore", "-q", f"tools/{installed.name}/").returncode != 0:
-            continue
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if sys.platform != "win32":
-            target.symlink_to(installed, target_is_directory=installed.is_dir())
-        elif installed.is_dir():  # a symlink there needs Developer Mode or an administrator; a junction does not
-            import _winapi  # noqa: PLC0415 — Windows only
 
-            _winapi.CreateJunction(str(installed), str(target))
-        else:
-            shutil.copy2(installed, target)
+    `skills/` as well as `tools/`: an extension that is a skill (`skills/unslop/`, `skills/ui-ux-pro-max/`)
+    is ignored the same way, and with only `tools/` linked its check found the skill *here in part* and
+    refused every merge of a project that had elected one, while the same gate passed in the berth.
+    """
+    for folder in INSTALLED_UNDER:
+        installs = ROOT / folder
+        if not installs.is_dir():
+            continue
+        for installed in sorted(installs.iterdir()):
+            target = where / folder / installed.name
+            if target.exists() or git("check-ignore", "-q", f"{folder}/{installed.name}/").returncode != 0:
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if sys.platform != "win32":
+                target.symlink_to(installed, target_is_directory=installed.is_dir())
+            elif installed.is_dir():  # a symlink there needs Developer Mode or an administrator; a junction does not
+                import _winapi  # noqa: PLC0415 — Windows only
+
+                _winapi.CreateJunction(str(installed), str(target))
+            else:
+                shutil.copy2(installed, target)
 
 
 def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:

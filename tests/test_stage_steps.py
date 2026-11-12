@@ -27,7 +27,7 @@ from slipwai.init_run import CRUISE, LAUNCH, MODEL, TRIAGE, Fitting, Step, outsi
 from slipwai.layout import Layout
 from slipwai.next_steps import Step as Next
 from slipwai.passage import split
-from slipwai.shell_environment import python3
+from slipwai.shell_environment import project_python, python3
 from slipwai.stage_session import StageSession
 from slipwai.stage_steps import NOBODY, begin_model, launch, launch_steps, model_prompt, model_step, triage_step
 
@@ -165,7 +165,7 @@ class StageStepsTest(unittest.TestCase):
         self.assertTrue(any(line.startswith("Drawn: Take the build floor because it runs\n") for line in said["lines"]))
         with mock.patch.object(stage_session, "launchable", return_value=None):
             self.assertEqual(agent_steps(layout, now, self.root)[0].argv,
-                             [sys.executable, "adopt/scripts/agents/step.py", "the build floor", "it runs"])
+                             [project_python(self.root), "adopt/scripts/agents/step.py", "the build floor", "it runs"])
 
     def test_the_adoption_step_script_says_its_prompt_when_asked(self) -> None:
         agents = self.root / "scripts" / "agents"

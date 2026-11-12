@@ -90,7 +90,7 @@ SCRIPT = """
     const slug = page.dataset.sketch, log = page.querySelector('.log'), input = page.querySelector('input');
     const go = page.querySelector('button.go'), empty = page.querySelector('.empty');
     const check = page.querySelector('.check'), none = page.querySelector('.none');
-    const frame = page.querySelector('iframe');
+    const frame = page.querySelector('iframe'), undrawn = page.querySelector('.undrawn');
     const steps = page.querySelectorAll('nav.steps span');
     let at = 0, busy = false, timer = null, drawn = 0;
     const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -136,7 +136,10 @@ SCRIPT = """
       drawWaiting(log, busy, said.thinking, said.doing, said.for);
       if (said.turns.length || busy) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
       paint(said);
-      if (frame && drawn !== before) { frame.hidden = false; frame.src = frame.dataset.src + '?v=' + Date.now(); }
+      if (frame && drawn !== before) {
+        frame.hidden = false; frame.src = frame.dataset.src + '?v=' + Date.now();
+        if (undrawn) undrawn.hidden = true;
+      }
       clearTimeout(timer);
       // Polled while idle too, slowly: a turn started from another window is still this conversation's.
       timer = setTimeout(poll, busy ? 900 : 4000);
@@ -234,7 +237,7 @@ def sketch_page(slug: str) -> str:
     has_prototype = (home / PROTOTYPE / "index.html").is_file()
     frame = (f'<iframe title="The prototype" src="{played}" data-src="{played}"></iframe>' if has_prototype
              else f'<iframe title="The prototype" hidden data-src="{played}"></iframe>'
-                  f'<p class="none">Nothing drawn yet. Say what the product is.</p>')
+                  f'<p class="none undrawn">Nothing drawn yet. Say what the product is.</p>')
     return (f'<div id="sketch" data-sketch="{esc(slug)}">'
             f'<div><nav class="steps" aria-label="Steps">{steps}</nav>'
             f'<div class="card" style="margin-top:14px"><div class="head"><h2>{esc(slug)}</h2>'

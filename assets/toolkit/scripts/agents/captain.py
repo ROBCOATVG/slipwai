@@ -1454,13 +1454,18 @@ def cleared_back(feature: str, fairway: str, found: list[logs.Entry], beside: li
     two slots of three working for an hour. Only a slice whose newest claim-or-park line is its park —
     nothing has claimed it since — and whose park is no longer open; one in flight here or worked by
     another captain is left where it is.
+
+    A `stopped` line after the park is the same slice, not a later claim: the fleet was stopped while it
+    was parked, and the captain that ended wrote it. game-club-manager's SI-01 was parked on the merge gate,
+    the fleet was stopped to repair it and cast off again, and the cleared park was stepped past for the
+    rest of the turn with a finished slice one merge request from trunk.
     """
     _, held = state(found, fairway)
     last: dict[str, str] = {}
     for e in found:
         if e.kind in ("claimed", "parked", "stopped") and e.fields.get("slice"):
             last[str(e.fields["slice"])] = e.kind
-    back = [one for one in resuming(found) if last.get(one) == "parked" and one not in held
+    back = [one for one in resuming(found) if last.get(one) in ("parked", "stopped") and one not in held
             and one not in beside and worked_here(fairway, one) is None]
     return furthest_first(feature, back, found) if back else []
 

@@ -19,6 +19,7 @@ import re
 from pathlib import Path
 
 from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold, harbour_logs, read
+from .session_log import said_plainly
 
 #: How many lines one stream shows by default. Enough to cover a slice; short enough to read.
 RECENT = 60
@@ -329,4 +330,9 @@ def output(root: Path, fairway: str, after: int = -1) -> tuple[str, int]:
         return "", 0
     if opening and start:
         data = data.partition(b"\n")[2]
-    return data.decode("utf-8", errors="replace").replace("\r\n", "\n"), size
+    # Whole lines only: a session's event is one line of JSON, and half of one says nothing at either poll.
+    whole, newline, rest = data.rpartition(b"\n")
+    if not newline:
+        return "", start
+    text = (whole + newline).decode("utf-8", errors="replace").replace("\r\n", "\n")
+    return said_plainly(root, text), size - len(rest)

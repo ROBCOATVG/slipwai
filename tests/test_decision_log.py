@@ -59,6 +59,16 @@ class LogTest(unittest.TestCase):
         self.assertTrue(found["D7"].key.startswith("deck:ORD:"))
         self.assertFalse(found["D7"].read)
 
+    def test_a_deck_decision_named_only_by_its_id_is_its_entry_and_is_listed_once(self) -> None:
+        """A launch writes `id: D1` and a sentence. It was listed as "D1 (not in decisions.md)", and the
+        entry it was listed again beside it: twenty rows for ten decisions on game-club-manager."""
+        with self.deck.open("a", encoding="utf-8") as handle:
+            handle.write(logs.entry("decision", fairway="ORD", id="D1", what="No connector write in this phase.",
+                                    decided_by="host (stage recommendation)").line())
+        ones = [one for one in decisions(self.root) if one.number == "D1"]
+        self.assertEqual([one.title for one in ones], ["Are the connector writes built?"])
+        self.assertTrue(ones[0].key.startswith("deck:ORD:"), "the deck line: its receipt is what the ceiling counts")
+
     def test_a_persons_own_answer_is_shown_with_the_question_it_answered_and_is_read(self) -> None:
         mine = next(one for one in decisions(self.root) if one.yours)
         self.assertEqual((mine.title, mine.decision, mine.read), ("Which bank question?", "decide for me", True))

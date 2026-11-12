@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -36,6 +35,7 @@ from .cli_fleet import config, lines, stream_lines
 from .deck import RECENT
 from .fleet import board, inbox_detail
 from .project.harbour import CONFIG
+from .shell_environment import project_python
 
 #: What the server calls itself where a harness lists it.
 NAME = "slipwai"
@@ -146,7 +146,7 @@ def gate(root: Path, script: str) -> str:
         raise Refused(f"{relative} is not in this project, so there is no gate here to run. "
                       f"Run `slipwai migrate` to bring it in")
     try:
-        found = subprocess.run([sys.executable, str(whole)], cwd=root, capture_output=True, text=True,
+        found = subprocess.run([project_python(root), str(whole)], cwd=root, capture_output=True, text=True,
                                timeout=BUDGET)
     except subprocess.TimeoutExpired:
         raise Refused(f"{relative} was still running after {BUDGET}s and was ended") from None

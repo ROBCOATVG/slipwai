@@ -379,11 +379,35 @@ def push_wip(root: Path, branch: str, ref: str) -> tuple[bool, str]:
         return (True, "") if moved.returncode == 0 else (False, (moved.stderr or moved.stdout).strip())
     pushed = git(root, "push", "--quiet", f"--force-with-lease={ref}:{was}", "origin", f"{branch}:{ref}")
     if pushed.returncode != 0:
-        said = (pushed.stderr or pushed.stdout).strip().splitlines()
-        return False, (f"{ref} moved under this pass ({said[-1] if said else 'git failed'}), which is "
-                       f"another machine holding {branch}. Nothing was pushed")
+        # The lease is this machine's copy of the ref, which can be missing or behind the forge's while the
+        # forge holds what this machine itself pushed earlier: game-club-manager's harbour log refused
+        # `wip/accounts` every pass, naming "another machine" on a harbour that had one. So the forge is asked,
+        # and a commit this branch has held is a lease to retry on; only one it never held is somebody else's.
+        there = forge_tip(root, ref)
+        if there and there != was and held_here(root, branch, there):
+            pushed = git(root, "push", "--quiet", f"--force-with-lease={ref}:{there}", "origin", f"{branch}:{ref}")
+        if pushed.returncode != 0:
+            said = (pushed.stderr or pushed.stdout).strip().splitlines()
+            whose = (f"the forge holds {there[:8]}, which {branch} on this machine has never held: another "
+                     f"machine is pushing {branch}" if there and not held_here(root, branch, there) else
+                     f"git said: {said[-1] if said else 'git failed'}")
+            return False, f"{ref} was not pushed ({whose}). Nothing was pushed"
     git(root, "update-ref", ref, commit)
     return True, ""
+
+
+def forge_tip(root: Path, ref: str) -> str:
+    """What the forge's copy of this ref is at, or "" where it has none or cannot be asked."""
+    listed = git(root, "ls-remote", "origin", ref)
+    return listed.stdout.split()[0] if listed.returncode == 0 and listed.stdout.strip() else ""
+
+
+def held_here(root: Path, branch: str, commit: str) -> bool:
+    """Whether this machine's branch contains `commit`, or did before a rebase rewrote it (its reflog)."""
+    if git(root, "merge-base", "--is-ancestor", commit, f"refs/heads/{branch}").returncode == 0:
+        return True
+    logged = git(root, "reflog", "show", "--format=%H", f"refs/heads/{branch}")
+    return logged.returncode == 0 and commit in logged.stdout.split()
 
 
 def dirty(root: Path) -> list[str]:

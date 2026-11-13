@@ -19,6 +19,7 @@ These cases run two real clones of one real bare repository, because what is bei
 behaviour and a fake of it would prove the fake. Nothing here reaches a network and nothing here pushes
 anywhere real.
 """
+# budget: 380 — the wip push's lease is held both ways: this machine's own earlier push, and another's.
 from __future__ import annotations
 
 import importlib.util
@@ -233,6 +234,27 @@ class WipTest(Fixture):
         self.assertTrue(landed, why)
         self.assertEqual(git("rev-parse", "HEAD", where=self.two).stdout.strip(), made)
         self.assertEqual((self.two / "rungs.txt").read_text(encoding="utf-8"), "one\ntwo\nthree\nfour\n")
+
+    def test_this_machine_s_own_earlier_push_is_not_another_machine(self) -> None:
+        """game-club-manager's harbour log refused `wip/accounts` every pass, naming "another machine" on a
+        harbour that had one: this machine's copy of the ref had gone, and the forge held its own push."""
+        self.branch(self.one, "slice/ORD-01", "rungs.txt", "one\n")
+        ref = travel.wip_ref("ordering")
+        self.assertTrue(travel.push_wip(self.one, "slice/ORD-01", ref)[0])
+        git("update-ref", "-d", ref, where=self.one)
+        (self.one / "rungs.txt").write_text("one\ntwo\n", encoding="utf-8")
+        git("commit", "--quiet", "-am", "two", where=self.one)
+        pushed, why = travel.push_wip(self.one, "slice/ORD-01", ref)
+        self.assertTrue(pushed, why)
+
+    def test_a_push_from_another_machine_is_still_refused_and_named(self) -> None:
+        ref = travel.wip_ref("ordering")
+        self.branch(self.two, "slice/ORD-01", "theirs.txt", "theirs\n")
+        self.assertTrue(travel.push_wip(self.two, "slice/ORD-01", ref)[0])
+        self.branch(self.one, "slice/ORD-01", "rungs.txt", "one\n")
+        pushed, why = travel.push_wip(self.one, "slice/ORD-01", ref)
+        self.assertFalse(pushed)
+        self.assertIn("another machine is pushing slice/ORD-01", why)
 
     def test_a_branch_that_is_not_there_is_said_rather_than_pushed(self) -> None:
         pushed, why = travel.push_wip(self.one, "slice/ORD-01", travel.wip_ref("ordering"))

@@ -42,8 +42,12 @@ def login_environment(current: Mapping[str, str] | None = None, shell: str | Non
                       root: Path | None = None) -> dict[str, str]:
     """This process's environment with the login shell's `PATH` and exports under it. A shell that cannot be
     asked — none named, or one that does not answer in time — leaves the environment as it was. Given the
-    project a child runs in, that project's own venv goes first (`in_project`)."""
-    return in_project(from_login(current, shell), root)
+    project a child runs in, that project's own venv goes first (`in_project`), and the child is told which
+    release started it (`SLIPWAI_APP_VERSION`), so the project's own scripts can refuse an older app."""
+    from .assets import VERSION  # noqa: PLC0415 - read where a project's child is started, not at import
+
+    held = in_project(from_login(current, shell), root)
+    return {**held, "SLIPWAI_APP_VERSION": VERSION} if root is not None else held
 
 
 def project_venv(root: Path) -> Path | None:

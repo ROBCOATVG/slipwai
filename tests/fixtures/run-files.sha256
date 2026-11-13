@@ -28,6 +28,7 @@
 # why: 2026-11-13 3d2c262c657bc8bb Phase 25.1, the owner's decision of 2026-11-13: every toolkit script reads and writes the run's own state under .slipwai/run/ through logs.run_dir, and the ignore block has one line for it. This is a deliberate path change, not a behaviour-preserving edit: a project whose .gitignore lacks .slipwai/run/ keeps the old places, and slipwai migrate moves the state in.
 # why: 2026-11-13 c563d5c8c98b73aa mender.py: the record's dict is built on its own line so the write carries its encoding on one line; behaviour unchanged
 # why: 2026-11-13 b4743bd7886552d3 mender.py: a zombie attempt reads as ended where /proc says so, and SLIPWAI_MENDER is split on whitespace like SLIPWAI_SAIL so a Windows path keeps its backslashes; macOS and Linux behave as before for a live or ended attempt
+# why: 2026-11-13 305759175e9fb0bf fleet.py: start, relight and tell refuse an app (SLIPWAI_APP_VERSION) older than project.json's generator.updatedWith, since it would write where the project no longer reads; with no SLIPWAI_APP_VERSION, as from a terminal, nothing changes
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -35,6 +36,10 @@
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  standard-postgres-toy-serve  .githooks/pre-push
 0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a  event-modelling-memory-none  scripts/event-model/requirements.txt
 0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a  event-modelling-postgres-toy-serve  scripts/event-model/requirements.txt
+0e95dad291472d575857d8da0a29d1e9787d3a89bc7a8240b454396b1870c6c4  event-modelling-memory-none  scripts/agents/fleet.py
+0e95dad291472d575857d8da0a29d1e9787d3a89bc7a8240b454396b1870c6c4  event-modelling-postgres-toy-serve  scripts/agents/fleet.py
+0e95dad291472d575857d8da0a29d1e9787d3a89bc7a8240b454396b1870c6c4  standard-memory-none  scripts/agents/fleet.py
+0e95dad291472d575857d8da0a29d1e9787d3a89bc7a8240b454396b1870c6c4  standard-postgres-toy-serve  scripts/agents/fleet.py
 0f1df3607fe53ae1e2b32518fe3d89d87abc2356448d4838e9ef370c88991db2  event-modelling-memory-none  scripts/event-model/validate.ts
 0f1df3607fe53ae1e2b32518fe3d89d87abc2356448d4838e9ef370c88991db2  event-modelling-postgres-toy-serve  scripts/event-model/validate.ts
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  event-modelling-memory-none  scripts/agents/triage.py
@@ -139,10 +144,6 @@
 620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  standard-postgres-toy-serve  scripts/agents/registry.json
 62df8776b0632572acdf87f5f0cfff437156dc191ad28282b27149ade66c3874  event-modelling-memory-none  scripts/event-model/board-plan.ts
 62df8776b0632572acdf87f5f0cfff437156dc191ad28282b27149ade66c3874  event-modelling-postgres-toy-serve  scripts/event-model/board-plan.ts
-6346d6657f8c4c67d73bdb576fb4f0b20a454d4123f5cd4bcb3f07b7a8983568  event-modelling-memory-none  scripts/agents/fleet.py
-6346d6657f8c4c67d73bdb576fb4f0b20a454d4123f5cd4bcb3f07b7a8983568  event-modelling-postgres-toy-serve  scripts/agents/fleet.py
-6346d6657f8c4c67d73bdb576fb4f0b20a454d4123f5cd4bcb3f07b7a8983568  standard-memory-none  scripts/agents/fleet.py
-6346d6657f8c4c67d73bdb576fb4f0b20a454d4123f5cd4bcb3f07b7a8983568  standard-postgres-toy-serve  scripts/agents/fleet.py
 65a025d41b1b105492b1b28fa450efddf4b320a4dcefc89a8233bc428b4326b9  event-modelling-memory-none  scripts/event-model/check.py
 65a025d41b1b105492b1b28fa450efddf4b320a4dcefc89a8233bc428b4326b9  event-modelling-postgres-toy-serve  scripts/event-model/check.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-memory-none  scripts/test_benchmark.py

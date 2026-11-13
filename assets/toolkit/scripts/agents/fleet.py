@@ -485,6 +485,39 @@ def telling(named: str | None, everyone: bool) -> list[str]:
     return [named]
 
 
+def release_key(version: str) -> tuple[int, ...]:
+    """`1.5.10` above `1.5.9`, and `2.1.0.dev3` below `2.1.0`: enough of `slipwai.versions.key` to compare two
+    of slipwai's own releases, which is all this is asked. An unreadable one sorts below everything."""
+    import re  # noqa: PLC0415 - only this comparison needs it
+
+    found = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:\.dev(\d+))?", version.strip())
+    if not found:
+        return (0,)
+    numbers = tuple(int(part) for part in found.groups()[:3])
+    return (*numbers, 0, int(found.group(4))) if found.group(4) is not None else (*numbers, 1, 0)
+
+
+def app_too_old() -> str:
+    """Why the app that started this may not change the run, or "".
+
+    The app says which release it is in `SLIPWAI_APP_VERSION`; this project says which release last wrote it
+    in `project.json`. An app older than the project writes where the project no longer reads — 2.1 moved the
+    run's state under `.slipwai/run/` — so a message, a tick or a cast-off from it would be lost without a
+    word. A person at the terminal sets nothing and is never refused here.
+    """
+    app = os.environ.get("SLIPWAI_APP_VERSION", "")
+    try:
+        generator = json.loads((ROOT / "project.json").read_text(encoding="utf-8")).get("generator") or {}
+    except (OSError, ValueError, AttributeError):
+        return ""
+    project = str(generator.get("updatedWith") or generator.get("generatedWith") or "")
+    if not app or not project or release_key(project) <= release_key(app):
+        return ""
+    return (f"fleet: this project was last updated by slipwai {project} and the app that asked is {app}, so "
+            f"nothing was changed: what it would write goes where the project no longer reads. Update the app "
+            f"to {project} or later")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="fleet", description="Start the harbourmaster and a captain per fairway, and exit",
@@ -513,6 +546,10 @@ def main(argv: list[str]) -> int:
     # Intermixed, so a message may follow the options: `sail.md` spells `tell <fairway> --need … <message>`,
     # and with the plain parse that form was refused as unrecognized arguments.
     parsed = parser.parse_intermixed_args(argv)
+    # Stopping, listing and watching change nothing an older app could misplace; the rest write the run.
+    if parsed.verb in ("start", "relight", "tell") and (refused := app_too_old()):
+        print(refused, file=sys.stderr)
+        return 2
     if parsed.verb == "stop":
         stop_all()
         return 0

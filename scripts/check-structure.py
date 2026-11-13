@@ -62,6 +62,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # alone (slice 6.5b). `certificates` imports nothing of the keel either: the roots a built keel carries.
     ("foundation", ("assets", "errors", "versions", "changelog", "whats_new", "naming", "logs", "shell_environment",
                     "certificates", "splash", "turn_child", "process_alive", "session_log", "brand", "ed25519",
+                    # Whether this app is the release that last wrote the project it opens (2.1).
+                    "app_version",
                     # What every catch-up page shares — its opening section and where a finished one is
                     # archived — here so the command page in `parts` and the writers in `assembly` both reach it.
                     "catch_up_page")),

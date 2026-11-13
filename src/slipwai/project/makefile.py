@@ -363,7 +363,7 @@ check-chart: ## Fail when the chart's marks are untyped, double-set, withdrawn, 
 \tpython3 scripts/check-chart.py
 check-dispatch: ## Fail when a commit names work no plan knows, or a slice no dispatch ledger accounts for
 \tpython3 scripts/check-dispatch.py
-check-rendered: ## Fail when a decisions or adversary log, or the split's held_by, is not what it renders from
+check-rendered: ## Fail when a decisions or adversary log is not what the fairways' copies render to
 \tpython3 scripts/render-fairways.py --check
 check-surfaces: ## Fail when a slice delivers a state nobody approved, or an approved state no slice delivers
 \tpython3 scripts/check-surfaces.py

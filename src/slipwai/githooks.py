@@ -81,6 +81,11 @@ def install(root: Path, layout: Layout = AT_ROOT) -> Installed:
     already = configured(root)
     if already == where:
         return Installed(False, "")
+    if already and (root / already).resolve() == (root / where).resolve():
+        # This checkout's own folder as an absolute path, which every worktree would resolve to this one:
+        # ours, so respelled rather than reported as somebody else's (`check-crossing.py` does the same).
+        code, said = git(root, "config", KEY, where)
+        return Installed(code == 0, "" if code == 0 else f"{KEY} could not be set: {said or 'git failed'}")
     if already:
         return Installed(False, f"{KEY} is already `{already}`, which is somebody else's and not this "
                                 f"command's to repoint. Chain {where}/pre-push from it, or run "

@@ -174,5 +174,24 @@ class RefusalTest(unittest.TestCase):
         replayed.assert_not_called()
 
 
+
+class DirtTest(unittest.TestCase):
+    """Untracked run state is `move_in`'s to carry, so it never stops `migrate` as uncommitted. game-club-manager
+    was refused over `.slipwai/console/` and `.slipwai/stages/`, the very folders the migration moves."""
+
+    def test_untracked_run_state_is_not_dirt(self) -> None:
+        said = "?? .slipwai/console/\n?? .slipwai/stages/\n?? .slipwai/surfaces.pid"
+        self.assertEqual(run_folder.dirt(said), [])
+
+    def test_a_change_of_the_person_s_own_still_is(self) -> None:
+        said = " M .specify/cruise.json\n?? .slipwai/console/\n?? notes.md"
+        self.assertEqual(run_folder.dirt(said), [" M .specify/cruise.json", "?? notes.md"])
+
+    def test_an_untracked_record_or_an_edited_tracked_file_under_slipwai_still_is(self) -> None:
+        """A new hooks file or ledger is the record, and a changed tracked one is the person's change."""
+        said = "?? .slipwai/hooks.json\n?? .slipwai/dispatch/\n M .slipwai/extensions.json"
+        self.assertEqual(len(run_folder.dirt(said)), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -60,6 +60,9 @@ class Project(unittest.TestCase):
         place = self.root / "scripts/agents"
         place.mkdir(parents=True)
         (place / "try_it.py").write_text(SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
+        # `logs.py` beside it, as a project carries it: the script imports it for where the run state lives,
+        # and without the copy the case passed only when an earlier test in the shard had imported it.
+        (place / "logs.py").write_text((SCRIPT.parent / "logs.py").read_text(encoding="utf-8"), encoding="utf-8")
         self.manifest({"service": {"kind": "service", "path": "apps/service", "port": 3000,
                                    "selection": {"http": "fastify"}},
                        "worker": {"kind": "service", "path": "apps/worker", "port": 3001,

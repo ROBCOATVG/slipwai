@@ -18,8 +18,8 @@ MINOR
 **What changed, in a sentence a user would recognise.** Then a paragraph: what it does for them, and what
 it cost if that matters.
 
-**Catch-up:** what an existing project has to do to get it, as a command where there is one. Omit the line
-only where the answer is genuinely nothing.
+**Catch-up:** what an existing project has to do to get it, as a command where there is one, or
+`nothing; <why>` where the answer is genuinely nothing.
 ```
 
 The first line is the level this change claims — `PATCH`, `MINOR` or `MAJOR`. The entry's level is the
@@ -30,4 +30,5 @@ the reader is somebody who has just moved and wants to know what they got. "Refa
 them nothing; "a language package can now be installed from a git URL" tells them what is different.
 
 **The catch-up line is the one people forget.** A change that needs `slipwai migrate` and does not say so
-is a change that silently did not reach the projects that already exist.
+is a change that silently did not reach the projects that already exist. So `make check-release` refuses a
+fragment without one: write `**Catch-up:** nothing; <why>` where the answer really is nothing.

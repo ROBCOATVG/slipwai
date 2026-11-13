@@ -145,7 +145,8 @@ class HeldByTest(unittest.TestCase):
     There were two answers to *who holds this fairway* — a name somebody typed in this table, and a running
     process with a pid file — and the table's was the one the loop reads. A field only a hand edit reaches
     is exactly the state this method is built around not keeping, so the column is folded from the refs the
-    way every other status here is folded from a log, and `make check-rendered` refuses one that is not.
+    way every other status here is folded from a log. `make check-rendered` does not hold it: the refs move
+    whenever a fleet takes or gives back a fairway, and holding the column turned trunk red mid-run.
     """
 
     def setUp(self) -> None:
@@ -208,13 +209,17 @@ class HeldByTest(unittest.TestCase):
         self.assertEqual(self.module.main([]), 0)
         self.assertEqual(self.rows()["billing"], "—")
 
-    def test_a_hand_edit_is_refused_by_the_check(self) -> None:
+    def test_a_claim_that_moved_since_the_fold_does_not_turn_the_check_red(self) -> None:
+        """game-club-manager's trunk failed `make verify` because clubs gave its fairway back and tables took
+        one after the split was last folded; the only fix was committing a machine's name."""
         self.forge()
         self.hold("ordering", "harbour_one")
         self.module.main([])
         held = self.split.read_text(encoding="utf-8")
-        self.split.write_text(held.replace("harbour_one", "me, actually"), encoding="utf-8")
-        self.assertEqual(self.module.main(["--check"]), 1)
+        self.split.write_text(held.replace("harbour_one", "—"), encoding="utf-8")
+        self.assertEqual(self.module.main(["--check"]), 0)
+        self.module.main([])
+        self.assertEqual(self.rows()["ordering"], "harbour_one", "the next fold still writes what the refs say")
 
     def test_a_released_fairway_goes_back_to_a_dash(self) -> None:
         self.forge()

@@ -188,6 +188,14 @@ def travelling() -> list[dict]:
                   "every clone and cloud runner reads it as a project where nothing has been started")]
 
 
+def ours(where: str) -> bool:
+    """Whether a `core.hooksPath` value names this checkout's own hooks folder, however it is spelled."""
+    try:
+        return (ROOT / where).resolve() == (ROOT / HOOKS).resolve()
+    except OSError:
+        return False
+
+
 def hooked(fix: bool = False) -> list[dict]:
     """Whether this checkout is pointed at the hooks it carries — and, asked, point it.
 
@@ -201,6 +209,16 @@ def hooked(fix: bool = False) -> list[dict]:
     where = git("config", "--get", "core.hooksPath").strip()
     if where == HOOKS:
         return [asked("hooks", True, f"core.hooksPath is {HOOKS}")]
+    if where and ours(where):
+        # This checkout's own hooks, spelled as an absolute path by something that set it before us. Not
+        # somebody else's, so not a thing to chain: written back as `.githooks`, which is the same folder here
+        # and the right one in every worktree, where an absolute path names the main checkout's.
+        if fix:
+            git("config", "core.hooksPath", HOOKS)
+            return [asked("hooks", True, f"core.hooksPath was `{where}`, this checkout's own; set to {HOOKS}")]
+        return [asked("hooks", False, f"core.hooksPath is `{where}`, this checkout's own {HOOKS} as an "
+                                      f"absolute path, which every worktree resolves to the main checkout",
+                      "run `make hooks`, which writes it as .githooks")]
     if where:
         # Never taken. An adopted repository on husky or lefthook keeps what it has, and is told how to
         # chain rather than finding its own hooks quietly turned off by a factory.

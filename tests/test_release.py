@@ -30,6 +30,24 @@ class FragmentTest(unittest.TestCase):
             with self.subTest(path=path.name):
                 self.assertTrue(body.strip(), path.name)
 
+    def test_and_each_says_what_it_asks_of_a_project_that_exists(self) -> None:
+        """A migration's catch-up page reads the line; without it, the page says the cost is unrecorded."""
+        for path, _claim, body in fragments(ROOT):
+            with self.subTest(path=path.name):
+                self.assertIn("**Catch-up:**", body, path.name)
+
+    def test_the_gate_refuses_a_fragment_with_no_catch_up_line(self) -> None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("tag_release", SCRIPT)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        silent: Fragment = (Path("silent.md"), "PATCH", "**A thing changed.** It did.")
+        said = module.findings([silent], "2.1.1", False)
+        self.assertTrue(any("silent.md has no **Catch-up:** line" in line for line in said), said)
+        told: Fragment = (Path("told.md"), "PATCH", "**A thing changed.**\n\n**Catch-up:** nothing; why.")
+        self.assertEqual(module.findings([told], "2.1.1", False), [])
+
     def test_the_guide_is_not_read_as_one(self) -> None:
         self.assertNotIn(GUIDE, [path.name for path, _, _ in fragments(ROOT)])
 

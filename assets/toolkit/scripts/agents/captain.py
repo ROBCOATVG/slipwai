@@ -728,8 +728,14 @@ def boundary(feature: str, fairway: str) -> tuple[str, str]:
     late = [] if quiet else (owed.get("overrun") or [])
     if late:
         said = str(late[0].get("message", ""))[:120]
-        return (f"{len(late)} message(s) from a person have gone past the wait bound unanswered, the "
-                f"oldest being {said!r}. `/told` reads them, and a read line is the receipt"), ""
+        # Who wrote it, which the line says: a person's message waits on this fairway to read it, and a
+        # slice's note waits on a person to. game-club-manager's park called its own slice's note about an
+        # ignore file "a message from a person", and sent the person looking for something they had written.
+        notes = sum(1 for line in late if line.get("by") != "person")
+        whose = ("message(s) from a person" if not notes else "note(s) this fairway's slices left for a person"
+                 if notes == len(late) else "message(s) and slice note(s)")
+        return (f"{len(late)} {whose} have gone past the wait bound unanswered, the oldest being {said!r}. "
+                f"`/told` reads them, and a read line is the receipt"), ""
     if quiet or not owed.get("over_ceiling"):
         parks = owed.get("overdue_parks") or []
         said = str((parks[0] if parks else {}).get("why", ""))[:120]

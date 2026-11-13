@@ -175,10 +175,12 @@ def main(argv: list[str]) -> int:
     if split.is_file():
         was = split.read_text(encoding="utf-8")
         meant = split_rendered(was, holders)
-        if checking:
-            if was != meant:
-                drifted.append(split.relative_to(ROOT).as_posix())
-        elif was != meant:
+        # Never held by `--check`. `held_by` is the only cell here this renders, and it is the claim refs at
+        # the moment of the last fold, which move whenever a fleet takes or gives back a fairway: held, it
+        # turned `make verify` red on trunk mid-run (game-club-manager: clubs released, tables taken), and the
+        # only fix was to commit a machine's name. The fold still writes it fresh, and a typed name in it
+        # still does not survive the next one.
+        if not checking and was != meant:
             split.write_text(meant, encoding="utf-8")
             print(f"render-fairways: {split.relative_to(ROOT).as_posix()}'s held_by from the claim refs")
         if note:
@@ -198,9 +200,7 @@ def main(argv: list[str]) -> int:
     if drifted:
         print("render-fairways: a rendered file is not what its sources render to\n", file=sys.stderr)
         for path in drifted:
-            print(f"  {path}: edited by hand, or a fairway's copy changed since it was folded"
-                  + (f". {SPLIT}'s held_by is the claim refs and no hand writes it" if path.endswith(SPLIT)
-                     else ""), file=sys.stderr)
+            print(f"  {path}: edited by hand, or a fairway's copy changed since it was folded", file=sys.stderr)
         print("\nRun: make decisions", file=sys.stderr)
         return 1
     if checking:

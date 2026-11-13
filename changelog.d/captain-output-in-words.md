@@ -4,3 +4,5 @@ PATCH
 stream in its output file, so the *Captain output* pane of its window was a wall of JSON events: two
 megabytes of it for one slice. Each event is now said the way a stage's card says it — what the session
 wrote, ran and said — and the harness's own plumbing is left out. The captain's own lines are as they were.
+
+**Catch-up:** nothing; the board reads the captain's output file as it is, and is served from the installed command.

@@ -234,17 +234,23 @@ class ByteIdenticalTest(unittest.TestCase):
     def test_the_child_is_given_the_login_shells_path_and_keeps_its_own_variables(self) -> None:
         """A board started from a launcher has `PATH=/usr/bin:/bin` and no tokens, and `generate` then refuses
         a target on a machine that has every tool. The login shell is what the person's terminal has."""
+        from unittest import mock
+
+        from slipwai import shell_environment
         from slipwai.shell_environment import login_environment
         with tempfile.TemporaryDirectory() as scratch:
             shell = Path(scratch) / "shell"
             shell.write_text("#!/bin/sh\nprintf 'PATH=/opt/tools/bin:/usr/bin\\0TOKEN=from-login\\0KEPT=login\\0'\n",
                              encoding="utf-8")
             shell.chmod(0o755)
-            found = login_environment({"PATH": "/usr/bin:/bin", "KEPT": "mine"}, shell=str(shell))
+            # No board-installed tools, whatever this machine's home holds: their `bin` would join the PATH.
+            with mock.patch.object(shell_environment, "TOOLS", Path(scratch) / "no-tools"):
+                found = login_environment({"PATH": "/usr/bin:/bin", "KEPT": "mine"}, shell=str(shell))
         self.assertEqual(found["PATH"], "/opt/tools/bin:/usr/bin:/bin")
         self.assertEqual(found["TOKEN"], "from-login")
         self.assertEqual(found["KEPT"], "mine", "this process's own variable wins where both have one")
-        self.assertEqual(login_environment({"PATH": "/bin"}, shell="/nonexistent/shell"), {"PATH": "/bin"})
+        with mock.patch.object(shell_environment, "TOOLS", Path("/nonexistent/no-tools")):
+            self.assertEqual(login_environment({"PATH": "/bin"}, shell="/nonexistent/shell"), {"PATH": "/bin"})
 
     def test_a_document_given_on_the_board_lands_in_the_project_as_the_prd(self) -> None:
         """What the picker is for: the text arrives with the answers, and the project is made with it under

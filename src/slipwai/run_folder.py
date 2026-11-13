@@ -69,6 +69,24 @@ def stays(name: str, is_dir: bool) -> bool:
     return name == "run" or (f"{name}/" if is_dir else name) in COMMITTED
 
 
+def dirt(porcelain: str) -> list[str]:
+    """The lines of `git status --porcelain` that are a person's own changes, leaving out untracked run state.
+
+    A 2.0 project carries untracked `.slipwai/console/`, `.slipwai/stages/` and the pid files the old ignore
+    list missed, and `migrate` refused it as uncommitted — over the very files `move_in` exists to carry into
+    `.slipwai/run/`. game-club-manager's had to be moved aside by hand. Untracked state under `.slipwai/` is
+    the run's, never a change to merge over, so it does not make a tree dirty here."""
+    kept = []
+    for line in porcelain.splitlines():
+        path = line[3:].strip().strip('"')
+        top, _, rest = path.removeprefix(f"{OLD}/").partition("/")
+        run_state = line.startswith("?? ") and path.startswith(f"{OLD}/") and not stays(top, bool(rest) or
+                                                                                         path.endswith("/"))
+        if line.strip() and not run_state:
+            kept.append(line)
+    return kept
+
+
 def tracked(root: Path, relative: str) -> bool:
     """Whether git tracks anything at this path: a record, which `relocate` moves if anything does."""
     listed = subprocess.run(["git", "ls-files", "--", relative], cwd=root, text=True, capture_output=True,

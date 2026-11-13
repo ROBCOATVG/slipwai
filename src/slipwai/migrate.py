@@ -38,7 +38,7 @@ from .manifest import read_manifest, refuse_older
 from .migration_result import Migration
 from .relocate import relocate
 from .replay import Replay, git, replay
-from .run_folder import move_in, refuse_while_out
+from .run_folder import dirt, move_in, refuse_while_out
 from .scaffold import NO_MAINTENANCE
 from .shell_environment import python3
 from .unlabel import Refresh, read_page, unlabel
@@ -61,7 +61,7 @@ def checked(root: Path) -> dict:
         raise GenerationError(
             f"{root} has no Git history to merge into; `slipwai replay` writes the tree beside it instead"
         )
-    if git(root, "status", "--porcelain"):
+    if dirt(git(root, "status", "--porcelain")):  # untracked run state is `move_in`'s to carry, not dirt
         raise GenerationError(
             "this project has uncommitted changes; commit or stash them first, so that the merge is the only "
             "thing this command leaves behind and `git reset --hard ORIG_HEAD` undoes exactly that"

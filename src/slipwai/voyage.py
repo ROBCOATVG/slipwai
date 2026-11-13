@@ -160,7 +160,8 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
     POINTS[str(root)] = [row for row in result.get("feedback") or [] if isinstance(row, dict)]
     if fault or not states:
         return [], fault
-    found, _ = fairways(root, harbour_log(root))
+    harbour = harbour_log(root)
+    found, _ = fairways(root, harbour)
     named = titles(root, feature)
     rows: list[dict[str, str]] = []
     for slice_id, entry in states.items():
@@ -187,7 +188,7 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
                 else:
                     row.update(held_on(owner, str(slice_id)))
             if row["state"] in ("working", "queued", "waiting"):
-                row.update(rung(root, feature, str(slice_id), owner.entries))
+                row.update(rung(root, feature, str(slice_id), owner.entries, harbour))
         rows.append(row)
     return sorted(rows, key=lambda row: (COLUMNS.index(row["state"]), row["slice"])), ""
 

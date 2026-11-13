@@ -111,6 +111,7 @@
 # Rows that moved on 2026-11-06, for the `sessions` setting slice 22.9 added to the cruise settings:
 # `.specify/cruise.json` and `commands/cruise-settings.md`. Every other row is still its earlier reading.
 # Re-taken 2026-11-10 for changelog.d/handbacks-gates.md: only the rows for commands/sail.md moved, deliberately — on the event-modelling profile a slice re-renders the chart with `make chart`, as it regenerates the canvas.
+# Re-taken 2026-11-13 for changelog.d/honest-chips.md: only the rows for commands/sail.md moved, deliberately — a task's commit is asked to open with the slice and the task (`GN2 T004: …`), and each tick is committed as its delegate reports, so the board counts tasks as they land.
 66d331cb3c5ef22e660804383367ffcd7602a2b9c64b91fe8dfd8c9398f8cbfd  standard  commands/add-frontend.md
 0c5d6f3c16243ec7a2c928dab9502e52ae7ed8d97352c8f188764854f6cec241  standard  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  standard  commands/adversary.md
@@ -135,7 +136,7 @@ baf9faaa6bfbce491fa6f03c32a3758677fa3a114a80351c224911b35ca20a2e  standard  comm
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  standard  commands/model-delegation-settings.md
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  standard  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  standard  commands/sail-settings.md
-9a4f1c051244ce1cfd722e8a8dbdc2e77a9bce3ba8ea174b5b55dc94e90d08fc  standard  commands/sail.md
+5cf9cd50dbfc65601d50d1789558bf33ea9e2d633a3c7307ede5ccad5dabcad4  standard  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard  commands/survey.md
 0e8bdc9fd6c85b53ee52a6ebb6a007c5c43c2f0e6a6304b598703eef721f7267  standard  commands/triage.md
 3aba2be5acf18ff4af2356dc9cbc47ed9d480ff1f88afcb8fdfb25d6965bc73f  standard  commands/verify.md
@@ -166,7 +167,7 @@ faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  event  command
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  event  commands/mutation.md
 ccddefe7035c02b19ddf5724bfd52e8cff311e95b094b90282a36ba72cd88c03  event  commands/observe.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  event  commands/sail-settings.md
-8bb21241b9e9decbdc4af71405a85369eeb2c25833dc794aa3008af5d1691bd3  event  commands/sail.md
+fede44f5fc4ed83d07b2f5e124ddc48dc19dcf470fe1ac8f6ee226db286cbb1a  event  commands/sail.md
 b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event  commands/survey.md
 0e8bdc9fd6c85b53ee52a6ebb6a007c5c43c2f0e6a6304b598703eef721f7267  event  commands/triage.md
 3aba2be5acf18ff4af2356dc9cbc47ed9d480ff1f88afcb8fdfb25d6965bc73f  event  commands/verify.md
@@ -197,7 +198,7 @@ faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  event-state  c
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  event-state  commands/mutation.md
 ccddefe7035c02b19ddf5724bfd52e8cff311e95b094b90282a36ba72cd88c03  event-state  commands/observe.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  event-state  commands/sail-settings.md
-51ebc33512b8535d9106c64c13d86d002959f8f5974cc68112c74147ee22b23d  event-state  commands/sail.md
+70ea5438c5e3ef074f2d1504b17f94a5fe901daaa401f9b819c80475f45c589b  event-state  commands/sail.md
 b77b7ec2fc18217961a32d9e15cb8f9c46b7c7ccdba082b141d58da46705e12a  event-state  commands/survey.md
 0e8bdc9fd6c85b53ee52a6ebb6a007c5c43c2f0e6a6304b598703eef721f7267  event-state  commands/triage.md
 3aba2be5acf18ff4af2356dc9cbc47ed9d480ff1f88afcb8fdfb25d6965bc73f  event-state  commands/verify.md
@@ -228,7 +229,7 @@ ac8ffdc90ded1b32485f3a70214d9006fbefb4239db14a316e95e8aa9d23923f  event-two-serv
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  event-two-services  commands/mutation.md
 a0317f0ffc046b6b69d5373cf2466bc3f9936c7154da47ac25f2df8934edc7cd  event-two-services  commands/observe.md
 34f4725d92c75f8bcefe4a93166e6456a2f642e00937b58a94219c04dfe63096  event-two-services  commands/sail-settings.md
-0da2c0a6659545ad146a0518c8aa39bf54ede7537b6640e6d3840ba597a93929  event-two-services  commands/sail.md
+db113fc8aeb17a1bf3b8e75ac655523747e3375c93f6424cf870c17ab0b1800d  event-two-services  commands/sail.md
 67c2effb5e863122c5022fd14f37a8eaeb68c79f8ab998d421ec2e9d767978cb  event-two-services  commands/survey.md
 bf78095be98736aa250949946c399b8017cd6f8ebfad89f92cffda390137ac4b  event-two-services  commands/triage.md
 9176e74bcf2611921309335c08ae4c5fa02892177dbf878129045c40c406ab7a  event-two-services  commands/verify.md
@@ -258,7 +259,7 @@ baf9faaa6bfbce491fa6f03c32a3758677fa3a114a80351c224911b35ca20a2e  standard-manag
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  standard-managed  commands/model-delegation-settings.md
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  standard-managed  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  standard-managed  commands/sail-settings.md
-c05900e1e8ef75e83b5c6bccbf716b4e0f0bbf0c04201335ca0243c0f915ddb0  standard-managed  commands/sail.md
+40939e9aeba782b0bb5b80383663f6da1bbbe6ab5fe34fdfbd4880160147542a  standard-managed  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  standard-managed  commands/survey.md
 0e8bdc9fd6c85b53ee52a6ebb6a007c5c43c2f0e6a6304b598703eef721f7267  standard-managed  commands/triage.md
 3aba2be5acf18ff4af2356dc9cbc47ed9d480ff1f88afcb8fdfb25d6965bc73f  standard-managed  commands/verify.md
@@ -288,7 +289,7 @@ baf9faaa6bfbce491fa6f03c32a3758677fa3a114a80351c224911b35ca20a2e  no-application
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  no-applications  commands/model-delegation-settings.md
 1d08cf38dba6ec33e8f95e9b076ca9e9d74550733688319a41322fffd451a3b2  no-applications  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  no-applications  commands/sail-settings.md
-c78615666bad67782b509b055425e67465909a0587e97a0db04c5db86c811bdf  no-applications  commands/sail.md
+56bdd7be92591a0376a4b346b9a163441de2a525e97b342b80bb046a80efab2a  no-applications  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  no-applications  commands/survey.md
 0e8bdc9fd6c85b53ee52a6ebb6a007c5c43c2f0e6a6304b598703eef721f7267  no-applications  commands/triage.md
 3aba2be5acf18ff4af2356dc9cbc47ed9d480ff1f88afcb8fdfb25d6965bc73f  no-applications  commands/verify.md
@@ -320,7 +321,7 @@ ac8ffdc90ded1b32485f3a70214d9006fbefb4239db14a316e95e8aa9d23923f  adopted  comma
 1d08cf38dba6ec33e8f95e9b076ca9e9d74550733688319a41322fffd451a3b2  adopted  commands/mutation.md
 0a395b265f2700037d8f15e16199d3d187694ba9af1afe40a7f15e95eb79eacb  adopted  commands/observe.md
 34f4725d92c75f8bcefe4a93166e6456a2f642e00937b58a94219c04dfe63096  adopted  commands/sail-settings.md
-1ee4466ac8581418b42c5f2a6115055d15e4568eec4fe6bb5e4c39fd127c25cc  adopted  commands/sail.md
+7e14decf6e4405a1c1ad00c0ca25fde8bf8db47dbca66bc26c4c0064767d62b3  adopted  commands/sail.md
 67c2effb5e863122c5022fd14f37a8eaeb68c79f8ab998d421ec2e9d767978cb  adopted  commands/survey.md
 bf78095be98736aa250949946c399b8017cd6f8ebfad89f92cffda390137ac4b  adopted  commands/triage.md
 9176e74bcf2611921309335c08ae4c5fa02892177dbf878129045c40c406ab7a  adopted  commands/verify.md
@@ -351,7 +352,7 @@ baf9faaa6bfbce491fa6f03c32a3758677fa3a114a80351c224911b35ca20a2e  adopted-settle
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  adopted-settled  commands/model-delegation-settings.md
 1d08cf38dba6ec33e8f95e9b076ca9e9d74550733688319a41322fffd451a3b2  adopted-settled  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  adopted-settled  commands/sail-settings.md
-78ca6cb54a15490ee3afa20b0a5a397f1f1a3c4e7cb538117699af65dc454d62  adopted-settled  commands/sail.md
+7750113db95f3d315a9ccba88b4272074d2b3d2eec6608b9512496a9f31cbfd5  adopted-settled  commands/sail.md
 d64bad133291a6f8f721bb9594286b5cacba9959a163fa4cf4c56295f446642f  adopted-settled  commands/survey.md
 0e8bdc9fd6c85b53ee52a6ebb6a007c5c43c2f0e6a6304b598703eef721f7267  adopted-settled  commands/triage.md
 3aba2be5acf18ff4af2356dc9cbc47ed9d480ff1f88afcb8fdfb25d6965bc73f  adopted-settled  commands/verify.md

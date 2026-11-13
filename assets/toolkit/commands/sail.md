@@ -503,8 +503,8 @@ fairway. Given none, a session takes the ready slices of every fairway nobody ho
 table is routing, not a lock: whoever is named there gets that fairway's slices left alone, and the board
 shows them as held; the claim is still the `slice/<id>` branch, so two sessions on one fairway are two claims
 and the mutex holds. **The column is rendered from `refs/slipwai/claims/<fairway>` and nothing writes it by
-hand** — a name typed into the row does not survive the next `make decisions` and `make check-rendered`
-refuses it. A person takes a fairway the way a captain does: `python3 scripts/agents/claims.py --take
+hand** — a name typed into the row does not survive the next `make decisions`, which writes what the refs
+say. `make check-rendered` leaves the column alone, since the refs move while a fleet runs. A person takes a fairway the way a captain does: `python3 scripts/agents/claims.py --take
 <fairway>`, which is a push a second taker cannot win, and `--release` gives it back.
 
 **Merges are ordered within a fairway and not across.** Inside one, merge in split order as *Running ready

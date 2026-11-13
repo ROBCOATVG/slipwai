@@ -40,6 +40,8 @@ class IdTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tree, True)
         (self.tree / "scripts/agents").mkdir(parents=True)
         shutil.copy(ROOT / "assets/toolkit/scripts/agents/ids.py", self.tree / "scripts/agents/ids.py")
+        # Beside it, as a project carries it: passing without it depended on an earlier test's import.
+        shutil.copy(ROOT / "assets/toolkit/scripts/agents/logs.py", self.tree / "scripts/agents/logs.py")
         (self.tree / "project.json").write_text("{}", encoding="utf-8")
         (self.tree / ".slipwai/logs/ordering").mkdir(parents=True)
         self.ids = ids_module(self.tree)
@@ -112,6 +114,7 @@ class ReserveTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tree, True)
         (self.tree / "scripts/agents").mkdir(parents=True)
         shutil.copy(ROOT / "assets/toolkit/scripts/agents/ids.py", self.tree / "scripts/agents/ids.py")
+        shutil.copy(ROOT / "assets/toolkit/scripts/agents/logs.py", self.tree / "scripts/agents/logs.py")
         (self.tree / "project.json").write_text("{}", encoding="utf-8")
         (self.tree / "specs/001-x").mkdir(parents=True)
         (self.tree / "specs/001-x/decisions.md").write_text("## D1 — a\n\n## D27 — b\n", encoding="utf-8")

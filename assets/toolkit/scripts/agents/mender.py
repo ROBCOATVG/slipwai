@@ -162,7 +162,13 @@ def alive(pid: int) -> bool:
         os.kill(pid, 0)
     except (OSError, ProcessLookupError):
         return False
-    return True
+    # A finished attempt whose parent has gone is a zombie until something reaps it, and `kill` still finds
+    # a zombie. Where `/proc` says so, it has ended.
+    try:
+        state = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").rsplit(")", 1)[1].split()[0]
+    except (OSError, IndexError):
+        return True
+    return state != "Z"
 
 
 def end(child: subprocess.Popen) -> None:
@@ -259,7 +265,9 @@ def command(job: str, worktree: Path, branch: str, told: dict) -> tuple[list[str
     if named:
         brief = worktree.parent / f"{worktree.name}.json"
         brief.write_text(json.dumps({**told, "branch": branch}), encoding="utf-8")
-        return [*shlex.split(named), job, str(brief)], environment
+        # Split on whitespace, as `SLIPWAI_SAIL` and `SLIPWAI_SKIPPER` are: `shlex` reads a Windows path's
+        # backslashes as escapes, and the suite's own `python.exe` was then a file that did not exist.
+        return [*named.split(), job, str(brief)], environment
     import harness  # noqa: PLC0415 - only a real attempt needs the registry
 
     chosen, _said = harness.choose()

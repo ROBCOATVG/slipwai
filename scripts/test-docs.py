@@ -222,7 +222,12 @@ def when(seconds_ago: int) -> str:
 
 
 def write_log(project: Path, fairway: str, lines: list[dict]) -> None:
-    deck = project / ".slipwai/logs" / "booking"
+    # Where the project keeps its run state, which a generated project's ignore line says (`logs.run_dir`):
+    # `.slipwai/run/` since 2.1. Seeded there, the board and `clearance` read it; seeded beside, they don't.
+    ignored = (project / ".gitignore").read_text(encoding="utf-8").splitlines() \
+        if (project / ".gitignore").is_file() else []
+    run = project / (".slipwai/run" if ".slipwai/run/" in [line.strip() for line in ignored] else ".slipwai")
+    deck = run / "logs" / "booking"
     deck.mkdir(parents=True, exist_ok=True)
     (deck / f"{fairway}.jsonl").write_text(
         "".join(json.dumps({"v": 1, **line}) + "\n" for line in lines), encoding="utf-8")

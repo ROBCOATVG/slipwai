@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import unittest
+from pathlib import Path
 from typing import Any, ClassVar
 
 import checkout_packages  # noqa: F401
@@ -55,19 +56,32 @@ class MenderFixture(TrunkFixture):
         os.environ["FAKE_MEND"] = what
         self.addCleanup(os.environ.pop, "FAKE_MEND", None)
 
+    @staticmethod
+    def mender_alive(pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+        except (ProcessLookupError, PermissionError):
+            return False
+        try:
+            return Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").rsplit(")", 1)[1].split()[0] != "Z"
+        except (OSError, IndexError):
+            return True
+
     def settle(self) -> None:
-        """Let the fake mender finish, then one pass to hold its branch to the rules and land it."""
-        record = self.root / ".slipwai/running/mender.json"
+        """Let the fake mender finish, then one pass to hold its branch to the rules and land it.
+
+        Waited on by pid, not `waitpid`: the mender is the exited harbourmaster's child, not this process's,
+        and `waitpid` on it raises at once — which on a quick runner let the pass run before the commit."""
+        import time
+        record = self.root / ".slipwai/run/running/mender.json"
+        if not record.is_file():
+            record = self.root / ".slipwai/running/mender.json"
         pid = json.loads(record.read_text(encoding="utf-8"))["pid"] if record.is_file() else 0
-        if pid:
-            for _ in range(200):
-                try:
-                    os.waitpid(pid, os.WNOHANG)
-                    os.kill(pid, 0)
-                except (ChildProcessError, ProcessLookupError):
-                    break
-                import time
-                time.sleep(0.05)
+        until = time.monotonic() + 30
+        while pid and time.monotonic() < until:
+            if not self.mender_alive(pid):
+                break
+            time.sleep(0.05)
         done = self.run_once()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 

@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from slipwai.errors import GenerationError  # noqa: E402
 from slipwai.language_release import copy_directory, unpack  # noqa: E402
+from slipwai.logs import run_dir  # noqa: E402
 from slipwai.migration_legacy import published, runtime  # noqa: E402
 from slipwai.versions import is_release, key  # noqa: E402
 
@@ -166,7 +167,7 @@ def prove(root: Path, environment: dict[str, str], *, own_gate: bool = True) -> 
         raise GenerationError(f"{root}: the crossing did not preserve both merge parents")
     if git(root, "show", "slice/ORD-03:claim-person.txt") != "unmerged person work":
         raise GenerationError(f"{root}: the claim lost its own work")
-    lines = [json.loads(line) for path in (root / ".slipwai/logs/ordering").glob("*.jsonl")
+    lines = [json.loads(line) for path in (run_dir(root) / "logs/ordering").glob("*.jsonl")
              for line in path.read_text(encoding="utf-8").splitlines()]
     if {line["slice"] for line in lines if line["kind"] == "merged"} != {"ORD-01", "ORD-02"}:
         raise GenerationError(f"{root}: trunk reconciliation trusted model status or missed real merges")

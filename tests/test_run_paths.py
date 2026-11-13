@@ -16,7 +16,9 @@ from pathlib import Path
 from slipwai import berths, logs
 
 REPOSITORY = Path(__file__).resolve().parents[1]
-SCANNED = (REPOSITORY / "src", REPOSITORY / "assets/toolkit")
+#: The keel, what a project receives, the keel's own scripts — `test-docs.py` seeded logs at the old place
+#: and the docs gate went red on the first CI run after the move — and the guide pages a person follows.
+SCANNED = (REPOSITORY / "src", REPOSITORY / "assets/toolkit", REPOSITORY / "scripts", REPOSITORY / "docs/guide")
 #: What is read: code and the prose a project receives. Binary assets and lock files say nothing about paths.
 SUFFIXES = {".py", ".md", ".ts", ".js", ".json", ".sh", ".yml", ".yaml", ".toml", ".txt", ".mk", ""}
 #: A project-relative path under `.slipwai/`: not inside another path, a home folder (`~/.slipwai`,
@@ -33,6 +35,8 @@ ALLOWED = {
     ("assets/toolkit/scripts/agents/travel.py", "logs"),
     # The board's own log, under the person's home folder (`at_login.LOG` is joined to `Path.home()`).
     ("src/slipwai/at_login.py", "board.log"),
+    # Version 1's language packages, in a stand-in home folder the migration rehearsal builds.
+    ("scripts/test-migration.py", "languages"),
 }
 
 

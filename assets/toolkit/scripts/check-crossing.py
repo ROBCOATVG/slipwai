@@ -47,6 +47,8 @@ def project_root(script: Path) -> Path:
 
 
 ROOT = project_root(Path(__file__))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "agents"))
+import logs  # noqa: E402 — carried in scripts/agents; it owns where the run's state lives
 SPECS = ROOT / "specs"
 MODEL = ROOT / "docs/event-model/model.yaml"
 LOG_REFS = "refs/slipwai/logs"
@@ -160,16 +162,16 @@ def statuses() -> list[dict]:
 
 def marks() -> list[dict]:
     """Whether anything has recorded a mark for work that shipped before the log existed."""
-    logs = ROOT / ".slipwai/logs"
+    place = logs.logs_dir(ROOT)
     lines = []
-    for path in sorted(logs.rglob("*.jsonl")) if logs.is_dir() else []:
+    for path in sorted(place.rglob("*.jsonl")) if place.is_dir() else []:
         lines += [line for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
                   if '"mark-set"' in line]
     if not features():
         return [asked("marks", None, "there are no features under specs/ yet")]
     if lines:
         return [asked("marks", True, f"{len(lines)} mark-set line(s) are recorded in this checkout")]
-    return [asked("marks", False, "no mark-set line exists in .slipwai/logs/",
+    return [asked("marks", False, "no mark-set line exists in .slipwai/run/logs/",
                   "run `python3 scripts/agents/clearance.py --baseline-marks` once — until a mark is set, "
                   "every slice steering by one reads as blocked")]
 

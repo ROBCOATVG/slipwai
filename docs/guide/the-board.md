@@ -250,7 +250,7 @@ the files again every 2.5 seconds; **Following** pauses and resumes that.
   answer, and the answer shows where the time went: queued, waiting on the merge ref, and the gate, with the
   attempt. Filter by slice or by text, show the heartbeats, or show only the harbour's answers. **raw** shows
   a line exactly as it was written.
-- **Captain output** shows what the captain process printed, from `.slipwai/running/captain-<fairway>.out`:
+- **Captain output** shows what the captain process printed, from `.slipwai/run/running/captain-<fairway>.out`:
   its own lines and each turn's closing message. It opens on the last 64 KB.
 - **Needs you** lists this fairway's open parks, unread messages and open questions, and **Tell this
   captain** writes a `told` line, as the answer box does.

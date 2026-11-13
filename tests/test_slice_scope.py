@@ -86,15 +86,16 @@ class OwnedPathsTest(unittest.TestCase):
 
     def test_what_the_run_writes_in_a_berth_is_not_the_slice_s_change(self) -> None:
         """hr-test-2: a project made before `.gitignore` named `preflight.json` and `logs.unread-*`, and every
-        slice run abreast went red here on files `make preflight` and the berth's linking had written."""
+        slice run abreast went red here on files `make preflight` and the berth's linking had written. Both
+        are under `.slipwai/run/` since 2.1, which the scope check takes whole."""
         subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "base"], cwd=self.tree, check=True)
         subprocess.run(["git", "checkout", "-q", "-b", "slice/ORD-01"], cwd=self.tree, check=True)
-        (self.tree / ".slipwai/logs.unread-20261019T143300/ordering").mkdir(parents=True)
-        (self.tree / ".slipwai/logs.unread-20261019T143300/ordering/ordering.jsonl").write_text("{}\n")
-        (self.tree / ".slipwai/preflight.json").write_text("{}")
+        (self.tree / ".slipwai/run/logs.unread-20261019T143300/ordering").mkdir(parents=True)
+        (self.tree / ".slipwai/run/logs.unread-20261019T143300/ordering/ordering.jsonl").write_text("{}\n")
+        (self.tree / ".slipwai/run/preflight.json").write_text("{}")
         (self.tree / "stray.txt").write_text("x")
         changed = self.module.changed_files("main")
-        self.assertNotIn(".slipwai/preflight.json", changed)
+        self.assertNotIn(".slipwai/run/preflight.json", changed)
         self.assertFalse([path for path in changed if "logs.unread-" in path], changed)
         self.assertIn("stray.txt", changed, "anything else untracked is still the slice's")
 

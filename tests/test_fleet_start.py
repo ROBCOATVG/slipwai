@@ -23,7 +23,7 @@ from slipwai.project.harbour import harbour_config
 
 AGENTS = TOOLKIT_ROOT / "scripts/agents"
 CARRIED = ("fleet.py", "clearance.py", "harbourmaster.py", "captain.py", "logs.py", "berths.py", "abreast.py",
-           "telegraph.py", "inbox.py", "ids.py")
+           "telegraph.py", "inbox.py", "ids.py", "mender.py")
 #: The `fairways` block is in neither the slices' order nor the alphabet's, which is how a test can tell
 #: which one the fleet read (slice 18.2).
 CHART = """fairways:
@@ -161,7 +161,7 @@ class CastOffTest(Fixture):
 
     def park(self, fairway: str, t: str) -> None:
         from slipwai import logs
-        path = self.root / logs.deck_path("ordering", fairway)
+        path = logs.deck_path(self.root, "ordering", fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             handle.write(logs.entry("parked", fairway=fairway, why="trunk is red", t=t).line())
@@ -177,7 +177,7 @@ class CastOffTest(Fixture):
 
     def test_a_paused_fairway_says_when_it_lifts_rather_than_parked(self) -> None:
         from slipwai import logs
-        path = self.root / logs.deck_path("ordering", "FUL")
+        path = logs.deck_path(self.root, "ordering", "FUL")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(logs.entry("parked", fairway="FUL", why="FUL-01: the harness would not run it",
                                    cause="limit", until="2999-01-01T09:40:00Z",
@@ -190,7 +190,7 @@ class CastOffTest(Fixture):
         from slipwai import logs
         at = "2026-10-12T09:00:00Z"
         self.park("FUL", at)
-        path = self.root / logs.HARBOUR
+        path = logs.older_harbour(self.root)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(logs.entry("cleared", harbour=True, fairway="FUL", parked=at, what="go").line(),
                         encoding="utf-8")

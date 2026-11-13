@@ -184,7 +184,7 @@ class SeedTest(unittest.TestCase):
     def written(self) -> dict[str, list[dict]]:
         found: dict[str, list[dict]] = {}
         for feature, fairway in (("ordering", "main"), ("ordering", "ordering")):
-            path = self.root / deck_path(feature, fairway)
+            path = deck_path(self.root, feature, fairway)
             lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
             found[fairway] = [json.loads(line) for line in lines if line.startswith("{")]
         return found
@@ -208,7 +208,7 @@ class SeedTest(unittest.TestCase):
         self.assertEqual(merged, [("ORD-01", "abc123"), ("ORD-02", "def456")])
 
     def test_a_line_this_crossing_did_not_write_is_never_counted_as_one_it_did(self) -> None:
-        path = self.root / deck_path("ordering", "ordering")
+        path = deck_path(self.root, "ordering", "ordering")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("not json at all\n" + entry("claimed", fairway="ordering", slice="ORD-02").line(),
                         encoding="utf-8")

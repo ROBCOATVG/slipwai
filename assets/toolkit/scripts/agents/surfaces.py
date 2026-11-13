@@ -40,6 +40,7 @@ sys.path.insert(0, str(HERE))
 import harness  # noqa: E402
 
 ROOT = harness.ROOT
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
 COMMAND = ROOT / "commands/mockups.md"
 SPECS = ROOT / "specs"
 MOCKUPS = "mockups"
@@ -50,7 +51,7 @@ DISAPPROVED = "disapproved.md"
 #: Read by the board, so a window that did not start this still shows the drawing as running. Three lines:
 #: this process, when it started (epoch seconds) and its budget in seconds — the last two so the board can
 #: say how far into its minutes the drawing is without a second copy of where the minutes come from.
-PID = ROOT / ".slipwai" / "surfaces.pid"
+PID = logs.run_dir(ROOT) / "surfaces.pid"
 #: Where the stage budgets are, which is where the captain reads its own.
 HARBOUR = ROOT / "harbour.json"
 #: Minutes for a first drawing and for a redraw, where `harbour.json` has no `surfaces` or `surfaces-redraw`

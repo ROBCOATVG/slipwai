@@ -44,7 +44,7 @@ class Project(unittest.TestCase):
         self.root = Path(tempfile.mkdtemp())
         (self.root / "specs/ordering").mkdir(parents=True)
         (self.root / "specs/ordering/chart.yaml").write_text(CHART, encoding="utf-8")
-        path = self.root / logs.deck_path("ordering", "ORD")
+        path = logs.deck_path(self.root, "ordering", "ORD")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(logs.entry("claimed", fairway="ORD", slice="L01").line(), encoding="utf-8")
 

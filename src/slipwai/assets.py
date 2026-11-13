@@ -38,8 +38,9 @@ VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 # Where a factory command leaves something for the project to act on and then throw away: `migrate` writes
 # its catch-up notes here and `/catch-up` reads them. Spelled here, in the tier every other may read, because
 # three of them need it — the module that writes the page, the `.gitignore` that keeps it out of the history,
-# and the command file that tells an agent where to look.
-NOTES = ".slipwai/catch-up.md"
+# and the command file that tells an agent where to look. Under `.slipwai/run/`, with the rest of what is this
+# checkout's and never trunk's.
+NOTES = ".slipwai/run/catch-up.md"
 #: What a distribution carries beside the package, because the keel reads it at run time and an installed
 #: copy has no checkout to read it from. Said once here, and `tests/test_bundled.py` holds the wheel, the
 #: source distribution and the executable's spec to it — `docs/rename.json` was read by `migrate` and

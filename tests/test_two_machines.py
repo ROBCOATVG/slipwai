@@ -190,7 +190,7 @@ subprocess.run(["git", "commit", "--quiet", "-m", "implement " + sys.argv[1]], c
                 finally:
                     keeper.terminate()
                     keeper.wait(timeout=30)
-            entries = logs.fold((clone / logs.deck_path("ordering", fairway)).read_text(
+            entries = logs.fold((logs.deck_path(clone, "ordering", fairway)).read_text(
                 encoding="utf-8").splitlines())
             expected = [f"{fairway}-01", f"{fairway}-02"]
             self.assertEqual([e.fields["slice"] for e in entries if e.kind == "claimed"], expected)
@@ -242,7 +242,7 @@ subprocess.run(["git", "commit", "--quiet", "-m", "implement " + sys.argv[1]], c
                 keeper.terminate()
                 keeper.wait(timeout=30)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        path = self.two / logs.deck_path("ordering", "ORD")
+        path = logs.deck_path(self.two, "ordering", "ORD")
         found = logs.fold(path.read_text(encoding="utf-8").splitlines())
         merged = [entry for entry in found if entry.kind == "merged"]
         self.assertEqual(len(merged), 1, done.stdout + done.stderr)

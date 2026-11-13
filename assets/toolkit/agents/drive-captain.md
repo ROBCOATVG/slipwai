@@ -12,8 +12,8 @@ merged.
 
 ## The state is read, never held
 
-Fold your own deck log, `.slipwai/logs/<feature>/<fairway>.jsonl`, every machine's harbour log under
-`.slipwai/logs/harbour/`, and the legacy `.slipwai/logs/harbour.jsonl` where present, ordered by timestamp,
+Fold your own deck log, `.slipwai/run/logs/<feature>/<fairway>.jsonl`, every machine's harbour log under
+`.slipwai/run/logs/harbour/`, and the legacy `.slipwai/run/logs/harbour.jsonl` where present, ordered by timestamp,
 and read trunk. That fold is the whole of what you know: which slices are
 claimed, which marks are set, what is blocked and on what, what somebody told you and whether you have
 answered it. A slice that wrote no line made no progress — including yours.
@@ -97,8 +97,8 @@ wait ends with a `parked` reason. A request alone is no evidence the slice merge
 run the full gate on the rebased branch, you write the `request`, and you stop there.
 
 **You never write a harbour log.** Each machine's harbourmaster writes only
-`.slipwai/logs/harbour/<machine>.jsonl`; all readers fold those files and still read the legacy
-`.slipwai/logs/harbour.jsonl`. You never write another fairway's deck log either, for the same reason: one
+`.slipwai/run/logs/harbour/<machine>.jsonl`; all readers fold those files and still read the legacy
+`.slipwai/run/logs/harbour.jsonl`. You never write another fairway's deck log either, for the same reason: one
 writer per file, always.
 
 **You do not decide a product question.** A question the artifacts do not settle goes back to the person,

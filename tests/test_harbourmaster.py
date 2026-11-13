@@ -148,8 +148,8 @@ class HarbourTest(Fixture):
 
     def test_one_fairway_writing_a_bad_line_does_not_stop_the_others_being_heard(self) -> None:
         self.deck("ordering", "ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"))
-        (self.root / logs.deck_path("billing", "BIL")).parent.mkdir(parents=True, exist_ok=True)
-        (self.root / logs.deck_path("billing", "BIL")).write_text("not json\n", encoding="utf-8")
+        (logs.deck_path(self.root, "billing", "BIL")).parent.mkdir(parents=True, exist_ok=True)
+        (logs.deck_path(self.root, "billing", "BIL")).write_text("not json\n", encoding="utf-8")
         done = self.run_once()
         self.assertEqual(done.returncode, 0)
         self.assertIn("cannot be read", done.stderr)
@@ -239,7 +239,7 @@ class CursorTest(Fixture):
                   logs.entry("heartbeat", fairway="ORD"),
                   logs.entry("heartbeat", fairway="ORD"))
         self.run_once()
-        (self.root / logs.deck_path("ordering", "ORD")).write_text("", encoding="utf-8")
+        (logs.deck_path(self.root, "ordering", "ORD")).write_text("", encoding="utf-8")
         self.deck("ordering", "ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-02", mark="Paid"))
         done = self.run_once()
         self.assertIn("shorter than it was", done.stderr)

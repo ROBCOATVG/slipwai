@@ -91,7 +91,7 @@ class ProcessTest(Fixture):
     def pid_file(self, name: str, pid: int, exit_why: str = "") -> None:
         import json as json_
 
-        place = self.root / fleet.RUNNING
+        place = logs.run_dir(self.root) / fleet.RUNNING
         place.mkdir(parents=True, exist_ok=True)
         (place / f"{name}.pid").write_text(f"{pid}\n", encoding="utf-8")
         if exit_why:

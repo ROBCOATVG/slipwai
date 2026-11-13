@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .convergence import BY_KEY, row
 from .layout import layout_of
+from .logs import RUN
 from .migration_flight import json_bytes
 from .migration_merge import Tree, git
 from .project.convergence_page import convergence_page
@@ -49,7 +50,7 @@ def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[s
     parse. Only the keys that live in those files are then left to the person — said out loud, on the
     catch-up page, rather than passed over in silence. Everything else here still applies, and two of them
     matter immediately: the `hoisted` date is what the strike rule counts from, so a flag that never gets
-    one never starts counting; and `.slipwai/logs/` in `.gitignore` is what keeps the deck logs `seed`
+    one never starts counting; and `.slipwai/run/` in `.gitignore` is what keeps the deck logs `seed`
     writes a few lines later out of the person's `git status`, where AGENTS.md says they are never
     committed from.
 
@@ -87,7 +88,7 @@ def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[s
         notes.append(f"`project.json` conflicted, so this crossing could not write its releaseMode, its "
                      f"state{extra}. Resolve the conflict, then set `\"releaseMode\": \"{mode}\"` and "
                      f"`\"state\": \"{state}\"` by hand and run `make verify`. Every flag's `hoisted` date, "
-                     "the model table's review role and the `.slipwai/logs/` ignore rule were written.")
+                     "the model table's review role and the `.slipwai/run/` ignore rule were written.")
     else:
         metadata = json.loads(files["project.json"])
         metadata["releaseMode"] = "open" if document.get("target") == "none" else "flagged"
@@ -109,9 +110,10 @@ def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[s
                      "count from: " + ", ".join(undated) + ". Add `# hoisted: <the day it went on>` to "
                      "each, which only you know. `check-flags` stays red until they have one.")
     ignored = files.get(".gitignore", b"")
-    if b".slipwai/logs/" not in ignored.splitlines():
-        files[".gitignore"] = (ignored.rstrip(b"\n") +
-                              b"\n\n# Deck logs sync through refs/slipwai/logs.\n.slipwai/logs/\n")
+    line = f"{RUN}/".encode()
+    if line not in ignored.splitlines():
+        files[".gitignore"] = (ignored.rstrip(b"\n") + b"\n\n# Everything a run writes about itself; deck logs "
+                               b"sync through refs/slipwai/logs.\n" + line + b"\n")
     for name in (".specify/models.json", "models.json"):
         source = root / name
         if source.is_file():

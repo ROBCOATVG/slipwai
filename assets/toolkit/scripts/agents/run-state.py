@@ -11,7 +11,7 @@ two side by side makes the drift visible — a slice badged `implemented` whose 
 same failure, drawn on the page where somebody would see it.
 
 **It writes nowhere near `model.yaml`.** The moment a fold writes back into the field it is folding
-against, there is one band again and it is the one that lies. It writes `.slipwai/run-state.json`, which
+against, there is one band again and it is the one that lies. It writes `.slipwai/run/run-state.json`, which
 is ignored by git, and it never touches `model.drawio` either: that file is committed and
 `make check-drawio` holds it current, so a heartbeat would dirty the tree on every pass.
 
@@ -39,7 +39,7 @@ def project_root() -> Path:
 
 
 ROOT = project_root()
-OUT = ROOT / ".slipwai/run-state.json"
+OUT = logs.run_dir(ROOT) / "run-state.json"
 #: What the logs can say about a slice, slowest-moving first. The order is the order a slice walks them in,
 #: which is what lets a renderer treat it as a scale rather than a set of unrelated words.
 STATES = ("not started", "claimed", "marks set", "demoed", "merged", "parked")

@@ -231,7 +231,7 @@ class BankingTest(unittest.TestCase):
         place = self.root / "scripts/agents"
         place.mkdir(parents=True)
         for name in ("harbourmaster.py", "logs.py", "berths.py", "telegraph.py", "claims.py", "travel.py",
-                     "inbox.py"):
+                     "inbox.py", "mender.py"):
             (place / name).write_text((AGENTS / name).read_text(encoding="utf-8"), encoding="utf-8")
         (self.root / "harbour.json").write_text(harbour_config(), encoding="utf-8")
         self.script = place / "harbourmaster.py"
@@ -241,7 +241,7 @@ class BankingTest(unittest.TestCase):
                               capture_output=True, text=True, cwd=self.root)
 
     def spend(self, thousands: int) -> None:
-        path = self.root / logs.deck_path("ordering", "ORD")
+        path = logs.deck_path(self.root, "ordering", "ORD")
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             handle.write(logs.entry("heartbeat", fairway="ORD", tokens=thousands).line())

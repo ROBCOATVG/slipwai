@@ -16,7 +16,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai import plugin
 from slipwai.layout import AT_ROOT
-from slipwai.logs import DECK_KINDS, HARBOUR, HARBOUR_KINDS
+from slipwai.logs import DECK_KINDS, HARBOUR_KINDS, RUN
 from slipwai.project.agents import agent_files, types
 from slipwai.project.briefs import read
 
@@ -99,11 +99,11 @@ class WhatItMayNotDoTest(unittest.TestCase):
 
     def test_the_captain_does_not_write_the_harbour_log(self) -> None:
         said = self.body(CAPTAIN)
-        self.assertIn(HARBOUR, said)
+        self.assertIn(f"{RUN}/logs/harbour.jsonl", said)
 
     def test_the_harbourmaster_is_the_only_writer_of_the_harbour_log(self) -> None:
         said = self.body(HARBOURMASTER)
-        self.assertIn(HARBOUR, said)
+        self.assertIn(f"{RUN}/logs/harbour.jsonl", said)
         self.assertIn("only writer", said)
 
     def test_the_harbourmaster_is_not_a_merge_queue(self) -> None:

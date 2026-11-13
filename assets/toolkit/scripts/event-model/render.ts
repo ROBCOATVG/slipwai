@@ -160,7 +160,7 @@ function updateReadme(model: Model): void {
  * eight slices that were built and merged.
  */
 function loadRunState(): RunState | undefined {
-  const path = join(ROOT, '.slipwai/run-state.json');
+  const path = join(ROOT, '.slipwai/run/run-state.json');
   if (!existsSync(path)) return undefined;
   try {
     const held: unknown = JSON.parse(readFileSync(path, 'utf8'));

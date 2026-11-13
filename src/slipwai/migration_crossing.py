@@ -234,7 +234,7 @@ def seed(root: Path, flight: Flight) -> None:
     """Append what version 1 left behind, once per line however many times the crossing is re-run."""
     seen: dict[Path, Counter[str]] = {}
     for feature, fairway, line in flight.logs:
-        destination = root / deck_path(feature, fairway)
+        destination = deck_path(root, feature, fairway)
         destination.parent.mkdir(parents=True, exist_ok=True)
         if destination not in seen:
             seen[destination] = already(destination)
@@ -294,7 +294,7 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         # A conflicted file is unreadable, so the keys that live in it wait for the person — the whole set
         # is passed rather than `project.json` alone, because the model table conflicts too. Every other
         # setting still applies: the `hoisted` dates the strike rule counts from, the model table's review
-        # role, and the `.slipwai/logs/` ignore rule `seed` needs twelve lines below this.
+        # role, and the `.slipwai/run/` ignore rule `seed` needs twelve lines below this.
         left = settings(root, document, result.files, conflicts=result.conflicts)
         validate(root, result.files)
         message = catch_up(document["name"], recorded, legacy.used, flight, layout_of(document),

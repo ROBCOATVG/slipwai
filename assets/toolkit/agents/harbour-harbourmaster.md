@@ -11,12 +11,14 @@ naming the fairway and the berth. A berth holds no cloud or forge credential, an
 grants one.
 
 **The harbour log.** You are the only writer of this machine's
-`.slipwai/logs/harbour/<machine>.jsonl`. Fold every machine's harbour log by timestamp and keep reading
-legacy `.slipwai/logs/harbour.jsonl` where present. Each file retains its own writer; copy across the
+`.slipwai/run/logs/harbour/<machine>.jsonl`. Fold every machine's harbour log by timestamp and keep reading
+legacy `.slipwai/run/logs/harbour.jsonl` where present. Each file retains its own writer; copy across the
 handful of lines other fairways need — a mark set, a park, a flag change, a telegraph position — rather than having each captain
 write there. Your kinds are `mark-set`, `flag-hoisted`, `flag-struck`, `berth-allocated`, `fires-banked`,
-`park`, `telegraph`, `granted`, `refused`, `cleared`, `trunk-red`, `trunk-green`, `fix-trunk`,
-`merge-taken-over` and `slots`, and you write no others. `slots` is your share of `boilers` for one
+`park`, `telegraph`, `granted`, `refused`, `cleared`, `trunk-red`, `trunk-green`, `mend`, `mended`,
+`mend-failed`, `merge-taken-over` and `slots`, and you write no others. `fix-trunk` is read where an older
+log has one and is no longer written: a red trunk stops the line, and you send the trunk mender
+(`agents/harbour-trunk-mender.md`) rather than the captain whose merge it was. `slots` is your share of `boilers` for one
 fairway — every fairway with work gets one session before any gets a second, then spare sessions go by the
 harbour's priority, capped by `abreast`, and never to a fairway waiting on a merge answer.
 

@@ -32,7 +32,7 @@ class Fixture(unittest.TestCase):
         (self.root / "harbour.json").write_text(harbour_config(), encoding="utf-8")
 
     def deck(self, fairway: str, *entries: logs.Entry, feature: str = "ordering") -> None:
-        path = self.root / logs.deck_path(feature, fairway)
+        path = logs.deck_path(self.root, feature, fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in entries:
@@ -40,7 +40,7 @@ class Fixture(unittest.TestCase):
 
     def harbour(self, *entries: logs.Entry, machine: str = "") -> None:
         """One machine's harbour log — the one a project already had, where none is named."""
-        path = self.root / (logs.harbour_path(machine) if machine else logs.HARBOUR)
+        path = logs.harbour_path(self.root, machine) if machine else logs.older_harbour(self.root)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in entries:
@@ -69,7 +69,7 @@ class AbreastTest(Fixture):
 class StateTest(Fixture):
     def test_a_fairway_with_a_log_and_no_lines_is_not_started(self) -> None:
         """Not `0%` and not `working`: a fairway nobody has begun is a fact, and the board says it."""
-        path = self.root / logs.deck_path("ordering", "ORD")
+        path = logs.deck_path(self.root, "ordering", "ORD")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("", encoding="utf-8")
         self.assertEqual(self.board()["berths"][0]["state"], "not started")
@@ -285,7 +285,7 @@ class FeedTest(Fixture):
 class UnreadableTest(Fixture):
     def test_a_log_that_cannot_be_read_is_said_rather_than_drawn_empty(self) -> None:
         """An empty row and an unreadable one are different facts, and drawing both the same is guessing."""
-        path = self.root / logs.deck_path("ordering", "ORD")
+        path = logs.deck_path(self.root, "ordering", "ORD")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("not json\n", encoding="utf-8")
         self.assertIn("ORD", self.board()["unreadable"])

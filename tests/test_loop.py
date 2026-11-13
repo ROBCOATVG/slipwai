@@ -76,7 +76,7 @@ import sys, json, pathlib, datetime, yaml
 slice_id, fairway = sys.argv[1], sys.argv[2]
 chart = yaml.safe_load(pathlib.Path("specs/model/chart.yaml").read_text(encoding="utf-8"))
 sets = ((chart.get("slices") or {}).get(slice_id) or {}).get("sets") or []
-path = pathlib.Path(".slipwai/logs/model") / (fairway + ".jsonl")
+path = pathlib.Path(".slipwai/run/logs/model") / (fairway + ".jsonl")
 path.parent.mkdir(parents=True, exist_ok=True)
 def line(**fields):
     now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -174,7 +174,7 @@ class LoopTest(unittest.TestCase):
         import contextlib
         import signal
         import time
-        running = self.project / ".slipwai/running"
+        running = self.project / ".slipwai/run/running"
         pids = []
         for path in sorted(running.glob("*.pid")) if running.is_dir() else []:
             try:
@@ -198,7 +198,7 @@ class LoopTest(unittest.TestCase):
                               env=env, timeout=180)
 
     def entries(self, fairway: str) -> list[dict]:
-        path = self.project / f".slipwai/logs/model/{fairway}.jsonl"
+        path = self.project / f".slipwai/run/logs/model/{fairway}.jsonl"
         if not path.is_file():
             return []
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -353,7 +353,7 @@ class LoopTest(unittest.TestCase):
         self.run_in("scripts/agents/harbourmaster.py", "--once", "--no-fetch")
         # This machine's own harbour log, wherever it named itself: one file per machine since 11.3, and
         # the name is derived from the hostname of whatever is running the suite.
-        written = sorted((self.project / ".slipwai/logs/harbour").glob("*.jsonl"))
+        written = sorted((self.project / ".slipwai/run/logs/harbour").glob("*.jsonl"))
         self.assertEqual(len(written), 1, [path.name for path in written])
         lines = [json.loads(line) for line in written[0].read_text(encoding="utf-8").splitlines()
                  if line.strip()]
@@ -378,7 +378,7 @@ class LoopTest(unittest.TestCase):
         """The model page's colour, from the lines and from nothing else. The merge is answered here by a
         stand-in for the harbourmaster, so the slice reaches the last state there is."""
         self.run_in("scripts/event-model/chart.py")
-        harbour = self.project / ".slipwai/logs/harbour.jsonl"
+        harbour = self.project / ".slipwai/run/logs/harbour.jsonl"
         harbour.parent.mkdir(parents=True, exist_ok=True)
         harbour.write_text(json.dumps({"v": 1, "t": "2026-10-08T09:00:00Z", "kind": "granted",
                                        "fairway": "ordering", "request": "merge-ORD-01", "what": "merge",

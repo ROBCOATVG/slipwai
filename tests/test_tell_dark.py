@@ -27,7 +27,7 @@ class DarkTest(unittest.TestCase):
         (self.root / "project.json").write_text(json.dumps({"layout": {"delivery": "."}}), encoding="utf-8")
         (self.root / "specs/ordering").mkdir(parents=True)
         (self.root / "specs/ordering/chart.yaml").write_text(CHART, encoding="utf-8")
-        self.log = self.root / logs.deck_path("ordering", "ORD")
+        self.log = logs.deck_path(self.root, "ordering", "ORD")
         self.log.parent.mkdir(parents=True)
         self.log.write_text(logs.entry("claimed", fairway="ORD", slice="ORD-01").line(), encoding="utf-8")
 

@@ -34,7 +34,7 @@ from urllib.parse import quote, unquote
 from .assets import SLIPWAI
 from .fleet import Fairway, clearance_query, fairways, harbour_log
 from .fleet_record import clock_of
-from .logs import held_slices, paused
+from .logs import held_slices, paused, run_dir
 from .process_alive import alive
 from .slice_rungs import rung
 
@@ -101,7 +101,7 @@ def titles(root: Path, feature: str) -> dict[str, str]:
 def fleet_running(root: Path) -> bool:
     """Whether anything `fleet.py start` started is still alive: its pid files, each checked against the
     process table. No file is nothing started; a file whose pid is gone is a captain that has died."""
-    running = root / ".slipwai/running"
+    running = run_dir(root) / "running"
     for pid_file in sorted(running.glob("*.pid")) if running.is_dir() else []:
         try:
             if alive(int(pid_file.read_text(encoding="utf-8").strip())):

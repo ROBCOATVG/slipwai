@@ -31,6 +31,8 @@ class CrossingTest(unittest.TestCase):
         (self.root / "scripts").mkdir(parents=True)
         (self.root / "project.json").write_text(json.dumps({"name": "t"}), encoding="utf-8")
         shutil.copy(GATE, self.root / "scripts/check-crossing.py")
+        (self.root / "scripts/agents").mkdir()
+        shutil.copy(GATE.parent / "agents/logs.py", self.root / "scripts/agents/logs.py")
         self.git("init", "--quiet", "--initial-branch=main")
 
     def git(self, *argv: str) -> subprocess.CompletedProcess:

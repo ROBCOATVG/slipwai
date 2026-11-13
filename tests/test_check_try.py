@@ -30,7 +30,8 @@ class CheckTryTest(unittest.TestCase):
         (self.root / "scripts/agents").mkdir(parents=True)
         for name in ("check-try.py",):
             shutil.copy(TOOLKIT_ROOT / "scripts" / name, self.root / "scripts" / name)
-        shutil.copy(TOOLKIT_ROOT / "scripts/agents/try_it.py", self.root / "scripts/agents/try_it.py")
+        for name in ("try_it.py", "logs.py"):
+            shutil.copy(TOOLKIT_ROOT / "scripts/agents" / name, self.root / "scripts/agents" / name)
 
     def run_gate(self) -> subprocess.CompletedProcess:
         return subprocess.run([sys.executable, "-B", "scripts/check-try.py"], cwd=self.root, capture_output=True,

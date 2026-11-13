@@ -283,7 +283,7 @@ def page(root: Path, fairway: str, board: dict) -> tuple[int, str]:
 </section>
 <section data-shows="output" hidden>
 <p class="empty" style="margin:0 0 10px">What the captain process printed: its own lines and each turn's
-closing message, from <code>.slipwai/running/captain-{esc(fairway)}.out</code>.</p>
+closing message, from <code>.slipwai/run/running/captain-{esc(fairway)}.out</code>.</p>
 <pre class="out" id="output" data-empty="1">Nothing printed yet. A captain that `make cruise` started writes here.</pre>
 </section>
 </div>

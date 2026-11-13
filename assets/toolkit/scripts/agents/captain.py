@@ -274,6 +274,23 @@ def fix_owed(fairway: str, found: list[logs.Entry]) -> logs.Entry | None:
     return abreast.fix_owed(fairway, found, harbour_entries())
 
 
+def red_trunk() -> logs.Entry | None:
+    """The `trunk-red` line where trunk is red now, by the harbour's last word on it, or None.
+
+    **A red trunk stops the line** (phase 25, minimumCD's rule): nothing new starts and nothing carried
+    over is taken up again until it is green, because everything built meanwhile is built on a trunk that
+    does not pass. The harbourmaster sends the trunk mender; a captain holds. A slice already under way is
+    left to finish its run and waits at the merge, which is refused on red, because ending a session
+    mid-stage throws away work the green trunk will want.
+    """
+    for entry in reversed(harbour_entries()):
+        if entry.kind == "trunk-green":
+            return None
+        if entry.kind == "trunk-red":
+            return entry
+    return None
+
+
 def answered(request: str) -> logs.Entry | None:
     """The harbourmaster's answer to this request, or None while there is not one yet."""
     return next((e for e in reversed(harbour_entries())
@@ -325,11 +342,11 @@ def keep_harbourmaster() -> None:
     pid = fleet.relight_harbourmaster()
     if pid is not None:
         print(f"captain: the harbourmaster had stopped, so it was started again, pid {pid}. Its output is "
-              f"in .slipwai/running/harbourmaster.out", flush=True)
+              f"in .slipwai/run/running/harbourmaster.out", flush=True)
 
 
 def deck(feature: str, fairway: str) -> Path:
-    return ROOT / logs.deck_path(feature, fairway)
+    return logs.deck_path(ROOT, feature, fairway)
 
 
 def entries(feature: str, fairway: str) -> list[logs.Entry]:
@@ -494,7 +511,7 @@ def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "
     if berth is not None:
         prompt += (f"\n\nYou are already in this slice's berth: the worktree at {berth}, on branch "
                    f"{BRANCH.format(slice=slice_id)}. Work there, and make no other worktree for it; its "
-                   f"`.slipwai/logs` is the project's own.")
+                   f"`.slipwai/run/logs` is the project's own.")
     if (decide := cruising()):
         prompt += cruise_note(decide)
     if retry:
@@ -519,7 +536,7 @@ def starter(slice_id: str, fairway: str, retry: str = "",
                    **naming(slice_id, fairway, retry, berth)}
     print(f"captain: {slice_id}: {said}", flush=True)
     return lambda: drive.Drive(launch, berth or ROOT, environment, prompt, model=sail_model(),
-                               kept=(berth or ROOT) / ".slipwai" / "acp" / slice_id)
+                               kept=logs.run_dir(berth or ROOT) / "acp" / slice_id)
 
 
 def naming(slice_id: str, fairway: str, retry: str = "", berth: Path | None = None) -> dict[str, str]:
@@ -704,12 +721,16 @@ def boundary(feature: str, fairway: str) -> tuple[str, str]:
     owed = inbox.owed(fairway)
     if not owed.get("forced"):
         return "", ""
-    late = owed.get("overrun") or []
+    # Under `/cruise` only a park of the whole fairway forces a boundary (`inbox.owed`), so a late message
+    # or the count beside it is never what this one is about, and naming either would send a person to
+    # read the wrong thing.
+    quiet = bool(owed.get("cruising"))
+    late = [] if quiet else (owed.get("overrun") or [])
     if late:
         said = str(late[0].get("message", ""))[:120]
         return (f"{len(late)} message(s) from a person have gone past the wait bound unanswered, the "
                 f"oldest being {said!r}. `/told` reads them, and a read line is the receipt"), ""
-    if not owed.get("over_ceiling"):
+    if quiet or not owed.get("over_ceiling"):
         parks = owed.get("overdue_parks") or []
         said = str((parks[0] if parks else {}).get("why", ""))[:120]
         return f"a park has gone past the wait bound unanswered: {said!r}", ""
@@ -988,7 +1009,7 @@ def skipper_starter(slice_id: str, feature: str, fairway: str, asked: list[logs.
     environment = {**harness.child_environment(row), **drive.acp_environment(row), **told}
     prompt = skipper_prompt(slice_id, feature, fairway, asked, berth)
     return lambda: drive.Drive(launch, berth or ROOT, environment, prompt, model=sail_model(),
-                               kept=(berth or ROOT) / ".slipwai" / "acp" / f"{slice_id}-decide")
+                               kept=logs.run_dir(berth or ROOT) / "acp" / f"{slice_id}-decide")
 
 
 def skipper_round(slice_id: str, feature: str, fairway: str, asked: list[logs.Entry]) -> list[str]:
@@ -1720,6 +1741,11 @@ def turn(fairway: str) -> str:
         print(f"captain: trunk is red at {str(fix.fields['commit'])[:8]} ({fix.fields['job']}) and "
               f"{fairway} merged it; fixing {slice_id} before anything new", flush=True)
         said = sail_out(feature, fairway, [slice_id], fresh=False)
+    elif (red := red_trunk()) is not None:
+        # Not a stop: the loop turns again at its interval and carries on the turn trunk is green.
+        return (f"captain: {fairway} holds — trunk is red at {str(red.fields.get('commit', ''))[:8]} "
+                f"({red.fields.get('job', 'a job')}), so nothing new starts until it is green; the trunk "
+                f"mender is sent to fix it")
     elif resume:
         # The stream was mid-slice when it stopped, and the ready set steps past a slice that is claimed —
         # which is exactly the four rungs of work each of these exists to carry over.

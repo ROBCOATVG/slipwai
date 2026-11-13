@@ -39,7 +39,9 @@ def project_root(script: Path) -> Path:
 
 ROOT = project_root(Path(__file__).resolve())
 SPECS = ROOT / "specs"
-LOGS = ROOT / ".slipwai/logs"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
+LOGS = logs.logs_dir(ROOT)
 V = 1
 #: What a gate record's last word says once every gate has run with nothing above the bar left open.
 CLEARED = re.compile(r"^Cleared:\s*\S", re.MULTILINE)

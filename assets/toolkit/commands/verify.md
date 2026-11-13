@@ -40,6 +40,6 @@ as known, the gate passes on them, and any *new* failure still fails it, until t
 clears. If the person says to quarantine it, run `{{make}} ratchet-tighten` and say what it recorded — it is
 their decision written down, not a gate edited to pass, which is why it waits for them.
 
-Where `.slipwai/catch-up.md` exists and the failures look like gates that arrived with a migration — code that
+Where `.slipwai/run/catch-up.md` exists and the failures look like gates that arrived with a migration — code that
 was correct when it was written, refused by a rule it never had to meet — say `/catch-up` is the command for
 that and stop.

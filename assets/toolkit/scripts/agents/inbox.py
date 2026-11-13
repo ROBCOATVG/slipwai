@@ -38,11 +38,17 @@ def project_root(script: Path) -> Path:
 
 
 ROOT = project_root(Path(__file__).resolve())
-LOGS = ROOT / ".slipwai/logs"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
+LOGS = logs.logs_dir(ROOT)
 #: Where each machine's harbourmaster writes its own log. One per machine since 11.3, so this is a
 #: directory of files rather than one file, and it is not a feature's.
 HARBOUR_LOGS = LOGS / "harbour"
 HARBOUR = ROOT / "harbour.json"
+#: What says whether this run is cruising, and how a product question is decided there. Read the way the
+#: captain reads it (`captain.cruising`): `enabled: true`, and a `decide` under which nobody is asked.
+CRUISE = ROOT / ".specify/cruise.json"
+DECIDES = ("recommended-first", "skipper-always")
 V = 1
 #: Used where `harbour.json` is absent or unreadable. The file is the answer; these keep the rules working
 #: in a project that has not got one yet rather than making them conditional on it.
@@ -57,6 +63,21 @@ def settings() -> tuple[int, float]:
         return DEFAULT_CEILING, DEFAULT_WAIT
     return (int(document.get("decision_ceiling", DEFAULT_CEILING)),
             float(document.get("wait_bound", DEFAULT_WAIT)))
+
+
+def cruising() -> bool:
+    """Whether this run is under `/cruise` with a `decide` that answers its own questions.
+
+    Then nobody is at the wheel by the person's own choice, and a boundary forced to wait for them is a
+    stop they asked not to have. game-club-manager's clubs fairway parked overnight on a slice's own note
+    about an ignore file, sent an hour before, with `decide: recommended-first` in this file.
+    """
+    try:
+        held = json.loads(CRUISE.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return False
+    return isinstance(held, dict) and held.get("enabled") is True \
+        and str(held.get("decide") or "recommended-first") in DECIDES
 
 
 def lines(fairway: str) -> list[dict]:
@@ -166,6 +187,7 @@ def open_parks(written: list[dict], fairway: str) -> list[dict]:
 def owed(fairway: str, now: datetime | None = None) -> dict:
     """What this fairway owes at this boundary, and whether one is forced before the next stage starts."""
     ceiling, bound = settings()
+    quiet = cruising()
     written = lines(fairway)
     waiting, backlog = unread(written), unreviewed(written)
     late = overrun(written, bound, now)
@@ -185,8 +207,15 @@ def owed(fairway: str, now: datetime | None = None) -> dict:
         # A park of one slice holds that slice alone — its siblings were never waiting on it — so only a
         # park of the whole fairway forces their boundary: hr-test-2's three question parks, past the bound,
         # would otherwise have stopped every sibling at its next boundary with a reason about something else.
-        "forced": bool(late or [line for line in overdue_parks if not line.get("slice")])
-        or len(backlog) > ceiling,
+        #
+        # **Under `/cruise`, neither a message nor the count forces anything.** The skipper takes the
+        # decisions because the person said it should, so a ceiling on decisions nobody read parks the run
+        # for doing what it was asked; and a `told` is a note for the board, which waits there to be read
+        # without stopping the fairway. What still stops a cruising fairway is a park of the whole of it,
+        # which is a thing no agent may supply — and that is a park already, not a forced boundary.
+        "forced": bool(not quiet and (late or len(backlog) > ceiling)
+                       or [line for line in overdue_parks if not line.get("slice")]),
+        "cruising": quiet,
     }
 
 
@@ -207,7 +236,8 @@ def main(argv: list[str]) -> int:
         print(f"  parked {line.get('t')}: {line.get('why')} — waiting on you "
               f"{line['waited']:.0f}m{overdue}")
     if state["over_ceiling"]:
-        print(f"  over the decision ceiling — this fairway parks until a person reads them")
+        print("  over the decision ceiling — under /cruise this is for reading, and parks nothing"
+              if state["cruising"] else "  over the decision ceiling — this fairway parks until a person reads them")
     return 0
 
 

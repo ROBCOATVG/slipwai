@@ -51,7 +51,7 @@ class EndTest(Fixture):
 
     def test_a_log_that_cannot_be_read_is_waiting_on_you_with_its_line(self) -> None:
         """recap's library row said nothing waited while the park it waited on was the unreadable line."""
-        path = self.root / logs.deck_path("ordering", "ORD")
+        path = logs.deck_path(self.root, "ordering", "ORD")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(logs.entry("heartbeat", fairway="ORD").line() + "not json\n", encoding="utf-8")
         found = self.board()

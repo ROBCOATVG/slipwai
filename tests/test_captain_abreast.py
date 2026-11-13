@@ -130,7 +130,7 @@ class VoyageTest(Abreast):
     def voyage(self, **held: object) -> dict[str, tuple[float, float, str]]:
         self.settings(**held)
         place = self.root / "scripts/agents"
-        for name in ("harbourmaster.py", "telegraph.py"):
+        for name in ("harbourmaster.py", "telegraph.py", "mender.py"):
             shutil.copy(AGENTS / name, place / name)
         # Captains here are the ones this case runs; a harbourmaster lighting detached ones beside them, with
         # no `SLIPWAI_SAIL`, would be a different exercise. The allocation it writes is the one under test.

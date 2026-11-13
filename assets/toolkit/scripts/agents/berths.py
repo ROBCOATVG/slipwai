@@ -38,8 +38,10 @@ import re
 from dataclasses import dataclass
 
 #: Where a berth's record lives. One file per berth, so two berths never write one file — the same rule the
-#: deck logs and the per-fairway decisions follow, for the same reason.
-BERTHS = ".slipwai/berths"
+#: deck logs and the per-fairway decisions follow, for the same reason. Under `logs.RUN`, spelled out
+#: because a carried module imports nothing but the standard library; `tests/test_run_paths.py` holds the two
+#: in step.
+BERTHS = ".slipwai/run/berths"
 #: The first port a berth may use. Above the generator's own defaults (3000 for a service, 5173 for a web
 #: app) so that a berth never collides with a project started the ordinary way outside one.
 FIRST_PORT = 8100
@@ -52,7 +54,7 @@ NAME = re.compile(r"^[a-z][a-z0-9-]{0,30}$")
 
 @dataclass(frozen=True)
 class Berth:
-    """One berth's record, as `.slipwai/berths/<name>.json` holds it."""
+    """One berth's record, as `.slipwai/run/berths/<name>.json` holds it."""
 
     name: str
     index: int

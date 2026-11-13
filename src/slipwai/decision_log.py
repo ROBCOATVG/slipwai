@@ -26,10 +26,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .deck import entries, mark_read, streams
+from .logs import logs_dir
 from .page_shell import esc
 
 #: Where a decision with no deck line is marked read: beside the logs, which Git already ignores.
-UPSTREAM_READ = ".slipwai/logs/decisions-read.json"
+UPSTREAM_READ = "decisions-read.json"
 _HEAD = re.compile(r"^## (D\d+)\s*[—-]\s*(.*)$", re.MULTILINE)
 _FIELD = re.compile(r"\*\*([^*:]+):\*\*\s*(.*?)(?=\s+·\s+\*\*[^*:]+:\*\*|$)")
 _NUMBER = re.compile(r"^\s*(D\d+)\b")
@@ -93,7 +94,7 @@ def written(root: Path) -> dict[str, dict[str, str]]:
 
 def upstream_read(root: Path) -> set[str]:
     try:
-        held = json.loads((root / UPSTREAM_READ).read_text(encoding="utf-8"))
+        held = json.loads((logs_dir(root) / UPSTREAM_READ).read_text(encoding="utf-8"))
     except (OSError, ValueError, UnicodeDecodeError):
         return set()
     return {str(one) for one in held} if isinstance(held, list) else set()
@@ -154,7 +155,7 @@ def mark(root: Path, keys: list[str]) -> str:
     if upstream:
         known = {one.number for one in decisions(root) if one.key.startswith("md:")}
         wanted = sorted(upstream_read(root) | (set(upstream) & known))
-        path = root / UPSTREAM_READ
+        path = logs_dir(root) / UPSTREAM_READ
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(wanted, indent=0) + "\n", encoding="utf-8")
         said.append(f"marked {len(set(upstream) & known)} earlier decision(s) read")

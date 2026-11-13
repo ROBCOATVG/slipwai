@@ -330,8 +330,7 @@ class ArchiveTest(unittest.TestCase):
     def test_the_archive_is_ignored_like_the_page(self) -> None:
         from slipwai.project.gitignore import RUN_STATE
 
-        self.assertTrue(ARCHIVE.startswith(".slipwai/catch-up/"))
-        self.assertIn("catch-up/", RUN_STATE)
+        self.assertTrue(ARCHIVE.startswith(f"{RUN_STATE}catch-up/"))
 
 
 if __name__ == "__main__":  # pragma: no cover

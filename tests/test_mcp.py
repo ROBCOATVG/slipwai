@@ -40,7 +40,7 @@ class Harbour(unittest.TestCase):
         self.deck("ordering", logs.entry("claimed", fairway="ordering", slice="S1"))
 
     def deck(self, fairway: str, *entries: logs.Entry, feature: str = "ordering") -> None:
-        path = self.root / logs.deck_path(feature, fairway)
+        path = logs.deck_path(self.root, feature, fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in entries:
@@ -132,7 +132,7 @@ class TellTest(Harbour):
 
     def test_the_line_is_the_one_the_bridge_would_have_written(self) -> None:
         self.text("tell", fairway="ordering", message="use the minor unit")
-        written = (self.root / logs.deck_path("ordering", "ordering")).read_text(encoding="utf-8")
+        written = (logs.deck_path(self.root, "ordering", "ordering")).read_text(encoding="utf-8")
         last = json.loads(written.splitlines()[-1])
         self.assertEqual(last["kind"], "told")
         self.assertEqual(last["fairway"], "ordering")
@@ -142,7 +142,7 @@ class TellTest(Harbour):
     def test_under_a_dispatched_session_the_line_is_the_session_s(self) -> None:
         with mock.patch.dict(os.environ, {"SLIPWAI_FAIRWAY": "ordering"}):
             self.text("tell", fairway="ordering", message="for the host: two gates are red")
-        written = (self.root / logs.deck_path("ordering", "ordering")).read_text(encoding="utf-8")
+        written = (logs.deck_path(self.root, "ordering", "ordering")).read_text(encoding="utf-8")
         self.assertEqual(json.loads(written.splitlines()[-1])["by"], "session")
 
     def test_a_message_with_nothing_in_it_is_an_error_result_rather_than_a_line(self) -> None:

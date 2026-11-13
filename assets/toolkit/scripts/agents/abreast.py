@@ -213,7 +213,7 @@ def allocate(order: list[str], preferred: list[str], wants: dict[str, int], runn
 
 def deck_of(feature: str, fairway: str) -> list[logs.Entry]:
     """One fairway's lines, or none where they cannot be read — the captain says so; this only counts."""
-    path = clearance.ROOT / logs.deck_path(feature, fairway)
+    path = logs.deck_path(clearance.ROOT, feature, fairway)
     try:
         return logs.fold(path.read_text(encoding="utf-8").splitlines()) if path.is_file() else []
     except (OSError, UnicodeDecodeError, logs.Unreadable):

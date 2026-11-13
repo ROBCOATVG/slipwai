@@ -333,7 +333,7 @@ claimed on the strength of it.
 **Each slice has its own worktree and one delegate.** For every unclaimed slice the schedule starts, in
 the same turn: claim it, give it a worktree (`git worktree add ../<project>-<id> slice/<id>`; on Claude Code
 the Agent tool's `isolation: worktree` makes one — and a session a captain dispatched, with `SLIPWAI_BERTH`
-set, is already standing in it, its `.slipwai/logs` the project's own, and makes no other), run `{{make}} preflight` in it — toolchains on PATH, build
+set, is already standing in it, its `.slipwai/run/logs` the project's own, and makes no other), run `{{make}} preflight` in it — toolchains on PATH, build
 caches writable, a localhost socket a test may bind, dependencies installed, the code index present where one
 is elected — and fix what it reports here, once, before anything is dispatched: one run's delegates found
 each of those in series, a dispatch and a host repair apiece, and none of it was about the product.

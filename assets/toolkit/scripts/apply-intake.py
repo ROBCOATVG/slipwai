@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the confirmed rows of `.slipwai/intake-cleanup.json`.
+"""Apply the confirmed rows of `.slipwai/run/intake-cleanup.json`.
 
 A row that is not confirmed, or whose action is not `intake`, is left where it is and named. A destination
 that already exists is a refusal. Nothing else in the tree is moved.
@@ -11,22 +11,25 @@ import shutil
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "agents"))
+import logs  # noqa: E402 — carried in scripts/agents; it owns where the run's state lives
+
 
 def main() -> int:
     root = Path.cwd()
-    proposal = root / ".slipwai/intake-cleanup.json"
+    proposal = logs.run_dir(root) / "intake-cleanup.json"
     if not proposal.is_file():
-        print("apply-intake: .slipwai/intake-cleanup.json is not there; `slipwai migrate` writes it",
+        print("apply-intake: .slipwai/run/intake-cleanup.json is not there; `slipwai migrate` writes it",
               file=sys.stderr)
         return 2
     try:
         held = json.loads(proposal.read_text(encoding="utf-8"))
     except ValueError as error:
-        print(f"apply-intake: .slipwai/intake-cleanup.json does not read: {error}", file=sys.stderr)
+        print(f"apply-intake: .slipwai/run/intake-cleanup.json does not read: {error}", file=sys.stderr)
         return 2
     rows = held.get("rows") if isinstance(held, dict) else None
     if not isinstance(rows, list):
-        print("apply-intake: .slipwai/intake-cleanup.json has no rows; leave it for /catch-up to read",
+        print("apply-intake: .slipwai/run/intake-cleanup.json has no rows; leave it for /catch-up to read",
               file=sys.stderr)
         return 2
     moved, refused = [], []
@@ -47,7 +50,7 @@ def main() -> int:
         moved.append(f"{row.get('path')} -> {target.relative_to(root).as_posix()}")
     if refused:
         print("apply-intake: refused: " + "; ".join(refused), file=sys.stderr)
-        print("Edit .slipwai/intake-cleanup.json so each confirmed intake row names an empty destination, "
+        print("Edit .slipwai/run/intake-cleanup.json so each confirmed intake row names an empty destination, "
               "then run python3 scripts/apply-intake.py", file=sys.stderr)
         return 1
     print("applied: " + (", ".join(moved) if moved else "nothing confirmed"))

@@ -42,6 +42,7 @@ from .board_settings import Launch, chosen, read
 from .errors import Busy
 from .fleet import board
 from .harness import acp_environment
+from .logs import run_dir
 from .shell_environment import login_environment, with_tools
 from .turn_child import to_its_end, unheard
 
@@ -59,14 +60,14 @@ FOLD = 8000
 KEPT = 400
 #: Where a project keeps the console's session over the protocol: its id and the agent's stderr, under the
 #: board's own folder and not loose in the tree.
-SESSION_KEPT = ".slipwai/console"
+SESSION_KEPT = "console"
 
 ROLE = """You are answering a person at the bridge of this project's board, in a console. You are the
 harbourmaster, speaking in the first person and in plain words — say `waiting on you`, not `parked`, unless the
 person used the word first.
 
 You can read and search files and nothing else. You cannot change anything, run anything, grant a request or
-clear a park, and you must not offer to. Everything you know is in this project: the logs under `.slipwai/logs/`
+clear a park, and you must not offer to. Everything you know is in this project: the logs under `.slipwai/run/logs/`
 (the harbour log and each fairway's deck log), `harbour.json`, `.slipwai/`, `specs/` and `docs/`. Read them
 before answering a question about what happened; if the logs do not say, say they do not, and do not guess.
 
@@ -195,7 +196,7 @@ class Console:
         try:
             if self.agent is None:
                 self.agent = BoardAgent(launch, self.root, "harbourmaster", self.say_from, reads_only=True,
-                                        kept=self.root / SESSION_KEPT,
+                                        kept=run_dir(self.root) / SESSION_KEPT,
                                         env={**self.environment(), **acp_environment(launch.key)})
                 self.on = launch.name
             loaded = self.agent.session is not None or self.agent.begin()

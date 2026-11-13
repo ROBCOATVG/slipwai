@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import json
 
-from ..assets import NOTES, TOOLKIT_ROOT
+from ..assets import TOOLKIT_ROOT
 from ..catalog import CATALOG
 from ..extensions import known_extensions
+from ..logs import RUN
 from ..npm_workspace import npm
 from ..registry import GITIGNORE, registry
 from ..services import App, backends_of, families_of, needs_environment, services_of, web_apps
@@ -13,18 +14,12 @@ from ..targets import managed
 from .openapi import API_CLIENT
 from .shared_packages import PACKAGES, node_workspace
 
-#: Under `.slipwai/`, what is the run's and not the record's. Ignored, in the order a reader meets them.
-#: `catch-up/` holds the archived catch-up pages: each migration moves the last one there rather than
-#: overwriting it, and like the page itself it is this machine's working note, not trunk's history.
-#: `preflight.json` is what preflight writes before a stage, and `logs.unread-*/` is where a slice's berth
-#: keeps lines a session wrote before the berth was linked to the shared deck log; left out, both are
-#: untracked files in every berth, and `check-slice-scope` failed every slice run abreast on them.
-#: `try-it/` is what `make try` is doing and its processes' logs; `walks/` the demo hand's recordings, which
-#: are watched rather than cited and run to megabytes each. `activity/` is each slice's live activity log,
-#: which the board's Now strip reads; left out, it was an untracked folder that stopped `slipwai migrate`.
-RUN_STATE = ("logs/", "run-state.json", "running/", "harbourmaster.json", "berths/", "intake-cleanup.json",
-             "catch-up/", "preflight.json", "logs.unread-*/", "try-it/", "walks/",
-             "activity/")
+#: Under `.slipwai/`, everything a run writes about itself: one folder and one line. It replaced a list of
+#: names — `logs/`, `running/`, `berths/`, `preflight.json`, `logs.unread-*/`, `try-it/`, `walks/`,
+#: `activity/` and the rest — that fell behind what a run writes three times, and each time the name left
+#: out was an untracked file in every berth that `check-slice-scope` failed every slice on. `logs.run_dir`
+#: reads this line to tell the layout, so a project not migrated yet keeps its state where it was.
+RUN_STATE = f"{RUN}/"
 
 # What each store writes beside the code, keyed by feature, for a store that keeps its data in the working
 # tree. A SQLite event store writes its log next to the code, and WAL mode writes two more files beside it.
@@ -132,20 +127,20 @@ def build_artifacts(event: bool, apps: list[App], target: str = "none") -> str:
         + store_artifacts
         + production_artifacts
         + extension_artifacts
-        # What a factory command leaves for this project to act on and then throw away.
-        + f"{NOTES}\n"
-        # The run's own state, which is not a record of it. Heartbeat and token lines arrive every few
-        # seconds; the pid files and the harbourmaster's cursor are about one machine; `run-state.json` is
-        # a fold of the logs and `berths/` is worktree paths and port numbers. None of it belongs in
-        # trunk's history, and `logs.py` has said so since 5.13 while nothing ignored them.
+        # The run's own state, which is not a record of it — the catch-up notes `migrate` leaves for this
+        # project to act on and throw away among it. Heartbeat and token lines arrive every few seconds; the
+        # pid files and the harbourmaster's cursor are about one machine; `run-state.json` is a fold of the
+        # logs and `berths/` is worktree paths and port numbers. None of it belongs in trunk's history.
         #
-        # Four things under `.slipwai/` stay committed, and each for a reason: `extensions.json` is the
-        # election record `migrate` re-projects from without asking the menu again; `hooks.json` is a
-        # controlled file, so an iteration that edits it is refused like one that edits a gate — which
-        # needs it diffable; `packages/` is a project's own pinned packages where it has any; and
-        # `dispatch/` is the dispatch ledger, one file per feature, which `check-dispatch` and the
-        # `pre-push` hook read on a checkout that has only what git carries.
-        + "".join(f".slipwai/{name}\n" for name in RUN_STATE)
+        # What stays at `.slipwai/` is committed, and each for a reason: `extensions.json` is the election
+        # record `migrate` re-projects from without asking the menu again; `hooks.json` and `guards.json`
+        # are controlled files, so an iteration that edits one is refused like one that edits a gate — which
+        # needs them diffable; `quickstart.json` is the answers the project was made from; `packages/` is a
+        # project's own pinned packages where it has any; `dispatch/` is the dispatch ledger, one file per
+        # feature, which `check-dispatch` and the `pre-push` hook read on a checkout that has only what git
+        # carries; `migration.json` is a crossing's flight state, staged by `install`; and
+        # `shape-transitions/` is a prepared move a person reads before applying it (`logs.COMMITTED`).
+        + f"{RUN_STATE}\n"
         + ".specify-tools/\n.delivery-tools/\n"
         # What Python writes beside every gate script it imports, in every berth, whatever the backend: left
         # out, `check-slice-scope` refused every slice for a folder none of them wrote. Once: a Python

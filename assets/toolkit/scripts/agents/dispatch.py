@@ -34,7 +34,7 @@ deck log at the same moment, because clearance counts a slice as running from th
 started five slices and wrote none of them showed `0 running` and offered their slots to other work.
 
 **It will not write a line on an answer it does not have.** `preflight.py --record` leaves this checkout's
-own answer under `.slipwai/`, and without a current one there is nothing here saying whether this session
+own answer under `.slipwai/run/`, and without a current one there is nothing here saying whether this session
 can delegate at all — so the ledger would be recording a guess. That is the chain: skipping preflight is
 not refused, it just leaves nothing to dispatch with, and `check-dispatch.py` refuses the push.
 
@@ -59,7 +59,7 @@ import logs  # noqa: E402
 ROOT = harness.ROOT
 SPECS = ROOT / "specs"
 #: This checkout's own preflight answer. Absent means nothing here has asked whether the method can run.
-RECORD = ROOT / ".slipwai/preflight.json"
+RECORD = logs.run_dir(ROOT) / "preflight.json"
 #: How old a preflight answer may be and still be about this checkout. A checkout changes under a run —
 #: a branch moves, `make agents` is run, a worktree is made — and an answer from this morning is about a
 #: different tree. One hour is long enough not to be ceremony and short enough to still be evidence.
@@ -256,7 +256,7 @@ def claim(found: dict, written: list[dict]) -> list[str]:
             continue
         line = logs.entry("claimed", fairway=fairway, slice=row["slice"], band=row["band"],
                           by="dispatch", machine=row["machine"])
-        path = ROOT / logs.deck_path(feature, fairway)
+        path = logs.deck_path(ROOT, feature, fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as file:
             file.write(line.line())

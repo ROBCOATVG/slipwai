@@ -112,7 +112,7 @@ class Fixture(unittest.TestCase):
 
     def harbour(self, *entries: logs.Entry) -> None:
         """Write the harbourmaster's own lines. One process holds the credentials; here that is the test."""
-        path = self.root / logs.HARBOUR
+        path = logs.older_harbour(self.root)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in entries:
@@ -134,7 +134,7 @@ class Fixture(unittest.TestCase):
                                 why=why, resolve=resolve))
 
     def read_harbour(self) -> list[logs.Entry]:
-        path = self.root / logs.HARBOUR
+        path = logs.older_harbour(self.root)
         if not path.is_file():
             return []
         return logs.fold(path.read_text(encoding="utf-8").splitlines(), harbour=True)
@@ -171,14 +171,14 @@ class Fixture(unittest.TestCase):
         return "" if state.strip() == "released" else who
 
     def deck(self, fairway: str, *entries: logs.Entry) -> None:
-        path = self.root / logs.deck_path("ordering", fairway)
+        path = logs.deck_path(self.root, "ordering", fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in entries:
                 handle.write(entry.line())
 
     def read(self, fairway: str) -> list[logs.Entry]:
-        path = self.root / logs.deck_path("ordering", fairway)
+        path = logs.deck_path(self.root, "ordering", fairway)
         if not path.is_file():
             return []
         return logs.fold(path.read_text(encoding="utf-8").splitlines())

@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from . import harness_cli
+from .logs import run_dir
 from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
@@ -655,7 +656,7 @@ def outside_session(root: Path) -> dict | None:
     for name, step, said in OUTSIDE:
         # The first line is the pid; the drawing writes when it started on the next, so its seconds are real.
         try:
-            lines = (root / ".slipwai" / name).read_text(encoding="utf-8").split()
+            lines = (run_dir(root) / name).read_text(encoding="utf-8").split()
             pid = int(lines[0])
         except (OSError, ValueError, IndexError):
             continue

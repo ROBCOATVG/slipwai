@@ -18,13 +18,13 @@ import os
 import re
 from pathlib import Path
 
-from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold, harbour_logs, read
+from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold, harbour_logs, read, run_dir
 from .session_log import said_plainly
 
 #: How many lines one stream shows by default. Enough to cover a slice; short enough to read.
 RECENT = 60
 #: Where `fleet.py start` sends each captain's output, appended across every turn it runs.
-RUNNING = ".slipwai/running"
+RUNNING = "running"
 #: How much of a captain's output its window opens on: the tail of a long run rather than all of it.
 TAIL = 64 * 1024
 #: Where a merge's time went, as the harbourmaster's answer carries it.
@@ -113,7 +113,7 @@ def tell(root: Path, fairway: str, message: str, slice_id: str = "", by: str = "
     if not feature:
         raise ValueError(f"{fairway} has no log here, so there is nowhere for this to go. "
                          f"A stream gets a log when its captain writes its first line")
-    path = root / deck_path(feature, fairway)
+    path = deck_path(root, feature, fairway)
     with path.open("a", encoding="utf-8") as handle:
         line = (entry("told", fairway=fairway, message=message.strip(), by=by or teller(), slice=slice_id)
                 if slice_id else entry("told", fairway=fairway, message=message.strip(), by=by or teller()))
@@ -132,7 +132,7 @@ def answer(root: Path, fairway: str, question: str, message: str) -> str:
     feature = feature_of(root, fairway)
     if not feature:
         raise ValueError(f"{fairway} has no log here, so there is nowhere for this to go")
-    path = root / deck_path(feature, fairway)
+    path = deck_path(root, feature, fairway)
     with path.open("a", encoding="utf-8") as handle:
         # `decided_by: human` is how the captain records a person's answer too; a decision a person took is
         # not one they have still to read.
@@ -160,7 +160,7 @@ def mark_read(root: Path, fairway: str, stamps: list[str]) -> str:
     wanted = [one for one in dict.fromkeys(stamps) if one in decided and one not in done]
     if not wanted:
         raise ValueError(f"nothing to mark read: {fairway} has no unread decision at those instants")
-    with (root / deck_path(feature, fairway)).open("a", encoding="utf-8") as handle:
+    with (deck_path(root, feature, fairway)).open("a", encoding="utf-8") as handle:
         for one in wanted:
             handle.write(entry("read", fairway=fairway, told=one).line())
     return f"marked {len(wanted)} decision(s) read in {fairway}"
@@ -188,7 +188,7 @@ def tick_need(root: Path, fairway: str, parked: str, need: int) -> str:
     needs = park.fields.get("needs")
     if not isinstance(needs, list) or not 0 <= need < len(needs):
         raise ValueError(f"the park at {parked} has no need {need}")
-    path = root / deck_path(feature_of(root, fairway), fairway)
+    path = deck_path(root, feature_of(root, fairway), fairway)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(entry("need-done", fairway=fairway, parked=parked, need=need).line())
     return f"ticked need {need} of {fairway}'s park at {parked}"
@@ -209,7 +209,7 @@ def dismiss(root: Path, fairway: str, told: str) -> str:
         raise ValueError(fault)
     if not any(e.kind == "told" and e.t == told for e in found):
         raise ValueError(f"{fairway} has no message at {told} to dismiss")
-    path = root / deck_path(feature_of(root, fairway), fairway)
+    path = deck_path(root, feature_of(root, fairway), fairway)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(entry("read", fairway=fairway, told=told).line())
     return f"dismissed {fairway}'s message of {told}"
@@ -225,7 +225,7 @@ def entries(root: Path, fairway: str, feature: str = "") -> tuple[list[Entry], s
     found = feature or feature_of(root, fairway)
     if not found:
         return [], f"{fairway} has no log here"
-    path = root / deck_path(found, fairway)
+    path = deck_path(root, found, fairway)
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as fault:
@@ -318,7 +318,7 @@ def output(root: Path, fairway: str, after: int = -1) -> tuple[str, int]:
     """
     if not feature_of(root, fairway):
         return "", 0
-    path = root / RUNNING / f"captain-{fairway}.out"
+    path = run_dir(root) / RUNNING / f"captain-{fairway}.out"
     try:
         size = path.stat().st_size
         opening = not 0 <= after <= size

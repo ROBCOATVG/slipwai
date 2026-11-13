@@ -3,7 +3,7 @@
 
 Two people running version 2 on two machines works today in a way that is misleading. The logs sync, the
 marks carry, the board folds — and **nothing stopped two machines running a captain for the same fairway**,
-which is two processes appending to one `.slipwai/logs/<feature>/<fairway>.jsonl` through two worktrees.
+which is two processes appending to one `.slipwai/run/logs/<feature>/<fairway>.jsonl` through two worktrees.
 That is a merge conflict in the one file the whole design promised would never have one, and, where one
 side forces the ref, lines nobody can tell are missing. A `claimed` line was never a candidate for fixing
 it: the deck log is the thing being protected.

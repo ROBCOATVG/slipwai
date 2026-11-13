@@ -111,7 +111,7 @@ whose fairways no such entry explains, and a crowded one whose entry records no 
 environment (`launch`, `model`, a captain's `drive`) — do not decide silently and do not stop. Proceed on the best-evidenced proposal, and record it as `Decided by: host (stage
 recommendation)` with `Status: awaiting human confirmation`. Then say so where a person will read it: append
 one `decision` line to the deck log of the first fairway the chart names,
-`.slipwai/logs/<feature>/<fairway>.jsonl` — `{"v": 1, "t": "<ISO instant>", "kind": "decision", "fairway":
+`.slipwai/run/logs/<feature>/<fairway>.jsonl` — `{"v": 1, "t": "<ISO instant>", "kind": "decision", "fairway":
 "<fairway>", "id": "D<n>", "what": "<the contexts taken, and the seam you are least sure of>. Taken as it
 stands; if it is wrong, say so under Waiting on you and the chart is redone."}`. A decision taken is not a
 question to answer: the board lists it under *Read and mark read*, and a person who reads it and says

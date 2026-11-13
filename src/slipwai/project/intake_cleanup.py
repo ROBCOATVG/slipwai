@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-PROPOSAL = ".slipwai/intake-cleanup.json"
+PROPOSAL = ".slipwai/run/intake-cleanup.json"
 #: Pages the factory writes. A migration does not offer to refile them.
 KEPT = {
     "docs/README.md",

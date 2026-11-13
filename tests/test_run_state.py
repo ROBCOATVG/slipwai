@@ -7,6 +7,7 @@ and merged, because nobody went back. So the page shows two bands, and this is t
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -32,7 +33,7 @@ class Fixture(unittest.TestCase):
         self.script = place / "run-state.py"
 
     def deck(self, fairway: str, *written: logs.Entry, feature: str = "ordering") -> None:
-        path = self.root / logs.deck_path(feature, fairway)
+        path = logs.deck_path(self.root, feature, fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in written:
@@ -101,7 +102,7 @@ class ToleranceTest(Fixture):
         """This is an overlay on a picture. A picture missing one stream's colour beats no picture — the
         opposite of a board, where a hole makes the whole thing confidently wrong."""
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
-        bad = self.root / logs.deck_path("ordering", "BIL")
+        bad = logs.deck_path(self.root, "ordering", "BIL")
         bad.write_text("not json\n", encoding="utf-8")
         found = self.state()
         self.assertIn("ORD-01", found["slices"])
@@ -140,7 +141,7 @@ class PageTest(unittest.TestCase):
 
     def test_the_renderer_reads_the_overlay_and_never_model_yaml_for_it(self) -> None:
         render = (TOOLKIT_ROOT / "scripts/event-model/render.ts").read_text(encoding="utf-8")
-        self.assertIn(".slipwai/run-state.json", render)
+        self.assertIn(".slipwai/run/run-state.json", render)
         self.assertIn("no run shown", render)
 
     def test_the_committed_canvas_is_not_coloured(self) -> None:
@@ -151,20 +152,24 @@ class PageTest(unittest.TestCase):
 
 
 class IgnoredTest(unittest.TestCase):
-    """`logs.py` has said since 5.13 that the logs are ignored by git. Nothing ignored them."""
+    """`logs.py` has said since 5.13 that the logs are ignored by git. Since 2.1 one line ignores the run."""
 
     def test_the_run_s_own_state_is_ignored(self) -> None:
         from slipwai.project.gitignore import RUN_STATE
-        for name in ("logs/", "run-state.json", "running/", "harbourmaster.json", "berths/"):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / ".gitignore").write_text(f"{RUN_STATE}\n", encoding="utf-8")
+        for name in ("logs", "run-state.json", "running", "harbourmaster.json", "berths"):
             with self.subTest(name=name):
-                self.assertIn(name, RUN_STATE)
+                self.assertTrue((logs.run_dir(root) / name).as_posix().startswith((root / RUN_STATE).as_posix()))
 
-    def test_and_the_three_records_under_it_are_not(self) -> None:
+    def test_and_the_records_beside_it_are_not(self) -> None:
         """`extensions.json` is the election record, `hooks.json` is a controlled file that has to be
         diffable, and `packages/` is a project's own pinned packages."""
         from slipwai.project.gitignore import RUN_STATE
         for name in ("extensions.json", "hooks.json", "packages/"):
             with self.subTest(name=name):
+                self.assertIn(name, logs.COMMITTED)
                 self.assertNotIn(name, RUN_STATE)
 
 

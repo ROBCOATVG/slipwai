@@ -36,7 +36,7 @@ class LogTest(unittest.TestCase):
         subprocess.run(["git", "init", "-q", str(self.root)], check=True)
         (self.root / "specs/ordering").mkdir(parents=True)
         (self.root / "specs/ordering/decisions.md").write_text(BOOK, encoding="utf-8")
-        self.deck = self.root / logs.deck_path("ordering", "ORD")
+        self.deck = logs.deck_path(self.root, "ordering", "ORD")
         self.deck.parent.mkdir(parents=True)
         lines = [logs.entry("question", fairway="ORD", slice="L05", id="L05-Q2", what="Which bank question?"),
                  logs.entry("decision", fairway="ORD", slice="L05", id="L05-Q1", what="D7 (a): source settles it",

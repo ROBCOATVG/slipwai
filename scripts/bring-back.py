@@ -88,6 +88,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # A record the project wrote that a newer keel keeps elsewhere, moved by `migrate` after the merge.
        # Version 1 never moved one: its ledgers stayed wherever they were first written.
        "relocate",
+       # The run's own state moved into `.slipwai/run/` (phase 25.1). Version 1 kept no run state there.
+       "run_folder",
        # The catch-up page's opening section and its archive, shared by the two writers of the page and the
        # command that reads it. Version 1 deleted the page, so it had no archive to bring back.
        "catch_up_page",

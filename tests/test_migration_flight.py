@@ -304,7 +304,7 @@ class FlightTest(unittest.TestCase):
         with patch("slipwai.migration_settings.git", return_value=b""):
             notes = settings(self.root, self.document, files, conflicts={"project.json"})
         self.assertEqual(files["project.json"], contested)
-        self.assertIn(b".slipwai/logs/", files[".gitignore"].splitlines())
+        self.assertIn(b".slipwai/run/", files[".gitignore"].splitlines())
         self.assertEqual(json.loads(files[".specify/models.json"])["roles"]["claude"],
                          {"fast": "default", "decide": "old", "review": None})
         self.assertTrue(notes)
@@ -328,7 +328,7 @@ class FlightTest(unittest.TestCase):
         self.assertIn(".specify/models.json", " ".join(notes))
         self.assertIn("review", " ".join(notes))
         # The settings that are not in that file still landed, which is the whole rule here.
-        self.assertIn(b".slipwai/logs/", files[".gitignore"].splitlines())
+        self.assertIn(b".slipwai/run/", files[".gitignore"].splitlines())
         self.assertIn("releaseMode", json.loads(files["project.json"]))
 
     def test_model_choices_are_preserved_and_review_is_null_per_harness(self) -> None:

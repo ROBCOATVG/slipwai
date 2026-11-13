@@ -64,11 +64,13 @@ this cannot reach reads *could not verify*, never *green*: the merge still goes 
 forge has to keep working — and the `granted` line says the CI was unverified, so nobody reads it later as
 a run that was checked.
 
-**The fix goes to the captain that broke it, not to a person.** This process wrote the `merged` line for the
-commit that went red, so it knows the fairway and the slice: `fix-trunk` names them, and that captain takes
-the fix at its next turn ahead of any new slice. A red trunk no `merged` line accounts for — a direct push,
-or a red older than any merge — parks for a person at once, because guessing who broke it would send a
-captain to rewrite somebody else's work.
+**A red trunk stops the line, and the trunk mender is sent to fix it** (`mender.py`, phase 25). Every
+captain holds at its next boundary until trunk is green; the mender works in a worktree of its own, and its
+branch lands here through the same gate as a slice's, as the one change allowed onto a red trunk. Its
+`mend`, `mended` and `mend-failed` lines say each attempt, and after `attempts` of them the red parks for a
+person. The `granted` line for the commit that went red says which merge did it, so a revert of that merge
+is the mender's to make; a red no grant accounts for is mended forward only. `"mender": "off"` in
+`harbour.json` parks every red for a person at once, as a harbour without an agent to send must.
 
 Standalone and dependency-free, like everything under `scripts/`: this runs inside a generated project, which
 has no slipwai to import. `logs.py` and `berths.py` beside it are the keel's own modules, carried here by
@@ -97,6 +99,7 @@ except ImportError:  # pragma: no cover - a toolkit older than the capability ho
 import claims  # noqa: E402
 import inbox  # noqa: E402
 import logs  # noqa: E402
+import mender  # noqa: E402
 import telegraph  # noqa: E402
 import travel  # noqa: E402
 
@@ -111,7 +114,7 @@ def project_root() -> Path:
 ROOT = project_root()
 #: Where this process keeps how far it has read each deck log. A cursor, not a copy: the logs are the truth
 #: and this is only a bookmark, so losing it costs a re-read and never a line.
-CURSORS = ROOT / ".slipwai/harbourmaster.json"
+CURSORS = logs.run_dir(ROOT) / "harbourmaster.json"
 #: The numbers this harbour is held to, and the lever over them. Watched rather than read once: a person
 #: rings the telegraph while the run is going, which is the only time ringing it is any use.
 HARBOUR_CONFIG = ROOT / "harbour.json"
@@ -147,8 +150,10 @@ RUNS_READ = 20
 #: adds next year — is *not a verdict*, and a verdict is the one thing this must not invent.
 GREEN = ("success", "skipped", "neutral")
 RED = ("failure", "timed_out", "startup_failure")
-#: Where a merge is rebased and gated. Under `.slipwai/` so it is ignored by git and swept with the rest.
-SCRATCH = ROOT / ".slipwai/merge"
+#: Where a merge is rebased and gated. Under the run's folder so it is ignored by git and swept with the rest.
+SCRATCH = logs.run_dir(ROOT) / "merge"
+#: The trunk commit the last `land` rebased onto, for the `granted` line it ends in.
+LANDED_ONTO: dict[str, str] = {}
 #: What the branch for a slice is called, which `check-slice-scope` holds every branch to as well. Read
 #: from `travel`, which is where it has to be one name: two spellings travel as two pieces of work.
 BRANCH = travel.BRANCH
@@ -595,6 +600,7 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
     """
     git("fetch", "--quiet", "origin", trunk())
     onto = base()
+    LANDED_ONTO["commit"] = git("rev-parse", onto).stdout.strip()
     git("worktree", "remove", "--force", str(SCRATCH))  # a worktree left by a run that was killed
     SCRATCH.parent.mkdir(parents=True, exist_ok=True)
     made = git("worktree", "add", "--quiet", "--detach", str(SCRATCH), branch)
@@ -663,8 +669,12 @@ def merge(slice_id: str, spent: dict[str, int] | None = None) -> tuple[str, str,
     `refs/slipwai/merge` and `gate_s` running the gate. They are what says whether integration is slow
     because the harbour queues or because the gate is long, which nothing could answer from the logs before.
     """
+    return merge_branch(BRANCH.format(slice=slice_id), spent)
+
+
+def merge_branch(branch: str, spent: dict[str, int] | None = None) -> tuple[str, str, bool, str]:
+    """`merge`, for any branch: a slice's, or the trunk mender's."""
     spent = {} if spent is None else spent
-    branch = BRANCH.format(slice=slice_id)
     if git("rev-parse", "--verify", "--quiet", branch).returncode != 0:
         return "", f"there is no branch {branch} to merge", False, ""
     # A rebase that replays a commit writes one, and writing one needs a committer. Asked before the
@@ -765,21 +775,50 @@ def trunk_ci(trunk_name: str) -> tuple[str, dict]:
     return "unverified", {"why": f"no run of {commit[:8]} reached a verdict this reader knows"}
 
 
-def broke_it(commit: str) -> tuple[str, str]:
-    """The fairway and slice whose `merged` line names that commit, or ("", "").
+def broke_it(commit: str) -> dict[str, str]:
+    """The merge that made that commit — `fairway`, `slice` and, where the grant says it, `onto` — or {}.
 
-    This process wrote that line, which is the whole reason the fix can be sent anywhere at all. Nothing
-    there is a direct push or a red older than any merge, and the answer to that is a person.
+    **This process's own `granted` line first**, written the moment it pushed. The captain's `merged` line
+    is written later, after anything the slice still does once it is granted: game-club-manager's CL1 was
+    granted at 13:48:55, trunk went red at 13:49:22, and CL1's `merged` arrived at 14:06, so a reader of
+    `merged` alone found nobody and parked a red trunk for a person that this process had made itself.
+    `merged` is still read, for a log older than the grant's `commit` field. Nothing in either is a direct
+    push or a red older than any merge, which the mender mends forward and never reverts.
     """
+    for entry in reversed(harbour_entries()):
+        if entry.kind == "granted" and str(entry.fields.get("commit", "")).startswith(commit[:8]) \
+                and entry.fields.get("slice"):
+            found = {"fairway": str(entry.fields.get("fairway", "")), "slice": str(entry.fields["slice"])}
+            return {**found, "onto": str(entry.fields["onto"])} if entry.fields.get("onto") else found
     for path in deck_logs():
         try:
-            found = logs.fold(path.read_text(encoding="utf-8").splitlines())
+            found_lines = logs.fold(path.read_text(encoding="utf-8").splitlines())
         except (OSError, UnicodeDecodeError, logs.Unreadable):
             continue
-        for entry in found:
+        for entry in found_lines:
             if entry.kind == "merged" and str(entry.fields.get("commit", "")).startswith(commit[:8]):
-                return str(entry.fields.get("fairway", "")), str(entry.fields.get("slice", ""))
-    return "", ""
+                return {"fairway": str(entry.fields.get("fairway", "")), "slice": str(entry.fields.get("slice", ""))}
+    return {}
+
+
+def reverting(commit: str) -> list[str]:
+    """What the merge that made `commit` touched, which a revert of it may touch too. Only where the grant
+    says what it landed on: without that, which commits were the merge's is a guess, and nothing is allowed."""
+    onto = broke_it(commit).get("onto", "") if commit else ""
+    if not onto:
+        return []
+    return [line for line in git("diff", "--name-only", onto, commit).stdout.splitlines() if line]
+
+
+def mend_land(branch: str) -> tuple[str, str]:
+    """Land the mender's branch: the same rebase, gate and advance as a slice's. (trunk now, why not)."""
+    commit, fault, _resolvable, _note = merge_branch(branch)
+    return commit, fault
+
+
+def mending() -> bool:
+    """Whether a red trunk is the mender's to fix. `"mender": "off"` parks it for a person instead."""
+    return config().get("mender") != "off"
 
 
 def last_trunk_word() -> str:
@@ -790,7 +829,7 @@ def last_trunk_word() -> str:
     return ""
 
 
-def watch_trunk() -> tuple[str, list[logs.Entry], str]:
+def watch_trunk() -> tuple[str, list[logs.Entry], str, dict]:
     """Read trunk's CI and say what the harbour log owes. (the verdict, the lines to write, why where it is not
     green — which a merge refused on `unasked` names, so the person reads what to fix rather than a word).
 
@@ -801,22 +840,18 @@ def watch_trunk() -> tuple[str, list[logs.Entry], str]:
     why = str(said.get("why", ""))
     was = last_trunk_word()
     if verdict == "red" and was != "trunk-red":
-        fairway, slice_id = broke_it(str(said.get("commit", "")))
         lines = [logs.entry("trunk-red", harbour=True, commit=str(said.get("commit", "")),
                             job=str(said.get("job", "")), why=str(said.get("why", "")))]
-        if fairway and slice_id:
-            lines.append(logs.entry("fix-trunk", harbour=True, fairway=fairway, slice=slice_id,
-                                    commit=str(said.get("commit", "")), job=str(said.get("job", ""))))
-        else:
+        if not mending():
             lines.append(logs.entry("park", harbour=True, fairway="",
                                     why=f"trunk is red at {str(said.get('commit', ''))[:8]} "
-                                        f"({said.get('job', 'a job')}) and no `merged` line accounts for "
-                                        f"that commit, so nobody here broke it. A person decides what "
-                                        f"happens; no merge is granted until trunk is green"))
-        return verdict, lines, why
+                                        f"({said.get('job', 'a job')}) and `harbour.json` says `mender: off`, "
+                                        f"so nothing here is sent to fix it. A person decides what happens; "
+                                        f"no merge is granted until trunk is green"))
+        return verdict, lines, why, said
     if verdict == "green" and was == "trunk-red":
-        return verdict, [logs.entry("trunk-green", harbour=True, commit=str(said.get("commit", "")))], why
-    return verdict, [], why
+        return verdict, [logs.entry("trunk-green", harbour=True, commit=str(said.get("commit", "")))], why, said
+    return verdict, [], why, said
 
 
 def never(detail: str) -> str | None:
@@ -1017,12 +1052,14 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified", trunk_why: str = 
     said = {"note": note} if note else {}
     if note:
         print(f"harbourmaster: {note}", flush=True)
+    # `onto` is the trunk this landed on, so a revert of the merge knows what it touched (`mender.py`).
+    onto = {"onto": LANDED_ONTO["commit"]} if LANDED_ONTO.get("commit") else {}
     return [logs.entry("granted", harbour=True, fairway=fairway, request=request, what=what,
-                       slice=slice_id, commit=commit, ci=trunk_state, **said, **spent)]
+                       slice=slice_id, commit=commit, ci=trunk_state, **onto, **said, **spent)]
 
 
 #: Where Try it keeps what it is doing; `try_it.py` writes it and the board reads it.
-TRY_STATE = ROOT / ".slipwai/try-it/state.json"
+TRY_STATE = logs.run_dir(ROOT) / "try-it/state.json"
 
 
 def refresh_try_it(slice_id: str) -> None:
@@ -1099,7 +1136,7 @@ def allocated_already() -> list[str]:
 
 def written_to() -> Path:
     """This machine's own harbour log — the only file this process ever appends to."""
-    return ROOT / logs.harbour_path(logs.machine())
+    return logs.harbour_path(ROOT, logs.machine())
 
 
 def harbour_entries() -> list[logs.Entry]:
@@ -1157,7 +1194,7 @@ def once() -> int:
     # Trunk first, because what it says decides whether any merge in this batch is granted at all. Asked
     # once a pass rather than once a request: it is a question for the forge, and the answer cannot change
     # between two requests answered a millisecond apart.
-    trunk_state, trunk_said, trunk_why = watch_trunk()
+    trunk_state, trunk_said, trunk_why, said = watch_trunk()
     # By the clock rather than by file, so requests are answered in the order they were asked across every
     # fairway and not in the order the directory happens to list. It is the merge that makes this matter:
     # one at a time, each gated on a trunk that already holds the one before it.
@@ -1169,6 +1206,11 @@ def once() -> int:
     written += cleared_for_green(trunk_state, written)
     written += cleared_by_time(written)
     written += needs_met(written)
+    if mending():
+        # Last, so a need this pass ticked is not offered, and after the trunk lines so a red this pass found
+        # is mended in it. Each pass finishes an attempt that is over or starts the next one; none waits.
+        written += mender.turn(trunk_state, said, [*harbour_entries(), *written], open_needs(written),
+                               base, mend_land, broke_it, reverting)
     if written:
         append(written)
     write_cursors(cursors)
@@ -1384,7 +1426,7 @@ def cleared_by_time(already: list[logs.Entry]) -> list[logs.Entry]:
 #: project wants ticked by `make` is listed in `harbour.json` under `checks`.
 CHECK_TARGET = re.compile(r"^check-[a-z0-9-]+$")
 #: Where a `make` check runs: a worktree at trunk, made for the check and removed after it.
-NEEDS = ROOT / ".slipwai/needs"
+NEEDS = logs.run_dir(ROOT) / "needs"
 #: The checks this process has already run, per trunk commit: a failing `make` is not run again until trunk
 #: moves. In memory, because a restart running each once more costs one bounded `make` per need and
 #: nothing written.
@@ -1500,6 +1542,26 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
                     found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                             what=f"needs met: {len(needs)} of {len(needs)}"))
     return found
+
+
+def open_needs(already: list[logs.Entry]) -> list[tuple[str, logs.Entry, int]]:
+    """Every need of an open park or `told` that no `need-met` has ticked: (fairway, its line, its index)."""
+    harbour = harbour_entries()
+    met = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")), int(e.fields.get("need", -1)))
+           for e in [*harbour, *already] if e.kind == "need-met"}
+    found: list[tuple[str, logs.Entry, int]] = []
+    for path in deck_logs():
+        fairway = path.stem
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        for park in [*logs.open_parks(deck, harbour, fairway), *open_tolds(deck, harbour, fairway)]:
+            needs = park.fields.get("needs")
+            for index in range(len(needs) if isinstance(needs, list) else 0):
+                if (fairway, park.t, index) not in met:
+                    found.append((fairway, park, index))
+    return sorted(found, key=lambda one: one[1].t)
 
 
 def fill_free_berths() -> None:
@@ -1663,7 +1725,7 @@ def main(argv: list[str]) -> int:
             arrive()
         count = once()
         if count:
-            print(f"harbourmaster: {count} line(s) carried to {logs.harbour_path(logs.machine())}")
+            print(f"harbourmaster: {count} line(s) carried to {logs.harbour_path(ROOT, logs.machine()).relative_to(ROOT).as_posix()}")
         if not parsed.no_fetch:
             # After the pass and not before it: what this machine has to say about this pass is written by
             # `once()`, and pushing first would carry every line but the ones just made.

@@ -211,6 +211,29 @@ def tree_of(root: Path, where: str, text: str, machine: str) -> str:
         return written.stdout.strip()
 
 
+#: How a log's path is spelled inside a log ref: under the folder the logs lived in before 2.1, whatever this
+#: checkout's layout. The ref is a wire format between machines, and a peer whose toolkit is still 2.0 lands
+#: exactly the path the tree names, so the spelling it knows is the one that keeps it reading every line.
+WIRE = ".slipwai/logs"
+#: The same, as a migrated toolkit before this one wrote it. Read, never written.
+WIRE_RUN = ".slipwai/run/logs"
+
+
+def wire(root: Path, path: Path) -> str:
+    """The path a log ref carries for this local log. ValueError where the log is not under the logs folder."""
+    return f"{WIRE}/{path.resolve().relative_to(logs.logs_dir(root).resolve()).as_posix()}"
+
+
+def landed(root: Path, where: str) -> Path:
+    """Where a ref's log goes in this checkout, whichever spelling the pushing machine used."""
+    for prefix in (f"{WIRE_RUN}/", f"{WIRE}/"):
+        if where.startswith(prefix):
+            rest = where[len(prefix):]
+            if rest and ".." not in Path(rest).parts:
+                return logs.logs_dir(root) / rest
+    raise ValueError(f"{where} is not a log path")
+
+
 def tip(root: Path, ref: str) -> str:
     """What this ref is at, or `""` where it is at nothing."""
     found = git(root, "rev-parse", "--verify", "--quiet", ref)
@@ -256,9 +279,9 @@ def push_log(root: Path, path: Path, ref: str, machine: str) -> tuple[bool, str]
     except (OSError, UnicodeDecodeError) as fault:
         return False, f"{path} cannot be read ({fault}), so there is nothing to put on {ref}"
     try:
-        where = path.resolve().relative_to(root.resolve()).as_posix()
+        where = wire(root, path)
     except ValueError:
-        return False, f"{path} is not inside {root}, and a log ref carries the log's own path"
+        return False, f"{path} is not inside {logs.logs_dir(root)}, and a log ref carries the log's own path"
     there = held(root, ref)
     if there is not None and not appends(there, text):
         return False, (f"{ref} holds {len(there.splitlines())} line(s) that {where} is not a continuation "
@@ -301,7 +324,10 @@ def land_ref(root: Path, ref: str) -> str:
     if found is None:
         return ""
     where, text = found
-    target = root / where
+    try:
+        target = landed(root, where)
+    except ValueError:
+        return ""
     if target.is_file():
         try:
             already = target.read_text(encoding="utf-8")
@@ -363,7 +389,7 @@ def push_wip(root: Path, branch: str, ref: str) -> tuple[bool, str]:
 def dirty(root: Path) -> list[str]:
     """The tracked paths with uncommitted changes, which are a person's and not ours to discard.
 
-    Untracked files are not counted: a run's own `.slipwai/` is untracked in anything but a generated
+    Untracked files are not counted: a run's own `.slipwai/run/` is untracked in anything but a generated
     project, and counting it would refuse every takeover there has ever been.
     """
     found = git(root, "status", "--porcelain", "--untracked-files=no")
@@ -458,7 +484,7 @@ def departing(root: Path, machine: str, authored: list[str]) -> list[tuple[Path,
     """Each file this machine may push, with the ref it travels as: its own harbour log, and the deck log
     of every fairway it wrote. Nothing else — a second writer on a ref is the one thing there may never be.
     """
-    found = [(root / logs.harbour_path(machine), harbour_ref(machine))]
+    found = [(logs.harbour_path(root, machine), harbour_ref(machine))]
     found += [(path, deck_ref(path.stem)) for path in logs.deck_logs(root) if path.stem in authored]
     return [(path, ref) for path, ref in found if path.is_file()]
 

@@ -25,10 +25,11 @@ from typing import Any
 from .board_agent import BoardAgent
 from .board_settings import Launch, chosen, read
 from .harness import acp_environment
+from .logs import run_dir
 from .shell_environment import login_environment
 
 #: Where the project keeps a stage's session: its id and the agent's stderr, under the board's own folder.
-KEPT = ".slipwai/stages"
+KEPT = "stages"
 #: Turns kept for the page; a stage says less than a conversation does.
 HELD = 400
 #: What every stage is told beside its command, so that it asks instead of assuming where only a person can say.
@@ -73,7 +74,7 @@ class StageSession:
         #: Why the stage cannot start, asked before anything is launched; and what the stage left undone,
         #: asked after the agent ended its turn. Each answers a sentence, or nothing where all is well.
         self.before, self.after = before, after
-        #: A pid file under `.slipwai/`, as the toolkit's script writes one, so another window of this
+        #: A pid file under `.slipwai/run/`, as the toolkit's script writes one, so another window of this
         #: project sees the stage running; and what the session is told it is, for the hooks it fires.
         self.pid, self.stage = pid, command if stage is None else stage
         self.turns: list[dict[str, Any]] = []
@@ -141,7 +142,7 @@ class StageSession:
 
     def session(self, fitting: Any, launch: Launch, words: str, first: bool) -> int:
         """The session begun or loaded, one turn of `words`, and closed: zero where the agent ended its turn."""
-        marker = self.root / ".slipwai" / self.pid if self.pid else None
+        marker = run_dir(self.root) / self.pid if self.pid else None
         try:
             if marker is not None:
                 marker.parent.mkdir(parents=True, exist_ok=True)
@@ -149,7 +150,7 @@ class StageSession:
             env = {**login_environment(root=self.root), **acp_environment(launch.key)}
             if self.stage:
                 env["SLIPWAI_STAGE"] = self.stage
-            self.agent = BoardAgent(launch, self.root, "agent", self.say, kept=self.root / KEPT / self.command,
+            self.agent = BoardAgent(launch, self.root, "agent", self.say, kept=run_dir(self.root) / KEPT / self.command,
                                     env=env)
             if first:
                 self.agent.begin()
@@ -204,7 +205,7 @@ def kept_stage(root: Path) -> str:
     """The stage whose session this project kept most recently, by its command; empty where none was kept.
     A board restarted after a stage has lost the run, and this is what it can still carry on."""
     try:
-        kept = [one for one in (root / KEPT).iterdir() if (one / "session").is_file()]
+        kept = [one for one in (run_dir(root) / KEPT).iterdir() if (one / "session").is_file()]
     except OSError:
         return ""
     return max(kept, key=lambda one: (one / "session").stat().st_mtime).name if kept else ""

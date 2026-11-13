@@ -159,7 +159,7 @@ project's own scripts write each setting. See [let it cruise](let-it-cruise.md).
 | 6.1 | terminal | `slipwai upgrade --check` | it says whether a newer version is published, and changes nothing |
 | 6.2 | terminal | `slipwai upgrade` | `slipwai --version` shows the new version; installed languages moved with it |
 | 6.3 | terminal | `git status` | the tree is clean — `migrate` refuses otherwise |
-| 6.4 | terminal | `slipwai migrate` | one merge commit, and `.slipwai/catch-up.md` written |
+| 6.4 | terminal | `slipwai migrate` | one merge commit, and `.slipwai/run/catch-up.md` written |
 | 6.5 | agent | `/catch-up` | it has worked through the catch-up and `make verify` passes |
 | 6.6 | terminal | `git push` | the gate in CI is green |
 

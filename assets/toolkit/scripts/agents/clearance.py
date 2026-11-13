@@ -78,9 +78,9 @@ def project_root(script: Path) -> Path:
 
 ROOT = project_root(Path(__file__).resolve())
 SPECS = ROOT / "specs"
-LOGS = ROOT / ".slipwai/logs"
+LOGS = logs.logs_dir(ROOT)
 #: Where each machine's harbourmaster writes its own log. A directory of files rather than one file since
-#: 11.3, and never a feature's — a `feature` directory and this one are both under `.slipwai/logs`.
+#: 11.3, and never a feature's — a `feature` directory and this one are both under `.slipwai/run/logs`.
 HARBOUR_LOGS = LOGS / "harbour"
 #: The log format this reader knows. A newer line is refused rather than guessed at.
 V = 1
@@ -1151,7 +1151,7 @@ def main(argv: list[str]) -> int:
     done = done_marked(feature)
     if "--baseline-marks" in argv:
         machine = logs.machine()
-        written, said = baseline(charted, done, found, machine, ROOT / logs.harbour_path(machine))
+        written, said = baseline(charted, done, found, machine, logs.harbour_path(ROOT, machine))
         for row in written:
             print(f"  {row.fields['slice']} sets {row.fields['mark']} — recorded, provenance {BASELINE}")
         print(f"clearance: {said}")

@@ -62,10 +62,10 @@ REFUSE = 2
 #: consecutive holds (Cursor 5, Claude Code and Copilot 8), so it is this file that decides when to let go
 #: and says so, rather than a cap somewhere else deciding silently.
 HOLD_LIMIT = 3
-HOLDS = ROOT / ".slipwai/holds.json"
+HOLDS = logs.run_dir(ROOT) / "holds.json"
 #: Where a harness whose stop event carries no text keeps its last assistant message, for the stop
 #: hook that runs a moment later to read.
-KEPT = ROOT / ".slipwai/last-response.txt"
+KEPT = logs.run_dir(ROOT) / "last-response.txt"
 #: How many of the deck log's last lines go back into a compacted context. Enough to see the stage
 #: and what it has written; not so many that the summary is replaced by the thing it summarised.
 RESUME_LINES = 20
@@ -130,7 +130,7 @@ def about() -> dict[str, str]:
 
 #: Where every slice's activity log is kept: the main checkout's, which the board reads, whichever worktree
 #: the session runs in. One file per slice, so two slices never append to one file.
-ACTIVITY = ".slipwai/activity"
+ACTIVITY = "activity"
 #: A slice's log is cut back to its newest lines past this size, so a poll reading its tail stays cheap.
 ACTIVITY_LIMIT, ACTIVITY_KEEP = 1_000_000, 2000
 #: How long a line may be: a sentence for a person, never a command's whole text or a file's contents.
@@ -161,7 +161,7 @@ def record(kind: str, what: str, agent: str = "", **fields: object) -> None:
             "stage": os.environ.get(STAGE_VARIABLE, ""), "agent": agent or "session", "kind": kind,
             "what": " ".join(what.split())[:SAID],
             **{key: value for key, value in fields.items() if value not in (None, "")}}
-    path = main_checkout() / ACTIVITY / fairway / f"{slice_id}.jsonl"
+    path = logs.run_dir(main_checkout()) / ACTIVITY / fairway / f"{slice_id}.jsonl"
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as out:
@@ -249,7 +249,7 @@ def written(given: dict) -> str:
 def deck(fairway: str) -> list[dict]:
     """This fairway's deck log, oldest first. Unreadable reads as empty: a log nobody can parse is not
     evidence that a stage wrote nothing, and this file never refuses on an absence of evidence."""
-    directory = ROOT / logs.LOGS
+    directory = logs.logs_dir(ROOT)
     found: list[dict] = []
     for path in sorted(directory.glob(f"*/{fairway}.jsonl")) if directory.is_dir() else []:
         try:

@@ -139,7 +139,7 @@ one fairway to two.
 | 5.2 | terminal | `slipwai upgrade --check`, then `slipwai upgrade` | `slipwai --version` shows the new version |
 | 5.3 | terminal | `git status` | the tree is clean |
 | 5.4 | terminal | `slipwai migrate` | one merge commit |
-| 5.5 | agent | `/catch-up` | it has worked through `.slipwai/catch-up.md` and `make verify` passes |
+| 5.5 | agent | `/catch-up` | it has worked through `.slipwai/run/catch-up.md` and `make verify` passes |
 | 5.6 | terminal | `slipwai adopt --next` | nothing new is `now` — a release can add a step, and this is where it shows up |
 | 5.7 | terminal | `git push` | the gate in CI is green |
 

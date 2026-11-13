@@ -110,7 +110,7 @@ ahead of the code moves someone's file to a name version 2 has not got, and they
   `scripts/glossary.py`. Edit the plan, run `make glossary`, commit both.
 - **The version lives in `VERSION` and nowhere else.** `pyproject.toml` reads it, the wheel carries it as
   `slipwai/_bundle/VERSION`, and `slipwai --version` prints it. Never repeat the number.
-- **Deck logs and the harbour log are never committed.** `.slipwai/logs/` is ignored; the harbourmaster
+- **Deck logs and the harbour log are never committed.** `.slipwai/run/logs/` is ignored; the harbourmaster
   syncs them through `refs/slipwai/logs`.
 - **Every refusal ends with the command that fixes it.** A gate that says what is wrong and not what to do
   about it costs the reader a search.

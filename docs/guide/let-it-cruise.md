@@ -68,7 +68,7 @@ A captain holds no credential and never merges. It asks for the merge:
 ## The harbourmaster
 
 There is one harbourmaster for each **machine**. It writes its own harbour log,
-`.slipwai/logs/harbour/<machine>.jsonl`. It reads the harbour logs of every machine, and combines them into
+`.slipwai/run/logs/harbour/<machine>.jsonl`. It reads the harbour logs of every machine, and combines them into
 one history by the time on each line. It combines the deck logs in the same way.
 
 Each file has one writer. Everything here depends on that rule. If the harbourmasters of three people wrote

@@ -55,6 +55,14 @@ class InstallTest(unittest.TestCase):
         self.assertIn("Chain", done.why)
         self.assertEqual(self.configured(), ".husky")
 
+    def test_this_checkout_s_own_hooks_as_an_absolute_path_are_respelled(self) -> None:
+        """game-club-manager's was its own `.githooks` written out in full — ours, and wrong in every worktree,
+        where an absolute path names the main checkout's folder rather than its own."""
+        git("config", githooks.KEY, str((self.root / githooks.HOOKS).resolve()), where=self.root)
+        done = githooks.install(self.root)
+        self.assertTrue(done.set, done.why)
+        self.assertEqual(self.configured(), githooks.HOOKS)
+
     def test_a_checkout_without_the_hooks_directory_is_not_pointed_at_nothing(self) -> None:
         (self.root / githooks.HOOKS).rmdir()
         done = githooks.install(self.root)

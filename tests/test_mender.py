@@ -47,6 +47,9 @@ class MenderFixture(TrunkFixture):
         fake = self.root.parent / f"{self.root.name}-mender.py"
         fake.write_text(FAKE, encoding="utf-8")
         self.addCleanup(fake.unlink, True)
+        # Run before the unlink above (cleanups run last-in, first-out): a case that ends while the fake it
+        # started is still going would leave a script Windows will not delete while it runs.
+        self.addCleanup(self.wait_for_mender)
         os.environ["SLIPWAI_MENDER"] = f"{sys.executable} {fake}"
         self.addCleanup(os.environ.pop, "SLIPWAI_MENDER", None)
         self.does("fix")
@@ -61,8 +64,8 @@ class MenderFixture(TrunkFixture):
         there is `TerminateProcess`, and the suite's first Windows run failed on it."""
         return bool(WorkflowRuleTest.load().alive(pid))
 
-    def settle(self) -> None:
-        """Let the fake mender finish, then one pass to hold its branch to the rules and land it.
+    def wait_for_mender(self) -> None:
+        """Until the fake mender in flight, if any, has ended.
 
         Waited on by pid, not `waitpid`: the mender is the exited harbourmaster's child, not this process's,
         and `waitpid` on it raises at once — which on a quick runner let the pass run before the commit."""
@@ -76,6 +79,10 @@ class MenderFixture(TrunkFixture):
             if not self.mender_alive(pid):
                 break
             time.sleep(0.05)
+
+    def settle(self) -> None:
+        """Let the fake mender finish, then one pass to hold its branch to the rules and land it."""
+        self.wait_for_mender()
         done = self.run_once()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 

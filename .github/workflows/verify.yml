@@ -184,9 +184,17 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
+          # The tag history, which is what a dev build is numbered from (`scripts/dev-version.py`).
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+      # Every build of main was `VERSION`'s `.dev0`, one string for different code; now it is the snapshot that
+      # many commits past the last release, written for this build only and never committed.
+      - name: Number this dev build
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
+        run: python scripts/dev-version.py --write
       - name: The tag is the version the tree carries
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash

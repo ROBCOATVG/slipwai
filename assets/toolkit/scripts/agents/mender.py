@@ -307,8 +307,9 @@ def start(job: str, key: str, onto: str, told: dict) -> tuple[logs.Entry, str]:
         return line, f"the mender could not be started: {refused}"
     FLYING[job] = child
     RECORD.parent.mkdir(parents=True, exist_ok=True)
-    RECORD.write_text(json.dumps({**told, "job": job, "pid": child.pid, "branch": branch, "onto": onto,
-                                  "worktree": str(worktree), "started": time.time()}), encoding="utf-8")
+    held = {**told, "job": job, "pid": child.pid, "branch": branch, "onto": onto, "worktree": str(worktree),
+            "started": time.time()}
+    RECORD.write_text(json.dumps(held), encoding="utf-8")
     return line, ""
 
 

@@ -26,6 +26,7 @@
 # why: 2026-11-13 747d8788e453b0ee phase 25.2/25.3 (docs/stop-the-line-plan.md), owner's rule 2026-11-13: a red trunk stops the line and the harbourmaster sends the trunk mender (new scripts/agents/mender.py, harbour lines mend/mended/mend-failed); captains hold on red; broke_it reads the grant. A deliberate behaviour change on every platform; 'mender: off' in harbour.json keeps a red parking for a person
 # why: 2026-11-13 d3d6851285dabce5 logs.py: comments only, shortened to its size budget; behaviour unchanged
 # why: 2026-11-13 3d2c262c657bc8bb Phase 25.1, the owner's decision of 2026-11-13: every toolkit script reads and writes the run's own state under .slipwai/run/ through logs.run_dir, and the ignore block has one line for it. This is a deliberate path change, not a behaviour-preserving edit: a project whose .gitignore lacks .slipwai/run/ keeps the old places, and slipwai migrate moves the state in.
+# why: 2026-11-13 c563d5c8c98b73aa mender.py: the record's dict is built on its own line so the write carries its encoding on one line; behaviour unchanged
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -33,10 +34,6 @@
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  standard-postgres-toy-serve  .githooks/pre-push
 0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a  event-modelling-memory-none  scripts/event-model/requirements.txt
 0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a  event-modelling-postgres-toy-serve  scripts/event-model/requirements.txt
-0cfc3f8480455917b623cbef5d465311f10c0cae2c0f196ecb871f83032b3b1a  event-modelling-memory-none  scripts/agents/mender.py
-0cfc3f8480455917b623cbef5d465311f10c0cae2c0f196ecb871f83032b3b1a  event-modelling-postgres-toy-serve  scripts/agents/mender.py
-0cfc3f8480455917b623cbef5d465311f10c0cae2c0f196ecb871f83032b3b1a  standard-memory-none  scripts/agents/mender.py
-0cfc3f8480455917b623cbef5d465311f10c0cae2c0f196ecb871f83032b3b1a  standard-postgres-toy-serve  scripts/agents/mender.py
 0f1df3607fe53ae1e2b32518fe3d89d87abc2356448d4838e9ef370c88991db2  event-modelling-memory-none  scripts/event-model/validate.ts
 0f1df3607fe53ae1e2b32518fe3d89d87abc2356448d4838e9ef370c88991db2  event-modelling-postgres-toy-serve  scripts/event-model/validate.ts
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  event-modelling-memory-none  scripts/agents/triage.py
@@ -91,6 +88,10 @@
 335d6af2156e4cc1574df4e846d14b9fdde70fb19c055b96bf9ddfc074afab47  event-modelling-postgres-toy-serve  scripts/extensions/hooks.py
 335d6af2156e4cc1574df4e846d14b9fdde70fb19c055b96bf9ddfc074afab47  standard-memory-none  scripts/extensions/hooks.py
 335d6af2156e4cc1574df4e846d14b9fdde70fb19c055b96bf9ddfc074afab47  standard-postgres-toy-serve  scripts/extensions/hooks.py
+3937d188d169f736d8cf0337c772556bf7927eeb331218158195b1df968ea89f  event-modelling-memory-none  scripts/agents/mender.py
+3937d188d169f736d8cf0337c772556bf7927eeb331218158195b1df968ea89f  event-modelling-postgres-toy-serve  scripts/agents/mender.py
+3937d188d169f736d8cf0337c772556bf7927eeb331218158195b1df968ea89f  standard-memory-none  scripts/agents/mender.py
+3937d188d169f736d8cf0337c772556bf7927eeb331218158195b1df968ea89f  standard-postgres-toy-serve  scripts/agents/mender.py
 3e1f343af7abffa7188de840b4f55d9113b2b4c59ef8377bbcfaafb97a883e7f  event-modelling-memory-none  scripts/check-slice-scope.py
 3e1f343af7abffa7188de840b4f55d9113b2b4c59ef8377bbcfaafb97a883e7f  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
 3e1f343af7abffa7188de840b4f55d9113b2b4c59ef8377bbcfaafb97a883e7f  standard-memory-none  scripts/check-slice-scope.py

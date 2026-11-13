@@ -243,8 +243,7 @@ class ByteIdenticalTest(unittest.TestCase):
             shell.write_text("#!/bin/sh\nprintf 'PATH=/opt/tools/bin:/usr/bin\\0TOKEN=from-login\\0KEPT=login\\0'\n",
                              encoding="utf-8")
             shell.chmod(0o755)
-            # No tools the board installed, whatever this machine's home holds: on a machine where the app
-            # had installed one, its `bin` joined the PATH and the case failed for a reason it is not about.
+            # No board-installed tools, whatever this machine's home holds: their `bin` would join the PATH.
             with mock.patch.object(shell_environment, "TOOLS", Path(scratch) / "no-tools"):
                 found = login_environment({"PATH": "/usr/bin:/bin", "KEPT": "mine"}, shell=str(shell))
         self.assertEqual(found["PATH"], "/opt/tools/bin:/usr/bin:/bin")

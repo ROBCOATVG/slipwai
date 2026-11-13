@@ -704,12 +704,16 @@ def boundary(feature: str, fairway: str) -> tuple[str, str]:
     owed = inbox.owed(fairway)
     if not owed.get("forced"):
         return "", ""
-    late = owed.get("overrun") or []
+    # Under `/cruise` only a park of the whole fairway forces a boundary (`inbox.owed`), so a late message
+    # or the count beside it is never what this one is about, and naming either would send a person to
+    # read the wrong thing.
+    quiet = bool(owed.get("cruising"))
+    late = [] if quiet else (owed.get("overrun") or [])
     if late:
         said = str(late[0].get("message", ""))[:120]
         return (f"{len(late)} message(s) from a person have gone past the wait bound unanswered, the "
                 f"oldest being {said!r}. `/told` reads them, and a read line is the receipt"), ""
-    if not owed.get("over_ceiling"):
+    if quiet or not owed.get("over_ceiling"):
         parks = owed.get("overdue_parks") or []
         said = str((parks[0] if parks else {}).get("why", ""))[:120]
         return f"a park has gone past the wait bound unanswered: {said!r}", ""

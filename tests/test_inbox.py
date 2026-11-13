@@ -160,5 +160,44 @@ class InboxTest(unittest.TestCase):
         self.assertIn("is not JSON", str(refused.exception))
 
 
+
+class CruisingTest(unittest.TestCase):
+    """Under `/cruise` with a `decide` that answers its own questions, nobody is waited for unless no agent
+    may supply what is missing. game-club-manager's clubs fairway parked overnight on a slice's own note.
+    InboxTest's project, borrowed rather than inherited: a subclass would run every one of its tests again."""
+
+    setUp, write, told, decision = InboxTest.setUp, InboxTest.write, InboxTest.told, InboxTest.decision
+
+    def cruise(self, **held: object) -> None:
+        (self.tree / ".specify").mkdir(exist_ok=True)
+        body = {"enabled": True, "decide": "recommended-first", **held}
+        (self.tree / ".specify/cruise.json").write_text(json.dumps(body), encoding="utf-8")
+
+    def test_a_late_note_forces_nothing_while_cruising(self) -> None:
+        self.cruise()
+        self.write([self.told(120)])
+        state = self.inbox.owed("ORD", NOW)
+        self.assertEqual(len(state["overrun"]), 1, "it is still late, and the board still shows it")
+        self.assertFalse(state["forced"])
+
+    def test_the_decision_ceiling_parks_nothing_while_cruising(self) -> None:
+        self.cruise(decide="skipper-always")
+        self.write([self.decision(5) for _ in range(12)])
+        state = self.inbox.owed("ORD", NOW)
+        self.assertTrue(state["over_ceiling"])
+        self.assertFalse(state["forced"])
+
+    def test_a_park_of_the_whole_fairway_still_forces_while_cruising(self) -> None:
+        """That is a thing no agent may supply, and it is a park already."""
+        self.cruise()
+        self.write([{"kind": "parked", "fairway": "ORD", "t": at(120), "why": "a secret nobody has"}])
+        self.assertTrue(self.inbox.owed("ORD", NOW)["forced"])
+
+    def test_a_cruise_switched_off_is_the_rule_as_it_was(self) -> None:
+        self.cruise(enabled=False)
+        self.write([self.told(120)])
+        self.assertTrue(self.inbox.owed("ORD", NOW)["forced"])
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

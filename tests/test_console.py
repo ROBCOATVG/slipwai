@@ -166,6 +166,12 @@ class AgentCommandTest(unittest.TestCase):
         self.login = mock.patch.object(console, "login_environment", lambda current: dict(current))
         self.login.start()
         self.addCleanup(self.login.stop)
+        # Nor this machine's Settings tab or the tools its board installed: on a Mac whose app had chosen an
+        # agent and installed one, every case here reached a real agent and the no-agent case never said so.
+        for name, value in (("chosen", lambda *_: None), ("with_tools", lambda held: dict(held))):
+            patched = mock.patch.object(console, name, value)
+            patched.start()
+            self.addCleanup(patched.stop)
 
     def stub(self) -> None:
         """A `claude` the path lookup finds: a script on POSIX, and on Windows a `.cmd` beside it, since

@@ -17,6 +17,19 @@ dynamic = ["version"]
 description = "One-shot scaffolder for product monorepos: a walking skeleton, a verify gate, a path to production, and a repository set up for coding agents."
 readme = "README.md"
 requires-python = ">=3.11"
+# What the README's Python badge reads off PyPI: it reads these and never `requires-python`, so without them it
+# says "missing". 3.11 is the floor CI runs; the rest are what the keel is run on. No `License ::` line:
+# `license` is an SPDX expression, and the build refuses both.
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Operating System :: OS Independent",
+]
 license = "MIT"
 # The toolkit's vendored skills carry their own licences and are declared here again when phase 5 brings
 # `assets/toolkit/` back. A glob that matches nothing is a build error, so the list holds what exists.

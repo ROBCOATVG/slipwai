@@ -74,9 +74,13 @@ def architecture(profile: str, apps: list[App]) -> str:
     # service is: without this, a browser app beside a Go service is told nothing about `packages/` at all.
     if web and not any(npm(family) for family in families):
         families = [*families, web[0].language]
+    # A service's purpose once, not once per context: game-club-manager's one service holds seven contexts and
+    # the page printed its paragraph seven times. Where a service holds several, the purpose is the services
+    # line's, at the top of the page, and each context names only where it lives.
     contexts = "\n".join(
         f"- `{context}` — " + "; ".join(
-            f"`{service.path}`" + (f": {service.purpose}" if service.purpose else " (no purpose recorded yet)")
+            f"`{service.path}`" + ("" if len(service.context_names) > 1 else
+                                   f": {service.purpose}" if service.purpose else " (no purpose recorded yet)")
             for service in members
         )
         for context, members in contexts_of(apps).items()

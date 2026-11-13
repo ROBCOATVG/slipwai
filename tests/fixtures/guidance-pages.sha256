@@ -73,7 +73,7 @@ a7453482faed0665305d24ef45a8e41e98aa5cdfd2824db574f9ab9f94a82d32  event-modellin
 63205b4fe5e71e5ab316dab0c8ad6fcdfe2b8323e6869d3a6c4f2f47f9aa4c2e  event-modelling/memory-events/existing/skiff  AGENTS.md
 114ab50f74f228fa386cb6fb9e7a06c48ff1ea29cb04a89e8ac4d9d63c89c57d  event-modelling/memory-events/none/liner  AGENTS.md
 114ab50f74f228fa386cb6fb9e7a06c48ff1ea29cb04a89e8ac4d9d63c89c57d  event-modelling/memory-events/none/skiff  AGENTS.md
-1a796b1b5269929d4f2aac061fcd7add4b5dacf45aae38435fce39ae7f14854d  event-modelling/mixed-rungs  docs/architecture.md
+dd5c0da7982d961efce014bdeb7f29aaec17a39307f23e45a46e39634103e0a9  event-modelling/mixed-rungs  docs/architecture.md
 b7ea69081069b7e7f54671dd4dcda0174982784fd45464290573f0482a105dfc  event-modelling/mixed-rungs/aws/liner  AGENTS.md
 2396bf7cab0e25f16a75c90d069cafc494a5abaef1536dc157b5f85dffbf5c16  event-modelling/mixed-rungs/aws/skiff  AGENTS.md
 37e874f71433e55fde66600ab066ceb096c0fd45fd4e4ac10d959a55ad802ff4  event-modelling/mixed-rungs/azure/liner  AGENTS.md
@@ -181,7 +181,7 @@ eebe6ad9e4ef5452f3066ed421eb5e77e1cb46dbc0b001cf6f4c91928edc4aba  standard/memor
 250fa4777da14a11aac4a5e7ee6c14c7da1e83bd8570eaa2ed670586e9866976  standard/memory-events/existing/skiff  AGENTS.md
 f2a0405f244a69699a984cfb19b174912f7e7451589195cc67d05c348cd99451  standard/memory-events/none/liner  AGENTS.md
 f2a0405f244a69699a984cfb19b174912f7e7451589195cc67d05c348cd99451  standard/memory-events/none/skiff  AGENTS.md
-ebd6a5eb80815fc6afe4679464b6e50950a499b07998ef05aa3d1df17bdb5161  standard/mixed-rungs  docs/architecture.md
+9c1b27267d2a3cf449c3bd625eb419f115c1a3a0175c3006a21b3ff296a742ca  standard/mixed-rungs  docs/architecture.md
 c0817e6a64cbcd87d5cce9ef672236bfd9005c7fc605a860b91de29ad200f04a  standard/mixed-rungs/aws/liner  AGENTS.md
 0bb362ea64eb53edc32ca10603356471da1972d3dbf2684b2725674c00007926  standard/mixed-rungs/aws/skiff  AGENTS.md
 d66f8cfed243f9f846b18227723501fc655078791e206b38cefa84db57839046  standard/mixed-rungs/azure/liner  AGENTS.md

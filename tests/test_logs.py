@@ -74,7 +74,7 @@ class DeclarationTest(unittest.TestCase):
         self.assertEqual(set(logs.HARBOUR_KINDS),
                          {"mark-set", "flag-hoisted", "flag-struck", "berth-allocated",
                           "fires-banked", "park", "telegraph", "granted", "refused",
-                          "trunk-red", "trunk-green", "fix-trunk", "cleared",
+                          "trunk-red", "trunk-green", "fix-trunk", "mend", "mended", "mend-failed", "cleared",
                           "merge-taken-over", "slots", "need-met", "told-met"})
 
     def test_a_request_is_a_deck_line_and_both_its_answers_are_harbour_lines(self) -> None:

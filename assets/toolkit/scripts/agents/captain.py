@@ -274,6 +274,23 @@ def fix_owed(fairway: str, found: list[logs.Entry]) -> logs.Entry | None:
     return abreast.fix_owed(fairway, found, harbour_entries())
 
 
+def red_trunk() -> logs.Entry | None:
+    """The `trunk-red` line where trunk is red now, by the harbour's last word on it, or None.
+
+    **A red trunk stops the line** (phase 25, minimumCD's rule): nothing new starts and nothing carried
+    over is taken up again until it is green, because everything built meanwhile is built on a trunk that
+    does not pass. The harbourmaster sends the trunk mender; a captain holds. A slice already under way is
+    left to finish its run and waits at the merge, which is refused on red, because ending a session
+    mid-stage throws away work the green trunk will want.
+    """
+    for entry in reversed(harbour_entries()):
+        if entry.kind == "trunk-green":
+            return None
+        if entry.kind == "trunk-red":
+            return entry
+    return None
+
+
 def answered(request: str) -> logs.Entry | None:
     """The harbourmaster's answer to this request, or None while there is not one yet."""
     return next((e for e in reversed(harbour_entries())
@@ -1724,6 +1741,11 @@ def turn(fairway: str) -> str:
         print(f"captain: trunk is red at {str(fix.fields['commit'])[:8]} ({fix.fields['job']}) and "
               f"{fairway} merged it; fixing {slice_id} before anything new", flush=True)
         said = sail_out(feature, fairway, [slice_id], fresh=False)
+    elif (red := red_trunk()) is not None:
+        # Not a stop: the loop turns again at its interval and carries on the turn trunk is green.
+        return (f"captain: {fairway} holds — trunk is red at {str(red.fields.get('commit', ''))[:8]} "
+                f"({red.fields.get('job', 'a job')}), so nothing new starts until it is green; the trunk "
+                f"mender is sent to fix it")
     elif resume:
         # The stream was mid-slice when it stopped, and the ready set steps past a slice that is claimed —
         # which is exactly the four rungs of work each of these exists to carry over.

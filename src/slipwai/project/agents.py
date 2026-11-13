@@ -58,7 +58,12 @@ class Type:
 #: is the thing phase 12 exists to stop needing. As types they get the frontmatter a harness enforces,
 #: they are projected into every harness's own location by the one projection, and they travel with the
 #: plugin — so a session that has the material has the two roles that know what to do with it.
-RUNS_THE_LOOP = (("drive-captain", MANIFEST, ANY), ("harbour-harbourmaster", REPORT, ANY))
+#:
+#: The trunk mender is the third since 2.1: the harbourmaster sends it when trunk is red and to land a shared
+#: surface a slice handed back (`scripts/agents/mender.py`). It writes code on a branch of its own, so it
+#: declares the manifest scope, and like the other two it resolves no stage's model.
+RUNS_THE_LOOP = (("drive-captain", MANIFEST, ANY), ("harbour-harbourmaster", REPORT, ANY),
+                 ("harbour-trunk-mender", MANIFEST, ANY))
 
 
 def types() -> list[Type]:

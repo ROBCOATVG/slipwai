@@ -27,7 +27,10 @@ def at(minutes_ago: int) -> str:
     return (NOW - timedelta(minutes=minutes_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-class InboxTest(unittest.TestCase):
+class Project(unittest.TestCase):
+    """A project with the inbox in it, and the lines a case writes. No tests of its own, so the two cases
+    below share it without either running the other's."""
+
     def setUp(self) -> None:
         self.tree = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tree, True)
@@ -54,6 +57,8 @@ class InboxTest(unittest.TestCase):
     def decision(self, minutes_ago: int) -> dict:
         return {"kind": "decision", "fairway": "ORD", "t": at(minutes_ago), "id": "D-ORD-01", "what": "x"}
 
+
+class InboxTest(Project):
     def test_park_waits_are_timed_until_the_original_fairway_receipt_arrives(self) -> None:
         park = {"kind": "parked", "fairway": "ORD", "t": at(120), "why": "decide"}
         other = {"kind": "cleared", "fairway": "BIL", "parked": at(120), "t": at(1), "what": "x"}
@@ -161,12 +166,9 @@ class InboxTest(unittest.TestCase):
 
 
 
-class CruisingTest(unittest.TestCase):
+class CruisingTest(Project):
     """Under `/cruise` with a `decide` that answers its own questions, nobody is waited for unless no agent
-    may supply what is missing. game-club-manager's clubs fairway parked overnight on a slice's own note.
-    InboxTest's project, borrowed rather than inherited: a subclass would run every one of its tests again."""
-
-    setUp, write, told, decision = InboxTest.setUp, InboxTest.write, InboxTest.told, InboxTest.decision
+    may supply what is missing. game-club-manager's clubs fairway parked overnight on a slice's own note."""
 
     def cruise(self, **held: object) -> None:
         (self.tree / ".specify").mkdir(exist_ok=True)

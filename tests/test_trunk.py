@@ -11,6 +11,7 @@ suite that reached the network would be one nobody could run on a train.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import unittest
 
@@ -36,8 +37,13 @@ class TrunkFixture(MergeFixture):
         answer.write_text(f"import json\nprint(json.dumps({list(runs)!r}))\n", encoding="utf-8")
         self.harbour_config(ci=[sys.executable, str(answer)])
 
+    #: A red here sends nobody unless the case says so: a mender that started would be a real harness's
+    #: session. `test_mender` turns it on with a fake one.
+    MENDER = "off"
+
     def harbour_config(self, **held: object) -> None:
-        (self.root / "harbour.json").write_text(json.dumps({"trunk": "main", **held}), encoding="utf-8")
+        body = {"trunk": "main", "mender": self.MENDER, **held}
+        (self.root / "harbour.json").write_text(json.dumps(body), encoding="utf-8")
 
     def ask_to_merge(self, slice_id: str = "ORD-01") -> None:
         self.slice_branch(slice_id, f"{slice_id}.txt", f"{slice_id}\n")
@@ -124,27 +130,45 @@ class SayingTest(TrunkFixture):
 
 
 class WhoBrokeItTest(TrunkFixture):
-    def test_the_fix_goes_to_the_fairway_whose_merged_line_names_that_commit(self) -> None:
-        """This process wrote that line, which is the whole reason the fix can be sent anywhere at all."""
+    """Who broke trunk is what lets the mender revert the merge rather than only fix forward. `test_mender`
+    holds the mender itself; these hold the reading."""
+
+    def broke(self, commit: str) -> dict:
+        sys.path.insert(0, str(self.script.parent))
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("hm_read", self.script)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        cwd = os.getcwd()
+        os.chdir(self.root)
+        try:
+            spec.loader.exec_module(module)
+            return module.broke_it(commit)
+        finally:
+            os.chdir(cwd)
+
+    def test_the_grant_says_who_broke_it_before_any_merged_line(self) -> None:
+        """The harbourmaster writes `granted` at push time; the captain's `merged` came eighteen minutes
+        later in game-club-manager, after the red."""
+        (self.root / ".slipwai/logs/harbour").mkdir(parents=True, exist_ok=True)
+        (self.root / ".slipwai/logs/harbour/m.jsonl").write_text(
+            logs.entry("granted", harbour=True, fairway="CLU", request="merge-CL1", what="merge", slice="CL1",
+                       commit="a1b2c3d4e5f6", onto="0f0f0f0f").line(), encoding="utf-8")
+        self.assertEqual(self.broke("a1b2c3d4e5f6"), {"fairway": "CLU", "slice": "CL1", "onto": "0f0f0f0f"})
+
+    def test_an_older_log_is_still_read_by_its_merged_line(self) -> None:
         self.deck("ordering", "ORD", logs.entry("merged", fairway="ORD", slice="ORD-01",
                                                 commit="a1b2c3d4e5f6"))
-        self.forge_says(run("failure", workflow="audit"))
-        self.run_once()
-        orders = self.of_kind("fix-trunk")
-        self.assertEqual(len(orders), 1, self.kinds())
-        self.assertEqual(orders[0].fields["fairway"], "ORD")
-        self.assertEqual(orders[0].fields["slice"], "ORD-01")
-        self.assertEqual(orders[0].fields["job"], "audit")
+        self.assertEqual(self.broke("a1b2c3d4e5f6"), {"fairway": "ORD", "slice": "ORD-01"})
 
-    def test_a_red_no_merged_line_accounts_for_parks_for_a_person_at_once(self) -> None:
-        """A direct push, or a red older than any merge. Guessing who broke it would send a captain to
-        rewrite somebody else's work."""
+    def test_a_red_with_the_mender_off_parks_for_a_person_at_once(self) -> None:
         self.forge_says(run("failure"))
+        self.harbour_config(ci=json.loads((self.root / "harbour.json").read_text())["ci"], mender="off")
         self.run_once()
-        self.assertEqual(self.of_kind("fix-trunk"), [])
+        self.assertEqual(self.of_kind("fix-trunk"), [], "the captain is no longer sent; the mender is")
         parked = self.of_kind("park")
         self.assertEqual(len(parked), 1, self.kinds())
-        self.assertIn("no `merged` line accounts for", str(parked[0].fields["why"]))
+        self.assertIn("mender: off", str(parked[0].fields["why"]))
 
 
 if __name__ == "__main__":

@@ -25,8 +25,8 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 530 — the park record (cause, until, needs, then) and the shape each field is held to, beside
-# the whole vocabulary of both logs, each kind beside the reason it exists, and the few folds
+# budget: 535 — the trunk mender's kinds, the park record (cause, until, needs, then) and the shape each
+# field is held to, beside the whole vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
 # and a park written when a need was a sentence, read as the record it now is. And a need
 # the fleet was to tick with no check, read as a person's
@@ -203,9 +203,12 @@ HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
     # change of state — a board that said `trunk-red` every fifteen seconds is one nobody reads.
     "trunk-red": ("commit", "job", "why"),
     "trunk-green": ("commit",),
-    # Sent to the captain whose `merged` line names the commit that went red. The harbourmaster wrote that
-    # line, which is how it knows where to send it; a red nothing accounts for is a `park` for a person.
+    # Read only, from logs written before 2.1 sent the trunk mender (`mender.py`) instead: `mend` is one
+    # attempt, `job` `trunk` or `need`; `mended` says it landed, `commit` being trunk now; `mend-failed` why not.
     "fix-trunk": ("fairway", "slice", "commit", "job"),
+    "mend": ("job", "commit", "attempt"),
+    "mended": ("job", "commit"),
+    "mend-failed": ("job", "why"),
     # The merge ref taken off a machine past its lease: `from` held it, `since` is the last time it said it
     # was still merging. Harbour-wide, because the merge is — and the one line that explains a trunk two
     # machines' gates both touched, should the one that went quiet turn out not to have been dead.

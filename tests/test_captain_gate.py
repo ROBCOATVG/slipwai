@@ -254,9 +254,9 @@ sys.exit(1)
 class FixTrunkTest(Fixture):
     """A trunk this fairway reddened is worth more than any slice it could start.
 
-    The harbourmaster wrote the `merged` line for the commit that went red, so it knows whose it was and
-    sends `fix-trunk`. Captains elsewhere keep building throughout, and that work is not wasted, because a
-    sibling is cleared by a mark being set and not by a merge.
+    A harbour log written before 2.1 can still hold a `fix-trunk`, which the captain whose merge went red
+    takes ahead of anything new. Since 2.1 the harbourmaster sends the trunk mender instead, and every captain
+    holds (`StopTheLineTest`).
     """
 
     def order(self, slice_id: str = "ORD-01", fairway: str = "ORD", job: str = "audit") -> None:

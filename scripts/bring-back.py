@@ -90,6 +90,8 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "relocate",
        # The run's own state moved into `.slipwai/run/` (phase 25.1). Version 1 kept no run state there.
        "run_folder",
+       # Whether the app is the release that last wrote the project it opens (2.1). Version 1 had no app.
+       "app_version",
        # The catch-up page's opening section and its archive, shared by the two writers of the page and the
        # command that reads it. Version 1 deleted the page, so it had no archive to bring back.
        "catch_up_page",

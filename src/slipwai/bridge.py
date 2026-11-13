@@ -47,6 +47,8 @@ from .adopt_page import page as adoption
 from .adopt_page import run as adopt
 from .adoption_card import adoption_card, strategy_dates
 from .adoption_flow import gate_when_grounded, take_step
+from .app_version import refusal as out_of_step
+from .app_version import with_notice
 from .board_build import headers as board_headers
 from .bridge_page import page, payload
 from .brief_page import route_get as brief_get
@@ -154,8 +156,8 @@ from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 990 — one server and every route the board answers, the need tick and the timeline among them,
-# each a few lines handing off to a page
+# budget: 1000 — the app-version guard (2.1) on every change and page, one server and every route the
+# board answers, the need tick and the timeline among them, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll. A stage kept from before a restart is offered and resumed here too.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
@@ -282,6 +284,8 @@ class Bridge(BaseHTTPRequestHandler):
         """Quiet. The run's log is the log; a request line per reload is noise over the top of it."""
 
     def send(self, code: int, body: str | bytes, kind: str = "text/html; charset=utf-8") -> None:
+        if isinstance(body, str) and kind.startswith("text/html"):
+            body = with_notice(body, self.root)  # an app and a project out of step say so on every page
         data = body.encode("utf-8") if isinstance(body, str) else body
         self.send_response(code)
         self.send_header("Content-Type", kind)
@@ -738,6 +742,9 @@ class Bridge(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802 — http.server's own spelling
         if not self.controls:
             self.send(403, "This copy is read only.", "text/plain; charset=utf-8")
+            return
+        if refused := out_of_step(self.root):  # an older app writes where a newer project no longer reads
+            self.send(409, refused, "text/plain; charset=utf-8")
             return
         try:
             held = self.body()

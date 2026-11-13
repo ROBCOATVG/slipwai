@@ -161,6 +161,15 @@ class EventModelTest(unittest.TestCase):
         """An adopted repository may drive its gate with something other than `make`."""
         self.assertIn("just", event_model.event_model_workflow("just"))
 
+    def test_a_pages_deploy_that_fails_never_turns_the_run_red(self) -> None:
+        """Publishing is not a check: a repository with Pages off failed its run on the deploy's 404, and the
+        harbourmaster refused every merge onto that red trunk. Only the deploy job may fail quietly."""
+        workflow = event_model.event_model_workflow()
+        deploy = workflow[workflow.index("\n  deploy:"):]
+        render = workflow[workflow.index("\n  render:"):workflow.index("\n  deploy:")]
+        self.assertIn("continue-on-error: true", deploy)
+        self.assertNotIn("continue-on-error", render, "the render job is the check, and still fails the run")
+
 class RenameReadingTest(unittest.TestCase):
     """A table and a benchmark record written before a stage's name said who runs it.
 

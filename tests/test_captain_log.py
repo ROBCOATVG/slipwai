@@ -21,7 +21,7 @@ from slipwai.fleet import board
 
 class CaptainFixture(Fixture):
     def harbour(self, *entries: logs.Entry) -> None:
-        path = self.root / logs.harbour_path("m1")
+        path = logs.harbour_path(self.root, "m1")
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in entries:

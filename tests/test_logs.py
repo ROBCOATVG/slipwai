@@ -146,21 +146,30 @@ class ReadingTest(unittest.TestCase):
 
 
 class PathTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        (self.root / ".gitignore").write_text(f"{logs.RUN}/\n", encoding="utf-8")
+
+    def relative(self, path: Path) -> str:
+        return path.relative_to(self.root).as_posix()
+
     def test_a_fairway_writes_its_own_file_and_nothing_else(self) -> None:
         """One writer per file is why two fairways never conflict on a log."""
-        self.assertEqual(logs.deck_path("ordering", "ORD"), ".slipwai/logs/ordering/ORD.jsonl")
+        self.assertEqual(self.relative(logs.deck_path(self.root, "ordering", "ORD")),
+                         ".slipwai/run/logs/ordering/ORD.jsonl")
 
     def test_a_harbour_log_is_one_machine_s_and_is_not_in_a_feature(self) -> None:
-        self.assertEqual(logs.harbour_path("harbour_one"), ".slipwai/logs/harbour/harbour_one.jsonl")
+        self.assertEqual(self.relative(logs.harbour_path(self.root, "harbour_one")),
+                         ".slipwai/run/logs/harbour/harbour_one.jsonl")
 
     def test_the_one_harbour_log_a_project_already_has_is_still_read(self) -> None:
-        """The single-writer file from before there were three writers. Left where it is and folded in with
-        the rest, because a migration that moved somebody's log is a migration that can lose one."""
-        self.assertEqual(logs.HARBOUR, ".slipwai/logs/harbour.jsonl")
+        """The single-writer file from before there were three writers, folded in with the rest."""
+        self.assertEqual(self.relative(logs.older_harbour(self.root)), ".slipwai/run/logs/harbour.jsonl")
 
-    def test_the_logs_are_under_a_path_git_ignores(self) -> None:
+    def test_the_logs_are_under_the_folder_git_ignores(self) -> None:
         """Heartbeat and token lines arrive every few seconds and have no place in trunk's history."""
-        self.assertTrue(logs.LOGS.startswith(".slipwai/"))
+        self.assertEqual(logs.logs_dir(self.root), self.root / logs.RUN / "logs")
 
 
 class ClosedTest(unittest.TestCase):
@@ -212,8 +221,8 @@ class HarbourFoldTest(unittest.TestCase):
         self.root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.root, True)
 
-    def write(self, where: str, *written: tuple[str, str]) -> None:
-        path = self.root / where
+    def write(self, path: Path, *written: tuple[str, str]) -> None:
+        where = path.relative_to(self.root).as_posix()
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for when, flag in written:
@@ -222,31 +231,31 @@ class HarbourFoldTest(unittest.TestCase):
 
     def test_three_machines_fold_into_one_history(self) -> None:
         for machine in ("one", "two", "three"):
-            self.write(logs.harbour_path(machine), ("2026-10-12T09:00:00Z", machine))
+            self.write(logs.harbour_path(self.root, machine), ("2026-10-12T09:00:00Z", machine))
         self.assertEqual(len(logs.harbour_fold(self.root)), 3)
 
     def test_the_fold_is_by_instant_and_not_by_machine(self) -> None:
         """Interleaved by time is what makes three files read as one harbour rather than three lists
         stapled together — the same rule `render-fairways.py` folds the decisions by."""
-        self.write(logs.harbour_path("two"), ("2026-10-12T09:00:00Z", "second"))
-        self.write(logs.harbour_path("one"), ("2026-10-12T09:00:01Z", "third"))
-        self.write(logs.harbour_path("three"), ("2026-10-12T08:59:59Z", "first"))
+        self.write(logs.harbour_path(self.root, "two"), ("2026-10-12T09:00:00Z", "second"))
+        self.write(logs.harbour_path(self.root, "one"), ("2026-10-12T09:00:01Z", "third"))
+        self.write(logs.harbour_path(self.root, "three"), ("2026-10-12T08:59:59Z", "first"))
         self.assertEqual([str(e.fields["flag"]) for e in logs.harbour_fold(self.root)],
                          ["first", "second", "third"])
 
     def test_the_log_a_project_already_had_folds_in_with_them(self) -> None:
-        self.write(logs.HARBOUR, ("2026-10-12T08:00:00Z", "from before"))
-        self.write(logs.harbour_path("one"), ("2026-10-12T09:00:00Z", "and after"))
+        self.write(logs.older_harbour(self.root), ("2026-10-12T08:00:00Z", "from before"))
+        self.write(logs.harbour_path(self.root, "one"), ("2026-10-12T09:00:00Z", "and after"))
         self.assertEqual([str(e.fields["flag"]) for e in logs.harbour_fold(self.root)],
                          ["from before", "and after"])
 
     def test_a_harbour_log_is_not_a_deck_log(self) -> None:
         """Every reader of the deck logs globs the whole tree, so the directory the harbour logs are in has
         to be excluded by rule rather than by one resolved path — which is what it was when there was one."""
-        self.write(logs.harbour_path("one"), ("2026-10-12T09:00:00Z", "a flag"))
-        self.write(logs.HARBOUR, ("2026-10-12T09:00:00Z", "an older flag"))
-        (self.root / logs.LOGS / "ordering").mkdir(parents=True)
-        (self.root / logs.deck_path("ordering", "ORD")).write_text("", encoding="utf-8")
+        self.write(logs.harbour_path(self.root, "one"), ("2026-10-12T09:00:00Z", "a flag"))
+        self.write(logs.older_harbour(self.root), ("2026-10-12T09:00:00Z", "an older flag"))
+        (logs.logs_dir(self.root) / "ordering").mkdir(parents=True)
+        (logs.deck_path(self.root, "ordering", "ORD")).write_text("", encoding="utf-8")
         self.assertEqual([path.stem for path in logs.deck_logs(self.root)], ["ORD"])
 
     def test_a_machine_with_nothing_to_say_yet_is_not_an_error(self) -> None:

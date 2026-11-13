@@ -20,7 +20,7 @@ the MINOR (see 25.1).
   at 14:06 after its demo, so the harbourmaster wrote "nobody here broke it" and parked for a person. It
   writes once per change of state, so it never looked again. Meanwhile every other fairway kept building on
   the red trunk.
-- **A cruising lane parked on a note.** `inbox.owed()` (`inbox.py:166`) forces a park when a `told` goes past
+- **A cruising fairway parked on a note.** `inbox.owed()` (`inbox.py:166`) forces a park when a `told` goes past
   `wait_bound`, or when unread decisions pass `decision_ceiling`, whatever the cruise settings say. CL1's
   13:08 note about the ignore file stopped the clubs fairway at 14:54. Accounts had 18 unread decisions
   against a ceiling of 10, every one taken by the skipper or the host's recommendation, as
@@ -46,6 +46,13 @@ What stays at `.slipwai/` is committed: `dispatch/`, `extensions.json`, `hooks.j
 - The protocol MINOR: for 2.1, every reader looks in `run/` first and the old place second. Writers write
   only `run/`. 2.2 drops the old place. `docs/reference/the-logs.md` names the move.
 - Stopgap for runs in flight now: add `acp/`, `console/`, `stages/`, `*.pid` to `RUN_STATE`.
+- **Built (2026-11-13).** `logs.RUN`, `logs.COMMITTED` and `logs.run_dir(root)` own the place; the layout is
+  read from `.gitignore` (the line `.slipwai/run/`), so a project not migrated yet is read and written at the
+  old places rather than both being read. `src/slipwai/run_folder.py` is the move `migrate` makes and its
+  refusal while a pid under `running/` is alive. The guard is a keel test, `tests/test_run_paths.py`, rather
+  than `make check-agents`: it scans `src/` and `assets/toolkit/`, code and prose. `committed` also holds
+  `migration.json` (staged by a crossing's `install`) and `shape-transitions/` (a prepared move a person
+  reads). Log refs keep the `.slipwai/logs/...` spelling inside their trees, so a 2.0 peer still lands them.
 
 ## 25.2 Stop the line
 

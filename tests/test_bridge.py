@@ -755,7 +755,7 @@ class StreamDrawerTest(Fixture):
         self.assertNotIn('"kind"', said)
 
     def test_a_stream_with_a_log_and_no_lines_says_so(self) -> None:
-        path = self.root / logs.deck_path("ordering", "EMPTY")
+        path = logs.deck_path(self.root, "ordering", "EMPTY")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("", encoding="utf-8")
         self.assertIn("Nothing in this stream", self.rendered())

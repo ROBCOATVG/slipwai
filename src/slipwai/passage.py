@@ -33,6 +33,7 @@ from pathlib import Path
 from .drawn import drawn_states as drawn_states
 from .drawn import record_verdict as record_verdict
 from .drawn import surface_pages
+from .logs import run_dir
 from .next_steps import template_gone
 from .project.intake import pending as intake_pending
 
@@ -133,13 +134,13 @@ def drawn(root: Path) -> bool:
 def drawing_clock(root: Path, now: float | None = None) -> str:
     """How far into its budget a running drawing is — "6 of about 15 min" — or `""` where nothing says.
 
-    Read from `.slipwai/surfaces.pid`, which `scripts/agents/surfaces.py` writes as its pid, when it started
+    Read from `.slipwai/run/surfaces.pid`, which `scripts/agents/surfaces.py` writes as its pid, when it started
     and its budget in seconds. Read there rather than worked out here because the budget comes from
     `harbour.json` through the telegraph, and a second reading of it on the board is a second place for it to
     be wrong. A pid file with one line is a drawing from before the budget, and says nothing.
     """
     try:
-        lines = (root / ".slipwai/surfaces.pid").read_text(encoding="utf-8").split()
+        lines = (run_dir(root) / "surfaces.pid").read_text(encoding="utf-8").split()
         began, allowed = float(lines[1]), float(lines[2])
     except (OSError, ValueError, IndexError):
         return ""

@@ -2,7 +2,7 @@
 
 The voyage's columns say a slice is working and its chip says how far up the ladder; neither says what it is
 doing this minute, which sub-agent is on it, or that it has spent fourteen minutes on a task its others took
-six on. Every harness's session writes one line per thing that happened to `.slipwai/activity/<fairway>/
+six on. Every harness's session writes one line per thing that happened to `.slipwai/run/activity/<fairway>/
 <slice>.jsonl` — `scripts/agents/session.py` from the harness's hooks, and the session itself for what only
 it can say — so this reads one format whichever harness ran the slice, and never a harness's transcript.
 
@@ -21,7 +21,9 @@ import statistics
 from datetime import UTC, datetime
 from pathlib import Path
 
-ACTIVITY = ".slipwai/activity"
+from .logs import run_dir
+
+ACTIVITY = "activity"
 #: How much of a slice's log a poll reads: the newest lines are all a strip or a window shows.
 TAIL = 256 * 1024
 #: How long a slice may go without a line before the strip says it is quiet.
@@ -46,7 +48,7 @@ def now_stamp() -> float:
 
 def log_path(root: Path, fairway: str, slice_id: str) -> Path | None:
     """A slice's log, or nothing where the names would reach outside the folder."""
-    home = (root / ACTIVITY).resolve()
+    home = (run_dir(root) / ACTIVITY).resolve()
     try:
         path = (home / fairway / f"{slice_id}.jsonl").resolve()
     except OSError:

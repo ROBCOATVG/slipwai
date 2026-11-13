@@ -99,6 +99,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # same material assembled for a harness to install with no project at all, which is this tier for the
     # same reason the rest of it is: it reads every part.
     ("assembly", ("plugin", "native", "unlabel", "relocate", "githooks", "strategy_steps", "next_steps", "scaffold",
+                  # Where a run's own state lives since 2.1, and the move `migrate` makes into it.
+                  "run_folder",
                   "adopt_report",
                   "add_service", "adopt",
                   "migration_legacy", "migration_flight", "migration_settings", "migration_claims",

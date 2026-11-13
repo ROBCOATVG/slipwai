@@ -193,8 +193,7 @@ class GeneratedTest(unittest.TestCase):
             self.assertIn(f"\n{target}: ## ", makefile)
         self.assertIn(".PHONY: try try-update try-fresh try-stop", makefile)
         self.assertIn("python3 scripts/agents/try_it.py start", makefile)
-        self.assertIn(".slipwai/try-it/\n", files[".gitignore"])
-        self.assertIn(".slipwai/walks/\n", files[".gitignore"])
+        self.assertIn(".slipwai/run/\n", files[".gitignore"], "try-it/ and walks/ are under the run's folder")
         self.assertIn("scripts/agents/try_it.py", files)
 
     def test_what_the_gates_and_make_model_write_in_a_berth_is_ignored_once(self) -> None:

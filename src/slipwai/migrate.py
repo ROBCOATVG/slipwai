@@ -18,7 +18,8 @@ copies exists on the keel's side of the merge. Re-derive them here, extension fi
 receive its current block. The committed `.slipwai/extensions.json` records the election; a legacy project
 with no record is inferred once from markers. Setup and the interactive menu never run during migration.
 """
-# budget: 375 — a clean merge also leaves the intake proposal beside the catch-up notes, and moves the records
+# budget: 395 — a clean merge also leaves the intake proposal beside the catch-up notes, moves the run's state into
+# `.slipwai/run/` (refusing while a fleet is out), and moves the records
 # a newer keel keeps elsewhere (`relocate`) in the commit after it.
 from __future__ import annotations
 
@@ -37,6 +38,7 @@ from .manifest import read_manifest, refuse_older
 from .migration_result import Migration
 from .relocate import relocate
 from .replay import Replay, git, replay
+from .run_folder import move_in, refuse_while_out
 from .scaffold import NO_MAINTENANCE
 from .shell_environment import python3
 from .unlabel import Refresh, read_page, unlabel
@@ -71,6 +73,9 @@ def checked(root: Path) -> dict:
 def migrate(root: Path, *, with_claims: bool = False) -> Migration:
     """Replay the project at `root` with this keel and merge the result into it."""
     document = checked(root)
+    # Before anything is merged: the merge brings a toolkit that reads the run's state at `.slipwai/run/`, and
+    # this command then moves it there, under any process still appending to it.
+    refuse_while_out(root)
     from .migration_crossing import crossing, version
     if version(document):
         done = crossing(root, document, with_claims=with_claims)
@@ -85,6 +90,10 @@ def migrate(root: Path, *, with_claims: bool = False) -> Migration:
     stat, conflicts, fast_forward = merge_offered(root, offered, f"Migrate {name} to slipwai {VERSION}")
     if stat is None:
         return Migration(offered, was, (), None, refresh=refresh(root, name, layout_of(document), set_undo=True))
+    # Moved either way, so the toolkit the merge brought finds the run's state; the ignore file is left alone
+    # where it is one of the conflicts, since it is the person's to resolve. Before the notes, which archive
+    # a page an earlier migration left at the old place.
+    move_in(root, ignore=".gitignore" not in conflicts)
     # Written either way, and before the projections: the notes are what the *versions* asked for, which a
     # conflict does not change, and a merge left in progress is exactly when somebody wants to know what
     # they are resolving towards.
@@ -160,8 +169,14 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
     A projector that cannot run is reported, not raised: the merge is done and good either way, and losing
     it to a failure in a follow-up step would be the worse outcome by far.
     """
+    # The run's own state into `.slipwai/run/`, first: untracked, so it must be out of the way before
+    # anything below stages the tree, and the ignore file that says so is staged for the commit below.
+    _, stuck, reignored = move_in(root)
+    if reignored:
+        git(root, "add", "--", ".gitignore")
     # Records the project wrote that this keel keeps elsewhere: staged by `git mv`, committed below with the rest.
     relocated, left = relocate(root)
+    left += stuck
     respelled, skipped = unlabel(root, layout)
     skipped += left
     # Per-checkout config and not a file, so no merge carried it and a project predating the hook has it
@@ -204,13 +219,14 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
         git(root, "reset", "--quiet", "--", NOTES)
     elif respelled:
         git(root, "add", "--", *respelled)
-    elif not relocated:
+    elif not relocated and not reignored:
         # Nothing to project, respell or move: nothing of this command's is in the tree to stage.
         return Refresh(skipped=skipped, hooked=hooked.set, hooks=hooked.why)
     staged = tuple(git(root, "diff", "--cached", "--name-only").splitlines())
     respelled = tuple(path for path in respelled if path in staged)
     ends = {end for move in relocated for end in move.split(" -> ")}
-    changed = tuple(path for path in staged if path not in respelled and path not in ends)
+    changed = tuple(path for path in staged if path not in respelled and path not in ends
+                    and not (reignored and path == ".gitignore"))
     if not staged:
         return Refresh(written=bool(commands), skipped=skipped, hooked=hooked.set, hooks=hooked.why)
     before = git(root, "rev-parse", "HEAD")
@@ -221,8 +237,10 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
         subject = f"Take the adoption label off {', '.join(respelled)} for slipwai {VERSION}"
     elif changed:
         subject = f"Re-derive {name}'s factory projections for slipwai {VERSION}"
-    else:
+    elif relocated:
         subject = f"Move {name}'s records to where slipwai {VERSION} keeps them"
+    else:
+        subject = f"Ignore {name}'s run state as one folder, .slipwai/run/, for slipwai {VERSION}"
     if relocated and (respelled or changed):
         subject += ", and move its records to where that version keeps them"
     committed = subprocess.run(
@@ -320,7 +338,7 @@ def report_of(done: Migration) -> str:
     if done.unwritten is None:
         lines.append(
             f"What the versions crossed ask of code already here — which no merge can do — is written to "
-            f"{NOTES}, git-ignored, with any earlier page moved to {ARCHIVE}/. `.slipwai/intake-cleanup.json` "
+            f"{NOTES}, git-ignored, with any earlier page moved to {ARCHIVE}/. `.slipwai/run/intake-cleanup.json` "
             "proposes where loose "
             f"requirements could be recorded; nothing in it is moved until `/catch-up` confirms a row."
         )

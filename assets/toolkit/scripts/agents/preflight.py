@@ -55,7 +55,9 @@ MANIFEST = ROOT / "project.json"
 EXTENSIONS = ROOT / ".slipwai/extensions.json"
 #: What `--record` writes and `dispatch.py` reads. This checkout's own answer, never committed and never
 #: travelled: another machine's preflight is not evidence about this one.
-RECORD = ROOT / ".slipwai/preflight.json"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
+RECORD = logs.run_dir(ROOT) / "preflight.json"
 #: Extensions whose election says a directory should be in the checkout for a delegate to query it.
 INDEXED = {"codegraph": ".codegraph"}
 
@@ -210,7 +212,7 @@ def checks() -> list[dict]:
 def record(found: list[dict], failed: list[dict]) -> dict:
     """What this run answered, as the file `dispatch.py` reads before it will write a ledger line.
 
-    Under `.slipwai/`, so it is this checkout's and never committed: what a *different* machine's preflight
+    Under `.slipwai/run/`, so it is this checkout's and never committed: what a *different* machine's preflight
     found is not evidence about this one, and a record that travelled would be exactly the wrong thing to
     trust. The timestamp is the whole point — a dispatch stands on an answer from this checkout, now.
     """

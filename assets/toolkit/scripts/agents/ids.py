@@ -24,7 +24,7 @@ the per-fairway counter does not separate them, and each delegating session took
 entry it could see* — which in hr-test-2 was D28 to D30 for two slices at once. `reserve` takes the
 highest number anything here knows — every `specs/*/decisions.md` in this checkout, on trunk and on every
 local and remote `slice/*` branch, and every number already reserved — under a lock, writes what it hands
-out to `.slipwai/logs/decision-numbers`, and prints them. The lock and the file are under `.slipwai/logs`,
+out to `.slipwai/run/logs/decision-numbers`, and prints them. The lock and the file are under `.slipwai/run/logs`,
 which every berth links to the project's own, so the siblings on one machine take turns at one counter; a
 sibling on another machine is seen through its pushed branch. A number reserved and never used is a gap,
 which `check-decisions.py` allows: a gap costs nothing and a duplicate costs every citation of it.
@@ -52,7 +52,9 @@ def project_root(script: Path) -> Path:
 
 
 ROOT = project_root(Path(__file__).resolve())
-LOGS = ROOT / ".slipwai/logs"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
+LOGS = logs.logs_dir(ROOT)
 V = 1
 #: What each kind of record is counted and prefixed by. A kind not here has no id scheme and is refused
 #: rather than given a guessed prefix, because an id is a citation and a wrong one resolves to nothing.

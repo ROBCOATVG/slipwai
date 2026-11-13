@@ -15,7 +15,7 @@ python3 scripts/agents/claims.py          # every fairway the chart has, and who
 ## One captain per fairway, and the ref that makes it true
 
 Two machines must not run a captain for the same fairway. If they did, two processes would append to one
-`.slipwai/logs/<feature>/<fairway>.jsonl` through two worktrees. The design promises that this file never
+`.slipwai/run/logs/<feature>/<fairway>.jsonl` through two worktrees. The design promises that this file never
 has a conflict, and this would give it one. If one side then forced the ref, lines would be missing and
 nobody could tell.
 
@@ -75,9 +75,9 @@ ready slices may run together unless the split's `parallel_ok_with` leaves one o
 then gets:
 
 - **its own berth**: a worktree at `../<project>-<id>` on `slice/<id>`, the same name `/sail` gives one, with
-  `.slipwai/logs` linked to the project's so that every line lands in the one deck log;
+  `.slipwai/run/logs` linked to the project's so that every line lands in the one deck log;
 - its own headless session, stage bound, retries, `.working` marker
-  (`.slipwai/running/captain-<fairway>--<slice>.working`) and gate, read from the lines that carry its
+  (`.slipwai/run/running/captain-<fairway>--<slice>.working`) and gate, read from the lines that carry its
   `slice`;
 - its own merge request. Merges still go one at a time through the harbourmaster. A rebase conflict with a
   sibling's merge sends that slice back to its berth to resolve, and it asks again.

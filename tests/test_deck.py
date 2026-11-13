@@ -65,7 +65,7 @@ class ReadingTest(unittest.TestCase):
         self.root = Path(tempfile.mkdtemp())
 
     def deck(self, fairway: str, *written: logs.Entry, feature: str = "ordering") -> Path:
-        path = self.root / logs.deck_path(feature, fairway)
+        path = logs.deck_path(self.root, feature, fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in written:
@@ -75,7 +75,7 @@ class ReadingTest(unittest.TestCase):
     def test_every_stream_with_a_log_is_found_and_the_harbour_is_not_one(self) -> None:
         self.deck("ORD", logs.entry("heartbeat", fairway="ORD"))
         self.deck("BIL", logs.entry("heartbeat", fairway="BIL"), feature="billing")
-        (self.root / logs.HARBOUR).write_text("", encoding="utf-8")
+        (logs.older_harbour(self.root)).write_text("", encoding="utf-8")
         self.assertEqual(sorted(name for _, name in streams(self.root)), ["BIL", "ORD"])
 
     def test_a_stream_knows_which_feature_it_is_under(self) -> None:

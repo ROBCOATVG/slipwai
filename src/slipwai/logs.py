@@ -22,8 +22,9 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 535 — the trunk mender's kinds, the park record (cause, until, needs, then) and the shape each
-# field is held to, beside the whole vocabulary of both logs, each kind beside the reason it exists, and the few folds
+# budget: 565 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
+# the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
+# vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
 # and a park written when a need was a sentence, read as the record it now is. And a need
 # the fleet was to tick with no check, read as a person's
@@ -39,20 +40,49 @@ from pathlib import Path
 
 #: The format every line declares. A reader refuses anything higher and names what reads it.
 V = 1
-#: Where a fairway's own log lives, and the one log every fairway reads. Both are ignored by git: heartbeat
-#: and token lines arrive every few seconds and have no place in trunk's history. The harbourmaster syncs
-#: them through `refs/slipwai/logs`, so a captain on another machine reads the same lines with no commit.
-LOGS = ".slipwai/logs"
-#: Where this machine's harbourmaster writes. **One harbour log per machine, folded on read**, exactly like
-#: the deck logs: "one writer per harbour" is unambiguous on one machine and meaningless on three, one
-#: elected writer needs an election, and three writers on one file breaks the rule the whole design rests
-#: on. A directory per machine costs nothing at read time and removes the single writer rather than
-#: electing one.
-HARBOUR_DIR = f"{LOGS}/harbour"
-#: The one harbour log a project written before there were three writers already has. Still read and folded
-#: in with the rest, and nothing moves it: a migration that relocates somebody's log is one that can lose a
-#: line, and these lines are the only record there is of what happened.
-HARBOUR = f"{LOGS}/harbour.jsonl"
+#: Where everything a run writes about itself lives, and nothing a checkout needs: the logs, what is running
+#: and its pids, the berths' records, the sessions' files, the scratch worktrees. One folder, ignored by one
+#: line, because the list of names it replaced fell behind what a run writes three times (phase 25.1), and
+#: each time `check-slice-scope` failed every berth on files no slice wrote.
+RUN = ".slipwai/run"
+#: What stays at `.slipwai/` because it is committed: the record, which a checkout with only what git
+#: carries needs. Anything else a run writes goes under RUN, and a keel test refuses a path that does neither.
+COMMITTED = ("dispatch/", "extensions.json", "hooks.json", "guards.json", "quickstart.json", "packages/",
+             "migration.json", "shape-transitions/")
+
+
+def run_dir(root: Path) -> Path:
+    """Where this project keeps its run state: RUN once its `.gitignore` names it, `.slipwai` before then.
+
+    The ignore line is the switch because `slipwai migrate` writes it in the pass that moves the state, and a
+    project whose toolkit is still 2.0 has never had it: the board, a release ahead, reads and writes the
+    old places there rather than leaving its state in a folder nothing in that project reads.
+    """
+    try:
+        ignored = {line.strip() for line in (root / ".gitignore").read_text(encoding="utf-8").splitlines()}
+    except (OSError, UnicodeDecodeError):
+        ignored = set()
+    return root / RUN if f"{RUN}/" in ignored else root / ".slipwai"
+
+
+def logs_dir(root: Path) -> Path:
+    """The deck logs and the harbour logs. Ignored by git, since heartbeat and token lines arrive every few
+    seconds; the harbourmaster syncs them through `refs/slipwai/logs`, so another machine reads the same
+    lines with no commit."""
+    return run_dir(root) / "logs"
+
+
+def harbour_dir(root: Path) -> Path:
+    """**One harbour log per machine, folded on read**, like the deck logs: "one writer per harbour" means
+    nothing on three machines, and a directory per machine removes the single writer instead of electing one."""
+    return logs_dir(root) / "harbour"
+
+
+def older_harbour(root: Path) -> Path:
+    """The one harbour log a project written before there were three writers has. Still folded in with the
+    rest and never rewritten: these lines are the only record there is of what happened."""
+    return logs_dir(root) / "harbour.jsonl"
+
 
 #: How long a machine's identity may be. Short because it is spent inside other names — a database called
 #: `bookings_<machine>_booking` reaching PostgreSQL's 63-byte limit is a berth that cannot connect and a
@@ -410,21 +440,21 @@ def read(line: str, harbour: bool = False) -> Entry:
                         {name: body[name] for name in required})
 
 
-def deck_path(feature: str, fairway: str) -> str:
+def deck_path(root: Path, feature: str, fairway: str) -> Path:
     """A fairway's own log. One writer, its captain, so two fairways never meet on one line."""
-    return f"{LOGS}/{feature}/{fairway}.jsonl"
+    return logs_dir(root) / feature / f"{fairway}.jsonl"
 
 
-def harbour_path(machine: str) -> str:
+def harbour_path(root: Path, machine: str) -> Path:
     """One machine's harbour log. One writer, its harbourmaster, for the same reason a deck log has one."""
-    return f"{HARBOUR_DIR}/{machine}.jsonl"
+    return harbour_dir(root) / f"{machine}.jsonl"
 
 
 def harbour_logs(root: Path) -> list[Path]:
     """Every harbour log there is: one per machine, plus the single file older projects still have."""
-    directory = root / HARBOUR_DIR
+    directory = harbour_dir(root)
     found = sorted(directory.glob("*.jsonl")) if directory.is_dir() else []
-    older = root / HARBOUR
+    older = older_harbour(root)
     return ([older] if older.is_file() else []) + found
 
 
@@ -435,9 +465,9 @@ def deck_logs(root: Path) -> list[Path]:
     whole tree, and when there was one harbour log they each compared against it by name. Three of them in
     a directory of their own is a rule a reader can hold instead of a list it has to keep.
     """
-    place = root / LOGS
-    harbour = (root / HARBOUR_DIR).resolve()
-    older = (root / HARBOUR).resolve()
+    place = logs_dir(root)
+    harbour = harbour_dir(root).resolve()
+    older = older_harbour(root).resolve()
     return [path for path in sorted(place.rglob("*.jsonl")) if place.is_dir()
             if path.parent.resolve() != harbour and path.resolve() != older]
 

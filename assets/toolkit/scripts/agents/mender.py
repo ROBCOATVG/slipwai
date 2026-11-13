@@ -67,9 +67,9 @@ BRIEF = "agents/harbour-trunk-mender.md"
 TRUNK, NEED = "trunk", "need"
 #: Where each attempt's worktree is made, and the failed run's log written beside it. Ignored with the rest
 #: of the run's state, and removed when the attempt is over.
-PLACE = ROOT / ".slipwai/mend"
+PLACE = logs.run_dir(ROOT) / "mend"
 #: What this machine's harbourmaster knows about the attempt in flight, so a restart can find it again.
-RECORD = ROOT / ".slipwai/running/mender.json"
+RECORD = logs.run_dir(ROOT) / "running/mender.json"
 #: The branch an attempt commits on. Not `slice/<id>`, so `check-slice-scope` has nothing to hold it to;
 #: `refusal` below is what holds it.
 BRANCH = "mend/{job}-{key}"
@@ -298,7 +298,7 @@ def start(job: str, key: str, onto: str, told: dict) -> tuple[logs.Entry, str]:
         told = {**told, "log": failed_log(str(told.get("url", "")), worktree)}
     try:
         argv, environment = command(job, worktree, branch, told)
-        out = (ROOT / ".slipwai/running/mender.out")
+        out = (logs.run_dir(ROOT) / "running/mender.out")
         out.parent.mkdir(parents=True, exist_ok=True)
         with out.open("a", encoding="utf-8") as handle:
             child = subprocess.Popen(argv, cwd=worktree, env=environment, stdout=handle, stderr=subprocess.STDOUT,

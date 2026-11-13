@@ -51,7 +51,7 @@ def project_root() -> Path:
 
 
 ROOT = project_root()
-RUNNING = ROOT / ".slipwai/running"
+RUNNING = logs.run_dir(ROOT) / "running"
 HARBOUR_CONFIG = ROOT / "harbour.json"
 
 
@@ -322,7 +322,7 @@ def listing() -> list[str]:
 
 
 def logs_root() -> Path:
-    return ROOT / logs.LOGS
+    return logs.logs_dir(ROOT)
 
 
 def deck_files() -> list[Path]:
@@ -331,7 +331,7 @@ def deck_files() -> list[Path]:
 
 
 def harbour_log(path: Path) -> bool:
-    return path.parent.name == Path(logs.HARBOUR_DIR).name or path.name == Path(logs.HARBOUR).name
+    return path.parent.name == logs.harbour_dir(ROOT).name or path.name == logs.older_harbour(ROOT).name
 
 
 def said(path: Path, entry: dict) -> str:

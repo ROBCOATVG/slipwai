@@ -24,6 +24,9 @@ class PreflightTest(unittest.TestCase):
         place = self.root / "scripts/agents"
         place.mkdir(parents=True)
         (place / "preflight.py").write_text(SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
+        (place / "logs.py").write_text((SCRIPT.parent / "logs.py").read_text(encoding="utf-8"), encoding="utf-8")
+        # A project on the 2.1 layout keeps its preflight answer under the run's folder.
+        (self.root / ".gitignore").write_text(".slipwai/run/\n", encoding="utf-8")
         self.script = place / "preflight.py"
 
     def project(self, deployables: dict, extensions: list[str] | None = None) -> None:
@@ -129,9 +132,9 @@ class PreflightTest(unittest.TestCase):
         self.project({})
         self.with_harness()
         self.run_it()
-        self.assertFalse((self.root / ".slipwai/preflight.json").is_file())
+        self.assertFalse((self.root / ".slipwai/run/preflight.json").is_file())
         self.run_it("--record")
-        written = json.loads((self.root / ".slipwai/preflight.json").read_text(encoding="utf-8"))
+        written = json.loads((self.root / ".slipwai/run/preflight.json").read_text(encoding="utf-8"))
         self.assertIs(written["delegates"], False)
         self.assertIn("make agents", written["why"])
         self.assertTrue(written["at"].endswith("Z"))

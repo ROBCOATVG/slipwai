@@ -5,7 +5,7 @@ somebody had started it — showed none of the voyage's work: flags off, nobody 
 database. The project's `scripts/agents/try_it.py` is what starts it properly, and this card is its face:
 what it is doing, who to sign in as, what is new to try, and the four things a person does to it.
 
-**The state is the script's file, read here.** `.slipwai/try-it/state.json` is written by the script as it
+**The state is the script's file, read here.** `.slipwai/run/try-it/state.json` is written by the script as it
 works, and this card reads it on every poll rather than asking the script: a poll every few seconds that
 started a Python and a login shell each time would cost more than the app it describes. What only a reader
 can say — whether its processes are still alive, and how far trunk has moved since it started — is said here.
@@ -22,6 +22,7 @@ from urllib.parse import quote, unquote
 
 from . import process_alive
 from .feedback_card import opener
+from .logs import run_dir
 from .page_shell import esc
 
 # budget: 440 — one card in four states and the routes' half of it: what Try it is doing, the app and who to
@@ -137,7 +138,7 @@ def status(root: Path) -> dict:
     """The script's state, with what only a reader can tell: a process that has gone, and how far behind
     trunk the running copy is."""
     try:
-        state = json.loads((root / ".slipwai/try-it/state.json").read_text(encoding="utf-8"))
+        state = json.loads((run_dir(root) / "try-it/state.json").read_text(encoding="utf-8"))
     except (OSError, ValueError, UnicodeDecodeError):
         state = {}
     if not isinstance(state, dict) or state.get("state") not in CHIPS:
@@ -145,7 +146,7 @@ def status(root: Path) -> dict:
     if state["state"] == "ready":
         gone = [name for name, pid in (state.get("pids") or {}).items() if not alive(pid)]
         if gone:
-            state.update(state="failed", error=f"{', '.join(gone)} stopped; its log is in .slipwai/try-it/")
+            state.update(state="failed", error=f"{', '.join(gone)} stopped; its log is in .slipwai/run/try-it/")
     if state["state"] == "starting" and not alive(state.get("runner")):
         state.update(state="failed", error=f"stopped while {state.get('step') or 'starting'}")
     head, commit = trunk_head(root), str(state.get("commit", ""))
@@ -175,7 +176,7 @@ def act(root: Path, verb: str, key: str = "", value: str = "") -> str:
         if not key or value not in ("on", "off"):
             raise ValueError("a flag needs its name and on or off")
         argv += [key, value]
-    home = root / ".slipwai/try-it"
+    home = run_dir(root) / "try-it"
     home.mkdir(parents=True, exist_ok=True)
     with (home / "board.log").open("a", encoding="utf-8") as out:
         subprocess.Popen(argv, cwd=root, env=login_environment(root=root), stdout=out, stderr=subprocess.STDOUT,
@@ -317,7 +318,7 @@ def flags_html(state: dict) -> str:
 
 def walks_of(root: Path, seat: str = "") -> list[dict]:
     """Every recording the demo hand left, newest walk of each example, in slice and example order."""
-    home = root / ".slipwai/walks"
+    home = run_dir(root) / "walks"
     found = []
     for path in sorted(home.glob("*/*/*")) if home.is_dir() else []:
         if path.suffix.lower() not in VIDEOS or not path.is_file():
@@ -337,7 +338,7 @@ def walk_file(root: Path, where: str) -> Path | None:
     slice_id, _, name = rest.partition("/")
     if not feature or not slice_id or not name or "/" in name or Path(name).suffix.lower() not in VIDEOS:
         return None
-    home = (root / ".slipwai/walks").resolve()
+    home = (run_dir(root) / "walks").resolve()
     try:
         path = (home / feature / slice_id / name).resolve()
     except OSError:
@@ -387,7 +388,7 @@ def card_html(state: dict, walks: list[dict] | None = None) -> str:
         log = "\n".join(state.get("log") or [])
         body = (f'<p class="warn">{esc(state.get("error", ""))}</p>'
                 + (f'<pre class="said">{esc(log)}</pre>' if log else "")
-                + '<p class="empty">The whole log is in .slipwai/try-it/.</p>')
+                + '<p class="empty">The whole log is in .slipwai/run/try-it/.</p>')
         buttons = button("start", "Start again", primary=True) + button("stop", "Stop")
     else:
         url = str(state.get("url", ""))

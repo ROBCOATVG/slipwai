@@ -42,7 +42,7 @@ A migration can bring a gate that did not exist when the code it now judges was 
 contradicts a decision this repository already made on purpose; neither is a mistake by anyone, and neither
 is something the keel can fix from outside. So `migrate` writes what each version crossed asks of a
 repository that already existed — the note its author wrote in the commit that made the change — into
-`.slipwai/catch-up.md`, git-ignored and disposable — whether the merge committed or stopped at conflicts,
+`.slipwai/run/catch-up.md`, git-ignored and disposable — whether the merge committed or stopped at conflicts,
 and saying why when the versions crossed cannot be told, rather than leaving no file. `/catch-up` reads it,
 runs `make verify`, and works each failure back to the rule that caused it. One command to run, and the
 rest is the ordinary loop.

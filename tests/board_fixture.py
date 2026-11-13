@@ -43,14 +43,14 @@ class Fixture(unittest.TestCase):
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
 
     def deck(self, fairway: str, *entries: logs.Entry) -> None:
-        path = self.root / logs.deck_path("ordering", fairway)
+        path = logs.deck_path(self.root, "ordering", fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in entries:
                 handle.write(entry.line())
 
     def read(self, fairway: str) -> list[logs.Entry]:
-        path = self.root / logs.deck_path("ordering", fairway)
+        path = logs.deck_path(self.root, "ordering", fairway)
         return logs.fold(path.read_text(encoding="utf-8").splitlines())
 
     def rendered(self, controls: bool = True) -> str:

@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from .logs import Entry, paused
+from .logs import Entry, paused, run_dir
 from .process_alive import alive
 
 
@@ -137,7 +137,7 @@ def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 #: Where `fleet.start` records what it started: `<name>.pid`, its output in `<name>.out`, and — since the
 #: captain writes one — `<name>.exit`, the process's own word on why it left.
-RUNNING = ".slipwai/running"
+RUNNING = "running"
 
 
 def processes(root: Path, found: Sequence[Stream], now: datetime | None = None) -> list[dict[str, str]]:
@@ -149,7 +149,7 @@ def processes(root: Path, found: Sequence[Stream], now: datetime | None = None) 
     `.exit` file the captain wrote; `starts_when` is read off the stream's own log, which is what the next
     captain lit for it would read.
     """
-    place = root / RUNNING
+    place = run_dir(root) / RUNNING
     rows: list[dict[str, str]] = []
     streams = {one.name: one for one in found}
     names = ["harbourmaster", *(f"captain-{one.name}" for one in found)]

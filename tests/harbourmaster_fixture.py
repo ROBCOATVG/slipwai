@@ -40,7 +40,7 @@ class Fixture(unittest.TestCase):
         self.script = place / "harbourmaster.py"
 
     def deck(self, feature: str, fairway: str, *entries: logs.Entry) -> Path:
-        path = self.root / logs.deck_path(feature, fairway)
+        path = logs.deck_path(self.root, feature, fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             for entry in entries:

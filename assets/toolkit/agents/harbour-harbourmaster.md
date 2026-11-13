@@ -11,8 +11,8 @@ naming the fairway and the berth. A berth holds no cloud or forge credential, an
 grants one.
 
 **The harbour log.** You are the only writer of this machine's
-`.slipwai/logs/harbour/<machine>.jsonl`. Fold every machine's harbour log by timestamp and keep reading
-legacy `.slipwai/logs/harbour.jsonl` where present. Each file retains its own writer; copy across the
+`.slipwai/run/logs/harbour/<machine>.jsonl`. Fold every machine's harbour log by timestamp and keep reading
+legacy `.slipwai/run/logs/harbour.jsonl` where present. Each file retains its own writer; copy across the
 handful of lines other fairways need — a mark set, a park, a flag change, a telegraph position — rather than having each captain
 write there. Your kinds are `mark-set`, `flag-hoisted`, `flag-struck`, `berth-allocated`, `fires-banked`,
 `park`, `telegraph`, `granted`, `refused`, `cleared`, `trunk-red`, `trunk-green`, `mend`, `mended`,

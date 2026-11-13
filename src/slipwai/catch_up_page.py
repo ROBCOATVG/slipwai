@@ -1,6 +1,6 @@
 """What every catch-up page shares, whoever writes it: the section it opens with, and where it goes when done.
 
-Two things write `.slipwai/catch-up.md` — an ordinary migration's notes (`catch_up.py`) and the crossing from
+Two things write `.slipwai/run/catch-up.md` — an ordinary migration's notes (`catch_up.py`) and the crossing from
 version 1 (`migration_crossing.py`) — and `/catch-up` reads it. All three need the same two answers, so they
 live here, below every one of them.
 
@@ -11,7 +11,7 @@ that scrolled off, and a project could be merged with its agent still reading th
 **The archive.** The page is git-ignored, and it used to be thrown away: deleted when the work was done, and
 overwritten by the next migration. That lost the one record of what a crossing asked of this project, the
 answer to "what did the upgrade to 2.0.0.dev2 want of us?" a month later. So a page is never deleted or
-overwritten. It is moved under `.slipwai/catch-up/archive/`, named for the versions it covered and when it was
+overwritten. It is moved under `.slipwai/run/catch-up/archive/`, named for the versions it covered and when it was
 written, which is also git-ignored and stays on the machine.
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ from .assets import NOTES
 #: Where `set_up` is found on the page, so the report and `/catch-up` can point at it by name.
 SET_UP = "First: set the project up"
 #: Where a finished or superseded page is moved, never deleted. Ignored, like the page itself.
-ARCHIVE = ".slipwai/catch-up/archive"
+ARCHIVE = ".slipwai/run/catch-up/archive"
 # The line a page carries naming its own archive path, so whoever archives it later picks the same name.
 STATED = re.compile(r"<!-- archive: (\S+) -->")
 # A page written before pages named themselves: the versions are in its title, in one of the two shapes the

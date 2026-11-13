@@ -114,7 +114,7 @@ def project_root() -> Path:
 ROOT = project_root()
 #: Where this process keeps how far it has read each deck log. A cursor, not a copy: the logs are the truth
 #: and this is only a bookmark, so losing it costs a re-read and never a line.
-CURSORS = ROOT / ".slipwai/harbourmaster.json"
+CURSORS = logs.run_dir(ROOT) / "harbourmaster.json"
 #: The numbers this harbour is held to, and the lever over them. Watched rather than read once: a person
 #: rings the telegraph while the run is going, which is the only time ringing it is any use.
 HARBOUR_CONFIG = ROOT / "harbour.json"
@@ -150,8 +150,8 @@ RUNS_READ = 20
 #: adds next year — is *not a verdict*, and a verdict is the one thing this must not invent.
 GREEN = ("success", "skipped", "neutral")
 RED = ("failure", "timed_out", "startup_failure")
-#: Where a merge is rebased and gated. Under `.slipwai/` so it is ignored by git and swept with the rest.
-SCRATCH = ROOT / ".slipwai/merge"
+#: Where a merge is rebased and gated. Under the run's folder so it is ignored by git and swept with the rest.
+SCRATCH = logs.run_dir(ROOT) / "merge"
 #: The trunk commit the last `land` rebased onto, for the `granted` line it ends in.
 LANDED_ONTO: dict[str, str] = {}
 #: What the branch for a slice is called, which `check-slice-scope` holds every branch to as well. Read
@@ -1059,7 +1059,7 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified", trunk_why: str = 
 
 
 #: Where Try it keeps what it is doing; `try_it.py` writes it and the board reads it.
-TRY_STATE = ROOT / ".slipwai/try-it/state.json"
+TRY_STATE = logs.run_dir(ROOT) / "try-it/state.json"
 
 
 def refresh_try_it(slice_id: str) -> None:
@@ -1136,7 +1136,7 @@ def allocated_already() -> list[str]:
 
 def written_to() -> Path:
     """This machine's own harbour log — the only file this process ever appends to."""
-    return ROOT / logs.harbour_path(logs.machine())
+    return logs.harbour_path(ROOT, logs.machine())
 
 
 def harbour_entries() -> list[logs.Entry]:
@@ -1426,7 +1426,7 @@ def cleared_by_time(already: list[logs.Entry]) -> list[logs.Entry]:
 #: project wants ticked by `make` is listed in `harbour.json` under `checks`.
 CHECK_TARGET = re.compile(r"^check-[a-z0-9-]+$")
 #: Where a `make` check runs: a worktree at trunk, made for the check and removed after it.
-NEEDS = ROOT / ".slipwai/needs"
+NEEDS = logs.run_dir(ROOT) / "needs"
 #: The checks this process has already run, per trunk commit: a failing `make` is not run again until trunk
 #: moves. In memory, because a restart running each once more costs one bounded `make` per need and
 #: nothing written.
@@ -1725,7 +1725,7 @@ def main(argv: list[str]) -> int:
             arrive()
         count = once()
         if count:
-            print(f"harbourmaster: {count} line(s) carried to {logs.harbour_path(logs.machine())}")
+            print(f"harbourmaster: {count} line(s) carried to {logs.harbour_path(ROOT, logs.machine()).relative_to(ROOT).as_posix()}")
         if not parsed.no_fetch:
             # After the pass and not before it: what this machine has to say about this pass is written by
             # `once()`, and pushing first would carry every line but the ones just made.

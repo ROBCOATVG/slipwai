@@ -241,7 +241,7 @@ class BankingTest(unittest.TestCase):
                               capture_output=True, text=True, cwd=self.root)
 
     def spend(self, thousands: int) -> None:
-        path = self.root / logs.deck_path("ordering", "ORD")
+        path = logs.deck_path(self.root, "ordering", "ORD")
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
             handle.write(logs.entry("heartbeat", fairway="ORD", tokens=thousands).line())

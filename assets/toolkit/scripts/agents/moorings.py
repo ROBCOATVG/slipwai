@@ -13,11 +13,12 @@ earlier session made is found and used rather than made twice. A slice whose bra
 out somewhere — a takeover lands it in the project's checkout — is worked where it is.
 
 **The deck log is the one thing a berth must not have its own copy of.** It is ignored by git, so a
-worktree starts without one, and a session in a berth writing `.slipwai/logs/...` would write lines the
+worktree starts without one, and a session in a berth writing `.slipwai/run/logs/...` would write lines the
 captain is not reading — every one of them a gate the captain then says was never passed. The berth's
-`.slipwai/logs` is a link to the project's, and the link is listed in the repository's own
-`info/exclude`, which every worktree shares, because the project's `.gitignore` names the directory with a
-trailing slash and a link is not a directory to git.
+`.slipwai/run/logs` is a link to the project's. Under `.slipwai/run/` git ignores it with the rest; in a
+project not migrated yet the link is listed in the repository's own `info/exclude`, which every worktree
+shares, because that `.gitignore` names the directory with a trailing slash and a link is not a directory
+to git.
 
 **A berth is furnished with what git does not carry, before every run of its slice.** A worktree is the committed tree and nothing
 else, and a session needs three things that are not committed: the projected commands and delegates under
@@ -39,11 +40,15 @@ import shutil
 import subprocess
 import sys
 import time
-import time
 from pathlib import Path
 
-#: What every worktree's `.slipwai/logs` link is excluded as, in the repository's shared `info/exclude`.
-EXCLUDED = "/.slipwai/logs"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
+
+
+def excluded(berth: Path) -> str:
+    """What a worktree's deck-log link is excluded as, in the repository's shared `info/exclude`."""
+    return "/" + logs.logs_dir(berth).relative_to(berth).as_posix()
 
 
 def is_link(path: Path) -> bool:
@@ -89,36 +94,37 @@ def checked_out(root: Path, branch: str) -> Path | None:
 
 def linked(root: Path, berth: Path) -> str:
     """Point the berth's deck logs at the project's, and say why where that could not be done."""
-    logs = berth / ".slipwai/logs"
-    shared = root / ".slipwai/logs"
+    here = logs.logs_dir(berth)
+    shared = logs.logs_dir(root)
     shared.mkdir(parents=True, exist_ok=True)
-    if is_link(logs) or berth.resolve() == root.resolve():
+    if is_link(here) or berth.resolve() == root.resolve():
         return ""
     said = ""
-    if logs.is_dir():
+    if here.is_dir():
         try:
-            logs.rmdir()  # empty, and so nothing anybody wrote
+            here.rmdir()  # empty, and so nothing anybody wrote
         except OSError:
             # Lines a session wrote before the berth was linked: kept, beside the link, rather than left
             # where every later line would land too and the gate would read none of them.
-            aside = logs.with_name(f"logs.unread-{time.strftime('%Y%m%dT%H%M%S')}")
+            aside = here.with_name(f"logs.unread-{time.strftime('%Y%m%dT%H%M%S')}")
             try:
-                logs.rename(aside)
+                here.rename(aside)
             except OSError as fault:
-                return f"{logs} has lines in it and could not be moved aside ({fault}), so the gate will not see them"
-            said = f"{logs} had lines a session wrote before it was linked; they are kept at {aside}"
-    logs.parent.mkdir(parents=True, exist_ok=True)
+                return f"{here} has lines in it and could not be moved aside ({fault}), so the gate will not see them"
+            said = f"{here} had lines a session wrote before it was linked; they are kept at {aside}"
+    here.parent.mkdir(parents=True, exist_ok=True)
     try:
-        link_folder(shared.resolve(), logs)
+        link_folder(shared.resolve(), here)
     except OSError as fault:
-        return f"{logs} could not be linked to the project's deck logs ({fault})"
+        return f"{here} could not be linked to the project's deck logs ({fault})"
     common = git(root, "rev-parse", "--git-common-dir").stdout.strip()
     if common:
         exclude = (root / common).resolve() / "info/exclude"
         held = exclude.read_text(encoding="utf-8") if exclude.is_file() else ""
-        if EXCLUDED not in held.splitlines():
+        line = excluded(berth)
+        if line not in held.splitlines():
             exclude.parent.mkdir(parents=True, exist_ok=True)
-            joined = held + ("" if held.endswith("\n") or not held else "\n") + EXCLUDED + "\n"
+            joined = held + ("" if held.endswith("\n") or not held else "\n") + line + "\n"
             exclude.write_text(joined, encoding="utf-8")
     return said
 
@@ -219,11 +225,11 @@ def leave(root: Path, berth: Path) -> str:
     """Remove a merged slice's worktree, or say why it was kept. Never the project's own checkout."""
     if berth.resolve() == root.resolve():
         return ""
-    logs = berth / ".slipwai/logs"
-    if os.name == "nt" and is_link(logs):  # pragma: no cover - the other platform's branch
+    here = logs.logs_dir(berth)
+    if os.name == "nt" and is_link(here):  # pragma: no cover - the other platform's branch
         # Git reads the junction as a folder of the worktree's own and keeps the berth; `rmdir` takes the
         # junction alone, and the deck logs it joins are not touched.
-        os.rmdir(logs)
+        os.rmdir(here)
     gone = git(root, "worktree", "remove", str(berth))
     if gone.returncode != 0:
         said = (gone.stderr or gone.stdout).strip().splitlines()

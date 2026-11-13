@@ -98,7 +98,7 @@ run `python3 scripts/check-migration.py --confirm`. Never confirm on the person'
 
 ## Review the intake proposal
 
-`.slipwai/intake-cleanup.json` lists documents the migration found. `docs/prd.md` and every existing
+`.slipwai/run/intake-cleanup.json` lists documents the migration found. `docs/prd.md` and every existing
 specification are `keep` and stay where they are. A row whose action is `intake` is a proposal, not a
 move. Read each one with the person. Set `confirmed` to true only on the rows they accept, and leave
 `ask` rows for them to classify. Then run `python3 scripts/apply-intake.py`. A destination that already

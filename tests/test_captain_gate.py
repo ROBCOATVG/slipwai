@@ -353,7 +353,7 @@ class IdleFairwayTest(Fixture):
             "PAY-01": {"fairway": "PAY"}, "PAY-02": {"fairway": "PAY"},
             "PAY-03": {"fairway": "PAY"}, "PAY-04": {"fairway": "PAY"},
         }}), encoding="utf-8")
-        path = self.root / logs.deck_path("payments", "PAY")
+        path = logs.deck_path(self.root, "payments", "PAY")
         path.parent.mkdir(parents=True)
         path.write_text(logs.entry("claimed", fairway="PAY", slice="PAY-01").line()
                         + logs.entry("merged", fairway="PAY", slice="PAY-01", commit="def").line(), encoding="utf-8")
@@ -362,7 +362,7 @@ class IdleFairwayTest(Fixture):
                          {"ordering": ("idle", 3), "payments": ("idle", 3)})
 
     def test_a_query_refusal_preserves_the_actual_log_fault_and_repair(self) -> None:
-        path = self.root / logs.deck_path("ordering", "ORD")
+        path = logs.deck_path(self.root, "ordering", "ORD")
         with path.open("a", encoding="utf-8") as handle:
             handle.write('{"v": 99, "kind": "mark-set"}\n')
         board = self.board()

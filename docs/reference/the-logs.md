@@ -8,22 +8,40 @@ log can have a conflict.
 
 | | Deck log | Harbour log |
 |---|---|---|
-| Path | `.slipwai/logs/<feature>/<fairway>.jsonl` | `.slipwai/logs/harbour/<machine>.jsonl` |
+| Path | `.slipwai/run/logs/<feature>/<fairway>.jsonl` | `.slipwai/run/logs/harbour/<machine>.jsonl` |
 | One per | Fairway | Machine |
 | Written by | That fairway's captain, and nothing else | That machine's harbourmaster, and nothing else |
 | Read by | Everybody | Everybody |
 | Synced through | `refs/slipwai/logs/<fairway>` | `refs/slipwai/logs/harbour/<machine>` |
 
-Neither log is committed. `.gitignore` lists `.slipwai/logs/`, because heartbeat and token lines arrive
+Neither log is committed. `.gitignore` lists `.slipwai/run/`, because heartbeat and token lines arrive
 every few seconds and do not belong in trunk's history. The harbourmaster pushes and fetches the logs
 through their own refs. So a captain on another machine reads the same lines without a commit on `main`.
+
+## Where the run's state lives
+
+Since 2.1 everything a run writes about itself is under `.slipwai/run/`: the logs, `running/` and its pid
+files, `berths/`, the ACP, console and stage sessions, `activity/`, `try-it/`, `walks/`, `catch-up/` and the
+catch-up page, `run-state.json`, `harbourmaster.json`, `preflight.json`, the merge and mend scratch
+worktrees, and the drawing's pid files. The ignore file has one line for all of it. What stays at
+`.slipwai/` is committed: `dispatch/`, `extensions.json`, `hooks.json`, `guards.json`, `quickstart.json`,
+`packages/`, `migration.json` and `shape-transitions/`.
+
+A project made before 2.1 keeps its state at `.slipwai/<name>` until it migrates. Code reads the layout from
+`.gitignore`: when the file has the line `.slipwai/run/`, the state is under the new folder; otherwise the
+old places are still read and written. `slipwai migrate` moves the state in and rewrites the ignore lines.
+It refuses while a fleet is running, because a log moved under a process still appending to it loses lines.
+Stop the fleet first with `python3 scripts/agents/fleet.py stop`.
+
+A log ref carries its file at the path the logs had before 2.1, `.slipwai/logs/...`, whatever this
+machine's layout is. A machine not migrated yet then still lands every line where it reads them. A
+migrated machine lands either spelling into `.slipwai/run/logs/`.
 
 A push that is not an append is refused. If a local log does not continue what the ref holds, its push would
 drop every line that the ref has, and nobody could tell.
 
-A project that was written before there were three writers has one `.slipwai/logs/harbour.jsonl`. The fold
-still reads that file with the rest, and nothing moves it. A migration that moves somebody's log can lose a
-line, and these lines are the only record.
+A project that was written before there were three writers has one `.slipwai/run/logs/harbour.jsonl`. The fold
+still reads that file with the rest, and nothing rewrites it: these lines are the only record.
 
 ---
 

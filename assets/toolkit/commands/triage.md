@@ -20,7 +20,7 @@ record numbers, comma-separated:
 1. Read each record. Then read what it is about: the feature's `spec.md`, the slice's directory under
    `specs/<feature>/slices/<slice>/` (its example map and `try-it.json` where they exist), `chart.yaml`,
    `story-split.md`, `docs/design.md`, and the names under `docs/intake/`. Read the deck logs under
-   `.slipwai/logs/` for which slices are claimed and not merged: those are *in flight*. Where the record
+   `.slipwai/run/logs/` for which slices are claimed and not merged: those are *in flight*. Where the record
    names no slice, find the one it is about from the page and the words; leave `slice` out only when none is.
 2. **One thing per record.** A message that says two things becomes two records: keep the first in this
    file, and write each other one as the next free number, with the same context lines, `split-from: NNNN`,

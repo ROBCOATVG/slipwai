@@ -21,9 +21,10 @@ sys.path.insert(0, str(HERE))
 import harness  # noqa: E402
 
 ROOT = harness.ROOT
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
 SPECS = ROOT / "specs"
 MODEL = ROOT / "docs/event-model/model.yaml"
-PID = ROOT / ".slipwai" / "model-next.pid"
+PID = logs.run_dir(ROOT) / "model-next.pid"
 #: The streams and contexts are named here, and the chart is only rendered from them afterwards — so this is
 #: where the feature's shape is decided, by a session with nobody to ask. It was once told only to write the
 #: model, named one stream from the spec's noun ("one record per leaver"), ran no seam test, and the chart

@@ -337,7 +337,7 @@ class MergeTest(Fixture):
 class LogTest(Fixture):
     def test_a_deck_log_it_cannot_read_stops_it_rather_than_being_carried_past(self) -> None:
         """The log is the state. Carrying on past a line nobody can read is answering wrongly."""
-        path = self.root / logs.deck_path("ordering", "ORD")
+        path = logs.deck_path(self.root, "ordering", "ORD")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("not json\n", encoding="utf-8")
         done = self.captain("ORD", self.sail(WORKS))

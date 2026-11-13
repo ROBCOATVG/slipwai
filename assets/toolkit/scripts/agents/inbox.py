@@ -38,7 +38,9 @@ def project_root(script: Path) -> Path:
 
 
 ROOT = project_root(Path(__file__).resolve())
-LOGS = ROOT / ".slipwai/logs"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
+LOGS = logs.logs_dir(ROOT)
 #: Where each machine's harbourmaster writes its own log. One per machine since 11.3, so this is a
 #: directory of files rather than one file, and it is not a feature's.
 HARBOUR_LOGS = LOGS / "harbour"

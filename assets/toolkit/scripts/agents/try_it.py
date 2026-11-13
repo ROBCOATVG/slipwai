@@ -27,7 +27,7 @@ change what ships.
 is a story of API calls, made as the user it names. They go through the front door, so a record seeded here
 is one the app would have accepted from a person.
 
-State is `.slipwai/try-it/state.json`, which the board reads; the processes are detached and outlive both
+State is `.slipwai/run/try-it/state.json`, which the board reads; the processes are detached and outlive both
 the board and this command, the way the captains do.
 """
 from __future__ import annotations
@@ -57,7 +57,9 @@ def project_root(script: Path) -> Path:
 
 
 ROOT = project_root(Path(__file__).resolve())
-HOME = ROOT / ".slipwai/try-it"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
+HOME = logs.run_dir(ROOT) / "try-it"
 STATE = HOME / "state.json"
 #: Flags a person turned off on the panel. Kept apart from the state, which a fresh start rewrites.
 FLAGS = HOME / "flags.json"
@@ -127,7 +129,7 @@ def walks() -> Path:
     worktree the hand walked from."""
     common = git("rev-parse", "--path-format=absolute", "--git-common-dir")
     main = Path(common).parent if common else ROOT
-    return main / ".slipwai/walks"
+    return logs.run_dir(main) / "walks"
 
 
 def workspace() -> Path:
@@ -422,7 +424,7 @@ def status() -> dict:
     if state.get("state") == "ready":
         gone = [name for name, pid in (state.get("pids") or {}).items() if not alive(int(pid))]
         if gone:
-            state.update(state="failed", error=f"{', '.join(gone)} stopped. Its log is in .slipwai/try-it/.")
+            state.update(state="failed", error=f"{', '.join(gone)} stopped. Its log is in .slipwai/run/try-it/.")
     if state.get("state") == "starting" and not alive(int(state.get("runner", 0) or 0)):
         state.update(state="failed", error=f"stopped while {state.get('step', 'starting')}")
     commit = state.get("commit", "")
@@ -1101,11 +1103,6 @@ def write_seeded(name: str, records: int, given: int, api: str) -> str:
     exiting 0 with the gate unmet.
     """
     feature, slice_id = name.split("/", 1)
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    try:
-        import logs  # type: ignore[import-not-found]  # noqa: PLC0415
-    except ImportError:
-        return f"no `seeded` line for {slice_id}: scripts/agents/logs.py is not beside this script"
     fairway = fairway_of(feature, slice_id)
     if not fairway:
         return (f"no `seeded` line for {slice_id}: nothing says which fairway it is in — set SLIPWAI_FAIRWAY or "
@@ -1116,7 +1113,7 @@ def write_seeded(name: str, records: int, given: int, api: str) -> str:
         extra["given"] = given
     line = logs.entry("seeded", fairway=fairway, slice=slice_id, records=records, commit=commit,
                       story=f"specs/{feature}/slices/{slice_id}/try-it.json", **extra)
-    path = ROOT / logs.deck_path(feature, fairway)
+    path = logs.deck_path(ROOT, feature, fairway)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(line.line())

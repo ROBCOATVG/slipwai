@@ -33,6 +33,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import harness  # noqa: E402
+import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
 
 VARIABLE = "SLIPWAI_ACP"
 ON = ("1", "true", "yes", "on")
@@ -109,7 +110,7 @@ class Drive:
         import acp  # noqa: PLC0415 — carried beside this; imported here so a project without it fails at the drive, not the captain
         self.cwd, self.words, self.model = Path(cwd), prompt, model
         self.session = acp.Session(argv, self.cwd, self.update, acp.policy(self.cwd, self.refuse), self.decline,
-                                   env=env, kept=Path(kept) if kept is not None else self.cwd / ".slipwai" / "acp")
+                                   env=env, kept=Path(kept) if kept is not None else logs.run_dir(self.cwd) / "acp")
         self.held = ""  # the message chunk not yet ended by a newline
         self.text = ""  # everything the agent said this turn, for a refusal's words
         self.code: int | None = None

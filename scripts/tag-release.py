@@ -89,6 +89,12 @@ def findings(found: list, release: str | None, releasing: bool) -> list[str]:
         if not body.strip():
             said.append(f"{path.name} says nothing under its level. The entry is what a person reads after "
                         f"upgrading; an empty one tells them a number and no more")
+        elif "**Catch-up:**" not in body:
+            # Read by every migration's catch-up page as what this change asks of a project that already
+            # exists. Without it the page says "its author wrote no catch-up paragraph", which tells the reader
+            # the cost is unknown; six fragments of the 2.1 entry said so. "nothing" is an answer, silence not.
+            said.append(f"{path.name} has no **Catch-up:** line. Say what an existing project has to do to get "
+                        f"this change, or `**Catch-up:** nothing; <why>` where it is nothing")
     if found and release is None:
         said.append("no fragment claims a level, so there is no number these changes imply")
     return said

@@ -616,7 +616,7 @@ class RungTest(unittest.TestCase):
         asked = [logs.entry("request", fairway="F", slice="S01", id="S01-merge", what="merge", detail="merge it"),
                  logs.entry("heartbeat", fairway="F", slice="S01")]
         found = rung(self.root, "001-demo", "S01", asked)
-        self.assertEqual(found["chip"], "Merging")
+        self.assertEqual((found["chip"], found["rank"]), ("Merge requested", "8"))
         self.assertTrue(found["last"].endswith(" request"), "a heartbeat is not what the slice last did")
 
     def test_the_stage_its_berth_has_open_names_the_chip(self) -> None:

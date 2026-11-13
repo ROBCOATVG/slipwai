@@ -30,6 +30,9 @@ Those checks belong immediately before the first implementation push, which happ
 The task, its contract and the files you may read and write are in the brief; nothing else in the
 repository is yours to edit, including `tasks.md` — report which task you finished and the session that
 delegated you ticks the checkbox, because concurrent siblings would otherwise all write that one file.
+**Name the task in the commit that does it**: the subject opens with the slice's id and the task's, as in
+`GN2 T004: one game night per game per club night`. The board counts a task done from that commit, the minute
+it lands, and a subject that names a rule or nothing leaves the slice reading `0/18` until the batch is ticked.
 
 **Ask the index before you touch a shared symbol.** Where this project has adopted a code index, its block in
 `AGENTS.md` names the routes that answer *what calls this* and *what does a change here reach*. Ask one of them,

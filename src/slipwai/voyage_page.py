@@ -519,7 +519,8 @@ def facts_html(row: dict[str, str]) -> str:
     when, _, said = row.get("commit", "").partition(" ")
     facts = (("Stream", row.get("fairway", "")), ("Stage", row.get("chip", "")),
              ("Clearance", row.get("clearance", "")), ("On its branch", row.get("artifacts", "").replace(",", ", ")),
-             ("Last line", row.get("last", "")), ("Last commit", f"{when[:16]} {said}".strip() if said else ""),
+             ("Merge refused", row.get("refused", "")), ("Last line", row.get("last", "")),
+             ("Last commit", f"{when[:16]} {said}".strip() if said else ""),
              ("Why", "" if row["state"] == "waiting" else row.get("why", "")))
     lines = "".join(f"<dt>{esc(label)}</dt><dd>{esc(value)}</dd>" for label, value in facts if value)
     return f'<dl class="facts">{lines}</dl>' if lines else ""

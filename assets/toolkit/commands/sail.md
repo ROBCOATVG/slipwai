@@ -154,6 +154,9 @@ from a green, committed suite, and two of them at once is the batched-tests anti
 The siblings are `sail-implement-shipwright` delegates, and that type is where the rule they cannot infer for
 themselves already lives: **no concurrent delegate writes `tasks.md`**. It is the one file every sibling would
 otherwise contend for, so each reports which task it finished and this session ticks the checkbox.
+**Tick each task when its delegate reports it, and commit the tick then**, not once for the batch: a list
+ticked `0` to `13` in one commit is thirteen tasks the board could not show being done. Each delegate's own
+commit opens with the slice's id and its task's (`GN2 T004: …`), which the board counts as it lands.
 
 When several delegates form one batch, report once when the batch completes rather than once per delegate.
 Verify their claims by spot-checking the recorded reproduction or RED evidence; do not repeat each complete

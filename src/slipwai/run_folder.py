@@ -72,9 +72,9 @@ def stays(name: str, is_dir: bool) -> bool:
 def dirt(porcelain: str) -> list[str]:
     """The lines of `git status --porcelain` that are a person's own changes, leaving out untracked run state.
 
-    A 2.0 project carries untracked `.slipwai/console/`, `.slipwai/stages/` and the pid files the old ignore
-    list missed, and `migrate` refused it as uncommitted — over the very files `move_in` exists to carry into
-    `.slipwai/run/`. game-club-manager's had to be moved aside by hand. Untracked state under `.slipwai/` is
+    A 2.0 project carries an untracked `console/`, `stages/` and pid files beside its record, which the old
+    ignore list missed, and `migrate` refused it as uncommitted — over the very files `move_in` exists to
+    carry into `.slipwai/run/`. game-club-manager's had to be moved aside by hand. Untracked state under `.slipwai/` is
     the run's, never a change to merge over, so it does not make a tree dirty here."""
     kept = []
     for line in porcelain.splitlines():

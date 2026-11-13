@@ -201,6 +201,9 @@ class StagingTest(unittest.TestCase):
         self.root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.root, True)
         self.git("init", "--quiet", "--initial-branch=main")
+        # The repository's own identity: `refresh` commits with plain `git`, and a CI runner has none of its own.
+        self.git("config", "user.name", "t")
+        self.git("config", "user.email", "t@local")
         (self.root / ".gitignore").write_text(".slipwai/run/\n", encoding="utf-8")
         self.git("add", "-A")
         self.git("commit", "--quiet", "-m", "start")

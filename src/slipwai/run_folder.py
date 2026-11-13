@@ -69,22 +69,39 @@ def stays(name: str, is_dir: bool) -> bool:
     return name == "run" or (f"{name}/" if is_dir else name) in COMMITTED
 
 
+def run_state(path: str) -> bool:
+    """Whether a project-relative path is the run's state left at the old place under `.slipwai/`, and never
+    the record `COMMITTED` names nor the run folder itself."""
+    if not path.startswith(f"{OLD}/"):
+        return False
+    top, _, rest = path.removeprefix(f"{OLD}/").partition("/")
+    return not stays(top, bool(rest) or path.endswith("/"))
+
+
 def dirt(porcelain: str) -> list[str]:
     """The lines of `git status --porcelain` that are a person's own changes, leaving out untracked run state.
 
     A 2.0 project carries an untracked `console/`, `stages/` and pid files beside its record, which the old
     ignore list missed, and `migrate` refused it as uncommitted — over the very files `move_in` exists to
-    carry into `.slipwai/run/`. game-club-manager's had to be moved aside by hand. Untracked state under `.slipwai/` is
-    the run's, never a change to merge over, so it does not make a tree dirty here."""
-    kept = []
-    for line in porcelain.splitlines():
-        path = line[3:].strip().strip('"')
-        top, _, rest = path.removeprefix(f"{OLD}/").partition("/")
-        run_state = line.startswith("?? ") and path.startswith(f"{OLD}/") and not stays(top, bool(rest) or
-                                                                                         path.endswith("/"))
-        if line.strip() and not run_state:
-            kept.append(line)
-    return kept
+    carry into `.slipwai/run/`. game-club-manager's had to be moved aside by hand. Untracked state under
+    `.slipwai/` is the run's, never a change to merge over, so it does not make a tree dirty here."""
+    return [line for line in porcelain.splitlines()
+            if line.strip() and not (line.startswith("?? ") and run_state(line[3:].strip().strip('"')))]
+
+
+def unstage_run_state(root: Path) -> list[str]:
+    """Take back out of the index every file just added under `.slipwai/` that is the run's state.
+
+    `refresh` stages the tree with `git add -A` to commit what the projectors wrote. Run state `move_in` left
+    at the old place — a file already at the new one, never written over — is untracked and, once the ignore
+    file names only `.slipwai/run/`, no longer ignored, so it went into the commit as though a projector had
+    written it: game-club-manager's projections commit held six activity logs and nothing else."""
+    added = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=A"], cwd=root, text=True,
+                           capture_output=True, check=False).stdout.splitlines()
+    taken = [path for path in added if run_state(path)]
+    if taken:
+        subprocess.run(["git", "reset", "--quiet", "--", *taken], cwd=root, check=False, capture_output=True)
+    return taken
 
 
 def tracked(root: Path, relative: str) -> bool:

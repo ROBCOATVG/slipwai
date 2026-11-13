@@ -18,7 +18,8 @@ copies exists on the keel's side of the merge. Re-derive them here, extension fi
 receive its current block. The committed `.slipwai/extensions.json` records the election; a legacy project
 with no record is inferred once from markers. Setup and the interactive menu never run during migration.
 """
-# budget: 395 — a clean merge also leaves the intake proposal beside the catch-up notes, moves the run's state into
+# budget: 405 — the ignore rewrite staged where it is made, and run state kept out of the projections
+# commit (2.1); a clean merge also leaves the intake proposal beside the catch-up notes, moves the run's state into
 # `.slipwai/run/` (refusing while a fleet is out), and moves the records
 # a newer keel keeps elsewhere (`relocate`) in the commit after it.
 from __future__ import annotations
@@ -38,7 +39,7 @@ from .manifest import read_manifest, refuse_older
 from .migration_result import Migration
 from .relocate import relocate
 from .replay import Replay, git, replay
-from .run_folder import dirt, move_in, refuse_while_out
+from .run_folder import dirt, move_in, refuse_while_out, unstage_run_state
 from .scaffold import NO_MAINTENANCE
 from .shell_environment import python3
 from .unlabel import Refresh, read_page, unlabel
@@ -93,7 +94,11 @@ def migrate(root: Path, *, with_claims: bool = False) -> Migration:
     # Moved either way, so the toolkit the merge brought finds the run's state; the ignore file is left alone
     # where it is one of the conflicts, since it is the person's to resolve. Before the notes, which archive
     # a page an earlier migration left at the old place.
-    move_in(root, ignore=".gitignore" not in conflicts)
+    _, _, reignored = move_in(root, ignore=".gitignore" not in conflicts)
+    if reignored:
+        # Staged now, so the resolving commit carries it: left in the tree, it was a change of this command's
+        # that its own second pass then refused as uncommitted (game-club-manager, 2.1.0.dev53).
+        git(root, "add", "--", ".gitignore")
     # Written either way, and before the projections: the notes are what the *versions* asked for, which a
     # conflict does not change, and a merge left in progress is exactly when somebody wants to know what
     # they are resolving towards.
@@ -105,7 +110,8 @@ def migrate(root: Path, *, with_claims: bool = False) -> Migration:
         return Migration(offered, was, conflicts, stat, fast_forward, unwritten=unwritten)
     from .project.intake_cleanup import write_proposal
     write_proposal(root)
-    return Migration(offered, was, conflicts, stat, fast_forward, refresh(root, name, layout_of(document)), unwritten)
+    return Migration(offered, was, conflicts, stat, fast_forward,
+                     refresh(root, name, layout_of(document), reignored=reignored), unwritten)
 
 
 def merge_offered(root: Path, offered: Replay, message: str) -> tuple[str | None, tuple[str, ...], bool]:
@@ -155,7 +161,8 @@ def write_notes(
     return None
 
 
-def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool = False) -> Refresh:
+def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool = False,
+            reignored: bool = False) -> Refresh:
     """Re-derive factory-owned extension and agent projections after a clean merge.
 
     Its own commit, and never an amend of the one before it. On a fast-forward the merge *is* the keel's
@@ -171,7 +178,9 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
     """
     # The run's own state into `.slipwai/run/`, first: untracked, so it must be out of the way before
     # anything below stages the tree, and the ignore file that says so is staged for the commit below.
-    _, stuck, reignored = move_in(root)
+    # `reignored` where the merge's own pass rewrote and staged the ignore file already, so this commits it.
+    _, stuck, again = move_in(root)
+    reignored = reignored or again
     if reignored:
         git(root, "add", "--", ".gitignore")
     # Records the project wrote that this keel keeps elsewhere: staged by `git mv`, committed below with the rest.
@@ -217,6 +226,7 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
         # not have committed as though a projector had.
         git(root, "add", "-A")
         git(root, "reset", "--quiet", "--", NOTES)
+        unstage_run_state(root)  # what `move_in` left at the old place is the run's, never a projection
     elif respelled:
         git(root, "add", "--", *respelled)
     elif not relocated and not reignored:

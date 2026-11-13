@@ -193,5 +193,45 @@ class DirtTest(unittest.TestCase):
         self.assertEqual(len(run_folder.dirt(said)), 3)
 
 
+
+class StagingTest(unittest.TestCase):
+    """What `migrate` commits: its own ignore rewrite, and never the run's state left at the old place."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.git("init", "--quiet", "--initial-branch=main")
+        # The repository's own identity: `refresh` commits with plain `git`, and a CI runner has none of its own.
+        self.git("config", "user.name", "t")
+        self.git("config", "user.email", "t@local")
+        (self.root / ".gitignore").write_text(".slipwai/run/\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "--quiet", "-m", "start")
+
+    def git(self, *argv: str) -> str:
+        return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@local", *argv], cwd=self.root,
+                              text=True, capture_output=True, check=False).stdout
+
+    def test_run_state_left_at_the_old_place_is_taken_back_out_of_the_index(self) -> None:
+        """game-club-manager's projections commit held six activity logs `move_in` had rightly left alone."""
+        (self.root / ".slipwai/activity/library").mkdir(parents=True)
+        (self.root / ".slipwai/activity/library/LB1.jsonl").write_text("{}\n", encoding="utf-8")
+        (self.root / ".slipwai/hooks.json").write_text("{}\n", encoding="utf-8")
+        (self.root / "projected.md").write_text("a projection\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.assertEqual(run_folder.unstage_run_state(self.root), [".slipwai/activity/library/LB1.jsonl"])
+        staged = self.git("diff", "--cached", "--name-only").split()
+        self.assertEqual(sorted(staged), [".slipwai/hooks.json", "projected.md"])
+
+    def test_an_ignore_rewrite_staged_by_the_merge_is_committed_with_nothing_to_project(self) -> None:
+        """With no projector to run, `refresh` returned early and left the rewrite in the tree, and the next
+        `migrate` refused it as uncommitted."""
+        (self.root / ".gitignore").write_text(".slipwai/run/\n# rewritten\n", encoding="utf-8")
+        self.git("add", "--", ".gitignore")
+        done = migrate.refresh(self.root, "demo", reignored=True)
+        self.assertEqual(self.git("status", "--porcelain").strip(), "", done)
+        self.assertIn("rewritten", self.git("show", "HEAD:.gitignore"))
+
+
 if __name__ == "__main__":
     unittest.main()

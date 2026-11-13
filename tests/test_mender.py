@@ -14,7 +14,6 @@ import json
 import os
 import sys
 import unittest
-from pathlib import Path
 from typing import Any, ClassVar
 
 import checkout_packages  # noqa: F401
@@ -58,14 +57,9 @@ class MenderFixture(TrunkFixture):
 
     @staticmethod
     def mender_alive(pid: int) -> bool:
-        try:
-            os.kill(pid, 0)
-        except (ProcessLookupError, PermissionError):
-            return False
-        try:
-            return Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").rsplit(")", 1)[1].split()[0] != "Z"
-        except (OSError, IndexError):
-            return True
+        """The mender's own question, which asks Windows through the process handle: `os.kill(pid, 0)`
+        there is `TerminateProcess`, and the suite's first Windows run failed on it."""
+        return bool(WorkflowRuleTest.load().alive(pid))
 
     def settle(self) -> None:
         """Let the fake mender finish, then one pass to hold its branch to the rules and land it.
@@ -174,13 +168,18 @@ class WorkflowRuleTest(unittest.TestCase):
 
     mender: ClassVar[Any]
 
-    @classmethod
-    def setUpClass(cls) -> None:
+    @staticmethod
+    def load() -> Any:
         sys.path.insert(0, str(AGENTS))
         spec = importlib.util.spec_from_file_location("mender_rule", AGENTS / "mender.py")
         assert spec is not None and spec.loader is not None
-        cls.mender = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cls.mender)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.mender = cls.load()
 
     def refused(self, *lines: str) -> str:
         return self.mender.workflow_refusal("\n".join(lines), ".github/workflows/x.yml")

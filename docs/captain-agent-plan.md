@@ -66,8 +66,13 @@ layout and wording, not for code: `Board.dc.html` on the owner's design canvas.
     under *When you have time*; one its captain paused is not.
 12. **What an agent asks mid-turn.** A permission inside its berth is allowed. One outside it goes to the
     slice's captain, which allows what the rules allow and refuses the rest, saying why; nothing here waits
-    on a person. An operational question the captain answers. A product question follows the project's
-    *Who answers* settings. **A fleet cast off under `/cruise` — which is what the board's Cast off is —
+    on a person. *Amended 2026-11-16, with the owner:* a question is **declined as it was before this build**
+    and goes down the deck log's `question` path — the skipper under `/cruise`, a person otherwise — whatever
+    kind it is, since no program can tell an operational question from a product one by its words. A project
+    may turn the captain's answering on (`captain.answers: true`): then every answer the captain gives, and
+    every refusal with words in it, is written as a `decision` by the captain for a person to review, and
+    under `/cruise`, where the ceiling on unreviewed decisions forces nothing, nothing else bounds what it
+    says. A product question follows the project's *Who answers* settings. **A fleet cast off under `/cruise` — which is what the board's Cast off is —
     answers every one itself by default**: the stage's recommendation or the skipper (or the skipper every
     time), and nothing blocks or is listed as waiting. A person is asked only where a person is at the
     wheel: under `/sail`, in a project with no cruise settings, or for a stop the settings set to *park and
@@ -92,9 +97,16 @@ layout and wording, not for code: `Board.dc.html` on the owner's design canvas.
     goes; what to do about a stuck slice (nudge, interrupt, park, tell the person).
 17. **The fallback is today's rule.** Where the agent is silent past its bound (60 seconds to start with),
     asks for something not allowed, or cannot be run, the program applies the fixed rule for that one
-    decision, says so on the board, and tries the agent again at the next event.
-18. **Without the protocol** the same brief is run once per event, headless, handed the stream's state and
-    the event. The state is the log, never the agent's memory.
+    decision, says so on the board, and tries the agent again at the next event. The captain program's own
+    loop never waits on it: an event is put, the loop carries on, and the order or the rule is carried out
+    when it comes.
+18. **Only over the protocol.** *Amended 2026-11-16, with the owner:* a stream has a captain agent only where
+    its session is held over the Agent Client Protocol, whose policy confines it to reading and running the
+    project's own `orders.py`. A captain run headless, with a shell of its own, cannot be confined and what
+    it changes cannot be told from the fleet's own work, so there is none: where the harness has no proven
+    launch over the protocol, the stream runs on the program alone, as before, and says so once — "no captain
+    agent: this harness has no proven protocol launch" — on its output and in `events/<fairway>/captain.json`
+    for the board's reader. Each wake-up hands the agent the stream's state from the log, never its memory.
 19. **The skipper stays as it is.** The captain does not answer product questions.
 20. **Both routes.** A slice's own box goes straight to that slice. The stream's box goes to its captain.
 
@@ -148,7 +160,7 @@ An **event** is what wakes it: `events/<fairway>/<id>.json` with `{"v":1,"id","t
 accept for it; `default` is the orders the fixed rule would give, in the order shape below. An event is closed
 by its orders' results or by the fallback, recorded as `events/<fairway>/<id>.closed.json` (`by`:
 `captain`|`rule`, `why`, `orders`: the order ids read for it, `cost`: `{"seconds", "ready_seconds", "ended":
-"finished"|"bound"|"unavailable"|"changed", "via": "protocol"|"headless"|"named"|"none", "tokens": null}`). Beside the
+"finished"|"bound"|"unavailable", "via": "protocol"|"none", "tokens": null}`). Beside the
 events, `events/<fairway>/state.json` is the stream as its log says it at the moment of the event (`in_flight`,
 `unmerged`, `merged`, `parked`, `stream_parked`, `attempts`, `trunk_red`, `recent`: the newest forty deck
 lines without `fairway`), rewritten at every event.
@@ -186,22 +198,26 @@ six, by verb (every value a string unless said):
 | `trunk-red` | null | `commit`, `job`, `t` |
 
 **Bounds.** `captain.bound` (default 60 seconds) runs from when the captain's session is ready to take the
-event — over the protocol, once its turn has begun — and `captain.headless_bound` (default 180) from launch,
-where a headless session cannot say when it is ready. Each closing record carries what the decision took.
+event — once its turn has begun — and a session not ready within it has the event closed by the rule. Each
+closing record carries what the decision took. A slice has at most `2 × attempts + 1` runs that cost an
+attempt between a person's words to it, counted at the dispatch from its `dispatched` deck lines, whoever
+asks for them.
 
-**The evals' entry point.** `python3 scripts/agents/captain_agent.py decide <event> [--bound N]`, run in the
-project: wakes the captain this project would run, once, with that event and the `state.json` beside it (one
-is written if absent), lets it write orders under `.slipwai/run/orders/<fairway>/`, ends it at the bound, and
-prints `{"exit", "timed_out", "tokens", "seconds", "orders"}`. It fits `command_captain` as it stands. A
-headless session started some other way with `SLIPWAI_EVAL=1` and no key may still use `orders.py`: its orders
-are written unsigned, for the eval to read; the program never acts on one.
+**The evals' entry point.** `python3 scripts/agents/captain_agent.py decide <event> [--bound N]` runs the
+captain under test named in `SLIPWAI_CAPTAIN` once with the event's path, in a throwaway project the evals laid
+out, and prints `{"exit", "timed_out", "tokens", "seconds", "orders"}`. It is not how a fleet runs a captain:
+it refuses unless `SLIPWAI_EVAL=1` and the project carries the evals' marker, `.slipwai-eval`. A session there
+with no key may still use `orders.py`: its orders are written unsigned, for the eval to read; the program
+never acts on one.
 
 ### 2.3 Settings
-`harbour.json`: `captain: {"agent": true, "bound": 60, "headless_bound": 180}` (a new project's; `"answers": false`
-keeps it from answering a slice's mid-turn question; `"per_hour"`, 30 by default, is the most it is woken in an
-hour; `events/<fairway>/agent-off.json` turns it off for a stream until a person removes it; absent is the
-program alone, and `SLIPWAI_CAPTAIN` in the environment says first: `off`, `1` for the project's own harness,
-or a command to run as the captain).
+`harbour.json`: `captain: {"agent": true, "bound": 60, "answers": false}` (a new project's; the agent runs only
+where its session can be held over the protocol, and otherwise the stream runs on the program alone; `"answers":
+true` lets it answer a slice's mid-turn question, every answer a recorded decision, which the program cannot
+hold to operational questions and which under `/cruise` nothing bounds; `"per_hour"`, 30 by default, is the
+most it is woken in an hour; absent is the program alone, and `SLIPWAI_CAPTAIN` in the environment says first:
+`off`, `1` for the project's own harness's launch over the protocol, or a command that starts an agent
+speaking it).
 `.specify/cruise.json`: `sessions` defaults to
 `protocol` where the harness's registry row has a launch; `demos` is `hand` (default) or `person`.
 

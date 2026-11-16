@@ -36,8 +36,6 @@ def loaded(root: Path, name: str) -> Any:
 
 
 class Turn:
-    deferred = False
-
     def __init__(self, done: bool, kind: str = "named") -> None:
         self.done, self.kind, self.began, self.ended = done, kind, time.monotonic(), False
 
@@ -85,12 +83,6 @@ class Stream:
         self.at_merge: set[str] = set()
         self.home = root or Path(tempfile.mkdtemp())
         self.answers: list[tuple[str, str, str]] = []
-
-    def root(self) -> Path:
-        return self.home
-
-    def checkout_busy(self) -> bool:
-        return False
 
     def decided(self, slice_id: str, question: str, answer: str) -> str:
         self.answers.append((slice_id, question, answer))
@@ -278,6 +270,7 @@ class HelmTest(HelmBase):
 
     def test_every_answer_the_captain_gives_is_a_decision_for_a_person_to_review(self) -> None:
         helm = self.helm(lambda held, env: self.order(held, env, "allow", ask="ask-2", why="5433"))
+        helm.settings = {"answers": True}  # a project that turned the captain's answering on
         ask = {"id": "ask-2", "what": "question", "text": "Which port is the test database on?", "slice": "ORD-01"}
         answer = helm.ruling(ask, {"verb": "refuse", "ask": "ask-2", "why": "declined"})
         self.assertEqual((answer["action"], answer["by"]), ("accept", "captain"))

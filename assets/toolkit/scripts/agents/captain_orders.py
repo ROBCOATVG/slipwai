@@ -51,22 +51,15 @@ class Stream(Protocol):
 
     def state(self) -> dict[str, Any]: ...
 
-    def root(self) -> Path: ...
-
-    def checkout_busy(self) -> bool: ...
-
     def decided(self, slice_id: str, question: str, answer: str) -> str: ...
 
 
 @dataclass
 class Taken:
-    """What one event's orders came to: every file read, those that verified, those waiting to be done, and
-    whether one gave the key away."""
+    """What one event's orders came to: every file read, how many verified, and whether one gave the key away."""
 
     seen: list[str] = field(default_factory=list)
     counted: int = 0
-    pending: list[Path] = field(default_factory=list)
-    verified: list[Order] = field(default_factory=list)
     rekey: bool = False
 
 
@@ -109,7 +102,7 @@ class Acts:
         if verb == "message" and order.get("of"):
             found = self.routed(str(order["of"]))
             if found is None:
-                return f"{order['of']} is not a message in {self.fairway}'s captain's conversation"
+                return f"{order['of']} is not a genuine message in {self.fairway}'s captain's conversation"
         if verb == "message" and target.startswith("captain:"):
             other = target.removeprefix("captain:")
             if held["kind"] == "message" and str(held["facts"].get("from") or "").startswith("captain:"):
@@ -139,14 +132,16 @@ class Acts:
         me = f"captain:{self.fairway}"
         if verb == "message":
             routed = self.routed(str(order.get("of") or ""))
-            text = str(order.get("text") or "") or (f"Routed to you by your captain, from {routed.get('from')}."
-                                                    if routed else "")
+            # Who is quoted is the routed message's own `from`, which its signature covers: never a field a
+            # file supplied unverified, since only a genuine message can be routed at all.
+            quoted = str((routed or {}).get("from") or "")
+            text = str(order.get("text") or "") or (f"Routed to you by your captain, from {quoted}." if routed else "")
             home = (talk.place(self.run, target.removeprefix("captain:"), talk.CAPTAIN)
                     if target.startswith("captain:") else talk.place(self.run, self.fairway, target))
             # From the captain, always: a person's words it routes are quoted, unaltered, beside its own.
             sent = talk.send(home, "say", text, "interrupt" if order.get("interrupt") else "wait", by=me,
                              of=str(order.get("of") or ""), via=me if routed else "",
-                             quote=str(routed.get("text") or "") if routed else "")
+                             quote=str(routed.get("text") or "") if routed else "", quote_from=quoted)
             if routed:
                 talk.note(self.home, "reply", to=str(routed["id"]), text=f"routed to {target}", by="captain")
             if not target.startswith("captain:") and self.stream.merging(target):
@@ -172,7 +167,9 @@ class Acts:
         return ""
 
     def routed(self, of: str) -> dict[str, Any] | None:
-        """The message in this captain's own conversation an order routes, or None."""
+        """The message in this captain's own conversation an order routes, or None — and None for any file in
+        that inbox whose signature does not hold: what can be routed is only what was really said."""
         if not of:
             return None
-        return next((one for one in talk.inbox(self.home) if str(one["id"]) == of), None)
+        found = next((one for one in talk.inbox(self.home) if str(one["id"]) == of), None)
+        return found if found is not None and talk.genuine(self.home, found) else None

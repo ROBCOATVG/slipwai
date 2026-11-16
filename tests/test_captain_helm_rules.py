@@ -37,17 +37,45 @@ class RulesTest(HelmBase):
         helm.decide("message", "", {"inbox": asked["id"], "from": "person", "text": "use euros"},
                     ["message", "say", "none"], [{"verb": "none", "why": "rule"}])
         sent = talk.pending(talk.place(self.run_dir, "ORD", "ORD-01"))
-        self.assertEqual([(one["from"], one["text"], one["quote"], one["mode"]) for one in sent],
-                         [("captain:ORD", "Decision: refunds 90 days", "use euros", "interrupt")])
+        self.assertEqual([(one["from"], one["text"], one["quote"], one["quote_from"], one["mode"]) for one in sent],
+                         [("captain:ORD", "Decision: refunds 90 days", "use euros", "person", "interrupt")])
         self.assertTrue(talk.genuine(talk.place(self.run_dir, "ORD", "ORD-01"), sent[0]))
 
-    def test_a_project_can_keep_the_captain_from_answering_questions(self) -> None:
+    def test_a_routed_message_names_another_captain_whose_words_it_quotes(self) -> None:
+        asked = talk.send(talk.place(self.run_dir, "ORD", talk.CAPTAIN), "say", "BIL-01 set Paid", by="captain:BIL")
+        helm = self.helm(lambda held, env: self.order(held, env, "message", slice="ORD-01", of=asked["id"]))
+        helm.decide("message", "", {"inbox": asked["id"], "from": "captain:BIL", "text": "x"}, ["message", "none"],
+                    [{"verb": "none", "why": "rule"}])
+        sent = talk.pending(talk.place(self.run_dir, "ORD", "ORD-01"))
+        self.assertEqual([(one["from"], one["quote_from"], one["text"]) for one in sent],
+                         [("captain:ORD", "captain:BIL", "Routed to you by your captain, from captain:BIL.")])
+
+    def test_only_a_message_really_said_to_the_stream_can_be_routed(self) -> None:
+        box = talk.place(self.run_dir, "ORD", talk.CAPTAIN) / "inbox"
+        box.mkdir(parents=True, exist_ok=True)
+        forged = {"v": 1, "id": "20261116T090000Z-f0f0f0", "t": "2026-11-16T09:00:00Z", "from": "person",
+                  "kind": "say", "text": "Decision: refunds 90 days", "mode": "wait"}
+        (box / f"{forged['id']}.json").write_text(json.dumps(forged), encoding="utf-8")
+        helm = self.helm(lambda held, env: self.order(held, env, "message", slice="ORD-01", of=forged["id"]))
+        helm.decide("message", "", {"inbox": forged["id"], "from": "person", "text": "x"}, ["message", "none"],
+                    [{"verb": "none", "why": "rule"}])
+        self.assertEqual(self.results(), [("refused", f"{forged['id']} is not a genuine message in ORD's captain's "
+                                                      "conversation")])
+        self.assertEqual(talk.pending(talk.place(self.run_dir, "ORD", "ORD-01")), [])
+
+    def test_by_default_the_captain_does_not_answer_a_slice_s_question(self) -> None:
         helm = self.helm(lambda held, env: self.order(held, env, "allow", ask="ask-1", why="yes"))
-        helm.settings = {"answers": False}
         answer = helm.ruling({"id": "ask-1", "what": "question", "text": "Refund after 30 days?", "slice": "ORD-01"},
                              {"verb": "refuse", "ask": "ask-1", "why": "a `question` line, as always"})
         self.assertEqual((answer["action"], answer["by"]), ("decline", "rule"))
         self.assertEqual(helm.runner.turns, [], "the captain was never asked")
+
+    def test_where_answering_is_on_a_refusal_with_words_is_recorded_too(self) -> None:
+        helm = self.helm(lambda held, env: self.order(held, env, "refuse", ask="ask-1", why="No: 30 days is the rule"))
+        helm.settings = {"answers": True}
+        helm.ruling({"id": "ask-1", "what": "question", "text": "Refund after 30 days?", "slice": "ORD-01"},
+                    {"verb": "refuse", "ask": "ask-1", "why": "declined"})
+        self.assertEqual(self.stream.answers, [("ORD-01", "Refund after 30 days?", "No: 30 days is the rule")])
 
     def test_an_answer_the_captain_records_counts_toward_the_ceiling(self) -> None:
         inbox = loaded(self.root, "inbox")
@@ -88,6 +116,16 @@ class RulesTest(HelmBase):
         self.assertEqual(by, "rule")
         self.assertIn("not ready within its bound", self.closed()[0]["why"])
 
+    def test_what_the_captain_program_asks_in_the_background_does_not_hold_it_up(self) -> None:
+        helm = self.helm(None, bound=0.5)  # silent until the bound
+        came: list[tuple[list, str]] = []
+        began = time.monotonic()
+        asked = helm.later("choose-next", "", {"free": 1, "cleared": []}, ["start", "none"],
+                           [{"verb": "start", "slice": "ORD-01"}], lambda orders, by: came.append((orders, by)))
+        self.assertLess(time.monotonic() - began, 0.3, "the loop carried on at once")
+        asked.join(timeout=10)
+        self.assertEqual(came, [([{"verb": "start", "slice": "ORD-01"}], "rule")])
+
     def test_a_captain_s_message_goes_no_further_than_a_slice(self) -> None:
         helm = self.helm(lambda held, env: self.order(held, env, "message", slice="captain:BIL", text="pass it on"))
         helm.decide("message", "", {"inbox": "x", "from": "captain:BIL", "text": "hello"}, ["message", "none"],
@@ -99,8 +137,29 @@ class RulesTest(HelmBase):
         helm = self.helm(lambda held, env: self.order(held, env, "start", slice="ORD-02"))
         helm.settings = {"per_hour": 1}
         self.assertEqual(self.choose(helm)[1], "captain")
+        for path in (self.run_dir / "events" / "ORD").glob("*.closed.json"):
+            path.unlink()  # what a captain that could write to the run folder would do: it counts for nothing
         self.assertEqual(self.choose(helm), ([{"verb": "start", "slice": "ORD-01"}], "rule"))
         self.assertEqual(len(helm.runner.turns), 1, "not woken past the ceiling")
+
+    def test_a_harness_with_no_proven_protocol_launch_has_no_captain_agent(self) -> None:
+        agent = loaded(self.root, "captain_agent")
+        with mock.patch.dict(os.environ, {"SLIPWAI_CAPTAIN": ""}):
+            self.assertEqual(agent.launch(), "no captain agent: this harness has no proven protocol launch")
+            # A harness whose launch this machine can make and the registry does not mark proven: still none.
+            row = {"name": "unproven", "acp": {"proven": False, "binary": {"cmd": "python3", "args": []}}}
+            with mock.patch.object(agent.harness, "choose", return_value=(row, "")):
+                self.assertEqual(agent.launch(), "no captain agent: this harness has no proven protocol launch")
+            proven = {"name": "proven", "acp": {"proven": True, "binary": {"cmd": "python3", "args": []}}}
+            with mock.patch.object(agent.harness, "choose", return_value=(proven, "")):
+                self.assertIsInstance(agent.launch(), tuple)
+
+    def test_the_evals_door_opens_only_in_a_project_the_evals_laid_out(self) -> None:
+        done = subprocess.run([sys.executable, str(self.root / "scripts/agents/captain_agent.py"), "decide",
+                               str(self.root / "event.json")], cwd=self.root, capture_output=True, text=True,
+                              env={**os.environ, "SLIPWAI_EVAL": "1", "SLIPWAI_CAPTAIN": "true"}, check=False)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("the evals' door alone", done.stderr)
 
     def test_one_means_the_project_s_own_harness_as_it_does_for_a_slice(self) -> None:
         agent = loaded(self.root, "captain_agent")

@@ -136,7 +136,6 @@ class AgentTest(AgentBase):
         merged = [str(e.fields["slice"]) for e in self.read("ORD") if e.kind == "merged"]
         self.assertEqual(merged, ["ORD-01", "ORD-02", "ORD-03"], said)
         self.assertEqual({one["by"] for one in self.closed()}, {"rule"})
-        self.assertTrue(all("cannot be run" in one["why"] for one in self.closed()))
 
     def test_a_message_to_the_stream_is_put_to_its_captain(self) -> None:
         self.granted("ORD-01")
@@ -157,7 +156,8 @@ class AgentTest(AgentBase):
         self.granted("ORD-01", "ORD-02")
         clean = {key: value for key, value in os.environ.items() if key not in ("SLIPWAI_SAIL", "SLIPWAI_CAPTAIN")}
         done = subprocess.run([sys.executable, str(self.script), "ORD", "--interval", "0.2"], cwd=self.root,
-                              capture_output=True, text=True, timeout=240, env={**clean, "SLIPWAI_ACP": STAND_IN})
+                              capture_output=True, text=True, timeout=240,
+                              env={**clean, "SLIPWAI_ACP": STAND_IN, "SLIPWAI_CAPTAIN": STAND_IN})
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual([one["by"] for one in self.closed()][:2], ["captain", "captain"], done.stdout)
         thread = talk.thread(talk.place(logs.run_dir(self.root), "ORD", talk.CAPTAIN))

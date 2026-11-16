@@ -6,30 +6,33 @@ what words or parks and why, what to do about a slice that is stuck, what someon
 slice's session asks mid-turn, and a red trunk each wake the captain's agent with an event file
 (`.slipwai/run/events/<stream>/`) holding the facts and the orders it may give. It acts only through
 `python3 scripts/agents/orders.py`, which signs each order with a key only the captain's session is handed;
-the program checks every order again — clearance and the free slots as they are when the order is done, the
-attempts as the log counts them, a person's hold, the merge — does it or refuses it, and writes why. Where
-the agent is silent past its bound, orders something not allowed, or cannot be run, the program makes that
-one choice by the rule it always used, says so, and tries the agent again at the next event: a stream always
-runs on the program alone. Its session is held open over the Agent Client Protocol where the project's
-sessions are, with a policy that lets it read and run `orders.py` and nothing else. Otherwise it runs
-headless once per event, in a folder of its own and with the most restrictive permissions its harness
-offers, and the project is checked before and after: a captain that changed anything has its orders refused
-and is turned off for that stream until a person removes `agent-off.json` beside its events.
+the program checks every order again — clearance and the free slots as they are when the order is done, a
+person's hold, the merge — does it or refuses it, and writes why. Where the agent is silent past its bound,
+orders something not allowed, or cannot be run, the program makes that one choice by the rule it always used,
+says so, and tries the agent again at the next event: a stream always runs on the program alone, and the
+program's loop never waits on its captain. **The captain is an agent only over the Agent Client Protocol**,
+held open with a policy that lets it read and run the project's own `orders.py` and nothing else; a captain
+run headless could not be confined, so there is none — where the harness has no proven launch over the
+protocol the stream runs on the program alone and says so ("no captain agent: this harness has no proven
+protocol launch"). **No slice runs without limit**: between a person's words to it, a slice has at most
+`2 × attempts + 1` runs that cost an attempt, counted at every dispatch from its `dispatched` deck lines,
+whoever asked — five at the default two.
 `agents/drive-captain.md` is its brief, rewritten for the role. `slipwai.captain_decisions` reads back what
 each captain decided, for the board. Whether a slice is stuck is now one fold, `stuck.py`, shared by the
 board's card and the captain.
 
-**What it answers, and what the program cannot hold it to.** The captain may answer a question a slice's
-session asks mid-turn. It is told to answer operational questions only — a command, a port, where a file is
-— and to refuse a product question so the slice writes its `question` line, which goes where it always went.
-**The program cannot tell the two apart**, so it does not try. Instead every answer the captain gives is
-written into the stream's log as a `decision` by the captain, which a person reviews like any other and which
-counts toward `decision_ceiling`: a person who falls behind on them parks the stream. `"answers": false` in
-`harbour.json`'s `captain` takes the answering away, and a mid-turn question is declined as it was before.
+**It does not answer a slice's questions unless a project says so.** A question a slice's session asks
+mid-turn is declined as it always was, and goes down the deck log's `question` path — the skipper under
+`/cruise`, a person otherwise. `"answers": true` in `harbour.json`'s `captain` lets the captain answer; then
+every answer, and every refusal with words in it, is written into the stream's log as a `decision` by the
+captain for a person to review. **The program cannot tell an operational question from a product one**, and
+under `/cruise` the ceiling on unreviewed decisions forces nothing, so nothing else bounds what it answers:
+that is why it is off. The captain still rules on a permission a slice asks outside its berth: a read inside
+the project, and nothing else.
 
 **What it costs.** Each event is one turn of the project's harness: a choice of the next slice when more may
 start than there are slots, each missed gate, each new warning on a slice, each message to the stream, each
-question a slice asks. Headless, that is a session started per event. `captain.per_hour` (30 by default) is
+question a slice asks where answering is on. `captain.per_hour` (30 by default) is
 the most a stream's captain is woken in an hour, after which the stream runs on its rules alone until the
 hour has passed, and says so. Each closing record carries how long the decision took.
 
@@ -48,10 +51,11 @@ changed, with its text; the key's file mode is not asked on Windows; a resume wi
 without a failure; the reaper reads `ps` in the C locale and checks its captain by identity.
 
 **Catch-up:** the captain agent is off in an existing project until you turn it on: add `"captain":
-{"agent": true, "bound": 60, "headless_bound": 180}` to `harbour.json` (and `"answers": false` to keep it
-from answering a slice's questions, `"per_hour"` to change its ceiling) and restart the fleet; a newly
-generated project has it on. `SLIPWAI_CAPTAIN=off` in the fleet's environment turns it off whatever the file
-says, and `SLIPWAI_CAPTAIN=1` on through the project's own harness. Two things change with the agent off as
-well, and need nothing from you: a person's pause or stop now holds a slice through anyone else's stop, and
-what a person says to a stream through the board is read by its captain program, which is lit to read it
-even while the stream is parked.
+{"agent": true, "bound": 60}` to `harbour.json` (`"answers": true` to let it answer a slice's questions,
+`"per_hour"` to change its ceiling) and restart the fleet; it runs only where your harness has a proven launch
+over the Agent Client Protocol. A newly generated project has it on. `SLIPWAI_CAPTAIN=off` in the fleet's environment turns it off whatever the file
+says, and `SLIPWAI_CAPTAIN=1` on through the project's own harness. Three things change with the agent off as
+well, and need nothing from you: a person's pause or stop now holds a slice through anyone else's stop; what a
+person says to a stream through the board is read by its captain program, which is lit to read it even while
+the stream is parked; and a slice that has had `2 × attempts + 1` runs since a person last spoke to it parks
+for a person rather than run again, across restarts and cleared parks alike.

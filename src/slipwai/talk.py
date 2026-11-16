@@ -173,7 +173,7 @@ def key(home: Path, make: bool = False) -> bytes:
 def signature(secret: bytes, message: dict[str, Any], home: Path) -> str:
     # `quote` — a person's words a captain routes, carried beside its own — is signed where it is there and
     # left out of the body where it is not, so every message signed before it existed still verifies.
-    quoted = {"quote": message.get("quote")} if "quote" in message else {}
+    quoted = {name: message.get(name) for name in ("quote", "quote_from") if name in message}
     body = json.dumps({**{name: message.get(name) for name in SIGNED}, **quoted,
                        "for": [Path(home).parent.name, Path(home).name]}, sort_keys=True, ensure_ascii=False)
     return hmac.new(secret, body.encode("utf-8"), hashlib.sha256).hexdigest()
@@ -187,10 +187,10 @@ def genuine(home: Path, message: dict[str, Any]) -> bool:
 
 
 def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PERSON, of: str = "",
-         via: str = "", quote: str = "") -> dict[str, Any]:
+         via: str = "", quote: str = "", quote_from: str = "") -> dict[str, Any]:
     """Drop one thing into a conversation's inbox, signed and whole: written aside and renamed into place.
-    `quote` is another's words carried unaltered beside the sender's own: what a captain routes stays the
-    captain's message, `from` the captain, with the person's words quoted in it, never a person's message.
+    `quote` is another's words carried unaltered beside the sender's own, `quote_from` whose they are: what a
+    captain routes stays the captain's message, `from` the captain, with the words quoted in it.
     `ValueError` with what to do where it cannot be."""
     if kind not in KINDS:
         raise ValueError(f"{kind!r} is not something a conversation takes: {', '.join(KINDS)}")
@@ -207,8 +207,11 @@ def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PE
         message["of"] = of
     if via:
         message["via"] = via
+    if quote and not quote_from:
+        raise ValueError("quoted words say whose they are")
     if quote:
         message["quote"] = quote
+        message["quote_from"] = quote_from
     message["sig"] = signature(key(home, make=True), message, home)
     box = Path(home) / "inbox"
     box.mkdir(parents=True, exist_ok=True)

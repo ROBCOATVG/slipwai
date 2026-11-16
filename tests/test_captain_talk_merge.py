@@ -8,7 +8,6 @@ and says it came too late on a merge. And a paused slice asks the harbour for no
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import shutil
@@ -121,13 +120,14 @@ class MergeWaitTest(Fixture):
 
 class PlanTest(Fixture):
     def plan(self) -> dict[str, Any]:
-        place = self.root / "scripts/agents"
-        spec = importlib.util.spec_from_file_location(f"abreast_{self.root.name}", place / "abreast.py")
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        sys.dont_write_bytecode = True
-        spec.loader.exec_module(module)
-        return dict(module.harbour_plan(set(), self.root / "harbour.json"))
+        """The harbourmaster's plan, read in a process of its own: `abreast` and `clearance` find the project
+        they serve from where they are, and a module another suite loaded first would answer for its own."""
+        read = ("import json, sys; sys.path.insert(0, 'scripts/agents'); import abreast, pathlib; "
+                "print(json.dumps(abreast.harbour_plan(set(), pathlib.Path('harbour.json'))))")
+        done = subprocess.run([sys.executable, "-c", read], cwd=self.root, capture_output=True, text=True,
+                              check=False)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return dict(json.loads(done.stdout))
 
     def test_a_paused_slice_wants_no_session(self) -> None:
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),

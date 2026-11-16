@@ -401,8 +401,8 @@ class Drive:
         child = self.session.child
         if self.home is not None and child is not None:
             self.home.mkdir(parents=True, exist_ok=True)
-            (self.home / AGENT_PID).write_text(json.dumps({"pid": child.pid, "captain": os.getpid()}) + "\n",
-                                               encoding="utf-8")
+            said = json.dumps({"pid": child.pid, "captain": os.getpid()}) + "\n"
+            (self.home / AGENT_PID).write_text(said, encoding="utf-8")
 
     def open(self) -> None:
         """Load the session this slice closed with, where the agent can, the stage is not a review and it was

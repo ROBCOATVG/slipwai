@@ -37,6 +37,7 @@
 # why: 2026-11-16 809e032cb46b6207 try_it.py gains the film verb (start, chapter, stop): one recording per capability with its marks; no existing verb changes
 # why: 2026-11-16 29aee7765d61ba30 2026-11-16, changelog.d/driver-held-open.md: drive.py holds a slice's protocol session open across prompts and delivers its inbox, captain.py keeps that driver between turns and honours pause, resume and stop per slice, talk.py (new, carried from the keel) holds the conversation files; print-mode sessions and every captain decision run on macOS and Linux as before, and the protocol now runs by default only where the registry marks the harness's launch proven and cruise.json does not say sessions: print
 # why: 2026-11-16 abd4d9baed64d316 2026-11-16, changelog.d/driver-held-open.md review fixes: drive.py bounds and holds message turns, signs and fences a person's word, keeps the agent's pid and ends it with the captain; captain.py holds delivery for the merge, keeps a person's stop, writes print-mode receipts only once the session started; abreast.py counts a paused slice as wanting nothing; cruise.py takes sessions: auto as its default; talk.py reads by offset and moves handled files aside. Print mode, sessions: print and every captain decision run on macOS and Linux as before
+# why: 2026-11-16 d903b0993f27cadc 2026-11-16, changelog.d/driver-held-open.md: drive.py writes the agent's pid file with its encoding on the line that writes it; what it writes, and behaviour on macOS and Linux, are unchanged
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -131,10 +132,6 @@
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  event-modelling-postgres-toy-serve  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  standard-memory-none  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  standard-postgres-toy-serve  scripts/agents/run-state.py
-5184465cd1b48d449afd4d3bf7ee1607fbf64659da4282fea076b15707da9643  event-modelling-memory-none  scripts/agents/drive.py
-5184465cd1b48d449afd4d3bf7ee1607fbf64659da4282fea076b15707da9643  event-modelling-postgres-toy-serve  scripts/agents/drive.py
-5184465cd1b48d449afd4d3bf7ee1607fbf64659da4282fea076b15707da9643  standard-memory-none  scripts/agents/drive.py
-5184465cd1b48d449afd4d3bf7ee1607fbf64659da4282fea076b15707da9643  standard-postgres-toy-serve  scripts/agents/drive.py
 526a3fcaf97d8201724982c3190cf6d4d212f2cfbda0fe2e3219f811d5979962  event-modelling-memory-none  scripts/event-model/drawio.ts
 526a3fcaf97d8201724982c3190cf6d4d212f2cfbda0fe2e3219f811d5979962  event-modelling-postgres-toy-serve  scripts/event-model/drawio.ts
 52f0245cd6a36d141cbf614ce89c7c36a8770f29ed5928c73741368dd7f93184  event-modelling-memory-none  scripts/event-model/check.ts
@@ -322,6 +319,10 @@ db93279e66809453a80f78e0d4b1ba424113d222aa92191b288925a2557db50a  event-modellin
 db93279e66809453a80f78e0d4b1ba424113d222aa92191b288925a2557db50a  event-modelling-postgres-toy-serve  scripts/agents/cruise.py
 db93279e66809453a80f78e0d4b1ba424113d222aa92191b288925a2557db50a  standard-memory-none  scripts/agents/cruise.py
 db93279e66809453a80f78e0d4b1ba424113d222aa92191b288925a2557db50a  standard-postgres-toy-serve  scripts/agents/cruise.py
+ddd37ca706c6d9c111d63cbb929a4474d3dc95d761ef77debf690e10d7633661  event-modelling-memory-none  scripts/agents/drive.py
+ddd37ca706c6d9c111d63cbb929a4474d3dc95d761ef77debf690e10d7633661  event-modelling-postgres-toy-serve  scripts/agents/drive.py
+ddd37ca706c6d9c111d63cbb929a4474d3dc95d761ef77debf690e10d7633661  standard-memory-none  scripts/agents/drive.py
+ddd37ca706c6d9c111d63cbb929a4474d3dc95d761ef77debf690e10d7633661  standard-postgres-toy-serve  scripts/agents/drive.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  event-modelling-memory-none  scripts/check-migrations.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  event-modelling-postgres-toy-serve  scripts/check-migrations.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  standard-memory-none  scripts/check-migrations.py

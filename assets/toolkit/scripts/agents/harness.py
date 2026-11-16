@@ -247,6 +247,16 @@ TASK_OVER = frozenset({"completed", "failed", "killed", "stopped", "cancelled"})
 #: second harness's go in `registry.json` beside its other columns when one is wired.
 LIMIT_WORDS = ("session limit", "usage limit", "rate limit", "rate_limit", "overloaded", "too many requests",
                "429")
+#: The limit under any name. game-club-manager's was `You've hit your 5-hour limit · resets 6:50pm
+#: (Europe/London)`, which names none of the words above: five captains read it as a crash, spent
+#: `attempts` in seconds and parked on a person, the recap voyage over again with one word changed. So a
+#: limit somebody *hit* or *reached*, or one that says when it resets, is a limit whatever it is called —
+#: the harness will rename its windows again, and a list of names is always one name behind.
+LIMIT_SAID = re.compile(r"\b(?:hit|reached|exceed(?:ed|s)?)\b[^.\n]{0,60}\blimit\b|\blimit\b[^.\n]{0,80}\bresets?\b",
+                        re.IGNORECASE)
+#: How long a session's last line may be and still be read as the harness speaking. A refusal is one short
+#: line; a session's own closing paragraph that happens to mention a limit is not one.
+REFUSAL_LINE = 300
 #: `resets 9:40pm (Europe/London)`, `resets at 4pm`, `resets 09:40 PM`: the hour, the minutes, am or pm,
 #: and the zone where one is named.
 RESET = re.compile(r"resets?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b(?:\s*\(([^)]+)\))?", re.IGNORECASE)
@@ -284,7 +294,7 @@ def refusal(text: str, now: datetime | None = None) -> Refusal | None:
     """
     said = (text or "").strip()
     lowered = said.lower()
-    if not any(word in lowered for word in LIMIT_WORDS):
+    if not any(word in lowered for word in LIMIT_WORDS) and LIMIT_SAID.search(said) is None:
         return None
     at = now or datetime.now(UTC)
     found = RESET.search(said)
@@ -303,6 +313,21 @@ def refusal(text: str, now: datetime | None = None) -> Refusal | None:
     if lifts <= local:
         lifts += timedelta(days=1)
     return Refusal("limit", instant(lifts), said)
+
+
+def closing_refusal(text: str, now: datetime | None = None) -> Refusal | None:
+    """A refusal read off the last line a session said, for a turn that *ended* rather than was refused.
+
+    Over the Agent Client Protocol a limit can arrive as the agent's own message — `You've hit your 5-hour
+    limit · resets 6:50pm` — followed by an ordinary `end_turn`, so the stop reason says the session
+    finished and only its words say it never ran. Only the last line is read, and only a short one: the
+    harness speaks in one line, and a session that ran and wrote a paragraph about a rate limit it met and
+    recovered from has not been refused.
+    """
+    lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
+    if not lines or len(lines[-1]) > REFUSAL_LINE:
+        return None
+    return refusal(lines[-1], now)
 
 
 def streams_events(argv: list[str]) -> bool:

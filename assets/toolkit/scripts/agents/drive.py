@@ -165,7 +165,11 @@ class Drive:
             say(f"session: the agent ended its turn: {stop}")
             if stop == "refusal":
                 self.refusal = harness.refusal(self.text[-2000:])
-            self.code = 0 if stop == "end_turn" else 1
+            elif stop == "end_turn":
+                # A limit said as the agent's last line and followed by an ordinary end of turn: the
+                # session did not run, and a captain that read the stop reason spent an attempt on it.
+                self.refusal = harness.closing_refusal(self.text[-2000:])
+            self.code = 0 if stop == "end_turn" and self.refusal is None else 1
         except Exception as fault:  # noqa: BLE001 — a drive that raised would leave the captain polling for ever
             self.flush()
             say(f"session: {fault}", err=True)

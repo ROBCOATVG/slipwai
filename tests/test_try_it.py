@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 from slipwai.assets import TOOLKIT_ROOT
 
@@ -267,6 +270,26 @@ class TryItTest(Project):
                          {"path": "/api/records/r-1/withdrawal", "v": 3, "list": ["r-1"], "left": "{unknown}"})
         self.assertEqual(self.module.picked({"a": {"b": [{"c": "deep"}]}}, "a.b.0.c"), "deep")
         self.assertIsNone(self.module.picked({"a": 1}, "a.b"))
+
+    def test_a_story_s_relative_dates_are_written_out_on_the_day_it_runs(self) -> None:
+        """GN1 named two Thursdays, and its story was refused from the day after the first of them."""
+        friday = date(2026, 11, 20)
+        self.assertEqual(self.module.dated({"on": "{next-thu}", "then": ["{next-thu+7}", "{today}", "{today+3}"],
+                                            "kept": "{record}", "n": 4}, friday),
+                         {"on": "2026-11-26", "then": ["2026-12-03", "2026-11-20", "2026-11-23"],
+                          "kept": "{record}", "n": 4})
+        self.assertEqual(self.module.dated("{next-fri}", friday), "2026-11-27", "today is never the next one")
+        self.assertRegex(str(self.module.filled("/api/nights/{next-thu}/{record}", {"record": "r-1"})),
+                         r"^/api/nights/\d{4}-\d{2}-\d{2}/r-1$")
+
+    def test_a_berth_s_own_seed_runs_with_what_its_caller_exported(self) -> None:
+        """GN1's seed read the example's database address over the one its berth had exported, and wrote
+        two events into another berth's database."""
+        (self.root / ".env.example").write_text("DATABASE_URL=postgres://localhost:5433/app\nONLY=example\n",
+                                                encoding="utf-8")
+        with mock.patch.dict(os.environ, {"DATABASE_URL": "postgres://localhost:5463/app"}):
+            found = self.module.own_settings()
+        self.assertEqual((found["DATABASE_URL"], found["ONLY"]), ("postgres://localhost:5463/app", "example"))
 
     def test_a_ready_app_whose_process_has_gone_is_said_to_have_failed(self) -> None:
         self.module.write_state({"state": "ready", "pids": {"web": 999999}, "commit": ""})

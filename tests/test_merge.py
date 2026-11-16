@@ -64,6 +64,52 @@ class MergeTest(MergeFixture):
         self.assertEqual(self.head("main"), self.head("main"))
         self.assertNotIn("rebase", self.git("status", "--porcelain=v2", "--branch").stdout)
 
+    DECISIONS = "specs/ordering/decisions.md"
+
+    def decisions(self, body: str) -> None:
+        (self.root / self.DECISIONS).parent.mkdir(parents=True, exist_ok=True)
+        (self.root / self.DECISIONS).write_text(body, encoding="utf-8")
+
+    def test_two_slices_that_each_added_a_decision_have_not_disagreed(self) -> None:
+        """Three of game-club-manager's merges were refused for `decisions.md` alone, each sent back to its
+        berth to put its own entries after trunk's by hand."""
+        self.git("checkout", "--quiet", "main")
+        self.decisions("# Decisions\n\n## D1\nfirst\n")
+        self.commit("the decisions so far")
+        self.git("checkout", "--quiet", "-b", "slice/ORD-01", "main")
+        self.decisions("# Decisions\n\n## D1\nfirst\n\n## D2\nthe slice's\n")
+        self.commit("ORD-01 decides D2")
+        self.decisions("# Decisions\n\n## D1\nfirst\n\n## D2\nthe slice's\n\n## D4\nand another\n")
+        self.commit("ORD-01 decides D4")
+        self.git("checkout", "--quiet", "main")
+        self.decisions("# Decisions\n\n## D1\nfirst\n\n## D3\nanother fairway's\n")
+        self.commit("trunk gained D3 meanwhile")
+        self.git("checkout", "--quiet", "-b", "parked-elsewhere", "slice/ORD-01")
+        self.ask("ORD-01")
+        done = self.run_once()
+        answer = self.answer()
+        self.assertEqual(answer.kind, "granted", f"{answer.fields}\n{done.stderr}")
+        self.assertEqual(self.git("show", f"main:{self.DECISIONS}").stdout,
+                         "# Decisions\n\n## D1\nfirst\n\n## D3\nanother fairway's\n\n## D2\nthe slice's\n"
+                         "\n## D4\nand another\n")
+
+    def test_a_decision_that_was_edited_rather_than_added_is_still_a_conflict(self) -> None:
+        self.git("checkout", "--quiet", "main")
+        self.decisions("# Decisions\n\n## D1\nfirst\n")
+        self.commit("the decisions so far")
+        self.git("checkout", "--quiet", "-b", "slice/ORD-01", "main")
+        self.decisions("# Decisions\n\n## D1\nfirst, as the slice rewrote it\n")
+        self.commit("ORD-01 rewrites D1")
+        self.git("checkout", "--quiet", "main")
+        self.decisions("# Decisions\n\n## D1\nfirst, as trunk rewrote it\n")
+        self.commit("trunk rewrote D1 meanwhile")
+        self.git("checkout", "--quiet", "-b", "parked-elsewhere", "slice/ORD-01")
+        self.ask("ORD-01")
+        self.run_once()
+        answer = self.answer()
+        self.assertEqual(answer.kind, "refused")
+        self.assertIn(self.DECISIONS, str(answer.fields["why"]))
+
     def test_a_failing_gate_refuses_and_leaves_trunk_where_it_was(self) -> None:
         """The gate is the project's own `make verify` — the same one the two-gate rule names, so a project
         that adds a check gets it at the merge for nothing."""

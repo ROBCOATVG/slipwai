@@ -19,6 +19,7 @@ from typing import Any
 import checkout_packages  # noqa: F401
 from captain_fixture import Fixture
 
+from slipwai import logs
 from slipwai.assets import TOOLKIT_ROOT
 
 AGENTS = TOOLKIT_ROOT / "scripts/agents"
@@ -121,12 +122,30 @@ class CaptainTest(Fixture):
         return subprocess.run([sys.executable, str(self.script), fairway, "--once"], capture_output=True, text=True,
                               cwd=self.root, timeout=90, env={**env, "SLIPWAI_ACP": STAND_IN})
 
+    def test_a_need_another_slice_left_in_this_fairway_s_code_is_put_to_its_session(self) -> None:
+        """game-club-manager's TB1 needed a field in clubs code, wrote the need `by: fleet`, and it stood
+        for a day: the mender may not touch application code and no clubs session was ever told."""
+        chart = self.root / "specs/ordering/chart.yaml"
+        chart.write_text("fairways:\n  ORD:\n    owns:\n    - apps/shop/**/ordering/**\n"
+                         + chart.read_text(encoding="utf-8"), encoding="utf-8")
+        mine = {"what": "the ordering configuration accepts a week", "by": "fleet",
+                "check": {"kind": "text", "path": "apps/shop/src/ordering/configuration.ts", "has": "week"}}
+        shared = {"what": "the flag line", "by": "fleet",
+                  "check": {"kind": "text", "path": ".env.example", "has": "FLAG="}}
+        self.deck("ORD", logs.entry("told", fairway="ORD", slice="BIL-01", by="session",
+                                    message="BIL-01 waits on ordering", needs=[mine, shared]))
+        self.grant("ORD-01")
+        done = self.over("ORD")
+        self.assertIn("Another slice is waiting on this fairway's own code", done.stdout)
+        self.assertIn("the ordering configuration accepts a week (asked by BIL-01", done.stdout)
+        self.assertNotIn("the flag line", done.stdout, "a shared surface is the mender's, not this session's")
+
     def test_the_captain_gets_a_slice_through_on_a_drive_over_the_protocol(self) -> None:
         self.grant("ORD-01")
         done = self.over("ORD")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("SLIPWAI_ACP", done.stdout)
-        self.assertIn("Drawn: Run the /drive command", done.stdout)
+        self.assertIn("Drawn: Run the /sail command", done.stdout)
         self.assertIn("the agent ended its turn: end_turn", done.stdout)
         kinds = [e.kind for e in self.read("ORD")]
         self.assertIn("claimed", kinds)

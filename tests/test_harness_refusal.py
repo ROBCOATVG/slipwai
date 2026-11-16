@@ -60,9 +60,35 @@ class RefusalTest(unittest.TestCase):
         self.assertIn("no reset time given, so paused 60 minutes", found.said)
 
     def test_a_session_that_ran_and_failed_is_not_a_refusal(self) -> None:
-        for text in ("", "The tests are red and I could not fix them", "exited 1"):
+        for text in ("", "The tests are red and I could not fix them", "exited 1",
+                     "The form limits a note to 200 characters and resets the field"):
             with self.subTest(text=text):
                 self.assertIsNone(self.harness.refusal(text, AT))
+
+    def test_a_limit_under_a_name_nobody_listed_is_still_a_limit(self) -> None:
+        """game-club-manager's five parks: `5-hour limit` is none of the listed words."""
+        for text, until in (
+                ("You've hit your 5-hour limit · resets 6:50pm (Europe/London)", "2026-10-21T17:50:00Z"),
+                ("Internal error: You've hit your 5-hour limit · resets 6:50pm (Europe/London)",
+                 "2026-10-21T17:50:00Z"),
+                ("You've reached your weekly limit · resets 9am (UTC)", "2026-10-22T09:00:00Z"),
+                ("Opus limit reached, resets 7pm (UTC)", "2026-10-21T19:00:00Z")):
+            with self.subTest(text=text):
+                found = self.harness.refusal(text, AT)
+                self.assertEqual(found.cause, "limit")
+                self.assertEqual(found.until, until)
+
+    def test_a_limit_said_as_the_last_line_of_a_turn_that_ended_is_a_refusal(self) -> None:
+        said = "I'll hand the screen to its delegate.\nYou've hit your 5-hour limit · resets 6:50pm (Europe/London)\n"
+        self.assertEqual(self.harness.closing_refusal(said, AT).until, "2026-10-21T17:50:00Z")
+        rate = "API Error: This request would exceed your account's rate limit. Please try again later."
+        self.assertEqual(self.harness.closing_refusal(rate, AT).until, "2026-10-21T16:55:00Z")
+
+    def test_a_session_that_wrote_about_a_limit_and_carried_on_was_not_refused(self) -> None:
+        for said in ("", "You've hit your 5-hour limit · resets 6:50pm (UTC)\nIt lifted, and the slice is built.",
+                     "The run hit a rate limit twice. " + "It retried and every gate passed. " * 12):
+            with self.subTest(said=said[:40]):
+                self.assertIsNone(self.harness.closing_refusal(said, AT))
 
 
 class EndingTest(unittest.TestCase):

@@ -215,6 +215,17 @@ brings it up to the tree, then the full `make verify`, then the first push of th
 the merge that lands them on trunk). That push is the integration boundary. A claim of `slice/<id>` at the start of the slice may still push a
 lock ref from `main`; that is not the implementation.
 
+**What the slice has done is said in its fairway's deck log, by command and never by hand.** A captain
+reads those lines and nothing else, so each has a writer: `python3 scripts/agents/deck_line.py mark-set
+--slice <id> --mark <mark>` once a contract the chart says this slice sets exists; `python3
+scripts/agents/try_it.py seed --slice <id> --api <service>` for its story; and `python3
+scripts/agents/deck_line.py demo --slice <id> --verdict <accepted|behaviour|implementation>` for the verdict
+the run ends on, with `--by` and `--log` naming who walked it and the demo log that records it. A mark
+stands once it is set; the `demo` line is owed by every run a captain dispatches, because it is the one
+that is true of this head. Never append to a `.jsonl` log yourself: a harness that judges each action
+refuses a session editing the record it is judged by, and a refused line is a slice that is built and
+cannot say so.
+
 {{demo-stop}}
 
 ### After the examples are proven, and after Phase 4 clears

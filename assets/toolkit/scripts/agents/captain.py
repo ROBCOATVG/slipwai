@@ -70,6 +70,7 @@ Standalone and dependency-free: this runs inside a generated project, which has 
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import queue
@@ -507,17 +508,56 @@ def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "
                 berth: Path | None = None) -> str:
     """What the ladder's session is asked, whichever way it is started: `/sail <slice> fairway=<name>`, the
     berth it is already in, the cruise's rule, and why the run before did not close the gate."""
-    prompt = harness.prompt_for(chosen, "drive", DRIVE_COMMAND, f"{slice_id} fairway={fairway}")
+    # `sail`, the command's name: it was `drive` until the rename and the word stayed here, so a harness
+    # that takes slash commands was sent `/drive`, which no project has had since.
+    prompt = harness.prompt_for(chosen, "sail", DRIVE_COMMAND, f"{slice_id} fairway={fairway}")
     if berth is not None:
         prompt += (f"\n\nYou are already in this slice's berth: the worktree at {berth}, on branch "
                    f"{BRANCH.format(slice=slice_id)}. Work there, and make no other worktree for it; its "
                    f"`.slipwai/run/logs` is the project's own.")
     if (decide := cruising()):
         prompt += cruise_note(decide)
+    for asked in owed_in_this_fairway(fairway):
+        prompt += (f"\n\nAnother slice is waiting on this fairway's own code, which no other fairway and no "
+                   f"mender may change: {asked}. Where it fits beside this slice's work, land it on this "
+                   f"branch as a commit of its own; where it does not, leave it and say so in a `told`.")
     if retry:
         prompt += (f"\n\nThe last run of this slice did not close its gate: {retry}. Re-enter at the first "
                    f"incomplete stage and close what it left.")
     return prompt
+
+
+def owed_in_this_fairway(fairway: str) -> list[str]:
+    """The needs other slices handed to this fairway that only it can land: unmet, the fleet's to tick, and
+    checked against a path this fairway owns on the chart.
+
+    A hand-back naming a shared surface is the mender's. One naming a fairway's own code was nobody's:
+    game-club-manager's TB1 needed the clubs install configuration to accept a `week`, wrote the need into
+    the clubs log `by: fleet`, and it stood for a day — the mender may not touch application code, and no
+    clubs session was ever told. The fairway that owns the path is the one that can, so its next session
+    is.
+    """
+    try:
+        charted, feature = clearance.chart()
+        owns = [str(one) for one in (((charted.get("fairways") or {}).get(fairway) or {}).get("owns") or [])]
+        found = entries(feature, fairway) if owns and feature else []
+    except (SystemExit, OSError, AttributeError):
+        return []
+    met = {(str(e.fields.get("parked", "")), int(e.fields.get("need", -1))) for e in harbour_entries()
+           if e.kind == "need-met" and str(e.fields.get("fairway", "")) == fairway}
+    asked: list[str] = []
+    for told in found:
+        needs = told.fields.get("needs") if told.kind == "told" else None
+        for index, need in enumerate(needs if isinstance(needs, list) else []):
+            check = need.get("check") if isinstance(need, dict) else None
+            if not isinstance(check, dict) or need.get("by") != "fleet" or check.get("kind") != "text":
+                continue
+            path = str(check.get("path", ""))
+            if (told.t, index) in met or not any(fnmatch.fnmatch(path, glob) for glob in owns):
+                continue
+            asked.append(f"{need.get('what')} (asked by {told.fields.get('slice') or 'a slice'}; met once "
+                         f"`{path}` holds `{check.get('has')}` on trunk)")
+    return asked
 
 
 def starter(slice_id: str, fairway: str, retry: str = "",
@@ -757,15 +797,24 @@ def sets_of(slice_id: str) -> list[str]:
     return [str(mark) for mark in (body.get("sets") or [])]
 
 
-def owed(fresh: list[logs.Entry], slice_id: str, promised: list[str]) -> tuple[list[str], str]:
-    """What this slice still owes from the lines written this turn: (marks not set, the demo's verdict).
+def owed(fresh: list[logs.Entry], slice_id: str, promised: list[str],
+         standing: list[logs.Entry] | None = None) -> tuple[list[str], str]:
+    """What this slice still owes: (marks not set, the verdict of the demo written this turn).
 
     The verdict is `""` where no demo was written at all, which is a different fault from one that was
     written and sent back — the first says the rung never ran, the second says a person watched it and
     wanted something changed, and they get different answers.
+
+    **A mark is set once.** It is a contract a sibling steers by from the moment its line is written, and
+    nothing un-sets it, so a `mark-set` anywhere in the slice's own log (`standing`) counts. The demo is the
+    line that has to be this turn's: one line is enough to tell a run that happened from one that printed
+    a help message and exited 0, and it is the one that is true of *this* head. game-club-manager's TB1 set
+    its mark at 08:59, was refused its merge on a red trunk, and was then parked twenty-four times for
+    *wrote no `mark-set`* — a line it had written, asked for again, for a contract that had not moved.
     """
     mine = [e for e in fresh if str(e.fields.get("slice", "")) == slice_id]
-    done = {str(e.fields["mark"]) for e in mine if e.kind == "mark-set"}
+    held = [e for e in (standing if standing is not None else fresh) if str(e.fields.get("slice", "")) == slice_id]
+    done = {str(e.fields["mark"]) for e in held if e.kind == "mark-set"}
     verdicts = [str(e.fields["verdict"]) for e in mine if e.kind == "demo"]
     return [mark for mark in promised if mark not in done], (verdicts[-1] if verdicts else "")
 
@@ -923,9 +972,11 @@ def refurnish(slice_id: str, berth: Path | None) -> None:
     """
     if berth is None:
         return
-    said = moorings.furnished(ROOT, berth)
-    if said:
-        print(f"captain: {slice_id}: {said}", flush=True)
+    # And its deck logs, for the same reason: a migration moves the project's, and a link made before it
+    # reaches a folder that is gone. A session may not mend that either.
+    for said in (moorings.linked(ROOT, berth), moorings.furnished(ROOT, berth)):
+        if said:
+            print(f"captain: {slice_id}: {said}", flush=True)
 
 
 def own_parks(fresh: list[logs.Entry], fairway: str, slice_id: str) -> list[logs.Entry]:
@@ -1185,7 +1236,7 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
         if landed_already(slice_id, feature, fairway):
             return True, ""
         if finished:
-            missing, verdict = owed(fresh, slice_id, promised)
+            missing, verdict = owed(fresh, slice_id, promised, entries(feature, fairway))
             dark = unseeded(fresh, slice_id, feature)
             if not missing and verdict == ACCEPTED and not dark:
                 return True, ""
@@ -1216,13 +1267,15 @@ def gate_missed(slice_id: str, promised: list[str], missing: list[str], verdict:
     if verdict and verdict != ACCEPTED:
         return f"the demo came back {verdict!r}. The notes are in the slice; a person decides what happens next"
     if missing:
-        return (f"the chart says {slice_id} sets {', '.join(promised)}, and this turn wrote no `mark-set` "
+        return (f"the chart says {slice_id} sets {', '.join(promised)}, and its log holds no `mark-set` "
                 f"for {', '.join(missing)}. A stage that wrote no line made no progress, so nothing here is "
-                f"evidence the slice was built")
+                f"evidence the slice was built. `python3 scripts/agents/deck_line.py mark-set --slice "
+                f"{slice_id} --mark <mark>` writes the line once the contract exists")
     if not verdict:
         return (f"this turn wrote no `demo` line for {slice_id}, so nothing says a person watched it work. "
                 f"`/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not "
-                f"read")
+                f"read. `python3 scripts/agents/deck_line.py demo --slice {slice_id} --verdict <verdict>` "
+                f"writes the line once the demo has been walked on this head")
     return (f"{slice_id} has a try-it.json and this turn wrote no `seeded` line for it, so nothing says its "
             f"story seeded green against the app this berth runs — a story the service refused is what a "
             f"person would have seen first. Fix the refused step at the Demo rung; `python3 "

@@ -306,6 +306,8 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
             f"since {when(str(group.get('t') or ''), now)}"]
     if needs:
         meta.append(f"{met} of {len(needs)} done")
+    if int(group.get("times") or 1) > 1:
+        meta.append(f"said {group['times']} times")
     buttons = ""
     if controls and group.get("source") != "told":
         # A hand-back's needs are met by trunk or ticked one by one; nothing a person says carries it on.

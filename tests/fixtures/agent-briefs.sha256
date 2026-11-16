@@ -52,6 +52,7 @@
 # Re-taken 2026-10-17 for changelog.d/capability-gates-once-per-capability.md: the rows for `agents/sail-adversary-privateer.md`, `agents/sail-converge-navigator.md`, `agents/sail-demo-hand.md`, `agents/sail-gaps-lookout.md`, `agents/sail-review-mate.md`, `agents/sail-slice-watch.md`, `agents/sail-tasks-quartermaster.md` moved, deliberately — converge, gaps, design review, adversary, mutation and the hand's walk run once per capability, and three of them moved off the slice.
 # Re-taken 2026-10-17 for changelog.d/a-slice-carries-its-own-dispatch-line.md: only the rows for agents/sail-slice-watch.md moved, deliberately — a slice's dispatch line travels in its own pull request, and a delegate hands the diff review it cannot start back to the host.
 # Re-taken 2026-11-13 for changelog.d/honest-chips.md: only the rows for agents/sail-implement-shipwright.md moved, deliberately — the shipwright's commit subject opens with the slice and the task it lands, which is what the board counts.
+# Re-taken 2026-11-16 for changelog.d/a-run-stops-waiting-on-a-person.md: only the rows for agents/sail-slice-watch.md moved, deliberately — the watch writes its `mark-set` lines with `scripts/agents/deck_line.py`, never by appending to the log.
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  .  agents/sail-adversary-privateer.md
 f2dab9b976f34e96095a5e8352ea2bd182e19a4cefb6dbd7a5f7749fdba916c8  .  agents/sail-converge-navigator.md
 1ca270d2141ceaa0ca3b9364cd0831b40c9335a43d109feb3709903678bcbab8  .  agents/sail-decide-skipper.md
@@ -60,7 +61,7 @@ a6051a016a1032ce1dfb0fcbafe343fe570e633ab3e89c7328dec269dbada84f  .  agents/sail
 e36ab9a1227df04f33120679c4e9c66cf0fe17fc1edcd35500552328ee9019d2  .  agents/sail-implement-shipwright.md
 74e769fca3d3571b21d32f4119a474ae6f0a03e3bbfe513ee79e02eda3a15d75  .  agents/sail-mutation-shipworm.md
 31394bc32c2e0fd3dced3b940b4987f487b0f5dc2e9e21682500d187a9665036  .  agents/sail-review-mate.md
-515766123e36cf4edeaffb3617ec42e5964a644159ee6ec771faed70c4b1d1dd  .  agents/sail-slice-watch.md
+2ba5efe2404960e4bd50b4bcd9cdf4c3dec191e4d2634514539fb6a39c7affc5  .  agents/sail-slice-watch.md
 31677aa0d822ac03d6ee9c3762abc38aa29c6d3ce197772f612b4474acc0dcd8  .  agents/sail-tasks-quartermaster.md
 11db71ae6d5675ef05aa8583f7c70925f2269001f57d7db08f7a9e6747c52984  .  agents/sail-unblock-bosun.md
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  delivery  agents/sail-adversary-privateer.md
@@ -71,6 +72,6 @@ f72b7c32404b7ecb9213ae4ce1e4997a6189959cf2fe5af61083a21dfaf91c2f  delivery  agen
 d3e5d4b31c8c5c3e282f4eecfa65d85115af2f5dbd09e0a09ccd0a0ef4ec32ab  delivery  agents/sail-implement-shipwright.md
 37393cbc33c19b47a8aeab5b958022c5adc04fd45aff0611541d8afec76670f6  delivery  agents/sail-mutation-shipworm.md
 31394bc32c2e0fd3dced3b940b4987f487b0f5dc2e9e21682500d187a9665036  delivery  agents/sail-review-mate.md
-e4be112669a9d3b5ae8c9d37e33a025c648bc9e85e46087a5d353bd1f5b0c24d  delivery  agents/sail-slice-watch.md
+4e05a230547300a216ee65e4b00602fb0f710ef1c52bca803f6ecfda737d769f  delivery  agents/sail-slice-watch.md
 31677aa0d822ac03d6ee9c3762abc38aa29c6d3ce197772f612b4474acc0dcd8  delivery  agents/sail-tasks-quartermaster.md
 59f4509f32da98d0d244ca49b2fc87c98a5ff452cc87582c6088009f75b773b5  delivery  agents/sail-unblock-bosun.md

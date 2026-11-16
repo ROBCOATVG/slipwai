@@ -58,7 +58,8 @@ TRY_STORY = """Beside `quickstart.md` it writes `try-it.json`: the records that 
    a person's browser would make — `{"as": "<a declared person>", "open": [{"label": "<whose record>", "path":
    "<the screen it is on>"}], "given": [{"stream": "<stream>", "event": "<Event>", "data": {…}}], "steps":
    [{"say": "…", "method": "POST", "path": "/api/…", "body": {…}, "keep": {"<name>": "<field of the
-   answer>"}}]}`, a kept `{name}` filling a later path or body; a step that reads what a worker writes after an
+   answer>"}}]}`, a kept `{name}` filling a later path or body, and a date written relative to the day the
+   story runs — `{today+3}`, `{next-thu}`, `{next-thu+7}` — never as a fixed day, which goes stale; a step that reads what a worker writes after an
    earlier one says how long it may wait, `"wait": <seconds>`, and is asked again each second while it is refused. It makes its own records rather than reaching
    for another slice's. `as` names a person under `specs/<feature>/people/` or in the local realm, and a story
    that needs someone new writes their file beside it — never the realm file, which is the host's. A mark

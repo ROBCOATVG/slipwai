@@ -12,7 +12,9 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import subprocess
 import sys
+import time
 import unittest
 from typing import Any, ClassVar
 
@@ -162,6 +164,41 @@ class NeedTest(MenderFixture):
         self.assertEqual(len(self.of_kind("mended")), 1, self.kinds())
         self.run_once()
         self.assertEqual(len(self.of_kind("told-met")), 1, self.kinds())
+
+    def test_a_need_that_landed_is_not_sent_a_second_mender(self) -> None:
+        """Its tick is written a pass after it lands, and until then it read as open: every landed need
+        got a second attempt that found nothing to do and was recorded as a failure."""
+        self.does("need")
+        self.forge_says(run("success", sha=self.head("main")))
+        self.told_a_need()
+        self.run_once()
+        self.settle()
+        self.run_once()
+        self.run_once()
+        self.assertEqual((len(self.of_kind("mend")), len(self.of_kind("mended")), self.of_kind("mend-failed")),
+                         (1, 1, []), self.kinds())
+
+    def test_a_landed_branch_is_deleted_and_the_next_hand_back_s_first_need_starts(self) -> None:
+        """`clubs-0` was three needs, one per hand-back. The first one's branch outlived its landing —
+        git will not delete a branch its worktree still holds — and the other two could never start."""
+        self.does("need")
+        self.forge_says(run("success", sha=self.head("main")))
+        self.told_a_need()
+        self.run_once()
+        self.settle()
+        branches = subprocess.run(["git", "branch", "--list", "mend/*"], cwd=self.root, capture_output=True,
+                                  text=True, check=True).stdout
+        self.assertEqual(branches.strip(), "", "a landed mend's branch is only a second name for trunk")
+        self.run_once()
+        time.sleep(1.1)  # a hand-back is named by its second
+        need = {"what": "land the flag line", "by": "fleet",
+                "check": {"kind": "text", "path": ".env.example", "has": "VITE_FLAG_JOIN="}}
+        self.deck("ordering", "ORD", logs.entry("told", fairway="ORD", slice="ORD-02", by="session",
+                                                message="ORD-02 needs its flag on main", needs=[need]))
+        self.run_once()
+        self.assertEqual(len(self.of_kind("mend")), 2, self.kinds())
+        self.assertNotIn("no worktree could be made", " ".join(str(e.fields.get("why", ""))
+                                                                for e in self.of_kind("mend-failed")))
 
     def test_a_persons_need_waits_for_the_person_outside_cruise(self) -> None:
         self.forge_says(run("success", sha=self.head("main")))

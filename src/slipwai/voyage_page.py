@@ -14,8 +14,8 @@ from pathlib import Path
 from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card
 from .console_page import console_card
-from .decision_log import SCRIPT as DECISIONS_SCRIPT
-from .decision_log import STYLE as DECISIONS_STYLE
+from .decision_cards import SCRIPT as DECISIONS_SCRIPT
+from .decision_cards import STYLE as DECISIONS_STYLE
 from .drawn import decided_states
 from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
 from .feedback_card import STYLE as FEEDBACK_STYLE
@@ -51,7 +51,7 @@ from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
 # and the Try it card, placed here and drawn by `try_card.py`
 # and the Now strip and a slice's live caption, drawn by `live_page.py`
 # and the tabs the bands below the strip sit in, and the Feedback card in one of them (`feedback_card.py`)
-# and the decision log's tab, drawn by `decision_log.py`
+# and the decision log's tab, drawn by `decision_cards.py`
 
 TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -260,7 +260,7 @@ function paintPassage(found){
     if (model) model.querySelector('.stale').hidden = model.dataset.modelSaid === found.model;
     if (window.waiting) waiting.set(found.waiting);
     count('[data-waiting-count]', found.waiting.count, 'waiting');
-    count('[data-decisions-unread]', found.decisions, 'unread');
+    count('[data-decisions-awaiting]', found.decisions, 'to confirm');
     for (const [name, band] of Object.entries(found.bands)) {
       const node = document.querySelector('[data-band="' + name + '"]');
       if (!node || node.dataset.said === band.said || busy(node)) continue;
@@ -782,8 +782,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("model", "Model",
              model_card(xml, note, viewer_fault, model_said(rows)) if xml or note or viewer_fault else ""),
             ("fleet", "Fleet", machinery),
-            ("decisions", f'Decisions<span class="count" data-decisions-unread{"" if decisions[1] else " hidden"}>'
-                          f"{decisions[1]} unread</span>", decisions[0]),
+            ("decisions", f'Decisions<span class="count" data-decisions-awaiting{"" if decisions[1] else " hidden"}>'
+                          f"{decisions[1]} to confirm</span>", decisions[0]),
             ("next", "Next features", intake_card(ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"

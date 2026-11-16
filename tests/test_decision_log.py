@@ -9,7 +9,9 @@ from pathlib import Path
 import checkout_packages  # noqa: F401
 
 from slipwai import logs
-from slipwai.decision_log import card, decisions, mark, parse
+from slipwai.decision_cards import tab
+from slipwai.decision_entry import parse
+from slipwai.decision_log import decisions, mark
 from slipwai.deck import entries
 
 BOOK = """# Decisions
@@ -75,8 +77,8 @@ class LogTest(unittest.TestCase):
 
     def test_a_persons_own_answer_is_drawn_read_so_the_unread_filter_leaves_it_out(self) -> None:
         """The filter, the count and Mark every one shown all read the class: `yours` alone listed it unread."""
-        html, _ = card(self.root)
-        self.assertIn('<article class="yours read"', html)
+        html, _ = tab(self.root, lambda name, drawn: drawn)
+        self.assertIn('<article class="read yours"', html)
 
     def test_a_decision_from_before_the_fleet_is_in_the_log_too(self) -> None:
         early = next(one for one in decisions(self.root) if one.number == "D1")
@@ -103,11 +105,12 @@ class LogTest(unittest.TestCase):
         book.write_text(BOOK + "\n## D9 — New in the berth?\n- **Decision:** yes.\n", encoding="utf-8")
         self.assertIn("D9", {one.number for one in decisions(self.root)})
 
-    def test_the_card_counts_what_is_unread_and_offers_each_its_receipt(self) -> None:
-        html, unread = card(self.root)
-        self.assertEqual(unread, 2)
+    def test_the_card_offers_each_unread_decision_its_receipt(self) -> None:
+        html, _ = tab(self.root, lambda name, drawn: drawn)
+        self.assertEqual(html.count("data-decision-read="), 2)
         self.assertIn('data-decision-read="md:D1"', html)
-        self.assertIn("<b>Your answer:</b> decide for me", html)
+        self.assertIn("Decided by you", html)
+        self.assertIn("decide for me", html)
 
 
 if __name__ == "__main__":

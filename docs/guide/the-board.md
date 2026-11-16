@@ -214,6 +214,18 @@ At the top of the Work tab. It lists only what is wrong: a red trunk, then each 
 in circles or gone quiet, and each merge the harbour refused, with a link to the slice's card. When nothing is
 wrong it is one line, *5 working · nothing needs a look*.
 
+### The captains
+
+Above the tabs, one button for each stream: *Captain · game-nights*, with what its slices are doing — *2 at
+work · 1 queued · 1 waiting on you* — and **new** when its captain has said something you have not seen. It
+opens that captain's window (below). Beside them:
+
+- **Tell every captain** — one message, placed in each captain's inbox. Each captain works out which of its
+  own slices it is for. Under the box, a line for each captain says where its copy stands and, once the
+  captain has sent it on, which slices it went to.
+- **Ask about this project** opens the console. It reads the run's logs and answers; it never changes
+  anything. Something you want done, you say to a captain or a slice.
+
 ### The work
 
 The slices, in columns: **To do**, **Queued**, **Working**, **Waiting on you** and **Done**. Click a card to
@@ -221,18 +233,55 @@ open it: its steps, what it is doing now, and the box that answers it when it wa
 **Compact** switch the view; Compact is one line for each slice in flight, waiting first, and a line opens its
 card. Your choice is remembered in this browser.
 
+A card whose conversation has something you have not seen carries **New ·** and the last thing said. Opened,
+a slice in flight shows the last message with its receipt, a one-line box that sends after its current turn,
+a product question waiting on you with a box to answer it, and **Open its window**.
+
 ### From the streams
 
 Under the work: what each stream has asked of you or left for you. Each park is grouped by what it waits on,
 with its needs as a checklist and the button that answers it; then questions no park holds, hand-backs, notes
 and decisions nobody has read. Click a row to open it, with that fairway's last lines and an answer box. Type an
-answer and press **Send**: the board writes a `told` line into that fairway's deck log, which the captain reads
-at its next boundary. A `told` after a park also clears that park: the harbourmaster writes the `cleared`
-receipt on its next pass and lights the captain again. [The workflow](the-workflow.md#how-to-clear-a-park)
-says more. A note also has **Done**, which writes a `read` line so it leaves the list.
+answer and press **Send**: the board places it as a message in the inbox of the slice it is for, or of the
+stream's captain where it names no slice. Nothing is written to the deck log. A person's message to a parked
+slice is the answer to its park: the captain writes the `told` that the harbourmaster clears the park on, and
+the captain records the answer as the decision when it carries the slice on.
+[The workflow](the-workflow.md#how-to-clear-a-park) says more. A note also has **Done**, which writes a `read`
+line so it leaves the list.
 
 Where a session limit has paused slices, **Try the N paused slices now anyway** asks each of them to resume.
-**Say something to a stream** has one box for each fairway that has written a line.
+**Say something to a stream** links to each stream's captain window.
+
+### A slice's window
+
+**Open its window** on a card opens one slice in a window of its own: **Where it is** and **Example map** as
+tabs, and beside them its conversation.
+
+- What you said is on the right with its receipt beneath it: *Queued · goes in when its current turn ends*,
+  *Held: this slice is at its merge*, *Delivered 11:47*, *Answered* with the reply under it, *Delivered, not
+  addressed*, or *Not delivered* with why and **Send again**. A queued message has **Interrupt now** and
+  **Withdraw**. A message a captain sent on says *You, through the game-nights captain*.
+- What the slice asked is a card. Where `.specify/cruise.json` says the skipper answers product questions
+  (cruising, with `decide: recommended-first` or `skipper-always`), nothing waits on you and the skipper's
+  answer is shown. Anywhere else a product question is also an item under *Holding work up*, answered from
+  the card or from the window.
+- **Send** waits for the turn under way to end. **Interrupt** cancels the turn and delivers at once; a slice in
+  print mode has no Interrupt, and the box says why.
+- **Pause**: the turn finishes, the session is kept and the slot is given back. **Resume** carries on in the
+  same session. **Stop**: the session ends now and the slice goes back to the queue; its commits stay on its
+  branch and uncommitted edits in its berth. A stop you make holds the slice until you resume it, and it then
+  starts in a fresh session. A slice you paused is listed under *When you have time*; one its captain paused
+  is not.
+
+The window marks what it has shown you as seen, in `.slipwai/run/board/seen.json`, for the project rather than
+for one browser.
+
+### A captain's window
+
+A captain button opens one stream's captain: its slices in flight, each opening that slice's window; what it
+decided today, read from its orders and from the events its fixed rule closed; and its conversation, with the
+same receipts and, beside each message, the slices it went to. Where the stream's captain is the program alone,
+the window says so and still lists the slices.
 
 ### Fleet
 
@@ -241,7 +290,7 @@ The Fleet tab is the machinery: **Sessions** in use against the slots, and which
 harbourmaster and each captain) with its state and its last line. **Open log ↗** on a captain's row opens that
 captain's own window, described below. **Stop the fleet** and the settings are here too.
 
-### The captain window
+### The captain log window
 
 **Open log ↗** on a captain's row in the Fleet tab opens one captain in a window of its own, titled with its fairway. It reads
 the files again every 2.5 seconds; **Following** pauses and resumes that.
@@ -254,7 +303,8 @@ the files again every 2.5 seconds; **Following** pauses and resumes that.
 - **Captain output** shows what the captain process printed, from `.slipwai/run/running/captain-<fairway>.out`:
   its own lines and each turn's closing message. It opens on the last 64 KB.
 - **Needs you** lists this fairway's open parks, unread messages and open questions, and **Tell this
-  captain** writes a `told` line, as the answer box does.
+  captain** places a message in its captain's inbox, as the answer box does; its receipts are in the captain's
+  own window.
 
 The published copy has no captain window, because it has no server to read from.
 

@@ -33,7 +33,7 @@ Carried into every project by `scripts/shared-modules.py`, which is why this imp
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 490 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
+# budget: 500 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
 # the key and what makes one trustworthy (and what a remade one leaves standing), the thread read by offset,
 # and the fold into receipts for every kind, which a reader and the writer must not disagree on
 from __future__ import annotations

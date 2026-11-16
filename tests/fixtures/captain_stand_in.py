@@ -38,7 +38,8 @@ def order(verb, secret=KEY, **said):
     t = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     COUNT.append(1)  # ids that sort in the order they were given, so the program reads them in that order
     body = {"v": 1, "id": f"{t.replace('-', '').replace(':', '')}-{PREFIX}{len(COUNT):02x}", "t": t,
-            "event": HELD["id"], "fairway": HELD.get("fairway") or os.environ.get("SLIPWAI_CAPTAIN_FAIRWAY", ""), "verb": verb, **said}
+            "event": HELD["id"], "fairway": HELD.get("fairway") or os.environ.get("SLIPWAI_CAPTAIN_FAIRWAY", ""),
+            "verb": verb, **said}
     signed = json.dumps({name: body.get(name) for name in FIELDS}, sort_keys=True, ensure_ascii=False)
     if secret:
         body["sig"] = hmac.new(secret, signed.encode("utf-8"), hashlib.sha256).hexdigest()

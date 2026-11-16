@@ -42,6 +42,7 @@
 # why: 2026-11-16 926e2472f0141a76 merge of the decision log: check-decisions.py asks a new decision for one plain sentence and spares entries written before the rule and slices then in flight; no other behaviour on macOS and Linux moves
 # why: 2026-11-16 c9a3ecf5f8c2489b 2026-11-16: merging captain-agent (evals, decision log) into stream E: the record re-taken over both sides; nothing either changed beyond what each recorded
 # why: 2026-11-16 b160bf7ec571a9d8 2026-11-16, stream E review: the captain agent's orders are split into captain_orders.py and captain_guard.py; a routed message is the captain's own with the person quoted; a captain's answers are deck decisions; attempts are read from the log; a headless captain runs in its own folder and is checked; a word to a slice answers only the park about it. With no captain agent a stream on macOS and Linux runs as before, but for a slice-aimed word clearing only the park about that slice.
+# why: 2026-11-16 ab728d565ecc7c2b talk.py's budget line re-claimed for the quote field; nothing it does changed
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -152,6 +153,10 @@
 5dc2800a08a7c8c18f4cc22dba1582e85fdb191deda6f6ab8e376d573dc9af8d  event-modelling-postgres-toy-serve  scripts/agents/try_it.py
 5dc2800a08a7c8c18f4cc22dba1582e85fdb191deda6f6ab8e376d573dc9af8d  standard-memory-none  scripts/agents/try_it.py
 5dc2800a08a7c8c18f4cc22dba1582e85fdb191deda6f6ab8e376d573dc9af8d  standard-postgres-toy-serve  scripts/agents/try_it.py
+61a399b69e730de44f8ac35ce42e0d9e376c21e6ced891fc4365342f5d61392d  event-modelling-memory-none  scripts/agents/talk.py
+61a399b69e730de44f8ac35ce42e0d9e376c21e6ced891fc4365342f5d61392d  event-modelling-postgres-toy-serve  scripts/agents/talk.py
+61a399b69e730de44f8ac35ce42e0d9e376c21e6ced891fc4365342f5d61392d  standard-memory-none  scripts/agents/talk.py
+61a399b69e730de44f8ac35ce42e0d9e376c21e6ced891fc4365342f5d61392d  standard-postgres-toy-serve  scripts/agents/talk.py
 620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  event-modelling-memory-none  scripts/agents/registry.json
 620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  event-modelling-postgres-toy-serve  scripts/agents/registry.json
 620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  standard-memory-none  scripts/agents/registry.json
@@ -286,10 +291,6 @@ b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  event-modellin
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  event-modelling-postgres-toy-serve  scripts/agents/capabilities.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  standard-memory-none  scripts/agents/capabilities.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  standard-postgres-toy-serve  scripts/agents/capabilities.py
-b73d67dd4bc995b8795201ca917701710ade2c8e906f5789918afc03a7634f04  event-modelling-memory-none  scripts/agents/talk.py
-b73d67dd4bc995b8795201ca917701710ade2c8e906f5789918afc03a7634f04  event-modelling-postgres-toy-serve  scripts/agents/talk.py
-b73d67dd4bc995b8795201ca917701710ade2c8e906f5789918afc03a7634f04  standard-memory-none  scripts/agents/talk.py
-b73d67dd4bc995b8795201ca917701710ade2c8e906f5789918afc03a7634f04  standard-postgres-toy-serve  scripts/agents/talk.py
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-memory-none  scripts/event-model/render-drawio.ts
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-postgres-toy-serve  scripts/event-model/render-drawio.ts
 ba79bebb26fd7d70ecf480888cb1d726b9dc6c99b45d7847f3c3c006b227a328  event-modelling-memory-none  scripts/agents/captain.py

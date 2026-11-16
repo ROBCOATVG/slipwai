@@ -11,11 +11,13 @@ difference between those two is whether somebody who is not holding the format i
 **It says the kind it does not know.** A line of a kind this has no sentence for is shown as its kind and
 its fields rather than skipped — the log grows, and a reader meeting an unfamiliar line should see that
 there was one.
+
+**The board writes no line here for anything a person says.** What is said to a stream is a message in an
+inbox (`talk_said`); what is left here is the board's receipts — `mark_read` and `dismiss`, the `read` the
+decision ceiling and the waiting list count, and `tick_need`, a need a person ticked off a park.
 """
 from __future__ import annotations
 
-import os
-import re
 from pathlib import Path
 
 from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold, harbour_logs, read, run_dir
@@ -80,65 +82,6 @@ def streams(root: Path) -> list[tuple[str, str]]:
 def feature_of(root: Path, fairway: str) -> str:
     """Which feature this stream's log is under, or `''` where it has none."""
     return next((feature for feature, name in streams(root) if name == fairway), "")
-
-
-def teller() -> str:
-    """Whose a `told` is: `person`, which may answer a park, or `session`, which may not.
-
-    The board writes a person's. So does the MCP server — except under a session the captain dispatched,
-    which starts it with `SLIPWAI_FAIRWAY` set and inherits it here: a project's `.mcp.json` reaches every
-    berth, and a session's note to the host cleared the decision-ceiling park it was meant to wait behind.
-    """
-    return "session" if os.environ.get("SLIPWAI_FAIRWAY") else "person"
-
-
-def tell(root: Path, fairway: str, message: str, slice_id: str = "", by: str = "") -> str:
-    """Write a person's message into that stream's deck log, or say why it could not be.
-
-    With `slice_id`, the message is for that one slice — the box on a red card on the voyage — and answers
-    only that slice's park, never its siblings'.
-
-    Into the deck log rather than anywhere of its own: the log is what the captain reads at its next
-    boundary, and a message somewhere else is a message nothing is watching. Here rather than beside the
-    board's route for it, because this is a line in a deck log and that is what this module is.
-
-    `by` names a writer that is neither: `feedback`, a person's confirmed feedback handed to the captain,
-    which the captain reads and which answers no park.
-    """
-    if not fairway or not message.strip():
-        raise ValueError("a message needs a stream to go to and something to say")
-    if slice_id and not re.fullmatch(r"[A-Za-z0-9_.-]{1,40}", slice_id):
-        raise ValueError(f"{slice_id!r} is not a slice id")
-    feature = feature_of(root, fairway)
-    if not feature:
-        raise ValueError(f"{fairway} has no log here, so there is nowhere for this to go. "
-                         f"A stream gets a log when its captain writes its first line")
-    path = deck_path(root, feature, fairway)
-    with path.open("a", encoding="utf-8") as handle:
-        line = (entry("told", fairway=fairway, message=message.strip(), by=by or teller(), slice=slice_id)
-                if slice_id else entry("told", fairway=fairway, message=message.strip(), by=by or teller()))
-        handle.write(line.line())
-    return f"told {slice_id or fairway}"
-
-
-def answer(root: Path, fairway: str, question: str, message: str) -> str:
-    """A person's answer to a `question`, written as the `decision` that closes it — by its id, which is
-    how `fleet.Fairway.asked` tells an open question from an answered one. A `told` was what the box under
-    a question used to write, and it answered nothing: the question stayed, and the words became a note."""
-    if not fairway or not message.strip():
-        raise ValueError("an answer needs a stream to go to and something to say")
-    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,40}", question):
-        raise ValueError(f"{question!r} is not a question's id")
-    feature = feature_of(root, fairway)
-    if not feature:
-        raise ValueError(f"{fairway} has no log here, so there is nowhere for this to go")
-    path = deck_path(root, feature, fairway)
-    with path.open("a", encoding="utf-8") as handle:
-        # `decided_by: human` is how the captain records a person's answer too; a decision a person took is
-        # not one they have still to read.
-        handle.write(entry("decision", fairway=fairway, id=question, what=message.strip(),
-                           decided_by="human").line())
-    return f"answered {question}"
 
 
 def mark_read(root: Path, fairway: str, stamps: list[str]) -> str:

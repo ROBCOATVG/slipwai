@@ -63,6 +63,9 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "on_you", "fleet_tab", "demos",
        # A conversation with a slice: the experiment wrote what a person said into the deck log.
        "talk",
+       # Talking to the fleet from the board: the windows, the strip, and every message placed in an inbox.
+       "talk_said", "talk_fold", "captain_files", "talk_page", "talk_waits", "talk_card", "captain_window",
+       "captains_strip", "talk_routes",
        "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_crossing",
        "migration_result", "migration_merge", "migration_renames", "catalog_checks", "catalog_options",
        "cli_offered", "cli_search",

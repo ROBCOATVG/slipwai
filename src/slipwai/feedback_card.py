@@ -248,7 +248,7 @@ def payload(root: Path, rows: list[dict[str, str]], fleet: dict, triaging: bool)
 
 def act(root: Path, held: dict, rows: list[dict[str, str]], fleet: dict, start: Callable[[], bool]) -> str:
     """One press on the card. `start` begins the triage session when the board is free, and says if it did."""
-    from .deck import tell
+    from .talk_said import tell
 
     verb = str(held.get("verb", ""))
     if verb not in VERBS:

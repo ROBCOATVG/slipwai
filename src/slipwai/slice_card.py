@@ -5,8 +5,8 @@ names of the files on its branch. `Implementing · 11/15` read as nearly done wi
 merge still ahead of it, and the line under it was whatever command the agent ran a second ago. So closed, a
 card in flight is the six steps with the one it is on, how long it has been on it, what comes after, and
 the task in hand; opened, each step with when it began and how long it took, the last few things its log
-says under the step it is on, and the door to its live window. What a person is asked, and the box that
-answers it, are unchanged.
+says under the step it is on, and its conversation (`talk_card`): the last word, a quick send and the door to
+its window. What a person is asked, and the box that answers it, are unchanged.
 
 **Drawn whole and swapped whole.** The columns are a band of `/live.json`, repainted every few seconds, so
 nothing here is kept in the page: a card is what its row says now. The poll puts back which cards were open.
@@ -23,9 +23,11 @@ from pathlib import Path
 from .activity import caption, minutes, newest, now_stamp
 from .example_map_page import card_html
 from .feedback_card import opener
-from .live_page import window_address
 from .page_shell import esc
 from .slice_rungs import AHEAD, COUNTED, instant
+from .talk_card import card_html as talk_html
+from .talk_card import fields as talk_fields
+from .talk_card import marker_html
 
 #: The steps a chip word says no more than: `Implementing` on Build is Build.
 PLAIN = {"Example mapping", "Starting", "Planning", "Implementing", "Demo", "Review", "Merging"}
@@ -86,10 +88,13 @@ STYLE = """
 def lit(rows: list[dict[str, str]], folds: dict[str, dict], root: Path | None = None,
         films: list[dict] | None = None) -> list[dict[str, str]]:
     """The rows with what only the run's own files say: each working slice's caption and last few lines,
-    and, for a slice a capability's film walks, its chapter there."""
+    and, for a slice a capability's film walks, its chapter there — and its conversation's last word."""
     found = []
+    talking = talk_fields(root, rows) if root is not None else {}
     for row in rows:
         key, extra = f"{row.get('fairway')}/{row['slice']}", {}
+        if row["slice"] in talking:
+            extra["talk"] = talking[row["slice"]]
         if key in folds:
             extra["live"] = caption(folds[key], row.get("next", ""))
             if root is not None:
@@ -209,7 +214,7 @@ def summary_html(row: dict[str, str]) -> str:
     spent = in_stage(row) if row["state"] == "working" else ""
     spent = f'<span class="for">{esc(spent)}</span>' if spent else ""
     cap = f'<span class="live-cap">{esc(row["live"])}</span>' if row.get("live") else ""
-    return f"<summary><b>{esc(name)}</b>{shown}{spent}{strip}{cap}</summary>"
+    return f"<summary><b>{esc(name)}</b>{shown}{spent}{strip}{cap}{marker_html(row)}</summary>"
 
 
 def now_html(row: dict[str, str]) -> str:
@@ -223,9 +228,8 @@ def now_html(row: dict[str, str]) -> str:
     feed = "".join(f'<li>{esc(str(one.get("t", ""))[11:16])} {esc(str(one.get("kind", "")))} '
                    f'{esc(str(one.get("what", "")))}</li>' for one in lines if isinstance(one, dict))
     doing = f'<span><b>Now:</b> {esc(row["live"])}</span>' if row.get("live") else ""
-    window = (f'<a href="{esc(window_address(row.get("fairway", ""), row["slice"]))}" target="_blank" '
-              f'rel="noopener">Open the live window</a>') if row.get("fairway") else ""
-    inner = doing + (f'<ul class="feed3">{feed}</ul>' if feed else "") + window
+    # Its window is opened from the conversation's part of the card, below, with the quick send beside it.
+    inner = doing + (f'<ul class="feed3">{feed}</ul>' if feed else "")
     return f'<div class="more">{inner}</div>' if inner else ""
 
 
@@ -310,6 +314,6 @@ def slice_html(row: dict[str, str]) -> str:
                                "slice": row["slice"]}, ask=f"What did {row['slice']} show you?")
     return (f'<details class="slice {esc(row["state"])}" id="card-{esc(row["slice"])}" '
             f'data-card="{esc(row["slice"])}">{summary_html(row)}'
-            f"{answer}{steps_html(row)}{facts_html(row)}{film_html(row)}{span_html(row)}"
+            f"{answer}{steps_html(row)}{facts_html(row)}{talk_html(row)}{film_html(row)}{span_html(row)}"
             f"{card_html(row) if row['state'] == 'done' else ''}"
             f'<div class="ask">{said}</div></details>')

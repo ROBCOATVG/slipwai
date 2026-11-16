@@ -2,8 +2,8 @@
 
 The point of the page is not that it is prettier than the terminal. It is that a person answers from one
 seat: a question from a stream is a line in that stream's deck log, and finding the right terminal to type
-into is the friction that has questions go unanswered for an hour. Typing the answer here writes the `told`
-line into the right log, and the stream's next boundary reads it.
+into is the friction that has questions go unanswered for an hour. Typing the answer here places it in the
+slice's or the captain's inbox (`talk_routes.py`), whose driver delivers it and writes the receipt.
 
 **`http.server` and nothing else.** A dashboard that needed a web framework would be a dashboard most people
 never ran. The whole server is a handful of routes and a render.
@@ -61,7 +61,7 @@ from .cli_telegraph import ring, set_one
 from .console import answered as console_answer
 from .console import for_root as console_for
 from .decision_log import mark as mark_decisions
-from .deck import answer, dismiss, mark_read, tell, tick_need
+from .deck import dismiss, mark_read, tick_need
 from .dials import set_dial
 from .errors import Busy, GenerationError
 from .feedback_card import act as feedback_act
@@ -116,6 +116,8 @@ from .stage_session import route_post as stage_post
 from .stage_steps import begin_model
 from .stage_steps import launch as continue_build
 from .stage_steps import triage as begin_triage
+from .talk_routes import route_get as talk_get
+from .talk_routes import route_post as talk_post
 from .telegraph import Refused
 from .trunk_remote import ASK, add_remote, given, no_ci, publishing, unasked
 from .try_card import VIDEOS, WALK_ROUTE, walk_file
@@ -328,6 +330,8 @@ class Bridge(BaseHTTPRequestHandler):
         if self.controls and stage_get(self, where, query):  # a stage over the protocol: `stage_session.py`
             return
         if self.controls and voyage_get(self, where, query):  # the Voyage and its one poll: `voyage_live.py`
+            return
+        if self.controls and talk_get(self, where, query):  # a conversation's poll, a captain's window
             return
         # One captain's window, and its poll: `captain_page` says what it reads.
         if where in ("/captain", "/captain.json") and self.controls:
@@ -691,6 +695,8 @@ class Bridge(BaseHTTPRequestHandler):
                 self.fitting = resumed(self.root, command)  # a stage kept from before a restart, carried on
             if stage_post(self, where, held):
                 return
+            if talk_post(self, where, held):  # everything said to a slice or a captain: `talk_routes.py`
+                return
             if where == "/generate/ask":
                 # The questions again, for the answers given so far: one of them decides what the next one
                 # offers, and which that is, is the catalogue's business and not the browser's.
@@ -862,11 +868,6 @@ class Bridge(BaseHTTPRequestHandler):
                 said = console_for(self.root).reset()
             elif where in ("/console/answer", "/console/cancel"):
                 said = console_answer(console_for(self.root), where, held)
-            elif where == "/tell":
-                said = (answer(self.root, str(held.get("fairway", "")), str(held["question"]),
-                               str(held.get("message", ""))) if held.get("question") else
-                        tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")),
-                             str(held.get("slice", ""))))
             # The receipt the decision ceiling counts, for the decisions a person has read on this page.
             elif where == "/read":
                 stamps = held.get("decisions")

@@ -18,6 +18,7 @@ from urllib.parse import unquote
 
 from .adoption_card import adoption_card, strategy_dates
 from .board_read import Read, read
+from .captains_strip import strip_html
 from .decision_log import card as decision_card
 from .feedback_card import card as feedback_card
 from .feedback_card import payload as feedback_payload
@@ -94,6 +95,7 @@ def live_json(board: Any) -> str:
              "points": feedback_points_card(kept.points),
              "work": work_card(rows, fault, set(listed["slices"])),
              "streams": streams_card(fleet),
+             "captains": strip_html(board.root, kept.rows, set(listed["slices"])),
              "expect": expect_card(found),
              "fleet": machinery(kept, rows, flags["stoppable"])}
     return json.dumps({"passage": json.loads(passage(board, found, kept.rows, fleet, flags, listed)),
@@ -125,7 +127,8 @@ def voyage(board: Any) -> str:
                        + feedback_card(root, rows, fleet, board.triaging(), trunk_head(root)),
                        decision_card(root), points=kept.points, adopting=adopting,
                        dates="" if adopting else remote_card(root) + strategy_dates(root),
-                       draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed)
+                       draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed,
+                       captains=strip_html(root, kept.rows, set(listed["slices"])))
 
 
 def route_get(board: Any, where: str, query: str) -> bool:

@@ -13,6 +13,8 @@ from pathlib import Path
 
 from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card
+from .captains_strip import SCRIPT as CAPTAINS_SCRIPT
+from .captains_strip import STYLE as CAPTAINS_STYLE
 from .console_page import console_card
 from .decision_log import SCRIPT as DECISIONS_SCRIPT
 from .decision_log import STYLE as DECISIONS_STYLE
@@ -752,7 +754,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
          decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "",
          dates: str = "", draftable: bool = False, machinery: str = "", streams: str = "",
-         waiting: dict | None = None) -> str:
+         waiting: dict | None = None, captains: str = "") -> str:
     """The window. `strip` is Needs a look, `machinery` the Fleet tab and `streams` what the streams asked,
     each a band the poll keeps current; `waiting` is the one list, whose slices the column draws."""
     now = current(found)
@@ -787,9 +789,10 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("next", "Next features", intake_card(ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"
-            f"{MACHINERY_STYLE}</style>"
-            f"{where}{landed}{'' if adopting else band('expect', expect_card(found))}{tabs_html(tabs)}{console_card()}")
-    script = SCRIPT + FILM_SCRIPT + (TRY_SCRIPT if trying else "") \
+            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}</style>"
+            f"{where}{landed}{'' if adopting else band('expect', expect_card(found))}{band('captains', captains)}"
+            f"{tabs_html(tabs)}{console_card()}")
+    script = SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + (TRY_SCRIPT if trying else "") \
         + (FEEDBACK_SCRIPT if feedback else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
         + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person

@@ -7,8 +7,9 @@ said 4, 9 and 2 at once, and none of them was wrong by its own lights.
 
 So this is the one reading, in two groups. *Holding work up*: a slice parked on a person, a card a running
 stage has put up, the one button the run cannot pass without, and a stream's log nobody can read (its
-captain stops at every start until a person repairs the line). *When you have time*: a capability with
-something to look at, and a feedback proposal waiting for Confirm. A note nobody has read and a slice paused
+captain stops at every start until a person repairs the line), and a slice's product question where the
+project says a person answers them. *When you have time*: a capability with something to look at, a feedback
+proposal waiting for Confirm, and a slice a person paused (never one its captain paused). A note nobody has read and a slice paused
 until a set time are not on it: neither holds anything up, and neither needs a person to move. Each item
 links to where it is acted on, and the column draws exactly the slices this names.
 """
@@ -24,6 +25,8 @@ from .feedback_card import to_look_at
 from .fleet_page import first_sentence, group_card, parks_table, plural
 from .page_shell import esc
 from .stage_session import running
+from .talk_waits import captain_window
+from .talk_waits import items as talk_items
 from .upstream import unjudged
 
 NOTHING_WAITS: dict[str, Any] = {"count": 0, "text": "", "href": "", "holding": [], "later": [], "slices": []}
@@ -116,6 +119,10 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
     said, where = button_waiting(board, able)
     if said:
         holding.append({"n": 1, "text": said, "href": where})
+    # A product question a slice asked a person, where the project says a person answers them, and a slice a
+    # person paused — never one its captain paused, which its captain resumes (`talk_waits`).
+    asked_you, paused_by_you = talk_items(root or board.root, rows or [])
+    holding += asked_you
     # A capability on film that nobody has opened or said anything about, and one owed a person's verdict
     # where the project asks for it: `feedback_card.to_look_at` says which films, so the two cannot disagree.
     films = to_look_at(root or board.root, fleet)
@@ -128,6 +135,7 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
     if proposed:
         said = ("A piece of feedback has" if proposed == 1 else f"{proposed} pieces of feedback have")
         later.append({"n": proposed, "href": "#feedback", "text": f"{said} a proposed route to confirm"})
+    later += paused_by_you
     if not holding and not later:
         return dict(NOTHING_WAITS)
     first = (holding or later)[0]
@@ -141,8 +149,8 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
 
     The Fleet tab carried this, and it is not machinery. It sits under the work because that is where the
     slices it is about are. So do the two things a person could do from that tab before it became the
-    machinery: try the slices a limit has paused now anyway, and say something to a stream (until each
-    stream has a window of its own to be told things in). A paused park is not drawn as a thing to do.
+    machinery: try the slices a limit has paused now anyway, and say something to a stream — now a link to
+    its captain's window, where it is said and receipted. A paused park is not drawn as a thing to do.
     """
     groups = [g for g in fleet.get("groups") or [] if g.get("paused") != "yes"]
     others = [row for row in fleet.get("inbox") or [] if row["kind"] != "parked"]
@@ -160,9 +168,11 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
                   f'data-message="resume now">Try the {len(limit.get("slices") or [])} paused slices now anyway'
                   f'</button><span class="empty">Before then the harness will just say no again{esc(lifts)}'
                   f"</span></div>")
-    boxes = "".join(f'<div class="ask"><input id="tell-{esc(one)}" placeholder="Tell {esc(one)} something…">'
-                    f'<button class="go" data-tell="{esc(one)}">Send</button></div>' for one in streams)
-    told = f"<h3>Say something to a stream</h3>{boxes}" if boxes else ""
+    # Said to a stream in its captain's window now, where the receipt and the captain's routing are shown.
+    links = " · ".join(f'<a href="{esc(captain_window(one))}" target="_blank" rel="noopener">Captain · {esc(one)}</a>'
+                       for one in streams)
+    told = (f'<h3>Say something to a stream</h3><p class="talk-to">Open its captain\'s window: {links}</p>'
+            if links else "")
     return (f'<div class="card" id="from-streams"><h2>From the streams</h2><p class="empty">What each stream '
             f"has asked of you or left for you, answered from here. Notes and unread decisions hold nothing up, "
             f"so they are not counted as waiting on you.</p>{cards}{listed}{paused}{told}</div>"

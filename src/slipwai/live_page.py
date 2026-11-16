@@ -21,6 +21,9 @@ from .activity import fold, lines_of, minutes, now_stamp, stamp, task_of
 from .example_map_page import STYLE as MAP_STYLE
 from .example_map_page import map_panel
 from .page_shell import document, esc
+from .talk_page import SCRIPT as TALK_SCRIPT
+from .talk_page import STYLE as TALK_STYLE
+from .talk_page import pane as talk_pane
 
 #: How much of the past a window's lanes span.
 SPAN = 60 * 60
@@ -71,6 +74,9 @@ WINDOW_STYLE = """
 .two{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start}
 @media (max-width:860px){.two{grid-template-columns:1fr}}
 .facts-list{margin:0;padding-left:18px;display:grid;gap:6px;font-size:.88rem}
+.slice-win{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,1fr);gap:18px;align-items:start}
+.slice-win>*{min-width:0}.slice-win>.talk{position:sticky;top:12px}
+@media (max-width:980px){.slice-win{grid-template-columns:minmax(0,1fr)}.slice-win>.talk{position:static}}
 """
 
 WINDOW_SCRIPT = """
@@ -270,10 +276,15 @@ def window_tabs(fairway: str, slice_id: str) -> str:
 
 
 def window(root: Path, fairway: str, slice_id: str) -> str:
-    body = (f"<style>{STYLE}{WINDOW_STYLE}{MAP_STYLE}</style>{window_tabs(fairway, slice_id)}"
+    """The slice's window: its tabs, and beside them its conversation (`talk_page`), which polls on its own."""
+    tabs = (f"{window_tabs(fairway, slice_id)}"
             f'<section data-panel="where">{window_body(root, fairway, slice_id)}</section>'
             f'<section data-panel="map" hidden>{map_panel(root, slice_id)}</section>')
-    return document(f"{slice_id} · {root.resolve().name}", f"live · {fairway}", body, WINDOW_SCRIPT, now="/slice")
+    poll = f"/talk.json?fairway={quote(fairway, safe='')}&slice={quote(slice_id, safe='')}"
+    body = (f"<style>{STYLE}{WINDOW_STYLE}{MAP_STYLE}{TALK_STYLE}</style>"
+            f'<div class="slice-win"><div class="tabbed">{tabs}</div>{talk_pane(root, fairway, slice_id, poll)}</div>')
+    return document(f"{slice_id} · {root.resolve().name}", f"live · {fairway}", body, WINDOW_SCRIPT + TALK_SCRIPT,
+                    now="/slice")
 
 
 def said_in(drawn: str) -> str:

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from urllib.parse import quote
 
 from .bridge_page import STATES
 from .deck import feature_of, output, timeline
@@ -233,8 +234,10 @@ def rail_html(fairway: str, lines: list[dict], waiting: list[dict]) -> str:
     listed = f'<ul class="needs">{"".join(needs)}</ul>' if needs else '<p class="empty">Nothing.</p>'
     return (f'<div class="card"><h3>Needs you</h3>{listed}</div>{last_merge(lines)}'
             f'<div class="card"><h3>Tell this captain</h3><div class="ask" style="margin-top:0">'
-            f'<input id="tell" placeholder="Read at its next boundary" aria-label="Message to {esc(fairway)}">'
-            f'<button class="go" id="tell-go">Send</button></div></div>')
+            f'<input id="tell" placeholder="Goes to its inbox" aria-label="Message to {esc(fairway)}">'
+            f'<button class="go" id="tell-go">Send</button></div><p class="live"><a href="/captain-window?fairway='
+            f'{esc(quote(fairway, safe=""))}" target="_blank" rel="noopener">Its conversation, with receipts'
+            f"</a></p></div>")
 
 
 def found_parts(root: Path, fairway: str, board: dict) -> tuple[dict | None, list[dict], str]:

@@ -91,6 +91,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # to do.
     ("answers", ("selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
                  "fleet_record", "timeline", "deck",
+                 # What the board says to the fleet, placed in an inbox; a conversation read the way a person
+                 # reads it, with what they have seen; and what a captain decided, off its orders and events.
+                 "talk_said", "talk_fold", "captain_files",
                  # Who accepts a whole capability — the hand or a person — read once for the board's fold.
                  "demos",
                  "toolkit", "platform", "convergence", "delivery_facts", "programme", "quick_wins",
@@ -186,6 +189,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # And the board kept current: one read of a project shared by every poll, the one poll that
               # carries every band, the one list of what waits on a person, and the Fleet tab's machinery.
               "board_read", "voyage_live", "on_you", "fleet_tab",
+              # And talking to the fleet: a conversation drawn, what it adds to a card and to the one list,
+              # a captain's window, the captains on the board, and the routes every message goes through.
+              "talk_page", "talk_waits", "talk_card", "captain_window", "captains_strip", "talk_routes",
               # What a handed-over document stands on, carried in with it.
               "design_docs",
               # The same folder read before it is handed over, and the verb that prints the reading.

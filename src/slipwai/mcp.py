@@ -5,12 +5,12 @@ agent. That is the right shape for a person and the wrong one for the agent, whi
 blocked by having somebody copy a board from one window into another. These are the same folds, reachable by
 the thing that is doing the work.
 
-**Read, and one write.** `fleet`, `stream`, `inbox`, `clearance` and `check-chart` read; `tell` writes the
-one line the bridge already lets a person write — a `told` into a stream's deck log. It goes through
-`bridge.tell`, so the line an agent writes is the line the page would have written: same fields, same file,
-same captain reading it at its next boundary. Nothing here allocates a berth, rings the telegraph, or
-touches the harbour log. Those are the harbourmaster's, and a second way to do them would be a second
-control plane.
+**Read, and one write.** `fleet`, `stream`, `inbox`, `clearance` and `check-chart` read; `tell` places the
+one message the board already lets a person place — in a slice's inbox where it names one, its stream's
+captain's where it names only the stream. It goes through `talk_said.tell`, the board's own, so what an agent
+sends is what the page would have sent: signed the same, receipted by the same driver, with the id to follow
+it by. Nothing here allocates a berth, rings the telegraph, writes a deck log, or touches the harbour log.
+Those are the harbourmaster's, and a second way to do them would be a second control plane.
 
 **Nothing is computed here.** Every answer is a call into the module the verb calls. A tool that drew its
 own board would be a second answer to what is happening, and the one you were looking at would be whichever
@@ -30,12 +30,12 @@ from pathlib import Path
 from typing import IO
 
 from .assets import VERSION
-from .bridge import tell
 from .cli_fleet import config, lines, stream_lines
 from .deck import RECENT
 from .fleet import board, inbox_detail
 from .project.harbour import CONFIG
 from .shell_environment import project_python
+from .talk_said import tell
 
 #: What the server calls itself where a harness lists it.
 NAME = "slipwai"
@@ -167,10 +167,11 @@ def the_chart(root: Path, arguments: dict) -> str:
 
 
 def a_told(root: Path, arguments: dict) -> str:
-    """The one write: a message into a stream's deck log, through the bridge's own function."""
+    """The one write: a message into a slice's inbox or its stream's captain's, through the board's own."""
     harbour(root)
     try:
-        return tell(root, str(arguments.get("fairway", "")), str(arguments.get("message", "")))
+        return tell(root, str(arguments.get("fairway", "")), str(arguments.get("message", "")),
+                    str(arguments.get("slice", "") or ""))
     except (ValueError, OSError) as fault:
         raise Refused(str(fault)) from fault
 
@@ -197,10 +198,11 @@ TOOLS: tuple[Tool, ...] = (
     Tool("check-chart", "Whether the chart holds: every mark has one setter and every slice is in a "
                         "capability. Runs this project's own `scripts/check-chart.py`.",
          the_chart),
-    Tool("tell", "Answer a stream: writes a `told` line into that stream's deck log, which its captain "
-                 "reads at its next boundary. The one thing here that changes anything, and it is the same "
-                 "line the bridge writes.",
-         a_told, {**FAIRWAY, "message": {"type": "string", "description": "what to tell that stream"}},
+    Tool("tell", "Tell a stream something: placed in the named slice's inbox, or its captain's where no "
+                 "slice is named, and delivered by its driver, which writes the receipt. The one thing here "
+                 "that changes anything, and it is the same message the board places. Answers with its id.",
+         a_told, {**FAIRWAY, "message": {"type": "string", "description": "what to tell that stream"},
+                  "slice": {"type": "string", "description": "the slice it is for, if it is for one"}},
          ("fairway", "message"), writes=True),
 )
 

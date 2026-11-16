@@ -150,10 +150,34 @@ def answer(session, words):
     return "end_turn"
 
 
+def captain(session, words):
+    """A stream's captain woken by an event: the orders its `default` lists, through `orders.py`, as the
+    suite's stand-in captain gives them (`captain_stand_in.py`)."""
+    import re
+    import subprocess
+    found = re.search(r"Event (\S+) \(", words)
+    where = re.search(r"read (\S+\.json)\. The", words)
+    if not found or not where:
+        return "end_turn"
+    held = json.loads((HOME / where.group(1)).read_text(encoding="utf-8"))
+    for one in held.get("default") or []:
+        argv = [sys.executable, "scripts/agents/orders.py", one["verb"]]
+        if one.get("slice"):
+            argv.append(one["slice"])
+        for name in ("note", "why", "text"):
+            if one.get(name):
+                argv += [f"--{name}", str(one[name])]
+        subprocess.run([*argv, "--event", found.group(1)], cwd=HOME, check=False, capture_output=True)
+    text(session, f"Captain: answered {found.group(1)}.")
+    return "end_turn"
+
+
 def turn(number, session, words):
     PROMPTS[session] = PROMPTS.get(session, 0) + 1
     if words.startswith(MESSAGE):
         return answer(session, words)
+    if words.startswith("You are the captain of"):
+        return captain(session, words)
     # A role at the head of the prompt, set off by a rule, is acknowledged and not echoed: the words the
     # stand-in acts on are the person's own, after it.
     if "\n---\nThe board" in words:  # a console's fold of the board rides after the question: not the words

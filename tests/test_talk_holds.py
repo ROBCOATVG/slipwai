@@ -75,7 +75,8 @@ class RekeyTest(unittest.TestCase):
         self.remake_key()
         states = {one["id"]: one for one in talk.receipts(self.home)}
         self.assertEqual(states[answered["id"]]["state"], "answered")
-        self.assertEqual((states[waiting["id"]]["state"], states[waiting["id"]]["why"]), ("not delivered", talk.REKEYED))
+        self.assertEqual((states[waiting["id"]]["state"], states[waiting["id"]]["why"]),
+                         ("not delivered", talk.REKEYED))
         for path, why in talk.refused(self.home):
             talk.reject(self.home, path, why)
         refused = [one for one in talk.receipts(self.home) if one["id"] == waiting["id"] and not one["kind"]]
@@ -128,8 +129,8 @@ class DriverTest(unittest.TestCase):
         self.assertEqual(receipt["state"], "done")
 
     def test_ps_is_read_in_the_c_locale(self) -> None:
-        with mock.patch.object(self.drive.subprocess, "run",
-                               return_value=subprocess.CompletedProcess([], 0, "Mon Nov 16 09:00:00 2026 agent", "")) as ran:
+        said = subprocess.CompletedProcess([], 0, "Mon Nov 16 09:00:00 2026 agent", "")
+        with mock.patch.object(self.drive.subprocess, "run", return_value=said) as ran:
             self.drive.identity(1)
         self.assertEqual(ran.call_args.kwargs["env"]["LC_ALL"], "C")
 

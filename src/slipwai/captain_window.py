@@ -52,8 +52,9 @@ STYLE = TALK_STYLE + """
 #: What a stream's captain is, where no agent is in it.
 PROGRAM = ("This stream's captain is the program alone: it starts its slices in chart order, retries a failed gate "
            "by its fixed rule and parks what it cannot decide. It decides nothing else, so there is nothing "
-           "listed here. What you say to it waits in its inbox for a captain agent; to change what a slice is "
-           "doing now, say it in that slice's own window.")
+           "listed here. What you say to it is read at its next turn and written into the stream's log, which "
+           "clears a park it answers; it routes nothing and answers nothing. To change what a slice is doing "
+           "now, say it in that slice's own window.")
 ORDER = {"waiting": 0, "working": 1, "queued": 2}
 
 

@@ -45,10 +45,15 @@ class CaptainWindowTest(BoardTest):
         self.run_dir = logs.run_dir(self.root)
 
     def test_a_captain_that_is_the_program_alone_says_so_and_still_lists_its_slices(self) -> None:
+        # A newly generated project has the captain agent on; this one's harbour says it is the program alone.
+        harbour = self.root / "harbour.json"
+        held = json.loads(harbour.read_text(encoding="utf-8")) if harbour.is_file() else {}
+        harbour.write_text(json.dumps({**held, "captain": {"agent": False}}), encoding="utf-8")
         code, page = self.get("/captain-window?fairway=ORD")
         self.assertEqual(code, 200)
         self.assertIn("Captain · ORD", page)
         self.assertIn("captain is the program alone", page)
+        self.assertIn("read at its next turn", page, "what is said to it is read by the program, not left waiting")
         self.assertIn('href="/slice?fairway=ORD&amp;slice=ORD-01"', page, "each slice opens its own window")
         self.assertIn('href="/slice?fairway=ORD&amp;slice=ORD-02"', page)
         self.assertNotIn("BIL-01", page, "another stream's slice is not this captain's")

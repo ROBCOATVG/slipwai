@@ -39,6 +39,7 @@
 # why: 2026-11-16 0f477ca6b75219fd 2026-11-16, changelog.d/demo-is-feedback.md (review): deck_line.py refuses an accepted or demo-due unless the capability is whole and cleared, takes only the hand's acceptance and refuses the line the demos setting does not take; capabilities.py has the one rule (acceptable), a --json port, says under hand that nothing is owed a person, and reads the hand's acceptance off a register or demo-log written before the line existed. Deliberate, and the same on macOS and Linux; nothing else these files do moved
 # why: 2026-11-16 82c619b40e11079c merge of the held driver and the demo acceptance: drive.py, captain.py, talk.py, abreast.py and cruise.py (sessions: auto) move with the driver held open and the conversation files; deck_line.py and capabilities.py with the hand's acceptance; no other behaviour on macOS and Linux moves
 # why: 2026-11-16 dd6dcf4c3d4a4a5f 2026-11-16, changelog.d/driver-held-open.md second review: talk.py signs every message for its slice and makes its key private; drive.py verifies a pid before ending it, falls back to print where auto cannot take the protocol, and reads absent sessions as print; captain.py bounds a captain's turn by deck lines and commits only and a message's by time, and lets only a person lift a person's hold; cruise.py reads absent sessions as print. Print mode and every project that does not say auto run on macOS and Linux as before
+# why: 2026-11-16 926e2472f0141a76 merge of the decision log: check-decisions.py asks a new decision for one plain sentence and spares entries written before the rule and slices then in flight; no other behaviour on macOS and Linux moves
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -163,6 +164,10 @@
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-postgres-toy-serve  scripts/test_benchmark.py
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-memory-none  scripts/event-model/model.ts
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-postgres-toy-serve  scripts/event-model/model.ts
+6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-memory-none  scripts/check-decisions.py
+6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-postgres-toy-serve  scripts/check-decisions.py
+6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  standard-memory-none  scripts/check-decisions.py
+6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  standard-postgres-toy-serve  scripts/check-decisions.py
 71a36f3629c51a371715dc3baaba64291ff4fd15d6c87a70c60869b6d7ff1f7f  event-modelling-memory-none  scripts/event-model/palette.ts
 71a36f3629c51a371715dc3baaba64291ff4fd15d6c87a70c60869b6d7ff1f7f  event-modelling-postgres-toy-serve  scripts/event-model/palette.ts
 7251998719c9c652a4742cb9e62e827f8aa4b68f4f78e072aa3a6cc3f58e93ee  event-modelling-memory-none  scripts/agents/preflight.py
@@ -284,10 +289,6 @@ c1188bbe22f9f08d241e74f46219f18e8ac65bfed76900bcb3334e4ebf896071  event-modellin
 c1188bbe22f9f08d241e74f46219f18e8ac65bfed76900bcb3334e4ebf896071  standard-memory-none  scripts/agents/cruise.py
 c1188bbe22f9f08d241e74f46219f18e8ac65bfed76900bcb3334e4ebf896071  standard-postgres-toy-serve  scripts/agents/cruise.py
 c1b553eaae94bea81af7760499b59df823f0513728a97d467c432310d841d70b  standard-postgres-toy-serve  Makefile
-c1d4022978876a55194b020b17016f13a60e9ea4dade2cc463adfbf286edc427  event-modelling-memory-none  scripts/check-decisions.py
-c1d4022978876a55194b020b17016f13a60e9ea4dade2cc463adfbf286edc427  event-modelling-postgres-toy-serve  scripts/check-decisions.py
-c1d4022978876a55194b020b17016f13a60e9ea4dade2cc463adfbf286edc427  standard-memory-none  scripts/check-decisions.py
-c1d4022978876a55194b020b17016f13a60e9ea4dade2cc463adfbf286edc427  standard-postgres-toy-serve  scripts/check-decisions.py
 c41e822a5437dd27d3c6bd54ab1699e78b7288ac23cfe06615b5f98d8c17aa98  event-modelling-memory-none  scripts/check-try.py
 c41e822a5437dd27d3c6bd54ab1699e78b7288ac23cfe06615b5f98d8c17aa98  event-modelling-postgres-toy-serve  scripts/check-try.py
 c41e822a5437dd27d3c6bd54ab1699e78b7288ac23cfe06615b5f98d8c17aa98  standard-memory-none  scripts/check-try.py

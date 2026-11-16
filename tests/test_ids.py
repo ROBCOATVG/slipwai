@@ -171,7 +171,8 @@ class VersionOneIdTest(unittest.TestCase):
         tree = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tree, True)
         entry = ("- **Stage:** s · **Slice:** L01 · **When:** now · **Stream:** x\n- **Question:** q\n"
-                 "- **Options:** a\n- **Decision:** a\n- **Why:** w · **Read against:** the specification\n"
+                 "- **Options:** a\n- **Decision:** a\n- **In short:** a club keeps its own code\n"
+                 "- **Why:** w · **Read against:** the specification\n"
                  "- **Decided by:** human\n- **Confidence:** high · **Would reverse if:** r\n"
                  "- **Written to:** decisions.md\n- **Status:** standing\n")
         path = tree / "decisions.md"

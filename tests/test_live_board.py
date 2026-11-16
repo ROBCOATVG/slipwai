@@ -251,6 +251,26 @@ class OnePollTest(BoardTest):
                 self.assertEqual(signature(band["html"]), band["said"])
         self.assertEqual(set(found["passage"]), set(json.loads(self.get("/voyage.json")[1])))
 
+    def test_a_decision_landing_moves_the_decisions_band_and_its_count_without_a_reload(self) -> None:
+        book = self.root / "specs/ordering/decisions.md"
+        book.parent.mkdir(parents=True, exist_ok=True)
+        entry = ("## D{n} — Does a settlement keep its answer?\n- **Stage:** plan · **Slice:** L05 · "
+                 "**When:** 2026-11-1{n}T10:00:00Z · **Stream:** ORD\n- **Decision:** (a).\n"
+                 "- **Status:** awaiting human confirmation\n\n")
+        book.write_text(entry.format(n=1), encoding="utf-8")
+        found = json.loads(self.get("/live.json")[1])
+        page = self.get("/voyage")[1]
+        held = re.search(r'data-band="decisions" data-said="([^"]*)"', page)
+        assert held is not None
+        self.assertEqual(held.group(1), found["bands"]["decisions"]["said"])
+        self.assertEqual(found["decisions"], 1)
+        self.assertIn("1 unread", page)
+        book.write_text(entry.format(n=1) + entry.format(n=2), encoding="utf-8")
+        after = json.loads(self.get("/live.json")[1])
+        self.assertEqual(after["decisions"], 2)
+        self.assertNotEqual(after["bands"]["decisions"]["said"], found["bands"]["decisions"]["said"])
+        self.assertEqual(after["bands"]["expect"]["said"], found["bands"]["expect"]["said"])
+
     def test_a_note_landing_moves_its_band_and_no_other(self) -> None:
         before = json.loads(self.get("/live.json")[1])["bands"]
         self.deck("ORD", logs.entry("told", fairway="ORD", message="a note for you"))

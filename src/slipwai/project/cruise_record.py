@@ -35,6 +35,8 @@ DECISION_ENTRY = f"""## D<n> — <the question, in one line>
 - **Question:** <as the stage raised it>
 - **Options:** <each, marking the one the stage recommended>
 - **Decision:** <one>
+- **In short:** <one sentence a product owner reads without the specification open, saying what the product now
+  does: no requirement, decision or event ids, and no file names>
 - **Why:** <in the actor's terms> · **Read against:** <what already answered this — this project's own
   convention and where it is written, the specification, the constitution, standing D<m> — or `the method's
   default` where none of them did>
@@ -43,6 +45,11 @@ DECISION_ENTRY = f"""## D<n> — <the question, in one line>
 - **Written to:** <the artifact paths the answer went into>
 - **Status:** standing | awaiting human confirmation | confirmed by human <date> | overridden by D<m> |
   overridden by human <date>"""
+#: Where a project records the instant `check-decisions` began asking every new entry for its `In short`:
+#: written once, by `slipwai migrate`, into a project that already had decisions, so the entries it had are
+#: not failed for a field nobody asked them for. A project without it was made under the rule, and every
+#: entry it has is held to it. Read by `scripts/check-decisions.py`, which spells the same path.
+SENTENCE_FROM = ".specify/decisions-in-short.json"
 DEMO_ENTRY = f"""## <ISO instant> — <accepted | behaviour | implementation> · <slice id> · {HAND} (<model>)
 - **Started with:** <the literal command or URL> · **Seeded:** <what, or none>
 - **Driven through:** {BROWSER} | <harness browser tool> | HTTP | CLI — <why, where not the first>

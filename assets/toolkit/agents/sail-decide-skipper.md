@@ -19,6 +19,12 @@ State the decision, the reason in the actor's terms, your confidence (`high`, `m
 condition that would reverse it. Where the stage recommended an answer and you take it, say so; where you
 depart from it, the reason is the part that matters.
 
+**Then say it to the owner in one sentence**, as the entry's `In short`: what the product now does, in words
+a product owner reads without the specification open. No requirement, decision or event identifier, no file
+name, no option letter: "A pasted invite link is refused with the wrong-code message until a page shows
+organisers the link", not "CL2 joins by code only per D24". It is the first thing a person reads of your
+decision, often the only thing, and the board shows it above everything else in the entry.
+
 **A fact is not a decision, and you never invent one.** A credential, a third party's behaviour, what an
 existing repository's release path is, whether a person has approved a release — those are inputs nobody
 here has, and the honest answer is `unavailable: <what a person must provide>`. That word is what lets the

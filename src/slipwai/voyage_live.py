@@ -18,7 +18,8 @@ from urllib.parse import unquote
 
 from .adoption_card import adoption_card, strategy_dates
 from .board_read import Read, read
-from .decision_log import card as decision_card
+from .decision_cards import polled as decisions_polled
+from .decision_cards import tab as decision_tab
 from .feedback_card import card as feedback_card
 from .feedback_card import payload as feedback_payload
 from .film import films_card, films_of
@@ -90,14 +91,17 @@ def live_json(board: Any) -> str:
     rows = lit_rows(board, kept)
     flags = able(board, kept.rows, fleet)
     listed = waiting(board, fleet, flags, kept.rows)
+    cards, unread = decisions_polled(board.root)
     drawn = {"look": look_html(rows, kept.folds, kept.trunk),
              "points": feedback_points_card(kept.points),
              "work": work_card(rows, fault, set(listed["slices"])),
              "streams": streams_card(fleet),
              "expect": expect_card(found),
              "fleet": machinery(kept, rows, flags["stoppable"])}
+    if cards:  # the tab exists only once there is a decision; the first one is a change of the page's shape
+        drawn["decisions"] = cards
     return json.dumps({"passage": json.loads(passage(board, found, kept.rows, fleet, flags, listed)),
-                       "waiting": listed, "decisions": decision_card(board.root)[1], "model": model_said(kept.rows),
+                       "waiting": listed, "decisions": unread, "model": model_said(kept.rows),
                        "bands": {name: {"said": signature(html), "html": html} for name, html in drawn.items()}})
 
 
@@ -123,7 +127,7 @@ def voyage(board: Any) -> str:
                        flags["modelable"], try_card(root, seat), look_html(rows, folds, kept.trunk),
                        films_card(films, rows, fleet.get("demo_due_in"))
                        + feedback_card(root, rows, fleet, board.triaging(), trunk_head(root)),
-                       decision_card(root), points=kept.points, adopting=adopting,
+                       decision_tab(root, band), points=kept.points, adopting=adopting,
                        dates="" if adopting else remote_card(root) + strategy_dates(root),
                        draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed)
 

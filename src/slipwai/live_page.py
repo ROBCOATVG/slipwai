@@ -18,6 +18,10 @@ from pathlib import Path
 from urllib.parse import quote
 
 from .activity import fold, lines_of, minutes, now_stamp, stamp, task_of
+from .decision_cards import SCRIPT as DECISIONS_SCRIPT
+from .decision_cards import STYLE as DECISIONS_STYLE
+from .decision_cards import payload as decisions_payload
+from .decision_cards import slice_panel
 from .example_map_page import STYLE as MAP_STYLE
 from .example_map_page import map_panel
 from .page_shell import document, esc
@@ -89,7 +93,7 @@ WINDOW_SCRIPT = """
       if (one.dataset.tab === tab) one.setAttribute('aria-current', 'page'); else one.removeAttribute('aria-current');
     });
   };
-  show(where.get('tab') === 'map' ? 'map' : 'where');
+  show(['map', 'decisions'].includes(where.get('tab')) ? where.get('tab') : 'where');
   document.addEventListener('click', event => {
     const tab = event.target.closest('[data-tab]');
     if (tab) { event.preventDefault(); show(tab.dataset.tab); history.replaceState(null, '', tab.href); return; }
@@ -120,6 +124,7 @@ WINDOW_SCRIPT = """
       const again = fresh.querySelector('.map-row');
       if (again) again.scrollLeft = left;
     }
+    if (window.decisionSwap) decisionSwap(found);
     setTimeout(poll, 3000);
   };
   setTimeout(poll, 3000);
@@ -268,23 +273,27 @@ def window_body(root: Path, fairway: str, slice_id: str) -> str:
     return f'<div id="slice-live" data-said="{esc(said)}">{inner}</div>'
 
 
-def window_tabs(fairway: str, slice_id: str) -> str:
-    """Where it is, and its example map: links, so each is an address a person can keep or reload."""
+def window_tabs(fairway: str, slice_id: str, decided: int = 0) -> str:
+    """Where it is, its example map and its decisions: links, so each is an address a person can keep."""
     here = esc(window_address(fairway, slice_id))
     return (f'<nav class="tabs" aria-label="This slice"><a href="{here}&amp;tab=where" data-tab="where" '
-            f'aria-current="page">Where it is</a><a href="{here}&amp;tab=map" data-tab="map">Example map</a></nav>')
+            f'aria-current="page">Where it is</a><a href="{here}&amp;tab=map" data-tab="map">Example map</a>'
+            f'<a href="{here}&amp;tab=decisions" data-tab="decisions">Decisions · {decided}</a></nav>')
 
 
 def window(root: Path, fairway: str, slice_id: str) -> str:
-    """The slice's window: its tabs, and beside them its conversation (`talk_page`), which polls on its own."""
-    tabs = (f"{window_tabs(fairway, slice_id)}"
+    """The slice's window: its tabs — where it is, its example map, its decisions — and beside them its
+    conversation (`talk_page`), which polls on its own."""
+    decided, count = slice_panel(root, slice_id)
+    tabs = (f"{window_tabs(fairway, slice_id, count)}"
             f'<section data-panel="where">{window_body(root, fairway, slice_id)}</section>'
-            f'<section data-panel="map" hidden>{map_panel(root, slice_id)}</section>')
+            f'<section data-panel="map" hidden>{map_panel(root, slice_id)}</section>'
+            f'<section data-panel="decisions" hidden>{decided}</section>')
     poll = f"/talk.json?fairway={quote(fairway, safe='')}&slice={quote(slice_id, safe='')}"
-    body = (f"<style>{STYLE}{WINDOW_STYLE}{MAP_STYLE}{TALK_STYLE}</style>"
+    body = (f"<style>{STYLE}{WINDOW_STYLE}{MAP_STYLE}{DECISIONS_STYLE}{TALK_STYLE}</style>"
             f'<div class="slice-win"><div class="tabbed">{tabs}</div>{talk_pane(root, fairway, slice_id, poll)}</div>')
-    return document(f"{slice_id} · {root.resolve().name}", f"live · {fairway}", body, WINDOW_SCRIPT + TALK_SCRIPT,
-                    now="/slice")
+    return document(f"{slice_id} · {root.resolve().name}", f"live · {fairway}", body,
+                    WINDOW_SCRIPT + DECISIONS_SCRIPT + TALK_SCRIPT, now="/slice")
 
 
 def said_in(drawn: str) -> str:
@@ -296,4 +305,5 @@ def said_in(drawn: str) -> str:
 
 def window_payload(root: Path, fairway: str, slice_id: str) -> str:
     drawn, mapped = window_body(root, fairway, slice_id), map_panel(root, slice_id)
-    return json.dumps({"said": said_in(drawn), "html": drawn, "map_said": said_in(mapped), "map_html": mapped})
+    return json.dumps({"said": said_in(drawn), "html": drawn, "map_said": said_in(mapped), "map_html": mapped,
+                       **decisions_payload(root, slice_id)})

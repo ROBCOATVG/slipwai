@@ -115,7 +115,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "adopt_report",
                   "add_service", "adopt",
                   "migration_legacy", "migration_flight", "migration_settings", "migration_claims",
-                  "migration_crossing", "migration_result", "migration_merge", "migration_renames",
+                  "migration_sentence", "migration_crossing", "migration_result", "migration_merge",
+                  "migration_renames",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",
@@ -177,8 +178,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "try_card",
               # And what a person said after using it: the record under docs/feedback, and its card there.
               "feedback", "feedback_card",
-              # And every decision the fleet took, readable, each with the receipt the ceiling counts.
-              "decision_log",
+              # And every decision the fleet took, readable, each with the receipt the ceiling counts: one entry
+              # read for a person — its sentence, its options split — and its card, in the tab and the slice's window.
+              "decision_entry", "decision_log", "decision_cards",
               # And what each working slice is doing now, read off its activity log and drawn there.
               "activity", "live_page",
               # And one slice's card there — where it stands on the ladder and how it got there — and a

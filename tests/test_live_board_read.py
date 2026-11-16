@@ -85,9 +85,9 @@ class LoadTest(unittest.TestCase):
 #: Every route that changes something, each with a body. Most are refused for want of what they act on;
 #: refused or done, a person pressed something, and the next poll reads afresh.
 ROUTES = ("/tell", "/talk/say", "/talk/steer", "/talk/interrupt", "/talk/again", "/talk/all", "/dismiss", "/read",
-          "/decisions/read", "/need", "/ring", "/set", "/attach", "/cast-off", "/stop", "/draw", "/draft",
-          "/model", "/launch", "/intake", "/storyboard", "/feedback", "/try", "/wheel", "/dial", "/remote",
-          "/ci-off", "/console/reset")
+          "/decisions/read", "/decisions/confirm", "/need", "/ring", "/set", "/attach", "/cast-off", "/stop",
+          "/draw", "/draft", "/model", "/launch", "/intake", "/storyboard", "/feedback", "/try", "/wheel", "/dial",
+          "/remote", "/ci-off", "/console/reset")
 
 
 class DropTest(BoardTest):

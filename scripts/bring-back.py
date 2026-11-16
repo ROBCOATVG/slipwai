@@ -66,8 +66,9 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        # Talking to the fleet from the board: the windows, the strip, and every message placed in an inbox.
        "talk_said", "talk_fold", "captain_files", "talk_page", "talk_waits", "talk_card", "captain_window",
        "captains_strip", "talk_routes", "talk_placed", "talk_marks", "post_guard",
-       "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_crossing",
-       "migration_result", "migration_merge", "migration_renames", "catalog_checks", "catalog_options",
+       "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_sentence",
+       "migration_crossing", "migration_result", "migration_merge", "migration_renames", "catalog_checks",
+       "catalog_options",
        "cli_offered", "cli_search",
        "project.briefs", "project.prose", "project.sail_section", "project.write_model_prose",
        "project.ladder", "project.capability_gates", "project.careen", "project.harbour", "project.unit_targets",
@@ -111,7 +112,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        # And feedback from using it: version 1 had no built product on a board to say anything about.
        "feedback", "feedback_card",
        # And the decision log: version 1 kept decisions in a file nobody was shown.
-       "decision_log",
+       "decision_entry", "decision_log", "decision_cards",
        # And the live strip: version 1's runner printed to a terminal, and nothing kept what it said.
        "activity", "live_page",
        # A window each. The experiment's board served one directory, so it had no table of who is looking

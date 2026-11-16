@@ -56,9 +56,10 @@
 # Re-taken 2026-11-16 for changelog.d/slice-card-ladder-and-film.md: the rows for `agents/sail-demo-hand.md` moved, deliberately — the hand films a capability's walk as one recording with a mark per example, where it recorded a file per example.
 # Re-taken 2026-11-16 for changelog.d/demo-is-feedback.md: only the rows for agents/sail-demo-hand.md moved, deliberately — walking a capability, the hand's `accepted` is its acceptance under `.specify/cruise.json`'s `demos: hand`, the default, and the last reading before a person's under `person`.
 # Re-taken 2026-11-16 for changelog.d/demo-is-feedback.md (review): only the rows for agents/sail-demo-hand.md moved, deliberately — the hand walks before the capability is accepted, not before a person's demo.
+# Re-taken 2026-11-16 for changelog.d/decision-log-a-person-can-read.md: only the rows for agents/sail-decide-skipper.md moved, deliberately — the skipper says its decision to the owner in one plain sentence, the entry's `In short`, which the board leads the decision with.
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  .  agents/sail-adversary-privateer.md
 f2dab9b976f34e96095a5e8352ea2bd182e19a4cefb6dbd7a5f7749fdba916c8  .  agents/sail-converge-navigator.md
-1ca270d2141ceaa0ca3b9364cd0831b40c9335a43d109feb3709903678bcbab8  .  agents/sail-decide-skipper.md
+6252ae68400e55596bb58a2cebf658d3d3560e0e7cc000fa1c959ae4556520c5  .  agents/sail-decide-skipper.md
 707e5789a4feefe83d08b19350f4bd09900ad998e8b526cf73fce6b4dd6fadfe  .  agents/sail-demo-hand.md
 8c358374ec2265d3a4ce9b8d651346fb635899139dc8677db11fada057ec3778  .  agents/sail-gaps-lookout.md
 e36ab9a1227df04f33120679c4e9c66cf0fe17fc1edcd35500552328ee9019d2  .  agents/sail-implement-shipwright.md
@@ -69,7 +70,7 @@ e36ab9a1227df04f33120679c4e9c66cf0fe17fc1edcd35500552328ee9019d2  .  agents/sail
 11db71ae6d5675ef05aa8583f7c70925f2269001f57d7db08f7a9e6747c52984  .  agents/sail-unblock-bosun.md
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  delivery  agents/sail-adversary-privateer.md
 8332db386dfcf0aff0bec7f2ed86ea13156bdb8eb88427f0f3903f6727433d59  delivery  agents/sail-converge-navigator.md
-1ca270d2141ceaa0ca3b9364cd0831b40c9335a43d109feb3709903678bcbab8  delivery  agents/sail-decide-skipper.md
+6252ae68400e55596bb58a2cebf658d3d3560e0e7cc000fa1c959ae4556520c5  delivery  agents/sail-decide-skipper.md
 2a2f65cd93fc5d8399d445ff1db06de8c649aea70482b6820f04d896fff2ca33  delivery  agents/sail-demo-hand.md
 8c358374ec2265d3a4ce9b8d651346fb635899139dc8677db11fada057ec3778  delivery  agents/sail-gaps-lookout.md
 d3e5d4b31c8c5c3e282f4eecfa65d85115af2f5dbd09e0a09ccd0a0ef4ec32ab  delivery  agents/sail-implement-shipwright.md

@@ -60,6 +60,7 @@ from .chandlery_page import served as chandlery
 from .cli_telegraph import ring, set_one
 from .console import answered as console_answer
 from .console import for_root as console_for
+from .decision_log import confirm as confirm_decision
 from .decision_log import mark as mark_decisions
 from .deck import dismiss, mark_read, tick_need
 from .dials import set_dial
@@ -141,21 +142,25 @@ from .voyage_live import route_get as voyage_get
 from .voyage_page import now_said
 from .wheel import set_stop
 
-# budget: 935 — the cross-site guard and the app-version guard (2.1) on every change and page, one server and every
-# route the board answers, the need tick and the timeline among them, each a few lines handing off to a page module.
-# The intake route is the voyage button for a feature handed to /sail, and the captain routes are one fairway's log
-# window and its poll. A stage kept from before a restart is offered and resumed here too. Continue the build says
-# which of its reasons holds it back, and a model that failed has a route back. Raised from 975 for the remote: added
-# when the project is made, and asked for before the fleet sails. And Try it's `/try` and the walks it shows, handing
-# straight to `try_card.py`; Feedback's `/feedback`, handing to `feedback_card.py`, and the triage it starts; and a
-# film served in ranges (`film.py`). The Voyage window's own reads — the page, `/live.json`, the slice window — are
-# `voyage_live.py`'s. Mark read writes the receipts the decision ceiling counts. And the console's three routes —
-# `/console.json`, `/console/ask`, `/console/reset` — each a line or two handing to `console.py`, which holds the
-# conversation. The number is the route count rather than any one route's length: a control a person can press is ten
-# lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the board has
-# gained the surfaces, the settings dials and the rendered specification since this was 560. or to a guarded read out
-# of the project, plus the three reads a request makes through its seat (`seats.py` holds the table itself). A second
-# server would be two things each sure they are the board, which `open_board` exists to prevent.
+# budget: 940 — the cross-site guard and the app-version guard (2.1) on every change and page, one server
+# and every route the board answers, the need tick and the timeline among them, each a few lines handing off to a page
+# module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
+# one fairway's log window and its poll. A stage kept from before a restart is offered and resumed here too.
+# Continue the build says which of its reasons holds it back, and a model that failed has a route back.
+# Raised from 975 for the remote: added when the project is made, and asked for before the fleet sails.
+# And Try it's `/try` and the walks it shows, handing straight to `try_card.py`; Feedback's `/feedback`,
+# handing to `feedback_card.py`, and the triage it starts; and a film served in ranges (`film.py`). The
+# Voyage window's own reads — the page, `/live.json`, the slice window — are `voyage_live.py`'s.
+# Mark read writes the receipts the decision ceiling counts, and Confirm a decision awaiting a person.
+# And one check, before any of them, that a POST came from the board's own pages (`post_guard.py`).
+# And the console's three routes — `/console.json`, `/console/ask`, `/console/reset` — each a line or two handing
+# to `console.py`, which holds the conversation.
+# The number is the route count rather than any one route's length: a control a person can press is ten
+# lines here — the guard that says why it cannot be pressed, and the call to whatever does it — and the
+# board has gained the surfaces, the settings dials and the rendered specification since this was 560.
+# or to a guarded read out of the project, plus the three reads a request makes through its seat
+# (`seats.py` holds the table itself). A second server would be two things each sure they are the board,
+# which `open_board` exists to prevent.
 LIMIT = 4 * 1024 * 1024  # bytes a request body may be: a sentence, or a PRD riding in a generate's answers
 #: The four an installable page is made of, each with what it is served as. A browser decides whether to
 #: offer the install on the content type as much as the content, so none of these is served as HTML.
@@ -881,6 +886,9 @@ class Bridge(BaseHTTPRequestHandler):
                 if not isinstance(keys, list):
                     raise ValueError("`keys` is a list of the decisions read")
                 said = mark_decisions(self.root, [str(one) for one in keys])
+            # Confirm on a decision awaiting a person: its `Status` set to confirmed where the entry is, and read.
+            elif where == "/decisions/confirm":
+                said = confirm_decision(self.root, str(held.get("key", "")))
             elif where == "/dismiss":
                 said = dismiss(self.root, str(held.get("fairway", "")), str(held.get("told", "")))
             # A person's tick of one need of a park, from its checklist: a `need-done` deck line, which the

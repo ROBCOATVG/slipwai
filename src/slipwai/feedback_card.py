@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urlencode
 
 from .demos import HAND, accept, mark_opened, opened
 from .feedback import HOLDS, ROUTES, Item, capture, confirm, drop, items
@@ -90,14 +91,34 @@ SCRIPT = """
     setTimeout(poll, found.triaging ? 3000 : 10000);
   };
   setTimeout(poll, 3000);
+  const open = (given, ask) => {
+    context = given; verdict = '';
+    box().hidden = false; box().querySelector('h3').textContent = ask || 'What did using it show?';
+    chips(); box().scrollIntoView({block: 'nearest'}); box().querySelector('textarea').focus();
+  };
+  // Opened from another window — a decision's Change this in a slice's window, which has no box — with the
+  // context in the address: read once, then taken out of it so a reload does not open the box again.
+  (function(){
+    const asked = new URLSearchParams(location.search);
+    const given = {};
+    let ask = '';
+    for (const [key, value] of asked) {
+      if (key === 'feedback-ask') ask = value;
+      else if (key.startsWith('feedback-')) given[key.slice(9)] = value;
+    }
+    if (!ask && !Object.keys(given).length) return;
+    [...asked.keys()].filter(key => key.startsWith('feedback-')).forEach(key => asked.delete(key));
+    const query = asked.toString();
+    history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    open(given, ask);
+  })();
   document.addEventListener('click', async event => {
     const at = event.target.closest('button');
     if (!at) return;
     const data = at.dataset;
     if (data.feedback !== undefined) {
-      context = JSON.parse(data.feedback || '{}'); verdict = data.verdict || '';
-      box().hidden = false; box().querySelector('h3').textContent = data.ask || 'What did using it show?';
-      chips(); box().scrollIntoView({block: 'nearest'}); box().querySelector('textarea').focus();
+      open(JSON.parse(data.feedback || '{}'), data.ask);
+      verdict = data.verdict || '';
     } else if (data.unchip) { delete context[data.unchip]; chips(); }
     else if (data.fbCancel !== undefined) { box().hidden = true; }
     else if (data.fbSend !== undefined) {
@@ -129,6 +150,15 @@ def opener(face: str, context: dict[str, str], primary: bool = False, ask: str =
     extra = (f' data-ask="{esc(ask)}"' if ask else "") + (f' data-verdict="{esc(verdict)}"' if verdict else "")
     return (f'<button type="button" class="{"go" if primary else "install"}" '
             f'data-feedback="{esc(json.dumps(shown))}"{extra}>{esc(face)}</button>')
+
+
+def box_address(context: dict[str, str], ask: str = "") -> str:
+    """The Voyage window with the box opened on this context: for a page that has no box of its own. The
+    Feedback tab is named in the fragment, so the page shows the tab the box is on."""
+    shown = {f"feedback-{key}": value for key, value in context.items() if value}
+    if ask:
+        shown["feedback-ask"] = ask
+    return f"/voyage?{urlencode(shown)}#tab-try"
 
 
 def act_button(verb: str, face: str, primary: bool = False, **data: str) -> str:
